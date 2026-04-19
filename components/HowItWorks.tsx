@@ -3,118 +3,106 @@
 const steps = [
   {
     num: "1",
-    title: "Psixoloq seç",
-    desc: "İxtisas, yanaşma tərzi və qiymətə görə sizə uyğun psixoloqu seçin. Filtrlər vasitəsilə axtarışı asanlaşdırın.",
-    icon: (
-      <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" />
-      </svg>
-    ),
-    color: "#3B6FA5",
-    bg: "#EEF4FB",
+    title: "Psixoloqla tanış ol",
+    desc: "Ehtiyaclarınıza, gözləntilərinizə və büdcənizə uyğun psixoloqu seçin. Qısa profil məlumatları ilə sizə ən uyğun mütəxəssisi tapın.",
+    image: "/images/how-1.jpg",
+    imageAlt: "Psixoloq seçimi",
   },
   {
     num: "2",
-    title: "Müraciət göndər",
-    desc: "Seçdiyiniz psixoloqa müraciət edin. Əlverişli vaxt seçin — sistem sizin üçün xatırlatma göndərəcəkdir.",
-    icon: (
-      <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-        <path d="M8 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M14 2v6h6M9 13h6M9 17h4" strokeLinecap="round" />
-      </svg>
-    ),
-    color: "#7B85C8",
-    bg: "#ECEEF8",
+    title: "Pulsuz ilk görüşü planla",
+    desc: "Seçdiyiniz psixoloqla 15 dəqiqəlik pulsuz tanışlıq görüşü edin. Uyğunluğunuzu yoxlayın, suallarınızı verin — heç bir öhdəlik yoxdur.",
+    image: "/images/how-2.jpg",
+    imageAlt: "Görüş planla",
   },
   {
     num: "3",
-    title: "Seansa başla",
-    desc: "Onlayn video zəng və ya üz-üzə formatda rahat, məxfi mühitdə psixoloji yardım alın.",
-    icon: (
-      <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-        <path d="M15 10l4.553-2.276A1 1 0 0121 8.723v6.554a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-    color: "#3B6FA5",
-    bg: "#EEF4FB",
+    title: "Psixoloji dəstəyinə başla",
+    desc: "Onlayn video zəng və ya üz-üzə format seçin. Rahat, məxfi mühitdə peşəkar psixoloji dəstək alın.",
+    image: "/images/how-3.jpg",
+    imageAlt: "Seans başla",
   },
 ];
 
 export default function HowItWorks() {
   return (
-    <section id="how" className="section" style={{ background: "#ffffff" }}>
+    <section id="how" className="section" style={{ background: "#EDF2FB" }}>
       <div className="container">
         <div className="text-center mb-12">
-          <p className="section-label justify-center">Sadə proses</p>
           <h2
-            className="text-3xl sm:text-4xl font-bold mb-3"
-            style={{ fontFamily: "var(--font-playfair, serif)", color: "#1A2535" }}
+            className="text-3xl sm:text-[2.4rem] font-bold mb-3"
+            style={{ fontFamily: "var(--font-playfair, serif)", color: "#0F1C2E" }}
           >
             Necə işləyir?
           </h2>
-          <p className="text-[#6B85A0] max-w-md mx-auto text-[0.9375rem] leading-relaxed">
+          <p className="text-[#5A7490] max-w-md mx-auto text-[0.9375rem] leading-relaxed">
             Cəmi 3 addımda psixoloji dəstək almağa başlaya bilərsiniz.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-5">
-          {steps.map((step, i) => (
-            <div
-              key={step.num}
-              className="relative bg-white rounded-2xl p-7 flex flex-col gap-5 group transition-all duration-300"
-              style={{
-                boxShadow: "0 2px 12px rgba(26,37,53,0.07)",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 28px rgba(26,37,53,0.12)";
-                (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 12px rgba(26,37,53,0.07)";
-                (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-              }}
-            >
-              {/* Step number — top right, subtle */}
-              <span
-                className="absolute top-5 right-6 font-bold tabular-nums"
-                style={{
-                  fontSize: "3.5rem",
-                  color: step.bg,
-                  fontFamily: "var(--font-playfair, serif)",
-                  lineHeight: 1,
-                  userSelect: "none",
-                }}
-              >
-                {step.num}
-              </span>
-
-              {/* Icon */}
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 relative z-10"
-                style={{ background: step.bg, color: step.color }}
-              >
-                {step.icon}
-              </div>
-
-              {/* Content */}
-              <div className="relative z-10">
-                <h3 className="font-bold text-[#1A2535] text-lg mb-2">{step.title}</h3>
-                <p className="text-[#6B85A0] text-sm leading-relaxed">{step.desc}</p>
-              </div>
-
-              {/* Arrow connector (between cards, desktop only) */}
-              {i < steps.length - 1 && (
-                <div
-                  className="hidden md:flex absolute -right-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full items-center justify-center bg-white"
-                  style={{ boxShadow: "0 2px 8px rgba(26,37,53,0.12)" }}
+        <div className="flex flex-col gap-5">
+          {steps.map((step) => (
+            <div key={step.num} className="flex items-stretch gap-5 sm:gap-8">
+              {/* Step number — outside card */}
+              <div className="hidden sm:flex flex-col items-end justify-start pt-7 w-14 flex-shrink-0">
+                <span
+                  className="font-bold leading-none"
+                  style={{
+                    fontFamily: "var(--font-playfair, serif)",
+                    fontSize: "2.75rem",
+                    color: "#3B6FA5",
+                    lineHeight: 1,
+                  }}
                 >
-                  <svg width="14" height="14" fill="none" stroke="#3B6FA5" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  {step.num}.
+                </span>
+              </div>
+
+              {/* Card */}
+              <div
+                className="flex-1 bg-white rounded-2xl overflow-hidden flex flex-col sm:flex-row items-stretch"
+                style={{ border: "1px solid #DDE8F5" }}
+              >
+                {/* Text side */}
+                <div className="flex-1 p-7 sm:p-8 flex flex-col justify-center">
+                  {/* Mobile step number */}
+                  <span
+                    className="sm:hidden font-bold mb-2"
+                    style={{ fontFamily: "var(--font-playfair, serif)", fontSize: "1.75rem", color: "#3B6FA5" }}
+                  >
+                    {step.num}.
+                  </span>
+                  <h3
+                    className="text-xl font-bold mb-3 text-[#0F1C2E]"
+                    style={{ fontFamily: "var(--font-playfair, serif)" }}
+                  >
+                    {step.title}
+                  </h3>
+                  <p className="text-[#5A7490] text-[0.925rem] leading-relaxed">{step.desc}</p>
                 </div>
-              )}
+
+                {/* Image side */}
+                <div
+                  className="relative sm:w-[260px] h-[180px] sm:h-auto flex-shrink-0 overflow-hidden"
+                  style={{ background: "#EDF2FB" }}
+                >
+                  <img
+                    src={step.image}
+                    alt={step.imageAlt}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                  {/* Placeholder */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <svg width="36" height="36" fill="none" stroke="#A8BEDD" strokeWidth="1.5" viewBox="0 0 24 24">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <path d="M21 15l-5-5L5 21" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <p className="text-[11px] text-[#A8BEDD] mt-2">{step.image}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -126,7 +114,7 @@ export default function HowItWorks() {
               <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </a>
-          <p className="text-xs text-[#6B85A0] mt-3">Öhdəlik tələb olunmur · Pulsuz ilk məsləhət</p>
+          <p className="text-xs text-[#8AAABF] mt-3">Öhdəlik tələb olunmur · Pulsuz ilk görüş</p>
         </div>
       </div>
     </section>

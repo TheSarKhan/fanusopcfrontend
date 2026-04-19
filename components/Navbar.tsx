@@ -33,18 +33,11 @@ export default function Navbar() {
       <div className="container flex items-center justify-between h-16 md:h-18">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <span
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
-            style={{ background: "linear-gradient(135deg, #3B6FA5, #1E4070)" }}
-          >
-            F
-          </span>
-          <span
-            className="text-xl font-bold tracking-tight"
-            style={{ fontFamily: "var(--font-playfair, serif)", color: "#1A2535" }}
-          >
-            Fanus
-          </span>
+          <img
+            src="/images/hero-main.png"
+            alt="Fanus"
+            className="h-9 w-auto object-contain"
+          />
         </Link>
 
         {/* Desktop nav */}

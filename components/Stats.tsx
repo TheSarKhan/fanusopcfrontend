@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useBooking } from "@/context/BookingContext";
 
-function useCountUp(target: number, duration = 2000, start = false) {
+function useCountUp(target: number, duration = 2200, start = false) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     if (!start) return;
@@ -20,62 +20,18 @@ function useCountUp(target: number, duration = 2000, start = false) {
   return count;
 }
 
-const stats = [
-  {
-    value: 500,
-    suffix: "+",
-    label: "Aktiv müştəri",
-    icon: (
-      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    value: 1200,
-    suffix: "+",
-    label: "Tamamlanmış seans",
-    icon: (
-      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-        <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    value: 15,
-    suffix: "+",
-    label: "Sertifikatlı psixoloq",
-    icon: (
-      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-        <circle cx="12" cy="8" r="4" />
-        <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    value: 5,
-    suffix: " il",
-    label: "Fəaliyyət dövrü",
-    icon: (
-      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 6v6l4 2" strokeLinecap="round" />
-      </svg>
-    ),
-  },
+const STATS = [
+  { value: 500,  suffix: "+", label: "Aktiv müştəri",         sub: "Platforma üzərindən" },
+  { value: 1200, suffix: "+", label: "Tamamlanmış seans",     sub: "Uğurla başa çatıb"  },
+  { value: 98,   suffix: "%", label: "Müştəri məmnuniyyəti",  sub: "Ortalama reytinq"   },
+  { value: 15,   suffix: "+", label: "Sertifikatlı psixoloq", sub: "Müxtəlif ixtisaslar" },
 ];
 
-function StatCard({
-  value, suffix, label, icon, started, delay,
-}: {
-  value: number; suffix: string; label: string; icon: React.ReactNode; started: boolean; delay: number;
+function StatNum({ value, suffix, label, sub, started, delay }: {
+  value: number; suffix: string; label: string; sub: string; started: boolean; delay: number;
 }) {
   const [go, setGo] = useState(false);
-  const count = useCountUp(value, 2000, go);
-
+  const count = useCountUp(value, 2200, go);
   useEffect(() => {
     if (started) {
       const t = setTimeout(() => setGo(true), delay);
@@ -84,36 +40,25 @@ function StatCard({
   }, [started, delay]);
 
   return (
-    <div
-      className="bg-white rounded-2xl p-6 flex flex-col gap-4"
-      style={{ boxShadow: "0 2px 12px rgba(26,37,53,0.07)" }}
-    >
-      {/* Icon */}
-      <div
-        className="w-11 h-11 rounded-xl flex items-center justify-center text-[#3B6FA5] flex-shrink-0"
-        style={{ background: "#EEF4FB" }}
-      >
-        {icon}
+    <div style={{
+      textAlign: "center",
+      padding: "2rem 1rem",
+      borderRadius: "1.25rem",
+      background: "rgba(255,255,255,0.12)",
+      border: "1px solid rgba(255,255,255,0.18)",
+      backdropFilter: "blur(8px)",
+    }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 2, marginBottom: 6 }}>
+        <span style={{
+          fontSize: "clamp(2.4rem, 5vw, 3.2rem)",
+          fontWeight: 800, color: "#ffffff",
+          fontFamily: "var(--font-playfair, serif)",
+          letterSpacing: "-0.02em", lineHeight: 1,
+        }}>{count}</span>
+        <span style={{ fontSize: "1.5rem", fontWeight: 700, color: "rgba(255,255,255,0.65)" }}>{suffix}</span>
       </div>
-
-      {/* Number */}
-      <div className="flex items-baseline gap-0.5">
-        <span
-          className="font-bold leading-none"
-          style={{
-            fontSize: "2.625rem",
-            color: "#1A2535",
-            fontFamily: "var(--font-playfair, serif)",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          {count}
-        </span>
-        <span className="font-bold text-[#3B6FA5] text-xl ml-0.5">{suffix}</span>
-      </div>
-
-      {/* Label */}
-      <p className="text-sm text-[#6B85A0] font-medium leading-snug">{label}</p>
+      <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "rgba(255,255,255,0.92)", marginBottom: 3 }}>{label}</p>
+      <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>{sub}</p>
     </div>
   );
 }
@@ -133,43 +78,100 @@ export default function Stats() {
   }, []);
 
   return (
-    <section ref={ref} className="section" style={{ background: "#F0F5FB" }}>
-      <div className="container">
-        <div className="text-center mb-10">
-          <p className="section-label justify-center">Rəqəmlərlə Fanus</p>
-          <h2
-            className="text-3xl sm:text-4xl font-bold"
-            style={{ fontFamily: "var(--font-playfair, serif)", color: "#1A2535" }}
-          >
+    <section
+      ref={ref}
+      style={{
+        position: "relative",
+        background: "linear-gradient(135deg, #2A57B0 0%, #5A4FC8 60%, #7B68D8 100%)",
+        paddingTop: "7rem",
+        paddingBottom: "0",
+        overflow: "hidden",
+      }}
+    >
+      {/* White wave at top — sits over the gradient, creates curved edge from About */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, lineHeight: 0, zIndex: 1, pointerEvents: "none" }}>
+        <svg viewBox="0 0 1440 80" fill="none" preserveAspectRatio="none"
+          style={{ display: "block", width: "100%", height: 80 }}>
+          <path d="M0 0 L1440 0 L1440 40 Q1080 0 720 40 Q360 80 0 40 Z" fill="#ffffff" />
+        </svg>
+      </div>
+
+      <div className="container" style={{ position: "relative", zIndex: 2, paddingBottom: "3.5rem" }}>
+
+        {/* Header */}
+        <div className="text-center mb-12">
+          <p style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.12em",
+            textTransform: "uppercase", color: "rgba(255,255,255,0.55)",
+            marginBottom: "1rem",
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#A8CFFF", display: "inline-block" }} />
+            Rəqəmlərlə Fanus
+          </p>
+          <h2 style={{
+            fontFamily: "var(--font-playfair, serif)",
+            fontSize: "clamp(1.8rem, 4vw, 2.6rem)",
+            fontWeight: 700, color: "#ffffff",
+            marginBottom: "0.75rem", lineHeight: 1.2,
+          }}>
             Güvən rəqəmlərlə ölçülür
           </h2>
+          <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.93rem", maxWidth: 360, margin: "0 auto" }}>
+            2019-cu ildən minlərlə insanın həyatına toxunduq
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((s, i) => (
-            <StatCard key={s.label} {...s} started={started} delay={i * 120} />
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {STATS.map((s, i) => (
+            <StatNum key={s.label} {...s} started={started} delay={i * 130} />
           ))}
         </div>
 
-        {/* Working hours bar */}
-        <div
-          className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-2xl px-6 py-4"
-          style={{ boxShadow: "0 2px 12px rgba(26,37,53,0.07)" }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <p className="text-sm text-[#1A2535]">
-              <span className="font-semibold">İş saatları:</span>
-              <span className="text-[#6B85A0] ml-2">B.ertəsi – Şənbə, 09:00 – 20:00</span>
+        {/* CTA bar */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          flexWrap: "wrap", gap: 12,
+          background: "rgba(255,255,255,0.10)",
+          border: "1px solid rgba(255,255,255,0.15)",
+          borderRadius: "1.25rem",
+          padding: "16px 24px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{
+              width: 8, height: 8, borderRadius: "50%",
+              background: "#4ADE80", display: "inline-block",
+              boxShadow: "0 0 8px #4ADE80",
+            }} />
+            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem" }}>
+              <span style={{ fontWeight: 600, color: "#fff" }}>İş saatları:</span>
+              {"  "}B.ertəsi – Şənbə, 09:00 – 20:00 · Onlayn 7/24
             </p>
           </div>
-          <div className="hidden sm:block w-px h-4 bg-[#D5E3F0]" />
-          <p className="text-sm text-[#6B85A0]">Onlayn seanslar həftənin 7 günü mövcuddur</p>
-          <button onClick={() => open()} className="btn-primary py-2.5 px-5 text-sm">
+          <button
+            onClick={() => open()}
+            style={{
+              background: "#ffffff", color: "#2A57B0",
+              border: "none", borderRadius: 9999,
+              padding: "10px 24px", fontWeight: 700,
+              fontSize: "0.9rem", cursor: "pointer",
+            }}
+          >
             Randevu al →
           </button>
         </div>
+
       </div>
+
+      {/* Wave at bottom — transitions to next section (white) */}
+      <div style={{ lineHeight: 0, position: "relative", zIndex: 2 }}>
+        <svg viewBox="0 0 1440 80" fill="none" preserveAspectRatio="none"
+          style={{ display: "block", width: "100%", height: 80 }}>
+          <path d="M0 40 Q360 80 720 40 Q1080 0 1440 40 L1440 80 L0 80 Z" fill="#ffffff" />
+        </svg>
+      </div>
+
     </section>
   );
 }

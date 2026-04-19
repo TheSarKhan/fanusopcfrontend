@@ -83,24 +83,13 @@ export default function HowItWorks() {
 
                 {/* Image side */}
                 <div
-                  className="relative sm:w-[260px] h-[180px] sm:h-auto flex-shrink-0 overflow-hidden"
-                  style={{ background: "#EDF2FB" }}
+                  className="sm:w-[260px] h-[180px] sm:h-auto flex-shrink-0 overflow-hidden"
                 >
                   <img
                     src={step.image}
                     alt={step.imageAlt}
                     className="w-full h-full object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                   />
-                  {/* Placeholder */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <svg width="36" height="36" fill="none" stroke="#A8BEDD" strokeWidth="1.5" viewBox="0 0 24 24">
-                      <rect x="3" y="3" width="18" height="18" rx="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <path d="M21 15l-5-5L5 21" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <p className="text-[11px] text-[#A8BEDD] mt-2">{step.image}</p>
-                  </div>
                 </div>
               </div>
             </div>

@@ -4,7 +4,9 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BookingModal from "@/components/BookingModal";
+import MoodGate from "@/components/MoodGate";
 import { BookingProvider } from "@/context/BookingContext";
+import { MoodProvider } from "@/context/MoodContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -33,12 +35,15 @@ export default function RootLayout({
   return (
     <html lang="az" className={`${inter.variable} ${playfair.variable}`}>
       <body className="min-h-screen flex flex-col">
-        <BookingProvider>
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          <BookingModal />
-        </BookingProvider>
+        <MoodProvider>
+          <BookingProvider>
+            <MoodGate />
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
+            <BookingModal />
+          </BookingProvider>
+        </MoodProvider>
       </body>
     </html>
   );

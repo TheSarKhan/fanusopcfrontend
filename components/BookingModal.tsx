@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useBooking } from "@/context/BookingContext";
 
-const WHATSAPP_NUMBER = "994501234567";
+const WHATSAPP_NUMBER = "994502017164";
 
 type Step = "choice" | "form" | "success";
 

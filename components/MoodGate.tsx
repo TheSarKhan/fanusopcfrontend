@@ -12,11 +12,11 @@ const MOODS: { id: MoodId; emoji: string; label: string; desc: string; color: st
 ];
 
 export default function MoodGate() {
-  const { mood, setMood } = useMood();
+  const { mood, setMood, isLoaded } = useMood();
   const [closing, setClosing] = useState(false);
   const [hovered, setHovered] = useState<MoodId | null>(null);
 
-  if (mood !== null) return null;
+  if (!isLoaded || mood !== null) return null;
 
   const select = (id: MoodId) => {
     setClosing(true);

@@ -40,7 +40,6 @@ export default function Navbar() {
             src="/images/hero-main.png"
             alt="Fanus"
             className="h-9 w-auto object-contain"
-            style={scrolled ? {} : { filter: "brightness(0) invert(1)" }}
           />
         </Link>
 

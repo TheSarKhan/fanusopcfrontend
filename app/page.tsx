@@ -7,10 +7,12 @@ import Announcements from "@/components/Announcements";
 import BlogPreview from "@/components/BlogPreview";
 import FAQ from "@/components/FAQ";
 import FinalCTA from "@/components/FinalCTA";
+import Intro from "@/components/Intro";
 
 export default function HomePage() {
   return (
     <>
+      <Intro />
       <Hero />
       <About />
       <Stats />

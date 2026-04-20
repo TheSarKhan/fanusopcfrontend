@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 const JOURNEY = [
   {
@@ -64,9 +64,103 @@ const JOURNEY = [
 ];
 
 
+function TiltCard({ item, visible, delay }: { item: typeof JOURNEY[0]; visible: boolean; delay: number }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const onMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const el = cardRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    el.style.transform = `perspective(600px) rotateY(${x * 12}deg) rotateX(${-y * 12}deg) scale(1.02)`;
+    el.style.boxShadow = `${-x * 12}px ${-y * 12}px 32px ${item.color}22`;
+  }, [item.color]);
+
+  const onMouseLeave = useCallback(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    el.style.transform = "perspective(600px) rotateY(0deg) rotateX(0deg) scale(1)";
+    el.style.boxShadow = "none";
+  }, []);
+
+  return (
+    <div
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(36px)",
+        transition: `opacity 0.65s ease ${delay}s, transform 0.65s ease ${delay}s`,
+      }}
+    >
+      {/* Circle node — desktop only */}
+      <div className="hidden lg:flex justify-center mb-5">
+        <div style={{ position: "relative", display: "inline-flex" }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: "50%",
+            background: item.bg, border: `2px solid ${item.color}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: `0 4px 16px ${item.color}28`,
+          }}>
+            {item.icon}
+          </div>
+          <span style={{
+            position: "absolute", top: -6, right: -8,
+            background: item.color, color: "white",
+            borderRadius: 6, padding: "2px 6px",
+            fontSize: 9, fontWeight: 800, letterSpacing: "0.04em",
+          }}>{item.num}</span>
+        </div>
+      </div>
+
+      {/* Card */}
+      <div
+        ref={cardRef}
+        onMouseMove={onMouseMove}
+        onMouseLeave={onMouseLeave}
+        style={{
+          background: item.bg, borderRadius: "1.25rem", padding: "20px",
+          border: `1px solid ${item.border}`,
+          transition: "transform 0.15s ease, box-shadow 0.15s ease",
+          willChange: "transform",
+        }}
+      >
+        {/* Circle inside card — mobile/tablet only */}
+        <div className="flex items-center gap-3 mb-4 lg:hidden">
+          <div style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: "50%", background: "white",
+              border: `2px solid ${item.color}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: `0 4px 12px ${item.color}22`,
+            }}>
+              {item.icon}
+            </div>
+            <span style={{
+              position: "absolute", top: -5, right: -7,
+              background: item.color, color: "white",
+              borderRadius: 5, padding: "1px 5px", fontSize: 8, fontWeight: 800,
+            }}>{item.num}</span>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 800, color: item.color, textTransform: "uppercase", letterSpacing: "0.1em" }}>{item.phase}</span>
+        </div>
+
+        <span className="hidden lg:block" style={{
+          fontSize: 10, fontWeight: 800, color: item.color,
+          textTransform: "uppercase", letterSpacing: "0.1em",
+          marginBottom: 8, display: "block",
+        }}>{item.phase}</span>
+
+        <h3 style={{ fontSize: "0.97rem", fontWeight: 700, color: "#0F1C2E", marginBottom: 10, fontFamily: "var(--font-playfair, serif)" }}>{item.title}</h3>
+        <p style={{ fontSize: "0.82rem", color: "#5A7490", lineHeight: 1.65, fontStyle: "italic" }}>"{item.quote}"</p>
+      </div>
+    </div>
+  );
+}
+
 export default function About() {
   const timelineRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
+  const [lineProgress, setLineProgress] = useState(0);
 
   useEffect(() => {
     const el = timelineRef.current;
@@ -78,6 +172,22 @@ export default function About() {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  // Animate line when visible
+  useEffect(() => {
+    if (!visible) return;
+    let frame: number;
+    let start: number | null = null;
+    const duration = 1200;
+    const animate = (ts: number) => {
+      if (!start) start = ts;
+      const p = Math.min((ts - start) / duration, 1);
+      setLineProgress(p);
+      if (p < 1) frame = requestAnimationFrame(animate);
+    };
+    const delay = setTimeout(() => { frame = requestAnimationFrame(animate); }, 300);
+    return () => { clearTimeout(delay); cancelAnimationFrame(frame); };
+  }, [visible]);
 
   return (
     <section id="about" className="section" style={{ background: "#ffffff" }}>
@@ -102,99 +212,20 @@ export default function About() {
         {/* Journey Timeline */}
         <div ref={timelineRef} className="relative mb-20">
 
-          {/* Horizontal connector line — desktop only */}
-          <div
-            className="hidden lg:block absolute"
-            style={{
-              top: 44,
-              left: "calc(12.5% + 28px)",
-              right: "calc(12.5% + 28px)",
-              height: 2,
+          {/* Animated connector line — desktop only */}
+          <div className="hidden lg:block absolute" style={{ top: 44, left: "calc(12.5% + 28px)", right: "calc(12.5% + 28px)", height: 2, pointerEvents: "none", borderRadius: 2, overflow: "hidden", background: "#E5EDF5" }}>
+            <div style={{
+              height: "100%",
+              width: `${lineProgress * 100}%`,
               background: "linear-gradient(90deg, #3B6FA5 0%, #7C3AED 33%, #0D9488 66%, #D97706 100%)",
-              opacity: 0.25,
-            }}
-          />
+              borderRadius: 2,
+              transition: "none",
+            }} />
+          </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
             {JOURNEY.map((item, i) => (
-              <div
-                key={item.num}
-                style={{
-                  opacity: visible ? 1 : 0,
-                  transform: visible ? "translateY(0)" : "translateY(36px)",
-                  transition: `opacity 0.65s ease ${i * 0.14}s, transform 0.65s ease ${i * 0.14}s`,
-                }}
-              >
-                {/* Circle node — desktop only, floats above card */}
-                <div className="hidden lg:flex justify-center mb-5">
-                  <div style={{ position: "relative", display: "inline-flex" }}>
-                    <div style={{
-                      width: 56, height: 56, borderRadius: "50%",
-                      background: item.bg,
-                      border: `2px solid ${item.color}`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      boxShadow: `0 4px 16px ${item.color}28`,
-                    }}>
-                      {item.icon}
-                    </div>
-                    <span style={{
-                      position: "absolute", top: -6, right: -8,
-                      background: item.color, color: "white",
-                      borderRadius: 6, padding: "2px 6px",
-                      fontSize: 9, fontWeight: 800, letterSpacing: "0.04em",
-                    }}>{item.num}</span>
-                  </div>
-                </div>
-
-                {/* Card */}
-                <div style={{
-                  background: item.bg,
-                  borderRadius: "1.25rem",
-                  padding: "20px",
-                  border: `1px solid ${item.border}`,
-                }}>
-                  {/* Circle inside card — mobile/tablet only */}
-                  <div className="flex items-center gap-3 mb-4 lg:hidden">
-                    <div style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
-                      <div style={{
-                        width: 44, height: 44, borderRadius: "50%",
-                        background: "white",
-                        border: `2px solid ${item.color}`,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        boxShadow: `0 4px 12px ${item.color}22`,
-                      }}>
-                        {item.icon}
-                      </div>
-                      <span style={{
-                        position: "absolute", top: -5, right: -7,
-                        background: item.color, color: "white",
-                        borderRadius: 5, padding: "1px 5px",
-                        fontSize: 8, fontWeight: 800,
-                      }}>{item.num}</span>
-                    </div>
-                    <span style={{
-                      fontSize: 10, fontWeight: 800, color: item.color,
-                      textTransform: "uppercase", letterSpacing: "0.1em",
-                    }}>{item.phase}</span>
-                  </div>
-
-                  {/* Phase label — desktop only */}
-                  <span className="hidden lg:block" style={{
-                    fontSize: 10, fontWeight: 800, color: item.color,
-                    textTransform: "uppercase", letterSpacing: "0.1em",
-                    marginBottom: 8, display: "block",
-                  }}>{item.phase}</span>
-
-                  <h3 style={{
-                    fontSize: "0.97rem", fontWeight: 700, color: "#0F1C2E",
-                    marginBottom: 10, fontFamily: "var(--font-playfair, serif)",
-                  }}>{item.title}</h3>
-                  <p style={{
-                    fontSize: "0.82rem", color: "#5A7490",
-                    lineHeight: 1.65, fontStyle: "italic",
-                  }}>"{item.quote}"</p>
-                </div>
-              </div>
+              <TiltCard key={item.num} item={item} visible={visible} delay={i * 0.14} />
             ))}
           </div>
 

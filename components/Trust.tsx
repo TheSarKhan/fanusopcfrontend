@@ -1,27 +1,69 @@
+"use client";
+
 const testimonials = [
   {
-    quote: "Fanus ilə ilk seanstan sonra özümü çox yüngül hiss etdim. Psixoloq məni tam anladı, mühakimə etmədi. Həyatımın ən yaxşı qərarlarından biri idi.",
+    quote: "Fanus ilə ilk seanstan sonra özümü çox yüngül hiss etdim. Psixoloq məni tam anladı, mühakimə etmədi.",
     name: "Aytən M.",
     role: "2 ildir müştəri",
     initials: "AM",
-    rating: 5,
     gradient: "linear-gradient(135deg, #1E4070, #3B6FA5)",
+    rating: 5,
   },
   {
-    quote: "Ailə problemlərimizə həll yolu tapmaqda böyük kömək etdilər. Artıq münasibətimiz çox daha sağlam bir yerdədir. Tövsiyə edirəm.",
+    quote: "Ailə problemlərimizə həll yolu tapmaqda böyük kömək etdilər. Artıq münasibətimiz çox daha sağlam bir yerdədir.",
     name: "Tural H.",
     role: "1 ildir müştəri",
     initials: "TH",
-    rating: 5,
     gradient: "linear-gradient(135deg, #1a1f4d, #7B85C8)",
+    rating: 5,
   },
   {
-    quote: "Onlayn seans imkanı mənim üçün çox əlverişli oldu. Rahatlığım yerindədir, məxfilik tam qorunur. Psixoloq çox peşəkardır.",
+    quote: "Onlayn seans imkanı mənim üçün çox əlverişli oldu. Rahatlığım yerindədir, məxfilik tam qorunur.",
     name: "Ləman K.",
     role: "8 aydır müştəri",
     initials: "LK",
-    rating: 5,
     gradient: "linear-gradient(135deg, #1C3555, #5B8FCA)",
+    rating: 5,
+  },
+  {
+    quote: "İlk dəfə psixoloqa gedirdim, çox narahat idim. Amma Fanus komandası məni çox rahat hiss etdirdi.",
+    name: "Nigar Ş.",
+    role: "6 aydır müştəri",
+    initials: "NŞ",
+    gradient: "linear-gradient(135deg, #0F4C35, #1E7A5E)",
+    rating: 5,
+  },
+  {
+    quote: "Stress və iş yükündən çıxa bilmirdim. İndi özümü idarə etməyi öyrəndim. Həyatım tamamilə dəyişdi.",
+    name: "Əli B.",
+    role: "10 aydır müştəri",
+    initials: "ƏB",
+    gradient: "linear-gradient(135deg, #4C1D95, #7C3AED)",
+    rating: 5,
+  },
+  {
+    quote: "Psixoloqum hər seansda mənə yeni perspektiv verdi. Özümə olan inamım artdı, çox minnətdaram.",
+    name: "Günel R.",
+    role: "1.5 ildir müştəri",
+    initials: "GR",
+    gradient: "linear-gradient(135deg, #7C2D12, #C2410C)",
+    rating: 5,
+  },
+  {
+    quote: "Uşağımın davranış problemləri ilə mübarizə aparırdım. Fanus-un mütəxəssisləri bizə real həll yolu göstərdi.",
+    name: "Samirə N.",
+    role: "9 aydır müştəri",
+    initials: "SN",
+    gradient: "linear-gradient(135deg, #064E3B, #059669)",
+    rating: 5,
+  },
+  {
+    quote: "Travma ilə yaşamaq çox ağır idi. EMDR terapiyası sayəsində yenidən nəfəs ala bildim.",
+    name: "Rauf İ.",
+    role: "1 ildir müştəri",
+    initials: "Rİ",
+    gradient: "linear-gradient(135deg, #1E3A5F, #2A57B0)",
+    rating: 5,
   },
 ];
 
@@ -34,17 +76,29 @@ const certifications = [
 ];
 
 const trustMetrics = [
-  { value: "4.9/5", label: "Orta reytinq" },
-  { value: "100%", label: "Məxfilik" },
-  { value: "1200+", label: "Seans" },
-  { value: "5 il", label: "Təcrübə" },
+  {
+    value: "4.9/5", label: "Orta reytinq",
+    icon: <svg width="18" height="18" fill="#F59E0B" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>,
+  },
+  {
+    value: "100%", label: "Məxfilik",
+    icon: <svg width="18" height="18" fill="none" stroke="#3B6FA5" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  },
+  {
+    value: "1200+", label: "Seans",
+    icon: <svg width="18" height="18" fill="none" stroke="#7C3AED" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  },
+  {
+    value: "5 il", label: "Təcrübə",
+    icon: <svg width="18" height="18" fill="none" stroke="#0D9488" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2" strokeLinecap="round"/></svg>,
+  },
 ];
 
 function Stars({ count }: { count: number }) {
   return (
     <div className="flex gap-0.5">
       {Array.from({ length: count }).map((_, i) => (
-        <svg key={i} width="14" height="14" fill="#F59E0B" viewBox="0 0 24 24">
+        <svg key={i} width="13" height="13" fill="#F59E0B" viewBox="0 0 24 24">
           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
         </svg>
       ))}
@@ -52,9 +106,75 @@ function Stars({ count }: { count: number }) {
   );
 }
 
+function TestimonialCard({ t }: { t: typeof testimonials[0] }) {
+  return (
+    <div
+      className="flex-shrink-0"
+      style={{
+        width: 300,
+        background: "#fff",
+        borderRadius: "1.25rem",
+        padding: "20px",
+        boxShadow: "0 2px 16px rgba(26,37,53,0.07)",
+        border: "1px solid #EEF4FB",
+        marginRight: 16,
+      }}
+    >
+      <Stars count={t.rating} />
+      <p className="text-[#1A2535] text-sm leading-relaxed mt-3 mb-4">
+        &ldquo;{t.quote}&rdquo;
+      </p>
+      <div className="flex items-center gap-3" style={{ borderTop: "1px solid #EEF4FB", paddingTop: 14 }}>
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+          style={{ background: t.gradient }}
+        >
+          {t.initials}
+        </div>
+        <div>
+          <p className="font-semibold text-[#1A2535] text-sm">{t.name}</p>
+          <p className="text-xs text-[#6B85A0]">{t.role}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MarqueeRow({ items, reverse }: { items: typeof testimonials; reverse?: boolean }) {
+  const doubled = [...items, ...items];
+  return (
+    <div style={{ overflow: "hidden", WebkitMaskImage: "linear-gradient(90deg, transparent 0%, black 8%, black 92%, transparent 100%)" }}>
+      <div
+        style={{
+          display: "flex",
+          width: "max-content",
+          animation: `marquee${reverse ? "Rev" : ""} ${items.length * 5}s linear infinite`,
+        }}
+        onMouseEnter={e => (e.currentTarget.style.animationPlayState = "paused")}
+        onMouseLeave={e => (e.currentTarget.style.animationPlayState = "running")}
+      >
+        {doubled.map((t, i) => (
+          <TestimonialCard key={i} t={t} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Trust() {
   return (
-    <section className="section" style={{ background: "#F0F5FB" }}>
+    <section className="section" style={{ background: "#F0F5FB", overflow: "hidden" }}>
+      <style>{`
+        @keyframes marquee {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
+        }
+        @keyframes marqueeRev {
+          from { transform: translateX(-50%); }
+          to   { transform: translateX(0); }
+        }
+      `}</style>
+
       <div className="container">
         {/* Header */}
         <div className="text-center mb-10">
@@ -69,79 +189,52 @@ export default function Trust() {
             Hər müştərimizin hekayəsi bizim üçün xüsusidir.
           </p>
         </div>
+      </div>
 
-        {/* Testimonial cards */}
-        <div className="grid md:grid-cols-3 gap-5 mb-10">
-          {testimonials.map((t) => (
-            <div
-              key={t.name}
-              className="bg-white rounded-2xl p-6 flex flex-col gap-4"
-              style={{ boxShadow: "0 2px 12px rgba(26,37,53,0.07)" }}
-            >
-              {/* Stars */}
-              <Stars count={t.rating} />
+      {/* Marquee rows — full width, outside container */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 48 }}>
+        <MarqueeRow items={testimonials} />
+        <MarqueeRow items={[...testimonials].reverse()} reverse />
+      </div>
 
-              {/* Quote */}
-              <p className="text-[#1A2535] text-sm leading-relaxed flex-1">
-                &ldquo;{t.quote}&rdquo;
-              </p>
-
-              {/* Author */}
-              <div className="flex items-center gap-3 pt-4" style={{ borderTop: "1px solid #EEF4FB" }}>
-                <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                  style={{ background: t.gradient }}
-                >
-                  {t.initials}
-                </div>
-                <div>
-                  <p className="font-semibold text-[#1A2535] text-sm">{t.name}</p>
-                  <p className="text-xs text-[#6B85A0]">{t.role}</p>
-                </div>
+      <div className="container">
+        {/* Trust metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          {trustMetrics.map((m) => (
+            <div key={m.label} className="bg-white rounded-2xl py-6 px-4 text-center flex flex-col items-center gap-2"
+              style={{ boxShadow: "0 2px 12px rgba(26,37,53,0.06)", border: "1px solid #EEF4FB" }}>
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#EEF4FB", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {m.icon}
               </div>
+              <p className="font-bold text-2xl text-[#1A2535]" style={{ fontFamily: "var(--font-playfair, serif)", lineHeight: 1 }}>
+                {m.value}
+              </p>
+              <p className="text-xs text-[#6B85A0] font-medium">{m.label}</p>
             </div>
           ))}
         </div>
 
-        {/* Trust metrics row */}
-        <div
-          className="bg-white rounded-2xl overflow-hidden"
-          style={{ boxShadow: "0 2px 12px rgba(26,37,53,0.07)" }}
-        >
-          {/* Top row: metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-px" style={{ background: "#EEF4FB" }}>
-            {trustMetrics.map((m) => (
-              <div key={m.label} className="py-6 px-6 text-center bg-white">
-                <p
-                  className="font-bold text-2xl text-[#3B6FA5] mb-1"
-                  style={{ fontFamily: "var(--font-playfair, serif)" }}
-                >
-                  {m.value}
-                </p>
-                <p className="text-xs text-[#6B85A0]">{m.label}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Bottom row: certifications */}
-          <div className="px-6 py-5" style={{ borderTop: "1px solid #EEF4FB" }}>
-            <p className="text-xs font-semibold text-[#6B85A0] uppercase tracking-wider mb-4">
+        {/* Certifications */}
+        <div className="bg-white rounded-2xl px-6 py-5" style={{ boxShadow: "0 2px 12px rgba(26,37,53,0.06)", border: "1px solid #EEF4FB" }}>
+          <div className="flex items-center gap-2 mb-4">
+            <svg width="14" height="14" fill="none" stroke="#3B6FA5" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <p className="text-xs font-bold text-[#3B6FA5] uppercase tracking-wider">
               Sertifikatlar & Akkreditasiyalar
             </p>
-            <div className="flex flex-wrap gap-2">
-              {certifications.map((c) => (
-                <span
-                  key={c}
-                  className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full"
-                  style={{ background: "#EEF4FB", color: "#3B6FA5" }}
-                >
-                  <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  {c}
-                </span>
-              ))}
-            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {certifications.map((c) => (
+              <span key={c} className="flex items-center gap-2 text-xs font-semibold px-3.5 py-2 rounded-full"
+                style={{ background: "linear-gradient(135deg, #EEF4FB, #F3EEFF)", color: "#3B6FA5", border: "1px solid #DDE8F5" }}>
+                <svg width="11" height="11" fill="none" stroke="#3B6FA5" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path d="M22 11.08V12a10 10 0 11-5.93-9.14" strokeLinecap="round"/>
+                  <path d="M22 4L12 14.01l-3-3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {c}
+              </span>
+            ))}
           </div>
         </div>
       </div>

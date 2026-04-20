@@ -3,62 +3,83 @@
 import { useEffect, useRef, useState } from "react";
 import { useBooking } from "@/context/BookingContext";
 
-function useCountUp(target: number, duration = 2200, start = false) {
+const STATS = [
+  { value: 500,  suffix: "+", label: "Aktiv müştəri",         sub: "Platforma üzərindən"  },
+  { value: 1200, suffix: "+", label: "Tamamlanmış seans",     sub: "Uğurla başa çatıb"    },
+  { value: 98,   suffix: "%", label: "Müştəri məmnuniyyəti",  sub: "Ortalama reytinq"     },
+  { value: 15,   suffix: "+", label: "Sertifikatlı psixoloq", sub: "Müxtəlif ixtisaslar"  },
+];
+
+function useCountUp(target: number, duration = 2000, start = false) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     if (!start) return;
-    const startTime = performance.now();
-    const step = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.floor(eased * target));
-      if (progress < 1) requestAnimationFrame(step);
+    const t0 = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min((now - t0) / duration, 1);
+      setCount(Math.floor((1 - Math.pow(1 - p, 3)) * target));
+      if (p < 1) requestAnimationFrame(tick);
     };
-    requestAnimationFrame(step);
+    requestAnimationFrame(tick);
   }, [start, target, duration]);
   return count;
 }
 
-const STATS = [
-  { value: 500,  suffix: "+", label: "Aktiv müştəri",         sub: "Platforma üzərindən" },
-  { value: 1200, suffix: "+", label: "Tamamlanmış seans",     sub: "Uğurla başa çatıb"  },
-  { value: 98,   suffix: "%", label: "Müştəri məmnuniyyəti",  sub: "Ortalama reytinq"   },
-  { value: 15,   suffix: "+", label: "Sertifikatlı psixoloq", sub: "Müxtəlif ixtisaslar" },
-];
-
-function StatNum({ value, suffix, label, sub, started, delay }: {
-  value: number; suffix: string; label: string; sub: string; started: boolean; delay: number;
+function StatItem({ value, suffix, label, sub, started, delay }: {
+  value: number; suffix: string; label: string; sub: string;
+  started: boolean; delay: number;
 }) {
   const [go, setGo] = useState(false);
-  const count = useCountUp(value, 2200, go);
+  const count = useCountUp(value, 2000, go);
+
   useEffect(() => {
-    if (started) {
-      const t = setTimeout(() => setGo(true), delay);
-      return () => clearTimeout(t);
-    }
+    if (!started) return;
+    const t = setTimeout(() => setGo(true), delay);
+    return () => clearTimeout(t);
   }, [started, delay]);
 
   return (
     <div style={{
-      textAlign: "center",
-      padding: "2rem 1rem",
-      borderRadius: "1.25rem",
-      background: "rgba(255,255,255,0.12)",
-      border: "1px solid rgba(255,255,255,0.18)",
-      backdropFilter: "blur(8px)",
+      textAlign: "center", flex: 1,
+      opacity: started ? 1 : 0,
+      transform: started ? "translateY(0)" : "translateY(24px)",
+      transition: `opacity 0.6s ease ${delay}ms, transform 0.6s ease ${delay}ms`,
     }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 2, marginBottom: 6 }}>
+      {/* Big number */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", gap: 2, marginBottom: 10 }}>
         <span style={{
-          fontSize: "clamp(2.4rem, 5vw, 3.2rem)",
-          fontWeight: 800, color: "#ffffff",
           fontFamily: "var(--font-playfair, serif)",
-          letterSpacing: "-0.02em", lineHeight: 1,
-        }}>{count}</span>
-        <span style={{ fontSize: "1.5rem", fontWeight: 700, color: "rgba(255,255,255,0.65)" }}>{suffix}</span>
+          fontSize: "clamp(3rem, 6vw, 4rem)",
+          fontWeight: 800, color: "#ffffff",
+          lineHeight: 1, letterSpacing: "-0.03em",
+        }}>
+          {go ? count : value}
+        </span>
+        <span style={{
+          fontSize: "clamp(1.2rem, 2.5vw, 1.6rem)",
+          fontWeight: 700, color: "rgba(255,255,255,0.5)",
+          marginTop: "0.3em",
+        }}>
+          {suffix}
+        </span>
       </div>
-      <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "rgba(255,255,255,0.92)", marginBottom: 3 }}>{label}</p>
-      <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)" }}>{sub}</p>
+
+      {/* Animated underline */}
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+        <div style={{
+          height: 2, borderRadius: 2,
+          background: "rgba(255,255,255,0.9)",
+          width: go ? 40 : 0,
+          transition: "width 0.8s cubic-bezier(0.25,1,0.5,1)",
+        }} />
+      </div>
+
+      <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "rgba(255,255,255,0.9)", marginBottom: 4 }}>
+        {label}
+      </p>
+      <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.38)" }}>
+        {sub}
+      </p>
     </div>
   );
 }
@@ -88,7 +109,7 @@ export default function Stats() {
         overflow: "hidden",
       }}
     >
-      {/* White wave at top — sits over the gradient, creates curved edge from About */}
+      {/* White wave at top */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, lineHeight: 0, zIndex: 1, pointerEvents: "none" }}>
         <svg viewBox="0 0 1440 80" fill="none" preserveAspectRatio="none"
           style={{ display: "block", width: "100%", height: 80 }}>
@@ -99,11 +120,10 @@ export default function Stats() {
       <div className="container" style={{ position: "relative", zIndex: 2, paddingBottom: "3.5rem" }}>
 
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-14">
           <p style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
             fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.12em",
-            textTransform: "uppercase", color: "rgba(255,255,255,0.55)",
+            textTransform: "uppercase", color: "rgba(255,255,255,0.5)",
             marginBottom: "1rem",
           }}>
             Rəqəmlərlə Fanus
@@ -116,15 +136,33 @@ export default function Stats() {
           }}>
             Güvən rəqəmlərlə ölçülür
           </h2>
-          <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.93rem", maxWidth: 360, margin: "0 auto" }}>
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.93rem", maxWidth: 360, margin: "0 auto" }}>
             2019-cu ildən minlərlə insanın həyatına toxunduq
           </p>
         </div>
 
-        {/* Stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Stats row */}
+        <div style={{
+          display: "flex", flexWrap: "wrap",
+          gap: "2rem 0",
+          marginBottom: "3rem",
+          position: "relative",
+        }}>
           {STATS.map((s, i) => (
-            <StatNum key={s.label} {...s} started={started} delay={i * 130} />
+            <div key={s.label} style={{ flex: "1 1 50%", display: "flex", alignItems: "stretch" }}>
+              {/* Vertical divider — right side except last in row */}
+              {i % 2 === 0 && (
+                <div style={{ flex: 1, display: "flex" }}>
+                  <StatItem {...s} started={started} delay={i * 120} />
+                  <div style={{ width: 1, background: "rgba(255,255,255,0.12)", margin: "8px 0", flexShrink: 0 }} />
+                </div>
+              )}
+              {i % 2 !== 0 && (
+                <div style={{ flex: 1 }}>
+                  <StatItem {...s} started={started} delay={i * 120} />
+                </div>
+              )}
+            </div>
           ))}
         </div>
 
@@ -132,10 +170,13 @@ export default function Stats() {
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           flexWrap: "wrap", gap: 12,
-          background: "rgba(255,255,255,0.10)",
-          border: "1px solid rgba(255,255,255,0.15)",
+          background: "rgba(255,255,255,0.08)",
+          border: "1px solid rgba(255,255,255,0.13)",
           borderRadius: "1.25rem",
           padding: "16px 24px",
+          opacity: started ? 1 : 0,
+          transform: started ? "translateY(0)" : "translateY(16px)",
+          transition: "opacity 0.6s ease 600ms, transform 0.6s ease 600ms",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{
@@ -143,7 +184,7 @@ export default function Stats() {
               background: "#4ADE80", display: "inline-block",
               boxShadow: "0 0 8px #4ADE80",
             }} />
-            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem" }}>
+            <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "0.88rem" }}>
               <span style={{ fontWeight: 600, color: "#fff" }}>İş saatları:</span>
               {"  "}B.ertəsi – Şənbə, 09:00 – 20:00 · Onlayn 7/24
             </p>
@@ -163,14 +204,13 @@ export default function Stats() {
 
       </div>
 
-      {/* Wave at bottom — transitions to next section (white) */}
+      {/* Wave at bottom */}
       <div style={{ lineHeight: 0, position: "relative", zIndex: 2 }}>
         <svg viewBox="0 0 1440 80" fill="none" preserveAspectRatio="none"
           style={{ display: "block", width: "100%", height: 80 }}>
           <path d="M0 40 Q360 80 720 40 Q1080 0 1440 40 L1440 80 L0 80 Z" fill="#ffffff" />
         </svg>
       </div>
-
     </section>
   );
 }

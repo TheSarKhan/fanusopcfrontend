@@ -11,7 +11,7 @@ const psychologists = [
     experience: "8 il",
     sessions: "400+",
     rating: "4.9",
-    initial: "AM",
+    photo: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&h=200&fit=crop&crop=face",
     accent: "#3B6FA5",
     bg: "#EEF5FF",
   },
@@ -23,7 +23,7 @@ const psychologists = [
     experience: "11 il",
     sessions: "600+",
     rating: "4.8",
-    initial: "EH",
+    photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=200&fit=crop&crop=face",
     accent: "#5B4DA8",
     bg: "#F0EEFF",
   },
@@ -35,7 +35,7 @@ const psychologists = [
     experience: "6 il",
     sessions: "280+",
     rating: "5.0",
-    initial: "LƏ",
+    photo: "https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=300&h=200&fit=crop&crop=face",
     accent: "#1E7A6E",
     bg: "#E8F7F5",
   },
@@ -47,7 +47,7 @@ const psychologists = [
     experience: "9 il",
     sessions: "450+",
     rating: "4.9",
-    initial: "RQ",
+    photo: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300&h=200&fit=crop&crop=face",
     accent: "#3B6FA5",
     bg: "#EEF5FF",
   },
@@ -59,7 +59,7 @@ const psychologists = [
     experience: "5 il",
     sessions: "200+",
     rating: "4.7",
-    initial: "SB",
+    photo: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=300&h=200&fit=crop&crop=face",
     accent: "#A0522D",
     bg: "#FFF3EC",
   },
@@ -71,7 +71,7 @@ const psychologists = [
     experience: "12 il",
     sessions: "700+",
     rating: "5.0",
-    initial: "Tİ",
+    photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=200&fit=crop&crop=face",
     accent: "#1A5C8A",
     bg: "#E6F2FA",
   },
@@ -94,48 +94,17 @@ function PsychologistCard({ p }: { p: typeof psychologists[0] }) {
         (e.currentTarget as HTMLDivElement).style.borderColor = "#E4EDF6";
       }}
     >
-      {/* Avatar area */}
-      <div
-        className="relative flex items-center justify-center"
-        style={{ height: 180, background: p.bg }}
-      >
-        {/* Large background letter */}
-        <span
-          className="absolute select-none"
-          style={{
-            fontFamily: "var(--font-playfair, serif)",
-            fontSize: "7rem",
-            fontWeight: 700,
-            color: p.accent,
-            opacity: 0.07,
-            lineHeight: 1,
-            letterSpacing: "-0.05em",
-          }}
-        >
-          {p.initial[0]}
-        </span>
-
-        {/* Avatar circle */}
-        <div
-          className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-lg font-bold text-white relative z-10"
-          style={{ background: p.accent, letterSpacing: "0.03em" }}
-        >
-          {p.initial}
-        </div>
-
-        {/* Active badge */}
-        <div
-          className="absolute top-3 right-3 flex items-center gap-1.5 bg-white rounded-full px-2.5 py-1"
-          style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}
-        >
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          <span className="text-[10px] font-medium text-[#1A2535]">Aktiv</span>
-        </div>
-
+      {/* Photo area */}
+      <div className="relative overflow-hidden" style={{ height: 200 }}>
+        <img
+          src={p.photo}
+          alt={p.name}
+          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }}
+        />
         {/* Experience badge */}
         <div
           className="absolute bottom-3 left-3 bg-white rounded-full px-2.5 py-1"
-          style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}
+          style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.12)" }}
         >
           <span className="text-[10px] font-semibold" style={{ color: p.accent }}>
             {p.experience} təcrübə

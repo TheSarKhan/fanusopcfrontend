@@ -233,7 +233,7 @@ export default function Hero() {
       className="relative overflow-hidden pt-16"
       style={{
         background: `linear-gradient(${cfg.gradient})`,
-        minHeight: "92vh",
+        minHeight: "clamp(600px, 92vh, 1000px)",
         transition: "background 0.8s ease",
       }}
     >
@@ -260,7 +260,7 @@ export default function Hero() {
             </div>
 
             <h1
-              className="text-[2.8rem] sm:text-5xl lg:text-[3.4rem] font-bold leading-[1.1] tracking-tight mb-6"
+              className="text-[2rem] sm:text-[2.8rem] lg:text-[3.4rem] font-bold leading-[1.15] tracking-tight mb-5"
               style={{ fontFamily: "var(--font-playfair, serif)", color: "#ffffff", transition: "all 0.5s ease" }}
             >
               {cfg.headline[0]}
@@ -308,9 +308,21 @@ export default function Hero() {
             </div>
           </div>
 
-          {/* Right: Therapy visual */}
+          {/* Right: Therapy visual — desktop only */}
           <div className="hidden lg:flex justify-center items-center">
             <TherapyVisual color={cfg.color} accent={cfg.accent} />
+          </div>
+
+          {/* Mobile trust pills — shown below buttons on small screens */}
+          <div className="flex lg:hidden flex-wrap gap-2 mt-2">
+            {["100% məxfi", "Onlayn · 7/24", "Sertifikatlı psixoloqlar"].map(t => (
+              <span key={t} style={{
+                fontSize: "0.72rem", fontWeight: 600,
+                color: "rgba(255,255,255,0.75)",
+                background: "rgba(255,255,255,0.12)",
+                borderRadius: 999, padding: "5px 12px",
+              }}>{t}</span>
+            ))}
           </div>
 
         </div>

@@ -213,7 +213,7 @@ export default function About() {
         <div ref={timelineRef} className="relative mb-20">
 
           {/* Animated connector line — desktop only */}
-          <div className="hidden lg:block absolute" style={{ top: 44, left: "calc(12.5% + 28px)", right: "calc(12.5% + 28px)", height: 2, pointerEvents: "none", borderRadius: 2, overflow: "hidden", background: "#E5EDF5" }}>
+          <div className="hidden lg:block absolute" style={{ top: 28, left: "calc(12.5% + 28px)", right: "calc(12.5% + 28px)", height: 2, pointerEvents: "none", borderRadius: 2, overflow: "hidden", background: "#E5EDF5" }}>
             <div style={{
               height: "100%",
               width: `${lineProgress * 100}%`,

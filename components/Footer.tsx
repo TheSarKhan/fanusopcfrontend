@@ -73,10 +73,10 @@ export default function Footer() {
       {/* Footer body */}
       <div style={{ background: "linear-gradient(180deg, #F0F5FB 0%, #EAF1FA 100%)" }}>
         <div className="container" style={{ paddingTop: "3rem", paddingBottom: "0" }}>
-          <div className="grid md:grid-cols-4 gap-10 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
 
             {/* Brand column */}
-            <div className="md:col-span-1">
+            <div className="col-span-2 md:col-span-1">
               <img
                 src="/images/hero-main.png"
                 alt="Fanus"

@@ -41,6 +41,7 @@ function StatItem({ value, suffix, label, sub, started, delay }: {
   return (
     <div style={{
       textAlign: "center", flex: 1,
+      padding: "clamp(1.5rem, 3vw, 2.5rem) clamp(0.75rem, 2vw, 1.5rem)",
       opacity: started ? 1 : 0,
       transform: started ? "translateY(0)" : "translateY(24px)",
       transition: `opacity 0.6s ease ${delay}ms, transform 0.6s ease ${delay}ms`,
@@ -142,26 +143,23 @@ export default function Stats() {
         </div>
 
         {/* Stats row */}
-        <div style={{
-          display: "flex", flexWrap: "wrap",
-          gap: "2rem 0",
-          marginBottom: "3rem",
+        <div className="grid grid-cols-2 lg:grid-cols-4 mb-8" style={{
           position: "relative",
+          borderRadius: "1.25rem",
+          overflow: "hidden",
+          border: "1px solid rgba(255,255,255,0.1)",
         }}>
           {STATS.map((s, i) => (
-            <div key={s.label} style={{ flex: "1 1 50%", display: "flex", alignItems: "stretch" }}>
-              {/* Vertical divider — right side except last in row */}
-              {i % 2 === 0 && (
-                <div style={{ flex: 1, display: "flex" }}>
-                  <StatItem {...s} started={started} delay={i * 120} />
-                  <div style={{ width: 1, background: "rgba(255,255,255,0.12)", margin: "8px 0", flexShrink: 0 }} />
-                </div>
-              )}
-              {i % 2 !== 0 && (
-                <div style={{ flex: 1 }}>
-                  <StatItem {...s} started={started} delay={i * 120} />
-                </div>
-              )}
+            <div key={s.label}
+              className={[
+                "border-white/10",
+                i % 2 === 0 ? "border-r" : "",
+                i < 2 ? "border-b" : "",
+                "lg:border-b-0",
+                i < 3 ? "lg:border-r" : "lg:border-r-0",
+              ].filter(Boolean).join(" ")}
+            >
+              <StatItem {...s} started={started} delay={i * 120} />
             </div>
           ))}
         </div>

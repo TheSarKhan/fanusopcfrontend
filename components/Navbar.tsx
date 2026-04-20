@@ -93,8 +93,8 @@ export default function Navbar() {
 
         {/* Mobile menu toggle */}
         <button
-          className="md:hidden p-2 rounded-lg transition-colors"
-          style={{ color: scrolled ? "#3B6FA5" : "rgba(255,255,255,0.9)" }}
+          className="md:hidden flex rounded-lg transition-colors items-center justify-center"
+          style={{ color: scrolled ? "#3B6FA5" : "rgba(255,255,255,0.9)", padding: "10px", minWidth: 44, minHeight: 44 }}
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Menyunu aç/bağla"
         >

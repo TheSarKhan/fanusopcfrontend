@@ -115,7 +115,7 @@ export default function About() {
             }}
           />
 
-          <div className="grid lg:grid-cols-4 gap-5 sm:gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
             {JOURNEY.map((item, i) => (
               <div
                 key={item.num}
@@ -125,8 +125,8 @@ export default function About() {
                   transition: `opacity 0.65s ease ${i * 0.14}s, transform 0.65s ease ${i * 0.14}s`,
                 }}
               >
-                {/* Circle node */}
-                <div className="flex lg:justify-center mb-5">
+                {/* Circle node — desktop only, floats above card */}
+                <div className="hidden lg:flex justify-center mb-5">
                   <div style={{ position: "relative", display: "inline-flex" }}>
                     <div style={{
                       width: 56, height: 56, borderRadius: "50%",
@@ -152,13 +152,39 @@ export default function About() {
                   borderRadius: "1.25rem",
                   padding: "20px",
                   border: `1px solid ${item.border}`,
-                  height: "100%",
                 }}>
-                  <span style={{
+                  {/* Circle inside card — mobile/tablet only */}
+                  <div className="flex items-center gap-3 mb-4 lg:hidden">
+                    <div style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+                      <div style={{
+                        width: 44, height: 44, borderRadius: "50%",
+                        background: "white",
+                        border: `2px solid ${item.color}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        boxShadow: `0 4px 12px ${item.color}22`,
+                      }}>
+                        {item.icon}
+                      </div>
+                      <span style={{
+                        position: "absolute", top: -5, right: -7,
+                        background: item.color, color: "white",
+                        borderRadius: 5, padding: "1px 5px",
+                        fontSize: 8, fontWeight: 800,
+                      }}>{item.num}</span>
+                    </div>
+                    <span style={{
+                      fontSize: 10, fontWeight: 800, color: item.color,
+                      textTransform: "uppercase", letterSpacing: "0.1em",
+                    }}>{item.phase}</span>
+                  </div>
+
+                  {/* Phase label — desktop only */}
+                  <span className="hidden lg:block" style={{
                     fontSize: 10, fontWeight: 800, color: item.color,
                     textTransform: "uppercase", letterSpacing: "0.1em",
-                    display: "block", marginBottom: 8,
+                    marginBottom: 8, display: "block",
                   }}>{item.phase}</span>
+
                   <h3 style={{
                     fontSize: "0.97rem", fontWeight: 700, color: "#0F1C2E",
                     marginBottom: 10, fontFamily: "var(--font-playfair, serif)",

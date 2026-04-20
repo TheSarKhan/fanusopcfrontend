@@ -18,14 +18,6 @@ export default function FinalCTA() {
                style={{ borderRadius: "30% 70% 70% 30% / 30% 30% 70% 70%" }} />
 
           <div className="relative z-10">
-            {/* Badge */}
-            <div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-8"
-              style={{ background: "rgba(255,255,255,0.15)", color: "white" }}
-            >
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              Psixoloqlarımız hazırdır
-            </div>
 
             <h2
               className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-6"

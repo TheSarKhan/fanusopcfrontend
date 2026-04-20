@@ -29,7 +29,7 @@ export default function MoodGate() {
         position: "fixed", inset: 0, zIndex: 9999,
         background: "linear-gradient(160deg, #F0F6FF 0%, #F4F0FF 50%, #F0F9F6 100%)",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        padding: "2rem",
+        padding: "clamp(1rem, 4vw, 2rem)",
         opacity: closing ? 0 : 1,
         transition: "opacity 0.55s ease",
         overflowY: "auto",
@@ -56,7 +56,7 @@ export default function MoodGate() {
       </p>
 
       {/* Mood cards */}
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", maxWidth: 680, marginBottom: 36 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, width: "100%", maxWidth: 640, marginBottom: 32 }}>
         {MOODS.map((m) => {
           const active = hovered === m.id;
           return (
@@ -69,20 +69,17 @@ export default function MoodGate() {
                 background: active ? m.bg : "#ffffff",
                 border: `2px solid ${active ? m.color : "#E0EAF4"}`,
                 borderRadius: "1.25rem",
-                padding: "22px 20px",
+                padding: "18px 12px",
                 cursor: "pointer",
                 textAlign: "center",
-                minWidth: 116,
-                flex: "1 1 116px",
-                maxWidth: 140,
                 transition: "all 0.2s ease",
-                transform: active ? "translateY(-5px) scale(1.03)" : "none",
+                transform: active ? "translateY(-4px) scale(1.03)" : "none",
                 boxShadow: active ? `0 10px 28px ${m.color}28` : "0 2px 10px rgba(0,0,0,0.05)",
               }}
             >
-              <div style={{ fontSize: 38, marginBottom: 8, lineHeight: 1 }}>{m.emoji}</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: active ? m.color : "#0F1C2E", marginBottom: 5, transition: "color 0.2s" }}>{m.label}</div>
-              <div style={{ fontSize: 10.5, color: "#6B85A0", lineHeight: 1.45 }}>{m.desc}</div>
+              <div style={{ fontSize: 34, marginBottom: 7, lineHeight: 1 }}>{m.emoji}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: active ? m.color : "#0F1C2E", marginBottom: 4, transition: "color 0.2s" }}>{m.label}</div>
+              <div style={{ fontSize: 10, color: "#6B85A0", lineHeight: 1.45 }}>{m.desc}</div>
             </button>
           );
         })}

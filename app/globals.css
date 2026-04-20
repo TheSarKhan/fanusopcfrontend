@@ -167,13 +167,3 @@ body {
   margin-bottom: 1rem;
 }
 
-/* Divider dot */
-.section-label::before {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #7B85C8;
-  flex-shrink: 0;
-}

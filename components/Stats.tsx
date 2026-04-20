@@ -106,7 +106,6 @@ export default function Stats() {
             textTransform: "uppercase", color: "rgba(255,255,255,0.55)",
             marginBottom: "1rem",
           }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#A8CFFF", display: "inline-block" }} />
             Rəqəmlərlə Fanus
           </p>
           <h2 style={{

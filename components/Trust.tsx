@@ -109,9 +109,9 @@ export default function Trust() {
           style={{ boxShadow: "0 2px 12px rgba(26,37,53,0.07)" }}
         >
           {/* Top row: metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0" style={{ borderColor: "#EEF4FB" }}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-px" style={{ background: "#EEF4FB" }}>
             {trustMetrics.map((m) => (
-              <div key={m.label} className="py-6 px-6 text-center">
+              <div key={m.label} className="py-6 px-6 text-center bg-white">
                 <p
                   className="font-bold text-2xl text-[#3B6FA5] mb-1"
                   style={{ fontFamily: "var(--font-playfair, serif)" }}

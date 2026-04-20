@@ -24,19 +24,23 @@ export default function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-white/90 backdrop-blur-md shadow-sm border-b border-[#D5E3F0]"
-          : "bg-transparent"
-      }`}
+      className="fixed top-0 inset-x-0 z-50 transition-all duration-300"
+      style={scrolled ? {
+        background: "rgba(255,255,255,0.92)",
+        backdropFilter: "blur(12px)",
+        boxShadow: "0 1px 0 rgba(213,227,240,0.8)",
+      } : {
+        background: "transparent",
+      }}
     >
-      <div className="container flex items-center justify-between h-16 md:h-18">
+      <div className="container flex items-center justify-between h-16">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
+        <Link href="/" className="flex items-center gap-2.5">
           <img
             src="/images/hero-main.png"
             alt="Fanus"
             className="h-9 w-auto object-contain"
+            style={scrolled ? {} : { filter: "brightness(0) invert(1)" }}
           />
         </Link>
 
@@ -46,7 +50,8 @@ export default function Navbar() {
             <a
               key={link.href}
               href={link.href}
-              className="text-[0.9rem] font-medium text-[#6B85A0] hover:text-[#1A2535] transition-colors duration-200"
+              className="text-[0.9rem] font-medium transition-colors duration-200"
+              style={{ color: scrolled ? "#6B85A0" : "rgba(255,255,255,0.85)" }}
             >
               {link.label}
             </a>
@@ -55,17 +60,42 @@ export default function Navbar() {
 
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-3">
-          <a href="#psychologists" className="btn-outline py-2.5 px-5 text-sm">
-            Psixoloq seç
-          </a>
-          <button onClick={() => open()} className="btn-primary py-2.5 px-5 text-sm">
-            Randevu al
-          </button>
+          {scrolled ? (
+            <>
+              <a href="#psychologists" className="btn-outline py-2.5 px-5 text-sm">
+                Psixoloq seç
+              </a>
+              <button onClick={() => open()} className="btn-primary py-2.5 px-5 text-sm">
+                Randevu al
+              </button>
+            </>
+          ) : (
+            <>
+              <a
+                href="#psychologists"
+                className="py-2.5 px-5 text-sm font-semibold rounded-full transition-all duration-200"
+                style={{
+                  color: "rgba(255,255,255,0.9)",
+                  border: "1.5px solid rgba(255,255,255,0.4)",
+                }}
+              >
+                Psixoloq seç
+              </a>
+              <button
+                onClick={() => open()}
+                className="py-2.5 px-5 text-sm font-bold rounded-full transition-all duration-200"
+                style={{ background: "#ffffff", color: "#2A57B0" }}
+              >
+                Randevu al
+              </button>
+            </>
+          )}
         </div>
 
         {/* Mobile menu toggle */}
         <button
-          className="md:hidden p-2 rounded-lg text-[#3B6FA5] hover:bg-[#E4EEF8] transition-colors"
+          className="md:hidden p-2 rounded-lg transition-colors"
+          style={{ color: scrolled ? "#3B6FA5" : "rgba(255,255,255,0.9)" }}
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Menyunu aç/bağla"
         >

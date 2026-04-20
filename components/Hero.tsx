@@ -64,7 +64,7 @@ export default function Hero() {
 
       <div
         className="container relative z-10 flex items-center"
-        style={{ minHeight: "calc(92vh - 80px)", paddingTop: "3rem", paddingBottom: "5rem" }}
+        style={{ minHeight: "calc(92vh - 80px)", paddingTop: "clamp(2rem, 6vw, 3rem)", paddingBottom: "clamp(4rem, 8vw, 5rem)" }}
       >
         <div className="grid lg:grid-cols-2 gap-12 items-center w-full">
 
@@ -74,7 +74,6 @@ export default function Hero() {
               className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full"
               style={{ background: "rgba(255,255,255,0.15)" }}
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               <span className="text-xs font-semibold text-white/90 tracking-wide">{cfg.badge}</span>
             </div>
 
@@ -100,11 +99,11 @@ export default function Hero() {
                 Randevu al
               </button>
               <a
-                href="#how"
+                href="#psychologists"
                 className="font-semibold px-7 py-3.5 rounded-full text-[0.95rem] transition-all duration-200 hover:bg-white/10"
                 style={{ color: "rgba(255,255,255,0.9)", border: "1.5px solid rgba(255,255,255,0.35)" }}
               >
-                Necə işləyir?
+                Psixoloqları gör
               </a>
             </div>
 

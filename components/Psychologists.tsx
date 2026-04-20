@@ -195,10 +195,6 @@ export default function Psychologists() {
       <div className="container">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#3B6FA5]" />
-              <span className="text-xs font-semibold tracking-widest uppercase text-[#3B6FA5]">Komandamız</span>
-            </div>
             <h2
               className="text-3xl sm:text-4xl font-bold text-[#0F1C2E]"
               style={{ fontFamily: "var(--font-playfair, serif)" }}

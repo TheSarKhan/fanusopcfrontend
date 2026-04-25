@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 const steps = [
   {
@@ -50,7 +50,7 @@ export default function HowItWorks() {
                   style={{
                     fontFamily: "var(--font-playfair, serif)",
                     fontSize: "2.75rem",
-                    color: "#3B6FA5",
+                    color: "#002147",
                     lineHeight: 1,
                   }}
                 >
@@ -68,7 +68,7 @@ export default function HowItWorks() {
                   {/* Mobile step number */}
                   <span
                     className="sm:hidden font-bold mb-2"
-                    style={{ fontFamily: "var(--font-playfair, serif)", fontSize: "1.75rem", color: "#3B6FA5" }}
+                    style={{ fontFamily: "var(--font-playfair, serif)", fontSize: "1.75rem", color: "#002147" }}
                   >
                     {step.num}.
                   </span>

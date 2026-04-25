@@ -1,22 +1,22 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 @theme {
-  --color-cream: #F4F8FC;
-  --color-cream-dark: #DCE8F5;
-  --color-sage: #3B6FA5;
-  --color-sage-light: #5B8FCA;
-  --color-sage-muted: #E4EEF8;
-  --color-sage-deep: #1E4070;
+  --color-cream: #F0F4FA;
+  --color-cream-dark: #D8E4F2;
+  --color-sage: #002147;
+  --color-sage-light: #1A4A8A;
+  --color-sage-muted: #E0EBF7;
+  --color-sage-deep: #00162F;
   --color-clay: #7B85C8;
   --color-clay-light: #EDE9F8;
   --color-clay-pale: #F4F2FB;
   --color-forest: #1A2535;
-  --color-muted: #6B85A0;
-  --color-border: #D5E3F0;
+  --color-muted: #52718F;
+  --color-border: #C0D2E6;
   --color-white: #FFFFFF;
 
-  --font-display: "Playfair Display", Georgia, serif;
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Poppins", system-ui, sans-serif;
+  --font-sans: "Poppins", system-ui, sans-serif;
 
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
@@ -29,7 +29,7 @@ html {
 body {
   background: #ffffff;
   color: #1A2535;
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: var(--font-poppins), "Poppins", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -111,7 +111,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: #3B6FA5;
+  background: #002147;
   color: #ffffff;
   padding: 0.875rem 2rem;
   border-radius: 9999px;
@@ -124,9 +124,9 @@ body {
   white-space: nowrap;
 }
 .btn-primary:hover {
-  background: #1E4070;
+  background: #00162F;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(59, 111, 165, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 33, 71, 0.35);
 }
 
 .btn-outline {
@@ -134,19 +134,19 @@ body {
   align-items: center;
   gap: 0.5rem;
   background: transparent;
-  color: #3B6FA5;
+  color: #002147;
   padding: 0.875rem 2rem;
   border-radius: 9999px;
   font-weight: 600;
   font-size: 0.9375rem;
-  border: 2px solid #3B6FA5;
+  border: 2px solid #002147;
   transition: all 0.2s ease;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
 }
 .btn-outline:hover {
-  background: #E4EEF8;
+  background: #E0EBF7;
   transform: translateY(-1px);
 }
 
@@ -154,7 +154,7 @@ body {
 .card {
   background: #ffffff;
   border-radius: 1.25rem;
-  border: 1px solid #D5E3F0;
+  border: 1px solid #C0D2E6;
   overflow: hidden;
   transition: box-shadow 0.25s ease, transform 0.25s ease;
 }
@@ -172,7 +172,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #3B6FA5;
+  color: #002147;
   margin-bottom: 1rem;
 }
 

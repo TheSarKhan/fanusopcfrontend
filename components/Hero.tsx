@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useBooking } from "@/context/BookingContext";
@@ -203,7 +203,7 @@ const MOOD_CONFIG: Record<MoodId, { gradient: string; headline: string[]; sub: s
     headline: ["Daha yaxşı hiss", "etməyə bu gün başlayın"],
     sub: "Sertifikatlı psixoloqlarla güvənli, məxfi və rahat mühitdə psixoloji dəstək alın.",
     accent: "#A8CFFF",
-    color: "#3B6FA5",
+    color: "#002147",
     badge: "Onlayn psixoloji dəstək",
   },
   tired: {

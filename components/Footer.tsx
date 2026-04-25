@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useBooking } from "@/context/BookingContext";
 
@@ -78,11 +78,11 @@ export default function Footer() {
             {/* Brand column */}
             <div className="col-span-2 md:col-span-1">
               <img
-                src="/images/hero-main.png"
+                src="/images/logos/logo-blue.png"
                 alt="Fanus"
                 style={{ height: 36, objectFit: "contain", marginBottom: 16 }}
               />
-              <p style={{ fontSize: "0.85rem", lineHeight: 1.75, color: "#6B85A0", marginBottom: 20 }}>
+              <p style={{ fontSize: "0.85rem", lineHeight: 1.75, color: "#52718F", marginBottom: 20 }}>
                 Psixoloji sağlamlığınız üçün güvənli məkan. 2019-cu ildən bu günə.
               </p>
 
@@ -93,22 +93,22 @@ export default function Footer() {
                     width: 36, height: 36, borderRadius: 10,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     background: "#fff",
-                    border: "1px solid #D5E3F0",
-                    color: "#6B85A0",
+                    border: "1px solid #C0D2E6",
+                    color: "#52718F",
                     transition: "all 0.2s",
                     textDecoration: "none",
                   }}
                     onMouseEnter={e => {
                       const el = e.currentTarget as HTMLElement;
-                      el.style.background = "#3B6FA5";
-                      el.style.borderColor = "#3B6FA5";
+                      el.style.background = "#002147";
+                      el.style.borderColor = "#002147";
                       el.style.color = "#fff";
                     }}
                     onMouseLeave={e => {
                       const el = e.currentTarget as HTMLElement;
                       el.style.background = "#fff";
-                      el.style.borderColor = "#D5E3F0";
-                      el.style.color = "#6B85A0";
+                      el.style.borderColor = "#C0D2E6";
+                      el.style.color = "#52718F";
                     }}
                   >
                     {s.icon}
@@ -131,11 +131,11 @@ export default function Footer() {
                   {links.map((link) => (
                     <li key={link.label}>
                       <a href={link.href} style={{
-                        color: "#6B85A0", fontSize: "0.88rem",
+                        color: "#52718F", fontSize: "0.88rem",
                         textDecoration: "none", transition: "color 0.15s",
                       }}
-                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#3B6FA5"}
-                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "#6B85A0"}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#002147"}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "#52718F"}
                       >
                         {link.label}
                       </a>
@@ -151,7 +151,7 @@ export default function Footer() {
             display: "flex", alignItems: "center", justifyContent: "space-between",
             flexWrap: "wrap", gap: 16,
             background: "#fff",
-            border: "1px solid #D5E3F0",
+            border: "1px solid #C0D2E6",
             borderRadius: "1.25rem",
             padding: "16px 24px",
             marginBottom: 24,
@@ -160,26 +160,26 @@ export default function Footer() {
             <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
               <a href="tel:+994501234567" style={{
                 display: "flex", alignItems: "center", gap: 7,
-                color: "#6B85A0", fontSize: "0.85rem", textDecoration: "none",
+                color: "#52718F", fontSize: "0.85rem", textDecoration: "none",
                 transition: "color 0.15s",
               }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#3B6FA5"}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "#6B85A0"}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#002147"}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "#52718F"}
               >
-                <svg width="14" height="14" fill="none" stroke="#3B6FA5" strokeWidth="2" viewBox="0 0 24 24">
+                <svg width="14" height="14" fill="none" stroke="#002147" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.09 9.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z" />
                 </svg>
                 +994 50 123 45 67
               </a>
               <a href="mailto:info@fanus.az" style={{
                 display: "flex", alignItems: "center", gap: 7,
-                color: "#6B85A0", fontSize: "0.85rem", textDecoration: "none",
+                color: "#52718F", fontSize: "0.85rem", textDecoration: "none",
                 transition: "color 0.15s",
               }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#3B6FA5"}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "#6B85A0"}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#002147"}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "#52718F"}
               >
-                <svg width="14" height="14" fill="none" stroke="#3B6FA5" strokeWidth="2" viewBox="0 0 24 24">
+                <svg width="14" height="14" fill="none" stroke="#002147" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                   <polyline points="22,6 12,13 2,6" />
                 </svg>
@@ -196,7 +196,7 @@ export default function Footer() {
             display: "flex", flexWrap: "wrap",
             alignItems: "center", justifyContent: "space-between",
             gap: 12, paddingTop: 18, paddingBottom: 24,
-            borderTop: "1px solid #D5E3F0",
+            borderTop: "1px solid #C0D2E6",
           }}>
             <p style={{ fontSize: "0.78rem", color: "#9BAFC0" }}>
               © 2025 Fanus Psixoloji Mərkəzi. Bütün hüquqlar qorunur.
@@ -207,7 +207,7 @@ export default function Footer() {
                   fontSize: "0.78rem", color: "#9BAFC0",
                   textDecoration: "none", transition: "color 0.15s",
                 }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#3B6FA5"}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#002147"}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "#9BAFC0"}
                 >
                   {l}

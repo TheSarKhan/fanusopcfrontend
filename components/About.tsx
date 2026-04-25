@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 
@@ -8,11 +8,11 @@ const JOURNEY = [
     phase: "İlk addım",
     title: "Psixoloqunuzla tanış olun",
     quote: "Kömək istəmək — cəsarətin ən böyük formasıdır.",
-    color: "#3B6FA5",
+    color: "#002147",
     bg: "#EBF2FF",
     border: "rgba(59,111,165,0.15)",
     icon: (
-      <svg width="26" height="26" fill="none" stroke="#3B6FA5" strokeWidth="1.6" viewBox="0 0 24 24">
+      <svg width="26" height="26" fill="none" stroke="#002147" strokeWidth="1.6" viewBox="0 0 24 24">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
@@ -202,7 +202,7 @@ export default function About() {
           >
             Fanus — işığı olan bir yer
           </h2>
-          <p className="text-[#6B85A0] leading-relaxed text-[0.97rem]">
+          <p className="text-[#52718F] leading-relaxed text-[0.97rem]">
             2019-cu ildən insanlara emosional sağlamlıq sahəsində peşəkar,
             məxfi və insan mərkəzli dəstək göstəririk. Hər yolculuq unikaldır —
             sizinki də belədir.
@@ -217,7 +217,7 @@ export default function About() {
             <div style={{
               height: "100%",
               width: `${lineProgress * 100}%`,
-              background: "linear-gradient(90deg, #3B6FA5 0%, #7C3AED 33%, #0D9488 66%, #D97706 100%)",
+              background: "linear-gradient(90deg, #002147 0%, #7C3AED 33%, #0D9488 66%, #D97706 100%)",
               borderRadius: 2,
               transition: "none",
             }} />

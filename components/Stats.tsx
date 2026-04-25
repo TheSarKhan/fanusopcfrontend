@@ -2,13 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useBooking } from "@/context/BookingContext";
-
-const STATS = [
-  { value: 500,  suffix: "+", label: "Aktiv müştəri",         sub: "Platforma üzərindən"  },
-  { value: 1200, suffix: "+", label: "Tamamlanmış seans",     sub: "Uğurla başa çatıb"    },
-  { value: 98,   suffix: "%", label: "Müştəri məmnuniyyəti",  sub: "Ortalama reytinq"     },
-  { value: 15,   suffix: "+", label: "Sertifikatlı psixoloq", sub: "Müxtəlif ixtisaslar"  },
-];
+import type { Stat } from "@/lib/api";
 
 function useCountUp(target: number, duration = 2000, start = false) {
   const [count, setCount] = useState(0);
@@ -25,12 +19,9 @@ function useCountUp(target: number, duration = 2000, start = false) {
   return count;
 }
 
-function StatItem({ value, suffix, label, sub, started, delay }: {
-  value: number; suffix: string; label: string; sub: string;
-  started: boolean; delay: number;
-}) {
+function StatItem({ stat, started, delay }: { stat: Stat; started: boolean; delay: number }) {
   const [go, setGo] = useState(false);
-  const count = useCountUp(value, 2000, go);
+  const count = useCountUp(stat.statValue, 2000, go);
 
   useEffect(() => {
     if (!started) return;
@@ -46,7 +37,6 @@ function StatItem({ value, suffix, label, sub, started, delay }: {
       transform: started ? "translateY(0)" : "translateY(24px)",
       transition: `opacity 0.6s ease ${delay}ms, transform 0.6s ease ${delay}ms`,
     }}>
-      {/* Big number */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", gap: 2, marginBottom: 10 }}>
         <span style={{
           fontFamily: "var(--font-playfair, serif)",
@@ -54,18 +44,17 @@ function StatItem({ value, suffix, label, sub, started, delay }: {
           fontWeight: 800, color: "#ffffff",
           lineHeight: 1, letterSpacing: "-0.03em",
         }}>
-          {go ? count : value}
+          {go ? count : stat.statValue}
         </span>
         <span style={{
           fontSize: "clamp(1.2rem, 2.5vw, 1.6rem)",
           fontWeight: 700, color: "rgba(255,255,255,0.5)",
           marginTop: "0.3em",
         }}>
-          {suffix}
+          {stat.suffix}
         </span>
       </div>
 
-      {/* Animated underline */}
       <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
         <div style={{
           height: 2, borderRadius: 2,
@@ -76,16 +65,16 @@ function StatItem({ value, suffix, label, sub, started, delay }: {
       </div>
 
       <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "rgba(255,255,255,0.9)", marginBottom: 4 }}>
-        {label}
+        {stat.label}
       </p>
       <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.38)" }}>
-        {sub}
+        {stat.subLabel}
       </p>
     </div>
   );
 }
 
-export default function Stats() {
+export default function Stats({ stats }: { stats: Stat[] }) {
   const { open } = useBooking();
   const ref = useRef<HTMLElement>(null);
   const [started, setStarted] = useState(false);
@@ -110,7 +99,6 @@ export default function Stats() {
         overflow: "hidden",
       }}
     >
-      {/* White wave at top */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, lineHeight: 0, zIndex: 1, pointerEvents: "none" }}>
         <svg viewBox="0 0 1440 80" fill="none" preserveAspectRatio="none"
           style={{ display: "block", width: "100%", height: 80 }}>
@@ -119,8 +107,6 @@ export default function Stats() {
       </div>
 
       <div className="container" style={{ position: "relative", zIndex: 2, paddingBottom: "3.5rem" }}>
-
-        {/* Header */}
         <div className="text-center mb-14">
           <p style={{
             fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.12em",
@@ -142,29 +128,27 @@ export default function Stats() {
           </p>
         </div>
 
-        {/* Stats row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 mb-8" style={{
           position: "relative",
           borderRadius: "1.25rem",
           overflow: "hidden",
           border: "1px solid rgba(255,255,255,0.1)",
         }}>
-          {STATS.map((s, i) => (
-            <div key={s.label}
+          {stats.map((s, i) => (
+            <div key={s.id}
               className={[
                 "border-white/10",
                 i % 2 === 0 ? "border-r" : "",
                 i < 2 ? "border-b" : "",
                 "lg:border-b-0",
-                i < 3 ? "lg:border-r" : "lg:border-r-0",
+                i < stats.length - 1 ? "lg:border-r" : "lg:border-r-0",
               ].filter(Boolean).join(" ")}
             >
-              <StatItem {...s} started={started} delay={i * 120} />
+              <StatItem stat={s} started={started} delay={i * 120} />
             </div>
           ))}
         </div>
 
-        {/* CTA bar */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           flexWrap: "wrap", gap: 12,
@@ -199,10 +183,8 @@ export default function Stats() {
             Randevu al →
           </button>
         </div>
-
       </div>
 
-      {/* Wave at bottom */}
       <div style={{ lineHeight: 0, position: "relative", zIndex: 2 }}>
         <svg viewBox="0 0 1440 80" fill="none" preserveAspectRatio="none"
           style={{ display: "block", width: "100%", height: 80 }}>

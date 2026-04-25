@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Poppins } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -8,15 +8,10 @@ import MoodGate from "@/components/MoodGate";
 import { BookingProvider } from "@/context/BookingContext";
 import { MoodProvider } from "@/context/MoodContext";
 
-const inter = Inter({
+const poppins = Poppins({
   subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
+  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: "--font-poppins",
   display: "swap",
 });
 
@@ -33,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="az" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="az" className={poppins.variable}>
       <body className="min-h-screen flex flex-col">
         <MoodProvider>
           <BookingProvider>

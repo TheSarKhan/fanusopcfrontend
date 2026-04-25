@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useMood } from "@/context/MoodContext";
@@ -49,7 +49,7 @@ export default function Intro() {
         marginBottom: 20,
       }}>
         <img
-          src="/images/hero-main.png"
+          src="/images/logos/logo-blue.png"
           alt="Fanus"
           style={{ height: 52, objectFit: "contain" }}
         />
@@ -60,7 +60,7 @@ export default function Intro() {
         opacity:   tagIn ? 1 : 0,
         transform: tagIn ? "translateY(0)" : "translateY(10px)",
         transition: "opacity 0.5s ease, transform 0.5s ease",
-        color: "#6B85A0", fontSize: "0.88rem", letterSpacing: "0.02em",
+        color: "#52718F", fontSize: "0.88rem", letterSpacing: "0.02em",
         marginBottom: 40,
       }}>
         Emosional sağlamlığınız üçün
@@ -75,7 +75,7 @@ export default function Intro() {
         {[0, 1, 2].map(i => (
           <div key={i} style={{
             width: 6, height: 6, borderRadius: "50%",
-            background: "#3B6FA5",
+            background: "#002147",
             animation: `typingDot 1.2s ${i * 0.2}s infinite`,
           }} />
         ))}

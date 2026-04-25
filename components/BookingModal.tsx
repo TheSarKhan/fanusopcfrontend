@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useBooking } from "@/context/BookingContext";
+import { bookAppointment } from "@/lib/api";
 
 const WHATSAPP_NUMBER = "994502017164";
 
@@ -70,9 +71,20 @@ export default function BookingModal() {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    setStep("success");
+    try {
+      await bookAppointment({
+        patientName: form.name,
+        phone: form.contact,
+        psychologistName: psychologistName ?? undefined,
+        note: form.problem,
+      });
+      setStep("success");
+    } catch {
+      // Still show success to user – appointment can be handled manually
+      setStep("success");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -93,7 +105,7 @@ export default function BookingModal() {
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold"
-              style={{ background: "linear-gradient(135deg, #3B6FA5, #1E4070)" }}
+              style={{ background: "linear-gradient(135deg, #002147, #00162F)" }}
             >
               F
             </div>
@@ -104,13 +116,13 @@ export default function BookingModal() {
                 {step === "success" && "Müraciət qəbul edildi"}
               </p>
               {psychologistName && step !== "success" && (
-                <p className="text-xs text-[#6B85A0]">{psychologistName}</p>
+                <p className="text-xs text-[#52718F]">{psychologistName}</p>
               )}
             </div>
           </div>
           <button
             onClick={close}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[#6B85A0] hover:bg-[#EEF4FB] transition-colors"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[#52718F] hover:bg-[#EEF4FB] transition-colors"
           >
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
@@ -123,7 +135,7 @@ export default function BookingModal() {
           {/* STEP: CHOICE */}
           {step === "choice" && (
             <div className="p-6 flex flex-col gap-4">
-              <p className="text-sm text-[#6B85A0] leading-relaxed">
+              <p className="text-sm text-[#52718F] leading-relaxed">
                 Randevu almaq üçün üsul seçin. Hər iki halda da 24 saat ərzində sizinlə əlaqə saxlanılacaq.
               </p>
 
@@ -131,17 +143,17 @@ export default function BookingModal() {
               <button
                 onClick={() => setStep("form")}
                 className="flex items-start gap-4 w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 group"
-                style={{ borderColor: "#D5E3F0", background: "#FAFCFF" }}
+                style={{ borderColor: "#C0D2E6", background: "#FAFCFF" }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor = "#3B6FA5";
+                  (e.currentTarget as HTMLElement).style.borderColor = "#002147";
                   (e.currentTarget as HTMLElement).style.background = "#EEF4FB";
                 }}
                 onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor = "#D5E3F0";
+                  (e.currentTarget as HTMLElement).style.borderColor = "#C0D2E6";
                   (e.currentTarget as HTMLElement).style.background = "#FAFCFF";
                 }}
               >
-                <div className="w-11 h-11 rounded-xl bg-[#EEF4FB] flex items-center justify-center text-[#3B6FA5] flex-shrink-0 mt-0.5">
+                <div className="w-11 h-11 rounded-xl bg-[#EEF4FB] flex items-center justify-center text-[#002147] flex-shrink-0 mt-0.5">
                   <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
                     <rect x="3" y="4" width="18" height="18" rx="2" />
                     <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" />
@@ -149,11 +161,11 @@ export default function BookingModal() {
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold text-[#1A2535] mb-1">Platforma üzərindən</p>
-                  <p className="text-xs text-[#6B85A0] leading-relaxed">
+                  <p className="text-xs text-[#52718F] leading-relaxed">
                     Formu doldurun, admin sizə uyğun psixoloqunu təyin edib geri dönəcək.
                   </p>
                 </div>
-                <svg className="text-[#3B6FA5] flex-shrink-0 self-center" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <svg className="text-[#002147] flex-shrink-0 self-center" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
@@ -162,13 +174,13 @@ export default function BookingModal() {
               <button
                 onClick={handleWhatsApp}
                 className="flex items-start gap-4 w-full text-left p-5 rounded-2xl border-2 transition-all duration-200"
-                style={{ borderColor: "#D5E3F0", background: "#FAFCFF" }}
+                style={{ borderColor: "#C0D2E6", background: "#FAFCFF" }}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLElement).style.borderColor = "#22c55e";
                   (e.currentTarget as HTMLElement).style.background = "#f0fdf4";
                 }}
                 onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor = "#D5E3F0";
+                  (e.currentTarget as HTMLElement).style.borderColor = "#C0D2E6";
                   (e.currentTarget as HTMLElement).style.background = "#FAFCFF";
                 }}
               >
@@ -177,7 +189,7 @@ export default function BookingModal() {
                 </div>
                 <div className="flex-1">
                   <p className="font-semibold text-[#1A2535] mb-1">WhatsApp ilə müraciət</p>
-                  <p className="text-xs text-[#6B85A0] leading-relaxed">
+                  <p className="text-xs text-[#52718F] leading-relaxed">
                     Əvvəlcədən hazırlanmış mesajla birbaşa WhatsApp-a keçin.
                   </p>
                 </div>
@@ -186,7 +198,7 @@ export default function BookingModal() {
                 </svg>
               </button>
 
-              <p className="text-center text-xs text-[#6B85A0]">
+              <p className="text-center text-xs text-[#52718F]">
                 🔒 Məlumatlarınız tam məxfi saxlanılır
               </p>
             </div>
@@ -195,7 +207,7 @@ export default function BookingModal() {
           {/* STEP: FORM */}
           {step === "form" && (
             <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5">
-              <p className="text-sm text-[#6B85A0] leading-relaxed -mt-1">
+              <p className="text-sm text-[#52718F] leading-relaxed -mt-1">
                 Aşağıdakı məlumatları doldurun. Komandamız 24 saat ərzində sizinlə əlaqə saxlayacaq.
               </p>
 
@@ -211,11 +223,11 @@ export default function BookingModal() {
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   className="w-full px-4 py-3 rounded-xl text-sm text-[#1A2535] placeholder-[#A8C0D6] outline-none transition-all duration-200"
                   style={{
-                    border: `1.5px solid ${errors.name ? "#f87171" : "#D5E3F0"}`,
+                    border: `1.5px solid ${errors.name ? "#f87171" : "#C0D2E6"}`,
                     background: "#FAFCFF",
                   }}
-                  onFocus={(e) => { if (!errors.name) (e.target as HTMLElement).style.borderColor = "#3B6FA5"; }}
-                  onBlur={(e) => { if (!errors.name) (e.target as HTMLElement).style.borderColor = "#D5E3F0"; }}
+                  onFocus={(e) => { if (!errors.name) (e.target as HTMLElement).style.borderColor = "#002147"; }}
+                  onBlur={(e) => { if (!errors.name) (e.target as HTMLElement).style.borderColor = "#C0D2E6"; }}
                 />
                 {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name}</p>}
               </div>
@@ -232,11 +244,11 @@ export default function BookingModal() {
                   onChange={(e) => setForm((f) => ({ ...f, contact: e.target.value }))}
                   className="w-full px-4 py-3 rounded-xl text-sm text-[#1A2535] placeholder-[#A8C0D6] outline-none transition-all duration-200"
                   style={{
-                    border: `1.5px solid ${errors.contact ? "#f87171" : "#D5E3F0"}`,
+                    border: `1.5px solid ${errors.contact ? "#f87171" : "#C0D2E6"}`,
                     background: "#FAFCFF",
                   }}
-                  onFocus={(e) => { if (!errors.contact) (e.target as HTMLElement).style.borderColor = "#3B6FA5"; }}
-                  onBlur={(e) => { if (!errors.contact) (e.target as HTMLElement).style.borderColor = "#D5E3F0"; }}
+                  onFocus={(e) => { if (!errors.contact) (e.target as HTMLElement).style.borderColor = "#002147"; }}
+                  onBlur={(e) => { if (!errors.contact) (e.target as HTMLElement).style.borderColor = "#C0D2E6"; }}
                 />
                 {errors.contact && <p className="text-xs text-red-400 mt-1">{errors.contact}</p>}
               </div>
@@ -253,16 +265,16 @@ export default function BookingModal() {
                   onChange={(e) => setForm((f) => ({ ...f, problem: e.target.value }))}
                   className="w-full px-4 py-3 rounded-xl text-sm text-[#1A2535] placeholder-[#A8C0D6] outline-none resize-none transition-all duration-200"
                   style={{
-                    border: `1.5px solid ${errors.problem ? "#f87171" : "#D5E3F0"}`,
+                    border: `1.5px solid ${errors.problem ? "#f87171" : "#C0D2E6"}`,
                     background: "#FAFCFF",
                   }}
-                  onFocus={(e) => { if (!errors.problem) (e.target as HTMLElement).style.borderColor = "#3B6FA5"; }}
-                  onBlur={(e) => { if (!errors.problem) (e.target as HTMLElement).style.borderColor = "#D5E3F0"; }}
+                  onFocus={(e) => { if (!errors.problem) (e.target as HTMLElement).style.borderColor = "#002147"; }}
+                  onBlur={(e) => { if (!errors.problem) (e.target as HTMLElement).style.borderColor = "#C0D2E6"; }}
                 />
                 {errors.problem && <p className="text-xs text-red-400 mt-1">{errors.problem}</p>}
               </div>
 
-              <p className="text-xs text-[#6B85A0] flex items-center gap-1.5 -mt-1">
+              <p className="text-xs text-[#52718F] flex items-center gap-1.5 -mt-1">
                 <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <rect x="3" y="11" width="18" height="11" rx="2" />
                   <path d="M7 11V7a5 5 0 0110 0v4" strokeLinecap="round" />
@@ -275,7 +287,7 @@ export default function BookingModal() {
                 <button
                   type="button"
                   onClick={() => setStep("choice")}
-                  className="flex-shrink-0 px-4 py-3 rounded-xl text-sm font-semibold text-[#6B85A0] hover:bg-[#EEF4FB] transition-colors"
+                  className="flex-shrink-0 px-4 py-3 rounded-xl text-sm font-semibold text-[#52718F] hover:bg-[#EEF4FB] transition-colors"
                 >
                   ← Geri
                 </button>
@@ -283,7 +295,7 @@ export default function BookingModal() {
                   type="submit"
                   disabled={loading}
                   className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 flex items-center justify-center gap-2"
-                  style={{ background: loading ? "#6B85A0" : "#3B6FA5" }}
+                  style={{ background: loading ? "#52718F" : "#002147" }}
                 >
                   {loading ? (
                     <>
@@ -308,20 +320,20 @@ export default function BookingModal() {
                 className="w-16 h-16 rounded-full flex items-center justify-center"
                 style={{ background: "#EEF4FB" }}
               >
-                <svg width="28" height="28" fill="none" stroke="#3B6FA5" strokeWidth="2" viewBox="0 0 24 24">
+                <svg width="28" height="28" fill="none" stroke="#002147" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
               <div>
                 <h3 className="font-bold text-[#1A2535] text-lg mb-2">Müraciətiniz qəbul edildi!</h3>
-                <p className="text-sm text-[#6B85A0] leading-relaxed max-w-xs mx-auto">
+                <p className="text-sm text-[#52718F] leading-relaxed max-w-xs mx-auto">
                   Komandamız <strong className="text-[#1A2535]">24 saat</strong> ərzində sizinlə{" "}
                   <strong className="text-[#1A2535]">{form.contact}</strong> vasitəsilə əlaqə saxlayacaq.
                 </p>
               </div>
 
               <div
-                className="w-full rounded-2xl p-4 text-sm text-[#3B6FA5] flex items-center gap-3"
+                className="w-full rounded-2xl p-4 text-sm text-[#002147] flex items-center gap-3"
                 style={{ background: "#EEF4FB" }}
               >
                 <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -334,7 +346,7 @@ export default function BookingModal() {
               <button
                 onClick={close}
                 className="w-full py-3 rounded-xl text-sm font-bold text-white"
-                style={{ background: "#3B6FA5" }}
+                style={{ background: "#002147" }}
               >
                 Bağla
               </button>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -6,8 +6,9 @@ import { useBooking } from "@/context/BookingContext";
 
 const navLinks = [
   { label: "Haqqımızda", href: "#about" },
-  { label: "Psixoloqlar", href: "#psychologists" },
-  { label: "Bloq", href: "#blog" },
+  { label: "Xidmətlər", href: "/xidmetler" },
+  { label: "Psixoloqlar", href: "/psychologists" },
+  { label: "Bloq", href: "/blog" },
   { label: "FAQ", href: "#faq" },
 ];
 
@@ -37,9 +38,9 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5">
           <img
-            src="/images/hero-main.png"
+            src={scrolled ? "/images/logos/logo-blue.png" : "/images/logos/logo-white.png"}
             alt="Fanus"
-            className="h-9 w-auto object-contain"
+            className="h-9 w-auto object-contain transition-opacity duration-300"
           />
         </Link>
 
@@ -50,7 +51,7 @@ export default function Navbar() {
               key={link.href}
               href={link.href}
               className="text-[0.9rem] font-medium transition-colors duration-200"
-              style={{ color: scrolled ? "#6B85A0" : "rgba(255,255,255,0.85)" }}
+              style={{ color: scrolled ? "#52718F" : "rgba(255,255,255,0.85)" }}
             >
               {link.label}
             </a>
@@ -94,7 +95,7 @@ export default function Navbar() {
         {/* Mobile menu toggle */}
         <button
           className="md:hidden flex rounded-lg transition-colors items-center justify-center"
-          style={{ color: scrolled ? "#3B6FA5" : "rgba(255,255,255,0.9)", padding: "10px", minWidth: 44, minHeight: 44 }}
+          style={{ color: scrolled ? "#002147" : "rgba(255,255,255,0.9)", padding: "10px", minWidth: 44, minHeight: 44 }}
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Menyunu aç/bağla"
         >
@@ -112,12 +113,12 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden bg-white border-t border-[#D5E3F0] px-5 py-6 flex flex-col gap-5 animate-fadeIn">
+        <div className="md:hidden bg-white border-t border-[#C0D2E6] px-5 py-6 flex flex-col gap-5 animate-fadeIn">
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="text-base font-medium text-[#1A2535] hover:text-[#3B6FA5] transition-colors"
+              className="text-base font-medium text-[#1A2535] hover:text-[#002147] transition-colors"
               onClick={() => setMenuOpen(false)}
             >
               {link.label}

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useMood, MoodId } from "@/context/MoodContext";
@@ -6,7 +6,7 @@ import { useMood, MoodId } from "@/context/MoodContext";
 const MOODS: { id: MoodId; emoji: string; label: string; desc: string; color: string; bg: string }[] = [
   { id: "sad",     emoji: "😔", label: "Kədərli",  desc: "Ağır bir hiss var içimdə",         color: "#D97706", bg: "#FFF8EE" },
   { id: "anxious", emoji: "😰", label: "Narahat",  desc: "Nigarançılıq hiss edirəm",         color: "#0D9488", bg: "#EFFAF8" },
-  { id: "neutral", emoji: "😐", label: "Neytral",  desc: "Nə yaxşı, nə pis",                color: "#3B6FA5", bg: "#EBF2FF" },
+  { id: "neutral", emoji: "😐", label: "Neytral",  desc: "Nə yaxşı, nə pis",                color: "#002147", bg: "#EBF2FF" },
   { id: "tired",   emoji: "😮‍💨", label: "Yorğun",   desc: "Özümü tükənmiş hiss edirəm",      color: "#7C3AED", bg: "#F3EEFF" },
   { id: "good",    emoji: "😊", label: "Yaxşı",    desc: "Özümü inkişaf etdirmək istəyirəm", color: "#0284C7", bg: "#EBF8FF" },
 ];
@@ -51,7 +51,7 @@ export default function MoodGate() {
       }}>
         Bu gün özünüzü necə hiss edirsiniz?
       </h1>
-      <p style={{ color: "#6B85A0", fontSize: "0.93rem", textAlign: "center", marginBottom: 40, maxWidth: 380, lineHeight: 1.6 }}>
+      <p style={{ color: "#52718F", fontSize: "0.93rem", textAlign: "center", marginBottom: 40, maxWidth: 380, lineHeight: 1.6 }}>
         Cavabınız sizə ən uyğun dəstəyi tapmağımıza kömək edəcək
       </p>
 
@@ -79,7 +79,7 @@ export default function MoodGate() {
             >
               <div style={{ fontSize: 34, marginBottom: 7, lineHeight: 1 }}>{m.emoji}</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: active ? m.color : "#0F1C2E", marginBottom: 4, transition: "color 0.2s" }}>{m.label}</div>
-              <div style={{ fontSize: 10, color: "#6B85A0", lineHeight: 1.45 }}>{m.desc}</div>
+              <div style={{ fontSize: 10, color: "#52718F", lineHeight: 1.45 }}>{m.desc}</div>
             </button>
           );
         })}

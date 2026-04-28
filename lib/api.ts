@@ -1,12 +1,21 @@
+import { storeUser, clearUser } from "./auth";
+
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
 async function get<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     next: { revalidate: 30 },
+    credentials: "include",
     ...opts,
   });
   if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
   return res.json();
+}
+
+function readTokenCookie(): string | null {
+  if (typeof window === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)_ft=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 async function authedRequest<T>(
@@ -14,9 +23,11 @@ async function authedRequest<T>(
   path: string,
   body?: unknown
 ): Promise<T> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+  const token = (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null)
+    ?? readTokenCookie();
   const res = await fetch(`${BASE}${path}`, {
     method,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -40,25 +51,25 @@ async function authedRequest<T>(
 }
 
 async function tryRefresh(): Promise<boolean> {
-  const refreshToken = localStorage.getItem("refreshToken");
-  if (!refreshToken) return false;
+  const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
   try {
     const res = await fetch(`${BASE}/auth/refresh`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
+      body: refreshToken ? JSON.stringify({ refreshToken }) : undefined,
     });
     if (!res.ok) return false;
     const data = await res.json();
-    localStorage.setItem("accessToken", data.accessToken);
-    localStorage.setItem("refreshToken", data.refreshToken);
+    if (data.accessToken) localStorage.setItem("accessToken", data.accessToken);
+    if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
     return true;
   } catch {
     return false;
   }
 }
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 export interface Psychologist {
   id: number; name: string; title: string; specializations: string[];
   experience: string; sessionsCount: string; rating: string;
@@ -73,7 +84,7 @@ export interface Testimonial { id: number; quote: string; authorName: string; au
 export interface SiteConfig { [key: string]: string; }
 export interface Appointment { id: number; patientName: string; phone: string; psychologistName?: string; note?: string; preferredDate?: string; status: string; createdAt: string; }
 
-// ─── Public API ──────────────────────────────────────────────────────────────
+// ─── Public API ───────────────────────────────────────────────────────────────
 export const getPsychologists = () => get<Psychologist[]>("/psychologists");
 export const getStats = () => get<Stat[]>("/stats");
 export const getAnnouncements = () => get<Announcement[]>("/announcements");
@@ -86,33 +97,100 @@ export const bookAppointment = (data: {
   patientName: string; phone: string; psychologistName?: string; note?: string; preferredDate?: string;
 }) => fetch(`${BASE}/appointments`, {
   method: "POST",
+  credentials: "include",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(data),
 }).then(r => r.json());
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
-export const login = (email: string, password: string) =>
-  fetch(`${BASE}/auth/login`, {
+export const login = async (email: string, password: string) => {
+  const res = await fetch(`${BASE}/auth/login`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
-  }).then(async r => {
-    if (!r.ok) { const e = await r.json(); throw new Error(e.error ?? "Login failed"); }
-    return r.json();
   });
-
-export const logout = () => {
-  const refreshToken = localStorage.getItem("refreshToken");
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  if (refreshToken) fetch(`${BASE}/auth/logout`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
-  }).catch(() => {});
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error((e as { error?: string }).error ?? "Login uğursuz oldu");
+  }
+  const data = await res.json();
+  if (data.accessToken) localStorage.setItem("accessToken", data.accessToken);
+  if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
+  storeUser({
+    userId: data.userId,
+    email: data.email,
+    role: data.role,
+    firstName: data.firstName,
+    lastName: data.lastName,
+  });
+  // Set a Lax cookie readable across *.localhost so middleware can verify the session
+  // on cross-subdomain navigation. In production the backend's HttpOnly cookie covers this.
+  if (data.accessToken) {
+    document.cookie = `_ft=${encodeURIComponent(data.accessToken)}; domain=localhost; path=/; SameSite=Lax; max-age=900`;
+  }
+  return data;
 };
 
-// ─── Admin API ───────────────────────────────────────────────────────────────
+export const logout = async () => {
+  const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
+  clearUser();
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  document.cookie = "_ft=; domain=localhost; path=/; max-age=0";
+  try {
+    await fetch(`${BASE}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: refreshToken ? JSON.stringify({ refreshToken }) : undefined,
+    });
+  } catch { /* ignore */ }
+};
+
+// ─── Patient Auth ──────────────────────────────────────────────────────────────
+export const registerPatient = (data: {
+  email: string; password: string; firstName: string; lastName: string; phone?: string;
+}) => fetch(`${BASE}/auth/register/patient`, {
+  method: "POST",
+  credentials: "include",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(data),
+}).then(async r => {
+  const body = await r.json();
+  if (!r.ok) throw new Error(body.error ?? "Qeydiyyat uğursuz oldu");
+  return body;
+});
+
+export const verifyEmail = (token: string) =>
+  fetch(`${BASE}/auth/verify?token=${token}`, { credentials: "include" })
+    .then(async r => {
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error ?? "Təsdiq uğursuz oldu");
+      return body;
+    });
+
+export const forgotPassword = (email: string) =>
+  fetch(`${BASE}/auth/forgot-password`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  }).then(r => r.json());
+
+export const resetPassword = (token: string, newPassword: string) =>
+  fetch(`${BASE}/auth/reset-password`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, newPassword }),
+  }).then(async r => {
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.error ?? "Şifrə sıfırlama uğursuz oldu");
+    return body;
+  });
+
+// ─── Admin API ────────────────────────────────────────────────────────────────
 export const adminApi = {
   getDashboard: () => authedRequest<Record<string, number>>("GET", "/admin/dashboard"),
 
@@ -161,13 +239,18 @@ export const adminApi = {
   updateAppointmentStatus: (id: number, status: string) =>
     authedRequest<Appointment>("PUT", `/admin/appointments/${id}/status`, { status }),
 
+  // Operators
+  createOperator: (data: { email: string; firstName: string; lastName: string; phone?: string }) =>
+    authedRequest<{ id: number; email: string; message: string }>("POST", "/admin/operators", data),
+
   // Upload
   uploadFile: async (file: File): Promise<string> => {
-    const token = localStorage.getItem("accessToken");
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     const form = new FormData();
     form.append("file", file);
     const res = await fetch(`${BASE}/admin/upload`, {
       method: "POST",
+      credentials: "include",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: form,
     });

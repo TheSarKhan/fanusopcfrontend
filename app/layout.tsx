@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -22,23 +23,42 @@ export const metadata: Metadata = {
   keywords: "psixoloq, psixoloji yardım, onlayn terapiya, Fanus, Azərbaycan",
 };
 
-export default function RootLayout({
+const PANEL_SUBDOMAINS = new Set(["admin", "operator", "patient", "psycholog"]);
+
+function getSubdomain(host: string): string | null {
+  const hostname = host.split(":")[0];
+  const parts = hostname.split(".");
+  if (parts.length >= 3) return parts[0];
+  if (parts.length === 2 && parts[1] === "localhost") return parts[0];
+  return null;
+}
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const headersList = await headers();
+  const host = headersList.get("host") || "";
+  const subdomain = getSubdomain(host);
+  const isPanel = subdomain !== null && PANEL_SUBDOMAINS.has(subdomain);
+
   return (
     <html lang="az" className={poppins.variable}>
       <body className="min-h-screen flex flex-col">
-        <MoodProvider>
-          <BookingProvider>
-            <MoodGate />
-            <Navbar />
-            <main className="flex-1">{children}</main>
-            <Footer />
-            <BookingModal />
-          </BookingProvider>
-        </MoodProvider>
+        {isPanel ? (
+          children
+        ) : (
+          <MoodProvider>
+            <BookingProvider>
+              <MoodGate />
+              <Navbar />
+              <main className="flex-1">{children}</main>
+              <Footer />
+              <BookingModal />
+            </BookingProvider>
+          </MoodProvider>
+        )}
       </body>
     </html>
   );

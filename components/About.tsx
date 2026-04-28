@@ -12,10 +12,7 @@ const JOURNEY = [
     bg: "#EBF2FF",
     border: "rgba(59,111,165,0.15)",
     icon: (
-      <svg width="26" height="26" fill="none" stroke="#002147" strokeWidth="1.6" viewBox="0 0 24 24">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <img src="/images/logos/logo-blue.png" alt="Fanus" style={{ width: 26, height: 26, objectFit: "contain" }} />
     ),
   },
   {

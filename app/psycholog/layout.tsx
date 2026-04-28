@@ -6,18 +6,11 @@ import { getMainSiteUrl } from "@/lib/auth";
 import PanelAuthGuard from "@/components/PanelAuthGuard";
 
 const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard", icon: "⬛" },
-  { href: "/admin/psychologists", label: "Psixoloqlar", icon: "👤" },
-  { href: "/admin/stats", label: "Statistika", icon: "📊" },
-  { href: "/admin/announcements", label: "Elanlar", icon: "📢" },
-  { href: "/admin/blog", label: "Bloq", icon: "📝" },
-  { href: "/admin/faqs", label: "FAQ", icon: "❓" },
-  { href: "/admin/testimonials", label: "Rəylər", icon: "⭐" },
-  { href: "/admin/appointments", label: "Randevular", icon: "📅" },
-  { href: "/admin/config", label: "Konfiqurasiya", icon: "⚙️" },
+  { href: "/psycholog", label: "Dashboard", icon: "🏠" },
+  { href: "/psycholog/appointments", label: "Randevular", icon: "📅" },
 ];
 
-function AdminShell({ children }: { children: React.ReactNode }) {
+function PsychologShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const handleLogout = async () => {
@@ -30,19 +23,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       <aside
         style={{
           width: 240,
-          background:
-            "linear-gradient(180deg, #0F1C2E 0%, #1E3A5F 60%, #2A57B0 100%)",
+          background: "linear-gradient(180deg, #1a1040 0%, #2d1b69 100%)",
           display: "flex",
           flexDirection: "column",
           flexShrink: 0,
         }}
       >
-        <div
-          style={{
-            padding: "1.5rem 1.25rem",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-          }}
-        >
+        <div style={{ padding: "1.5rem 1.25rem", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm"
@@ -51,10 +38,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               F
             </div>
             <div>
-              <p className="font-bold text-white text-sm">Fanus Admin</p>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-                İdarəetmə paneli
-              </p>
+              <p className="font-bold text-white text-sm">Fanus</p>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>Psixoloq Paneli</p>
             </div>
           </div>
         </div>
@@ -63,7 +48,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           {NAV_ITEMS.map((item) => {
             const active =
               pathname === item.href ||
-              (item.href !== "/admin" && pathname.startsWith(item.href));
+              (item.href !== "/psycholog" && pathname.startsWith(item.href));
             return (
               <a
                 key={item.href}
@@ -77,26 +62,18 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                   fontSize: "0.875rem",
                   fontWeight: active ? 600 : 400,
                   color: active ? "#fff" : "rgba(255,255,255,0.55)",
-                  background: active
-                    ? "rgba(255,255,255,0.12)"
-                    : "transparent",
+                  background: active ? "rgba(255,255,255,0.12)" : "transparent",
                   textDecoration: "none",
-                  transition: "all 0.15s",
                 }}
               >
-                <span style={{ fontSize: "1rem" }}>{item.icon}</span>
+                <span>{item.icon}</span>
                 {item.label}
               </a>
             );
           })}
         </nav>
 
-        <div
-          style={{
-            padding: "1rem",
-            borderTop: "1px solid rgba(255,255,255,0.08)",
-          }}
-        >
+        <div style={{ padding: "1rem", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
           <button
             onClick={handleLogout}
             style={{
@@ -123,14 +100,10 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function PsychologLayout({ children }: { children: React.ReactNode }) {
   return (
-    <PanelAuthGuard requiredRole="ADMIN">
-      <AdminShell>{children}</AdminShell>
+    <PanelAuthGuard requiredRole="PSYCHOLOGIST">
+      <PsychologShell>{children}</PsychologShell>
     </PanelAuthGuard>
   );
 }

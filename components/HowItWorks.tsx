@@ -1,109 +1,154 @@
-﻿"use client";
+"use client";
 
-const steps = [
+import { useBooking } from "@/context/BookingContext";
+
+const STEPS = [
   {
-    num: "1",
-    title: "Psixoloqla tanış ol",
-    desc: "Ehtiyaclarınıza, gözləntilərinizə və büdcənizə uyğun psixoloqu seçin. Qısa profil məlumatları ilə sizə ən uyğun mütəxəssisi tapın.",
-    image: "/images/how-1.jpg",
-    imageAlt: "Psixoloq seçimi",
+    num: 1,
+    color: "#002147",
+    accent: "#3B6FA5",
+    bg: "#fff",
+    badgeBg: "#EBF2FF",
+    title: "Psixoloqunu seç",
+    text: "Sertifikatlı mütəxəssislər arasından ixtisasına, yanaşmasına və rəylərinə görə sizə uyğun psixoloqu seçin.",
+    badge: "Uyğun eşləşmə",
+    icon: (
+      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="9" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
   },
   {
-    num: "2",
-    title: "Pulsuz ilk görüşü planla",
-    desc: "Seçdiyiniz psixoloqla 15 dəqiqəlik pulsuz tanışlıq görüşü edin. Uyğunluğunuzu yoxlayın, suallarınızı verin — heç bir öhdəlik yoxdur.",
-    image: "/images/how-2.jpg",
-    imageAlt: "Görüş planla",
+    num: 2,
+    color: "#7C3AED",
+    accent: "#9B5CF0",
+    bg: "#fff",
+    badgeBg: "#F3EEFF",
+    title: "Pulsuz tanışlıq seansı",
+    text: "Seçdiyiniz psixoloqula 15 dəqiqəlik pulsuz konsultasiya keçirin. Uyğunluğu yoxlayın, suallarınızı soruşun.",
+    badge: "Pulsuz · 15 dəqiqə",
+    icon: (
+      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
   },
   {
-    num: "3",
-    title: "Psixoloji dəstəyinə başla",
-    desc: "Onlayn video zəng və ya üz-üzə format seçin. Rahat, məxfi mühitdə peşəkar psixoloji dəstək alın.",
-    image: "/images/how-3.jpg",
-    imageAlt: "Seans başla",
+    num: 3,
+    color: "#0D9488",
+    accent: "#14B8A6",
+    bg: "#fff",
+    badgeBg: "#EFFAF8",
+    title: "Şəxsi dəstəyinizi alın",
+    text: "Sizə xas terapiya planı ilə emosional sağlamlığınıza doğru addım atın. Video, səs və ya yazılı formatda.",
+    badge: "Onlayn · 7/24",
+    icon: (
+      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
   },
 ];
 
 export default function HowItWorks() {
+  const { open } = useBooking();
+
   return (
-    <section id="how" className="section" style={{ background: "#EDF2FB" }}>
+    <section className="section" style={{ background: "#F8FAFD" }}>
       <div className="container">
-        <div className="text-center mb-12">
+        <div className="text-center mb-14 max-w-2xl mx-auto">
+          <p className="section-label justify-center">Necə işləyir?</p>
           <h2
-            className="text-3xl sm:text-[2.4rem] font-bold mb-3"
-            style={{ fontFamily: "var(--font-playfair, serif)", color: "#0F1C2E" }}
+            className="text-3xl sm:text-[2.4rem] font-bold leading-snug mb-4"
+            style={{ fontFamily: "var(--font-playfair, serif)", color: "#1A2535" }}
           >
-            Necə işləyir?
+            3 addımda psixoloji dəstəyə başla
           </h2>
-          <p className="text-[#5A7490] max-w-md mx-auto text-[0.9375rem] leading-relaxed">
-            Cəmi 3 addımda psixoloji dəstək almağa başlaya bilərsiniz.
+          <p className="text-[#52718F] text-[0.97rem] leading-relaxed">
+            Qeydiyyatdan seansa qədər — sadə, sürətli və tam məxfi proses.
           </p>
         </div>
 
-        <div className="flex flex-col gap-5">
-          {steps.map((step) => (
-            <div key={step.num} className="flex items-stretch gap-5 sm:gap-8">
-              {/* Step number — outside card */}
-              <div className="hidden sm:flex flex-col items-end justify-start pt-7 w-14 flex-shrink-0">
-                <span
-                  className="font-bold leading-none"
+        {/* Steps */}
+        <div className="grid md:grid-cols-3 gap-5 mb-12">
+          {STEPS.map((step) => (
+            <div
+              key={step.num}
+              className="rounded-2xl p-7 flex flex-col gap-5"
+              style={{
+                background: step.bg,
+                border: "1px solid #E4EDF6",
+                boxShadow: "0 2px 16px rgba(0,33,71,0.05)",
+              }}
+            >
+              {/* Step number pill + icon */}
+              <div className="flex items-center justify-between">
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center"
                   style={{
-                    fontFamily: "var(--font-playfair, serif)",
-                    fontSize: "2.75rem",
-                    color: "#002147",
-                    lineHeight: 1,
+                    background: step.badgeBg,
+                    color: step.color,
                   }}
                 >
-                  {step.num}.
+                  {step.icon}
+                </div>
+                <span
+                  className="text-5xl font-black leading-none select-none"
+                  style={{ color: "#E8EFF7", fontFamily: "var(--font-playfair, serif)" }}
+                >
+                  {step.num < 10 ? `0${step.num}` : step.num}
                 </span>
               </div>
 
-              {/* Card */}
-              <div
-                className="flex-1 bg-white rounded-2xl overflow-hidden flex flex-col sm:flex-row items-stretch"
-                style={{ border: "1px solid #DDE8F5" }}
+              {/* Badge */}
+              <span
+                className="text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full w-fit"
+                style={{ background: step.badgeBg, color: step.color }}
               >
-                {/* Text side */}
-                <div className="flex-1 p-7 sm:p-8 flex flex-col justify-center">
-                  {/* Mobile step number */}
-                  <span
-                    className="sm:hidden font-bold mb-2"
-                    style={{ fontFamily: "var(--font-playfair, serif)", fontSize: "1.75rem", color: "#002147" }}
-                  >
-                    {step.num}.
-                  </span>
-                  <h3
-                    className="text-xl font-bold mb-3 text-[#0F1C2E]"
-                    style={{ fontFamily: "var(--font-playfair, serif)" }}
-                  >
-                    {step.title}
-                  </h3>
-                  <p className="text-[#5A7490] text-[0.925rem] leading-relaxed">{step.desc}</p>
-                </div>
+                {step.badge}
+              </span>
 
-                {/* Image side */}
-                <div
-                  className="sm:w-[260px] h-[180px] sm:h-auto flex-shrink-0 overflow-hidden"
+              {/* Text */}
+              <div>
+                <h3
+                  className="text-[1.05rem] font-bold mb-2"
+                  style={{ color: "#0F1C2E" }}
                 >
-                  <img
-                    src={step.image}
-                    alt={step.imageAlt}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+                  {step.title}
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: "#52718F" }}>
+                  {step.text}
+                </p>
               </div>
+
+              {/* Bottom accent line */}
+              <div
+                className="h-0.5 rounded-full mt-auto"
+                style={{ background: `linear-gradient(90deg, ${step.color}, ${step.accent}44)` }}
+              />
             </div>
           ))}
         </div>
 
-        <div className="text-center mt-10">
-          <a href="#psychologists" className="btn-primary">
-            İndi başla
-            <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        {/* CTA */}
+        <div className="text-center">
+          <button
+            onClick={() => open()}
+            className="inline-flex items-center gap-2.5 font-bold py-4 px-8 rounded-full text-white text-[0.95rem] transition-all duration-200 hover:-translate-y-0.5"
+            style={{
+              background: "linear-gradient(135deg, #002147, #2A57B0)",
+              boxShadow: "0 8px 28px rgba(0,33,71,0.22)",
+            }}
+          >
+            İndi başla — pulsuz tanışlıq seansı al
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
               <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </a>
-          <p className="text-xs text-[#8AAABF] mt-3">Öhdəlik tələb olunmur · Pulsuz ilk görüş</p>
+          </button>
+          <p className="mt-3 text-xs" style={{ color: "#8AACCA" }}>Kredit kartı tələb olunmur</p>
         </div>
       </div>
     </section>

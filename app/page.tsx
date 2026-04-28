@@ -1,14 +1,16 @@
+import AuthRedirect from "@/components/AuthRedirect";
+import Intro from "@/components/Intro";
 import Hero from "@/components/Hero";
-import About from "@/components/About";
+import WhyFanus from "@/components/WhyFanus";
+import HowItWorks from "@/components/HowItWorks";
+import HomeAbout from "@/components/HomeAbout";
 import Stats from "@/components/Stats";
-import Services from "@/components/Services";
 import Psychologists from "@/components/Psychologists";
 import Trust from "@/components/Trust";
 import Announcements from "@/components/Announcements";
 import BlogPreview from "@/components/BlogPreview";
 import FAQ from "@/components/FAQ";
 import FinalCTA from "@/components/FinalCTA";
-import Intro from "@/components/Intro";
 import {
   getPsychologists,
   getStats,
@@ -31,11 +33,13 @@ export default async function HomePage() {
 
   return (
     <>
+      <AuthRedirect />
       <Intro />
       <Hero />
-      <About />
+      <WhyFanus />
+      <HowItWorks />
+      <HomeAbout />
       <Stats stats={stats} />
-      <Services />
       <Psychologists psychologists={psychologists} />
       <Trust testimonials={testimonials} />
       <Announcements announcements={announcements} />

@@ -1,8 +1,9 @@
 ﻿"use client";
 
+import type { ReactElement } from "react";
 import type { Announcement } from "@/lib/api";
 
-const ICON_MAP: Record<string, JSX.Element> = {
+const ICON_MAP: Record<string, ReactElement> = {
   GROUP: (
     <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
       <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" />

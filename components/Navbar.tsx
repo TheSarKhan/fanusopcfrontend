@@ -1,11 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useBooking } from "@/context/BookingContext";
 
 const navLinks = [
-  { label: "Haqqımızda", href: "#about" },
+  { label: "Haqqımızda", href: "/about" },
   { label: "Xidmətlər", href: "/xidmetler" },
   { label: "Psixoloqlar", href: "/psychologists" },
   { label: "Bloq", href: "/blog" },
@@ -23,6 +23,8 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const textColor = scrolled ? "#52718F" : "rgba(255,255,255,0.85)";
+
   return (
     <header
       className="fixed top-0 inset-x-0 z-50 transition-all duration-300"
@@ -30,9 +32,7 @@ export default function Navbar() {
         background: "rgba(255,255,255,0.92)",
         backdropFilter: "blur(12px)",
         boxShadow: "0 1px 0 rgba(213,227,240,0.8)",
-      } : {
-        background: "transparent",
-      }}
+      } : { background: "transparent" }}
     >
       <div className="container flex items-center justify-between h-16">
         {/* Logo */}
@@ -51,7 +51,7 @@ export default function Navbar() {
               key={link.href}
               href={link.href}
               className="text-[0.9rem] font-medium transition-colors duration-200"
-              style={{ color: scrolled ? "#52718F" : "rgba(255,255,255,0.85)" }}
+              style={{ color: textColor }}
             >
               {link.label}
             </a>
@@ -60,39 +60,39 @@ export default function Navbar() {
 
         {/* Desktop CTA */}
         <div className="hidden md:flex items-center gap-3">
-          {scrolled ? (
-            <>
-              <a href="#psychologists" className="btn-outline py-2.5 px-5 text-sm">
-                Psixoloq seç
-              </a>
-              <button onClick={() => open()} className="btn-primary py-2.5 px-5 text-sm">
-                Randevu al
-              </button>
-            </>
-          ) : (
-            <>
-              <a
-                href="#psychologists"
-                className="py-2.5 px-5 text-sm font-semibold rounded-full transition-all duration-200"
-                style={{
-                  color: "rgba(255,255,255,0.9)",
-                  border: "1.5px solid rgba(255,255,255,0.4)",
-                }}
-              >
-                Psixoloq seç
-              </a>
-              <button
-                onClick={() => open()}
-                className="py-2.5 px-5 text-sm font-bold rounded-full transition-all duration-200"
-                style={{ background: "#ffffff", color: "#2A57B0" }}
-              >
-                Randevu al
-              </button>
-            </>
-          )}
+          <Link
+            href="/login"
+            className="py-2.5 px-5 text-sm font-semibold rounded-full transition-all duration-200"
+            style={scrolled
+              ? { color: "#3B6FA5", border: "1.5px solid #C0D2E6" }
+              : { color: "rgba(255,255,255,0.9)", border: "1.5px solid rgba(255,255,255,0.4)" }
+            }
+          >
+            Daxil ol
+          </Link>
+          <Link
+            href="/register"
+            className="py-2.5 px-5 text-sm font-bold rounded-full transition-all duration-200"
+            style={scrolled
+              ? { background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff" }
+              : { background: "#ffffff", color: "#2A57B0" }
+            }
+          >
+            Qeydiyyat
+          </Link>
+          <button
+            onClick={() => open()}
+            className="py-2.5 px-5 text-sm font-bold rounded-full transition-all duration-200"
+            style={scrolled
+              ? { background: "#F3F6FB", color: "#002147", border: "1.5px solid #C0D2E6" }
+              : { color: "rgba(255,255,255,0.8)", border: "1.5px solid rgba(255,255,255,0.3)" }
+            }
+          >
+            Randevu al
+          </button>
         </div>
 
-        {/* Mobile menu toggle */}
+        {/* Mobile toggle */}
         <button
           className="md:hidden flex rounded-lg transition-colors items-center justify-center"
           style={{ color: scrolled ? "#002147" : "rgba(255,255,255,0.9)", padding: "10px", minWidth: 44, minHeight: 44 }}
@@ -125,10 +125,24 @@ export default function Navbar() {
             </a>
           ))}
           <div className="pt-2 flex flex-col gap-3">
-            <a href="#psychologists" className="btn-outline text-center" onClick={() => setMenuOpen(false)}>
-              Psixoloq seç
-            </a>
-            <button onClick={() => { open(); setMenuOpen(false); }} className="btn-primary text-center justify-center">
+            <Link
+              href="/login"
+              className="btn-outline text-center"
+              onClick={() => setMenuOpen(false)}
+            >
+              Daxil ol
+            </Link>
+            <Link
+              href="/register"
+              className="btn-primary text-center"
+              onClick={() => setMenuOpen(false)}
+            >
+              Qeydiyyat
+            </Link>
+            <button
+              onClick={() => { open(); setMenuOpen(false); }}
+              className="btn-outline text-center"
+            >
               Randevu al
             </button>
           </div>

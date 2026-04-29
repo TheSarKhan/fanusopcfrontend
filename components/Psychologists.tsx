@@ -83,13 +83,13 @@ function PsychologistCard({ p }: { p: Psychologist }) {
 
 export default function Psychologists({ psychologists }: { psychologists: Psychologist[] }) {
   return (
-    <section id="psychologists" className="section" style={{ background: "#F5F8FC" }}>
+    <section id="psychologists" style={{ background: "#ffffff", padding: "6rem 0" }}>
       <div className="container">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
           <div>
             <h2
               className="text-3xl sm:text-4xl font-bold text-[#0F1C2E]"
-              style={{ fontFamily: "var(--font-playfair, serif)" }}
+              style={{  }}
             >
               Psixoloqlarımızla tanış olun
             </h2>

@@ -3,7 +3,6 @@
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import BookingModal from "./BookingModal";
-import MoodGate from "./MoodGate";
 
 interface Props {
   isPanel: boolean;
@@ -18,7 +17,6 @@ export default function PublicLayout({ isPanel, children }: Props) {
 
   return (
     <>
-      <MoodGate />
       <Navbar />
       <main className="flex-1">{children}</main>
       <Footer />

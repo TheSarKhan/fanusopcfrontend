@@ -10,6 +10,7 @@ import Trust from "@/components/Trust";
 import Announcements from "@/components/Announcements";
 import BlogPreview from "@/components/BlogPreview";
 import FAQ from "@/components/FAQ";
+import ContactSection from "@/components/ContactSection";
 import FinalCTA from "@/components/FinalCTA";
 import {
   getPsychologists,
@@ -45,6 +46,7 @@ export default async function HomePage() {
       <Announcements announcements={announcements} />
       <BlogPreview posts={blogPosts} />
       <FAQ faqs={faqs} />
+      <ContactSection />
       <FinalCTA />
     </>
   );

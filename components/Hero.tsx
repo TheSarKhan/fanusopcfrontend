@@ -1,330 +1,299 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useBooking } from "@/context/BookingContext";
 import { useMood, MoodId } from "@/context/MoodContext";
 
-const CHAT_MESSAGES = [
-  { from: "psixoloq" as const, text: "Salam! Fanus ilə ilk addımınızı atmağa hazırsınız? 🌿" },
-  { from: "siz" as const,      text: "Bəli, özümü daha yaxşı hiss etmək istəyirəm." },
-  { from: "psixoloq" as const, text: "Əla! Sizi dinləyən biri hazırdır — bu gün ilk addımı birlikdə ataq 💙" },
-];
+type MoodConfig = {
+  label: string;
+  emoji: string;
+  headline: string;
+  sub: string;
+  accent: string;
+  accentSoft: string;
+  bg: string;
+  breath: string;
+  chat: { from: "p" | "t"; text: string }[];
+};
 
-function TherapyVisual({ color, accent }: { color: string; accent: string }) {
-  const [breathPhase, setBreathPhase] = useState<"in" | "out">("in");
-  const [messages, setMessages] = useState<typeof CHAT_MESSAGES>([]);
-  const [isTyping, setIsTyping] = useState(false);
-  const [typingFrom, setTypingFrom] = useState<"psixoloq" | "siz">("psixoloq");
-  const chatRef = useRef<HTMLDivElement>(null);
+const MOODS: Record<MoodId, MoodConfig> = {
+  good: {
+    label: "Yaxşı",
+    emoji: "🌿",
+    headline: "Daha yaxşı hiss etməyə bu gün başlayın",
+    sub: "Sizə uyğun psixoloqla rahat və təhlükəsiz mühitdə işləyin. Onlayn seans, aydın yol.",
+    accent: "var(--sage)",
+    accentSoft: "var(--sage-soft)",
+    bg: "linear-gradient(180deg, #F4FAF7 0%, #FFFFFF 60%, #FFFFFF 100%)",
+    breath: "Dərindən nəfəs alın",
+    chat: [
+      { from: "p", text: "Bu həftə özümü daha yüngül hiss edirəm." },
+      { from: "t", text: "Çox sevindim. Hansı an sizə bunu hiss etdirdi?" },
+      { from: "p", text: "Səhər 10 dəqiqəlik nəfəs məşqi etdim." },
+    ],
+  },
+  sad: {
+    label: "Kədərli",
+    emoji: "🧡",
+    headline: "Kədər keçicidir. Tək keçirməyə ehtiyac yoxdur",
+    sub: "Sizi dinləyən, mühakimə etməyən, peşəkar bir psixoloqla bu addımı atın.",
+    accent: "var(--lilac)",
+    accentSoft: "var(--lilac-soft)",
+    bg: "linear-gradient(180deg, #F1EEF8 0%, #F7F5FC 50%, #FFFFFF 100%)",
+    breath: "Yavaş-yavaş nəfəs",
+    chat: [
+      { from: "p", text: "Son zamanlar heç nə məni sevindirmir." },
+      { from: "t", text: "Bunu paylaşdığınız üçün təşəkkür edirəm. Birlikdə baxaq." },
+      { from: "p", text: "Bəzən səbəbsiz ağlayıram." },
+    ],
+  },
+  anxious: {
+    label: "Narahat",
+    emoji: "💙",
+    headline: "Narahatçılığınıza birlikdə yumşaq cavab tapaq",
+    sub: "Praktik nəfəs texnikaları, sübutla əsaslanan terapiya və sizin tempinizdə irəliləyiş.",
+    accent: "var(--amber)",
+    accentSoft: "var(--amber-soft)",
+    bg: "linear-gradient(180deg, #FBF4EA 0%, #FDF9F2 50%, #FFFFFF 100%)",
+    breath: "İçəri 4… bayıra 6",
+    chat: [
+      { from: "p", text: "Ürəyim sürətli döyünür, fikirlər dayanmır." },
+      { from: "t", text: "Birlikdə bir nəfəs məşqi edək. 4-7-8." },
+      { from: "p", text: "Tamam, sınayıram." },
+    ],
+  },
+  tired: {
+    label: "Yorğun",
+    emoji: "🌸",
+    headline: "Yavaşlamağa icazəniz var. Biz buradayıq",
+    sub: "Sizə uyğun ritmdə, kiçik addımlarla. Heç bir təzyiq, heç bir tələsmə.",
+    accent: "var(--rose)",
+    accentSoft: "var(--rose-soft)",
+    bg: "linear-gradient(180deg, #F8EFEF 0%, #FBF6F6 50%, #FFFFFF 100%)",
+    breath: "Yavaş və dərin",
+    chat: [
+      { from: "p", text: "Heç bir şey istəmirəm. Sadəcə yorğunam." },
+      { from: "t", text: "Anlayıram. Birlikdə, yavaş-yavaş irəliləyək." },
+      { from: "p", text: "Bunu eşitmək yaxşı oldu." },
+    ],
+  },
+  neutral: {
+    label: "Normal",
+    emoji: "✨",
+    headline: "Daha yaxşı hiss etməyə bu gün başlayın",
+    sub: "Sertifikatlı psixoloqlarla güvənli, məxfi və rahat mühitdə psixoloji dəstək alın.",
+    accent: "var(--sage)",
+    accentSoft: "var(--sage-soft)",
+    bg: "linear-gradient(180deg, #EEF4FF 0%, #F7F9FC 60%, #FFFFFF 100%)",
+    breath: "Dərindən nəfəs alın",
+    chat: [
+      { from: "p", text: "Özümü daha yaxşı hiss etmək istəyirəm." },
+      { from: "t", text: "Əla! Sizi dinləyən biri hazırdır — bu gün birlikdə başlayaq 💙" },
+      { from: "p", text: "Haradan başlamaq lazımdır?" },
+    ],
+  },
+};
+
+const MOOD_ORDER: MoodId[] = ["good", "sad", "anxious", "tired"];
+
+function ChatCard({ moodKey }: { moodKey: MoodId }) {
+  const m = MOODS[moodKey];
+  const [visible, setVisible] = useState(1);
+  const [typing, setTyping] = useState(false);
+  const prevMood = useRef(moodKey);
 
   useEffect(() => {
-    const id = setInterval(() => setBreathPhase(p => p === "in" ? "out" : "in"), 4000);
-    return () => clearInterval(id);
-  }, []);
+    if (prevMood.current !== moodKey) {
+      setVisible(1);
+      setTyping(false);
+      prevMood.current = moodKey;
+    }
+  }, [moodKey]);
 
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    let stopped = false;
-    let idx = 0;
-
-    const after = (fn: () => void, ms: number) => {
-      const id = setTimeout(() => { if (!stopped) fn(); }, ms);
-      timers.push(id);
-    };
-
-    const addMessage = () => {
-      if (idx >= CHAT_MESSAGES.length) {
-        after(() => { setMessages([]); setIsTyping(false); idx = 0; after(addMessage, 600); }, 3200);
-        return;
-      }
-      setTypingFrom(CHAT_MESSAGES[idx].from);
-      setIsTyping(true);
-      after(() => {
-        const msg = CHAT_MESSAGES[idx];
-        idx += 1;
-        setIsTyping(false);
-        setMessages(prev => [...prev, msg]);
-        after(addMessage, 900);
-      }, 1400);
-    };
-
-    after(addMessage, 1000);
-    return () => { stopped = true; timers.forEach(clearTimeout); };
-  }, []);
-
-  useEffect(() => {
-    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
-  }, [messages, isTyping]);
+    if (visible >= m.chat.length) {
+      const t = setTimeout(() => setVisible(1), 4500);
+      return () => clearTimeout(t);
+    }
+    const t1 = setTimeout(() => setTyping(true), 1400);
+    const t2 = setTimeout(() => {
+      setTyping(false);
+      setVisible(v => v + 1);
+    }, 2800);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [visible, moodKey, m.chat.length]);
 
   return (
-    <div style={{ perspective: "1100px", perspectiveOrigin: "50% 50%" }}>
-      <div style={{ position: "relative", width: 320, height: 440 }}>
-        {/* Ghost cards */}
-        {[1, 2].map((offset) => (
-          <div key={offset} style={{
-            position: "absolute", inset: 0, borderRadius: "1.5rem",
-            background: `rgba(255,255,255,${0.1 + offset * 0.04})`,
-            border: "1px solid rgba(255,255,255,0.2)",
-            transform: `rotateY(-14deg) rotateX(6deg) translateX(${offset * 14}px) translateY(${offset * 10}px) translateZ(${offset * -26}px)`,
-            boxShadow: "0 20px 50px rgba(0,0,0,0.15)",
-          }} />
+    <div
+      className="chat-card"
+      style={{ "--mood-accent": m.accent, "--mood-soft": m.accentSoft } as React.CSSProperties}
+    >
+      {/* Breathing orb */}
+      <div className="breath-floater">
+        <div className="breath-ring" />
+        <div className="breath-ring breath-ring-2" />
+        <div className="breath-core" style={{ background: m.accent }}>
+          <span>{m.breath}</span>
+        </div>
+      </div>
+
+      {/* Header */}
+      <div className="chat-header">
+        <div className="chat-avatar">
+          <div className="chat-avatar-img">
+            <img src="/images/logos/logo-blue.png" alt="Fanus" style={{ width: "70%", height: "70%", objectFit: "contain" }} />
+          </div>
+          <span className="chat-status-dot" />
+        </div>
+        <div className="chat-header-text">
+          <div className="chat-name">Fanus</div>
+          <div className="chat-role">Onlayn psixologiya platforması</div>
+        </div>
+        <div className="chat-secure">
+          <svg width="14" height="14" fill="none" stroke="var(--oxford-60)" strokeWidth="2" viewBox="0 0 24 24">
+            <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div className="chat-body">
+        <div className="chat-session-meta">
+          <span className="session-pill">
+            <span className="rec-dot" />
+            Canlı seans
+          </span>
+        </div>
+
+        {m.chat.slice(0, visible).map((msg, i) => (
+          <div
+            key={`${moodKey}-${i}`}
+            className={`chat-bubble chat-bubble-${msg.from}`}
+            style={{ animationDelay: `${i * 0.05}s` }}
+          >
+            {msg.from === "t" && <div className="bubble-meta">Fanus</div>}
+            <div>{msg.text}</div>
+          </div>
         ))}
 
-        {/* Main card */}
-        <div style={{
-          position: "absolute", inset: 0, borderRadius: "1.5rem",
-          background: "#ffffff",
-          transform: "rotateY(-14deg) rotateX(6deg)",
-          boxShadow: "40px 40px 80px rgba(0,0,0,0.25)",
-          overflow: "hidden", display: "flex", flexDirection: "column",
-        }}>
-
-          {/* ── Breathing section ── */}
-          <div style={{
-            height: 196, flexShrink: 0,
-            background: `linear-gradient(150deg, ${accent}55 0%, ${accent}22 100%)`,
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-            position: "relative", overflow: "hidden",
-          }}>
-            {/* Pulsing rings */}
-            {[96, 68, 46].map((size, i) => (
-              <div key={i} style={{
-                position: "absolute", width: size, height: size, borderRadius: "50%",
-                border: `1.5px solid ${color}`,
-                opacity: breathPhase === "in" ? 0.18 - i * 0.04 : 0.07,
-                transform: `scale(${breathPhase === "in" ? 1.5 - i * 0.15 : 1})`,
-                transition: "all 4s ease-in-out",
-              }} />
-            ))}
-            {/* Center circle */}
-            <div style={{
-              width: 62, height: 62, borderRadius: "50%", zIndex: 1,
-              background: `linear-gradient(135deg, ${color}, ${color}cc)`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              transform: `scale(${breathPhase === "in" ? 1.18 : 1})`,
-              transition: "transform 4s ease-in-out, box-shadow 4s ease-in-out",
-              boxShadow: `0 0 ${breathPhase === "in" ? 36 : 14}px ${color}55`,
-            }}>
-              <svg width="22" height="22" fill="none" stroke="rgba(255,255,255,0.92)" strokeWidth="1.8" viewBox="0 0 24 24">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <p style={{
-              marginTop: 13, fontSize: 13, fontWeight: 700, color, zIndex: 1,
-              transition: "opacity 0.6s ease", letterSpacing: "0.03em",
-            }}>
-              {breathPhase === "in" ? "Nəfəs al..." : "Burax..."}
-            </p>
-            <p style={{ fontSize: 10, color: `${color}99`, zIndex: 1, marginTop: 3 }}>
-              Sakitliyi hiss et
-            </p>
+        {typing && visible < m.chat.length && (
+          <div className={`chat-bubble chat-bubble-${m.chat[visible].from} typing`}>
+            <span className="typing-dot" />
+            <span className="typing-dot" />
+            <span className="typing-dot" />
           </div>
+        )}
+      </div>
 
-          {/* Divider */}
-          <div style={{ height: 1, background: "#EEF4FB", flexShrink: 0 }} />
-
-          {/* ── Chat section ── */}
-          <div
-            ref={chatRef}
-            style={{
-              flex: 1, padding: "10px 12px 12px",
-              display: "flex", flexDirection: "column", gap: 7,
-              overflowY: "auto", scrollBehavior: "smooth",
-            }}
-          >
-            <p style={{ fontSize: 10, fontWeight: 700, color: "#B0C4D8", textAlign: "center", marginBottom: 2, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-              Psixoloq ilə söhbət
-            </p>
-            {messages.map((msg, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: msg.from === "siz" ? "flex-end" : "flex-start", animation: "msgIn 0.3s ease both" }}>
-                <div style={{
-                  maxWidth: "82%", padding: "7px 11px",
-                  borderRadius: msg.from === "psixoloq" ? "4px 12px 12px 12px" : "12px 4px 12px 12px",
-                  background: msg.from === "psixoloq" ? "#F0F6FF" : color,
-                  color: msg.from === "psixoloq" ? "#0F1C2E" : "#fff",
-                  fontSize: 11, lineHeight: 1.55,
-                }}>
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-            {isTyping && (
-              <div style={{ display: "flex", justifyContent: typingFrom === "siz" ? "flex-end" : "flex-start" }}>
-                <div style={{
-                  display: "flex", gap: 4, padding: "8px 12px",
-                  background: typingFrom === "siz" ? color : "#F0F6FF",
-                  borderRadius: typingFrom === "siz" ? "12px 4px 12px 12px" : "4px 12px 12px 12px",
-                }}>
-                  {[0, 1, 2].map(i => (
-                    <div key={i} style={{
-                      width: 5, height: 5, borderRadius: "50%",
-                      background: typingFrom === "siz" ? "rgba(255,255,255,0.75)" : color,
-                      animation: `typingDot 1.2s ${i * 0.2}s infinite`,
-                    }} />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Floating badge */}
-        <div style={{ position: "absolute", bottom: -16, left: -28, background: "#fff", borderRadius: 14, padding: "10px 14px", boxShadow: "0 6px 24px rgba(0,0,0,0.12)", transform: "rotateY(-14deg) rotateX(6deg)", minWidth: 150 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ADE80" }} />
-            <span style={{ fontSize: 10, fontWeight: 600, color: "#0F1C2E" }}>İndi onlayn</span>
-          </div>
-          <p style={{ fontSize: 12, fontWeight: 700, color: "#0F1C2E" }}>6 psixoloq hazırdır</p>
-        </div>
+      {/* Input */}
+      <div className="chat-input">
+        <input type="text" placeholder="Mesaj yazın…" disabled />
+        <button className="chat-send" style={{ background: m.accent }}>
+          <svg width="14" height="14" fill="none" stroke="white" strokeWidth="2.2" viewBox="0 0 24 24">
+            <path d="M22 2L11 13" strokeLinecap="round" />
+            <path d="M22 2L15 22l-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       </div>
     </div>
   );
 }
 
-const MOOD_CONFIG: Record<MoodId, { gradient: string; headline: string[]; sub: string; accent: string; color: string; badge: string }> = {
-  sad: {
-    gradient: "135deg, #92400E 0%, #D97706 60%, #F59E0B 100%",
-    headline: ["Siz yalnız", "deyilsiniz"],
-    sub: "Kədər hər insanın həyatının bir hissəsidir. Burada sizi dinləyən, anlayan biri var.",
-    accent: "#FDE68A",
-    color: "#D97706",
-    badge: "Empatik psixoloji dəstək",
-  },
-  anxious: {
-    gradient: "135deg, #0F766E 0%, #0D9488 60%, #2DD4BF 100%",
-    headline: ["Nəfəs alın,", "buradayıq"],
-    sub: "Narahatçılıq keçici bir hal ola bilər. Peşəkar dəstəklə sakitliyi yenidən tapın.",
-    accent: "#99F6E4",
-    color: "#0D9488",
-    badge: "Sakitləşdirici psixoloji dəstək",
-  },
-  neutral: {
-    gradient: "135deg, #2A57B0 0%, #5A4FC8 60%, #7B68D8 100%",
-    headline: ["Daha yaxşı hiss", "etməyə bu gün başlayın"],
-    sub: "Sertifikatlı psixoloqlarla güvənli, məxfi və rahat mühitdə psixoloji dəstək alın.",
-    accent: "#A8CFFF",
-    color: "#002147",
-    badge: "Onlayn psixoloji dəstək",
-  },
-  tired: {
-    gradient: "135deg, #4C1D95 0%, #7C3AED 60%, #A78BFA 100%",
-    headline: ["Özünüzə qulluq", "etməyin vaxtıdır"],
-    sub: "Yorğunluq bir işarədir. Özünüzü yenidən kəşf etmək üçün buradayıq.",
-    accent: "#DDD6FE",
-    color: "#7C3AED",
-    badge: "Bərpa və özünüqulluq dəstəyi",
-  },
-  good: {
-    gradient: "135deg, #1E40AF 0%, #2563EB 60%, #0EA5E9 100%",
-    headline: ["Bu hissi daha", "da gücləndirin"],
-    sub: "Yaxşı hiss etmək — böyümək üçün ən yaxşı zamandır. Potensialınızı birlikdə açaq.",
-    accent: "#BAE6FD",
-    color: "#0284C7",
-    badge: "Şəxsi inkişaf və coaching",
-  },
-};
-
 export default function Hero() {
   const { open } = useBooking();
-  const { mood } = useMood();
-  const cfg = MOOD_CONFIG[mood ?? "neutral"];
+  const { mood, setMood } = useMood();
+
+  const activeMood: MoodId = mood ?? "neutral";
+  const m = MOODS[activeMood];
+
   return (
-    <section
-      className="relative overflow-hidden pt-16"
-      style={{
-        background: `linear-gradient(${cfg.gradient})`,
-        minHeight: "clamp(600px, 92vh, 1000px)",
-        transition: "background 0.8s ease",
-      }}
-    >
-      {/* Wave bottom */}
-      <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
-        <svg viewBox="0 0 1440 80" fill="none" preserveAspectRatio="none" style={{ display: "block", width: "100%", height: 80 }}>
-          <path d="M0 40 Q360 80 720 40 Q1080 0 1440 40 L1440 80 L0 80 Z" fill="#ffffff" />
+    <section className="hero" style={{ background: m.bg }}>
+      {/* Decorative blobs */}
+      <div className="hero-blob hero-blob-1" style={{ background: m.accentSoft }} />
+      <div className="hero-blob hero-blob-2" style={{ background: "var(--bg-blue)" }} />
+
+      {/* Wave at bottom */}
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, pointerEvents: "none", lineHeight: 0 }}>
+        <svg viewBox="0 0 1440 60" fill="none" preserveAspectRatio="none" style={{ display: "block", width: "100%", height: 60 }}>
+          <path d="M0 30 Q360 60 720 30 Q1080 0 1440 30 L1440 60 L0 60 Z" fill="#ffffff" />
         </svg>
       </div>
 
-      <div
-        className="container relative z-10 flex items-center"
-        style={{ minHeight: "calc(92vh - 80px)", paddingTop: "clamp(2rem, 6vw, 3rem)", paddingBottom: "clamp(4rem, 8vw, 5rem)" }}
-      >
-        <div className="grid lg:grid-cols-2 gap-12 items-center w-full">
+      <div className="container hero-grid">
+        {/* Left */}
+        <div>
+          <h1 className="hero-headline" key={activeMood}>
+            {m.headline}
+          </h1>
 
-          {/* Left */}
-          <div className="max-w-xl">
-            <div
-              className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full"
-              style={{ background: "rgba(255,255,255,0.15)" }}
-            >
-              <span className="text-xs font-semibold text-white/90 tracking-wide">{cfg.badge}</span>
+          <p className="hero-sub">{m.sub}</p>
+
+          {/* Inline Mood Picker */}
+          <div className="mood-picker">
+            <span className="mood-picker-label">Bu gün necə hiss edirsiniz?</span>
+            <div className="mood-options">
+              {MOOD_ORDER.map((k) => {
+                const cfg = MOODS[k];
+                const isActive = activeMood === k;
+                return (
+                  <button
+                    key={k}
+                    className={`mood-chip${isActive ? " active" : ""}`}
+                    onClick={() => setMood(k)}
+                    style={isActive ? {
+                      background: cfg.accentSoft,
+                      borderColor: cfg.accent,
+                      color: cfg.accent,
+                    } : {}}
+                  >
+                    <span className="mood-emoji">{cfg.emoji}</span>
+                    <span>{cfg.label}</span>
+                  </button>
+                );
+              })}
             </div>
+          </div>
 
-            <h1
-              className="text-[2rem] sm:text-[2.8rem] lg:text-[3.4rem] font-bold leading-[1.15] tracking-tight mb-5"
-              style={{ fontFamily: "var(--font-playfair, serif)", color: "#ffffff", transition: "all 0.5s ease" }}
-            >
-              {cfg.headline[0]}
-              <br />
-              <span style={{ color: cfg.accent }}>{cfg.headline[1]}</span>
-            </h1>
+          {/* CTAs */}
+          <div className="hero-ctas">
+            <Link href="/register" className="btn btn-primary">
+              Pulsuz başla
+              <svg width="16" height="16" fill="none" stroke="white" strokeWidth="2.2" viewBox="0 0 24 24">
+                <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+            <Link href="/psychologists" className="btn btn-ghost">
+              Psixoloqlara bax
+            </Link>
+          </div>
 
-            <p className="text-[1.05rem] leading-relaxed mb-10" style={{ color: "rgba(255,255,255,0.78)", transition: "all 0.5s ease" }}>
-              {cfg.sub}
-            </p>
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => open()}
-                className="font-bold px-7 py-3.5 rounded-full text-[0.95rem] transition-all duration-200 hover:-translate-y-0.5"
-                style={{ background: "#ffffff", color: "#2A57B0" }}
-              >
-                Randevu al
-              </button>
-              <a
-                href="#psychologists"
-                className="font-semibold px-7 py-3.5 rounded-full text-[0.95rem] transition-all duration-200 hover:bg-white/10"
-                style={{ color: "rgba(255,255,255,0.9)", border: "1.5px solid rgba(255,255,255,0.35)" }}
-              >
-                Psixoloqları gör
-              </a>
+          {/* Trust row */}
+          <div className="hero-trust">
+            <div className="trust-avatars">
+              {(["#C97D2E", "#4A9B7F", "#8C7DC9", "#C97D7D"] as string[]).map((c, i) => (
+                <div key={i} className="trust-avatar" style={{ background: c }}>
+                  {["A", "L", "N", "R"][i]}
+                </div>
+              ))}
             </div>
-
-            <div className="mt-10 flex items-center gap-4">
-              <div className="flex -space-x-2">
-                {["/images/avatar-1.jpg", "/images/avatar-2.jpg", "/images/avatar-3.jpg", "/images/avatar-4.jpg"].map((src, i) => (
-                  <img
-                    key={i}
-                    src={src}
-                    alt="müştəri"
-                    className="w-9 h-9 rounded-full object-cover border-2"
-                    style={{ borderColor: "rgba(255,255,255,0.5)", zIndex: 4 - i }}
-                  />
+            <div>
+              <div className="trust-stars">
+                {[0,1,2,3,4].map(i => (
+                  <svg key={i} width="13" height="13" fill="var(--amber)" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
                 ))}
+                <strong style={{ marginLeft: 6 }}>4.9</strong>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-white">500+ aktiv müştəri</p>
-                <p className="text-xs" style={{ color: "rgba(255,255,255,0.65)" }}>1000+ seans tamamlandı</p>
-              </div>
+              <div className="trust-text" style={{ marginTop: 2 }}>2,000+ məmnun istifadəçi</div>
             </div>
           </div>
+        </div>
 
-          {/* Right: Therapy visual — desktop only */}
-          <div className="hidden lg:flex justify-center items-center">
-            <TherapyVisual color={cfg.color} accent={cfg.accent} />
-          </div>
-
-          {/* Mobile trust pills — shown below buttons on small screens */}
-          <div className="flex lg:hidden flex-wrap gap-2 mt-2">
-            {["100% məxfi", "Onlayn · 7/24", "Sertifikatlı psixoloqlar"].map(t => (
-              <span key={t} style={{
-                fontSize: "0.72rem", fontWeight: 600,
-                color: "rgba(255,255,255,0.75)",
-                background: "rgba(255,255,255,0.12)",
-                borderRadius: 999, padding: "5px 12px",
-              }}>{t}</span>
-            ))}
-          </div>
-
+        {/* Right — Chat Card */}
+        <div className="hero-right">
+          <ChatCard moodKey={activeMood} />
         </div>
       </div>
     </section>

@@ -2,20 +2,19 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useBooking } from "@/context/BookingContext";
+import Image from "next/image";
 
 const navLinks = [
   { label: "Haqqımızda", href: "/about" },
   { label: "Xidmətlər", href: "/xidmetler" },
   { label: "Psixoloqlar", href: "/psychologists" },
   { label: "Bloq", href: "/blog" },
-  { label: "FAQ", href: "#faq" },
 ];
+
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { open } = useBooking();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -23,79 +22,46 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const textColor = scrolled ? "#52718F" : "rgba(255,255,255,0.85)";
-
   return (
-    <header
-      className="fixed top-0 inset-x-0 z-50 transition-all duration-300"
-      style={scrolled ? {
-        background: "rgba(255,255,255,0.92)",
-        backdropFilter: "blur(12px)",
-        boxShadow: "0 1px 0 rgba(213,227,240,0.8)",
-      } : { background: "transparent" }}
-    >
-      <div className="container flex items-center justify-between h-16">
+    <header className={`navbar ${scrolled ? "scrolled" : ""}`}>
+      <div className="container nav-inner">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5">
-          <img
-            src={scrolled ? "/images/logos/logo-blue.png" : "/images/logos/logo-white.png"}
+        <Link href="/" className="nav-logo">
+          <Image
+            src="/images/logos/logo-blue.png"
             alt="Fanus"
-            className="h-9 w-auto object-contain transition-opacity duration-300"
+            width={110}
+            height={36}
+            style={{ objectFit: "contain" }}
+            priority
           />
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="nav-links">
           {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="text-[0.9rem] font-medium transition-colors duration-200"
-              style={{ color: textColor }}
-            >
+            <Link key={link.href} href={link.href}>
               {link.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
         {/* Desktop CTA */}
-        <div className="hidden md:flex items-center gap-3">
-          <Link
-            href="/login"
-            className="py-2.5 px-5 text-sm font-semibold rounded-full transition-all duration-200"
-            style={scrolled
-              ? { color: "#3B6FA5", border: "1.5px solid #C0D2E6" }
-              : { color: "rgba(255,255,255,0.9)", border: "1.5px solid rgba(255,255,255,0.4)" }
-            }
-          >
-            Daxil ol
-          </Link>
-          <Link
-            href="/register"
-            className="py-2.5 px-5 text-sm font-bold rounded-full transition-all duration-200"
-            style={scrolled
-              ? { background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff" }
-              : { background: "#ffffff", color: "#2A57B0" }
-            }
-          >
+        <div className="nav-actions" style={{ alignItems: "center", gap: 16 }}>
+          <Link href="/login" className="nav-login">Daxil ol</Link>
+          <Link href="/register" className="btn btn-sm btn-primary" style={{ borderRadius: 8 }}>
             Qeydiyyat
           </Link>
-          <button
-            onClick={() => open()}
-            className="py-2.5 px-5 text-sm font-bold rounded-full transition-all duration-200"
-            style={scrolled
-              ? { background: "#F3F6FB", color: "#002147", border: "1.5px solid #C0D2E6" }
-              : { color: "rgba(255,255,255,0.8)", border: "1.5px solid rgba(255,255,255,0.3)" }
-            }
-          >
-            Randevu al
-          </button>
         </div>
 
         {/* Mobile toggle */}
         <button
-          className="md:hidden flex rounded-lg transition-colors items-center justify-center"
-          style={{ color: scrolled ? "#002147" : "rgba(255,255,255,0.9)", padding: "10px", minWidth: 44, minHeight: 44 }}
+          style={{
+            color: scrolled ? "var(--oxford)" : "var(--oxford-80)",
+            padding: "10px", minWidth: 44, minHeight: 44,
+            borderRadius: 8,
+          }}
+          className="flex md:hidden items-center justify-center"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Menyunu aç/bağla"
         >
@@ -113,38 +79,40 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden bg-white border-t border-[#C0D2E6] px-5 py-6 flex flex-col gap-5 animate-fadeIn">
+        <div style={{
+          background: "rgba(255,255,255,0.97)",
+          backdropFilter: "blur(12px)",
+          borderTop: "1px solid var(--oxford-10)",
+          padding: "1.5rem",
+          display: "flex", flexDirection: "column", gap: "1.25rem",
+        }} className="animate-fadeIn md:hidden">
           {navLinks.map((link) => (
-            <a
+            <Link
               key={link.href}
               href={link.href}
-              className="text-base font-medium text-[#1A2535] hover:text-[#002147] transition-colors"
+              style={{ fontSize: "1rem", fontWeight: 500, color: "var(--oxford-80)" }}
               onClick={() => setMenuOpen(false)}
             >
               {link.label}
-            </a>
+            </Link>
           ))}
-          <div className="pt-2 flex flex-col gap-3">
+          <div style={{ paddingTop: "0.5rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             <Link
               href="/login"
-              className="btn-outline text-center"
+              className="btn btn-ghost"
+              style={{ borderRadius: 9999, textAlign: "center", justifyContent: "center" }}
               onClick={() => setMenuOpen(false)}
             >
               Daxil ol
             </Link>
             <Link
               href="/register"
-              className="btn-primary text-center"
+              className="btn btn-primary"
+              style={{ borderRadius: 9999, textAlign: "center", justifyContent: "center" }}
               onClick={() => setMenuOpen(false)}
             >
               Qeydiyyat
             </Link>
-            <button
-              onClick={() => { open(); setMenuOpen(false); }}
-              className="btn-outline text-center"
-            >
-              Randevu al
-            </button>
           </div>
         </div>
       )}

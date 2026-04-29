@@ -1,271 +1,409 @@
-import Link from "next/link";
-import About from "@/components/About";
-import Stats from "@/components/Stats";
-import { getStats } from "@/lib/api";
+"use client";
 
-export const metadata = {
-  title: "Haqqımızda | Fanus",
-  description: "2019-cu ildən insanlara emosional sağlamlıq sahəsində peşəkar, məxfi və insan mərkəzli dəstək göstəririk.",
-};
+import { useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
+import { useScrollReveal } from "@/lib/useScrollReveal";
 
 const VALUES = [
   {
-    icon: (
-      <img src="/images/logos/logo-blue.png" alt="Fanus" style={{ width: 28, height: 28, objectFit: "contain" }} />
-    ),
     color: "#002147",
-    bg: "#EBF2FF",
+    bg: "rgba(0,33,71,0.06)",
     title: "Məxfilik",
-    text: "Müştərilərimizin hər sözü, hər hissi tamamilə gizli qalır. Güvən — terapiyamızın təməlidir.",
+    desc: "Hər söhbət şifrələnir, hər məlumat sizə aiddir. Etibar — fundamentdir.",
+    icon: (
+      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+        <rect x="3" y="11" width="18" height="11" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
   },
   {
+    color: "#7C3AED",
+    bg: "rgba(124,58,237,0.07)",
+    title: "İnsan mərkəzlilik",
+    desc: "Standart deyil, sizin hekayəniz. Tempinizi, dilinizi, sınırlarınızı qoruyuruq.",
     icon: (
-      <svg width="28" height="28" fill="none" stroke="#7C3AED" strokeWidth="1.6" viewBox="0 0 24 24">
+      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
         <circle cx="9" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    color: "#7C3AED",
-    bg: "#F3EEFF",
-    title: "İnsan mərkəzlilik",
-    text: "Hər insan unikaldır. Biz standart həlllər deyil, sizə xas yanaşma tətbiq edirik.",
   },
   {
+    color: "#0D9488",
+    bg: "rgba(13,148,136,0.07)",
+    title: "Peşəkarlıq",
+    desc: "Sübutla əsaslanan metodlar, davamlı supervizor dəstəyi və beynəlxalq standartlar.",
     icon: (
-      <svg width="28" height="28" fill="none" stroke="#0D9488" strokeWidth="1.6" viewBox="0 0 24 24">
+      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    color: "#0D9488",
-    bg: "#EFFAF8",
-    title: "Peşəkarlıq",
-    text: "Komandamız beynəlxalq sertifikatlara malik, daim inkişaf edən psixoloqlardan ibarətdir.",
   },
   {
+    color: "#C97D2E",
+    bg: "rgba(201,125,46,0.08)",
+    title: "Empati",
+    desc: "Mühakimə yox, yalnız anlayış. Bəzən ən mühüm söz — \"sizi eşidirəm\".",
     icon: (
-      <svg width="28" height="28" fill="none" stroke="#D97706" strokeWidth="1.6" viewBox="0 0 24 24">
+      <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    color: "#D97706",
-    bg: "#FFF8EE",
-    title: "Empati",
-    text: "Mühakimə etmədən, hörmətlə dinləyirik. Sizin hissləriniz burada dəyərlidir.",
   },
+];
+
+const TIMELINE = [
+  { year: "2019", text: "Fanus quruldu. İlk 3 psixoloq Bakıda kiçik bir kabinetdən başladı." },
+  { year: "2020", text: "İlk 100 müştəri. Pandemiya boyu pulsuz dəstək xətti açıldı." },
+  { year: "2021", text: "Onlayn seanslar başladı. Platforma istənilən şəhərdən əlçatan oldu." },
+  { year: "2022", text: "10 mütəxəssisə qədər böyüdük. Cütlük və ailə terapiyası əlavə edildi." },
+  { year: "2023", text: "1000+ tamamlanmış seans. APA və ISO 27001 sertifikatları alındı." },
+  { year: "2024", text: "EMDR, uşaq terapiyası və qrup formatları platformaya əlavə olundu." },
 ];
 
 const TEAM = [
   {
     name: "Dr. Leyla Əliyeva",
-    role: "Klinik psixoloq, Kurucu",
+    role: "Klinik psixoloq, Qurucusu",
     initials: "LƏ",
-    gradient: "linear-gradient(135deg, #002147, #3B6FA5)",
-    desc: "10 ildən artıq klinik təcrübəsi olan, travma və depressiya sahəsinin mütəxəssisi.",
+    gradient: "linear-gradient(135deg, #002147 0%, #1a3d6a 100%)",
+    bio: "12 il təcrübə. Travma, narahatlıq pozğunluqları və CBT üzrə ixtisaslaşma. Fanus-un baş ideyaçısı.",
   },
   {
     name: "Nigar Hüseynova",
     role: "Ailə terapisti",
     initials: "NH",
-    gradient: "linear-gradient(135deg, #7C3AED, #5A4FC8)",
-    desc: "Ailə daxili kommunikasiya və uşaq psixologiyası üzrə ixtisaslaşmış terapist.",
+    gradient: "linear-gradient(135deg, #7C3AED 0%, #a78bfa 100%)",
+    bio: "Münasibətlər, valideynlik və ailə dinamikası üzrə sertifikatlı mütəxəssis. Bonn Universiteti.",
   },
   {
     name: "Rauf Məmmədov",
     role: "CBT mütəxəssisi",
     initials: "RM",
-    gradient: "linear-gradient(135deg, #0D9488, #0891B2)",
-    desc: "Koqnitiv-davranış terapiyası və narahatlıq pozuntuları üzrə sertifikatlı mütəxəssis.",
+    gradient: "linear-gradient(135deg, #0D9488 0%, #14b8a6 100%)",
+    bio: "9 il təcrübə. Depressiya, panik atak və yuxu pozğunluqları üzrə sübutla əsaslanan terapiya.",
   },
 ];
 
-export default async function AboutPage() {
-  const stats = await getStats().catch(() => []);
+const CERTS = ["APA üzvü", "CBT Sertifikatlı", "EMDR Akkreditasiyası", "Mindfulness", "ISO 27001", "GDPR uyğun"];
 
+const STATS = [
+  { value: "6+", label: "il təcrübə" },
+  { value: "2000+", label: "məmnun müştəri" },
+  { value: "15+", label: "mütəxəssis" },
+  { value: "8+", label: "seans növü" },
+];
+
+function TimelineSection() {
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [lineProgress, setLineProgress] = useState(0);
+
+  useEffect(() => {
+    const el = timelineRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) setVisible(true); },
+      { threshold: 0.1 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    let frame: number;
+    let start: number | null = null;
+    const animate = (ts: number) => {
+      if (!start) start = ts;
+      const p = Math.min((ts - start) / 1200, 1);
+      setLineProgress(p);
+      if (p < 1) frame = requestAnimationFrame(animate);
+    };
+    const t = setTimeout(() => { frame = requestAnimationFrame(animate); }, 300);
+    return () => { clearTimeout(t); cancelAnimationFrame(frame); };
+  }, [visible]);
+
+  return (
+    <section className="ap-journey">
+      <div className="container">
+        <div style={{ maxWidth: 760, margin: "0 auto 72px", textAlign: "center" }}>
+          <p className="label" style={{ display: "block", marginBottom: 16 }}>Yolumuz</p>
+          <h2 className="ap-hero-title" style={{ fontSize: "clamp(32px, 3.6vw, 48px)", margin: "0 0 16px" }}>
+            Bir niyyətdən bir mərkəzə
+          </h2>
+          <p style={{ fontSize: 17, color: "var(--oxford-60)", maxWidth: 520, margin: "0 auto" }}>
+            Fanus-un böyüməsi sayılarla deyil, hekayələrlə ölçülür.
+          </p>
+        </div>
+
+        <div ref={timelineRef} className="ap-timeline">
+          {/* Animated spine */}
+          <div className="ap-timeline-line">
+            <div style={{
+              height: `${lineProgress * 100}%`,
+              background: "linear-gradient(180deg, var(--oxford) 0%, var(--lilac) 50%, var(--amber) 100%)",
+              transition: "none",
+            }} />
+          </div>
+
+          {TIMELINE.map((t, i) => (
+            <div
+              key={t.year}
+              className={`ap-tl-item ${i % 2 === 0 ? "left" : "right"}`}
+              style={{
+                opacity: visible ? 1 : 0,
+                transform: visible ? "translateY(0)" : "translateY(20px)",
+                transition: `opacity 0.6s ease ${i * 0.1}s, transform 0.6s ease ${i * 0.1}s`,
+              }}
+            >
+              <div className="ap-tl-node" />
+              <div className="ap-tl-card">
+                <div className="ap-tl-year">{t.year}</div>
+                <div className="ap-tl-text">{t.text}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MissionSection() {
+  const { ref, visible } = useScrollReveal<HTMLElement>(0.1);
+
+  return (
+    <section ref={ref} className="ap-mission">
+      <div className="container">
+        <div
+          className="ap-mission-grid"
+          style={{
+            opacity: visible ? 1 : 0,
+            transform: visible ? "translateY(0)" : "translateY(28px)",
+            transition: "opacity 0.7s ease, transform 0.7s ease",
+          }}
+        >
+          <div>
+            <p className="label" style={{ display: "block", marginBottom: 12 }}>Missiyamız</p>
+            <h2>Hər insan sağlam,<br />xoşbəxt olmağa layiqdir</h2>
+            <p>
+              Fanus 2019-cu ildə Azərbaycanda psixoloji yardımı ən yüksək standartlarda
+              əlçatan etmək məqsədi ilə yaradıldı. "Fanus" — qaranlıqda yol göstərən işıq
+              deməkdir. Biz hər insanın öz daxili işığına qovuşmasına dəstək olmağı özümüzə
+              missiya bilmişik.
+            </p>
+            <p>
+              Terapiya yalnız "problem olanlar üçün" deyil — özünü daha yaxşı tanımaq,
+              emosional güc toplamaq və daha dolu bir həyat qurmaq istəyən hər kəs üçündür.
+              Heç bir tələsmə, heç bir mühakimə — sadəcə sizin tempinizdə.
+            </p>
+          </div>
+
+          <div className="ap-mission-stats">
+            {STATS.map((s) => (
+              <div key={s.label} className="ap-stat">
+                <div className="ap-stat-value">{s.value}</div>
+                <div className="ap-stat-label">{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ValuesSection() {
+  const { ref, visible } = useScrollReveal<HTMLElement>(0.1);
+
+  return (
+    <section ref={ref} className="ap-values">
+      <div className="container">
+        <div style={{
+          maxWidth: 760, margin: "0 auto 72px", textAlign: "center",
+          opacity: visible ? 1 : 0,
+          transform: visible ? "translateY(0)" : "translateY(24px)",
+          transition: "opacity 0.6s ease, transform 0.6s ease",
+        }}>
+          <p className="label" style={{ display: "block", marginBottom: 16 }}>Dəyərlərimiz</p>
+          <h2 style={{ fontFamily: "var(--serif)", fontSize: "clamp(32px, 3.6vw, 48px)", fontWeight: 500, color: "var(--oxford)", lineHeight: 1.15, letterSpacing: "-0.01em" }}>
+            Bizi fərqli edən dəyərlər
+          </h2>
+          <p style={{ fontSize: 17, color: "var(--oxford-60)", marginTop: 16, maxWidth: 520, margin: "16px auto 0" }}>
+            Hər seansın arxasında, hər söhbətdə, hər qərarda bunlar dayanır.
+          </p>
+        </div>
+
+        <div className="ap-values-grid">
+          {VALUES.map((v, i) => (
+            <div
+              key={v.title}
+              className="ap-value-card"
+              style={{
+                background: v.bg,
+                opacity: visible ? 1 : 0,
+                transform: visible ? "translateY(0)" : "translateY(20px)",
+                transition: `opacity 0.6s ease ${i * 80}ms, transform 0.6s ease ${i * 80}ms`,
+              }}
+            >
+              <div className="ap-value-icon" style={{ color: v.color }}>
+                {v.icon}
+              </div>
+              <h3>{v.title}</h3>
+              <p>{v.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TeamSection() {
+  const { ref, visible } = useScrollReveal<HTMLElement>(0.1);
+
+  return (
+    <section ref={ref} className="ap-team">
+      <div className="container">
+        <div style={{
+          maxWidth: 760, margin: "0 auto 72px", textAlign: "center",
+          opacity: visible ? 1 : 0,
+          transform: visible ? "translateY(0)" : "translateY(24px)",
+          transition: "opacity 0.6s ease, transform 0.6s ease",
+        }}>
+          <p className="label" style={{ display: "block", marginBottom: 16 }}>Komanda</p>
+          <h2 style={{ fontFamily: "var(--serif)", fontSize: "clamp(32px, 3.6vw, 48px)", fontWeight: 500, color: "var(--oxford)", lineHeight: 1.15, letterSpacing: "-0.01em" }}>
+            Sizə dəstək olan mütəxəssislər
+          </h2>
+          <p style={{ fontSize: 17, color: "var(--oxford-60)", marginTop: 16, maxWidth: 520, margin: "16px auto 0" }}>
+            Hər biri ən az 5 il klinik təcrübəyə və beynəlxalq sertifikata malikdir.
+          </p>
+        </div>
+
+        <div className="ap-team-grid" style={{ maxWidth: 960, margin: "0 auto" }}>
+          {TEAM.map((m, i) => (
+            <div
+              key={m.name}
+              className="ap-team-card"
+              style={{
+                opacity: visible ? 1 : 0,
+                transform: visible ? "translateY(0)" : "translateY(28px)",
+                transition: `opacity 0.65s ease ${i * 100}ms, transform 0.65s ease ${i * 100}ms`,
+              }}
+            >
+              <div className="ap-team-avatar" style={{ background: m.gradient }}>
+                {m.initials}
+              </div>
+              <h3>{m.name}</h3>
+              <div className="ap-team-role">{m.role}</div>
+              <p>{m.bio}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TrustBand() {
+  const { ref, visible } = useScrollReveal<HTMLElement>(0.2);
+
+  return (
+    <section ref={ref} className="ap-trust">
+      <div className="container">
+        <div className="ap-trust-label">Sertifikat və üzvlüklər</div>
+        <div
+          className="ap-trust-pills"
+          style={{
+            opacity: visible ? 1 : 0,
+            transform: visible ? "translateY(0)" : "translateY(16px)",
+            transition: "opacity 0.6s ease, transform 0.6s ease",
+          }}
+        >
+          {CERTS.map((c) => (
+            <div key={c} className="ap-trust-pill">
+              <svg width="14" height="14" fill="none" stroke="var(--sage)" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" strokeLinecap="round" />
+                <path d="M22 4 12 14.01l-3-3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {c}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function AboutPage() {
   return (
     <>
       {/* Hero */}
-      <section
-        className="pt-32 pb-20"
-        style={{ background: "linear-gradient(135deg, #0F1C2E 0%, #1E3A5F 55%, #2A57B0 100%)" }}
-      >
-        <div className="container text-center max-w-3xl mx-auto">
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>
-            Fanus Psixologiya Mərkəzi
-          </p>
-          <h1
-            className="text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight"
-            style={{ fontFamily: "var(--font-playfair, serif)" }}
-          >
-            İnsana inanan bir mərkəz
+      <section className="ap-hero">
+        <div className="ap-hero-blob ap-hero-blob-1" />
+        <div className="ap-hero-blob ap-hero-blob-2" />
+        <div className="container ap-hero-inner">
+          <p className="label">Fanus Psixologiya Mərkəzi</p>
+          <h1 className="ap-hero-title">
+            İnsana inanan<br />bir mərkəz.
           </h1>
-          <p className="text-lg leading-relaxed" style={{ color: "rgba(255,255,255,0.7)" }}>
-            2019-cu ildən Azərbaycanda emosional sağlamlığı daha əlçatan, daha insani
-            və daha effektiv etmək üçün çalışırıq.
+          <p className="ap-hero-sub">
+            2019-cu ildən Azərbaycanda emosional sağlamlığı daha əlçatan,
+            daha insani etmək üçün çalışırıq.
           </p>
+
         </div>
       </section>
 
-      {/* Mission */}
-      <section className="section" style={{ background: "#fff" }}>
-        <div className="container">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <p className="section-label">Missiyamız</p>
-              <h2
-                className="text-3xl sm:text-4xl font-bold mb-6 leading-snug"
-                style={{ fontFamily: "var(--font-playfair, serif)", color: "#1A2535" }}
-              >
-                Hər insan sağlam,<br />xoşbəxt olmağa layiqdir
-              </h2>
-              <p className="text-[#52718F] leading-relaxed mb-5">
-                Fanus 2019-cu ildə Azərbaycanda psixoloji yardımı ən yüksək standartlarda
-                əlçatan etmək məqsədi ilə yaradıldı. "Fanus" — qaranlıqda yol göstərən işıq
-                deməkdir. Biz hər bir insanın öz daxili işığına qovuşmasına dəstək olmağı özümüzə
-                missiya bilmişik.
-              </p>
-              <p className="text-[#52718F] leading-relaxed">
-                Terapiya yalnız "problem olanlar üçün" deyil — özünü daha yaxşı tanımaq,
-                emosional güc toplamaq və daha dolu bir həyat qurmaq istəyən hər kəs üçündür.
-              </p>
-            </div>
+      <MissionSection />
+      <ValuesSection />
+      <TimelineSection />
+      <TeamSection />
+      <TrustBand />
 
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { label: "İl təcrübə", value: "6+" },
-                { label: "Məmnun müştəri", value: "2000+" },
-                { label: "Mütəxəssis", value: "15+" },
-                { label: "Seans növü", value: "8+" },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-2xl p-6 text-center"
-                  style={{ background: "#F3F6FB", border: "1px solid #E2EBF5" }}
-                >
-                  <div
-                    className="text-3xl font-bold mb-1"
-                    style={{ color: "#002147", fontFamily: "var(--font-playfair, serif)" }}
-                  >
-                    {item.value}
-                  </div>
-                  <div className="text-sm text-[#52718F] font-medium">{item.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats band */}
-      {stats.length > 0 && <Stats stats={stats} />}
-
-      {/* Values */}
-      <section className="section" style={{ background: "#F8FAFD" }}>
-        <div className="container">
-          <div className="text-center mb-14 max-w-2xl mx-auto">
-            <p className="section-label">Dəyərlərimiz</p>
-            <h2
-              className="text-3xl sm:text-4xl font-bold"
-              style={{ fontFamily: "var(--font-playfair, serif)", color: "#1A2535" }}
-            >
-              Bizi fərqli edən dəyərlər
-            </h2>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {VALUES.map((v) => (
-              <div
-                key={v.title}
-                className="rounded-2xl p-6"
-                style={{ background: v.bg, border: `1px solid ${v.color}22` }}
-              >
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-                  style={{ background: "#fff", boxShadow: `0 4px 14px ${v.color}20` }}
-                >
-                  {v.icon}
-                </div>
-                <h3
-                  className="text-base font-bold mb-2"
-                  style={{ color: "#1A2535" }}
-                >
-                  {v.title}
-                </h3>
-                <p className="text-sm leading-relaxed" style={{ color: "#52718F" }}>
-                  {v.text}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Journey (existing animated section) */}
-      <About />
-
-      {/* Team */}
-      <section className="section" style={{ background: "#F8FAFD" }}>
-        <div className="container">
-          <div className="text-center mb-14 max-w-2xl mx-auto">
-            <p className="section-label">Komandamız</p>
-            <h2
-              className="text-3xl sm:text-4xl font-bold"
-              style={{ fontFamily: "var(--font-playfair, serif)", color: "#1A2535" }}
-            >
-              Sizə dəstək olan mütəxəssislər
-            </h2>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {TEAM.map((member) => (
-              <div
-                key={member.name}
-                className="rounded-2xl p-6 text-center"
-                style={{ background: "#fff", border: "1px solid #E2EBF5", boxShadow: "0 4px 20px rgba(0,0,0,0.04)" }}
-              >
-                <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-lg mx-auto mb-4"
-                  style={{ background: member.gradient }}
-                >
-                  {member.initials}
-                </div>
-                <h3 className="font-bold text-[#1A2535] mb-1">{member.name}</h3>
-                <p className="text-xs font-semibold mb-3" style={{ color: "#3B6FA5" }}>{member.role}</p>
-                <p className="text-sm text-[#52718F] leading-relaxed">{member.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section
-        className="py-20"
-        style={{ background: "linear-gradient(135deg, #002147 0%, #1E3A5F 60%, #2A57B0 100%)" }}
-      >
-        <div className="container text-center max-w-2xl mx-auto">
-          <h2
-            className="text-3xl sm:text-4xl font-bold text-white mb-5"
-            style={{ fontFamily: "var(--font-playfair, serif)" }}
-          >
+      {/* Final CTA */}
+      <section style={{
+        background: "var(--oxford)",
+        padding: "100px 0",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute", top: -100, right: -100,
+          width: 400, height: 400, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(140,125,201,0.2) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }} />
+        <div style={{
+          position: "absolute", bottom: -80, left: -80,
+          width: 360, height: 360, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(201,125,46,0.15) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }} />
+        <div className="container" style={{ textAlign: "center", maxWidth: 640, position: "relative", zIndex: 1 }}>
+          <h2 style={{
+            fontFamily: "var(--serif)", fontSize: "clamp(32px, 4vw, 52px)",
+            fontWeight: 500, color: "white", lineHeight: 1.1,
+            letterSpacing: "-0.02em", marginBottom: 20,
+          }}>
             İlk addımı indi atın
           </h2>
-          <p className="mb-8 leading-relaxed" style={{ color: "rgba(255,255,255,0.7)" }}>
+          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.65)", lineHeight: 1.65, marginBottom: 36 }}>
             Sizə ən uyğun psixoloqula tanış olmaq üçün bir randevu kifayətdir.
           </p>
-          <div className="flex flex-wrap gap-3 justify-center">
-            <Link
-              href="/psychologists"
-              className="py-3 px-7 rounded-full text-sm font-bold text-white transition-all"
-              style={{ background: "rgba(255,255,255,0.15)", border: "1.5px solid rgba(255,255,255,0.3)" }}
-            >
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <Link href="/psychologists" className="btn btn-ghost" style={{
+              color: "white",
+              borderColor: "rgba(255,255,255,0.3)",
+            }}>
               Psixoloqlarımız
             </Link>
-            <Link
-              href="/register"
-              className="py-3 px-7 rounded-full text-sm font-bold transition-all"
-              style={{ background: "#fff", color: "#002147" }}
-            >
+            <Link href="/register" className="btn btn-primary" style={{
+              background: "white", color: "var(--oxford)",
+            }}>
               Qeydiyyat
             </Link>
           </div>

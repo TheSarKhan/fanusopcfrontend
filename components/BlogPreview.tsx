@@ -11,14 +11,14 @@ export default function BlogPreview({ posts }: { posts: BlogPost[] }) {
   const rest = posts.slice(1);
 
   return (
-    <section id="blog" className="section" style={{ background: "#ffffff" }}>
+    <section id="blog" style={{ background: "#ffffff", padding: "6rem 0" }}>
       <div className="container">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12">
           <div>
             <p className="section-label">Bloq</p>
             <h2
               className="text-3xl sm:text-4xl font-bold"
-              style={{ fontFamily: "var(--font-playfair, serif)", color: "#1A2535" }}
+              style={{  color: "#1A2535" }}
             >
               Məqalələr & Tövsiyələr
             </h2>
@@ -32,7 +32,7 @@ export default function BlogPreview({ posts }: { posts: BlogPost[] }) {
           {/* Featured */}
           <div
             className="card md:row-span-2 flex flex-col group cursor-pointer"
-            style={{ background: "#F0F4FA" }}
+            style={{ background: "#F4F7FB", border: "1px solid #EDF2F7" }}
           >
             <div
               className="h-48 rounded-t-[1.25rem] flex items-center justify-center text-7xl"
@@ -52,7 +52,7 @@ export default function BlogPreview({ posts }: { posts: BlogPost[] }) {
               </div>
               <h3
                 className="text-xl font-bold text-[#1A2535] mb-3 group-hover:text-[#002147] transition-colors"
-                style={{ fontFamily: "var(--font-playfair, serif)" }}
+                style={{  }}
               >
                 {featured.title}
               </h3>
@@ -77,7 +77,7 @@ export default function BlogPreview({ posts }: { posts: BlogPost[] }) {
             <div
               key={post.id}
               className="card p-5 flex gap-4 items-start group cursor-pointer"
-              style={{ background: "#F0F4FA" }}
+              style={{ background: "#F4F7FB", border: "1px solid #EDF2F7" }}
             >
               <div
                 className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"

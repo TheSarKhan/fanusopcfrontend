@@ -162,6 +162,48 @@ export const registerPatient = (data: {
   return body;
 });
 
+export const registerPsychologist = (
+  data: {
+    email: string; password: string; firstName: string; lastName: string; phone?: string;
+    languages: string[];
+    university: string; degree: string; graduationYear: string;
+    specializations: string[]; sessionTypes: string[]; experienceYears: string;
+    activityFormat: string;
+    bio: string; certifications: string[];
+  },
+  diplomaFile?: File | null,
+  certificateFiles?: File[]
+) => {
+  const form = new FormData();
+  form.append("email", data.email);
+  form.append("password", data.password);
+  form.append("firstName", data.firstName);
+  form.append("lastName", data.lastName);
+  if (data.phone) form.append("phone", data.phone);
+  data.languages.forEach(l => form.append("languages", l));
+  form.append("university", data.university);
+  form.append("degree", data.degree);
+  form.append("graduationYear", data.graduationYear);
+  data.specializations.forEach(s => form.append("specializations", s));
+  data.sessionTypes.forEach(s => form.append("sessionTypes", s));
+  if (data.experienceYears) form.append("experienceYears", data.experienceYears);
+  if (data.activityFormat) form.append("activityFormat", data.activityFormat);
+  if (data.bio) form.append("bio", data.bio);
+  data.certifications.forEach(c => form.append("certifications", c));
+  if (diplomaFile) form.append("diplomaFile", diplomaFile);
+  certificateFiles?.forEach(f => form.append("certificateFiles", f));
+
+  return fetch(`${BASE}/auth/register/psychologist`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  }).then(async r => {
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.error ?? "Qeydiyyat uğursuz oldu");
+    return body;
+  });
+};
+
 export const verifyEmail = (token: string) =>
   fetch(`${BASE}/auth/verify?token=${token}`, { credentials: "include" })
     .then(async r => {

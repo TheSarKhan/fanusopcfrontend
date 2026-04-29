@@ -2,10 +2,13 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
 
+export type ModalMode = "booking" | "contact";
+
 interface BookingContextValue {
   isOpen: boolean;
   psychologistName?: string;
-  open: (psychologistName?: string) => void;
+  mode: ModalMode;
+  open: (psychologistName?: string, mode?: ModalMode) => void;
   close: () => void;
 }
 
@@ -14,9 +17,11 @@ const BookingContext = createContext<BookingContextValue | null>(null);
 export function BookingProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [psychologistName, setPsychologistName] = useState<string | undefined>();
+  const [mode, setMode] = useState<ModalMode>("booking");
 
-  const open = (name?: string) => {
+  const open = (name?: string, m: ModalMode = "booking") => {
     setPsychologistName(name);
+    setMode(m);
     setIsOpen(true);
   };
 
@@ -26,7 +31,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <BookingContext.Provider value={{ isOpen, psychologistName, open, close }}>
+    <BookingContext.Provider value={{ isOpen, psychologistName, mode, open, close }}>
       {children}
     </BookingContext.Provider>
   );

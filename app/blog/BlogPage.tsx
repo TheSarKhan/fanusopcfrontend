@@ -1,127 +1,210 @@
 "use client";
 
 import { useState } from "react";
+import { useScrollReveal } from "@/lib/useScrollReveal";
 import type { BlogPost } from "@/lib/api";
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("az-AZ", { day: "numeric", month: "long", year: "numeric" });
+  const d = new Date(dateStr);
+  const months = ["Yan", "Fev", "Mart", "Apr", "May", "İyun", "İyul", "Avq", "Sen", "Okt", "Noy", "Dek"];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function ArrowIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14M12 5l7 7-7 7" />
+    </svg>
+  );
 }
 
 export default function BlogPage({ posts }: { posts: BlogPost[] }) {
-  const [activeCategory, setActiveCategory] = useState("Hamısı");
+  const [active, setActive] = useState("Hamısı");
+  const { ref: heroRef, visible: heroVisible } = useScrollReveal<HTMLDivElement>(0.05);
+  const { ref: contentRef, visible: contentVisible } = useScrollReveal<HTMLElement>(0.05);
+  const { ref: newsRef, visible: newsVisible } = useScrollReveal<HTMLElement>(0.1);
 
   const categories = ["Hamısı", ...Array.from(new Set(posts.map((p) => p.category)))];
 
-  const filtered = activeCategory === "Hamısı"
-    ? posts
-    : posts.filter((p) => p.category === activeCategory);
-
-  const featured = filtered[0];
-  const rest = filtered.slice(1);
+  const allFiltered = active === "Hamısı" ? posts : posts.filter((p) => p.category === active);
+  const featured = allFiltered.find((p) => p.featured) ?? allFiltered[0] ?? null;
+  const regular = allFiltered.filter((p) => p !== featured);
+  const showEmpty = allFiltered.length === 0;
 
   return (
-    <div>
-      {/* Hero */}
-      <div style={{ background: "linear-gradient(135deg, #002147 0%, #1A4A8A 100%)", paddingTop: "calc(64px + 4rem)", paddingBottom: "3rem" }}>
-        <div className="container">
-          <p className="section-label" style={{ color: "rgba(255,255,255,0.65)" }}>Bloq</p>
-          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">Məqalələr & Tövsiyələr</h1>
-          <p className="text-[rgba(255,255,255,0.75)] max-w-xl text-[1.05rem] leading-relaxed">
+    <main className="bl-page">
+
+      {/* HERO */}
+      <section className="bl-hero">
+        <div className="ap-hero-blob ap-hero-blob-1" />
+        <div className="ap-hero-blob ap-hero-blob-2" />
+        <div
+          className="container"
+          ref={heroRef}
+          style={{
+            opacity: heroVisible ? 1 : 0,
+            transform: heroVisible ? "translateY(0)" : "translateY(24px)",
+            transition: "opacity 0.7s ease, transform 0.7s ease",
+          }}
+        >
+          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "var(--oxford-60)" }}>
+            Bloq
+          </p>
+          <h1 className="bl-hero-title">
+            Məqalələr<br />&amp; Tövsiyələr
+          </h1>
+          <p className="bl-hero-sub">
             Mental sağlamlıq, özünüinkişaf və psixologiya haqqında mütəxəssis fikirlər.
           </p>
+          <div className="bl-hero-cats">
+            {["Depressiya", "Narahatlıq", "Münasibətlər", "Stress", "Özünüinkişaf"].map((c) => (
+              <span key={c} className="bl-hero-cat">{c}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CATEGORY FILTER */}
+      <div className="bl-filters">
+        <div className="container bl-filters-inner">
+          {categories.map((c) => (
+            <button
+              key={c}
+              className={`bl-cat-pill${active === c ? " active" : ""}`}
+              onClick={() => setActive(c)}
+            >
+              {c}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="section" style={{ background: "#ffffff" }}>
+      {/* CONTENT */}
+      <section className="bl-content" ref={contentRef}>
         <div className="container">
-          {/* Category filter */}
-          <div className="flex flex-wrap gap-2 mb-10">
-            {categories.map((c) => (
+          {showEmpty ? (
+            <div className="bl-empty">
+              <svg width="72" height="72" viewBox="0 0 72 72" fill="none" style={{ margin: "0 auto 16px", display: "block", opacity: 0.5 }}>
+                <path d="M14 18 L14 56 Q14 60 18 60 L36 60 L36 18 Q36 14 32 14 L18 14 Q14 14 14 18 Z" stroke="var(--oxford-20)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                <path d="M36 18 L36 60 L54 60 Q58 60 58 56 L58 18 Q58 14 54 14 L40 14 Q36 14 36 18 Z" stroke="var(--oxford-20)" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                <line x1="20" y1="24" x2="30" y2="24" stroke="var(--oxford-10)" strokeWidth="1.5" strokeLinecap="round" />
+                <line x1="20" y1="30" x2="30" y2="30" stroke="var(--oxford-10)" strokeWidth="1.5" strokeLinecap="round" />
+                <line x1="42" y1="24" x2="52" y2="24" stroke="var(--oxford-10)" strokeWidth="1.5" strokeLinecap="round" />
+                <line x1="42" y1="30" x2="52" y2="30" stroke="var(--oxford-10)" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <h3>Bu kateqoriyada məqalə hələ yoxdur.</h3>
               <button
-                key={c}
-                onClick={() => setActiveCategory(c)}
-                className="text-xs font-medium px-3.5 py-2 rounded-full transition-all duration-200"
-                style={activeCategory === c
-                  ? { background: "#002147", color: "#fff" }
-                  : { background: "#F0F4FA", color: "#52718F", border: "1px solid #C0D2E6" }
-                }
+                className="btn btn-ghost"
+                style={{ borderRadius: "var(--r-btn)" }}
+                onClick={() => setActive("Hamısı")}
               >
-                {c}
+                Bütün yazıları göstər
               </button>
-            ))}
-          </div>
-
-          {filtered.length === 0 ? (
-            <div className="text-center py-20 text-[#52718F]">Bu kateqoriyada məqalə yoxdur.</div>
+            </div>
           ) : (
             <>
               {/* Featured */}
               {featured && (
-                <div className="card flex flex-col md:flex-row gap-0 mb-8 overflow-hidden cursor-pointer group">
-                  <div className="md:w-64 h-48 md:h-auto flex items-center justify-center text-8xl flex-shrink-0"
-                    style={{ background: "linear-gradient(135deg, #E0EBF7, #EDE9F8)" }}>
-                    {featured.emoji}
+                <article
+                  className="bl-featured"
+                  style={{
+                    borderLeftColor: featured.categoryColor,
+                    opacity: contentVisible ? 1 : 0,
+                    transform: contentVisible ? "translateY(0)" : "translateY(20px)",
+                    transition: "opacity 0.7s ease, transform 0.7s ease",
+                  }}
+                >
+                  <div
+                    className="bl-featured-img"
+                    style={{ background: `linear-gradient(135deg, ${featured.categoryBg} 0%, rgba(238,244,255,0.6) 100%)` }}
+                  >
+                    <div className="bl-featured-emoji">{featured.emoji}</div>
                   </div>
-                  <div className="p-7 flex flex-col justify-center flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="text-xs font-semibold px-3 py-1 rounded-full"
-                        style={{ background: featured.categoryBg, color: featured.categoryColor }}>
+                  <div className="bl-featured-body">
+                    <div className="bl-meta">
+                      <span className="bl-cat-tag" style={{ background: featured.categoryBg, color: featured.categoryColor }}>
                         {featured.category}
                       </span>
-                      <span className="text-xs text-[#52718F]">{featured.readTimeMinutes} dəq oxuma</span>
-                      <span className="text-xs text-[#52718F]">{formatDate(featured.publishedDate)}</span>
+                      <span className="bl-meta-text">{featured.readTimeMinutes} dəq · {formatDate(featured.publishedDate)}</span>
                     </div>
-                    <h2 className="text-2xl font-bold text-[#0D1B2E] mb-2 group-hover:text-[#002147] transition-colors">
-                      {featured.title}
-                    </h2>
-                    <p className="text-[#52718F] text-sm leading-relaxed mb-4">{featured.excerpt}</p>
-                    <button className="text-sm font-semibold flex items-center gap-1.5 w-fit" style={{ color: "#002147" }}>
-                      Oxu
-                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                    <h2 className="bl-featured-title">{featured.title}</h2>
+                    <p className="bl-featured-excerpt">{featured.excerpt}</p>
+                    <button className="bl-link">
+                      Oxu <ArrowIcon size={14} />
                     </button>
                   </div>
-                </div>
+                </article>
               )}
 
-              {/* Rest */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {rest.map((post) => (
-                  <div key={post.id} className="card p-5 flex flex-col gap-4 cursor-pointer group">
-                    <div className="w-14 h-14 rounded-xl flex items-center justify-center text-3xl"
-                      style={{ background: post.categoryBg }}>
+              {/* Grid */}
+              <div className="bl-grid">
+                {regular.map((post, i) => (
+                  <article
+                    className="bl-card"
+                    key={post.id}
+                    style={{
+                      opacity: contentVisible ? 1 : 0,
+                      transform: contentVisible ? "translateY(0)" : "translateY(24px)",
+                      transition: `opacity 0.6s ease ${0.08 * i}s, transform 0.6s ease ${0.08 * i}s`,
+                    }}
+                  >
+                    <div className="bl-card-emoji" style={{ background: post.categoryBg }}>
                       {post.emoji}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                          style={{ background: post.categoryBg, color: post.categoryColor }}>
-                          {post.category}
-                        </span>
-                        <span className="text-xs text-[#52718F]">{post.readTimeMinutes} dəq</span>
-                      </div>
-                      <h3 className="font-bold text-[#0D1B2E] mb-1.5 group-hover:text-[#002147] transition-colors leading-snug">
-                        {post.title}
-                      </h3>
-                      <p className="text-xs text-[#52718F] leading-relaxed line-clamp-3">{post.excerpt}</p>
+                    <div className="bl-card-meta">
+                      <span className="bl-cat-tag" style={{ background: post.categoryBg, color: post.categoryColor }}>
+                        {post.category}
+                      </span>
+                      <span className="bl-meta-text">{post.readTimeMinutes} dəq</span>
                     </div>
-                    <div className="flex items-center justify-between mt-auto pt-3" style={{ borderTop: "1px solid #E4EDF6" }}>
-                      <span className="text-xs text-[#52718F]">{formatDate(post.publishedDate)}</span>
-                      <button className="text-xs font-semibold flex items-center gap-1" style={{ color: "#002147" }}>
-                        Oxu
-                        <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                          <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                    <h3 className="bl-card-title">{post.title}</h3>
+                    <p className="bl-card-excerpt">{post.excerpt}</p>
+                    <div className="bl-card-foot">
+                      <span className="bl-meta-text">{formatDate(post.publishedDate)}</span>
+                      <button className="bl-link bl-link-sm">
+                        Oxu <ArrowIcon size={12} />
                       </button>
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
             </>
           )}
         </div>
-      </div>
-    </div>
+      </section>
+
+      {/* NEWSLETTER */}
+      <section className="bl-newsletter" ref={newsRef}>
+        <div
+          className="container bl-news-inner"
+          style={{
+            opacity: newsVisible ? 1 : 0,
+            transform: newsVisible ? "translateY(0)" : "translateY(20px)",
+            transition: "opacity 0.7s ease, transform 0.7s ease",
+          }}
+        >
+          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "var(--oxford-60)" }}>
+            Abunə ol
+          </p>
+          <h2>Mental sağlamlıq haqqında<br />həftəlik yazılar</h2>
+          <p>
+            Mütəxəssislərimizin tövsiyələri birbaşa e-poçtunuza. Spam yox, yalnız faydalı oxu.
+          </p>
+          <form className="bl-news-form" onSubmit={(e) => e.preventDefault()}>
+            <input type="email" placeholder="email@nümunə.com" />
+            <button type="submit" className="btn btn-primary" style={{ borderRadius: 10, height: 52 }}>
+              Abunə ol
+            </button>
+          </form>
+          <div className="bl-news-trust">
+            <svg width="12" height="12" fill="none" stroke="var(--oxford-60)" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            İstədiyiniz vaxt abunəlikdən çıxa bilərsiniz
+          </div>
+        </div>
+      </section>
+
+    </main>
   );
 }

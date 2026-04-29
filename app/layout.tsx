@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Poppins, Playfair_Display } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import BookingModal from "@/components/BookingModal";
-import MoodGate from "@/components/MoodGate";
+import SiteChrome from "@/components/SiteChrome";
 import { BookingProvider } from "@/context/BookingContext";
 import { MoodProvider } from "@/context/MoodContext";
 
@@ -13,6 +10,13 @@ const poppins = Poppins({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
   variable: "--font-poppins",
+  display: "swap",
+});
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-playfair",
   display: "swap",
 });
 
@@ -44,18 +48,14 @@ export default async function RootLayout({
   const isPanel = subdomain !== null && PANEL_SUBDOMAINS.has(subdomain);
 
   return (
-    <html lang="az" className={poppins.variable}>
-      <body className="min-h-screen flex flex-col">
+    <html lang="az" className={`${poppins.variable} ${playfair.variable}`} suppressHydrationWarning>
+      <body className="min-h-screen flex flex-col" suppressHydrationWarning>
         {isPanel ? (
           children
         ) : (
           <MoodProvider>
             <BookingProvider>
-              <MoodGate />
-              <Navbar />
-              <main className="flex-1">{children}</main>
-              <Footer />
-              <BookingModal />
+              <SiteChrome>{children}</SiteChrome>
             </BookingProvider>
           </MoodProvider>
         )}

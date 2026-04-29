@@ -32,7 +32,7 @@ export default function Announcements({ announcements }: { announcements: Announ
   return (
     <section
       className="section"
-      style={{ background: "linear-gradient(180deg, #E0EBF7 0%, #F0F4FA 100%)" }}
+      style={{ background: "#F4F7FB" }}
     >
       <div className="container">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12">
@@ -40,7 +40,7 @@ export default function Announcements({ announcements }: { announcements: Announ
             <p className="section-label">Xəbərlər</p>
             <h2
               className="text-3xl sm:text-4xl font-bold"
-              style={{ fontFamily: "var(--font-playfair, serif)", color: "#1A2535" }}
+              style={{  color: "#1A2535" }}
             >
               Elanlar & Yeniliklər
             </h2>

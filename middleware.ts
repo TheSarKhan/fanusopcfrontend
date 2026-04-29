@@ -71,7 +71,11 @@ export function middleware(request: NextRequest) {
   const targetPrefix = subdomain ? SUBDOMAIN_PATH[subdomain] : null;
 
   // No panel subdomain → main site, no auth needed
-  if (!targetPrefix) return NextResponse.next();
+  if (!targetPrefix) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-pathname", pathname);
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
 
   // ── Production only: server-side auth via HttpOnly cookie ─────────────────
   // In dev (localhost) cookies can't cross subdomains so PanelAuthGuard

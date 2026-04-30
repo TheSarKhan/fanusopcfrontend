@@ -56,7 +56,7 @@ const SUBDOMAIN_PATH: Record<string, string> = {
   admin: "/admin",
 };
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const host = request.headers.get("host") || "";
   const subdomain = getSubdomain(host);
   const { pathname } = request.nextUrl;

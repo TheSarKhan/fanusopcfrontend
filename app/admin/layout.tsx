@@ -1,133 +1,186 @@
 "use client";
 
+import "./admin.css";
 import { usePathname } from "next/navigation";
-import { logout } from "@/lib/api";
-import { getMainSiteUrl } from "@/lib/auth";
+import { useEffect, useState } from "react";
+import { adminApi, logout } from "@/lib/api";
+import { getMainSiteUrl, getStoredUser } from "@/lib/auth";
 import PanelAuthGuard from "@/components/PanelAuthGuard";
+import {
+  IconHome,
+  IconContent,
+  IconUser,
+  IconCalendar,
+  IconMegaphone,
+  IconChart,
+  IconSettings,
+  IconSearch,
+  IconBell,
+  IconClock,
+  IconChevron,
+  IconLogout,
+} from "./_components/icons";
 
-const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard", icon: "⬛" },
-  { href: "/admin/psychologists", label: "Psixoloqlar", icon: "👤" },
-  { href: "/admin/stats", label: "Statistika", icon: "📊" },
-  { href: "/admin/announcements", label: "Elanlar", icon: "📢" },
-  { href: "/admin/blog", label: "Bloq", icon: "📝" },
-  { href: "/admin/faqs", label: "FAQ", icon: "❓" },
-  { href: "/admin/testimonials", label: "Rəylər", icon: "⭐" },
-  { href: "/admin/appointments", label: "Randevular", icon: "📅" },
-  { href: "/admin/config", label: "Konfiqurasiya", icon: "⚙️" },
+type NavItem = {
+  href: string;
+  label: string;
+  Icon: React.ComponentType<{ size?: number; className?: string }>;
+  badgeKey?: "content" | "appointments";
+};
+
+const NAV_MAIN: NavItem[] = [
+  { href: "/admin", label: "Dashboard", Icon: IconHome },
+  { href: "/admin/content", label: "Kontent", Icon: IconContent, badgeKey: "content" },
+  { href: "/admin/psychologists", label: "Psixoloqlar", Icon: IconUser },
+  { href: "/admin/appointments", label: "Randevular", Icon: IconCalendar, badgeKey: "appointments" },
+  { href: "/admin/announcements", label: "Elanlar", Icon: IconMegaphone },
 ];
+
+const NAV_ANALYTICS: NavItem[] = [
+  { href: "/admin/reports", label: "Statistikalar", Icon: IconChart },
+];
+
+const NAV_SYSTEM: NavItem[] = [
+  { href: "/admin/settings", label: "Sistem parametrləri", Icon: IconSettings },
+];
+
+const TITLE_MAP: Record<string, string> = {
+  "/admin": "Dashboard",
+  "/admin/content": "Kontent idarəsi",
+  "/admin/psychologists": "Psixoloqlar",
+  "/admin/appointments": "Randevular",
+  "/admin/announcements": "Elanlar",
+  "/admin/reports": "Statistikalar",
+  "/admin/settings": "Sistem parametrləri",
+  "/admin/blog": "Bloq",
+  "/admin/stats": "Statistika",
+  "/admin/faqs": "FAQ",
+  "/admin/testimonials": "Rəylər",
+  "/admin/config": "Konfiqurasiya",
+};
+
+function NavSection({ items, badges, pathname }: { items: NavItem[]; badges: Record<string, number | undefined>; pathname: string }) {
+  return (
+    <>
+      {items.map(({ href, label, Icon, badgeKey }) => {
+        const active = href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+        const badgeVal = badgeKey ? badges[badgeKey] : undefined;
+        return (
+          <a key={href} href={href} className={`nav-item${active ? " active" : ""}`}>
+            <Icon size={16} className="ic" />
+            <span>{label}</span>
+            {badgeVal !== undefined && badgeVal > 0 && <span className="badge">{badgeVal}</span>}
+          </a>
+        );
+      })}
+    </>
+  );
+}
 
 function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [badges, setBadges] = useState<Record<string, number | undefined>>({});
+  const [me, setMe] = useState<{ name: string; initials: string; role: string }>({
+    name: "Admin",
+    initials: "AD",
+    role: "Super admin",
+  });
+
+  useEffect(() => {
+    const u = getStoredUser();
+    if (u) {
+      const first = u.firstName ?? "";
+      const last = u.lastName ?? "";
+      const name = (first + " " + last).trim() || u.email;
+      const initials = ((first[0] ?? "") + (last[0] ?? "")).toUpperCase() || (u.email?.[0] ?? "A").toUpperCase();
+      setMe({ name, initials, role: "Super admin" });
+    }
+    adminApi
+      .getDashboard()
+      .then((d) => {
+        const counts = d as Record<string, number>;
+        setBadges({
+          content: counts.blogPosts ?? counts.content,
+          appointments: counts.pendingAppointments ?? counts.appointments,
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   const handleLogout = async () => {
     await logout();
     window.location.href = `${getMainSiteUrl()}?_logout=1`;
   };
 
+  const crumb = TITLE_MAP[pathname] ?? Object.entries(TITLE_MAP).find(([k]) => pathname.startsWith(k + "/"))?.[1] ?? "";
+
   return (
-    <div className="flex min-h-screen" style={{ background: "#F0F4FA" }}>
-      <aside
-        style={{
-          width: 240,
-          background:
-            "linear-gradient(180deg, #0F1C2E 0%, #1E3A5F 60%, #2A57B0 100%)",
-          display: "flex",
-          flexDirection: "column",
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            padding: "1.5rem 1.25rem",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm"
-              style={{ background: "rgba(255,255,255,0.15)" }}
-            >
-              F
-            </div>
+    <div className="admin-shell">
+      <div className="app">
+        <aside className="sidebar">
+          <div className="brand">
+            <div className="brand-mark">F</div>
             <div>
-              <p className="font-bold text-white text-sm">Fanus Admin</p>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-                İdarəetmə paneli
-              </p>
+              <div className="brand-name">Fanus</div>
+              <div className="brand-sub">Admin</div>
             </div>
           </div>
-        </div>
 
-        <nav className="flex-1 py-4 px-3 flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => {
-            const active =
-              pathname === item.href ||
-              (item.href !== "/admin" && pathname.startsWith(item.href));
-            return (
-              <a
-                key={item.href}
-                href={item.href}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.75rem",
-                  padding: "0.625rem 0.875rem",
-                  borderRadius: "0.75rem",
-                  fontSize: "0.875rem",
-                  fontWeight: active ? 600 : 400,
-                  color: active ? "#fff" : "rgba(255,255,255,0.55)",
-                  background: active
-                    ? "rgba(255,255,255,0.12)"
-                    : "transparent",
-                  textDecoration: "none",
-                  transition: "all 0.15s",
-                }}
-              >
-                <span style={{ fontSize: "1rem" }}>{item.icon}</span>
-                {item.label}
-              </a>
-            );
-          })}
-        </nav>
+          <div className="nav-label">Əsas</div>
+          <NavSection items={NAV_MAIN} badges={badges} pathname={pathname} />
 
-        <div
-          style={{
-            padding: "1rem",
-            borderTop: "1px solid rgba(255,255,255,0.08)",
-          }}
-        >
-          <button
-            onClick={handleLogout}
-            style={{
-              width: "100%",
-              padding: "0.625rem 0.875rem",
-              borderRadius: "0.75rem",
-              fontSize: "0.875rem",
-              color: "rgba(255,255,255,0.55)",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem",
-            }}
-          >
-            <span>🚪</span> Çıxış
-          </button>
-        </div>
-      </aside>
+          <div className="nav-label">Analitika</div>
+          <NavSection items={NAV_ANALYTICS} badges={badges} pathname={pathname} />
 
-      <main className="flex-1 overflow-auto p-8">{children}</main>
+          <div className="nav-label">Sistem</div>
+          <NavSection items={NAV_SYSTEM} badges={badges} pathname={pathname} />
+
+          <div className="sidebar-footer">
+            <div className="avatar">{me.initials}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="me-name" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {me.name}
+              </div>
+              <div className="me-role">{me.role}</div>
+            </div>
+            <button className="logout-btn" onClick={handleLogout} title="Çıxış">
+              <IconLogout size={14} />
+            </button>
+            <IconChevron size={14} style={{ color: "var(--ox-300)" }} />
+          </div>
+        </aside>
+
+        <main>
+          <div className="topbar">
+            <div className="crumbs">
+              <span>Admin</span>
+              <span className="crumb-sep">/</span>
+              <strong>{crumb}</strong>
+            </div>
+            <div className="topbar-right">
+              <div className="search-box">
+                <IconSearch size={14} style={{ color: "var(--muted)" }} />
+                <input placeholder="İstifadəçi, məqalə, randevu axtar..." />
+                <span className="kbd">⌘K</span>
+              </div>
+              <button className="icon-btn" title="Bildirişlər">
+                <IconBell size={15} />
+                <span className="dot-notif" />
+              </button>
+              <button className="icon-btn" title="Saat">
+                <IconClock size={15} />
+              </button>
+            </div>
+          </div>
+
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <PanelAuthGuard requiredRole="ADMIN">
       <AdminShell>{children}</AdminShell>

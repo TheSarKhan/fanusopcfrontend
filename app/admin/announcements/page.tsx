@@ -1,20 +1,36 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { adminApi, type Announcement } from "@/lib/api";
+import { IconPlus } from "../_components/icons";
 
 const EMPTY: Omit<Announcement, "id"> = {
-  category: "", categoryColor: "#002147", categoryBg: "#E0EBF7",
-  title: "", excerpt: "", publishedDate: new Date().toISOString().split("T")[0],
-  iconType: "STAR", active: true,
+  category: "Yenilik",
+  categoryColor: "#002147",
+  categoryBg: "#eef1f7",
+  title: "",
+  excerpt: "",
+  publishedDate: new Date().toISOString().split("T")[0],
+  iconType: "STAR",
+  active: true,
 };
+
+const ICONS: Record<string, string> = {
+  STAR: "⭐",
+  GROUP: "👥",
+  VIDEO: "🎥",
+};
+
+function statusOf(a: Announcement): "active" | "scheduled" | "archived" {
+  if (!a.active) return "archived";
+  if (a.publishedDate && new Date(a.publishedDate) > new Date()) return "scheduled";
+  return "active";
+}
 
 export default function AnnouncementsPage() {
   const [items, setItems] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<{ open: boolean; item: Omit<Announcement, "id">; id?: number }>({
-    open: false, item: { ...EMPTY },
-  });
+  const [modal, setModal] = useState<{ open: boolean; item: Omit<Announcement, "id">; id?: number } | null>(null);
   const [saving, setSaving] = useState(false);
 
   const load = () => {
@@ -23,132 +39,152 @@ export default function AnnouncementsPage() {
   };
   useEffect(() => { load(); }, []);
 
-  const handleSave = async () => {
+  const openCreate = () => setModal({ open: true, item: { ...EMPTY } });
+  const openEdit = (a: Announcement) => setModal({ open: true, item: { ...a }, id: a.id });
+  const close = () => setModal(null);
+
+  const save = async () => {
+    if (!modal) return;
     setSaving(true);
     try {
       if (modal.id) await adminApi.updateAnnouncement(modal.id, modal.item);
       else await adminApi.createAnnouncement(modal.item);
-      setModal({ open: false, item: { ...EMPTY } });
+      close();
       load();
-    } catch (e: unknown) { alert((e instanceof Error ? e.message : "Xəta")); }
+    } catch (e) { alert((e as Error).message); }
     finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: number) => {
+  const remove = async (id: number) => {
     if (!confirm("Silmək istədiyinizə əminsiniz?")) return;
-    await adminApi.deleteAnnouncement(id).catch(e => alert(e.message));
-    load();
+    try { await adminApi.deleteAnnouncement(id); load(); }
+    catch (e) { alert((e as Error).message); }
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="page">
+      <div className="page-head">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A2535]" style={{ fontFamily: "var(--font-playfair, serif)" }}>Elanlar</h1>
-          <p className="text-[#52718F] text-sm mt-1">{items.length} qeyd</p>
+          <h1 className="page-title">Elanlar</h1>
+          <p className="page-sub">Veb saytın elan bölməsində dərc olunan bildirişlər və kampaniyalar.</p>
         </div>
-        <button onClick={() => setModal({ open: true, item: { ...EMPTY } })}
-          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-          style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}>
-          + Əlavə et
-        </button>
+        <div className="page-actions">
+          <button className="btn primary" onClick={openCreate}>
+            <IconPlus size={14} style={{ stroke: "#fff" } as React.CSSProperties} />
+            Yeni elan
+          </button>
+        </div>
       </div>
 
-      {loading ? <div className="text-center text-[#52718F] py-12">Yüklənir...</div> : (
-        <div className="flex flex-col gap-3">
-          {items.map(a => (
-            <div key={a.id} className="bg-white rounded-2xl p-5 flex items-start gap-4" style={{ border: "1px solid #E4EDF6" }}>
-              <span className="text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0"
-                style={{ background: a.categoryBg, color: a.categoryColor }}>
-                {a.category}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-[#1A2535] text-sm">{a.title}</p>
-                <p className="text-xs text-[#52718F] mt-0.5 line-clamp-1">{a.excerpt}</p>
+      {loading && <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Yüklənir…</div>}
+
+      {!loading && (
+        <div className="grid-3">
+          {items.map((a) => {
+            const status = statusOf(a);
+            return (
+              <div key={a.id} className="card" style={{ overflow: "hidden" }}>
+                <div className="img-ph" style={{ height: 140, borderRadius: 0, borderLeft: 0, borderRight: 0, borderTop: 0, background: a.categoryBg, color: a.categoryColor }}>
+                  <span style={{ fontSize: 32 }}>{ICONS[a.iconType] ?? "📢"}</span>
+                </div>
+                <div className="card-pad">
+                  <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+                    {status === "active" && <span className="pill sage"><span className="dot" />Aktiv</span>}
+                    {status === "scheduled" && <span className="pill gold"><span className="dot" />Cədvəldə</span>}
+                    {status === "archived" && <span className="pill muted"><span className="dot" />Arxiv</span>}
+                    <span style={{ fontSize: 11, color: "var(--muted)" }}>{a.publishedDate}</span>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>{a.title}</div>
+                  <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 12px", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    {a.excerpt}
+                  </p>
+                  <div className="row" style={{ justifyContent: "space-between", fontSize: 11.5 }}>
+                    <span className="pill ox">{a.category}</span>
+                    <div className="row" style={{ gap: 4 }}>
+                      <button className="btn sm ghost" onClick={() => openEdit(a)}>Redaktə</button>
+                      <button className="btn sm danger" onClick={() => remove(a.id)}>Sil</button>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <span className="text-xs text-[#52718F] flex-shrink-0">{a.publishedDate}</span>
-              <div className="flex gap-2 flex-shrink-0">
-                <button onClick={() => setModal({ open: true, item: { ...a }, id: a.id })}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#002147]"
-                  style={{ background: "#EEF5FF" }}>Redaktə</button>
-                <button onClick={() => handleDelete(a.id)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600"
-                  style={{ background: "#fee2e2" }}>Sil</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
+
+          <button className="card" onClick={openCreate}
+            style={{ borderStyle: "dashed", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", padding: 30, cursor: "pointer", color: "var(--muted)", fontFamily: "inherit", fontSize: 13, fontWeight: 600, gap: 8, minHeight: 300 }}>
+            <IconPlus size={20} />
+            Yeni elan əlavə et
+          </button>
         </div>
       )}
 
-      {modal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(15,28,46,0.5)", backdropFilter: "blur(4px)" }}>
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-[#EEF4FB]">
-              <h2 className="font-bold text-[#1A2535]">{modal.id ? "Elanı redaktə et" : "Yeni elan"}</h2>
-              <button onClick={() => setModal({ open: false, item: { ...EMPTY } })}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[#52718F] hover:bg-[#EEF4FB]">✕</button>
+      {modal && (
+        <div className="admin-shell-modal" onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
+          <div className="modal">
+            <div className="modal-head">
+              <div className="modal-title">{modal.id ? "Elanı redaktə et" : "Yeni elan"}</div>
+              <button className="btn ghost icon-only sm" onClick={close}>✕</button>
             </div>
-            <div className="p-6 flex flex-col gap-4">
-              {[
-                { label: "Kateqoriya", field: "category", placeholder: "Yenilik" },
-                { label: "Kateqoriya rəngi", field: "categoryColor", placeholder: "#002147" },
-                { label: "Kateqoriya arxa plan", field: "categoryBg", placeholder: "#E0EBF7" },
-                { label: "Başlıq", field: "title", placeholder: "Elan başlığı" },
-              ].map(({ label, field, placeholder }) => (
-                <div key={field}>
-                  <label className="block text-xs font-semibold text-[#1A2535] mb-1">{label}</label>
-                  <input type="text" placeholder={placeholder}
-                    value={(modal.item as Record<string, unknown>)[field] as string ?? ""}
-                    onChange={e => setModal(m => ({ ...m, item: { ...m.item, [field]: e.target.value } }))}
-                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                    style={{ border: "1.5px solid #C0D2E6", background: "#FAFCFF" }} />
-                </div>
-              ))}
-              <div>
-                <label className="block text-xs font-semibold text-[#1A2535] mb-1">İkon tipi</label>
-                <select value={modal.item.iconType}
-                  onChange={e => setModal(m => ({ ...m, item: { ...m.item, iconType: e.target.value } }))}
-                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                  style={{ border: "1.5px solid #C0D2E6", background: "#FAFCFF" }}>
-                  <option value="STAR">⭐ STAR</option>
-                  <option value="GROUP">👥 GROUP</option>
-                  <option value="VIDEO">🎥 VIDEO</option>
-                </select>
+            <div className="modal-body">
+              <Field label="Başlıq">
+                <input className="input" value={modal.item.title}
+                  onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, title: e.target.value } }))} />
+              </Field>
+              <div style={{ marginTop: 12 }} />
+              <Field label="Mətn / xülasə">
+                <textarea className="textarea" value={modal.item.excerpt}
+                  onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, excerpt: e.target.value } }))} />
+              </Field>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 12 }}>
+                <Field label="Kateqoriya">
+                  <input className="input" value={modal.item.category}
+                    onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, category: e.target.value } }))} />
+                </Field>
+                <Field label="İkon">
+                  <select className="select" value={modal.item.iconType}
+                    onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, iconType: e.target.value } }))}>
+                    <option value="STAR">⭐ Star</option>
+                    <option value="GROUP">👥 Group</option>
+                    <option value="VIDEO">🎥 Video</option>
+                  </select>
+                </Field>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-[#1A2535] mb-1">Mətn</label>
-                <textarea rows={4} placeholder="Elan mətni..."
-                  value={modal.item.excerpt}
-                  onChange={e => setModal(m => ({ ...m, item: { ...m.item, excerpt: e.target.value } }))}
-                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-none"
-                  style={{ border: "1.5px solid #C0D2E6", background: "#FAFCFF" }} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 12 }}>
+                <Field label="Rəng">
+                  <input className="input mono" value={modal.item.categoryColor}
+                    onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, categoryColor: e.target.value } }))} />
+                </Field>
+                <Field label="Arxa plan">
+                  <input className="input mono" value={modal.item.categoryBg}
+                    onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, categoryBg: e.target.value } }))} />
+                </Field>
+                <Field label="Tarix">
+                  <input className="input" type="date" value={modal.item.publishedDate}
+                    onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, publishedDate: e.target.value } }))} />
+                </Field>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-[#1A2535] mb-1">Tarix</label>
-                <input type="date" value={modal.item.publishedDate}
-                  onChange={e => setModal(m => ({ ...m, item: { ...m.item, publishedDate: e.target.value } }))}
-                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                  style={{ border: "1.5px solid #C0D2E6", background: "#FAFCFF" }} />
+              <div className="row" style={{ marginTop: 14, gap: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>Aktiv</span>
+                <button className={`switch${modal.item.active ? " on" : ""}`}
+                  onClick={() => setModal((m) => m && ({ ...m, item: { ...m.item, active: !m.item.active } }))} />
               </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={modal.item.active}
-                  onChange={e => setModal(m => ({ ...m, item: { ...m.item, active: e.target.checked } }))} />
-                <span className="text-sm text-[#1A2535]">Aktiv</span>
-              </label>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setModal({ open: false, item: { ...EMPTY } })}
-                  className="flex-1 py-3 rounded-xl text-sm font-semibold text-[#52718F] hover:bg-[#EEF4FB]">Ləğv et</button>
-                <button onClick={handleSave} disabled={saving}
-                  className="flex-1 py-3 rounded-xl text-sm font-bold text-white"
-                  style={{ background: saving ? "#52718F" : "linear-gradient(135deg, #002147, #5A4FC8)" }}>
-                  {saving ? "Saxlanır..." : "Saxla"}
-                </button>
-              </div>
+            </div>
+            <div className="modal-foot">
+              <button className="btn" onClick={close}>Ləğv et</button>
+              <button className="btn primary" onClick={save} disabled={saving}>{saving ? "Saxlanır…" : "Saxla"}</button>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 4 }}>{label}</div>
+      {children}
     </div>
   );
 }

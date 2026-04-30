@@ -232,9 +232,49 @@ export const resetPassword = (token: string, newPassword: string) =>
     return body;
   });
 
+// ─── Dashboard metrics ────────────────────────────────────────────────────────
+export interface StatBlock { value: number; secondary: number | null; deltaPercent: number | null; label: string; }
+export interface DailyFlow { date: string; confirmed: number; pending: number; cancelled: number; }
+export interface ActivityEntry { type: string; tone: string; title: string; meta: string; at: string | null; }
+export interface TopArticle { rank: number; title: string; author: string; category: string; views: number; deltaPct: number | null; }
+export interface TopicSlice { label: string; percent: number; color: string; }
+export interface DashboardMetrics {
+  totalUsers: StatBlock;
+  activePsychologists: StatBlock;
+  pendingAppointments: StatBlock;
+  newMessages: StatBlock;
+  articleReads: StatBlock;
+  appointmentFlow: DailyFlow[];
+  recentActivity: ActivityEntry[];
+  topArticles: TopArticle[];
+  topicDistribution: TopicSlice[];
+  systemStatus: Record<string, string>;
+}
+
+// ─── Reports types ────────────────────────────────────────────────────────────
+export interface HeadlineMetric { value: number; unit: string; deltaAbs: number; deltaUnit: string; label: string; }
+export interface FunnelStep { label: string; count: number; pctOfTotal: number; color: string; }
+export interface TrafficSource { label: string; percent: number; color: string; }
+export interface TopConvertingArticle { title: string; views: number; requests: number; conversionRate: number; }
+export interface PsychologistPerformance { initials: string; avatarColor: string; name: string; sessions: number; completionPct: number; rating: number; }
+export interface ReportsData {
+  conversion: HeadlineMetric;
+  completion: HeadlineMetric;
+  averageRating: HeadlineMetric;
+  activeUsers: HeadlineMetric;
+  funnel: FunnelStep[];
+  trafficSources: TrafficSource[];
+  hourlyHeatmap: number[][];
+  topConverting: TopConvertingArticle[];
+  performance: PsychologistPerformance[];
+}
+
 // ─── Admin API ────────────────────────────────────────────────────────────────
 export const adminApi = {
   getDashboard: () => authedRequest<Record<string, number>>("GET", "/admin/dashboard"),
+  getDashboardMetrics: () => authedRequest<DashboardMetrics>("GET", "/admin/dashboard/metrics"),
+  getUsersSummary: () => authedRequest<Record<string, number>>("GET", "/admin/users/summary"),
+  getReports: () => authedRequest<ReportsData>("GET", "/admin/reports"),
 
   // Psychologists
   getPsychologists: () => authedRequest<Psychologist[]>("GET", "/admin/psychologists"),

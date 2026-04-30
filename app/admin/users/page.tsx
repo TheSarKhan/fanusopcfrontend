@@ -111,8 +111,7 @@ export default function UsersPage() {
   const [appLoading, setAppLoading] = useState(false);
 
   // Profile Form state
-  const EMPTY_PROFILE = { name: "", title: "", experience: "", sessionsCount: "", rating: "0.0", bio: "", languages: "", sessionTypes: "", activityFormat: "", university: "", degree: "", graduationYear: "", phone: "", email: "", photoUrl: "", active: true };
-  const [profData, setProfData] = useState<Partial<typeof EMPTY_PROFILE> | null>(null);
+  const [profData, setProfData] = useState<Omit<Psychologist, "id"> | null>(null);
   const [specsInput, setSpecsInput] = useState("");
   const [profLoading, setProfLoading] = useState(false);
   const [profExists, setProfExists] = useState(false);
@@ -232,7 +231,14 @@ export default function UsersPage() {
     if (!editUser || !profData) return;
     setSaving(true);
     try {
-      const pData = { ...profData, specializations: specsInput.split(",").map((s) => s.trim()).filter(Boolean) };
+      const pData: Omit<Psychologist, "id"> = {
+        ...profData,
+        specializations: specsInput.split(",").map((s) => s.trim()).filter(Boolean),
+        accentColor: profData.accentColor || "#2f5283",
+        bgColor: profData.bgColor || "#eef1f7",
+        displayOrder: profData.displayOrder || 0,
+        active: profData.active ?? true
+      };
       await adminApi.updateUserPsychologistProfile(editUser.id, pData);
       alert("Profil yadda saxlanıldı!");
       load();

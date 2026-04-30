@@ -79,8 +79,8 @@ export default function PsychologistsPage() {
     setFromUserSearch("");
     setFromUserOpen(true);
     setFromUserLoading(true);
-    adminApi.getUsers("PSYCHOLOGIST")
-      .then((users) => setFromUserList(users.filter((u) => !u.inPsychologistList)))
+    adminApi.getUsers({ role: "PSYCHOLOGIST" })
+      .then((res) => setFromUserList(res.content.filter((u) => !u.inPsychologistList)))
       .catch(() => {})
       .finally(() => setFromUserLoading(false));
   };

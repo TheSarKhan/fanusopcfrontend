@@ -1,6 +1,10 @@
 import { storeUser, clearUser, isTokenExpiringSoon, getMainSiteUrl } from "./auth";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+let API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
+if (API_URL.endsWith("/")) API_URL = API_URL.slice(0, -1);
+if (!API_URL.endsWith("/api")) API_URL += "/api";
+
+const BASE = API_URL;
 
 async function get<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {

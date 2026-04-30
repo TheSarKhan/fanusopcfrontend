@@ -1,4 +1,4 @@
-import { storeUser, clearUser } from "./auth";
+import { storeUser, clearUser, isTokenExpiringSoon, getMainSiteUrl } from "./auth";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
@@ -18,13 +18,80 @@ function readTokenCookie(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+function getAccessToken(): string | null {
+  return (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null)
+    ?? readTokenCookie();
+}
+
+function clearSession() {
+  clearUser();
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  document.cookie = "_ft=; domain=localhost; path=/; max-age=0";
+}
+
+function redirectToLogin() {
+  clearSession();
+  if (typeof window !== "undefined") {
+    window.location.href = `${getMainSiteUrl()}/login?session=expired`;
+  }
+}
+
+// Singleton refresh promise — prevents parallel refresh calls
+let _refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefresh(): Promise<boolean> {
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = _doRefresh().finally(() => { _refreshPromise = null; });
+  return _refreshPromise;
+}
+
+async function _doRefresh(): Promise<boolean> {
+  const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
+  if (!refreshToken) {
+    redirectToLogin();
+    return false;
+  }
+  try {
+    const res = await fetch(`${BASE}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) {
+      redirectToLogin();
+      return false;
+    }
+    const data = await res.json();
+    if (data.accessToken) {
+      localStorage.setItem("accessToken", data.accessToken);
+      document.cookie = `_ft=${encodeURIComponent(data.accessToken)}; domain=localhost; path=/; SameSite=Lax; max-age=900`;
+    }
+    if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
+    if (data.userId) {
+      storeUser({ userId: data.userId, email: data.email, role: data.role, firstName: data.firstName, lastName: data.lastName });
+    }
+    return true;
+  } catch {
+    redirectToLogin();
+    return false;
+  }
+}
+
 async function authedRequest<T>(
   method: string,
   path: string,
   body?: unknown
 ): Promise<T> {
-  const token = (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null)
-    ?? readTokenCookie();
+  // Proactive refresh: if token expires within 60 s, refresh before the request
+  const currentToken = getAccessToken();
+  if (currentToken && isTokenExpiringSoon(currentToken, 60)) {
+    await tryRefresh();
+  }
+
+  const token = getAccessToken();
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: "include",
@@ -37,7 +104,26 @@ async function authedRequest<T>(
 
   if (res.status === 401) {
     const refreshed = await tryRefresh();
-    if (refreshed) return authedRequest(method, path, body);
+    if (refreshed) {
+      // Retry once with new token
+      const retryToken = getAccessToken();
+      const retry = await fetch(`${BASE}${path}`, {
+        method,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(retryToken ? { Authorization: `Bearer ${retryToken}` } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!retry.ok) {
+        const err = await retry.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `API error ${retry.status}`);
+      }
+      if (retry.status === 204) return undefined as T;
+      return retry.json();
+    }
+    // redirectToLogin() already called inside tryRefresh
     throw new Error("Unauthorized");
   }
 
@@ -50,30 +136,58 @@ async function authedRequest<T>(
   return res.json();
 }
 
-async function tryRefresh(): Promise<boolean> {
-  const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
-  try {
-    const res = await fetch(`${BASE}/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: refreshToken ? JSON.stringify({ refreshToken }) : undefined,
-    });
-    if (!res.ok) return false;
-    const data = await res.json();
-    if (data.accessToken) localStorage.setItem("accessToken", data.accessToken);
-    if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
-    return true;
-  } catch {
-    return false;
+async function authedBlobRequest(
+  method: string,
+  path: string,
+  body?: unknown
+): Promise<Blob> {
+  const currentToken = getAccessToken();
+  if (currentToken && isTokenExpiringSoon(currentToken, 60)) {
+    await tryRefresh();
   }
+
+  const token = getAccessToken();
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (res.status === 401) {
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      const retryToken = getAccessToken();
+      const retry = await fetch(`${BASE}${path}`, {
+        method,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(retryToken ? { Authorization: `Bearer ${retryToken}` } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!retry.ok) throw new Error(`API error ${retry.status}`);
+      return retry.blob();
+    }
+    throw new Error("Unauthorized");
+  }
+
+  if (!res.ok) throw new Error(`API error ${res.status}`);
+  return res.blob();
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface Psychologist {
   id: number; name: string; title: string; specializations: string[];
   experience: string; sessionsCount: string; rating: string;
-  photoUrl: string; accentColor: string; bgColor: string;
+  photoUrl?: string; bio?: string; phone?: string; email?: string;
+  languages?: string; sessionTypes?: string; activityFormat?: string;
+  university?: string; degree?: string; graduationYear?: string;
+  accentColor: string; bgColor: string;
   displayOrder: number; active: boolean;
 }
 export interface Stat { id: number; statValue: number; suffix: string; label: string; subLabel: string; displayOrder: number; }
@@ -83,6 +197,13 @@ export interface Faq { id: number; question: string; answer: string; displayOrde
 export interface Testimonial { id: number; quote: string; authorName: string; authorRole: string; initials: string; gradient: string; rating: number; active: boolean; }
 export interface SiteConfig { [key: string]: string; }
 export interface Appointment { id: number; patientName: string; phone: string; psychologistName?: string; note?: string; preferredDate?: string; status: string; createdAt: string; }
+export interface UserRecord {
+  id: number; email: string; role: string;
+  firstName?: string; lastName?: string; phone?: string;
+  emailVerified: boolean; inPsychologistList: boolean; active: boolean;
+  lastLogin?: string; createdAt: string;
+}
+
 export interface PsychologistApplication {
   id: number; firstName: string; lastName: string; email: string; phone?: string;
   university: string; degree: string; graduationYear: string;
@@ -143,10 +264,7 @@ export const login = async (email: string, password: string) => {
 
 export const logout = async () => {
   const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
-  clearUser();
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  document.cookie = "_ft=; domain=localhost; path=/; max-age=0";
+  clearSession();
   try {
     await fetch(`${BASE}/auth/logout`, {
       method: "POST",
@@ -181,7 +299,8 @@ export const registerPsychologist = (
     bio: string; certifications: string[];
   },
   diplomaFile?: File | null,
-  certificateFiles?: File[]
+  certificateFiles?: File[],
+  photoFile?: File | null
 ) => {
   const form = new FormData();
   form.append("email", data.email);
@@ -201,6 +320,7 @@ export const registerPsychologist = (
   data.certifications.forEach(c => form.append("certifications", c));
   if (diplomaFile) form.append("diplomaFile", diplomaFile);
   certificateFiles?.forEach(f => form.append("certificateFiles", f));
+  if (photoFile) form.append("photoFile", photoFile);
 
   return fetch(`${BASE}/auth/register/psychologist`, {
     method: "POST",
@@ -278,7 +398,15 @@ export interface ReportsData {
   performance: PsychologistPerformance[];
 }
 
-// ─── Admin API ────────────────────────────────────────────────────────────────
+export interface PagedUsersResponse {
+  content: UserRecord[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+  roleCounts: Record<string, number>;
+}
+
 export const adminApi = {
   getDashboard: () => authedRequest<Record<string, number>>("GET", "/admin/dashboard"),
   getDashboardMetrics: () => authedRequest<DashboardMetrics>("GET", "/admin/dashboard/metrics"),
@@ -336,6 +464,38 @@ export const adminApi = {
     authedRequest<PsychologistApplication>("PUT", `/admin/applications/${id}/approve`, { adminNote }),
   rejectApplication: (id: number, adminNote?: string) =>
     authedRequest<PsychologistApplication>("PUT", `/admin/applications/${id}/reject`, { adminNote }),
+
+  // Users
+  getUsers: (opts?: { role?: string; q?: string; page?: number; size?: number; sort?: string; dir?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.role) params.set("role", opts.role);
+    if (opts?.q) params.set("q", opts.q);
+    if (opts?.page !== undefined) params.set("page", String(opts.page));
+    if (opts?.size !== undefined) params.set("size", String(opts.size));
+    if (opts?.sort) params.set("sort", opts.sort);
+    if (opts?.dir) params.set("dir", opts.dir);
+    const qs = params.toString();
+    return authedRequest<PagedUsersResponse>("GET", `/admin/users${qs ? "?" + qs : ""}`);
+  },
+  exportUsers: (opts?: { role?: string; q?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.role) params.set("role", opts.role);
+    if (opts?.q) params.set("q", opts.q);
+    const qs = params.toString();
+    return authedBlobRequest("GET", `/admin/users/export${qs ? "?" + qs : ""}`);
+  },
+  updateUser: (id: number, data: { firstName?: string; lastName?: string; phone?: string; role?: string; emailVerified?: boolean; active?: boolean }) =>
+    authedRequest<UserRecord>("PUT", `/admin/users/${id}`, data),
+  deleteUser: (id: number) => authedRequest<void>("DELETE", `/admin/users/${id}`),
+  toggleUserActive: (id: number) => authedRequest<UserRecord>("PUT", `/admin/users/${id}/toggle-active`),
+  addToPsychologists: (id: number) =>
+    authedRequest<{ message: string }>("POST", `/admin/users/${id}/add-to-psychologists`),
+  getUserPsychologistProfile: (id: number) =>
+    authedRequest<Psychologist>("GET", `/admin/users/${id}/psychologist-profile`),
+  updateUserPsychologistProfile: (id: number, data: Omit<Psychologist, "id">) =>
+    authedRequest<Psychologist>("PUT", `/admin/users/${id}/psychologist-profile`, data),
+  getUserApplication: (id: number) =>
+    authedRequest<any>("GET", `/admin/users/${id}/application`),
 
   // Operators
   createOperator: (data: { email: string; firstName: string; lastName: string; phone?: string }) =>

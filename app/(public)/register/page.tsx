@@ -42,7 +42,7 @@ const LANGUAGE_OPTIONS = ["Azərbaycan dili", "Rus dili", "İngilis dili", "Tür
 const ACTIVITY_OPTIONS = [
   { value: "ONLINE", label: "Onlayn" },
   { value: "IN_PERSON", label: "Əyani" },
-  { value: "BOTH", label: "Hər ikisi" },
+  { value: "BOTH", label: "Həm onlayn, həm də əyani" },
 ];
 
 /* ─── Field component ─── */
@@ -186,6 +186,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
   const [education, setEducation] = useState({ university: "", degree: "", graduationYear: "" });
   const [diplomaFile, setDiplomaFile] = useState<File | null>(null);
   const [certificateFiles, setCertificateFiles] = useState<File[]>([]);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [professional, setProfessional] = useState({ specializations: [] as string[], sessionTypes: [] as string[], experienceYears: "", bio: "", certifications: [] as string[], activityFormat: "" });
 
   const setP = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
@@ -210,7 +211,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
     if (!professional.activityFormat) return setError("Fəaliyyət formasını seçin");
     setLoading(true); setError("");
     try {
-      await registerPsychologist({ ...personal, ...education, ...professional }, diplomaFile, certificateFiles);
+      await registerPsychologist({ ...personal, ...education, ...professional }, diplomaFile, certificateFiles, photoFile);
       setSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Qeydiyyat uğursuz oldu");
@@ -249,7 +250,18 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
             <Field label="Soyad"><input className="auth-input" value={personal.lastName} onChange={setP("lastName")} placeholder="Soyadınız" required /></Field>
           </div>
           <Field label="Email"><input type="email" className="auth-input" value={personal.email} onChange={setP("email")} placeholder="email@nümunə.az" required /></Field>
-          <Field label="Telefon"><input type="tel" className="auth-input" value={personal.phone} onChange={setP("phone")} placeholder="+994 50 000 00 00" required /></Field>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <Field label="Telefon"><input type="tel" className="auth-input" value={personal.phone} onChange={setP("phone")} placeholder="+994 50 000 00 00" required /></Field>
+            <Field label="Profil şəkli">
+              <label className="auth-file-label" style={{ height: 42 }}>
+                <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => setPhotoFile(e.target.files?.[0] ?? null)} />
+                <div className="auth-file-box" style={{ height: "100%", padding: "0 12px", justifyContent: "flex-start", gap: 8, fontSize: 13 }}>
+                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{photoFile ? photoFile.name : "Şəkil seç"}</span>
+                </div>
+              </label>
+            </Field>
+          </div>
           <Field label="Bildiyi dillər">
             <div style={{ marginTop: 8 }}>
               <ChipToggle options={LANGUAGE_OPTIONS} selected={personal.languages} onChange={v => setPersonal(p => ({ ...p, languages: v }))} />

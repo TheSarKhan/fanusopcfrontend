@@ -38,8 +38,12 @@ export default function ReportsPage() {
   const period = (() => {
     const to = new Date();
     const from = new Date(to.getFullYear(), to.getMonth(), 1);
-    const fmtDate = (d: Date) => d.toLocaleDateString("az-AZ", { day: "numeric", month: "short" });
-    return `${fmtDate(from)} – ${fmtDate(to)} ${to.getFullYear()}`;
+    const fmt = (d: Date) => {
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      return `${day}.${month}.${d.getFullYear()}`;
+    };
+    return `${fmt(from)} – ${fmt(to)}`;
   })();
 
   return (

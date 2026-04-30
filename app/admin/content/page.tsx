@@ -229,9 +229,12 @@ export default function ContentPage() {
                       <td><span className="pill ox">{p.category}</span></td>
                       <td className="num strong">{p.readTimeMinutes} dəq</td>
                       <td>
-                        {p.publishedDate
-                          ? new Date(p.publishedDate).toLocaleDateString("az-AZ", { day: "numeric", month: "short", year: "numeric" })
-                          : <span className="text-muted">—</span>}
+                        {p.publishedDate ? (() => {
+                          const d = new Date(p.publishedDate);
+                          const day = String(d.getDate()).padStart(2, "0");
+                          const month = String(d.getMonth() + 1).padStart(2, "0");
+                          return `${day}.${month}.${d.getFullYear()}`;
+                        })() : <span className="text-muted">—</span>}
                       </td>
                       <td>
                         <div className="row" style={{ gap: 4 }}>

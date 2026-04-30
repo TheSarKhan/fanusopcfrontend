@@ -220,9 +220,12 @@ export default function AppointmentsPage() {
                             <span>{a.patientName}</span>
                           </div>
                           <span className="ticket-time">
-                            {a.preferredDate
-                              ? new Date(a.preferredDate).toLocaleDateString("az-AZ", { day: "numeric", month: "short" })
-                              : relTime(a.createdAt)}
+                            {a.preferredDate ? (() => {
+                              const d = new Date(a.preferredDate);
+                              const day = String(d.getDate()).padStart(2, "0");
+                              const month = String(d.getMonth() + 1).padStart(2, "0");
+                              return `${day}.${month}.${d.getFullYear()}`;
+                            })() : relTime(a.createdAt)}
                           </span>
                         </div>
                         {a.psychologistName && (

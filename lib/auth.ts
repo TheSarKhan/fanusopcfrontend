@@ -48,6 +48,18 @@ export function isTokenExpired(token: string): boolean {
   return payload.exp * 1000 < Date.now();
 }
 
+export function isTokenExpiringSoon(token: string, bufferSeconds = 60): boolean {
+  const payload = decodeAccessToken(token);
+  if (!payload?.exp) return false;
+  return payload.exp * 1000 < Date.now() + bufferSeconds * 1000;
+}
+
+export function tokenExpiresInMs(token: string): number {
+  const payload = decodeAccessToken(token);
+  if (!payload?.exp) return 0;
+  return Math.max(0, payload.exp * 1000 - Date.now());
+}
+
 const ROLE_SUBDOMAIN: Record<string, string> = {
   PATIENT: "patient",
   PSYCHOLOGIST: "psycholog",

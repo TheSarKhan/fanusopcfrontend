@@ -10,6 +10,7 @@ import {
   IconHome,
   IconContent,
   IconUser,
+  IconUsers,
   IconCalendar,
   IconMegaphone,
   IconChart,
@@ -28,26 +29,28 @@ type NavItem = {
   badgeKey?: "content" | "appointments";
 };
 
+// ── Aktiv modullar (yavas-yavas acilir) ──────────────────────────────────────
 const NAV_MAIN: NavItem[] = [
-  { href: "/admin", label: "Dashboard", Icon: IconHome },
-  { href: "/admin/content", label: "Kontent", Icon: IconContent, badgeKey: "content" },
+  { href: "/admin/users", label: "İstifadəçi idarəsi", Icon: IconUsers },
   { href: "/admin/psychologists", label: "Psixoloqlar", Icon: IconUser },
-  { href: "/admin/appointments", label: "Randevular", Icon: IconCalendar, badgeKey: "appointments" },
-  { href: "/admin/announcements", label: "Elanlar", Icon: IconMegaphone },
 ];
 
-const NAV_ANALYTICS: NavItem[] = [
-  { href: "/admin/reports", label: "Statistikalar", Icon: IconChart },
-];
+// Helelik gizli modullar — hazir olduqca acilaraq
+// { href: "/admin",            label: "Dashboard",          Icon: IconHome },
+// { href: "/admin/appointments",  label: "Randevular",       Icon: IconCalendar },
+// { href: "/admin/announcements", label: "Elanlar",          Icon: IconMegaphone },
+// { href: "/admin/content",       label: "Kontent",          Icon: IconContent },
+// { href: "/admin/reports",       label: "Statistikalar",    Icon: IconChart },
+// { href: "/admin/settings",      label: "Sistem",           Icon: IconSettings },
 
-const NAV_SYSTEM: NavItem[] = [
-  { href: "/admin/settings", label: "Sistem parametrləri", Icon: IconSettings },
-];
+const NAV_ANALYTICS: NavItem[] = [];
+const NAV_SYSTEM: NavItem[] = [];
 
 const TITLE_MAP: Record<string, string> = {
   "/admin": "Dashboard",
   "/admin/content": "Kontent idarəsi",
   "/admin/psychologists": "Psixoloqlar",
+  "/admin/users": "İstifadəçi idarəsi",
   "/admin/appointments": "Randevular",
   "/admin/announcements": "Elanlar",
   "/admin/reports": "Statistikalar",
@@ -126,14 +129,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className="nav-label">Əsas</div>
+          <div className="nav-label">İdarəetmə</div>
           <NavSection items={NAV_MAIN} badges={badges} pathname={pathname} />
-
-          <div className="nav-label">Analitika</div>
-          <NavSection items={NAV_ANALYTICS} badges={badges} pathname={pathname} />
-
-          <div className="nav-label">Sistem</div>
-          <NavSection items={NAV_SYSTEM} badges={badges} pathname={pathname} />
 
           <div className="sidebar-footer">
             <div className="avatar">{me.initials}</div>

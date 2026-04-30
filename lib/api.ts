@@ -83,6 +83,15 @@ export interface Faq { id: number; question: string; answer: string; displayOrde
 export interface Testimonial { id: number; quote: string; authorName: string; authorRole: string; initials: string; gradient: string; rating: number; active: boolean; }
 export interface SiteConfig { [key: string]: string; }
 export interface Appointment { id: number; patientName: string; phone: string; psychologistName?: string; note?: string; preferredDate?: string; status: string; createdAt: string; }
+export interface PsychologistApplication {
+  id: number; firstName: string; lastName: string; email: string; phone?: string;
+  university: string; degree: string; graduationYear: string;
+  specializations?: string; sessionTypes?: string; experienceYears?: string;
+  bio?: string; certifications?: string; languages?: string; activityFormat?: string;
+  diplomaFileUrl?: string; certificateFileUrls?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  adminNote?: string; createdAt: string; reviewedAt?: string;
+}
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 export const getPsychologists = () => get<Psychologist[]>("/psychologists");
@@ -320,6 +329,13 @@ export const adminApi = {
   getAppointments: () => authedRequest<Appointment[]>("GET", "/admin/appointments"),
   updateAppointmentStatus: (id: number, status: string) =>
     authedRequest<Appointment>("PUT", `/admin/appointments/${id}/status`, { status }),
+
+  // Psychologist Applications
+  getApplications: () => authedRequest<PsychologistApplication[]>("GET", "/admin/applications"),
+  approveApplication: (id: number, adminNote?: string) =>
+    authedRequest<PsychologistApplication>("PUT", `/admin/applications/${id}/approve`, { adminNote }),
+  rejectApplication: (id: number, adminNote?: string) =>
+    authedRequest<PsychologistApplication>("PUT", `/admin/applications/${id}/reject`, { adminNote }),
 
   // Operators
   createOperator: (data: { email: string; firstName: string; lastName: string; phone?: string }) =>

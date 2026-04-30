@@ -146,6 +146,7 @@ export default function PsychologistsPage() {
     try {
       await adminApi.approveApplication(id);
       loadApplications();
+      loadPsychologists();
       setDetailApp(null);
     } catch (e) { alert((e as Error).message); }
     finally { setActionLoading(false); }

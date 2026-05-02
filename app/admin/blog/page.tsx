@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { adminApi, type BlogPost } from "@/lib/api";
+import { getMainSiteUrl } from "@/lib/auth";
 
 type ViewMode = "list" | "card";
 
@@ -29,6 +30,15 @@ export default function ArticlesListPage() {
   const [items, setItems] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<ViewMode>("list");
+  const [copied, setCopied] = useState<number | null>(null);
+
+  const copyLink = (p: BlogPost) => {
+    const url = `${getMainSiteUrl()}/blog/${p.slug}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(p.id);
+      setTimeout(() => setCopied(null), 1800);
+    });
+  };
 
   const load = () => {
     setLoading(true);
@@ -141,6 +151,25 @@ export default function ArticlesListPage() {
 
               {/* Actions */}
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <a href={`${getMainSiteUrl()}/blog/${p.slug}`} target="_blank" rel="noopener noreferrer"
+                  title="Məqaləyə bax"
+                  style={{ padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#F0FDF4", color: "#166534", textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+                  <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                  </svg>
+                </a>
+                <button onClick={() => copyLink(p)} title="Linki kopyala"
+                  style={{ padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: copied === p.id ? "#DCFCE7" : "#F8FAFC", color: copied === p.id ? "#166534" : "#52718F", border: "1px solid #E4EDF6", cursor: "pointer", display: "inline-flex", alignItems: "center" }}>
+                  {copied === p.id ? (
+                    <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  ) : (
+                    <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                    </svg>
+                  )}
+                </button>
                 <a href={`/admin/blog/${p.id}/edit`}
                   style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#EEF5FF", color: "#002147", textDecoration: "none" }}>
                   Redaktə
@@ -189,6 +218,24 @@ export default function ArticlesListPage() {
                   {p.readTimeMinutes} dəq · {formatDate(p.publishedDate)}
                 </p>
                 <div style={{ display: "flex", gap: 6 }}>
+                  <a href={`${getMainSiteUrl()}/blog/${p.slug}`} target="_blank" rel="noopener noreferrer"
+                    style={{ padding: "7px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#F0FDF4", color: "#166534", textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
+                    <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                  </a>
+                  <button onClick={() => copyLink(p)} title="Linki kopyala"
+                    style={{ padding: "7px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: copied === p.id ? "#DCFCE7" : "#F8FAFC", color: copied === p.id ? "#166534" : "#52718F", border: "1px solid #E4EDF6", cursor: "pointer", display: "inline-flex", alignItems: "center" }}>
+                    {copied === p.id ? (
+                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    ) : (
+                      <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                      </svg>
+                    )}
+                  </button>
                   <a href={`/admin/blog/${p.id}/edit`}
                     style={{ flex: 1, padding: "7px 0", textAlign: "center", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#EEF5FF", color: "#002147", textDecoration: "none" }}>
                     Redaktə

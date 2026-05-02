@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { getStoredUser, buildPanelUrl, decodeAccessToken, isTokenExpired } from "@/lib/auth";
 
 const navLinks = [
   { label: "Haqqımızda", href: "/about" },
@@ -11,16 +12,25 @@ const navLinks = [
   { label: "Məqalələr", href: "/blog" },
 ];
 
-
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [panelUrl, setPanelUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (!token || isTokenExpired(token)) { setPanelUrl(null); return; }
+    const payload = decodeAccessToken(token);
+    if (payload?.role) setPanelUrl(buildPanelUrl(payload.role));
+  }, []);
+
+  const isLoggedIn = panelUrl !== null;
 
   return (
     <header className={`navbar ${scrolled ? "scrolled" : ""}`}>
@@ -48,10 +58,25 @@ export default function Navbar() {
 
         {/* Desktop CTA */}
         <div className="nav-actions" style={{ alignItems: "center", gap: 16 }}>
-          <Link href="/login" className="nav-login">Daxil ol</Link>
-          <Link href="/register" className="btn btn-sm btn-primary" style={{ borderRadius: 8 }}>
-            Qeydiyyat
-          </Link>
+          {isLoggedIn ? (
+            <a
+              href={panelUrl!}
+              className="btn btn-sm btn-primary"
+              style={{ borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+              </svg>
+              Panelə keç
+            </a>
+          ) : (
+            <>
+              <Link href="/login" className="nav-login">Daxil ol</Link>
+              <Link href="/register" className="btn btn-sm btn-primary" style={{ borderRadius: 8 }}>
+                Qeydiyyat
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -97,22 +122,38 @@ export default function Navbar() {
             </Link>
           ))}
           <div style={{ paddingTop: "0.5rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            <Link
-              href="/login"
-              className="btn btn-ghost"
-              style={{ borderRadius: 9999, textAlign: "center", justifyContent: "center" }}
-              onClick={() => setMenuOpen(false)}
-            >
-              Daxil ol
-            </Link>
-            <Link
-              href="/register"
-              className="btn btn-primary"
-              style={{ borderRadius: 9999, textAlign: "center", justifyContent: "center" }}
-              onClick={() => setMenuOpen(false)}
-            >
-              Qeydiyyat
-            </Link>
+            {isLoggedIn ? (
+              <a
+                href={panelUrl!}
+                className="btn btn-primary"
+                style={{ borderRadius: 9999, textAlign: "center", justifyContent: "center", display: "flex", alignItems: "center", gap: 6 }}
+                onClick={() => setMenuOpen(false)}
+              >
+                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                </svg>
+                Panelə keç
+              </a>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="btn btn-ghost"
+                  style={{ borderRadius: 9999, textAlign: "center", justifyContent: "center" }}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Daxil ol
+                </Link>
+                <Link
+                  href="/register"
+                  className="btn btn-primary"
+                  style={{ borderRadius: 9999, textAlign: "center", justifyContent: "center" }}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Qeydiyyat
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

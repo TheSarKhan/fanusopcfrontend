@@ -1,4 +1,3 @@
-import AuthRedirect from "@/components/AuthRedirect";
 import Intro from "@/components/Intro";
 import Hero from "@/components/Hero";
 import WhyFanus from "@/components/WhyFanus";
@@ -34,7 +33,6 @@ export default async function HomePage() {
 
   return (
     <>
-      <AuthRedirect />
       <Intro />
       <Hero />
       <WhyFanus />

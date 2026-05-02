@@ -1,12 +1,36 @@
 import { getBlogPostBySlug, getBlogPosts } from "@/lib/api";
 import { notFound } from "next/navigation";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import ReadingProgressBar from "@/app/blog/components/ReadingProgressBar";
+import ShareBar from "@/app/blog/components/ShareBar";
+import RelatedPosts from "@/app/blog/components/RelatedPosts";
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
   const months = ["Yanvar","Fevral","Mart","Aprel","May","İyun","İyul","Avqust","Sentyabr","Oktyabr","Noyabr","Dekabr"];
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function AttachmentIcon({ type }: { type: string }) {
+  if (type === "IMAGE") {
+    return (
+      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" />
+        <polyline points="21 15 16 10 5 21" />
+      </svg>
+    );
+  }
+  if (type === "VIDEO") {
+    return (
+      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+    </svg>
+  );
 }
 
 export async function generateStaticParams() {
@@ -25,58 +49,62 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     notFound();
   }
 
+  const allPosts = await getBlogPosts().catch(() => []);
+  const related = allPosts
+    .filter(p => p.slug !== slug && p.category === post.category && p.active)
+    .slice(0, 3);
+
   return (
     <>
-      <Navbar />
-      <main style={{ background: "#F7FAFD", minHeight: "100vh", paddingTop: "76px" }}>
-        {/* Hero */}
-        <div style={{ background: "#fff", borderBottom: "1px solid #E4EDF6" }}>
-          <div className="container" style={{ maxWidth: 760, padding: "3rem 1rem 2rem" }}>
-            {/* Category */}
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-xs font-bold px-3 py-1 rounded-full"
-                style={{ background: post.categoryBg, color: post.categoryColor }}>
+      <ReadingProgressBar />
+      <main className="bl-detail-page">
+
+        {/* Header */}
+        <div className="bl-detail-header">
+          <div className="bl-detail-header-inner">
+            <div className="bl-detail-category">
+              <span
+                className="bl-detail-cat-tag"
+                style={{ background: post.categoryBg, color: post.categoryColor }}
+              >
                 {post.category}
               </span>
-              <span className="text-xs text-[#8AAABF]">{post.readTimeMinutes} dəq oxu</span>
+              <span className="bl-detail-read-time">{post.readTimeMinutes} dəq oxu</span>
             </div>
-            {/* Title */}
-            <h1 className="text-3xl sm:text-4xl font-bold text-[#0F1C2E] mb-4" style={{ lineHeight: 1.25 }}>
-              {post.title}
-            </h1>
-            {/* Excerpt */}
+            <h1 className="bl-detail-title">{post.title}</h1>
             {post.excerpt && (
-              <p className="text-lg text-[#52718F] mb-6" style={{ lineHeight: 1.7 }}>{post.excerpt}</p>
+              <p className="bl-detail-excerpt">{post.excerpt}</p>
             )}
-            {/* Meta */}
-            <div className="flex items-center gap-3 text-sm text-[#8AAABF]">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                style={{ background: "linear-gradient(135deg,#002147,#5A4FC8)" }}>
-                {post.authorName ? post.authorName.charAt(0).toUpperCase() : "F"}
+            <div className="bl-detail-author">
+              <div
+                className="bl-detail-avatar"
+                style={{ background: "linear-gradient(135deg,#002147,#5A4FC8)" }}
+              >
+                {(post.authorName ?? "F").charAt(0).toUpperCase()}
               </div>
-              <span className="font-medium text-[#1A2535]">{post.authorName ?? "Fanus Redaksiyası"}</span>
-              <span>·</span>
-              <span>{formatDate(post.publishedDate)}</span>
+              <div>
+                <div className="bl-detail-author-name">{post.authorName ?? "Fanus Redaksiyası"}</div>
+                <div className="bl-detail-author-date">{formatDate(post.publishedDate)}</div>
+              </div>
             </div>
+            <ShareBar title={post.title} />
           </div>
         </div>
 
         {/* Cover image */}
         {post.coverImageUrl && (
-          <div style={{ maxWidth: 760, margin: "0 auto", padding: "0 1rem" }}>
+          <div className="bl-detail-cover">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={post.coverImageUrl} alt={post.title}
-              style={{ width: "100%", maxHeight: 420, objectFit: "cover", borderRadius: "0 0 16px 16px" }} />
+            <img src={post.coverImageUrl} alt={post.title} />
           </div>
         )}
 
-        {/* Content */}
-        <article style={{ maxWidth: 760, margin: "0 auto", padding: "2.5rem 1rem" }}>
+        {/* Article content */}
+        <article className="bl-detail-article">
           {post.content ? (
             <div
               className="article-content"
               dangerouslySetInnerHTML={{ __html: post.content }}
-              style={{ fontSize: 16, lineHeight: 1.85, color: "#1A2535" }}
             />
           ) : (
             <p style={{ color: "#8AAABF", fontStyle: "italic" }}>Məzmun mövcud deyil.</p>
@@ -84,17 +112,20 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
           {/* Attachments */}
           {post.attachments && post.attachments.length > 0 && (
-            <div style={{ marginTop: 40, padding: "24px", background: "#F5F8FF", borderRadius: 16, border: "1px solid #E4EDF6" }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: "#1A2535", marginBottom: 12 }}>Əlavə materiallar</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="bl-detail-attachments">
+              <h3>Əlavə materiallar</h3>
+              <div className="bl-detail-att-list">
                 {post.attachments.map(att => (
-                  <a key={att.id} href={att.fileUrl} target="_blank" rel="noopener noreferrer"
-                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
-                      background: "#fff", borderRadius: 10, border: "1px solid #E4EDF6",
-                      textDecoration: "none", color: "#1A2535", fontSize: 13 }}>
-                    <span>{att.fileType === "IMAGE" ? "🖼" : att.fileType === "VIDEO" ? "🎬" : "📎"}</span>
-                    <span style={{ flex: 1 }}>{att.fileName}</span>
-                    <span style={{ fontSize: 11, color: "#8AAABF" }}>Aç →</span>
+                  <a
+                    key={att.id}
+                    href={att.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bl-detail-att-link"
+                  >
+                    <AttachmentIcon type={att.fileType} />
+                    <span className="bl-detail-att-name">{att.fileName}</span>
+                    <span className="bl-detail-att-open">Aç</span>
                   </a>
                 ))}
               </div>
@@ -102,15 +133,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           )}
         </article>
 
-        {/* Back */}
-        <div style={{ maxWidth: 760, margin: "0 auto", padding: "0 1rem 4rem" }}>
-          <a href="/blog" style={{ display: "inline-flex", alignItems: "center", gap: 6,
-            color: "#002147", fontWeight: 600, fontSize: 14, textDecoration: "none" }}>
-            ← Bütün məqalələr
-          </a>
+        {/* Back link */}
+        <div className="bl-detail-back">
+          <a href="/blog">← Bütün məqalələr</a>
         </div>
+
+        {/* Related posts */}
+        <RelatedPosts posts={related} />
+
       </main>
-      <Footer />
     </>
   );
 }

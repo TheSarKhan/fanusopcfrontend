@@ -74,16 +74,21 @@ function PsychologistCard({ p }: { p: Psychologist }) {
         </div>
         <div className="psy-page-foot">
           <span className="psy-page-sessions">{p.sessionsCount} seans</span>
-          <button
-            className="psy-page-cta"
-            style={{ background: p.bgColor, color: p.accentColor }}
-            onClick={() => open(p.name)}
-          >
-            Randevu al
-            <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </button>
+          <div className="psy-page-foot-actions">
+            <a href={`/psychologists/${p.id}`} className="psy-page-profile-link">
+              Profili gör
+            </a>
+            <button
+              className="psy-page-cta"
+              style={{ background: p.bgColor, color: p.accentColor }}
+              onClick={() => open(p.name)}
+            >
+              Randevu al
+              <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>

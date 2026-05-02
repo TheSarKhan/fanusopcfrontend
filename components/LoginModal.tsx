@@ -40,8 +40,7 @@ export default function LoginModal({ open, onClose }: Props) {
     setError("");
     try {
       const data = await login(email, password);
-      // Redirect to the correct subdomain panel
-      window.location.href = buildPanelUrl(data.role);
+      window.location.href = buildPanelUrl(data.role, data.accessToken);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Giriş uğursuz oldu");
       setLoading(false);

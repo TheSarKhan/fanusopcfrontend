@@ -91,7 +91,7 @@ export function buildPanelUrl(role: string, token?: string): string {
   const { protocol } = window.location;
   const { mainHost, port } = getMainHost();
   const portStr = port ? `:${port}` : "";
-  const base = `${protocol}//${sub}.${mainHost}${portStr}`;
+  const base = `${protocol}//${sub}.${mainHost}${portStr}/${sub}`;
   if (token) {
     return `${base}#_auth=${encodeURIComponent(token)}`;
   }

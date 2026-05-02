@@ -129,9 +129,9 @@ export default function BlogPage({ posts }: { posts: BlogPost[] }) {
                     </div>
                     <h2 className="bl-featured-title">{featured.title}</h2>
                     <p className="bl-featured-excerpt">{featured.excerpt}</p>
-                    <button className="bl-link">
+                    <a href={`/blog/${featured.slug}`} className="bl-link">
                       Oxu <ArrowIcon size={14} />
-                    </button>
+                    </a>
                   </div>
                 </article>
               )}
@@ -161,9 +161,9 @@ export default function BlogPage({ posts }: { posts: BlogPost[] }) {
                     <p className="bl-card-excerpt">{post.excerpt}</p>
                     <div className="bl-card-foot">
                       <span className="bl-meta-text">{formatDate(post.publishedDate)}</span>
-                      <button className="bl-link bl-link-sm">
+                      <a href={`/blog/${post.slug}`} className="bl-link bl-link-sm">
                         Oxu <ArrowIcon size={12} />
-                      </button>
+                      </a>
                     </div>
                   </article>
                 ))}

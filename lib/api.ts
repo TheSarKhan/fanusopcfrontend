@@ -27,7 +27,12 @@ function getAccessToken(): string | null {
     ?? readTokenCookie();
 }
 
-function clearSession() {
+// "ok"         — refreshed successfully
+// "auth_failure" — refresh token invalid/expired → must log out
+// "network_error" — server unreachable, transient → do NOT log out
+export type RefreshOutcome = "ok" | "auth_failure" | "network_error";
+
+export function clearSession() {
   clearUser();
   if (typeof window === "undefined") return;
   localStorage.removeItem("accessToken");
@@ -35,39 +40,27 @@ function clearSession() {
   document.cookie = "_ft=; domain=localhost; path=/; max-age=0";
 }
 
-function redirectToLogin() {
+export function redirectToLogin() {
   clearSession();
   if (typeof window !== "undefined") {
     window.location.href = `${getMainSiteUrl()}/login?session=expired`;
   }
 }
 
-// Singleton refresh promise — prevents parallel refresh calls
-let _refreshPromise: Promise<boolean> | null = null;
-
-async function tryRefresh(): Promise<boolean> {
-  if (_refreshPromise) return _refreshPromise;
-  _refreshPromise = _doRefresh().finally(() => { _refreshPromise = null; });
-  return _refreshPromise;
-}
-
-async function _doRefresh(): Promise<boolean> {
-  const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
-  if (!refreshToken) {
-    redirectToLogin();
-    return false;
-  }
+async function _doRefresh(): Promise<RefreshOutcome> {
+  const storedRefresh = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
   try {
     const res = await fetch(`${BASE}/auth/refresh`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
+      // Send body token if available; backend falls back to HTTP-only cookie otherwise
+      body: storedRefresh ? JSON.stringify({ refreshToken: storedRefresh }) : JSON.stringify({}),
     });
-    if (!res.ok) {
-      redirectToLogin();
-      return false;
-    }
+
+    if (res.status === 401 || res.status === 403) return "auth_failure";
+    if (!res.ok) return "network_error";
+
     const data = await res.json();
     if (data.accessToken) {
       localStorage.setItem("accessToken", data.accessToken);
@@ -77,11 +70,26 @@ async function _doRefresh(): Promise<boolean> {
     if (data.userId) {
       storeUser({ userId: data.userId, email: data.email, role: data.role, firstName: data.firstName, lastName: data.lastName });
     }
-    return true;
+    return "ok";
   } catch {
-    redirectToLogin();
-    return false;
+    return "network_error";
   }
+}
+
+// Singleton — prevents parallel refresh races
+let _refreshPromise: Promise<RefreshOutcome> | null = null;
+
+export async function tryRefresh(): Promise<RefreshOutcome> {
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = _doRefresh().finally(() => { _refreshPromise = null; });
+  return _refreshPromise;
+}
+
+function buildHeaders(token: string | null, isJson = true) {
+  return {
+    ...(isJson ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
 }
 
 async function authedRequest<T>(
@@ -89,35 +97,33 @@ async function authedRequest<T>(
   path: string,
   body?: unknown
 ): Promise<T> {
-  // Proactive refresh: if token expires within 60 s, refresh before the request
+  // Proactive refresh: token expiring within 60 s → refresh first
   const currentToken = getAccessToken();
   if (currentToken && isTokenExpiringSoon(currentToken, 60)) {
-    await tryRefresh();
+    const outcome = await tryRefresh();
+    if (outcome === "auth_failure") {
+      redirectToLogin();
+      throw new Error("Session expired");
+    }
+    // network_error: proceed with current token, 401 handler below will catch if needed
   }
 
   const token = getAccessToken();
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: buildHeaders(token),
     body: body ? JSON.stringify(body) : undefined,
   });
 
   if (res.status === 401) {
-    const refreshed = await tryRefresh();
-    if (refreshed) {
-      // Retry once with new token
+    const outcome = await tryRefresh();
+    if (outcome === "ok") {
       const retryToken = getAccessToken();
       const retry = await fetch(`${BASE}${path}`, {
         method,
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...(retryToken ? { Authorization: `Bearer ${retryToken}` } : {}),
-        },
+        headers: buildHeaders(retryToken),
         body: body ? JSON.stringify(body) : undefined,
       });
       if (!retry.ok) {
@@ -127,7 +133,10 @@ async function authedRequest<T>(
       if (retry.status === 204) return undefined as T;
       return retry.json();
     }
-    // redirectToLogin() already called inside tryRefresh
+    if (outcome === "auth_failure") {
+      redirectToLogin();
+    }
+    // network_error: don't logout, let caller handle
     throw new Error("Unauthorized");
   }
 
@@ -147,36 +156,35 @@ async function authedBlobRequest(
 ): Promise<Blob> {
   const currentToken = getAccessToken();
   if (currentToken && isTokenExpiringSoon(currentToken, 60)) {
-    await tryRefresh();
+    const outcome = await tryRefresh();
+    if (outcome === "auth_failure") {
+      redirectToLogin();
+      throw new Error("Session expired");
+    }
   }
 
   const token = getAccessToken();
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: buildHeaders(token),
     body: body ? JSON.stringify(body) : undefined,
   });
 
   if (res.status === 401) {
-    const refreshed = await tryRefresh();
-    if (refreshed) {
+    const outcome = await tryRefresh();
+    if (outcome === "ok") {
       const retryToken = getAccessToken();
       const retry = await fetch(`${BASE}${path}`, {
         method,
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...(retryToken ? { Authorization: `Bearer ${retryToken}` } : {}),
-        },
+        headers: buildHeaders(retryToken),
         body: body ? JSON.stringify(body) : undefined,
       });
       if (!retry.ok) throw new Error(`API error ${retry.status}`);
       return retry.blob();
     }
+    if (outcome === "auth_failure") redirectToLogin();
     throw new Error("Unauthorized");
   }
 
@@ -196,7 +204,53 @@ export interface Psychologist {
 }
 export interface Stat { id: number; statValue: number; suffix: string; label: string; subLabel: string; displayOrder: number; }
 export interface Announcement { id: number; category: string; categoryColor: string; categoryBg: string; title: string; excerpt: string; publishedDate: string; iconType: string; active: boolean; }
-export interface BlogPost { id: number; category: string; categoryColor: string; categoryBg: string; title: string; excerpt: string; readTimeMinutes: number; publishedDate: string; emoji: string; slug: string; featured: boolean; active: boolean; }
+export interface ArticleAttachment {
+  id: number;
+  fileUrl: string;
+  fileName: string;
+  fileType: string; // IMAGE, VIDEO, DOCUMENT
+  fileSizeBytes: number;
+  displayOrder: number;
+}
+
+export interface BlogCategory {
+  id: number;
+  name: string;
+  color: string;
+  bg: string;
+  emoji: string;
+  active: boolean;
+  sortOrder: number;
+}
+
+export interface BlogPost {
+  id: number;
+  category: string;
+  categoryColor: string;
+  categoryBg: string;
+  title: string;
+  excerpt: string;
+  content?: string;
+  coverImageUrl?: string;
+  readTimeMinutes: number;
+  publishedDate: string;
+  emoji: string;
+  slug: string;
+  featured: boolean;
+  active: boolean;
+  status: string; // DRAFT | PUBLISHED
+  authorId?: number;
+  authorName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  attachments?: ArticleAttachment[];
+  // Draft shadow fields (published articles only)
+  draftTitle?: string;
+  draftContent?: string;
+  draftCoverImageUrl?: string;
+  draftExcerpt?: string;
+  hasPendingDraft?: boolean;
+}
 export interface Faq { id: number; question: string; answer: string; displayOrder: number; active: boolean; }
 export interface Testimonial { id: number; quote: string; authorName: string; authorRole: string; initials: string; gradient: string; rating: number; active: boolean; }
 export interface SiteConfig { [key: string]: string; }
@@ -223,6 +277,7 @@ export const getPsychologists = () => get<Psychologist[]>("/psychologists");
 export const getStats = () => get<Stat[]>("/stats");
 export const getAnnouncements = () => get<Announcement[]>("/announcements");
 export const getBlogPosts = () => get<BlogPost[]>("/blog-posts");
+export const getBlogPostBySlug = (slug: string) => get<BlogPost>(`/blog-posts/${slug}`);
 export const getFaqs = () => get<Faq[]>("/faqs");
 export const getTestimonials = () => get<Testimonial[]>("/testimonials");
 export const getSiteConfig = () => get<SiteConfig>("/site-config");
@@ -435,11 +490,34 @@ export const adminApi = {
   updateAnnouncement: (id: number, data: Omit<Announcement, "id">) => authedRequest<Announcement>("PUT", `/admin/announcements/${id}`, data),
   deleteAnnouncement: (id: number) => authedRequest<void>("DELETE", `/admin/announcements/${id}`),
 
+  // Blog categories
+  getBlogCategories: () => authedRequest<BlogCategory[]>("GET", "/admin/blog-categories"),
+  createBlogCategory: (data: Omit<BlogCategory, "id">) => authedRequest<BlogCategory>("POST", "/admin/blog-categories", data),
+  updateBlogCategory: (id: number, data: Omit<BlogCategory, "id">) => authedRequest<BlogCategory>("PUT", `/admin/blog-categories/${id}`, data),
+  deleteBlogCategory: (id: number) => authedRequest<void>("DELETE", `/admin/blog-categories/${id}`),
+
   // Blog
   getBlogPosts: () => authedRequest<BlogPost[]>("GET", "/admin/blog-posts"),
+  getBlogPostById: (id: number) => authedRequest<BlogPost>("GET", `/admin/blog-posts/${id}`),
   createBlogPost: (data: Omit<BlogPost, "id">) => authedRequest<BlogPost>("POST", "/admin/blog-posts", data),
   updateBlogPost: (id: number, data: Omit<BlogPost, "id">) => authedRequest<BlogPost>("PUT", `/admin/blog-posts/${id}`, data),
   deleteBlogPost: (id: number) => authedRequest<void>("DELETE", `/admin/blog-posts/${id}`),
+  addAttachment: async (articleId: number, file: File, displayOrder = 0): Promise<ArticleAttachment> => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const form = new FormData();
+    form.append("file", file);
+    form.append("displayOrder", String(displayOrder));
+    const res = await fetch(`${BASE}/admin/blog-posts/${articleId}/attachments`, {
+      method: "POST",
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) throw new Error("Fayl yükləmə xətası");
+    return res.json();
+  },
+  deleteAttachment: (articleId: number, attachmentId: number) =>
+    authedRequest<void>("DELETE", `/admin/blog-posts/${articleId}/attachments/${attachmentId}`),
 
   // FAQs
   getFaqs: () => authedRequest<Faq[]>("GET", "/admin/faqs"),

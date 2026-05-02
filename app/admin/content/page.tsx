@@ -19,6 +19,7 @@ const EMPTY_POST: Omit<BlogPost, "id"> = {
   slug: "",
   featured: false,
   active: true,
+  status: "PUBLISHED",
 };
 
 const AV_COLORS = ["#7c6f99", "#7c9a86", "#b58a3c", "#2f5283", "#0a2d59"];

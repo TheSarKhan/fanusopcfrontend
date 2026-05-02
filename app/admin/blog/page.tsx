@@ -1,22 +1,34 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { adminApi, type BlogPost } from "@/lib/api";
 
-const EMPTY: Omit<BlogPost, "id"> = {
-  category: "", categoryColor: "#002147", categoryBg: "#E0EBF7",
-  title: "", excerpt: "", readTimeMinutes: 5,
-  publishedDate: new Date().toISOString().split("T")[0],
-  emoji: "📝", slug: "", featured: false, active: true,
-};
+type ViewMode = "list" | "card";
 
-export default function BlogPage() {
+function StatusBadge({ status }: { status: string }) {
+  const published = status === "PUBLISHED";
+  return (
+    <span style={{
+      fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 20,
+      background: published ? "#DCFCE7" : "#FEF3C7",
+      color: published ? "#166534" : "#92400E",
+    }}>
+      {published ? "Yayımlandı" : "Qaralama"}
+    </span>
+  );
+}
+
+function formatDate(d: string) {
+  const dt = new Date(d);
+  const day = String(dt.getDate()).padStart(2, "0");
+  const month = String(dt.getMonth() + 1).padStart(2, "0");
+  return `${day}.${month}.${dt.getFullYear()}`;
+}
+
+export default function ArticlesListPage() {
   const [items, setItems] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<{ open: boolean; item: Omit<BlogPost, "id">; id?: number }>({
-    open: false, item: { ...EMPTY },
-  });
-  const [saving, setSaving] = useState(false);
+  const [view, setView] = useState<ViewMode>("list");
 
   const load = () => {
     setLoading(true);
@@ -24,136 +36,171 @@ export default function BlogPage() {
   };
   useEffect(() => { load(); }, []);
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      if (modal.id) await adminApi.updateBlogPost(modal.id, modal.item);
-      else await adminApi.createBlogPost(modal.item);
-      setModal({ open: false, item: { ...EMPTY } });
-      load();
-    } catch (e: unknown) { alert((e instanceof Error ? e.message : "Xəta")); }
-    finally { setSaving(false); }
-  };
-
   const handleDelete = async (id: number) => {
-    if (!confirm("Silmək istədiyinizə əminsiniz?")) return;
-    await adminApi.deleteBlogPost(id).catch(e => alert(e.message));
-    load();
+    if (!confirm("Bu məqaləni silmək istədiyinizə əminsiniz?")) return;
+    try {
+      await adminApi.deleteBlogPost(id);
+      load();
+    } catch (e) { alert(e instanceof Error ? e.message : "Xəta"); }
   };
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h1 className="text-2xl font-bold text-[#1A2535]" style={{ fontFamily: "var(--font-playfair, serif)" }}>Bloq yazıları</h1>
-          <p className="text-[#52718F] text-sm mt-1">{items.length} qeyd</p>
+          <h1 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#1A2535", margin: 0 }}>Məqalələr</h1>
+          <p style={{ fontSize: 13, color: "#52718F", marginTop: 2 }}>{items.length} məqalə</p>
         </div>
-        <button onClick={() => setModal({ open: true, item: { ...EMPTY } })}
-          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-          style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}>
-          + Əlavə et
-        </button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {/* View toggle */}
+          <div style={{ display: "flex", border: "1.5px solid #C0D2E6", borderRadius: 8, overflow: "hidden" }}>
+            <button
+              onClick={() => setView("list")}
+              title="Siyahı görünüşü"
+              style={{ padding: "7px 11px", border: "none", cursor: "pointer", background: view === "list" ? "#E8F0FE" : "#fff", color: view === "list" ? "#002147" : "#8AAABF", display: "flex", alignItems: "center" }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+            <button
+              onClick={() => setView("card")}
+              title="Kart görünüşü"
+              style={{ padding: "7px 11px", border: "none", cursor: "pointer", background: view === "card" ? "#E8F0FE" : "#fff", color: view === "card" ? "#002147" : "#8AAABF", display: "flex", alignItems: "center", borderLeft: "1.5px solid #C0D2E6" }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+              </svg>
+            </button>
+          </div>
+          {/* New article */}
+          <a
+            href="/admin/blog/new"
+            style={{
+              padding: "8px 18px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+              background: "linear-gradient(135deg, #002147, #5A4FC8)", color: "#fff",
+              textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6,
+            }}
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Yeni məqalə
+          </a>
+        </div>
       </div>
 
-      {loading ? <div className="text-center text-[#52718F] py-12">Yüklənir...</div> : (
-        <div className="flex flex-col gap-3">
+      {/* Content */}
+      {loading ? (
+        <div style={{ textAlign: "center", color: "#52718F", padding: "60px 0" }}>Yüklənir...</div>
+      ) : items.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 0", background: "#fff", borderRadius: 16, border: "1px solid #E4EDF6", color: "#8AAABF" }}>
+          <p style={{ fontSize: 15, fontWeight: 600, color: "#1A2535", marginBottom: 8 }}>Hələ məqalə yoxdur</p>
+          <a href="/admin/blog/new" style={{ fontSize: 13, color: "#002147", fontWeight: 600 }}>İlk məqaləni yaz →</a>
+        </div>
+      ) : view === "list" ? (
+        /* ── LIST VIEW ── */
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           {items.map(p => (
-            <div key={p.id} className="bg-white rounded-2xl p-5 flex items-center gap-4" style={{ border: "1px solid #E4EDF6" }}>
-              <span className="text-2xl">{p.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <p className="font-semibold text-[#1A2535] text-sm">{p.title}</p>
-                  {p.featured && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "#FFF3EC", color: "#D97706" }}>Öne çıxan</span>}
+            <div
+              key={p.id}
+              style={{
+                display: "flex", alignItems: "center", gap: 14, padding: "12px 16px",
+                background: "#fff", borderRadius: 12, border: "1px solid #E4EDF6",
+              }}
+            >
+              {/* Thumbnail */}
+              {p.coverImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.coverImageUrl} alt=""
+                  style={{ width: 52, height: 52, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
+              ) : (
+                <div style={{
+                  width: 52, height: 52, borderRadius: 8, flexShrink: 0, fontSize: 22,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: p.categoryBg || "#E8F0FE",
+                }}>
+                  {p.emoji || "📝"}
                 </div>
-                <p className="text-xs text-[#52718F]">{p.category} · {p.readTimeMinutes} dəq · {p.publishedDate}</p>
+              )}
+
+              {/* Info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, color: "#1A2535", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 360 }}>
+                    {p.title || "Başlıqsız"}
+                  </span>
+                  <StatusBadge status={p.status ?? "DRAFT"} />
+                  {p.featured && (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "#FFF3EC", color: "#D97706" }}>Öne çıxan</span>
+                  )}
+                </div>
+                <span style={{ fontSize: 12, color: "#8AAABF" }}>
+                  {p.category || "—"} · {p.readTimeMinutes} dəq · {formatDate(p.publishedDate)}
+                </span>
               </div>
-              <div className="flex gap-2 flex-shrink-0">
-                <button onClick={() => setModal({ open: true, item: { ...p }, id: p.id })}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#002147]"
-                  style={{ background: "#EEF5FF" }}>Redaktə</button>
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                <a href={`/admin/blog/${p.id}/edit`}
+                  style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#EEF5FF", color: "#002147", textDecoration: "none" }}>
+                  Redaktə
+                </a>
                 <button onClick={() => handleDelete(p.id)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600"
-                  style={{ background: "#fee2e2" }}>Sil</button>
+                  style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#fee2e2", color: "#dc2626", border: "none", cursor: "pointer" }}>
+                  Sil
+                </button>
               </div>
             </div>
           ))}
         </div>
-      )}
-
-      {modal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(15,28,46,0.5)", backdropFilter: "blur(4px)" }}>
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-[#EEF4FB]">
-              <h2 className="font-bold text-[#1A2535]">{modal.id ? "Yazını redaktə et" : "Yeni yazı"}</h2>
-              <button onClick={() => setModal({ open: false, item: { ...EMPTY } })}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[#52718F] hover:bg-[#EEF4FB]">✕</button>
-            </div>
-            <div className="p-6 flex flex-col gap-4">
-              {[
-                { label: "Başlıq", field: "title", placeholder: "Məqalənin başlığı" },
-                { label: "Slug", field: "slug", placeholder: "meqalenin-basligi" },
-                { label: "Kateqoriya", field: "category", placeholder: "Narahatlıq" },
-                { label: "Emoji", field: "emoji", placeholder: "🌿" },
-                { label: "Kateqoriya rəngi", field: "categoryColor", placeholder: "#002147" },
-                { label: "Kateqoriya arxa plan", field: "categoryBg", placeholder: "#E0EBF7" },
-              ].map(({ label, field, placeholder }) => (
-                <div key={field}>
-                  <label className="block text-xs font-semibold text-[#1A2535] mb-1">{label}</label>
-                  <input type="text" placeholder={placeholder}
-                    value={(modal.item as Record<string, unknown>)[field] as string ?? ""}
-                    onChange={e => setModal(m => ({ ...m, item: { ...m.item, [field]: e.target.value } }))}
-                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                    style={{ border: "1.5px solid #C0D2E6", background: "#FAFCFF" }} />
+      ) : (
+        /* ── CARD VIEW ── */
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+          {items.map(p => (
+            <div
+              key={p.id}
+              style={{ background: "#fff", borderRadius: 16, border: "1px solid #E4EDF6", overflow: "hidden" }}
+            >
+              {/* Cover */}
+              {p.coverImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.coverImageUrl} alt=""
+                  style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }} />
+              ) : (
+                <div style={{
+                  width: "100%", height: 160, background: p.categoryBg || "#EEF5FF",
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40,
+                }}>
+                  {p.emoji || "📝"}
                 </div>
-              ))}
-              <div>
-                <label className="block text-xs font-semibold text-[#1A2535] mb-1">Xülasə</label>
-                <textarea rows={3} placeholder="Məqalənin xülasəsi..."
-                  value={modal.item.excerpt}
-                  onChange={e => setModal(m => ({ ...m, item: { ...m.item, excerpt: e.target.value } }))}
-                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-none"
-                  style={{ border: "1.5px solid #C0D2E6", background: "#FAFCFF" }} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#1A2535] mb-1">Oxuma müddəti (dəq)</label>
-                  <input type="number" value={modal.item.readTimeMinutes}
-                    onChange={e => setModal(m => ({ ...m, item: { ...m.item, readTimeMinutes: Number(e.target.value) } }))}
-                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                    style={{ border: "1.5px solid #C0D2E6", background: "#FAFCFF" }} />
+              )}
+              {/* Body */}
+              <div style={{ padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                  <StatusBadge status={p.status ?? "DRAFT"} />
+                  {p.category && (
+                    <span style={{ fontSize: 11, color: "#8AAABF" }}>{p.category}</span>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#1A2535] mb-1">Tarix</label>
-                  <input type="date" value={modal.item.publishedDate}
-                    onChange={e => setModal(m => ({ ...m, item: { ...m.item, publishedDate: e.target.value } }))}
-                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                    style={{ border: "1.5px solid #C0D2E6", background: "#FAFCFF" }} />
+                <p style={{ fontWeight: 700, fontSize: 14, color: "#1A2535", marginBottom: 8, lineHeight: 1.4 }}>
+                  {p.title || "Başlıqsız"}
+                </p>
+                <p style={{ fontSize: 12, color: "#8AAABF", marginBottom: 14 }}>
+                  {p.readTimeMinutes} dəq · {formatDate(p.publishedDate)}
+                </p>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <a href={`/admin/blog/${p.id}/edit`}
+                    style={{ flex: 1, padding: "7px 0", textAlign: "center", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#EEF5FF", color: "#002147", textDecoration: "none" }}>
+                    Redaktə
+                  </a>
+                  <button onClick={() => handleDelete(p.id)}
+                    style={{ flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#fee2e2", color: "#dc2626", border: "none", cursor: "pointer" }}>
+                    Sil
+                  </button>
                 </div>
-              </div>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={modal.item.featured}
-                    onChange={e => setModal(m => ({ ...m, item: { ...m.item, featured: e.target.checked } }))} />
-                  <span className="text-sm text-[#1A2535]">Öne çıxan</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={modal.item.active}
-                    onChange={e => setModal(m => ({ ...m, item: { ...m.item, active: e.target.checked } }))} />
-                  <span className="text-sm text-[#1A2535]">Aktiv</span>
-                </label>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setModal({ open: false, item: { ...EMPTY } })}
-                  className="flex-1 py-3 rounded-xl text-sm font-semibold text-[#52718F] hover:bg-[#EEF4FB]">Ləğv et</button>
-                <button onClick={handleSave} disabled={saving}
-                  className="flex-1 py-3 rounded-xl text-sm font-bold text-white"
-                  style={{ background: saving ? "#52718F" : "linear-gradient(135deg, #002147, #5A4FC8)" }}>
-                  {saving ? "Saxlanır..." : "Saxla"}
-                </button>
               </div>
             </div>
-          </div>
+          ))}
         </div>
       )}
     </div>

@@ -33,6 +33,7 @@ type NavItem = {
 const NAV_MAIN: NavItem[] = [
   { href: "/admin/users", label: "İstifadəçi idarəsi", Icon: IconUsers },
   { href: "/admin/psychologists", label: "Psixoloqlar", Icon: IconUser },
+  { href: "/admin/blog", label: "Məqalələr", Icon: IconContent },
 ];
 
 // Helelik gizli modullar — hazir olduqca acilaraq
@@ -55,7 +56,7 @@ const TITLE_MAP: Record<string, string> = {
   "/admin/announcements": "Elanlar",
   "/admin/reports": "Statistikalar",
   "/admin/settings": "Sistem parametrləri",
-  "/admin/blog": "Bloq",
+  "/admin/blog": "Məqalələr",
   "/admin/stats": "Statistika",
   "/admin/faqs": "FAQ",
   "/admin/testimonials": "Rəylər",

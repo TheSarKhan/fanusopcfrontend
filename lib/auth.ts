@@ -83,8 +83,9 @@ function getMainHost(): { mainHost: string; port: string } {
   return { mainHost, port };
 }
 
-// Token always passed via URL hash — never sent to server, never in logs.
-export function buildPanelUrl(role: string, token?: string): string {
+// Tokens passed via URL hash — never sent to server, never in logs.
+// replaceState in PanelAuthGuard immediately clears the hash.
+export function buildPanelUrl(role: string, token?: string, refreshToken?: string): string {
   if (typeof window === "undefined") return "/";
   const sub = ROLE_SUBDOMAIN[role];
   if (!sub) return "/";
@@ -93,7 +94,9 @@ export function buildPanelUrl(role: string, token?: string): string {
   const portStr = port ? `:${port}` : "";
   const base = `${protocol}//${sub}.${mainHost}${portStr}/${sub}`;
   if (token) {
-    return `${base}#_auth=${encodeURIComponent(token)}`;
+    const parts = [`_auth=${encodeURIComponent(token)}`];
+    if (refreshToken) parts.push(`_refresh=${encodeURIComponent(refreshToken)}`);
+    return `${base}#${parts.join("&")}`;
   }
   return base;
 }

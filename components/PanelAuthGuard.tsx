@@ -64,14 +64,15 @@ export default function PanelAuthGuard({
   useLayoutEffect(() => {
     if (!mounted) return;
 
-    // Extract token from URL hash (cross-subdomain redirect flow)
+    // Extract tokens from URL hash (cross-subdomain redirect flow).
+    // Hash is cleared immediately — tokens never stay in browser history.
     if (window.location.hash.includes("_auth=")) {
       const params = new URLSearchParams(window.location.hash.slice(1));
       const authParam = params.get("_auth");
-      if (authParam) {
-        localStorage.setItem("accessToken", decodeURIComponent(authParam));
-        window.history.replaceState({}, "", window.location.pathname + window.location.search);
-      }
+      const refreshParam = params.get("_refresh");
+      if (authParam) localStorage.setItem("accessToken", decodeURIComponent(authParam));
+      if (refreshParam) localStorage.setItem("refreshToken", decodeURIComponent(refreshParam));
+      window.history.replaceState({}, "", window.location.pathname + window.location.search);
     }
 
     const run = async () => {

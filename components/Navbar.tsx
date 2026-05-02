@@ -28,7 +28,10 @@ export default function Navbar() {
     const token = cookieMatch ? decodeURIComponent(cookieMatch[1]) : localStorage.getItem("accessToken");
     if (!token || isTokenExpired(token)) { setPanelUrl(null); return; }
     const payload = decodeAccessToken(token);
-    if (payload?.role) setPanelUrl(buildPanelUrl(payload.role));
+    if (payload?.role) {
+      const rt = localStorage.getItem("refreshToken");
+      setPanelUrl(buildPanelUrl(payload.role, token, rt ?? undefined));
+    }
   }, []);
 
   const isLoggedIn = panelUrl !== null;

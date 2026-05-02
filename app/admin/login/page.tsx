@@ -16,10 +16,7 @@ export default function AdminLoginPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await login(email, password);
-      localStorage.setItem("accessToken", data.accessToken);
-      localStorage.setItem("refreshToken", data.refreshToken);
-      document.cookie = `adminToken=${data.accessToken}; path=/; max-age=900`;
+      await login(email, password);
       router.push("/admin");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Giriş uğursuz oldu");

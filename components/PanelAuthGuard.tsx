@@ -21,6 +21,7 @@ export default function PanelAuthGuard({
   const [ready, setReady] = useState(false);
   const [mounted, setMounted] = useState(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleRef = useRef<(token: string) => void>(() => {});
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -60,6 +61,7 @@ export default function PanelAuthGuard({
       redirectToLogin();
     }, delay);
   };
+  scheduleRef.current = scheduleProactiveRefresh;
 
   useLayoutEffect(() => {
     if (!mounted) return;
@@ -134,6 +136,25 @@ export default function PanelAuthGuard({
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     };
   }, []);
+
+  // When user returns to a tab that was idle for > 15 min, token may be expired.
+  // The proactive timer was throttled/paused by the browser — refresh immediately.
+  useEffect(() => {
+    if (!ready) return;
+    const onVisible = async () => {
+      if (document.visibilityState !== "visible") return;
+      const t = localStorage.getItem("accessToken");
+      if (t && !isTokenExpired(t)) return;
+      const outcome = await tryRefresh();
+      if (outcome === "auth_failure") { redirectToLogin(); return; }
+      if (outcome === "ok") {
+        const newToken = localStorage.getItem("accessToken");
+        if (newToken) scheduleRef.current(newToken);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [ready]);
 
   if (!mounted) return null;
 

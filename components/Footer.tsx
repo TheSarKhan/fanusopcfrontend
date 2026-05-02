@@ -72,7 +72,7 @@ export default function Footer() {
           {/* Resurslar */}
           <div className="footer-col">
             <h4>Resurslar</h4>
-            <Link href="/blog">Bloq</Link>
+            <Link href="/blog">Məqalələr</Link>
             <Link href="/about">Haqqımızda</Link>
             <Link href="/register">Qeydiyyat</Link>
             <Link href="/login">Daxil ol</Link>

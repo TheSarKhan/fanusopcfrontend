@@ -28,7 +28,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <Navbar />
-      <main style={{ background: "#F7FAFD", minHeight: "100vh" }}>
+      <main style={{ background: "#F7FAFD", minHeight: "100vh", paddingTop: "76px" }}>
         {/* Hero */}
         <div style={{ background: "#fff", borderBottom: "1px solid #E4EDF6" }}>
           <div className="container" style={{ maxWidth: 760, padding: "3rem 1rem 2rem" }}>

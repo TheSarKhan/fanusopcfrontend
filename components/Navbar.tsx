@@ -8,7 +8,7 @@ const navLinks = [
   { label: "Haqqımızda", href: "/about" },
   { label: "Xidmətlər", href: "/xidmetler" },
   { label: "Psixoloqlar", href: "/psychologists" },
-  { label: "Bloq", href: "/blog" },
+  { label: "Məqalələr", href: "/blog" },
 ];
 
 

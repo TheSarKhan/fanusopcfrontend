@@ -192,6 +192,51 @@ async function authedBlobRequest(
   return res.blob();
 }
 
+async function authedMultipartRequest<T>(
+  method: string,
+  path: string,
+  form: FormData
+): Promise<T> {
+  const currentToken = getAccessToken();
+  if (currentToken && isTokenExpiringSoon(currentToken, 60)) {
+    const outcome = await tryRefresh();
+    if (outcome === "auth_failure") {
+      redirectToLogin();
+      throw new Error("Session expired");
+    }
+  }
+
+  const makeReq = (token: string | null) => fetch(`${BASE}${path}`, {
+    method,
+    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+
+  const res = await makeReq(getAccessToken());
+
+  if (res.status === 401) {
+    const outcome = await tryRefresh();
+    if (outcome === "ok") {
+      const retry = await makeReq(getAccessToken());
+      if (!retry.ok) {
+        const err = await retry.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `API error ${retry.status}`);
+      }
+      return retry.json();
+    }
+    if (outcome === "auth_failure") redirectToLogin();
+    throw new Error("Unauthorized");
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? `API error ${res.status}`);
+  }
+
+  return res.json();
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface Psychologist {
   id: number; name: string; title: string; specializations: string[];
@@ -503,18 +548,10 @@ export const adminApi = {
   updateBlogPost: (id: number, data: Omit<BlogPost, "id">) => authedRequest<BlogPost>("PUT", `/admin/blog-posts/${id}`, data),
   deleteBlogPost: (id: number) => authedRequest<void>("DELETE", `/admin/blog-posts/${id}`),
   addAttachment: async (articleId: number, file: File, displayOrder = 0): Promise<ArticleAttachment> => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     const form = new FormData();
     form.append("file", file);
     form.append("displayOrder", String(displayOrder));
-    const res = await fetch(`${BASE}/admin/blog-posts/${articleId}/attachments`, {
-      method: "POST",
-      credentials: "include",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: form,
-    });
-    if (!res.ok) throw new Error("Fayl yükləmə xətası");
-    return res.json();
+    return authedMultipartRequest<ArticleAttachment>("POST", `/admin/blog-posts/${articleId}/attachments`, form);
   },
   deleteAttachment: (articleId: number, attachmentId: number) =>
     authedRequest<void>("DELETE", `/admin/blog-posts/${articleId}/attachments/${attachmentId}`),
@@ -585,17 +622,9 @@ export const adminApi = {
 
   // Upload
   uploadFile: async (file: File): Promise<string> => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(`${BASE}/admin/upload`, {
-      method: "POST",
-      credentials: "include",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: form,
-    });
-    if (!res.ok) throw new Error("Upload failed");
-    const data = await res.json();
+    const data = await authedMultipartRequest<{ url: string }>("POST", "/admin/upload", form);
     return data.url;
   },
 };

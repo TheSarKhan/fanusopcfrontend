@@ -16,10 +16,28 @@ async function get<T>(path: string, opts?: RequestInit): Promise<T> {
   return res.json();
 }
 
+function cookieDomain(): string {
+  if (typeof window === "undefined") return "localhost";
+  const hostname = window.location.hostname;
+  if (hostname === "localhost" || hostname.endsWith(".localhost")) return "localhost";
+  const parts = hostname.split(".");
+  return parts.length >= 2 ? `.${parts.slice(-2).join(".")}` : hostname;
+}
+
 function readTokenCookie(): string | null {
   if (typeof window === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)_ft=([^;]+)/);
+  const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : null;
+}
+
+function setTokenCookie(token: string) {
+  const domain = cookieDomain();
+  document.cookie = `accessToken=${encodeURIComponent(token)}; domain=${domain}; path=/; SameSite=Lax; max-age=900`;
+}
+
+function clearTokenCookie() {
+  const domain = cookieDomain();
+  document.cookie = `accessToken=; domain=${domain}; path=/; max-age=0`;
 }
 
 function getAccessToken(): string | null {
@@ -37,7 +55,7 @@ export function clearSession() {
   if (typeof window === "undefined") return;
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
-  document.cookie = "_ft=; domain=localhost; path=/; max-age=0";
+  clearTokenCookie();
 }
 
 export function redirectToLogin() {
@@ -69,7 +87,7 @@ async function _doRefresh(): Promise<RefreshOutcome> {
     const data = await res.json();
     if (data.accessToken) {
       localStorage.setItem("accessToken", data.accessToken);
-      document.cookie = `_ft=${encodeURIComponent(data.accessToken)}; domain=localhost; path=/; SameSite=Lax; max-age=900`;
+      setTokenCookie(data.accessToken);
     }
     if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
     if (data.userId) {
@@ -363,10 +381,8 @@ export const login = async (email: string, password: string) => {
     firstName: data.firstName,
     lastName: data.lastName,
   });
-  // Set a Lax cookie readable across *.localhost so middleware can verify the session
-  // on cross-subdomain navigation. In production the backend's HttpOnly cookie covers this.
   if (data.accessToken) {
-    document.cookie = `_ft=${encodeURIComponent(data.accessToken)}; domain=localhost; path=/; SameSite=Lax; max-age=900`;
+    setTokenCookie(data.accessToken);
   }
   return data;
 };

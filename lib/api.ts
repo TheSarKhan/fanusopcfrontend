@@ -1,4 +1,4 @@
-import { storeUser, clearUser, isTokenExpiringSoon, getMainSiteUrl } from "./auth";
+import { storeUser, clearUser, isTokenExpiringSoon, isTokenExpired, getMainSiteUrl } from "./auth";
 
 let API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 if (API_URL.endsWith("/")) API_URL = API_URL.slice(0, -1);
@@ -58,7 +58,12 @@ async function _doRefresh(): Promise<RefreshOutcome> {
       body: storedRefresh ? JSON.stringify({ refreshToken: storedRefresh }) : JSON.stringify({}),
     });
 
-    if (res.status === 401 || res.status === 403) return "auth_failure";
+    if (res.status === 401 || res.status === 403) {
+      // Another tab may have already rotated the token — check before treating as fatal
+      const existing = getAccessToken();
+      if (existing && !isTokenExpired(existing)) return "ok";
+      return "auth_failure";
+    }
     if (!res.ok) return "network_error";
 
     const data = await res.json();

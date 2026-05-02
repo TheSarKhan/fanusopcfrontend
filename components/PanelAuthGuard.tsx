@@ -42,22 +42,20 @@ export default function PanelAuthGuard({
       }
 
       if (outcome === "network_error") {
-        // Transient failure — check if the existing token is still usable
-        const current = localStorage.getItem("accessToken");
-        if (current && !isTokenExpired(current)) {
-          // Token still valid: retry the refresh in 30 s
-          refreshTimerRef.current = setTimeout(() => {
-            const t = localStorage.getItem("accessToken");
-            if (t) scheduleProactiveRefresh(t);
-          }, 30_000);
-        } else {
-          // Token expired and network is down — cannot proceed
-          redirectToLogin();
-        }
+        // Transient failure — always retry in 30 s, never logout on network error
+        refreshTimerRef.current = setTimeout(() => {
+          const t = localStorage.getItem("accessToken");
+          if (t) scheduleProactiveRefresh(t);
+        }, 30_000);
         return;
       }
 
-      // auth_failure → refresh token revoked or expired → log out
+      // auth_failure — but first check if another tab already rotated the token
+      const latest = localStorage.getItem("accessToken");
+      if (latest && !isTokenExpired(latest)) {
+        scheduleProactiveRefresh(latest);
+        return;
+      }
       redirectToLogin();
     }, delay);
   };
@@ -88,15 +86,20 @@ export default function PanelAuthGuard({
       }
 
       if (isTokenExpired(token)) {
-        const outcome = await tryRefresh();
+        let outcome = await tryRefresh();
+        if (outcome === "network_error") {
+          // Backend temporarily unreachable — wait 2 s and retry once
+          await new Promise(r => setTimeout(r, 2_000));
+          outcome = await tryRefresh();
+        }
         if (outcome === "ok") {
           token = localStorage.getItem("accessToken");
           if (!token) { redirectToLogin(); return; }
-        } else {
-          // auth_failure or network_error with an already-expired token → logout
+        } else if (outcome === "auth_failure") {
           redirectToLogin();
           return;
         }
+        // Still network_error after retry — proceed, API calls will handle recovery
       }
 
       // Token expiring soon — refresh in background, don't block render
@@ -151,6 +154,7 @@ export default function PanelAuthGuard({
         const newToken = localStorage.getItem("accessToken");
         if (newToken) scheduleRef.current(newToken);
       }
+      // network_error: don't logout — proactive timer will retry when connectivity restores
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);

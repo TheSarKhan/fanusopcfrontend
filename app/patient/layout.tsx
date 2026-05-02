@@ -21,7 +21,7 @@ function PatientShell({ children }: { children: React.ReactNode }) {
   const handleLogout = async () => {
     setLoggingOut(true);
     await logout();
-    window.location.href = `${getMainSiteUrl()}?_logout=1`;
+    window.location.href = `${getMainSiteUrl()}/login?_logout=1`;
   };
 
   return (

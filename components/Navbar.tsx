@@ -24,7 +24,8 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
+    const cookieMatch = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
+    const token = cookieMatch ? decodeURIComponent(cookieMatch[1]) : localStorage.getItem("accessToken");
     if (!token || isTokenExpired(token)) { setPanelUrl(null); return; }
     const payload = decodeAccessToken(token);
     if (payload?.role) setPanelUrl(buildPanelUrl(payload.role));

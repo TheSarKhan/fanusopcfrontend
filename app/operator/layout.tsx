@@ -15,7 +15,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
 
   const handleLogout = async () => {
     await logout();
-    window.location.href = `${getMainSiteUrl()}?_logout=1`;
+    window.location.href = `${getMainSiteUrl()}/login?_logout=1`;
   };
 
   return (

@@ -113,7 +113,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   const handleLogout = async () => {
     await logout();
-    window.location.href = `${getMainSiteUrl()}?_logout=1`;
+    window.location.href = `${getMainSiteUrl()}/login?_logout=1`;
   };
 
   const crumb = TITLE_MAP[pathname] ?? Object.entries(TITLE_MAP).find(([k]) => pathname.startsWith(k + "/"))?.[1] ?? "";

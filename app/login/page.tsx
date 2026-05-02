@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { login } from "@/lib/api";
+import { login, clearSession } from "@/lib/api";
 import { buildPanelUrl } from "@/lib/auth";
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -57,6 +57,13 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("_logout") === "1") {
+      clearSession();
+      window.history.replaceState({}, "", "/login");
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

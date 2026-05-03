@@ -205,7 +205,6 @@ export default function PsychologistsPage() {
   const [specsInput, setSpecsInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [detailItem, setDetailItem] = useState<Psychologist | null>(null);
   const [fromUserOpen, setFromUserOpen] = useState(false);
   const [fromUserList, setFromUserList] = useState<UserRecord[]>([]);
   const [fromUserSearch, setFromUserSearch] = useState("");
@@ -489,7 +488,10 @@ export default function PsychologistsPage() {
 
               {/* Actions */}
               <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
-                <button onClick={() => setDetailItem(p)} style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#F8FAFC", color: "#52718F", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Profil</button>
+                <a href={`/psychologists/${p.id}`} target="_blank" rel="noreferrer" style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#F8FAFC", color: "#52718F", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  Profil
+                </a>
                 <button onClick={() => openEdit(p)} style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#EEF5FF", color: "#002147", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Redaktə</button>
                 <button onClick={() => remove(p.id)} style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#FFF1F1", color: "#DC2626", fontSize: 12, cursor: "pointer" }}>✕</button>
               </div>
@@ -501,15 +503,6 @@ export default function PsychologistsPage() {
             <span style={{ fontSize: 12, color: "#8AAABF" }}>{filtered.length} / {items.length} psixoloq göstərilir</span>
           </div>
         </div>
-      )}
-
-      {/* ── Profile modal ── */}
-      {detailItem && (
-        <ProfileModal
-          p={detailItem}
-          onClose={() => setDetailItem(null)}
-          onEdit={() => { setDetailItem(null); openEdit(detailItem); }}
-        />
       )}
 
       {/* ── Edit/Create modal ── */}

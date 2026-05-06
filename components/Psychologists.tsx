@@ -1,11 +1,26 @@
 "use client";
 
-import { useBooking } from "@/context/BookingContext";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { getStoredUser } from "@/lib/auth";
 import type { Psychologist } from "@/lib/api";
+import AuthRequiredModal from "@/components/AuthRequiredModal";
 
 function PsychologistCard({ p }: { p: Psychologist }) {
-  const { open } = useBooking();
+  const router = useRouter();
+  const [authOpen, setAuthOpen] = useState(false);
+  const target = `/book/${p.id}`;
+  const handleBook = () => {
+    const user = getStoredUser();
+    if (!user || user.role !== "PATIENT") {
+      setAuthOpen(true);
+      return;
+    }
+    router.push(target);
+  };
   return (
+    <>
+    <AuthRequiredModal open={authOpen} onClose={() => setAuthOpen(false)} next={target} />
     <div
       className="group flex flex-col bg-white rounded-2xl overflow-hidden transition-all duration-250 cursor-pointer"
       style={{ border: "1px solid #E4EDF6" }}
@@ -67,7 +82,7 @@ function PsychologistCard({ p }: { p: Psychologist }) {
         >
           <span className="text-xs text-[#8AAABF]">{p.sessionsCount} seans</span>
           <button
-            onClick={() => open(p.name)}
+            onClick={handleBook}
             className="text-xs font-semibold text-white px-3.5 py-1.5 rounded-full transition-all duration-200"
             style={{ background: p.accentColor }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.opacity = "0.85")}
@@ -78,6 +93,7 @@ function PsychologistCard({ p }: { p: Psychologist }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

@@ -8,6 +8,7 @@ import PanelAuthGuard from "@/components/PanelAuthGuard";
 const NAV_ITEMS = [
   { href: "/psycholog", label: "Dashboard", icon: "🏠" },
   { href: "/psycholog/appointments", label: "Randevular", icon: "📅" },
+  { href: "/psycholog/availability", label: "Açıq vaxtlar", icon: "🕓" },
 ];
 
 function PsychologShell({ children }: { children: React.ReactNode }) {

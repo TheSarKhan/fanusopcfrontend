@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useBooking } from "@/context/BookingContext";
+import { useRouter } from "next/navigation";
 import { useScrollReveal } from "@/lib/useScrollReveal";
+import { getStoredUser } from "@/lib/auth";
 import type { Psychologist } from "@/lib/api";
+import AuthRequiredModal from "@/components/AuthRequiredModal";
 
 const specializations = [
   "Hamısı", "Depressiya", "Narahatlıq", "Münasibətlər", "Travma",
@@ -36,11 +38,24 @@ function CheckIcon() {
 }
 
 function PsychologistCard({ p }: { p: Psychologist }) {
-  const { open } = useBooking();
+  const router = useRouter();
+  const [authOpen, setAuthOpen] = useState(false);
   const initials = getInitials(p.name);
   const hasPhoto = p.photoUrl && p.photoUrl.trim() !== "";
+  const target = `/book/${p.id}`;
+
+  const handleBook = () => {
+    const user = getStoredUser();
+    if (!user || user.role !== "PATIENT") {
+      setAuthOpen(true);
+      return;
+    }
+    router.push(target);
+  };
 
   return (
+    <>
+    <AuthRequiredModal open={authOpen} onClose={() => setAuthOpen(false)} next={target} />
     <div className="psy-page-card">
       <div className="psy-page-photo" style={{ background: p.bgColor || "var(--bg-blue)" }}>
         {hasPhoto ? (
@@ -81,7 +96,7 @@ function PsychologistCard({ p }: { p: Psychologist }) {
             <button
               className="psy-page-cta"
               style={{ background: p.bgColor, color: p.accentColor }}
-              onClick={() => open(p.name)}
+              onClick={handleBook}
             >
               Randevu al
               <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
@@ -92,6 +107,7 @@ function PsychologistCard({ p }: { p: Psychologist }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

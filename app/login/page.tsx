@@ -71,7 +71,12 @@ export default function LoginPage() {
     setError("");
     try {
       const data = await login(email, password);
-      window.location.href = buildPanelUrl(data.role, data.accessToken, data.refreshToken);
+      const next = new URLSearchParams(window.location.search).get("next");
+      if (next && next.startsWith("/")) {
+        window.location.href = next;
+      } else {
+        window.location.href = buildPanelUrl(data.role, data.accessToken, data.refreshToken);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Giriş uğursuz oldu");
     } finally {

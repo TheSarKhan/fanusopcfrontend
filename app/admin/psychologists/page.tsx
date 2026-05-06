@@ -492,6 +492,9 @@ export default function PsychologistsPage() {
                   <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                   Profil
                 </a>
+                <a href={`/admin/psychologists/${p.id}/availability`} style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#FFF7E6", color: "#92400E", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none" }}>
+                  🕓 Vaxtlar
+                </a>
                 <button onClick={() => openEdit(p)} style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#EEF5FF", color: "#002147", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Redaktə</button>
                 <button onClick={() => remove(p.id)} style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#FFF1F1", color: "#DC2626", fontSize: 12, cursor: "pointer" }}>✕</button>
               </div>

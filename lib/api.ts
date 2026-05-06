@@ -269,6 +269,8 @@ export interface Psychologist {
   university?: string; degree?: string; graduationYear?: string;
   accentColor: string; bgColor: string;
   displayOrder: number; active: boolean;
+  defaultSessionMinutes?: number;
+  userId?: number | null;
 }
 export interface Stat { id: number; statValue: number; suffix: string; label: string; subLabel: string; displayOrder: number; }
 export interface Announcement { id: number; category: string; categoryColor: string; categoryBg: string; title: string; excerpt: string; publishedDate: string; iconType: string; active: boolean; }
@@ -323,6 +325,52 @@ export interface Faq { id: number; question: string; answer: string; displayOrde
 export interface Testimonial { id: number; quote: string; authorName: string; authorRole: string; initials: string; gradient: string; rating: number; active: boolean; }
 export interface SiteConfig { [key: string]: string; }
 export interface Appointment { id: number; patientName: string; phone: string; psychologistName?: string; note?: string; preferredDate?: string; status: string; createdAt: string; }
+
+export interface AppointmentDetail {
+  id: number;
+  status: string;
+  patientId?: number | null;
+  patientName?: string | null;
+  patientEmail?: string | null;
+  patientPhone?: string | null;
+  psychologistId?: number | null;
+  psychologistName?: string | null;
+  requestedPsychologistId?: number | null;
+  requestedPsychologistName?: string | null;
+  requestedStartAt?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+  sessionFormat?: string | null;
+  note?: string | null;
+  operatorNote?: string | null;
+  assignedByOperatorId?: number | null;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface TimeSlot {
+  id: number;
+  psychologistId: number;
+  dayOfWeek: number; // 1=Mon..7=Sun (ISO)
+  startTime: string; // "HH:mm:ss"
+  endTime: string;
+  active: boolean;
+}
+
+export interface TimeSlotOverride {
+  id: number;
+  psychologistId: number;
+  overrideDate: string; // "YYYY-MM-DD"
+  overrideType: "BLOCK" | "EXTRA";
+  startTime?: string | null;
+  endTime?: string | null;
+  note?: string | null;
+}
+
+export interface AvailableSlot {
+  startAt: string; // ISO
+  endAt: string;
+}
 export interface UserRecord {
   id: number; email: string; role: string;
   firstName?: string; lastName?: string; phone?: string;
@@ -349,6 +397,14 @@ export const getBlogPostBySlug = (slug: string) => get<BlogPost>(`/blog-posts/${
 export const getFaqs = () => get<Faq[]>("/faqs");
 export const getTestimonials = () => get<Testimonial[]>("/testimonials");
 export const getSiteConfig = () => get<SiteConfig>("/site-config");
+
+export const getPsychologistAvailability = (id: number, from?: string, to?: string) => {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const qs = params.toString();
+  return get<AvailableSlot[]>(`/psychologists/${id}/availability${qs ? "?" + qs : ""}`);
+};
 
 export const bookAppointment = (data: {
   patientName: string; phone: string; psychologistName?: string; note?: string; preferredDate?: string;
@@ -648,4 +704,98 @@ export const adminApi = {
     const data = await authedMultipartRequest<{ url: string }>("POST", "/admin/upload", form);
     return data.url;
   },
+};
+
+// ─── Patient API ──────────────────────────────────────────────────────────────
+export interface PatientBookingPayload {
+  note: string;
+  requestedPsychologistId?: number | null;
+  requestedStartAt?: string | null; // ISO
+  sessionFormat?: "ONLINE" | "IN_PERSON" | null;
+}
+
+export const patientApi = {
+  myAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/patient/appointments"),
+  book: (data: PatientBookingPayload) =>
+    authedRequest<AppointmentDetail>("POST", "/patient/appointments", data),
+  cancel: (id: number) =>
+    authedRequest<AppointmentDetail>("POST", `/patient/appointments/${id}/cancel`),
+};
+
+// ─── Psychologist API ─────────────────────────────────────────────────────────
+export const psychologistApi = {
+  me: () => authedRequest<Psychologist>("GET", "/psychologist/me"),
+  updateSessionMinutes: (minutes: number) =>
+    authedRequest<Psychologist>("PUT", "/psychologist/me/session-minutes", { minutes }),
+
+  listSlots: () => authedRequest<TimeSlot[]>("GET", "/psychologist/time-slots"),
+  createSlot: (data: { dayOfWeek: number; startTime: string; endTime: string; active?: boolean }) =>
+    authedRequest<TimeSlot>("POST", "/psychologist/time-slots", data),
+  updateSlot: (id: number, data: { dayOfWeek: number; startTime: string; endTime: string; active?: boolean }) =>
+    authedRequest<TimeSlot>("PUT", `/psychologist/time-slots/${id}`, data),
+  deleteSlot: (id: number) =>
+    authedRequest<void>("DELETE", `/psychologist/time-slots/${id}`),
+
+  listOverrides: () => authedRequest<TimeSlotOverride[]>("GET", "/psychologist/time-slot-overrides"),
+  createOverride: (data: {
+    overrideDate: string; overrideType: "BLOCK" | "EXTRA";
+    startTime?: string; endTime?: string; note?: string;
+  }) => authedRequest<TimeSlotOverride>("POST", "/psychologist/time-slot-overrides", data),
+  deleteOverride: (id: number) =>
+    authedRequest<void>(`DELETE`, `/psychologist/time-slot-overrides/${id}`),
+
+  myAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/psychologist/appointments"),
+  confirm: (id: number) =>
+    authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/confirm`),
+  reject: (id: number, note?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/reject`, { note }),
+  complete: (id: number) =>
+    authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/complete`),
+};
+
+// ─── Operator API (also accessible to ADMIN) ──────────────────────────────────
+export interface OperatorAssignPayload {
+  psychologistId: number;
+  startAt: string; // ISO
+  endAt: string;   // ISO
+  sessionFormat?: "ONLINE" | "IN_PERSON" | null;
+  operatorNote?: string | null;
+}
+
+export const operatorApi = {
+  listAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/operator/appointments"),
+  getAppointment: (id: number) => authedRequest<AppointmentDetail>("GET", `/operator/appointments/${id}`),
+  assign: (id: number, data: OperatorAssignPayload) =>
+    authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/assign`, data),
+  cancel: (id: number, note?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/cancel`, { note }),
+
+  listPsychologists: () => authedRequest<Psychologist[]>("GET", "/operator/psychologists"),
+  availability: (psychologistId: number, from?: string, to?: string) => {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const qs = params.toString();
+    return authedRequest<AvailableSlot[]>(
+      "GET", `/operator/psychologists/${psychologistId}/availability${qs ? "?" + qs : ""}`);
+  },
+
+  // Slots management for any psychologist (also used by /admin pages)
+  psyTimeSlots: (psychologistId: number) =>
+    authedRequest<TimeSlot[]>("GET", `/operator/psychologists/${psychologistId}/time-slots`),
+  createPsyTimeSlot: (psychologistId: number, data: { dayOfWeek: number; startTime: string; endTime: string; active?: boolean }) =>
+    authedRequest<TimeSlot>("POST", `/operator/psychologists/${psychologistId}/time-slots`, data),
+  updatePsyTimeSlot: (psychologistId: number, slotId: number, data: { dayOfWeek: number; startTime: string; endTime: string; active?: boolean }) =>
+    authedRequest<TimeSlot>("PUT", `/operator/psychologists/${psychologistId}/time-slots/${slotId}`, data),
+  deletePsyTimeSlot: (psychologistId: number, slotId: number) =>
+    authedRequest<void>("DELETE", `/operator/psychologists/${psychologistId}/time-slots/${slotId}`),
+
+  psyOverrides: (psychologistId: number) =>
+    authedRequest<TimeSlotOverride[]>("GET", `/operator/psychologists/${psychologistId}/time-slot-overrides`),
+  createPsyOverride: (psychologistId: number, data: {
+    overrideDate: string; overrideType: "BLOCK" | "EXTRA";
+    startTime?: string; endTime?: string; note?: string;
+  }) => authedRequest<TimeSlotOverride>("POST", `/operator/psychologists/${psychologistId}/time-slot-overrides`, data),
+  deletePsyOverride: (psychologistId: number, overrideId: number) =>
+    authedRequest<void>("DELETE", `/operator/psychologists/${psychologistId}/time-slot-overrides/${overrideId}`),
 };

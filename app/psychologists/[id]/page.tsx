@@ -167,7 +167,11 @@ export default async function PsychologistProfilePage(
                 <span className="psy-profile-meta-item">{psychologist.experience} təcrübə</span>
               </div>
 
-              <BookingCta name={psychologist.name} accentColor={psychologist.accentColor} />
+              <BookingCta
+                psychologistId={psychologist.id}
+                name={psychologist.name}
+                accentColor={psychologist.accentColor}
+              />
 
               {psychologist.specializations.length > 0 && (
                 <div className="psy-profile-tags">

@@ -1,115 +1,38 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { logout } from "@/lib/api";
-import { getMainSiteUrl } from "@/lib/auth";
 import PanelAuthGuard from "@/components/PanelAuthGuard";
-import NotificationBell from "@/components/NotificationBell";
+import PanelShell, { type PanelNavItem } from "@/components/PanelShell";
+import { getStoredUser } from "@/lib/auth";
 
-const NAV_ITEMS = [
-  { href: "/psycholog", label: "Dashboard", icon: "🏠" },
-  { href: "/psycholog/appointments", label: "Randevular", icon: "📅" },
-  { href: "/psycholog/calendar", label: "Calendar", icon: "🗓️" },
-  { href: "/psycholog/clients", label: "Müştərilər", icon: "👥" },
-  { href: "/psycholog/chat", label: "Mesajlar", icon: "💬" },
-  { href: "/psycholog/homework", label: "Tapşırıqlar", icon: "🎯" },
-  { href: "/psycholog/resources", label: "Resurslar", icon: "📚" },
-  { href: "/psycholog/availability", label: "Açıq vaxtlar", icon: "🕓" },
-  { href: "/psycholog/reviews", label: "Rəylər", icon: "⭐" },
+const NAV: PanelNavItem[] = [
+  { href: "/psycholog",              label: "Ümumi baxış", icon: "home" },
+  { href: "/psycholog/calendar",     label: "Təqvim",      icon: "calendar" },
+  { href: "/psycholog/appointments", label: "Randevular",  icon: "video" },
+  { href: "/psycholog/clients",      label: "Müştərilər",  icon: "users" },
+  { href: "/psycholog/chat",         label: "Mesajlar",    icon: "chat" },
+  { href: "/psycholog/homework",     label: "Tapşırıqlar", icon: "check" },
+  { href: "/psycholog/resources",    label: "Resurslar",   icon: "book" },
+  { href: "/psycholog/availability", label: "Açıq vaxtlar", icon: "clock" },
+  { href: "/psycholog/reviews",      label: "Rəylər",      icon: "star" },
 ];
 
 function PsychologShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-
-  const handleLogout = async () => {
-    await logout();
-    window.location.href = `${getMainSiteUrl()}/login?_logout=1`;
-  };
+  const u = getStoredUser();
+  const first = u?.firstName ?? "";
+  const last = u?.lastName ?? "";
+  const name = (first + " " + last).trim() || u?.email || "Psixoloq";
+  const initials = ((first[0] ?? "") + (last[0] ?? "")).toUpperCase() || "P";
 
   return (
-    <div className="flex min-h-screen" style={{ background: "#F0F4FA" }}>
-      <aside
-        style={{
-          width: 240,
-          background: "linear-gradient(180deg, #1a1040 0%, #2d1b69 100%)",
-          display: "flex",
-          flexDirection: "column",
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ padding: "1.5rem 1.25rem", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm"
-              style={{ background: "rgba(255,255,255,0.15)" }}
-            >
-              F
-            </div>
-            <div>
-              <p className="font-bold text-white text-sm">Fanus</p>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>Psixoloq Paneli</p>
-            </div>
-          </div>
-        </div>
-
-        <nav className="flex-1 py-4 px-3 flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => {
-            const active =
-              pathname === item.href ||
-              (item.href !== "/psycholog" && pathname.startsWith(item.href));
-            return (
-              <a
-                key={item.href}
-                href={item.href}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.75rem",
-                  padding: "0.625rem 0.875rem",
-                  borderRadius: "0.75rem",
-                  fontSize: "0.875rem",
-                  fontWeight: active ? 600 : 400,
-                  color: active ? "#fff" : "rgba(255,255,255,0.55)",
-                  background: active ? "rgba(255,255,255,0.12)" : "transparent",
-                  textDecoration: "none",
-                }}
-              >
-                <span>{item.icon}</span>
-                {item.label}
-              </a>
-            );
-          })}
-        </nav>
-
-        <div style={{ padding: "1rem", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-          <button
-            onClick={handleLogout}
-            style={{
-              width: "100%",
-              padding: "0.625rem 0.875rem",
-              borderRadius: "0.75rem",
-              fontSize: "0.875rem",
-              color: "rgba(255,255,255,0.55)",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem",
-            }}
-          >
-            <span>🚪</span> Çıxış
-          </button>
-        </div>
-      </aside>
-
-      <main className="flex-1 overflow-auto">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "12px 24px", background: "#fff", borderBottom: "1px solid #E5E7EB", gap: 12 }}>
-          <NotificationBell />
-        </div>
-        <div style={{ padding: "2rem" }}>{children}</div>
-      </main>
-    </div>
+    <PanelShell
+      brandLabel="Psixoloq paneli"
+      homeHref="/psycholog"
+      navItems={NAV}
+      user={{ name, initials, role: "Klinik psixoloq" }}
+      searchPlaceholder="Pasiyent, seans və ya qeyd axtar..."
+    >
+      {children}
+    </PanelShell>
   );
 }
 

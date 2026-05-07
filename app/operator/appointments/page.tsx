@@ -5,8 +5,12 @@ import {
   operatorApi,
   type AppointmentDetail,
   type AvailableSlot,
+  type ContactLog,
+  type PatientHistory,
   type Psychologist,
+  type PsychologistSuggestion,
 } from "@/lib/api";
+import { subscribeNotifications } from "@/lib/notificationsSocket";
 
 type Tab = "PENDING" | "ASSIGNED" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
 
@@ -46,6 +50,9 @@ export default function OperatorAppointmentsPage() {
   const [tab, setTab] = useState<Tab>("PENDING");
   const [search, setSearch] = useState("");
   const [assignFor, setAssignFor] = useState<AppointmentDetail | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -56,6 +63,14 @@ export default function OperatorAppointmentsPage() {
   };
 
   useEffect(load, []);
+
+  // Live refresh on any appointment-related notification (new, assigned, etc.)
+  useEffect(() => {
+    return subscribeNotifications((n) => {
+      if (typeof n.type === "string" && n.type.startsWith("APPOINTMENT_")) load();
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -92,6 +107,20 @@ export default function OperatorAppointmentsPage() {
     }
   };
 
+  const toggleSelected = (id: number) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const onBulkDone = (updated: AppointmentDetail[]) => {
+    const map = new Map(updated.map(a => [a.id, a] as const));
+    setItems(prev => prev.map(a => map.get(a.id) ?? a));
+    setBulkOpen(false); setSelectMode(false); setSelected(new Set());
+  };
+
   return (
     <div>
       <div className="flex items-start justify-between mb-6">
@@ -99,10 +128,28 @@ export default function OperatorAppointmentsPage() {
           <h1 className="text-2xl font-bold text-[#1A2535]">Randevular</h1>
           <p className="text-[#52718F] text-sm mt-1">Müraciətləri psixoloqlara təyin edin və status izləyin</p>
         </div>
-        <button onClick={load} className="px-4 py-2 text-sm rounded-xl border border-[#E5E7EB] bg-white text-[#1A2535]">
-          Yenilə
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => { setSelectMode(s => !s); setSelected(new Set()); }}
+            className="px-4 py-2 text-sm rounded-xl border border-[#E5E7EB] bg-white text-[#1A2535]">
+            {selectMode ? "Seçimi ləğv et" : "Çoxlu seçim"}
+          </button>
+          <button onClick={load} className="px-4 py-2 text-sm rounded-xl border border-[#E5E7EB] bg-white text-[#1A2535]">
+            Yenilə
+          </button>
+        </div>
       </div>
+
+      {selectMode && selected.size > 0 && (
+        <div style={{ background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", borderRadius: 12, padding: "12px 16px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>
+            {selected.size} müraciət seçilib
+          </div>
+          <button onClick={() => setBulkOpen(true)}
+            style={{ padding: "8px 16px", border: "none", borderRadius: 8, background: "#fff", color: "#1A2535", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+            Toplu təyin et →
+          </button>
+        </div>
+      )}
 
       <div className="flex gap-2 mb-4 flex-wrap">
         {(Object.keys(TAB_META) as Tab[]).map(t => {
@@ -143,7 +190,14 @@ export default function OperatorAppointmentsPage() {
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
           {filtered.map(a => (
-            <AppointmentCard key={a.id} a={a} onAssign={() => setAssignFor(a)} onCancel={() => onCancel(a.id)} />
+            <AppointmentCard
+              key={a.id}
+              a={a}
+              selectable={selectMode}
+              selected={selected.has(a.id)}
+              onToggleSelect={() => toggleSelected(a.id)}
+              onAssign={() => setAssignFor(a)}
+              onCancel={() => onCancel(a.id)} />
           ))}
         </div>
       )}
@@ -155,19 +209,38 @@ export default function OperatorAppointmentsPage() {
           onAssigned={onAssigned}
         />
       )}
+
+      {bulkOpen && (
+        <BulkAssignModal
+          ids={Array.from(selected)}
+          onClose={() => setBulkOpen(false)}
+          onDone={onBulkDone}
+        />
+      )}
     </div>
   );
 }
 
 function AppointmentCard({
-  a, onAssign, onCancel,
-}: { a: AppointmentDetail; onAssign: () => void; onCancel: () => void }) {
+  a, selectable, selected, onToggleSelect, onAssign, onCancel,
+}: {
+  a: AppointmentDetail;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+  onAssign: () => void;
+  onCancel: () => void;
+}) {
   const status = a.status;
   const canAssign = status === "PENDING" || status === "REJECTED" || status === "ASSIGNED";
   const canCancel = status !== "COMPLETED" && status !== "CANCELLED";
   return (
-    <div style={{ background: "#fff", borderRadius: 14, padding: 18, boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+    <div style={{ background: "#fff", borderRadius: 14, padding: 18, boxShadow: "0 2px 12px rgba(0,0,0,0.05)", border: selected ? "2px solid #5A4FC8" : "1px solid transparent" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+        {selectable && (
+          <input type="checkbox" checked={!!selected} onChange={onToggleSelect}
+            style={{ width: 18, height: 18, marginTop: 4, cursor: "pointer" }} />
+        )}
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <div style={{ fontSize: 11, color: "#52718F" }}>#FNS-{String(a.id).padStart(4, "0")}</div>
@@ -225,7 +298,10 @@ function AssignModal({
   const [psychologists, setPsychologists] = useState<Psychologist[]>([]);
   const [psyId, setPsyId] = useState<number | null>(appointment.requestedPsychologistId ?? null);
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
+  // If the operator opens the modal with a psychologist already chosen,
+  // assume slots are about to load — avoids the auto-prefill effect from
+  // running before the fetch starts and falsely triggering the manual-time fallback.
+  const [loadingSlots, setLoadingSlots] = useState(appointment.requestedPsychologistId != null);
   const [pickedSlot, setPickedSlot] = useState<string | null>(null); // ISO startAt
   const [manualStart, setManualStart] = useState<string>("");
   const [manualEnd, setManualEnd] = useState<string>("");
@@ -236,9 +312,56 @@ function AssignModal({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Suggestions + history + contact log
+  const [suggestions, setSuggestions] = useState<PsychologistSuggestion[]>([]);
+  const [history, setHistory] = useState<PatientHistory | null>(null);
+  const [contactLogs, setContactLogs] = useState<ContactLog[]>([]);
+  const [logChannel, setLogChannel] = useState<"CALL" | "SMS" | "EMAIL" | "WHATSAPP" | "OTHER">("CALL");
+  const [logOutcome, setLogOutcome] = useState<"ANSWERED" | "NO_ANSWER" | "BUSY" | "REFUSED" | "RESCHEDULED" | "OTHER">("NO_ANSWER");
+  const [logNote, setLogNote] = useState("");
+  const [savingLog, setSavingLog] = useState(false);
+
   useEffect(() => {
     operatorApi.listPsychologists().then(setPsychologists).catch(() => {});
-  }, []);
+    operatorApi.suggest(appointment.id, 5).then(setSuggestions).catch(() => {});
+    if (appointment.patientId) {
+      operatorApi.patientHistory(appointment.patientId).then(setHistory).catch(() => {});
+    }
+    operatorApi.contactLogs(appointment.id).then(setContactLogs).catch(() => {});
+  }, [appointment.id, appointment.patientId]);
+
+  const addContactLog = async () => {
+    setSavingLog(true);
+    try {
+      const created = await operatorApi.addContactLog(appointment.id, {
+        channel: logChannel, outcome: logOutcome, note: logNote.trim() || undefined,
+      });
+      setContactLogs(prev => [created, ...prev]);
+      setLogNote("");
+    } catch (e) { alert((e as Error).message); }
+    finally { setSavingLog(false); }
+  };
+
+  const blockOrUnblock = async () => {
+    if (!history?.userId) return;
+    try {
+      if (history.blocked) {
+        if (!confirm("Bu istifadəçinin blokunu açmaq istəyirsiniz?")) return;
+        await operatorApi.unblockUser(history.userId);
+        setHistory({ ...history, blocked: false, blockReason: null });
+      } else {
+        const reason = prompt("Bloklama səbəbi (məcburi deyil):") ?? "";
+        await operatorApi.blockUser(history.userId, reason);
+        setHistory({ ...history, blocked: true, blockReason: reason });
+      }
+    } catch (e) { alert((e as Error).message); }
+  };
+
+  const applySuggestion = (s: PsychologistSuggestion) => {
+    setPsyId(s.psychologistId);
+    setPickedSlot(null);
+    setManualStart(""); setManualEnd("");
+  };
 
   useEffect(() => {
     if (!psyId) { setSlots([]); return; }
@@ -258,7 +381,21 @@ function AssignModal({
     const requested = appointment.requestedStartAt;
     if (!requested || !psyId || loadingSlots) return;
     if (pickedSlot || manualStart) return; // operator already chose
-
+    // Don't run before slots have actually loaded — the fetch may still be in-flight
+    // for a brief moment when loadingSlots flips false-true-false. Wait until we
+    // have a non-empty array OR confirmed empty after fetch completed.
+    if (slots.length === 0) {
+      // Empty slot list AFTER load means psychologist has no openings — only then
+      // fall back to manual time. Use a microtask/effect re-run guard.
+      const psy = psychologists.find(p => p.id === psyId);
+      const minutes = psy?.defaultSessionMinutes && psy.defaultSessionMinutes > 0
+        ? psy.defaultSessionMinutes : 50;
+      const reqMs = new Date(requested).getTime();
+      const end = new Date(reqMs + minutes * 60_000);
+      setManualStart(toDateTimeLocal(requested));
+      setManualEnd(toDateTimeLocal(end.toISOString()));
+      return;
+    }
     const reqMs = new Date(requested).getTime();
     const match = slots.find(s => new Date(s.startAt).getTime() === reqMs);
     if (match) {
@@ -316,8 +453,8 @@ function AssignModal({
     <div onClick={onClose}
       style={{ position: "fixed", inset: 0, background: "rgba(15,28,46,0.5)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div onClick={e => e.stopPropagation()}
-        style={{ background: "#fff", borderRadius: 16, width: "min(720px, 100%)", maxHeight: "90vh", overflow: "auto", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
-        <div style={{ padding: "20px 24px", borderBottom: "1px solid #EFF2F7", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        style={{ background: "#fff", borderRadius: 16, width: "min(1100px, 100%)", maxHeight: "92vh", overflow: "hidden", boxShadow: "0 12px 40px rgba(0,0,0,0.18)", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "16px 24px", borderBottom: "1px solid #EFF2F7", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: 11, color: "#52718F" }}>#FNS-{String(appointment.id).padStart(4, "0")}</div>
             <h2 style={{ fontSize: 18, fontWeight: 700, color: "#1A2535", margin: "2px 0 0" }}>Müraciəti psixoloqa təyin et</h2>
@@ -329,7 +466,118 @@ function AssignModal({
           <button onClick={onClose} style={{ background: "transparent", border: "none", fontSize: 22, cursor: "pointer", color: "#52718F" }}>×</button>
         </div>
 
+        <div style={{ display: "grid", gridTemplateColumns: history ? "300px 1fr" : "1fr", overflow: "auto", flex: 1 }}>
+
+        {/* History sidebar */}
+        {history && (
+          <aside style={{ borderRight: "1px solid #EFF2F7", padding: 16, background: "#FAFCFF" }}>
+            <div style={{ fontSize: 11, color: "#52718F", textTransform: "uppercase", fontWeight: 600, marginBottom: 8 }}>Müştəri tarixçəsi</div>
+            <div style={{ background: "#fff", borderRadius: 10, padding: 12, marginBottom: 10, border: history.blocked ? "1px solid #FECACA" : "1px solid #E5E7EB" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#1A2535" }}>{history.name}</div>
+              <div style={{ fontSize: 12, color: "#52718F", marginTop: 2 }}>{history.email}</div>
+              <div style={{ fontSize: 12, color: "#52718F" }}>{history.phone ?? ""}</div>
+              {history.blocked && (
+                <div style={{ marginTop: 6, padding: "4px 8px", background: "#FEE2E2", color: "#991B1B", borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                  🚫 BLOKLU — {history.blockReason || "səbəb yoxdur"}
+                </div>
+              )}
+              {history.userId && (
+                <button onClick={blockOrUnblock}
+                  style={{ marginTop: 8, width: "100%", padding: "6px 10px", border: history.blocked ? "1px solid #C7D2FE" : "1px solid #FECACA", background: "#fff", color: history.blocked ? "#3730A3" : "#991B1B", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                  {history.blocked ? "Bloku aç" : "Blokla / spam"}
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 12 }}>
+              <Mini label="Cəmi" value={history.totalAppointments} color="#1E3A5F" />
+              <Mini label="Rədd" value={history.rejectedCount} color="#92400E" />
+              <Mini label="Ləğv" value={history.cancelledCount} color="#991B1B" />
+            </div>
+
+            <div style={{ fontSize: 11, color: "#52718F", textTransform: "uppercase", fontWeight: 600, marginBottom: 6 }}>Son müraciətlər</div>
+            <div style={{ display: "grid", gap: 4 }}>
+              {history.recent.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#8AAABF" }}>Yoxdur</div>
+              ) : history.recent.map(r => (
+                <div key={r.id} style={{ background: "#fff", borderRadius: 6, padding: "6px 8px", fontSize: 11, border: "1px solid #EFF2F7" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ fontWeight: 600 }}>#{r.id}</span>
+                    <span style={{ color: "#52718F" }}>{r.status}</span>
+                  </div>
+                  <div style={{ color: "#52718F", marginTop: 2 }}>{r.psychologistName ?? "—"}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Contact log */}
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 11, color: "#52718F", textTransform: "uppercase", fontWeight: 600, marginBottom: 6 }}>Əlaqə logu</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 6 }}>
+                <select value={logChannel} onChange={e => setLogChannel(e.target.value as "CALL" | "SMS" | "EMAIL" | "WHATSAPP" | "OTHER")}
+                  style={{ padding: 6, fontSize: 11, borderRadius: 6, border: "1px solid #E5E7EB" }}>
+                  <option value="CALL">📞 Zəng</option>
+                  <option value="SMS">SMS</option>
+                  <option value="EMAIL">Email</option>
+                  <option value="WHATSAPP">WhatsApp</option>
+                  <option value="OTHER">Digər</option>
+                </select>
+                <select value={logOutcome} onChange={e => setLogOutcome(e.target.value as "ANSWERED" | "NO_ANSWER" | "BUSY" | "REFUSED" | "RESCHEDULED" | "OTHER")}
+                  style={{ padding: 6, fontSize: 11, borderRadius: 6, border: "1px solid #E5E7EB" }}>
+                  <option value="NO_ANSWER">Cavab yox</option>
+                  <option value="ANSWERED">Cavabladı</option>
+                  <option value="BUSY">Məşğul</option>
+                  <option value="REFUSED">İmtina etdi</option>
+                  <option value="RESCHEDULED">Yenidən planladı</option>
+                  <option value="OTHER">Digər</option>
+                </select>
+              </div>
+              <input value={logNote} onChange={e => setLogNote(e.target.value)} placeholder="Qeyd"
+                style={{ width: "100%", padding: 6, fontSize: 11, borderRadius: 6, border: "1px solid #E5E7EB", marginBottom: 6 }} />
+              <button onClick={addContactLog} disabled={savingLog}
+                style={{ width: "100%", padding: "6px 10px", border: "none", borderRadius: 6, background: "#1A2535", color: "#fff", fontSize: 11, fontWeight: 600, cursor: savingLog ? "wait" : "pointer" }}>
+                {savingLog ? "Əlavə edilir…" : "+ Log əlavə et"}
+              </button>
+              {contactLogs.length > 0 && (
+                <div style={{ marginTop: 8, display: "grid", gap: 4, maxHeight: 120, overflow: "auto" }}>
+                  {contactLogs.map(l => (
+                    <div key={l.id} style={{ background: "#fff", padding: "4px 6px", borderRadius: 4, fontSize: 10, border: "1px solid #EFF2F7" }}>
+                      <strong>{l.channel}</strong> · {l.outcome}
+                      {l.note && <div style={{ color: "#52718F" }}>{l.note}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </aside>
+        )}
+
         <div style={{ padding: 24 }}>
+          {suggestions.length > 0 && (
+            <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: 12, marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#065F46", marginBottom: 8 }}>🤖 Avtomatik təklif (top {suggestions.length})</div>
+              <div style={{ display: "grid", gap: 6 }}>
+                {suggestions.slice(0, 3).map(s => (
+                  <button key={s.psychologistId} type="button" onClick={() => applySuggestion(s)}
+                    style={{
+                      textAlign: "left", padding: "8px 12px", borderRadius: 8,
+                      border: psyId === s.psychologistId ? "2px solid #10B981" : "1px solid #BBF7D0",
+                      background: psyId === s.psychologistId ? "#fff" : "#FAFEFC",
+                      cursor: "pointer",
+                    }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1A2535" }}>{s.name}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#065F46" }}>skor {s.score}</div>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#52718F", marginTop: 2 }}>
+                      {s.reasons.join(" · ")}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>Psixoloq</label>
           <select value={psyId ?? ""} onChange={e => { setPsyId(Number(e.target.value) || null); setPickedSlot(null); }}
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 14, marginBottom: 16 }}>
@@ -356,31 +604,46 @@ function AssignModal({
                 </div>
               ) : (
                 <div style={{ display: "grid", gap: 10, marginBottom: 16, maxHeight: 220, overflow: "auto" }}>
-                  {groupedSlots.map(([day, daySlots]) => (
+                  {groupedSlots.map(([day, daySlots]) => {
+                    const requestedMs = appointment.requestedStartAt
+                      ? new Date(appointment.requestedStartAt).getTime() : null;
+                    const pickedMs = pickedSlot ? new Date(pickedSlot).getTime() : null;
+                    return (
                     <div key={day}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: "#52718F", textTransform: "uppercase", marginBottom: 4 }}>{day}</div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {daySlots.map(s => {
-                          const active = pickedSlot === s.startAt;
+                          const slotMs = new Date(s.startAt).getTime();
+                          const active = pickedMs !== null && slotMs === pickedMs;
+                          const isRequested = requestedMs !== null && slotMs === requestedMs;
+                          let border = "1px solid #E5E7EB";
+                          let bg = "#fff";
+                          let color = "#1A2535";
+                          if (active) { border = "2px solid #5A4FC8"; bg = "#EEECFB"; color = "#5A4FC8"; }
+                          else if (isRequested) { border = "2px solid #10B981"; bg = "#ECFDF5"; color = "#065F46"; }
                           return (
                             <button
                               key={s.startAt}
                               type="button"
+                              title={isRequested ? "Müştərinin istədiyi vaxt" : undefined}
                               onClick={() => { setPickedSlot(active ? null : s.startAt); setManualStart(""); setManualEnd(""); }}
                               style={{
                                 padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                                border: active ? "2px solid #5A4FC8" : "1px solid #E5E7EB",
-                                background: active ? "#EEECFB" : "#fff",
-                                color: active ? "#5A4FC8" : "#1A2535",
+                                border, background: bg, color,
                                 cursor: "pointer",
+                                position: "relative",
                               }}>
                               {fmtTime(s.startAt)}
+                              {isRequested && !active && (
+                                <span style={{ marginLeft: 4, fontSize: 9 }}>★</span>
+                              )}
                             </button>
                           );
                         })}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -431,6 +694,110 @@ function AssignModal({
             <button onClick={submit} disabled={saving}
               style={{ padding: "10px 22px", border: "none", background: "linear-gradient(135deg,#002147,#5A4FC8)", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 600, cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
               {saving ? "Saxlanılır…" : "Təsdiqlə və göndər"}
+            </button>
+          </div>
+        </div>
+
+        </div>{/* end grid */}
+      </div>
+    </div>
+  );
+}
+
+function Mini({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div style={{ background: "#fff", borderRadius: 6, padding: "6px 4px", textAlign: "center", border: "1px solid #EFF2F7" }}>
+      <div style={{ fontSize: 9, color: "#52718F", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, color }}>{value}</div>
+    </div>
+  );
+}
+
+function BulkAssignModal({
+  ids, onClose, onDone,
+}: {
+  ids: number[];
+  onClose: () => void;
+  onDone: (updated: AppointmentDetail[]) => void;
+}) {
+  const [psychologists, setPsychologists] = useState<Psychologist[]>([]);
+  const [psyId, setPsyId] = useState<number | null>(null);
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [format, setFormat] = useState<"ONLINE" | "IN_PERSON">("ONLINE");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    operatorApi.listPsychologists().then(setPsychologists).catch(() => {});
+  }, []);
+
+  const submit = async () => {
+    setErr(null);
+    if (!psyId) { setErr("Psixoloq seçin"); return; }
+    if (!start || !end) { setErr("Başlama və bitiş vaxtları lazımdır"); return; }
+    if (new Date(start) >= new Date(end)) { setErr("Başlama bitişdən əvvəl olmalıdır"); return; }
+    setSaving(true);
+    try {
+      const updated = await operatorApi.bulkAssign(ids, {
+        psychologistId: psyId,
+        startAt: new Date(start).toISOString(),
+        endAt: new Date(end).toISOString(),
+        sessionFormat: format,
+        operatorNote: note.trim() || null,
+      });
+      onDone(updated);
+    } catch (e) { setErr((e as Error).message); setSaving(false); }
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(15,28,46,0.5)", zIndex: 70, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, width: "min(560px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
+        <div style={{ padding: "16px 22px", borderBottom: "1px solid #EFF2F7" }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: 0 }}>Toplu təyin et</h2>
+          <p style={{ fontSize: 12, color: "#52718F", marginTop: 4 }}>{ids.length} müraciət eyni psixoloqa və eyni vaxta təyin olunacaq.</p>
+        </div>
+        <div style={{ padding: 22 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>Psixoloq</label>
+          <select value={psyId ?? ""} onChange={e => setPsyId(Number(e.target.value) || null)}
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 12 }}>
+            <option value="">— Seç —</option>
+            {psychologists.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+            <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
+              style={{ padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13 }} />
+            <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)}
+              style={{ padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13 }} />
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            {(["ONLINE", "IN_PERSON"] as const).map(f => (
+              <button key={f} type="button" onClick={() => setFormat(f)}
+                style={{
+                  flex: 1, padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 600,
+                  border: format === f ? "2px solid #5A4FC8" : "1px solid #E5E7EB",
+                  background: format === f ? "#EEECFB" : "#fff", cursor: "pointer", color: "#1A2535",
+                }}>
+                {f === "ONLINE" ? "💻 Online" : "🏢 Üzbəüz"}
+              </button>
+            ))}
+          </div>
+
+          <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Operator qeydi (opsional)"
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 12, fontFamily: "inherit" }} />
+
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>{err}</div>}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>Bağla</button>
+            <button onClick={submit} disabled={saving}
+              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Göndərilir…" : `${ids.length} təyin et`}
             </button>
           </div>
         </div>

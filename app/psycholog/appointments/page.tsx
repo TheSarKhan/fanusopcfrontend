@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { psychologistApi, type AppointmentDetail } from "@/lib/api";
+import { subscribeNotifications } from "@/lib/notificationsSocket";
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   PENDING:   { label: "Yeni",        color: "#92400E", bg: "#FEF3C7" },
@@ -32,6 +33,13 @@ export default function PsychologistAppointmentsPage() {
   };
 
   useEffect(load, []);
+
+  useEffect(() => {
+    return subscribeNotifications((n) => {
+      if (typeof n.type === "string" && n.type.startsWith("APPOINTMENT_")) load();
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     const now = Date.now();

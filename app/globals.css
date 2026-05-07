@@ -1,14 +1,26 @@
 @import "tailwindcss";
 
 /* ===== DESIGN TOKENS ===== */
+/* Brend əsas rəngi: Fanus mavisi #1051B7 (--brand). */
+/* --oxford qara-mavi mətn rəngidir; --brand-* CTAs/aksent üçündür. */
 :root {
-  --oxford: #002147;
-  --oxford-90: #0a2d56;
-  --oxford-80: #1a3d6a;
-  --oxford-60: #5a6f8c;
-  --oxford-40: #9aa9bd;
-  --oxford-20: #d4dbe5;
-  --oxford-10: #e8edf3;
+  --brand: #1051B7;
+  --brand-700: #082F6D;
+  --brand-600: #0B3F90;
+  --brand-500: #2A6BD0;
+  --brand-400: #5089E0;
+  --brand-300: #88AEEC;
+  --brand-200: #C3D6F6;
+  --brand-100: #E4ECFA;
+  --brand-50:  #F2F6FD;
+
+  --oxford: #0A1A33;
+  --oxford-90: #1A2B4D;
+  --oxford-80: #2B3C5A;
+  --oxford-60: #5C6B85;
+  --oxford-40: #88AEEC;
+  --oxford-20: #C3D6F6;
+  --oxford-10: #E4ECFA;
 
   --sage: #4A9B7F;
   --sage-soft: #e6f1ec;
@@ -20,7 +32,7 @@
   --lilac-soft: #ece8f6;
 
   --bg: #F7F9FC;
-  --bg-blue: #EEF4FF;
+  --bg-blue: #F2F6FD;
   --white: #FFFFFF;
 
   --shadow-sm: 0 1px 2px rgba(0, 33, 71, 0.04), 0 1px 3px rgba(0, 33, 71, 0.06);
@@ -119,10 +131,10 @@ img { max-width: 100%; display: block; }
   text-decoration: none;
   font-family: var(--sans);
 }
-.btn-primary { background: var(--oxford); color: white; }
-.btn-primary:hover { background: var(--oxford-90); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-.btn-ghost { background: transparent; color: var(--oxford); border: 1.5px solid var(--oxford-20); }
-.btn-ghost:hover { border-color: var(--oxford); background: var(--white); }
+.btn-primary { background: var(--brand); color: white; }
+.btn-primary:hover { background: var(--brand-600); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.btn-ghost { background: transparent; color: var(--oxford); border: 1.5px solid var(--brand-200); }
+.btn-ghost:hover { border-color: var(--brand); background: var(--white); color: var(--brand); }
 .btn-sm { height: 44px; padding: 0 22px; font-size: 14px; }
 
 /* legacy compat */
@@ -131,18 +143,18 @@ img { max-width: 100%; display: block; }
   align-items: center;
   gap: 0.5rem;
   background: transparent;
-  color: var(--oxford);
+  color: var(--brand);
   padding: 0.875rem 2rem;
   border-radius: 9999px;
   font-weight: 600;
   font-size: 0.9375rem;
-  border: 2px solid var(--oxford);
+  border: 2px solid var(--brand);
   transition: all 0.2s ease;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
 }
-.btn-outline:hover { background: var(--bg-blue); transform: translateY(-1px); }
+.btn-outline:hover { background: var(--brand-50); transform: translateY(-1px); }
 
 /* ===== CARD ===== */
 .card {
@@ -166,7 +178,7 @@ img { max-width: 100%; display: block; }
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--oxford);
+  color: var(--brand);
   margin-bottom: 1rem;
 }
 
@@ -2920,3 +2932,95 @@ a.contact-chip:hover {
 .article-content strong { font-weight: 700; }
 .article-content em { font-style: italic; }
 .article-content hr { border: none; border-top: 1px solid #E4EDF6; margin: 1.5rem 0; }
+
+/* ==================================================================== */
+/* === FANUS 2026 — Lantern blue redesign tokens =====================  */
+/* ==================================================================== */
+:root {
+  --fanus-primary: #1051B7;
+  --fanus-primary-700: #082F6D;
+  --fanus-primary-600: #0B3F90;
+  --fanus-primary-500: #2A6BD0;
+  --fanus-primary-400: #5089E0;
+  --fanus-primary-300: #88AEEC;
+  --fanus-primary-200: #C3D6F6;
+  --fanus-primary-100: #E4ECFA;
+  --fanus-primary-50:  #F2F6FD;
+  --fanus-ink: #0A1A33;
+  --fanus-ink-2: #2B3C5A;
+  --fanus-ink-3: #5C6B85;
+  --fanus-line: #E6ECF5;
+  --fanus-bg: #FAFBFD;
+  --fanus-paper: #FFFFFF;
+  --fanus-accent: #F5B946;
+  --fanus-warm: #FFF7E8;
+  --fanus-r: 18px;
+  --fanus-r-lg: 28px;
+  --fanus-shadow-sm: 0 1px 2px rgba(10,26,51,.04), 0 2px 6px rgba(10,26,51,.04);
+  --fanus-shadow-md: 0 4px 12px rgba(10,26,51,.06), 0 12px 32px rgba(10,26,51,.07);
+  --fanus-shadow-lg: 0 24px 60px rgba(10,26,51,.12), 0 4px 12px rgba(10,26,51,.05);
+  --fanus-serif: var(--font-playfair), 'Playfair Display', Georgia, serif;
+}
+
+.fanus-root { color: var(--fanus-ink); }
+.fanus-root *, .fanus-root *::before, .fanus-root *::after { box-sizing: border-box; }
+.fanus-container { max-width: 1240px; margin: 0 auto; padding: 0 28px; }
+@media (max-width: 860px) { .fanus-container { padding: 0 20px; } }
+
+.fanus-eyebrow {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--fanus-primary);
+}
+.fanus-eyebrow .dash { width: 28px; height: 1px; background: var(--fanus-primary); opacity: .4; }
+
+.fanus-serif-accent { font-family: var(--fanus-serif); font-style: italic; font-weight: 400; }
+
+.fanus-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 14px 24px; border-radius: 999px;
+  font-weight: 600; font-size: 15px;
+  transition: all 0.2s ease; white-space: nowrap;
+  border: 1px solid transparent; cursor: pointer; font-family: inherit;
+}
+.fanus-btn-primary {
+  background: var(--fanus-primary); color: white;
+  box-shadow: 0 8px 22px rgba(16,81,183,.25);
+}
+.fanus-btn-primary:hover {
+  background: var(--fanus-primary-600); transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(16,81,183,.32);
+}
+.fanus-btn-ghost {
+  background: transparent; color: var(--fanus-ink); border-color: var(--fanus-line);
+}
+.fanus-btn-ghost:hover { border-color: var(--fanus-primary); color: var(--fanus-primary); }
+.fanus-btn-light { background: var(--fanus-primary-50); color: var(--fanus-primary); }
+.fanus-btn-light:hover { background: var(--fanus-primary-100); }
+.fanus-btn-lg { padding: 16px 28px; font-size: 15px; border-radius: 12px; }
+.fanus-btn-sm { padding: 9px 18px; font-size: 14px; }
+
+.fanus-section { position: relative; padding: 96px 0; }
+@media (max-width: 860px) { .fanus-section { padding: 72px 0; } }
+
+.fanus-deco {
+  position: absolute; pointer-events: none; user-select: none; z-index: 0;
+}
+@keyframes fanusFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33%      { transform: translate(8px, -12px) rotate(2deg); }
+  66%      { transform: translate(-6px, 8px) rotate(-1.5deg); }
+}
+@keyframes fanusFloatY {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+@keyframes fanusDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-14px, 20px) scale(1.04); }
+}
+.fanus-deco--float { animation: fanusFloat 11s ease-in-out infinite; }
+.fanus-deco--drift { animation: fanusDrift 22s ease-in-out infinite; }
+.fanus-deco--floatY { animation: fanusFloatY 6s ease-in-out infinite; }
+@media (max-width: 860px) { .fanus-deco--mobile-hide { display: none; } }
+

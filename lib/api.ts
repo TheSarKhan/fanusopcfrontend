@@ -1,4 +1,4 @@
-import { storeUser, clearUser, isTokenExpiringSoon, isTokenExpired, getMainSiteUrl } from "./auth";
+import { storeUser, clearUser, isTokenExpiringSoon, isTokenExpired, getMainSiteUrl, decodeAccessToken } from "./auth";
 
 let API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 if (API_URL.endsWith("/")) API_URL = API_URL.slice(0, -1);
@@ -32,7 +32,11 @@ function readTokenCookie(): string | null {
 
 function setTokenCookie(token: string) {
   const domain = cookieDomain();
-  document.cookie = `accessToken=${encodeURIComponent(token)}; domain=${domain}; path=/; SameSite=Lax; max-age=900`;
+  // Match cookie lifetime to actual JWT lifetime (with a tiny safety floor).
+  const payload = decodeAccessToken(token);
+  const nowSec = Math.floor(Date.now() / 1000);
+  const maxAge = payload?.exp ? Math.max(60, payload.exp - nowSec) : 3600;
+  document.cookie = `accessToken=${encodeURIComponent(token)}; domain=${domain}; path=/; SameSite=Lax; max-age=${maxAge}`;
 }
 
 function clearTokenCookie() {
@@ -56,6 +60,8 @@ export function clearSession() {
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   clearTokenCookie();
+  // Notify module-level caches (favourites, etc.) to drop user-scoped state.
+  try { window.dispatchEvent(new Event("fanus:session-cleared")); } catch { /* ignore */ }
 }
 
 export function redirectToLogin() {
@@ -77,9 +83,13 @@ async function _doRefresh(): Promise<RefreshOutcome> {
     });
 
     if (res.status === 401 || res.status === 403) {
-      // Another tab may have already rotated the token — check before treating as fatal
-      const existing = getAccessToken();
-      if (existing && !isTokenExpired(existing)) return "ok";
+      // Another tab may have already rotated the token. Check localStorage first,
+      // then briefly poll (up to 1s) in case the other tab's response is in-flight.
+      for (let i = 0; i < 5; i++) {
+        const existing = getAccessToken();
+        if (existing && !isTokenExpired(existing)) return "ok";
+        await new Promise(r => setTimeout(r, 200));
+      }
       return "auth_failure";
     }
     if (!res.ok) return "network_error";
@@ -99,12 +109,35 @@ async function _doRefresh(): Promise<RefreshOutcome> {
   }
 }
 
-// Singleton — prevents parallel refresh races
+// In-tab singleton — first line of defence against parallel refresh in the same tab.
 let _refreshPromise: Promise<RefreshOutcome> | null = null;
+
+// Cross-tab mutex via the Web Locks API. Only one tab refreshes at a time;
+// other tabs wait, then read the freshly-stored token. Falls back to the
+// in-tab singleton on browsers without navigator.locks.
+type LockManager = {
+  request: <T>(name: string, cb: () => Promise<T>) => Promise<T>;
+};
+function getLockManager(): LockManager | null {
+  if (typeof navigator === "undefined") return null;
+  const locks = (navigator as Navigator & { locks?: LockManager }).locks;
+  return locks ?? null;
+}
+
+async function _refreshWithCrossTabLock(): Promise<RefreshOutcome> {
+  const locks = getLockManager();
+  if (!locks) return _doRefresh();
+  return locks.request("fanus-refresh-token", async () => {
+    // Inside the lock — re-check, in case another tab just rotated for us.
+    const t = getAccessToken();
+    if (t && !isTokenExpiringSoon(t, 30)) return "ok" as RefreshOutcome;
+    return _doRefresh();
+  });
+}
 
 export async function tryRefresh(): Promise<RefreshOutcome> {
   if (_refreshPromise) return _refreshPromise;
-  _refreshPromise = _doRefresh().finally(() => { _refreshPromise = null; });
+  _refreshPromise = _refreshWithCrossTabLock().finally(() => { _refreshPromise = null; });
   return _refreshPromise;
 }
 
@@ -379,13 +412,23 @@ export interface UserRecord {
 }
 
 export interface PsychologistApplication {
-  id: number; firstName: string; lastName: string; email: string; phone?: string;
-  university: string; degree: string; graduationYear: string;
+  id: number;
+  firstName: string; lastName: string; email: string; phone?: string;
+  birthDate?: string;             // YYYY-MM-DD
+  gender?: "FEMALE" | "MALE" | "OTHER";
+  finId?: string;
+  title?: string;
+  university?: string; degree?: string; graduationYear?: string;
   specializations?: string; sessionTypes?: string; experienceYears?: string;
-  bio?: string; certifications?: string; languages?: string; activityFormat?: string;
+  bio?: string; motivation?: string;
+  certifications?: string; languages?: string; activityFormat?: string;
   diplomaFileUrl?: string; certificateFileUrls?: string;
+  educationsJson?: string;        // JSON array string
+  certificatesJson?: string;      // JSON array string
+  consentEthics?: boolean; consentGdpr?: boolean; consentTerms?: boolean;
   status: "PENDING" | "APPROVED" | "REJECTED";
   adminNote?: string; createdAt: string; reviewedAt?: string;
+  photoUrl?: string;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -470,15 +513,35 @@ export const registerPatient = (data: {
   return body;
 });
 
+export interface PsychologistRegistrationData {
+  // Personal
+  email: string; password: string;
+  firstName: string; lastName: string;
+  phone: string;
+  birthDate?: string;            // ISO YYYY-MM-DD
+  gender?: "FEMALE" | "MALE" | "OTHER";
+  finId?: string;
+  // Professional
+  title: string;
+  experienceYears: string;
+  activityFormat: "ONLINE" | "IN_PERSON" | "BOTH";
+  languages: string[];
+  specializations: string[];
+  sessionTypes: string[];
+  // Multi rows (will be JSON-stringified)
+  educations: { institution: string; degree?: string; graduationYear?: string }[];
+  certificates: { title: string; issuer?: string; year?: string; type: "CERTIFICATE" | "SEMINAR" }[];
+  // Bio
+  bio: string;
+  motivation?: string;
+  // Consents (must all be true)
+  consentEthics: boolean;
+  consentGdpr: boolean;
+  consentTerms: boolean;
+}
+
 export const registerPsychologist = (
-  data: {
-    email: string; password: string; firstName: string; lastName: string; phone?: string;
-    languages: string[];
-    university: string; degree: string; graduationYear: string;
-    specializations: string[]; sessionTypes: string[]; experienceYears: string;
-    activityFormat: string;
-    bio: string; certifications: string[];
-  },
+  data: PsychologistRegistrationData,
   diplomaFile?: File | null,
   certificateFiles?: File[],
   photoFile?: File | null
@@ -488,17 +551,23 @@ export const registerPsychologist = (
   form.append("password", data.password);
   form.append("firstName", data.firstName);
   form.append("lastName", data.lastName);
-  if (data.phone) form.append("phone", data.phone);
-  data.languages.forEach(l => form.append("languages", l));
-  form.append("university", data.university);
-  form.append("degree", data.degree);
-  form.append("graduationYear", data.graduationYear);
-  data.specializations.forEach(s => form.append("specializations", s));
-  data.sessionTypes.forEach(s => form.append("sessionTypes", s));
+  form.append("phone", data.phone);
+  if (data.birthDate) form.append("birthDate", data.birthDate);
+  if (data.gender) form.append("gender", data.gender);
+  if (data.finId) form.append("finId", data.finId);
+  if (data.title) form.append("title", data.title);
   if (data.experienceYears) form.append("experienceYears", data.experienceYears);
   if (data.activityFormat) form.append("activityFormat", data.activityFormat);
+  data.languages.forEach(l => form.append("languages", l));
+  data.specializations.forEach(s => form.append("specializations", s));
+  data.sessionTypes.forEach(s => form.append("sessionTypes", s));
+  form.append("educationsJson", JSON.stringify(data.educations));
+  form.append("certificatesJson", JSON.stringify(data.certificates));
   if (data.bio) form.append("bio", data.bio);
-  data.certifications.forEach(c => form.append("certifications", c));
+  if (data.motivation) form.append("motivation", data.motivation);
+  form.append("consentEthics", String(data.consentEthics));
+  form.append("consentGdpr", String(data.consentGdpr));
+  form.append("consentTerms", String(data.consentTerms));
   if (diplomaFile) form.append("diplomaFile", diplomaFile);
   certificateFiles?.forEach(f => form.append("certificateFiles", f));
   if (photoFile) form.append("photoFile", photoFile);
@@ -720,6 +789,85 @@ export const patientApi = {
     authedRequest<AppointmentDetail>("POST", "/patient/appointments", data),
   cancel: (id: number) =>
     authedRequest<AppointmentDetail>("POST", `/patient/appointments/${id}/cancel`),
+
+  favorites: () => authedRequest<Psychologist[]>("GET", "/patient/favorites"),
+  favoriteIds: () => authedRequest<number[]>("GET", "/patient/favorites/ids"),
+  toggleFavorite: (psychologistId: number) =>
+    authedRequest<{ favorite: boolean }>("POST", `/patient/favorites/${psychologistId}/toggle`),
+
+  reschedule: (appointmentId: number, data: PatientBookingPayload) =>
+    authedRequest<AppointmentDetail>("POST", `/patient/appointments/${appointmentId}/reschedule`, data),
+
+  // Chat
+  chatThreads: () => authedRequest<ChatThread[]>("GET", "/patient/chat/threads"),
+  chatStart: (psychologistId: number) =>
+    authedRequest<ChatThread>("POST", "/patient/chat/threads", { psychologistId }),
+  chatMessages: (threadId: number) =>
+    authedRequest<ChatMessage[]>("GET", `/patient/chat/threads/${threadId}/messages`),
+  chatSend: (threadId: number, body: string) =>
+    authedRequest<ChatMessage>("POST", "/patient/chat/messages", { threadId, body }),
+  chatMarkRead: (threadId: number) =>
+    authedRequest<{ updated: number }>("POST", `/patient/chat/threads/${threadId}/read`),
+
+  // Homework
+  homework: () => authedRequest<Homework[]>("GET", "/patient/homework"),
+  markHomework: (id: number, data: { status: "COMPLETED" | "SKIPPED" | "PENDING"; completionNote?: string }) =>
+    authedRequest<Homework>("POST", `/patient/homework/${id}/mark`, data),
+
+  // Library
+  library: () => authedRequest<SharedResource[]>("GET", "/patient/library"),
+  markLibraryViewed: (shareId: number) =>
+    authedRequest<void>("POST", `/patient/library/${shareId}/viewed`),
+
+  journalList: () => authedRequest<JournalEntry[]>("GET", "/patient/journal"),
+  journalTrend: (days = 30) => authedRequest<MoodTrend>("GET", `/patient/journal/trend?days=${days}`),
+  createJournal: (data: JournalEntryPayload) =>
+    authedRequest<JournalEntry>("POST", "/patient/journal", data),
+  updateJournal: (id: number, data: JournalEntryPayload) =>
+    authedRequest<JournalEntry>("PUT", `/patient/journal/${id}`, data),
+  deleteJournal: (id: number) => authedRequest<void>("DELETE", `/patient/journal/${id}`),
+};
+
+export interface JournalEntry {
+  id: number;
+  entryDate: string;          // YYYY-MM-DD
+  moodScore?: number | null;
+  title?: string | null;
+  body?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface JournalEntryPayload {
+  entryDate: string;
+  moodScore?: number | null;
+  title?: string | null;
+  body?: string | null;
+}
+export interface MoodTrend {
+  daily: { date: string; averageMood: number | null; entryCount: number }[];
+  averageLast7: number | null;
+  averageLast30: number | null;
+  totalEntries: number;
+}
+
+// ─── Notifications (any authenticated role) ───────────────────────────────────
+export interface NotificationItem {
+  id: number;
+  type: string;
+  title: string;
+  body?: string | null;
+  link?: string | null;
+  relatedType?: string | null;
+  relatedId?: number | null;
+  readAt?: string | null;
+  createdAt: string;
+}
+
+export const notificationsApi = {
+  list: (limit = 30) => authedRequest<NotificationItem[]>("GET", `/me/notifications?limit=${limit}`),
+  unreadCount: () => authedRequest<{ count: number }>("GET", "/me/notifications/unread-count"),
+  markRead: (id: number) => authedRequest<void>("POST", `/me/notifications/${id}/read`),
+  markAllRead: () => authedRequest<{ updated: number }>("POST", "/me/notifications/read-all"),
 };
 
 // ─── Psychologist API ─────────────────────────────────────────────────────────
@@ -751,7 +899,158 @@ export const psychologistApi = {
     authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/reject`, { note }),
   complete: (id: number) =>
     authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/complete`),
+
+  stats: () => authedRequest<PsychologistStats>("GET", "/psychologist/stats"),
+  clients: () => authedRequest<ClientSummary[]>("GET", "/psychologist/clients"),
+  notesForPatient: (patientId: number) =>
+    authedRequest<ClientNote[]>("GET", `/psychologist/clients/${patientId}/notes`),
+  createNote: (data: ClientNotePayload) =>
+    authedRequest<ClientNote>("POST", "/psychologist/client-notes", data),
+  updateNote: (id: number, data: ClientNotePayload) =>
+    authedRequest<ClientNote>("PUT", `/psychologist/client-notes/${id}`, data),
+  deleteNote: (id: number) =>
+    authedRequest<void>("DELETE", `/psychologist/client-notes/${id}`),
+
+  // Chat
+  chatThreads: () => authedRequest<ChatThread[]>("GET", "/psychologist/chat/threads"),
+  chatMessages: (threadId: number) =>
+    authedRequest<ChatMessage[]>("GET", `/psychologist/chat/threads/${threadId}/messages`),
+  chatSend: (threadId: number, body: string) =>
+    authedRequest<ChatMessage>("POST", "/psychologist/chat/messages", { threadId, body }),
+  chatMarkRead: (threadId: number) =>
+    authedRequest<{ updated: number }>("POST", `/psychologist/chat/threads/${threadId}/read`),
+
+  // Homework
+  homework: () => authedRequest<Homework[]>("GET", "/psychologist/homework"),
+  createHomework: (data: { patientId: number; title: string; description?: string; dueDate?: string }) =>
+    authedRequest<Homework>("POST", "/psychologist/homework", data),
+  updateHomework: (id: number, data: { patientId: number; title: string; description?: string; dueDate?: string }) =>
+    authedRequest<Homework>("PUT", `/psychologist/homework/${id}`, data),
+  deleteHomework: (id: number) =>
+    authedRequest<void>("DELETE", `/psychologist/homework/${id}`),
+
+  // Resources
+  resources: () => authedRequest<ResourceItem[]>("GET", "/psychologist/resources"),
+  createResource: (data: { title: string; description?: string; fileUrl?: string; externalUrl?: string; resourceType: "FILE" | "LINK" | "ARTICLE" }) =>
+    authedRequest<ResourceItem>("POST", "/psychologist/resources", data),
+  deleteResource: (id: number) =>
+    authedRequest<void>("DELETE", `/psychologist/resources/${id}`),
+  shareResource: (data: { resourceId: number; patientId: number; note?: string }) =>
+    authedRequest<void>("POST", "/psychologist/resources/share", data),
+
+  // Templates
+  templates: () => authedRequest<FollowupTemplate[]>("GET", "/psychologist/templates"),
+  createTemplate: (data: { name: string; body: string }) =>
+    authedRequest<FollowupTemplate>("POST", "/psychologist/templates", data),
+  updateTemplate: (id: number, data: { name: string; body: string }) =>
+    authedRequest<FollowupTemplate>("PUT", `/psychologist/templates/${id}`, data),
+  deleteTemplate: (id: number) =>
+    authedRequest<void>("DELETE", `/psychologist/templates/${id}`),
 };
+
+// ─── Chat / Homework / Resource / Template types ─────────────────────────────
+export interface ChatThread {
+  id: number;
+  patientId: number;
+  patientName: string;
+  psychologistId: number;
+  psychologistName: string;
+  lastMessageAt?: string | null;
+  unreadCount: number;
+  lastMessagePreview?: string | null;
+}
+export interface ChatMessage {
+  id: number;
+  threadId: number;
+  senderUserId: number;
+  senderName: string;
+  senderRole: string;
+  body: string;
+  readAt?: string | null;
+  createdAt: string;
+}
+export interface Homework {
+  id: number;
+  psychologistId: number;
+  psychologistName: string;
+  patientId: number;
+  patientName: string;
+  title: string;
+  description?: string | null;
+  dueDate?: string | null;
+  status: "PENDING" | "COMPLETED" | "SKIPPED";
+  completedAt?: string | null;
+  completionNote?: string | null;
+  createdAt: string;
+}
+export interface ResourceItem {
+  id: number;
+  title: string;
+  description?: string | null;
+  fileUrl?: string | null;
+  externalUrl?: string | null;
+  resourceType: "FILE" | "LINK" | "ARTICLE";
+  createdAt: string;
+}
+export interface SharedResource {
+  shareId: number;
+  resourceId: number;
+  title: string;
+  description?: string | null;
+  fileUrl?: string | null;
+  externalUrl?: string | null;
+  resourceType: "FILE" | "LINK" | "ARTICLE";
+  note?: string | null;
+  psychologistId: number;
+  psychologistName: string;
+  sharedAt: string;
+  viewedAt?: string | null;
+}
+export interface FollowupTemplate {
+  id: number; name: string; body: string; createdAt: string;
+}
+
+// ─── Psychologist stats / clients / notes types ──────────────────────────────
+export interface PsychologistStats {
+  thisMonthTotal: number;
+  thisMonthCompleted: number;
+  thisMonthCancelled: number;
+  thisMonthConfirmed: number;
+  thisWeekTotal: number;
+  upcomingCount: number;
+  activeClientsLast90Days: number;
+  last30Days: { date: string; count: number }[];
+}
+
+export interface ClientSummary {
+  patientId: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  totalSessions: number;
+  noteCount: number;
+  lastAppointmentAt?: string | null;
+}
+
+export interface ClientNote {
+  id: number;
+  patientId: number;
+  patientName: string;
+  appointmentId?: number | null;
+  title?: string | null;
+  body: string;
+  moodScore?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClientNotePayload {
+  patientId: number;
+  appointmentId?: number | null;
+  title?: string | null;
+  body: string;
+  moodScore?: number | null;
+}
 
 // ─── Operator API (also accessible to ADMIN) ──────────────────────────────────
 export interface OperatorAssignPayload {
@@ -760,6 +1059,51 @@ export interface OperatorAssignPayload {
   endAt: string;   // ISO
   sessionFormat?: "ONLINE" | "IN_PERSON" | null;
   operatorNote?: string | null;
+}
+
+export interface PsychologistSuggestion {
+  psychologistId: number;
+  name: string;
+  title: string;
+  score: number;
+  reasons: string[];
+  upcomingLoad: number;
+}
+
+export interface PatientHistory {
+  patientId: number;
+  userId?: number | null;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  blocked: boolean;
+  blockReason?: string | null;
+  totalAppointments: number;
+  rejectedCount: number;
+  cancelledCount: number;
+  registeredAt?: string | null;
+  recent: { id: number; status: string; psychologistName?: string | null; startAt?: string | null; createdAt?: string | null; note?: string | null }[];
+}
+
+export interface ContactLog {
+  id: number;
+  appointmentId: number;
+  channel: "CALL" | "SMS" | "EMAIL" | "WHATSAPP" | "OTHER";
+  outcome: "ANSWERED" | "NO_ANSWER" | "BUSY" | "REFUSED" | "RESCHEDULED" | "OTHER";
+  note?: string | null;
+  operatorName: string;
+  createdAt: string;
+}
+
+export interface OperatorStats {
+  pendingNow: number;
+  assignedToday: number;
+  completedThisMonth: number;
+  rejectedThisMonth: number;
+  totalThisMonth: number;
+  avgResponseMinutes: number | null;
+  rejectionRatePct: number | null;
+  last30Days: { date: string; incoming: number; assigned: number; rejected: number }[];
 }
 
 export const operatorApi = {
@@ -798,4 +1142,21 @@ export const operatorApi = {
   }) => authedRequest<TimeSlotOverride>("POST", `/operator/psychologists/${psychologistId}/time-slot-overrides`, data),
   deletePsyOverride: (psychologistId: number, overrideId: number) =>
     authedRequest<void>("DELETE", `/operator/psychologists/${psychologistId}/time-slot-overrides/${overrideId}`),
+
+  // Bulk + suggest + history + contact log + block + stats
+  bulkAssign: (appointmentIds: number[], assignment: OperatorAssignPayload) =>
+    authedRequest<AppointmentDetail[]>("POST", "/operator/appointments/bulk-assign", { appointmentIds, assignment }),
+  suggest: (appointmentId: number, limit = 5) =>
+    authedRequest<PsychologistSuggestion[]>("GET", `/operator/appointments/${appointmentId}/suggest?limit=${limit}`),
+  patientHistory: (patientId: number) =>
+    authedRequest<PatientHistory>("GET", `/operator/patients/${patientId}/history`),
+  contactLogs: (appointmentId: number) =>
+    authedRequest<ContactLog[]>("GET", `/operator/appointments/${appointmentId}/contact-logs`),
+  addContactLog: (appointmentId: number, data: { channel: string; outcome: string; note?: string }) =>
+    authedRequest<ContactLog>("POST", `/operator/appointments/${appointmentId}/contact-logs`, data),
+  blockUser: (userId: number, reason?: string) =>
+    authedRequest<void>("POST", `/operator/users/${userId}/block`, { reason }),
+  unblockUser: (userId: number) =>
+    authedRequest<void>("POST", `/operator/users/${userId}/unblock`),
+  stats: () => authedRequest<OperatorStats>("GET", "/operator/stats"),
 };

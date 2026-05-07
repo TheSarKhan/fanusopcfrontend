@@ -161,6 +161,22 @@ export default function PanelAuthGuard({
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [ready]);
 
+  // Cross-tab token sync: when another tab rotates the access token, reschedule
+  // this tab's proactive timer against the new expiry. Prevents a stale tab
+  // from racing into a 401 with the about-to-be-replaced token.
+  useEffect(() => {
+    if (!ready) return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== "accessToken") return;
+      const next = e.newValue;
+      if (!next) { redirectToLogin(); return; }
+      if (isTokenExpired(next)) return;
+      scheduleRef.current(next);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [ready]);
+
   if (!mounted) return null;
 
   if (!ready) {

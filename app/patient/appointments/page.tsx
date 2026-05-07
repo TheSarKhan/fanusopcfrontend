@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { patientApi, type AppointmentDetail } from "@/lib/api";
+import { subscribeNotifications } from "@/lib/notificationsSocket";
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   PENDING:   { label: "Gözlənilir",  color: "#92400E", bg: "#FEF3C7" },
@@ -29,6 +30,7 @@ export default function PatientAppointmentsPage() {
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [reschedFor, setReschedFor] = useState<AppointmentDetail | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -39,6 +41,14 @@ export default function PatientAppointmentsPage() {
   };
 
   useEffect(load, []);
+
+  // Live refresh: any appointment notification re-fetches the list
+  useEffect(() => {
+    return subscribeNotifications((n) => {
+      if (typeof n.type === "string" && n.type.startsWith("APPOINTMENT_")) load();
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const cancel = async (id: number) => {
     if (!confirm("Randevunu ləğv etmək istədiyinizə əminsiniz?")) return;
@@ -51,6 +61,13 @@ export default function PatientAppointmentsPage() {
     } finally {
       setBusyId(null);
     }
+  };
+
+  const onRescheduled = (created: AppointmentDetail) => {
+    // bookForPatient returns the NEW appointment — refresh full list to get both
+    setReschedFor(null);
+    load();
+    void created;
   };
 
   return (
@@ -124,13 +141,21 @@ export default function PatientAppointmentsPage() {
                     )}
                   </div>
                   {cancellable && (
-                    <button
-                      onClick={() => cancel(a.id)}
-                      disabled={busyId === a.id}
-                      style={{ padding: "6px 12px", fontSize: 12, border: "1px solid #FECACA", color: "#991B1B", background: "#FFF5F5", borderRadius: 8, cursor: busyId === a.id ? "wait" : "pointer", fontWeight: 500 }}
-                    >
-                      {busyId === a.id ? "Ləğv edilir…" : "Ləğv et"}
-                    </button>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <button
+                        onClick={() => setReschedFor(a)}
+                        style={{ padding: "6px 12px", fontSize: 12, border: "1px solid #C7D2FE", color: "#3730A3", background: "#EEF2FF", borderRadius: 8, cursor: "pointer", fontWeight: 500 }}
+                      >
+                        Yenidən planla
+                      </button>
+                      <button
+                        onClick={() => cancel(a.id)}
+                        disabled={busyId === a.id}
+                        style={{ padding: "6px 12px", fontSize: 12, border: "1px solid #FECACA", color: "#991B1B", background: "#FFF5F5", borderRadius: 8, cursor: busyId === a.id ? "wait" : "pointer", fontWeight: 500 }}
+                      >
+                        {busyId === a.id ? "Ləğv edilir…" : "Ləğv et"}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -138,6 +163,101 @@ export default function PatientAppointmentsPage() {
           })}
         </div>
       )}
+
+      {reschedFor && (
+        <RescheduleModal
+          appointment={reschedFor}
+          onClose={() => setReschedFor(null)}
+          onDone={onRescheduled}
+        />
+      )}
+    </div>
+  );
+}
+
+function RescheduleModal({
+  appointment, onClose, onDone,
+}: {
+  appointment: AppointmentDetail;
+  onClose: () => void;
+  onDone: (a: AppointmentDetail) => void;
+}) {
+  const [datetime, setDatetime] = useState("");
+  const [format, setFormat] = useState<"ONLINE" | "IN_PERSON">(
+    (appointment.sessionFormat as "ONLINE" | "IN_PERSON") ?? "ONLINE"
+  );
+  const [note, setNote] = useState(appointment.note ?? "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    setErr(null);
+    if (!datetime) { setErr("Yeni vaxt seçin"); return; }
+    const trimmed = note.trim();
+    if (trimmed.length < 5) { setErr("Qısa təsvir yazın (ən azı 5 simvol)"); return; }
+    setSaving(true);
+    try {
+      const created = await patientApi.reschedule(appointment.id, {
+        note: trimmed,
+        requestedPsychologistId: appointment.psychologistId ?? appointment.requestedPsychologistId ?? null,
+        requestedStartAt: new Date(datetime).toISOString(),
+        sessionFormat: format,
+      });
+      onDone(created);
+    } catch (e) {
+      setErr((e as Error).message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(15,28,46,0.5)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, width: "min(560px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
+        <div style={{ padding: "18px 22px", borderBottom: "1px solid #EFF2F7" }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: 0 }}>Randevunu yenidən planla</h2>
+          <p style={{ fontSize: 12, color: "#52718F", marginTop: 4 }}>
+            Mövcud randevu ləğv ediləcək və yeni müraciət qeydə alınacaq. Operator yeni vaxtı təsdiqləyəcək.
+          </p>
+        </div>
+        <div style={{ padding: 22 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>Yeni vaxt</label>
+          <input type="datetime-local" value={datetime} onChange={e => setDatetime(e.target.value)}
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 14 }} />
+
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>Format</label>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            {(["ONLINE", "IN_PERSON"] as const).map(f => (
+              <button type="button" key={f} onClick={() => setFormat(f)}
+                style={{
+                  flex: 1, padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 600,
+                  border: format === f ? "2px solid #5A4FC8" : "1px solid #E5E7EB",
+                  background: format === f ? "#EEECFB" : "#fff", cursor: "pointer", color: "#1A2535",
+                }}>
+                {f === "ONLINE" ? "💻 Online" : "🏢 Üzbəüz"}
+              </button>
+            ))}
+          </div>
+
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>Qısa təsvir</label>
+          <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
+            placeholder="Vaxt dəyişdirmə səbəbi və ya yeni qeydlər"
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12 }} />
+
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>{err}</div>}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>
+              Bağla
+            </button>
+            <button onClick={submit} disabled={saving}
+              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Göndərilir…" : "Yenidən planla"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

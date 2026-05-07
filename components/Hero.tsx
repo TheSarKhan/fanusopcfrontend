@@ -1,301 +1,189 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useBooking } from "@/context/BookingContext";
-import { useMood, MoodId } from "@/context/MoodContext";
+import Deco from "@/components/Deco";
 
-type MoodConfig = {
-  label: string;
-  emoji: string;
-  headline: string;
-  sub: string;
-  accent: string;
-  accentSoft: string;
-  bg: string;
-  breath: string;
-  chat: { from: "p" | "t"; text: string }[];
-};
-
-const MOODS: Record<MoodId, MoodConfig> = {
-  good: {
-    label: "Yaxşı",
-    emoji: "🌿",
-    headline: "Daha yaxşı hiss etməyə bu gün başlayın",
-    sub: "Sizə uyğun psixoloqla rahat və təhlükəsiz mühitdə işləyin. Onlayn seans, aydın yol.",
-    accent: "var(--sage)",
-    accentSoft: "var(--sage-soft)",
-    bg: "linear-gradient(180deg, #F4FAF7 0%, #FFFFFF 60%, #FFFFFF 100%)",
-    breath: "Dərindən nəfəs alın",
-    chat: [
-      { from: "p", text: "Bu həftə özümü daha yüngül hiss edirəm." },
-      { from: "t", text: "Çox sevindim. Hansı an sizə bunu hiss etdirdi?" },
-      { from: "p", text: "Səhər 10 dəqiqəlik nəfəs məşqi etdim." },
-    ],
-  },
-  sad: {
-    label: "Kədərli",
-    emoji: "🧡",
-    headline: "Kədər keçicidir. Tək keçirməyə ehtiyac yoxdur",
-    sub: "Sizi dinləyən, mühakimə etməyən, peşəkar bir psixoloqla bu addımı atın.",
-    accent: "var(--lilac)",
-    accentSoft: "var(--lilac-soft)",
-    bg: "linear-gradient(180deg, #F1EEF8 0%, #F7F5FC 50%, #FFFFFF 100%)",
-    breath: "Yavaş-yavaş nəfəs",
-    chat: [
-      { from: "p", text: "Son zamanlar heç nə məni sevindirmir." },
-      { from: "t", text: "Bunu paylaşdığınız üçün təşəkkür edirəm. Birlikdə baxaq." },
-      { from: "p", text: "Bəzən səbəbsiz ağlayıram." },
-    ],
-  },
-  anxious: {
-    label: "Narahat",
-    emoji: "💙",
-    headline: "Narahatçılığınıza birlikdə yumşaq cavab tapaq",
-    sub: "Praktik nəfəs texnikaları, sübutla əsaslanan terapiya və sizin tempinizdə irəliləyiş.",
-    accent: "var(--amber)",
-    accentSoft: "var(--amber-soft)",
-    bg: "linear-gradient(180deg, #FBF4EA 0%, #FDF9F2 50%, #FFFFFF 100%)",
-    breath: "İçəri 4… bayıra 6",
-    chat: [
-      { from: "p", text: "Ürəyim sürətli döyünür, fikirlər dayanmır." },
-      { from: "t", text: "Birlikdə bir nəfəs məşqi edək. 4-7-8." },
-      { from: "p", text: "Tamam, sınayıram." },
-    ],
-  },
-  tired: {
-    label: "Yorğun",
-    emoji: "🌸",
-    headline: "Yavaşlamağa icazəniz var. Biz buradayıq",
-    sub: "Sizə uyğun ritmdə, kiçik addımlarla. Heç bir təzyiq, heç bir tələsmə.",
-    accent: "var(--rose)",
-    accentSoft: "var(--rose-soft)",
-    bg: "linear-gradient(180deg, #F8EFEF 0%, #FBF6F6 50%, #FFFFFF 100%)",
-    breath: "Yavaş və dərin",
-    chat: [
-      { from: "p", text: "Heç bir şey istəmirəm. Sadəcə yorğunam." },
-      { from: "t", text: "Anlayıram. Birlikdə, yavaş-yavaş irəliləyək." },
-      { from: "p", text: "Bunu eşitmək yaxşı oldu." },
-    ],
-  },
-  neutral: {
-    label: "Normal",
-    emoji: "✨",
-    headline: "Daha yaxşı hiss etməyə bu gün başlayın",
-    sub: "Sertifikatlı psixoloqlarla güvənli, məxfi və rahat mühitdə psixoloji dəstək alın.",
-    accent: "var(--sage)",
-    accentSoft: "var(--sage-soft)",
-    bg: "linear-gradient(180deg, #EEF4FF 0%, #F7F9FC 60%, #FFFFFF 100%)",
-    breath: "Dərindən nəfəs alın",
-    chat: [
-      { from: "p", text: "Özümü daha yaxşı hiss etmək istəyirəm." },
-      { from: "t", text: "Əla! Sizi dinləyən biri hazırdır — bu gün birlikdə başlayaq 💙" },
-      { from: "p", text: "Haradan başlamaq lazımdır?" },
-    ],
-  },
-};
-
-const MOOD_ORDER: MoodId[] = ["good", "sad", "anxious", "tired"];
-
-function ChatCard({ moodKey }: { moodKey: MoodId }) {
-  const m = MOODS[moodKey];
-  const [visible, setVisible] = useState(1);
-  const [typing, setTyping] = useState(false);
-  const prevMood = useRef(moodKey);
-
-  useEffect(() => {
-    if (prevMood.current !== moodKey) {
-      setVisible(1);
-      setTyping(false);
-      prevMood.current = moodKey;
-    }
-  }, [moodKey]);
-
-  useEffect(() => {
-    if (visible >= m.chat.length) {
-      const t = setTimeout(() => setVisible(1), 4500);
-      return () => clearTimeout(t);
-    }
-    const t1 = setTimeout(() => setTyping(true), 1400);
-    const t2 = setTimeout(() => {
-      setTyping(false);
-      setVisible(v => v + 1);
-    }, 2800);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [visible, moodKey, m.chat.length]);
-
+export default function Hero() {
   return (
-    <div
-      className="chat-card"
-      style={{ "--mood-accent": m.accent, "--mood-soft": m.accentSoft } as React.CSSProperties}
-    >
-      {/* Breathing orb */}
-      <div className="breath-floater">
-        <div className="breath-ring" />
-        <div className="breath-ring breath-ring-2" />
-        <div className="breath-core" style={{ background: m.accent }}>
-          <span>{m.breath}</span>
-        </div>
+    <section className="fanus-hero" id="hero">
+      <div className="fanus-hero__bg" aria-hidden>
+        <svg viewBox="0 0 1440 700" preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
+          <defs>
+            <linearGradient id="heroBg" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0%" stopColor="#F2F6FD" />
+              <stop offset="100%" stopColor="#E4ECFA" />
+            </linearGradient>
+          </defs>
+          <rect width="1440" height="700" fill="url(#heroBg)" />
+          {Array.from({ length: 36 }).map((_, i) => (
+            <circle key={i} cx={50 + (i % 12) * 120} cy={80 + Math.floor(i / 12) * 180} r="2" fill="#1051B7" opacity=".06" />
+          ))}
+        </svg>
       </div>
 
-      {/* Header */}
-      <div className="chat-header">
-        <div className="chat-avatar">
-          <div className="chat-avatar-img">
-            <img src="/images/logos/logo-blue.png" alt="Fanus" style={{ width: "70%", height: "70%", objectFit: "contain" }} />
+      <Deco type="wave-top" style={{ top: -20, left: "-4%", width: 520, opacity: .55 }} anim="drift" />
+      <Deco type="blob-cloud" style={{ top: 40, right: "-6%", width: 360, opacity: .55 }} anim="drift" />
+      <Deco type="wavy-lines" style={{ bottom: -40, left: "40%", width: 520, opacity: .5 }} anim="drift" />
+      <Deco type="sphere-blue" style={{ top: "38%", left: "6%", width: 70, opacity: .8 }} anim="floatY" />
+
+      <div className="fanus-container fanus-hero__inner">
+        <div className="fanus-hero__copy">
+          <h1>
+            Həyatınıza uyğun<br />
+            <span className="fanus-hero__hl">peşəkar dəstək.</span>
+          </h1>
+          <p className="fanus-hero__lead">
+            Fanus — sizi lisenziyalı psixoloqlarla təhlükəsiz, məxfi və rahat onlayn seanslarda qarşılaşdırır.
+            Birlikdə addımlayaq.
+          </p>
+
+          <div className="fanus-hero__cta">
+            <Link href="#mood" className="fanus-btn fanus-btn-primary fanus-btn-lg">
+              Başlayaq <Arrow />
+            </Link>
+            <Link href="#how" className="fanus-hero__text-cta">
+              <span className="fanus-hero__play">
+                <svg width="11" height="11" fill="var(--fanus-primary)" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7V5z" /></svg>
+              </span>
+              Necə işləyir?
+            </Link>
           </div>
-          <span className="chat-status-dot" />
-        </div>
-        <div className="chat-header-text">
-          <div className="chat-name">Fanus</div>
-          <div className="chat-role">Onlayn psixologiya platforması</div>
-        </div>
-        <div className="chat-secure">
-          <svg width="14" height="14" fill="none" stroke="var(--oxford-60)" strokeWidth="2" viewBox="0 0 24 24">
-            <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-        </div>
-      </div>
 
-      {/* Body */}
-      <div className="chat-body">
-        <div className="chat-session-meta">
-          <span className="session-pill">
-            <span className="rec-dot" />
-            Canlı seans
-          </span>
-        </div>
-
-        {m.chat.slice(0, visible).map((msg, i) => (
-          <div
-            key={`${moodKey}-${i}`}
-            className={`chat-bubble chat-bubble-${msg.from}`}
-            style={{ animationDelay: `${i * 0.05}s` }}
-          >
-            {msg.from === "t" && <div className="bubble-meta">Fanus</div>}
-            <div>{msg.text}</div>
+          <div className="fanus-hero__features">
+            <Feature icon="lock" title="Təhlükəsiz və məxfi" sub="Məxfiliyiniz prioritetdir" />
+            <Feature icon="badge" title="Lisenziyalı mütəxəssislər" sub="Yoxlanılmış peşəkarlar" />
+            <Feature icon="heart" title="Fərdi yanaşma" sub="Sizin tempinizdə" />
           </div>
-        ))}
+        </div>
 
-        {typing && visible < m.chat.length && (
-          <div className={`chat-bubble chat-bubble-${m.chat[visible].from} typing`}>
-            <span className="typing-dot" />
-            <span className="typing-dot" />
-            <span className="typing-dot" />
-          </div>
-        )}
+        <div className="fanus-hero__art">
+          <HeroIllustration />
+        </div>
       </div>
 
-      {/* Input */}
-      <div className="chat-input">
-        <input type="text" placeholder="Mesaj yazın…" disabled />
-        <button className="chat-send" style={{ background: m.accent }}>
-          <svg width="14" height="14" fill="none" stroke="white" strokeWidth="2.2" viewBox="0 0 24 24">
-            <path d="M22 2L11 13" strokeLinecap="round" />
-            <path d="M22 2L15 22l-4-9-9-4 20-7z" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+      <style>{`
+        .fanus-hero { position: relative; padding: 56px 0 96px; overflow: hidden; }
+        .fanus-hero__bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+        .fanus-hero__inner {
+          position: relative; z-index: 1;
+          display: grid; grid-template-columns: 1fr 1.1fr;
+          gap: 56px; align-items: center;
+        }
+        .fanus-hero__copy h1 {
+          margin: 0 0 22px;
+          font-family: var(--font-poppins), system-ui, sans-serif;
+          font-size: clamp(40px, 5vw, 64px);
+          line-height: 1.04; letter-spacing: -0.025em;
+          color: #0B1A35; font-weight: 800;
+        }
+        .fanus-hero__hl { color: var(--fanus-primary); }
+        .fanus-hero__lead {
+          font-size: 17px; line-height: 1.6; color: var(--fanus-ink-2);
+          max-width: 480px; margin: 0;
+        }
+        .fanus-hero__cta {
+          display: flex; gap: 18px; margin: 32px 0 44px;
+          flex-wrap: wrap; align-items: center;
+        }
+        .fanus-hero__text-cta {
+          background: none; border: none; padding: 4px 0;
+          color: var(--fanus-ink); font-weight: 600; cursor: pointer;
+          font-size: 15px; display: inline-flex; align-items: center; gap: 10px;
+        }
+        .fanus-hero__play {
+          width: 32px; height: 32px; border-radius: 50%;
+          background: white; border: 1px solid var(--fanus-line);
+          display: inline-flex; align-items: center; justify-content: center;
+          padding-left: 2px; box-shadow: var(--fanus-shadow-sm);
+        }
+        .fanus-hero__features {
+          display: grid; grid-template-columns: repeat(3, 1fr);
+          gap: 22px; padding-top: 28px;
+          border-top: 1px solid var(--fanus-line);
+          max-width: 580px;
+        }
+        .fanus-hero__art { position: relative; }
+        @media (max-width: 1100px) { .fanus-hero__inner { gap: 36px; } .fanus-hero__features { gap: 14px; } }
+        @media (max-width: 980px) {
+          .fanus-hero { padding: 40px 0 64px; }
+          .fanus-hero__inner { grid-template-columns: 1fr; gap: 40px; }
+          .fanus-hero__features { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 560px) { .fanus-hero__features { grid-template-columns: 1fr; } }
+      `}</style>
+    </section>
+  );
+}
+
+function Arrow() {
+  return <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
+}
+
+function Feature({ icon, title, sub }: { icon: "lock" | "badge" | "heart"; title: string; sub: string }) {
+  return (
+    <div className="fanus-hf">
+      <div className="fanus-hf__icon">
+        {icon === "lock" && <svg width="18" height="18" fill="none" stroke="var(--fanus-primary)" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>}
+        {icon === "badge" && <svg width="18" height="18" fill="none" stroke="var(--fanus-primary)" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l2.5 2.2 3.3-.4.9 3.2 2.8 1.7-1.4 3 1.4 3-2.8 1.7-.9 3.2-3.3-.4L12 21l-2.5-2.2-3.3.4-.9-3.2L2.5 14l1.4-3-1.4-3 2.8-1.7.9-3.2 3.3.4L12 3z" /><path d="M9 12l2 2 4-4" /></svg>}
+        {icon === "heart" && <svg width="18" height="18" fill="none" stroke="var(--fanus-primary)" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 10c0 5.5-7 10-7 10z" /></svg>}
       </div>
+      <div>
+        <div className="fanus-hf__title">{title}</div>
+        <div className="fanus-hf__sub">{sub}</div>
+      </div>
+      <style>{`
+        .fanus-hf { display: flex; gap: 12px; align-items: flex-start; }
+        .fanus-hf__icon {
+          width: 38px; height: 38px; border-radius: 10px;
+          background: #E4ECFA;
+          display: inline-flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .fanus-hf__title { font-size: 13.5px; font-weight: 700; color: var(--fanus-ink); line-height: 1.25; }
+        .fanus-hf__sub { font-size: 12px; color: var(--fanus-ink-3); margin-top: 2px; line-height: 1.4; }
+      `}</style>
     </div>
   );
 }
 
-export default function Hero() {
-  const { open } = useBooking();
-  const { mood, setMood } = useMood();
-
-  const activeMood: MoodId = mood ?? "neutral";
-  const m = MOODS[activeMood];
-
+function HeroIllustration() {
   return (
-    <section className="hero" style={{ background: m.bg }}>
-      {/* Decorative blobs */}
-      <div className="hero-blob hero-blob-1" style={{ background: m.accentSoft }} />
-      <div className="hero-blob hero-blob-2" style={{ background: "var(--bg-blue)" }} />
+    <div className="fanus-hart">
+      <div className="fanus-hart__glow fanus-hart__glow--1" />
+      <div className="fanus-hart__glow fanus-hart__glow--2" />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/images/hero-main.png"
+        alt="Onlayn psixoloji seans — Fanus"
+        className="fanus-hart__img"
+        draggable={false}
+      />
 
-      {/* Wave at bottom */}
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, pointerEvents: "none", lineHeight: 0 }}>
-        <svg viewBox="0 0 1440 60" fill="none" preserveAspectRatio="none" style={{ display: "block", width: "100%", height: 60 }}>
-          <path d="M0 30 Q360 60 720 30 Q1080 0 1440 30 L1440 60 L0 60 Z" fill="#ffffff" />
-        </svg>
-      </div>
-
-      <div className="container hero-grid">
-        {/* Left */}
-        <div>
-          <h1 className="hero-headline" key={activeMood}>
-            {m.headline}
-          </h1>
-
-          <p className="hero-sub">{m.sub}</p>
-
-          {/* Inline Mood Picker */}
-          <div className="mood-picker">
-            <span className="mood-picker-label">Bu gün necə hiss edirsiniz?</span>
-            <div className="mood-options">
-              {MOOD_ORDER.map((k) => {
-                const cfg = MOODS[k];
-                const isActive = activeMood === k;
-                return (
-                  <button
-                    key={k}
-                    className={`mood-chip${isActive ? " active" : ""}`}
-                    onClick={() => setMood(k)}
-                    style={isActive ? {
-                      background: cfg.accentSoft,
-                      borderColor: cfg.accent,
-                      color: cfg.accent,
-                    } : {}}
-                  >
-                    <span className="mood-emoji">{cfg.emoji}</span>
-                    <span>{cfg.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* CTAs */}
-          <div className="hero-ctas">
-            <Link href="/register" className="btn btn-primary">
-              Pulsuz başla
-              <svg width="16" height="16" fill="none" stroke="white" strokeWidth="2.2" viewBox="0 0 24 24">
-                <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </Link>
-            <Link href="/psychologists" className="btn btn-ghost">
-              Psixoloqlara bax
-            </Link>
-          </div>
-
-          {/* Trust row */}
-          <div className="hero-trust">
-            <div className="trust-avatars">
-              {(["#C97D2E", "#4A9B7F", "#8C7DC9", "#C97D7D"] as string[]).map((c, i) => (
-                <div key={i} className="trust-avatar" style={{ background: c }}>
-                  {["A", "L", "N", "R"][i]}
-                </div>
-              ))}
-            </div>
-            <div>
-              <div className="trust-stars">
-                {[0,1,2,3,4].map(i => (
-                  <svg key={i} width="13" height="13" fill="var(--amber)" viewBox="0 0 24 24">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                ))}
-                <strong style={{ marginLeft: 6 }}>4.9</strong>
-              </div>
-              <div className="trust-text" style={{ marginTop: 2 }}>2,000+ məmnun istifadəçi</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right — Chat Card */}
-        <div className="hero-right">
-          <ChatCard moodKey={activeMood} />
-        </div>
-      </div>
-    </section>
+      <style>{`
+        .fanus-hart { position: relative; width: 100%; aspect-ratio: 16/10; min-height: 360px; }
+        .fanus-hart__img {
+          position: absolute; inset: 0;
+          width: 100%; height: 100%;
+          object-fit: contain;
+          z-index: 2;
+          animation: heroFloat 6s ease-in-out infinite;
+          user-select: none;
+        }
+        @keyframes heroFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        .fanus-hart__glow { position: absolute; border-radius: 50%; pointer-events: none; filter: blur(40px); z-index: 1; }
+        .fanus-hart__glow--1 {
+          top: -8%; right: 6%; width: 200px; height: 200px;
+          background: radial-gradient(circle, rgba(245,185,70,.35), transparent 65%);
+          animation: heroFlicker 3.5s ease-in-out infinite;
+        }
+        .fanus-hart__glow--2 {
+          bottom: -6%; left: 8%; width: 240px; height: 240px;
+          background: radial-gradient(circle, rgba(16,81,183,.18), transparent 65%);
+          animation: heroFlicker 4.5s ease-in-out infinite -2s;
+        }
+        @keyframes heroFlicker { 0%, 100% { opacity: .9; transform: scale(1); } 50% { opacity: .55; transform: scale(1.08); } }
+        @media (max-width: 980px) { .fanus-hart { min-height: 320px; } }
+      `}</style>
+    </div>
   );
 }

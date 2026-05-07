@@ -637,7 +637,7 @@ export default function UsersPage() {
       {/* ─── Application detail modal (Review Mode) ────────────────────────── */}
       {detailApp && (
         <div className="admin-shell-modal" onClick={(e) => { if (e.target === e.currentTarget) setDetailApp(null); }}>
-          <div className="modal" style={{ maxWidth: 1000, width: "95%" }}>
+          <div className="modal" style={{ maxWidth: 1280, width: "96vw" }}>
             <div className="modal-head">
               <div className="modal-title">Müraciət Review — {detailApp.firstName} {detailApp.lastName}</div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -645,81 +645,166 @@ export default function UsersPage() {
                   <button className="btn ghost icon-only sm" onClick={() => setDetailApp(null)}>✕</button>
               </div>
             </div>
-            <div className="modal-body" style={{ maxHeight: "80vh", overflowY: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
-              
-              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 16 }}>
-                    <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 12 }}>Şəxsi məlumatlar</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                        <InfoRow label="Tam Ad" value={`${detailApp.firstName} ${detailApp.lastName}`} />
-                        <InfoRow label="Email" value={detailApp.email} />
-                        <InfoRow label="Telefon" value={detailApp.phone ?? "—"} />
-                        <InfoRow label="Tarix" value={fmtDate(detailApp.createdAt)} />
+            <div className="modal-body" style={{ maxHeight: "calc(92vh - 80px)", overflowY: "auto", overflowX: "hidden", display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 24, padding: 20 }}>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+                {/* Photo + name header */}
+                {detailApp.photoUrl && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={detailApp.photoUrl} alt={detailApp.firstName}
+                      style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", border: "2px solid var(--border)" }} />
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)" }}>
+                        {detailApp.firstName} {detailApp.lastName}
+                      </div>
+                      {detailApp.title && <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>{detailApp.title}</div>}
                     </div>
+                  </div>
+                )}
+
+                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8, fontWeight: 600 }}>Şəxsi məlumatlar</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <InfoRow label="Tam Ad" value={`${detailApp.firstName} ${detailApp.lastName}`} />
+                    <InfoRow label="Email" value={detailApp.email} />
+                    <InfoRow label="Telefon" value={detailApp.phone ?? "—"} />
+                    <InfoRow label="Doğum tarixi" value={detailApp.birthDate ? fmtDate(detailApp.birthDate) : "—"} />
+                    <InfoRow label="Cinsiyyət" value={
+                      detailApp.gender === "FEMALE" ? "Qadın" :
+                      detailApp.gender === "MALE" ? "Kişi" :
+                      detailApp.gender === "OTHER" ? "Digər" : "—"
+                    } />
+                    <InfoRow label="FIN / ID" value={detailApp.finId ?? "—"} />
+                    <InfoRow label="Müraciət tarixi" value={fmtDate(detailApp.createdAt)} />
+                  </div>
                 </div>
 
-                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 16 }}>
-                    <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 12 }}>Təhsil və Təcrübə</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                        <InfoRow label="Universitet" value={detailApp.university} />
-                        <InfoRow label="Dərəcə" value={`${detailApp.degree}, ${detailApp.graduationYear}`} />
-                        <InfoRow label="Təcrübə" value={detailApp.experienceYears ? `${detailApp.experienceYears} il` : "—"} />
-                        <InfoRow label="Format" value={
-                          detailApp.activityFormat === "BOTH" ? "Həm onlayn, həm də əyani" :
-                          detailApp.activityFormat === "ONLINE" ? "Onlayn" :
-                          detailApp.activityFormat === "IN_PERSON" ? "Əyani" :
-                          (detailApp.activityFormat ?? "—")
-                        } />
+                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8, fontWeight: 600 }}>Təhsillər</div>
+                  <EducationList json={detailApp.educationsJson}
+                    fallback={detailApp.university ? { institution: detailApp.university, degree: detailApp.degree ?? "", graduationYear: detailApp.graduationYear ?? "" } : null} />
+                </div>
+
+                <div style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8, fontWeight: 600 }}>Peşəkar məlumatlar</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <InfoRow label="İxtisas / vəzifə" value={detailApp.title ?? "—"} />
+                    <InfoRow label="Təcrübə" value={detailApp.experienceYears ?? "—"} />
+                    <InfoRow label="Format" value={
+                      detailApp.activityFormat === "BOTH" ? "Həm onlayn, həm əyani" :
+                      detailApp.activityFormat === "ONLINE" ? "Onlayn" :
+                      detailApp.activityFormat === "IN_PERSON" ? "Əyani" :
+                      (detailApp.activityFormat ?? "—")
+                    } />
+                    <InfoRow label="Dillər" value={detailApp.languages?.split(",").map(s => s.trim()).filter(Boolean).join(", ") || "—"} />
+                  </div>
+                  {detailApp.specializations && (
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 6 }}>İxtisaslaşma sahələri</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {detailApp.specializations.split(",").map(s => s.trim()).filter(Boolean).map(s => (
+                          <span key={s} style={{ fontSize: 11, padding: "3px 9px", borderRadius: 999, background: "var(--ox-50)", color: "var(--ox)", fontWeight: 600 }}>{s}</span>
+                        ))}
+                      </div>
                     </div>
+                  )}
+                  {detailApp.sessionTypes && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 6 }}>Seans növləri</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {detailApp.sessionTypes.split(",").map(s => s.trim()).filter(Boolean).map(s => (
+                          <span key={s} style={{ fontSize: 11, padding: "3px 9px", borderRadius: 999, background: "var(--sage-50)", color: "var(--sage)", fontWeight: 600 }}>{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {detailApp.bio && (
+                  <div style={{ borderBottom: detailApp.motivation ? "1px solid var(--border)" : "none", paddingBottom: detailApp.motivation ? 12 : 0, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8, fontWeight: 600 }}>Bio (haqqında)</div>
+                    <div style={{ background: "var(--surface)", padding: 14, borderRadius: 10, border: "1px solid var(--border)", fontSize: 13.5, lineHeight: 1.6, color: "var(--ink)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                      {detailApp.bio}
+                    </div>
+                  </div>
+                )}
+
+                {detailApp.motivation && (
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8, fontWeight: 600 }}>Motivasiya / yanaşma</div>
+                    <div style={{ background: "var(--surface)", padding: 14, borderRadius: 10, border: "1px solid var(--border)", fontSize: 13.5, lineHeight: 1.6, color: "var(--ink)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                      {detailApp.motivation}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, borderLeft: "1px solid var(--border)", paddingLeft: 20, minWidth: 0 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8, fontWeight: 600 }}>Sertifikat və seminarlar</div>
+                  <CertificateList json={detailApp.certificatesJson} legacyCerts={detailApp.certifications} />
                 </div>
 
                 <div>
-                    <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 12 }}>Haqqında</div>
-                    <div style={{ background: "var(--surface)", padding: 16, borderRadius: 12, border: "1px solid var(--border)", fontSize: 14, lineHeight: 1.6, color: "var(--ink)" }}>
-                        {detailApp.bio || "Bioqrafiya qeyd edilməyib."}
-                    </div>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 24, borderLeft: "1px solid var(--border)", paddingLeft: 32 }}>
-                 <div>
-                    <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 12 }}>Sənədlər və Fayllar</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                        {detailApp.diplomaFileUrl && (
-                            <a href={detailApp.diplomaFileUrl} target="_blank" rel="noreferrer" className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, textDecoration: "none", color: "inherit" }}>
-                                <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--ox-50)", color: "var(--ox)", display: "flex", alignItems: "center", justifyContent: "center" }}>📄</div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 600, fontSize: 13 }}>Diplom faylı</div>
-                                    <div style={{ fontSize: 11, color: "var(--muted)" }}>Baxmaq üçün klikləyin</div>
-                                </div>
-                            </a>
-                        )}
-                        {detailApp.certificateFileUrls && detailApp.certificateFileUrls.split(",").map((url, i) => (
-                             <a key={i} href={url} target="_blank" rel="noreferrer" className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, textDecoration: "none", color: "inherit" }}>
-                                <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--sage-50)", color: "var(--sage)", display: "flex", alignItems: "center", justifyContent: "center" }}>📜</div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 600, fontSize: 13 }}>Sertifikat {i + 1}</div>
-                                    <div style={{ fontSize: 11, color: "var(--muted)" }}>Baxmaq üçün klikləyin</div>
-                                </div>
-                            </a>
-                        ))}
-                    </div>
-                 </div>
-
-                 <div style={{ marginTop: "auto", background: "var(--surface)", padding: 20, borderRadius: 16, border: "1px solid var(--border)" }}>
-                    {detailApp.status === "PENDING" ? (
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                            <button className="btn lg danger" disabled={actionLoading} onClick={() => openReject(detailApp.id, detailApp.firstName)}>
-                                <IconX size={16} /> Rədd et
-                            </button>
-                            <button className="btn lg" style={{ background: "var(--sage)", color: "#fff", border: "none" }} disabled={actionLoading} onClick={() => approve(detailApp.id)}>
-                                <IconCheck size={16} /> Təsdiqlə
-                            </button>
+                  <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8, fontWeight: 600 }}>Sənədlər və fayllar</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {detailApp.diplomaFileUrl && (
+                      <a href={detailApp.diplomaFileUrl} target="_blank" rel="noreferrer" className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, textDecoration: "none", color: "inherit" }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--ox-50)", color: "var(--ox)", display: "flex", alignItems: "center", justifyContent: "center" }}>📄</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>Diplom faylı</div>
+                          <div style={{ fontSize: 11, color: "var(--muted)" }}>Baxmaq üçün klikləyin</div>
                         </div>
-                    ) : (
-                        <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>Müraciət artıq dəyərləndirilib</div>
+                      </a>
                     )}
-                 </div>
+                    {detailApp.certificateFileUrls && detailApp.certificateFileUrls.split(",").map(s => s.trim()).filter(Boolean).map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noreferrer" className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, textDecoration: "none", color: "inherit" }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--sage-50)", color: "var(--sage)", display: "flex", alignItems: "center", justifyContent: "center" }}>📜</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>Sertifikat skanı {i + 1}</div>
+                          <div style={{ fontSize: 11, color: "var(--muted)" }}>Baxmaq üçün klikləyin</div>
+                        </div>
+                      </a>
+                    ))}
+                    {!detailApp.diplomaFileUrl && !detailApp.certificateFileUrls && (
+                      <div style={{ fontSize: 12, color: "var(--muted)", padding: 12 }}>Sənəd yüklənməyib.</div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8, fontWeight: 600 }}>Razılıqlar</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12 }}>
+                    <ConsentLine ok={detailApp.consentEthics} label="Etik kodeks" />
+                    <ConsentLine ok={detailApp.consentGdpr} label="GDPR / şəxsi məlumat" />
+                    <ConsentLine ok={detailApp.consentTerms} label="İstifadə şərtləri" />
+                  </div>
+                </div>
+
+                {detailApp.adminNote && (
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8, fontWeight: 600 }}>Admin qeydi</div>
+                    <div style={{ background: "var(--surface)", padding: 12, borderRadius: 10, border: "1px solid var(--border)", fontSize: 13, color: "var(--ink)", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                      {detailApp.adminNote}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ marginTop: "auto", background: "var(--surface)", padding: 20, borderRadius: 16, border: "1px solid var(--border)" }}>
+                  {detailApp.status === "PENDING" ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <button className="btn lg danger" disabled={actionLoading} onClick={() => openReject(detailApp.id, detailApp.firstName)}>
+                        <IconX size={16} /> Rədd et
+                      </button>
+                      <button className="btn lg" style={{ background: "var(--sage)", color: "#fff", border: "none" }} disabled={actionLoading} onClick={() => approve(detailApp.id)}>
+                        <IconCheck size={16} /> Təsdiqlə
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 13, color: "var(--muted)", textAlign: "center" }}>Müraciət artıq dəyərləndirilib</div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -808,7 +893,7 @@ export default function UsersPage() {
                     )}
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <Field label="Ad">
                     <input className="input" value={accForm.firstName}
                       onChange={(e) => setAccForm((f) => ({ ...f, firstName: e.target.value }))} />
@@ -819,7 +904,7 @@ export default function UsersPage() {
                   </Field>
                 </div>
                 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <Field label="Telefon">
                     <input className="input" value={accForm.phone}
                       onChange={(e) => setAccForm((f) => ({ ...f, phone: e.target.value }))} />
@@ -886,7 +971,7 @@ export default function UsersPage() {
                 )}
                 {!profLoading && profData && (
                   <>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <Field label="Ad Soyad">
                         <input className="input" value={profData.name}
                           onChange={(e) => setProfData((p) => p && ({ ...p, name: e.target.value }))} />
@@ -919,7 +1004,7 @@ export default function UsersPage() {
                         value={profData.bio ?? ""}
                         onChange={(e) => setProfData((p) => p && ({ ...p, bio: e.target.value }))} />
                     </Field>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <Field label="Dillər (vergüllə)">
                         <input className="input" value={profData.languages ?? ""}
                           onChange={(e) => setProfData((p) => p && ({ ...p, languages: e.target.value }))} />
@@ -943,7 +1028,7 @@ export default function UsersPage() {
                           onChange={(e) => setProfData((p) => p && ({ ...p, graduationYear: e.target.value }))} />
                       </Field>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <Field label="Əlaqə telefonu">
                         <input className="input" value={profData.phone ?? ""}
                           onChange={(e) => setProfData((p) => p && ({ ...p, phone: e.target.value }))} />
@@ -953,7 +1038,7 @@ export default function UsersPage() {
                           onChange={(e) => setProfData((p) => p && ({ ...p, email: e.target.value }))} />
                       </Field>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <Field label="Fəaliyyət formatı">
                         <input className="input" placeholder="Onlayn / Əyani / Həm onlayn, həm də əyani" value={profData.activityFormat ?? ""}
                           onChange={(e) => setProfData((p) => p && ({ ...p, activityFormat: e.target.value }))} />
@@ -1087,9 +1172,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
+    <div style={{ minWidth: 0 }}>
       <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--ink)" }}>{value}</div>
+      <div style={{ fontSize: 13.5, fontWeight: 500, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={typeof value === "string" ? value : undefined}>
+        {value}
+      </div>
     </div>
   );
 }
@@ -1101,6 +1188,76 @@ function statusPill(status: string) {
     case "REJECTED": return <span className="pill ox">Rədd edilib</span>;
     default: return <span className="pill muted">{status}</span>;
   }
+}
+
+function ConsentLine({ ok, label }: { ok?: boolean; label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{
+        width: 16, height: 16, borderRadius: "50%",
+        background: ok ? "#10B981" : "#E5E7EB",
+        color: "#fff",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 10, fontWeight: 700, flexShrink: 0,
+      }}>{ok ? "✓" : "·"}</span>
+      <span style={{ color: ok ? "var(--ink)" : "var(--muted)" }}>{label}</span>
+    </div>
+  );
+}
+
+function EducationList({ json, fallback }: {
+  json?: string;
+  fallback?: { institution: string; degree: string; graduationYear: string } | null;
+}) {
+  let rows: { institution: string; degree?: string; graduationYear?: string }[] = [];
+  if (json) {
+    try { rows = JSON.parse(json); } catch { /* ignore */ }
+  }
+  if (rows.length === 0 && fallback?.institution) rows = [fallback];
+  if (rows.length === 0) return <div style={{ fontSize: 12, color: "var(--muted)" }}>Təhsil qeyd edilməyib.</div>;
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {rows.map((r, i) => (
+        <div key={i} style={{ background: "var(--surface)", padding: 12, borderRadius: 10, border: "1px solid var(--border)", minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", overflowWrap: "anywhere", wordBreak: "break-word" }}>{r.institution}</div>
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+            {[r.degree, r.graduationYear].filter(Boolean).join(" · ") || "—"}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CertificateList({ json, legacyCerts }: { json?: string; legacyCerts?: string }) {
+  let rows: { title: string; issuer?: string; year?: string; type?: string }[] = [];
+  if (json) {
+    try { rows = JSON.parse(json); } catch { /* ignore */ }
+  }
+  // Legacy fallback (comma-separated free text)
+  if (rows.length === 0 && legacyCerts) {
+    rows = legacyCerts.split(",").map(s => s.trim()).filter(Boolean).map(t => ({ title: t, type: "CERTIFICATE" }));
+  }
+  if (rows.length === 0) return <div style={{ fontSize: 12, color: "var(--muted)" }}>Sertifikat / seminar yoxdur.</div>;
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {rows.map((r, i) => (
+        <div key={i} style={{ background: "var(--surface)", padding: 12, borderRadius: 10, border: "1px solid var(--border)", minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", overflowWrap: "anywhere", wordBreak: "break-word", flex: 1, minWidth: 0 }}>{r.title}</div>
+            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 999, background: r.type === "SEMINAR" ? "var(--sage-50)" : "var(--ox-50)", color: r.type === "SEMINAR" ? "var(--sage)" : "var(--ox)", fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>
+              {r.type === "SEMINAR" ? "SEMİNAR" : "SERTİFİKAT"}
+            </span>
+          </div>
+          {(r.issuer || r.year) && (
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
+              {[r.issuer, r.year].filter(Boolean).join(" · ")}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function SortIndicator({ field }: { field: string }) {

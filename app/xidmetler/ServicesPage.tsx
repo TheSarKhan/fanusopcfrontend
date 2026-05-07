@@ -1,299 +1,318 @@
 "use client";
 
 import Link from "next/link";
-import { useBooking } from "@/context/BookingContext";
-import { useScrollReveal } from "@/lib/useScrollReveal";
+import Deco from "@/components/Deco";
 
-const services = [
-  {
-    key: "ind",
-    title: "Fərdi Terapiya",
-    tagline: "Özünüzlə baş-başa",
-    desc: "Bir psixoloqla, sizə uyğun tempdə işləyin. Narahatlıq, depressiya, özgüvən və həyat dönüşləri üzrə.",
-    color: "#002147",
-    soft: "rgba(0, 33, 71, 0.07)",
-    bullets: ["50 dəq seans", "Sizə uyğun mütəxəssis", "İlk görüş pulsuz", "Həftəlik və ya 2 həftədə bir"],
-    icon: (
-      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
-      </svg>
-    ),
-  },
-  {
-    key: "couple",
-    title: "Cütlük Terapiyası",
-    tagline: "Birlikdə daha güclü",
-    desc: "Münasibətdəki gərginliyi yumşaq, neytral məkanda araşdırın. Hər iki tərəf eşidilir.",
-    color: "#5B3FA5",
-    soft: "rgba(91, 63, 165, 0.08)",
-    bullets: ["Hər iki tərəf üçün məkan", "Kommunikasiya alətləri", "Münaqişə həlli", "Etibarın bərpası"],
-    icon: (
-      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
-  },
-  {
-    key: "online",
-    title: "Onlayn Seans",
-    tagline: "Harada olsanız yanınızdayıq",
-    desc: "Brauzer və ya tətbiq. Heç bir quraşdırma yoxdur. Evdən, ofisdən və ya yoldan iştirak edin.",
-    color: "#1A6E5B",
-    soft: "rgba(26, 110, 91, 0.08)",
-    bullets: ["Şifrələnmiş video", "Mobil və masaüstü", "Xatırlatma bildirişləri", "Asan dəyişdirmə"],
-    icon: (
-      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="3" width="20" height="14" rx="2" />
-        <path d="M8 21h8M12 17v4" />
-      </svg>
-    ),
-  },
-  {
-    key: "group",
-    title: "Qrup Terapiyası",
-    tagline: "Birlikdə sağalın",
-    desc: "8-12 nəfərlik kiçik qrup. Eyni mövzunu yaşayan insanlarla peşəkar rəhbərlikdə.",
-    color: "#B45309",
-    soft: "rgba(180, 83, 9, 0.08)",
-    bullets: ["8-12 nəfərlik qrup", "Həftəlik 90 dəq", "Tematik sessiyalar", "Qarşılıqlı dəstək"],
-    icon: (
-      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-      </svg>
-    ),
-  },
-  {
-    key: "crisis",
-    title: "Böhran Dəstəyi",
-    tagline: "Çətin anlarda yanınızdayıq",
-    desc: "Kəskin emosional ağrıda yumşaq, peşəkar müşayiət. Heç bir mühakimə yoxdur — yalnız dəstək.",
-    color: "#BE123C",
-    soft: "rgba(190, 18, 60, 0.07)",
-    bullets: ["24 saat ərzində cavab", "Kəskin sessiyalar", "Davamlı plan", "113 ilə əməkdaşlıq"],
-    icon: (
-      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-      </svg>
-    ),
-  },
-  {
-    key: "kids",
-    title: "Uşaq & Yeniyetmə",
-    tagline: "Gənclikdən güclü başlanğıc",
-    desc: "8-18 yaş üçün xüsusi olaraq hazırlanmış format. Valideyn ilə birlikdə yumşaq yanaşma.",
-    color: "#0369A1",
-    soft: "rgba(3, 105, 161, 0.08)",
-    bullets: ["Yaşa uyğun yanaşma", "Valideyn iclasları", "Oyun terapiyası", "Məktəb əlaqəsi"],
-    icon: (
-      <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
-        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-        <line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="2.5" />
-        <line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="2.5" />
-      </svg>
-    ),
-  },
-];
-
-function HeroRight() {
+export default function ServicesPage() {
   return (
-    <div className="sv-hero-right" aria-hidden>
-      <div className="sv-orbit" />
-      <div className="sv-float sv-float-1">
-        <div className="sv-float-icon" style={{ background: "rgba(74,155,127,0.15)", color: "#1A6E5B" }}>
-          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-          </svg>
-        </div>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 500, color: "var(--oxford)" }}>Yaxşı hiss edirəm</div>
-          <div style={{ fontSize: 11, color: "var(--oxford-60)" }}>3 gün ardıcıl</div>
-        </div>
-      </div>
-      <div className="sv-float sv-float-2">
-        <div className="sv-float-icon" style={{ background: "rgba(140,125,201,0.15)", color: "#5B3FA5" }}>
-          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        </div>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 500, color: "var(--oxford)" }}>Növbəti seans</div>
-          <div style={{ fontSize: 11, color: "var(--oxford-60)" }}>Cümə · 14:00</div>
-        </div>
-      </div>
-      <div className="sv-float sv-float-3">
-        <div className="sv-float-icon" style={{ background: "rgba(201,125,46,0.15)", color: "#B45309" }}>
-          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-          </svg>
-        </div>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 500, color: "var(--oxford)" }}>Nəfəs məşqi</div>
-          <div style={{ fontSize: 11, color: "var(--oxford-60)" }}>5 dəq · indi</div>
-        </div>
-      </div>
+    <div className="fanus-root">
+      <ServicesHero />
+      <ServicesPrograms />
+      <ServicesMatch />
     </div>
   );
 }
 
-export default function ServicesPage() {
-  const { open } = useBooking();
-  const { ref: heroRef, visible: heroVisible } = useScrollReveal<HTMLDivElement>(0.05);
-  const { ref: gridRef, visible: gridVisible } = useScrollReveal<HTMLElement>(0.05);
-  const { ref: stripRef, visible: stripVisible } = useScrollReveal<HTMLElement>(0.1);
-
+function ServicesHero() {
   return (
-    <main className="sv-page">
+    <section className="svc-hero">
+      <Deco type="wave-top" style={{ top: -20, left: "-4%", width: 520, opacity: .55 }} anim="drift" />
+      <Deco type="blob-cloud" style={{ top: 40, right: "-6%", width: 360, opacity: .55 }} anim="drift" />
+      <Deco type="sphere-blue" style={{ top: "55%", left: "8%", width: 60, opacity: .8 }} anim="floatY" />
+      <Deco type="dot-small" style={{ top: "20%", right: "15%", width: 38, opacity: .8 }} />
 
-      {/* HERO */}
-      <section className="sv-hero">
-        <div className="sv-hero-blob sv-hero-blob-1" />
-        <div className="sv-hero-blob sv-hero-blob-2" />
-        <div className="container sv-hero-grid" ref={heroRef}>
-          <div
-            style={{
-              opacity: heroVisible ? 1 : 0,
-              transform: heroVisible ? "translateY(0)" : "translateY(24px)",
-              transition: "opacity 0.7s ease, transform 0.7s ease",
-            }}
-          >
-            <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "var(--oxford-60)" }}>
-              Xidmətlər
-            </p>
-            <h1 className="sv-hero-title" style={{ fontFamily: "var(--serif)", color: "var(--oxford)" }}>
-              Hansı dəstəyə<br />ehtiyacınız var?
-            </h1>
-            <p className="sv-hero-sub">
-              Hər ehtiyac üçün düşünülmüş psixoloji proqramlar. Sizin tempinizdə, sizin dilinizdə.
-            </p>
-            <Link
-              href="/register"
-              className="btn btn-primary"
-              style={{ borderRadius: "var(--r-btn)", display: "inline-flex", alignItems: "center", gap: 8 }}
-            >
-              Pulsuz başla — qeydiyyat
-              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
-          <div
-            style={{
-              opacity: heroVisible ? 1 : 0,
-              transform: heroVisible ? "translateX(0)" : "translateX(32px)",
-              transition: "opacity 0.7s ease 0.15s, transform 0.7s ease 0.15s",
-            }}
-          >
-            <HeroRight />
-          </div>
-        </div>
-      </section>
+      <div className="svc-hero__bg" aria-hidden>
+        <svg viewBox="0 0 1440 600" preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
+          <defs>
+            <linearGradient id="svcHeroBg" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0%" stopColor="#F2F6FD" />
+              <stop offset="100%" stopColor="#E4ECFA" />
+            </linearGradient>
+          </defs>
+          <rect width="1440" height="600" fill="url(#svcHeroBg)" />
+        </svg>
+      </div>
 
-      {/* SERVICES GRID */}
-      <section className="sv-grid-section" ref={gridRef}>
-        <div className="container">
-          <div
-            className="text-center mb-14"
-            style={{
-              opacity: gridVisible ? 1 : 0,
-              transform: gridVisible ? "translateY(0)" : "translateY(20px)",
-              transition: "opacity 0.6s ease, transform 0.6s ease",
-            }}
-          >
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "var(--oxford-60)" }}>
-              Proqramlar
-            </p>
-            <h2 style={{ fontFamily: "var(--serif)", fontSize: "clamp(28px,3.2vw,40px)", color: "var(--oxford)", marginBottom: 12 }}>
-              Sizə uyğun olanı seçin
-            </h2>
-            <p style={{ color: "var(--oxford-60)", fontSize: 16, maxWidth: 520, margin: "0 auto" }}>
-              Əmin deyilsiniz? Pulsuz 15 dəqiqəlik uyğunluq görüşü sizə kömək edər.
-            </p>
-          </div>
-
-          <div className="sv-grid">
-            {services.map((s, i) => (
-              <div
-                className="sv-card"
-                key={s.key}
-                style={{
-                  opacity: gridVisible ? 1 : 0,
-                  transform: gridVisible ? "translateY(0)" : "translateY(24px)",
-                  transition: `opacity 0.6s ease ${0.05 * i}s, transform 0.6s ease ${0.05 * i}s`,
-                }}
-              >
-                <div className="sv-card-icon" style={{ background: s.soft, color: s.color }}>
-                  {s.icon}
-                </div>
-                <h3>{s.title}</h3>
-                <div className="sv-tagline" style={{ color: s.color }}>{s.tagline}</div>
-                <p>{s.desc}</p>
-                <ul className="sv-bullets">
-                  {s.bullets.map((b) => (
-                    <li key={b}>
-                      <span className="sv-check" style={{ background: s.soft, color: s.color }}>
-                        <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 6L9 17l-5-5" />
-                        </svg>
-                      </span>
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/register"
-                  className="sv-cta"
-                  style={{ background: s.soft, color: s.color, display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}
-                >
-                  Başla
-                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* WHICH SERVICE STRIP */}
-      <section className="sv-strip" ref={stripRef}>
-        <div
-          className="container sv-strip-inner"
-          style={{
-            opacity: stripVisible ? 1 : 0,
-            transform: stripVisible ? "translateY(0)" : "translateY(20px)",
-            transition: "opacity 0.7s ease, transform 0.7s ease",
-          }}
-        >
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "var(--oxford-60)" }}>
-            Haradan başlamaq lazımdır?
+      <div className="fanus-container svc-hero__inner">
+        <div className="svc-hero__copy">
+          <div className="fanus-eyebrow"><span className="dash" /> Xidmətlər</div>
+          <h1>
+            Hansı dəstəyə<br />
+            <span className="fanus-serif-accent">ehtiyacınız</span> var?
+          </h1>
+          <p className="svc-hero__lead">
+            Hər ehtiyac üçün düşünülmüş psixoloji proqramlar. Sizin tempinizdə, sizin dilinizdə.
           </p>
-          <h2>Hələ əmin deyilsiniz?<br />Psixoloqlarımızla tanış olun</h2>
-          <p>
-            Sahə, yanaşma və təcrübəyə görə filtirləyin — sizə ən uyğun mütəxəssisi tapın. İlk tanışlıq seansı ödənişsizdir.
-          </p>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <Link
-              href="/psychologists"
-              className="btn btn-primary"
-              style={{ borderRadius: "var(--r-btn)", display: "inline-flex", alignItems: "center", gap: 8 }}
-            >
-              Psixoloqlara bax
-              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </Link>
-            <Link href="/register" className="btn btn-ghost" style={{ borderRadius: "var(--r-btn)" }}>
-              Qeydiyyat
+          <div className="svc-hero__cta">
+            <Link href="#programs" className="fanus-btn fanus-btn-primary fanus-btn-lg">
+              Pulsuz başla — qeydiyyat <Arrow />
             </Link>
           </div>
         </div>
-      </section>
 
-    </main>
+        <div className="svc-hero__visual" aria-hidden>
+          <div className="svc-hero__glow svc-hero__glow--1" />
+          <div className="svc-hero__glow svc-hero__glow--2" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/hero-xidmetler.png"
+            alt="Fanus xidmətləri — psixoloji dəstək"
+            className="svc-hero__img"
+            draggable={false}
+          />
+        </div>
+      </div>
+
+      <style>{`
+        .svc-hero { position: relative; padding: 56px 0 110px; overflow: hidden; }
+        .svc-hero__bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+        .svc-hero__inner {
+          position: relative; z-index: 1;
+          display: grid; grid-template-columns: 1fr 1fr;
+          gap: 48px; align-items: center;
+          min-height: 460px;
+        }
+        .svc-hero__copy h1 {
+          margin: 18px 0 18px;
+          font-family: var(--font-poppins), system-ui, sans-serif;
+          font-size: clamp(38px, 5.4vw, 68px);
+          font-weight: 800; letter-spacing: -0.035em; line-height: 1.1;
+          color: var(--fanus-ink);
+        }
+        .svc-hero__lead { font-size: 18px; color: var(--fanus-ink-3); line-height: 1.6; max-width: 480px; margin: 0; }
+        .svc-hero__cta { margin-top: 32px; }
+
+        .svc-hero__visual {
+          position: relative;
+          width: 100%; aspect-ratio: 16/10; min-height: 380px;
+        }
+        .svc-hero__img {
+          position: absolute; inset: 0;
+          width: 100%; height: 100%;
+          object-fit: contain;
+          z-index: 2;
+          animation: svcHeroFloat 6s ease-in-out infinite;
+          user-select: none;
+        }
+        @keyframes svcHeroFloat {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-8px); }
+        }
+        .svc-hero__glow { position: absolute; border-radius: 50%; pointer-events: none; filter: blur(40px); z-index: 1; }
+        .svc-hero__glow--1 {
+          top: -8%; right: 8%; width: 220px; height: 220px;
+          background: radial-gradient(circle, rgba(245,185,70,.30), transparent 65%);
+          animation: svcHeroFlicker 3.5s ease-in-out infinite;
+        }
+        .svc-hero__glow--2 {
+          bottom: -6%; left: 6%; width: 260px; height: 260px;
+          background: radial-gradient(circle, rgba(16,81,183,.22), transparent 65%);
+          animation: svcHeroFlicker 4.5s ease-in-out infinite -2s;
+        }
+        @keyframes svcHeroFlicker {
+          0%, 100% { opacity: .9; transform: scale(1); }
+          50%      { opacity: .55; transform: scale(1.08); }
+        }
+
+        @media (max-width: 980px) {
+          .svc-hero__inner { grid-template-columns: 1fr; }
+          .svc-hero__visual { min-height: 320px; }
+        }
+      `}</style>
+    </section>
   );
+}
+
+const PROGRAMS = [
+  {
+    icon: "compass",
+    title: "Fərdi terapiya",
+    tag: "Özünüzlə baş-başa",
+    body: "Bir psixoloqla, sizə uyğun tempdə işləyin. Narahatlıq, depressiya, özgüvən və həyat dönüşləri üzrə.",
+    bullets: ["50 dəq seans", "Sizə uyğun mütəxəssis", "İlk görüş pulsuz", "Həftəlik və ya 2 həftədə bir"],
+  },
+  {
+    icon: "people",
+    title: "Cütlük terapiyası",
+    tag: "Birlikdə daha güclü",
+    body: "Münasibətdəki gərginliyi yumşaq, neytral məkanda araşdırın. Hər iki tərəf eşidilir.",
+    bullets: ["Hər iki tərəf üçün məkan", "Kommunikasiya alətləri", "Münaqişə həlli", "Etibarın bərpası"],
+  },
+  {
+    icon: "monitor",
+    title: "Onlayn seans",
+    tag: "Harada olsanız yanınızdayıq",
+    body: "Brauzer və ya tətbiq. Heç bir quraşdırma yoxdur. Evdən, ofisdən və ya yoldan iştirak edin.",
+    bullets: ["Şifrələnmiş video", "Mobil və masaüstü", "Xatırlatma bildirişləri", "Asan dəyişdirmə"],
+  },
+  {
+    icon: "chat",
+    title: "Qrup terapiyası",
+    tag: "Birlikdə sağalın",
+    body: "8-12 nəfərlik kiçik qrup. Eyni mövzunu yaşayan insanlarla peşəkar rəhbərlikdə.",
+    bullets: ["8-12 nəfərlik qrup", "Həftəlik 90 dəq", "Tematik sessiyalar", "Qarşılıqlı dəstək"],
+  },
+  {
+    icon: "heart",
+    title: "Böhran dəstəyi",
+    tag: "Çətin anlarda yanınızdayıq",
+    body: "Kəskin emosional ağrıda yumşaq, peşəkar müşaiət. Heç bir mühakimə yoxdur — yalnız dəstək.",
+    bullets: ["24 saat ərzində cavab", "Kəskin sessiyalar", "Davamlı plan", "113 ilə əməkdaşlıq"],
+  },
+  {
+    icon: "smile",
+    title: "Uşaq & yeniyetmə",
+    tag: "Gənclikdən güclü başlanğıc",
+    body: "8-18 yaş üçün xüsusi olaraq hazırlanmış format. Valideyn ilə birlikdə yumşaq yanaşma.",
+    bullets: ["Yaşa uyğun yanaşma", "Valideyn iclasları", "Oyun terapiyası", "Məktəb əlaqəsi"],
+  },
+];
+
+function ServicesPrograms() {
+  return (
+    <section className="svc-prog" id="programs">
+      <Deco type="mesh-blob" style={{ top: 60, right: "-5%", width: 400, opacity: .45 }} anim="drift" />
+      <Deco type="blob-1" style={{ bottom: 80, left: "-4%", width: 280, opacity: .5 }} anim="drift" />
+
+      <div className="fanus-container">
+        <div className="svc-head">
+          <div className="fanus-eyebrow"><span className="dash" /> Proqramlar <span className="dash" /></div>
+          <h2>Sizə uyğun olanı <span className="fanus-serif-accent">seçin</span></h2>
+          <p>Əmin deyilsiniz? Pulsuz 15 dəqiqəlik uyğunluq görüşü sizə kömək edər.</p>
+        </div>
+
+        <div className="svc-prog__grid">
+          {PROGRAMS.map((p, i) => (
+            <article key={i} className="svc-card">
+              <div className="svc-card__icon"><PgmIcon name={p.icon} /></div>
+              <h3 className="svc-card__title">{p.title}</h3>
+              <div className="svc-card__tag">{p.tag}</div>
+              <p className="svc-card__body">{p.body}</p>
+              <ul className="svc-card__list">
+                {p.bullets.map((b, j) => (
+                  <li key={j}>
+                    <span className="svc-card__check"><CheckIcon /></span>
+                    {b}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/register" className="svc-card__btn">
+                Başla <Arrow size={14} />
+              </Link>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <style>{`
+        .svc-prog { padding: 110px 0; position: relative; overflow: hidden; }
+        .svc-prog > .fanus-container { position: relative; z-index: 1; }
+        .svc-head { text-align: center; max-width: 760px; margin: 0 auto 56px; }
+        .svc-head .fanus-eyebrow { justify-content: center; }
+        .svc-head h2 {
+          font-family: var(--font-poppins), system-ui, sans-serif;
+          font-size: clamp(30px, 3.6vw, 48px); font-weight: 700;
+          letter-spacing: -0.025em; line-height: 1.1; color: var(--fanus-ink);
+          margin: 16px 0 14px;
+        }
+        .svc-head p { font-size: 17px; color: var(--fanus-ink-3); margin: 0; }
+        .svc-prog__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+        .svc-card {
+          background: white; border: 1px solid var(--fanus-line);
+          border-radius: 22px; padding: 28px;
+          display: flex; flex-direction: column; gap: 14px;
+          transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+        }
+        .svc-card:hover {
+          transform: translateY(-4px);
+          border-color: var(--fanus-primary-200);
+          box-shadow: 0 24px 50px rgba(16,81,183,.1);
+        }
+        .svc-card__icon {
+          width: 48px; height: 48px; border-radius: 14px;
+          background: var(--fanus-primary-50); color: var(--fanus-primary);
+          display: inline-flex; align-items: center; justify-content: center;
+        }
+        .svc-card__title { font-size: 22px; font-weight: 700; margin: 0; line-height: 1.2; color: var(--fanus-ink); }
+        .svc-card__tag { font-size: 13px; font-weight: 600; color: var(--fanus-primary); }
+        .svc-card__body { font-size: 14.5px; color: var(--fanus-ink-3); line-height: 1.6; margin: 0; }
+        .svc-card__list { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 8px; }
+        .svc-card__list li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--fanus-ink-2); }
+        .svc-card__check {
+          width: 18px; height: 18px; border-radius: 50%;
+          background: var(--fanus-primary-50); color: var(--fanus-primary);
+          display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .svc-card__btn {
+          margin-top: auto;
+          padding: 12px 18px; border-radius: 12px;
+          font-weight: 600; font-size: 14px;
+          background: var(--fanus-primary-50); color: var(--fanus-primary);
+          display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+          transition: background .2s, color .2s, transform .2s;
+        }
+        .svc-card__btn:hover { background: var(--fanus-primary); color: white; transform: translateY(-1px); }
+        @media (max-width: 1080px) { .svc-prog__grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 640px) { .svc-prog__grid { grid-template-columns: 1fr; } }
+      `}</style>
+    </section>
+  );
+}
+
+function ServicesMatch() {
+  return (
+    <section className="svc-match">
+      <Deco type="circles-mix" style={{ top: 30, right: "6%", width: 220, opacity: .55 }} />
+      <Deco type="target" style={{ bottom: 30, left: "8%", width: 130, opacity: .55 }} anim="drift" />
+
+      <div className="fanus-container">
+        <div className="svc-head">
+          <div className="fanus-eyebrow"><span className="dash" /> Haradan başlamaq lazımdır? <span className="dash" /></div>
+          <h2>
+            Hələ əmin deyilsiniz?<br />
+            Psixoloqlarımızla <span className="fanus-serif-accent">tanış olun</span>
+          </h2>
+          <p>
+            Sahə, yanaşma və təcrübəyə görə filtrləyin — sizə ən uyğun mütəxəssisi tapın. İlk tanışlıq seansı ödənişsizdir.
+          </p>
+          <div className="svc-match__cta">
+            <Link href="/psychologists" className="fanus-btn fanus-btn-primary">
+              Psixoloqlara bax <Arrow />
+            </Link>
+            <Link href="/register" className="fanus-btn fanus-btn-ghost">Qeydiyyat</Link>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        .svc-match {
+          padding: 90px 0;
+          background: linear-gradient(180deg, var(--fanus-bg) 0%, var(--fanus-primary-50) 100%);
+          position: relative; overflow: hidden;
+        }
+        .svc-match > .fanus-container { position: relative; z-index: 1; }
+        .svc-match .svc-head { margin: 0 auto; }
+        .svc-match__cta {
+          display: flex; justify-content: center; gap: 12px;
+          margin-top: 28px; flex-wrap: wrap;
+        }
+      `}</style>
+    </section>
+  );
+}
+
+function Arrow({ size = 18 }: { size?: number }) {
+  return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.4" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
+}
+function CheckIcon() { return <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4L19 6" /></svg>; }
+
+function PgmIcon({ name }: { name: string }) {
+  const p = { width: 22, height: 22, fill: "none", stroke: "currentColor", strokeWidth: 1.7, viewBox: "0 0 24 24", strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (name === "compass") return <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M16 8l-2 6-6 2 2-6 6-2z" /></svg>;
+  if (name === "people")  return <svg {...p}><circle cx="9" cy="8" r="3.5" /><path d="M3 20c.5-3.5 3-5.5 6-5.5s5.5 2 6 5.5" /><circle cx="17" cy="9" r="2.5" /><path d="M15 14c2 .3 4 1.7 4.5 4.5" /></svg>;
+  if (name === "monitor") return <svg {...p}><rect x="3" y="4" width="18" height="13" rx="2" /><path d="M8 21h8M12 17v4" /></svg>;
+  if (name === "chat")    return <svg {...p}><path d="M4 5h16v11H8l-4 4V5z" /></svg>;
+  if (name === "heart")   return <svg {...p}><path d="M12 20s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 10c0 5.5-7 10-7 10z" /></svg>;
+  if (name === "smile")   return <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><circle cx="9" cy="9" r="1.2" fill="currentColor" /><circle cx="15" cy="9" r="1.2" fill="currentColor" /></svg>;
+  return null;
 }

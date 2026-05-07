@@ -1,51 +1,38 @@
-import Intro from "@/components/Intro";
 import Hero from "@/components/Hero";
+import MoodCheckIn from "@/components/MoodCheckIn";
 import WhyFanus from "@/components/WhyFanus";
+import Services from "@/components/Services";
 import HowItWorks from "@/components/HowItWorks";
-import HomeAbout from "@/components/HomeAbout";
-import Stats from "@/components/Stats";
 import Psychologists from "@/components/Psychologists";
-import Trust from "@/components/Trust";
-import Announcements from "@/components/Announcements";
-import BlogPreview from "@/components/BlogPreview";
+import Testimonials from "@/components/Testimonials";
+import Articles from "@/components/Articles";
 import FAQ from "@/components/FAQ";
-import ContactSection from "@/components/ContactSection";
-import FinalCTA from "@/components/FinalCTA";
 import {
   getPsychologists,
-  getStats,
-  getAnnouncements,
   getBlogPosts,
   getFaqs,
   getTestimonials,
 } from "@/lib/api";
 
 export default async function HomePage() {
-  const [psychologists, stats, announcements, blogPosts, faqs, testimonials] =
-    await Promise.all([
-      getPsychologists().catch(() => []),
-      getStats().catch(() => []),
-      getAnnouncements().catch(() => []),
-      getBlogPosts().catch(() => []),
-      getFaqs().catch(() => []),
-      getTestimonials().catch(() => []),
-    ]);
+  const [psychologists, blogPosts, faqs, testimonials] = await Promise.all([
+    getPsychologists().catch(() => []),
+    getBlogPosts().catch(() => []),
+    getFaqs().catch(() => []),
+    getTestimonials().catch(() => []),
+  ]);
 
   return (
-    <>
-      <Intro />
+    <div className="fanus-root">
       <Hero />
+      <MoodCheckIn />
       <WhyFanus />
+      <Services />
       <HowItWorks />
-      <HomeAbout />
-      <Stats stats={stats} />
       <Psychologists psychologists={psychologists} />
-      <Trust testimonials={testimonials} />
-      <Announcements announcements={announcements} />
-      <BlogPreview posts={blogPosts} />
+      <Testimonials testimonials={testimonials} />
+      <Articles posts={blogPosts} />
       <FAQ faqs={faqs} />
-      <ContactSection />
-      <FinalCTA />
-    </>
+    </div>
   );
 }

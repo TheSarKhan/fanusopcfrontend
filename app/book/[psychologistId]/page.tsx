@@ -9,7 +9,7 @@ import {
   type AvailableSlot,
   type Psychologist,
 } from "@/lib/api";
-import { getStoredUser } from "@/lib/auth";
+import { buildPanelUrl, getStoredUser } from "@/lib/auth";
 
 const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"]; // Mon..Sun (ISO order)
 
@@ -53,6 +53,11 @@ export default function BookPsychologistPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [appointmentsUrl, setAppointmentsUrl] = useState("/patient/appointments");
+
+  useEffect(() => {
+    setAppointmentsUrl(`${buildPanelUrl("PATIENT")}/appointments`);
+  }, []);
 
   // Auth check
   useEffect(() => {
@@ -130,7 +135,7 @@ export default function BookPsychologistPage() {
             Statusu &laquo;Randevularım&raquo; bölməsindən izləyə bilərsiniz.
           </p>
           <div style={{ display: "flex", gap: 12 }}>
-            <a href="/patient/appointments"
+            <a href={appointmentsUrl}
                style={{ background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", padding: "10px 18px", borderRadius: 10, textDecoration: "none", fontWeight: 600, fontSize: 14 }}>
               Randevularıma keç
             </a>

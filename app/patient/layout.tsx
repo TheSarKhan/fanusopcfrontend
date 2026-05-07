@@ -6,11 +6,17 @@ import { useState } from "react";
 import { logout } from "@/lib/api";
 import { getStoredUser, getMainSiteUrl } from "@/lib/auth";
 import PanelAuthGuard from "@/components/PanelAuthGuard";
+import NotificationBell from "@/components/NotificationBell";
 
 const NAV = [
   { href: "/patient", label: "Dashboard", icon: "🏠" },
   { href: "/patient/profile", label: "Profilim", icon: "👤" },
   { href: "/patient/appointments", label: "Randevularım", icon: "📅" },
+  { href: "/patient/chat", label: "Mesajlar", icon: "💬" },
+  { href: "/patient/homework", label: "Tapşırıqlar", icon: "🎯" },
+  { href: "/patient/library", label: "Resurslar", icon: "📚" },
+  { href: "/patient/journal", label: "Jurnal & Mood", icon: "📝" },
+  { href: "/patient/favorites", label: "Favoritlərim", icon: "⭐" },
 ];
 
 function PatientShell({ children }: { children: React.ReactNode }) {
@@ -88,7 +94,12 @@ function PatientShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-auto">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "12px 24px", background: "#fff", borderBottom: "1px solid #E5E7EB", gap: 12 }}>
+          <NotificationBell />
+        </div>
+        {children}
+      </main>
     </div>
   );
 }

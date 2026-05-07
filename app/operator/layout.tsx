@@ -4,10 +4,12 @@ import { usePathname } from "next/navigation";
 import { logout } from "@/lib/api";
 import { getMainSiteUrl } from "@/lib/auth";
 import PanelAuthGuard from "@/components/PanelAuthGuard";
+import NotificationBell from "@/components/NotificationBell";
 
 const NAV_ITEMS = [
   { href: "/operator", label: "Dashboard", icon: "🏠" },
   { href: "/operator/appointments", label: "Randevular", icon: "📅" },
+  { href: "/operator/analytics", label: "Analytics", icon: "📊" },
 ];
 
 function OperatorShell({ children }: { children: React.ReactNode }) {
@@ -95,7 +97,12 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto p-8">{children}</main>
+      <main className="flex-1 overflow-auto">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "12px 24px", background: "#fff", borderBottom: "1px solid #E5E7EB", gap: 12 }}>
+          <NotificationBell />
+        </div>
+        <div style={{ padding: "2rem" }}>{children}</div>
+      </main>
     </div>
   );
 }

@@ -581,7 +581,7 @@ export default function PsychologistsPage() {
                     <option value="">Seçin...</option>
                     <option value="ONLINE">Onlayn</option>
                     <option value="IN_PERSON">Əyani</option>
-                    <option value="BOTH">Həm onlayn, həm əyani</option>
+                    <option value="BOTH">Onlayn & Əyani</option>
                   </select>
                 </FormField>
                 <FormField label="Sıra nömrəsi">

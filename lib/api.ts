@@ -449,6 +449,29 @@ export const getPsychologistAvailability = (id: number, from?: string, to?: stri
   return get<AvailableSlot[]>(`/psychologists/${id}/availability${qs ? "?" + qs : ""}`);
 };
 
+// ─── Public reviews ──────────────────────────────────────────────────────────
+export interface PublicReview {
+  id: number;
+  rating: number;
+  comment: string;
+  authorDisplayName: string;
+  authorInitials: string;
+  createdAt: string;
+  reply?: string | null;
+  replyAt?: string | null;
+}
+
+export interface ReviewSummary {
+  total: number;
+  average: number;
+  distribution: Record<string, number>;
+}
+
+export const getPsychologistReviews = (id: number) =>
+  get<PublicReview[]>(`/psychologists/${id}/reviews`);
+export const getPsychologistReviewSummary = (id: number) =>
+  get<ReviewSummary>(`/psychologists/${id}/reviews/summary`);
+
 export const bookAppointment = (data: {
   patientName: string; phone: string; psychologistName?: string; note?: string; preferredDate?: string;
 }) => fetch(`${BASE}/appointments`, {
@@ -773,7 +796,38 @@ export const adminApi = {
     const data = await authedMultipartRequest<{ url: string }>("POST", "/admin/upload", form);
     return data.url;
   },
+
+  // Reviews moderation
+  getReviews: (status?: "PENDING" | "APPROVED" | "REJECTED") => {
+    const qs = status ? `?status=${status}` : "";
+    return authedRequest<AdminReview[]>("GET", `/admin/reviews${qs}`);
+  },
+  getPendingReviewCount: () =>
+    authedRequest<{ count: number }>("GET", "/admin/reviews/pending-count"),
+  approveReview: (id: number, moderationNote?: string) =>
+    authedRequest<AdminReview>("POST", `/admin/reviews/${id}/approve`, { moderationNote }),
+  rejectReview: (id: number, moderationNote?: string) =>
+    authedRequest<AdminReview>("POST", `/admin/reviews/${id}/reject`, { moderationNote }),
+  deleteReview: (id: number) => authedRequest<void>("DELETE", `/admin/reviews/${id}`),
 };
+
+export interface AdminReview {
+  id: number;
+  psychologistId: number;
+  psychologistName: string;
+  patientId: number;
+  patientName: string;
+  appointmentId?: number | null;
+  rating: number;
+  comment: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  moderationNote?: string | null;
+  moderatedByEmail?: string | null;
+  moderatedAt?: string | null;
+  reply?: string | null;
+  replyAt?: string | null;
+  createdAt: string;
+}
 
 // ─── Patient API ──────────────────────────────────────────────────────────────
 export interface PatientBookingPayload {
@@ -826,7 +880,36 @@ export const patientApi = {
   updateJournal: (id: number, data: JournalEntryPayload) =>
     authedRequest<JournalEntry>("PUT", `/patient/journal/${id}`, data),
   deleteJournal: (id: number) => authedRequest<void>("DELETE", `/patient/journal/${id}`),
+
+  // Reviews
+  myReviews: () => authedRequest<MyReview[]>("GET", "/patient/reviews"),
+  canReview: (psychologistId: number) =>
+    authedRequest<{ canReview: boolean }>("GET", `/patient/reviews/can-review/${psychologistId}`),
+  submitReview: (psychologistId: number, data: ReviewPayload) =>
+    authedRequest<MyReview>("POST", `/patient/psychologists/${psychologistId}/reviews`, data),
+  updateReview: (reviewId: number, data: ReviewPayload) =>
+    authedRequest<MyReview>("PUT", `/patient/reviews/${reviewId}`, data),
+  deleteReview: (reviewId: number) =>
+    authedRequest<void>("DELETE", `/patient/reviews/${reviewId}`),
 };
+
+export interface ReviewPayload {
+  appointmentId?: number | null;
+  rating: number;
+  comment: string;
+}
+export interface MyReview {
+  id: number;
+  psychologistId: number;
+  psychologistName: string;
+  rating: number;
+  comment: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  reply?: string | null;
+  replyAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface JournalEntry {
   id: number;
@@ -946,7 +1029,27 @@ export const psychologistApi = {
     authedRequest<FollowupTemplate>("PUT", `/psychologist/templates/${id}`, data),
   deleteTemplate: (id: number) =>
     authedRequest<void>("DELETE", `/psychologist/templates/${id}`),
+
+  // Reviews (received from patients)
+  receivedReviews: () =>
+    authedRequest<PsychologistReceivedReview[]>("GET", "/psychologist/reviews"),
+  replyToReview: (reviewId: number, reply: string) =>
+    authedRequest<PsychologistReceivedReview>("POST", `/psychologist/reviews/${reviewId}/reply`, { reply }),
+  deleteReviewReply: (reviewId: number) =>
+    authedRequest<void>("DELETE", `/psychologist/reviews/${reviewId}/reply`),
 };
+
+export interface PsychologistReceivedReview {
+  id: number;
+  patientId: number;
+  patientName: string;
+  rating: number;
+  comment: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  reply?: string | null;
+  replyAt?: string | null;
+  createdAt: string;
+}
 
 // ─── Chat / Homework / Resource / Template types ─────────────────────────────
 export interface ChatThread {

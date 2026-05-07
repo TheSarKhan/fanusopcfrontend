@@ -692,7 +692,7 @@ export default function UsersPage() {
                     <InfoRow label="İxtisas / vəzifə" value={detailApp.title ?? "—"} />
                     <InfoRow label="Təcrübə" value={detailApp.experienceYears ?? "—"} />
                     <InfoRow label="Format" value={
-                      detailApp.activityFormat === "BOTH" ? "Həm onlayn, həm əyani" :
+                      detailApp.activityFormat === "BOTH" ? "Onlayn & Əyani" :
                       detailApp.activityFormat === "ONLINE" ? "Onlayn" :
                       detailApp.activityFormat === "IN_PERSON" ? "Əyani" :
                       (detailApp.activityFormat ?? "—")
@@ -1040,7 +1040,7 @@ export default function UsersPage() {
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <Field label="Fəaliyyət formatı">
-                        <input className="input" placeholder="Onlayn / Əyani / Həm onlayn, həm də əyani" value={profData.activityFormat ?? ""}
+                        <input className="input" placeholder="Onlayn / Əyani / Onlayn & Əyani" value={profData.activityFormat ?? ""}
                           onChange={(e) => setProfData((p) => p && ({ ...p, activityFormat: e.target.value }))} />
                       </Field>
                       <Field label="Şəkil URL">

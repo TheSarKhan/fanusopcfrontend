@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/psycholog/homework", label: "Tapşırıqlar", icon: "🎯" },
   { href: "/psycholog/resources", label: "Resurslar", icon: "📚" },
   { href: "/psycholog/availability", label: "Açıq vaxtlar", icon: "🕓" },
+  { href: "/psycholog/reviews", label: "Rəylər", icon: "⭐" },
 ];
 
 function PsychologShell({ children }: { children: React.ReactNode }) {

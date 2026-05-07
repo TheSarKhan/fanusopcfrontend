@@ -40,7 +40,7 @@ const LANGUAGE_OPTIONS = ["Azərbaycan dili", "Rus dili", "İngilis dili", "Tür
 const ACTIVITY_OPTIONS = [
   { value: "ONLINE", label: "Onlayn" },
   { value: "IN_PERSON", label: "Əyani" },
-  { value: "BOTH", label: "Hər ikisi" },
+  { value: "BOTH", label: "Onlayn & Əyani" },
 ] as const;
 const DEGREE_OPTIONS = ["Bakalavr", "Magistr", "PhD / Doktor", "Rezident", "Digər"];
 

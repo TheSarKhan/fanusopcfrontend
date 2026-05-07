@@ -17,6 +17,7 @@ const NAV = [
   { href: "/patient/library", label: "Resurslar", icon: "📚" },
   { href: "/patient/journal", label: "Jurnal & Mood", icon: "📝" },
   { href: "/patient/favorites", label: "Favoritlərim", icon: "⭐" },
+  { href: "/patient/reviews", label: "Rəylərim", icon: "✍️" },
 ];
 
 function PatientShell({ children }: { children: React.ReactNode }) {

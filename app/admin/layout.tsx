@@ -26,7 +26,7 @@ type NavItem = {
   href: string;
   label: string;
   Icon: React.ComponentType<{ size?: number; className?: string }>;
-  badgeKey?: "content" | "appointments";
+  badgeKey?: "content" | "appointments" | "reviews";
 };
 
 // ── Aktiv modullar (yavas-yavas acilir) ──────────────────────────────────────
@@ -34,6 +34,7 @@ const NAV_MAIN: NavItem[] = [
   { href: "/admin/users", label: "İstifadəçi idarəsi", Icon: IconUsers },
   { href: "/admin/psychologists", label: "Psixoloqlar", Icon: IconUser },
   { href: "/admin/blog", label: "Məqalələr", Icon: IconContent },
+  { href: "/admin/reviews", label: "Rəylər", Icon: IconMegaphone, badgeKey: "reviews" },
 ];
 
 // Helelik gizli modullar — hazir olduqca acilaraq
@@ -61,6 +62,7 @@ const TITLE_MAP: Record<string, string> = {
   "/admin/faqs": "FAQ",
   "/admin/testimonials": "Rəylər",
   "/admin/config": "Konfiqurasiya",
+  "/admin/reviews": "Pasiyent rəyləri",
 };
 
 function NavSection({ items, badges, pathname }: { items: NavItem[]; badges: Record<string, number | undefined>; pathname: string }) {
@@ -103,11 +105,15 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       .getDashboard()
       .then((d) => {
         const counts = d as Record<string, number>;
-        setBadges({
+        setBadges((prev) => ({
+          ...prev,
           content: counts.blogPosts ?? counts.content,
           appointments: counts.pendingAppointments ?? counts.appointments,
-        });
+        }));
       })
+      .catch(() => {});
+    adminApi.getPendingReviewCount()
+      .then((res) => setBadges((prev) => ({ ...prev, reviews: res.count })))
       .catch(() => {});
   }, []);
 

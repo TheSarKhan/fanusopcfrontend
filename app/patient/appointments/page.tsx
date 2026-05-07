@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { patientApi, type AppointmentDetail } from "@/lib/api";
+import { patientApi, type AppointmentDetail, type MyReview } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
+import ReviewModal from "./ReviewModal";
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   PENDING:   { label: "Gözlənilir",  color: "#92400E", bg: "#FEF3C7" },
@@ -31,11 +32,19 @@ export default function PatientAppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [reschedFor, setReschedFor] = useState<AppointmentDetail | null>(null);
+  const [reviewFor, setReviewFor] = useState<AppointmentDetail | null>(null);
+  const [myReviews, setMyReviews] = useState<MyReview[]>([]);
 
   const load = () => {
     setLoading(true);
-    patientApi.myAppointments()
-      .then(setItems)
+    Promise.all([
+      patientApi.myAppointments(),
+      patientApi.myReviews().catch(() => [] as MyReview[]),
+    ])
+      .then(([appts, revs]) => {
+        setItems(appts);
+        setMyReviews(revs);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   };
@@ -157,6 +166,27 @@ export default function PatientAppointmentsPage() {
                       </button>
                     </div>
                   )}
+                  {a.status === "COMPLETED" && a.psychologistId && (() => {
+                    const existing = myReviews.find(r => r.psychologistId === a.psychologistId);
+                    if (existing) {
+                      return (
+                        <Link
+                          href="/patient/reviews"
+                          style={{ padding: "6px 12px", fontSize: 12, border: "1px solid #DDE6F0", color: "#52718F", background: "#fff", borderRadius: 8, fontWeight: 500, textDecoration: "none", whiteSpace: "nowrap" }}
+                        >
+                          {existing.status === "PENDING" ? "Rəy gözləyir" : existing.status === "APPROVED" ? "Rəyim ✓" : "Rəyim"}
+                        </Link>
+                      );
+                    }
+                    return (
+                      <button
+                        onClick={() => setReviewFor(a)}
+                        style={{ padding: "6px 12px", fontSize: 12, border: "1px solid #C7BFF1", color: "#5A4FC8", background: "#F4F1FE", borderRadius: 8, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                      >
+                        ✍️ Rəy yaz
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             );
@@ -169,6 +199,18 @@ export default function PatientAppointmentsPage() {
           appointment={reschedFor}
           onClose={() => setReschedFor(null)}
           onDone={onRescheduled}
+        />
+      )}
+      {reviewFor && reviewFor.psychologistId && (
+        <ReviewModal
+          psychologistId={reviewFor.psychologistId}
+          psychologistName={reviewFor.psychologistName ?? "Psixoloq"}
+          appointmentId={reviewFor.id}
+          onClose={() => setReviewFor(null)}
+          onSubmitted={(saved) => {
+            setMyReviews(prev => [saved, ...prev.filter(r => r.id !== saved.id)]);
+            setReviewFor(null);
+          }}
         />
       )}
     </div>

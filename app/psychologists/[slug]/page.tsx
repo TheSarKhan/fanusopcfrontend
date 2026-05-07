@@ -6,7 +6,7 @@ import {
   type PublicReview,
   type ReviewSummary,
 } from "@/lib/api";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import BookingCta from "./BookingCta";
 
@@ -172,6 +172,11 @@ export default async function PsychologistProfilePage(
   const allPsychologists = await getPsychologists();
   const psychologist = resolvePsychologist(allPsychologists, slug);
   if (!psychologist) notFound();
+
+  // Canonical URL: numeric ids and stale slugs redirect to current slug
+  if (psychologist.slug && psychologist.slug !== slug) {
+    redirect(`/psychologists/${psychologist.slug}`);
+  }
 
   const [allPosts, reviews, reviewSummary] = await Promise.all([
     getBlogPosts().catch(() => []),

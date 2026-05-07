@@ -1,4 +1,5 @@
 import { storeUser, clearUser, isTokenExpiringSoon, isTokenExpired, getMainSiteUrl, decodeAccessToken } from "./auth";
+import { withSlugs } from "./slug";
 
 let API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 if (API_URL.endsWith("/")) API_URL = API_URL.slice(0, -1);
@@ -304,6 +305,8 @@ export interface Psychologist {
   displayOrder: number; active: boolean;
   defaultSessionMinutes?: number;
   userId?: number | null;
+  /** Computed client-side from name + collision suffix; safe to use in URLs. */
+  slug?: string;
 }
 export interface Stat { id: number; statValue: number; suffix: string; label: string; subLabel: string; displayOrder: number; }
 export interface Announcement { id: number; category: string; categoryColor: string; categoryBg: string; title: string; excerpt: string; publishedDate: string; iconType: string; active: boolean; }
@@ -432,7 +435,10 @@ export interface PsychologistApplication {
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
-export const getPsychologists = () => get<Psychologist[]>("/psychologists");
+export const getPsychologists = async (): Promise<Psychologist[]> => {
+  const list = await get<Psychologist[]>("/psychologists");
+  return withSlugs(list);
+};
 export const getStats = () => get<Stat[]>("/stats");
 export const getAnnouncements = () => get<Announcement[]>("/announcements");
 export const getBlogPosts = () => get<BlogPost[]>("/blog-posts");

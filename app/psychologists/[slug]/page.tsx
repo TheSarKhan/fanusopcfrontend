@@ -127,19 +127,33 @@ function HeartIcon() {
 export async function generateStaticParams() {
   try {
     const psychologists = await getPsychologists();
-    return psychologists.map((p) => ({ id: String(p.id) }));
+    return psychologists.map((p) => ({ slug: p.slug ?? String(p.id) }));
   } catch {
     return [];
   }
 }
 
+/** Resolve a slug-or-id route param to a Psychologist (or null). */
+function resolvePsychologist(
+  all: import("@/lib/api").Psychologist[],
+  param: string,
+) {
+  const bySlug = all.find((p) => p.slug === param);
+  if (bySlug) return bySlug;
+  const numeric = parseInt(param, 10);
+  if (!isNaN(numeric)) {
+    return all.find((p) => p.id === numeric) ?? null;
+  }
+  return null;
+}
+
 export async function generateMetadata(
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
-  const { id } = await params;
+  const { slug } = await params;
   try {
     const all = await getPsychologists();
-    const p = all.find((x) => x.id === Number(id));
+    const p = resolvePsychologist(all, slug);
     if (!p) return { title: "Psixoloq – Fanus" };
     return {
       title: `${p.name} – Fanus`,
@@ -151,21 +165,21 @@ export async function generateMetadata(
 }
 
 export default async function PsychologistProfilePage(
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
-  const { id } = await params;
+  const { slug } = await params;
 
-  const [allPsychologists, allPosts, reviews, reviewSummary] = await Promise.all([
-    getPsychologists(),
+  const allPsychologists = await getPsychologists();
+  const psychologist = resolvePsychologist(allPsychologists, slug);
+  if (!psychologist) notFound();
+
+  const [allPosts, reviews, reviewSummary] = await Promise.all([
     getBlogPosts().catch(() => []),
-    getPsychologistReviews(Number(id)).catch(() => [] as PublicReview[]),
-    getPsychologistReviewSummary(Number(id)).catch(
+    getPsychologistReviews(psychologist.id).catch(() => [] as PublicReview[]),
+    getPsychologistReviewSummary(psychologist.id).catch(
       () => ({ total: 0, average: 0, distribution: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 } } as ReviewSummary)
     ),
   ]);
-
-  const psychologist = allPsychologists.find((p) => p.id === Number(id));
-  if (!psychologist) notFound();
 
   const posts = allPosts.filter(
     (post) =>

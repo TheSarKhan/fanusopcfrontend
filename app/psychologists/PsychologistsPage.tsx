@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import Deco from "@/components/Deco";
 import type { Psychologist } from "@/lib/api";
+import { withSlugs } from "@/lib/slug";
 
 type Cat = "all" | "anxiety" | "trauma" | "family" | "depression" | "youth" | "addiction";
 
@@ -19,6 +20,7 @@ const FILTERS: { id: Cat; label: string }[] = [
 
 interface Item {
   id: number;
+  slug: string;
   name: string;
   title: string;
   specs: string[];
@@ -34,7 +36,7 @@ interface Item {
   bgColor: string;
 }
 
-const FALLBACK: Item[] = [
+const FALLBACK_BASE: Omit<Item, "slug">[] = [
   { id: 1, name: "Aysel Məmmədova", title: "Klinik psixoloq", specs: ["Narahatlıq", "OKD", "Panik"],     exp: 8,  rating: "4.9", sessions: "210", lang: "AZ · RU",      format: "ONLINE",    sessionMinutes: 50, cat: "anxiety",    accentColor: "#3B6FA5", bgColor: "#EEF4FB" },
   { id: 2, name: "Rəşad Quliyev",   title: "Travma terapevti",  specs: ["Travma", "TSSP"],                exp: 11, rating: "4.8", sessions: "315", lang: "AZ · EN",      format: "BOTH",      sessionMinutes: 50, cat: "trauma",     accentColor: "#5A4FC8", bgColor: "#EFEDFB" },
   { id: 3, name: "Lalə Hüseynova",  title: "Ailə terapevti",    specs: ["Münasibətlər", "Ailə"],          exp: 6,  rating: "4.7", sessions: "140", lang: "AZ",           format: "ONLINE",    sessionMinutes: 60, cat: "family",     accentColor: "#C97D2E", bgColor: "#FBF1E5" },
@@ -45,6 +47,7 @@ const FALLBACK: Item[] = [
   { id: 8, name: "Cavid Rəhimli",   title: "Travma terapevti",  specs: ["Travma", "Yas", "EMDR"],         exp: 12, rating: "5.0", sessions: "390", lang: "AZ · RU · EN", format: "BOTH",      sessionMinutes: 60, cat: "trauma",     accentColor: "#5A4FC8", bgColor: "#EFEDFB" },
   { id: 9, name: "Günel Həsənli",   title: "Cütlük terapevti",  specs: ["Cütlük", "Boşanma"],             exp: 8,  rating: "4.9", sessions: "200", lang: "AZ",           format: "ONLINE",    sessionMinutes: 60, cat: "family",     accentColor: "#C97D2E", bgColor: "#FBF1E5" },
 ];
+const FALLBACK: Item[] = withSlugs(FALLBACK_BASE);
 
 function deriveCategory(specs: string[]): Cat {
   const s = specs.join(" ").toLowerCase();
@@ -73,7 +76,7 @@ export default function PsychologistsPage({ psychologists }: { psychologists?: P
 
   const items: Item[] = useMemo(() => {
     if (!psychologists || psychologists.length === 0) return FALLBACK;
-    return psychologists.map((p) => {
+    const mapped = psychologists.map((p) => {
       const specs = (p.specializations || []).slice(0, 4);
       return {
         id: p.id,
@@ -92,6 +95,8 @@ export default function PsychologistsPage({ psychologists }: { psychologists?: P
         bgColor: p.bgColor || "#F2F6FD",
       };
     });
+    // Re-derive slugs from this list (handles collisions correctly within visible set)
+    return withSlugs(mapped);
   }, [psychologists]);
 
   const visible = filter === "all" ? items : items.filter((p) => p.cat === filter);
@@ -292,21 +297,15 @@ function PsyCard({ p }: { p: Item }) {
 
   return (
     <article className="pp-card">
-      <div
-        className="pp-card__accent"
-        style={{ background: `linear-gradient(135deg, ${p.bgColor}, ${p.accentColor}1A)` }}
-      />
+      <div className="pp-card__accent" />
 
-      <Link href={`/psychologists/${p.id}`} className="pp-card__head" aria-label={`${p.name} profili`}>
-        <div
-          className="pp-card__photo"
-          style={{ background: p.bgColor }}
-        >
+      <Link href={`/psychologists/${p.slug ?? p.id}`} className="pp-card__head" aria-label={`${p.name} profili`}>
+        <div className="pp-card__photo">
           {p.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={p.photoUrl} alt={p.name} />
           ) : (
-            <span className="pp-card__initials" style={{ color: p.accentColor }}>{initials}</span>
+            <span className="pp-card__initials">{initials}</span>
           )}
         </div>
 
@@ -315,7 +314,6 @@ function PsyCard({ p }: { p: Item }) {
             <h3 className="pp-card__name">{p.name}</h3>
             <span
               className="pp-card__verified"
-              style={{ color: p.accentColor }}
               title="Doğrulanmış psixoloq"
               aria-label="Doğrulanmış psixoloq"
             >
@@ -337,13 +335,7 @@ function PsyCard({ p }: { p: Item }) {
       {p.specs.length > 0 && (
         <div className="pp-card__tags">
           {p.specs.slice(0, 3).map((s, i) => (
-            <span
-              key={i}
-              className="pp-tag"
-              style={{ background: `${p.accentColor}14`, color: p.accentColor }}
-            >
-              {s}
-            </span>
+            <span key={i} className="pp-tag">{s}</span>
           ))}
           {p.specs.length > 3 && (
             <span className="pp-tag pp-tag--ghost">+{p.specs.length - 3}</span>
@@ -360,7 +352,7 @@ function PsyCard({ p }: { p: Item }) {
 
       <div className="pp-card__foot">
         <Link
-          href={`/psychologists/${p.id}`}
+          href={`/psychologists/${p.slug ?? p.id}`}
           className="pp-btn pp-btn--ghost"
         >
           Profilə bax
@@ -369,7 +361,6 @@ function PsyCard({ p }: { p: Item }) {
         <Link
           href={`/book/${p.id}`}
           className="pp-btn pp-btn--primary"
-          style={{ background: p.accentColor }}
         >
           <CalIcon /> Randevu al
         </Link>
@@ -402,6 +393,7 @@ function PsyCard({ p }: { p: Item }) {
         .pp-card__accent {
           position: absolute; top: -60px; right: -60px;
           width: 180px; height: 180px; border-radius: 50%;
+          background: linear-gradient(135deg, var(--fanus-primary-50), var(--fanus-primary-100));
           opacity: .55; pointer-events: none; filter: blur(12px);
         }
 
@@ -417,7 +409,8 @@ function PsyCard({ p }: { p: Item }) {
           width: 76px; height: 76px; border-radius: 18px;
           overflow: hidden;
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 6px 18px rgba(0,33,71,.08);
+          background: var(--fanus-primary-50);
+          box-shadow: 0 6px 18px rgba(16,81,183,.10);
         }
         .pp-card__photo img {
           width: 100%; height: 100%; object-fit: cover; object-position: top;
@@ -425,7 +418,7 @@ function PsyCard({ p }: { p: Item }) {
         }
         .pp-card__initials {
           font-family: var(--font-playfair), serif;
-          font-size: 28px; font-weight: 600; opacity: .8;
+          font-size: 28px; font-weight: 600; color: var(--fanus-primary);
         }
 
         .pp-card__head-body { flex: 1; min-width: 0; }
@@ -437,6 +430,7 @@ function PsyCard({ p }: { p: Item }) {
           display: inline-flex; align-items: center; justify-content: center;
           flex-shrink: 0;
           width: 18px; height: 18px;
+          color: var(--fanus-primary);
         }
         .pp-card__name {
           font-size: 17px; line-height: 1.2;
@@ -467,6 +461,8 @@ function PsyCard({ p }: { p: Item }) {
         .pp-tag {
           font-size: 11.5px; padding: 4px 10px; border-radius: 999px;
           font-weight: 600; letter-spacing: .01em;
+          background: var(--fanus-primary-50);
+          color: var(--fanus-primary);
         }
         .pp-tag--ghost {
           background: var(--fanus-bg) !important;
@@ -513,12 +509,13 @@ function PsyCard({ p }: { p: Item }) {
           color: var(--fanus-primary);
         }
         .pp-btn--primary {
+          background: var(--fanus-primary);
           color: white;
         }
         .pp-btn--primary:hover {
+          background: var(--fanus-primary-600, #0B3F90);
           transform: translateY(-1px);
-          box-shadow: 0 8px 18px rgba(16,81,183,.18);
-          filter: brightness(.95);
+          box-shadow: 0 8px 18px rgba(16,81,183,.22);
         }
 
         @media (max-width: 420px) {

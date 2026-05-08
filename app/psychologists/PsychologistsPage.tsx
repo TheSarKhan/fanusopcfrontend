@@ -115,8 +115,7 @@ function PsycHero({ count }: { count: number }) {
   return (
     <section className="pp-hero">
       <Deco type="wave-top" style={{ top: -20, left: "-4%", width: 520, opacity: .55 }} anim="drift" />
-      <Deco type="blob-cloud" style={{ top: 40, right: "-6%", width: 360, opacity: .55 }} anim="drift" />
-      <Deco type="sphere-blue" style={{ top: "60%", left: "10%", width: 50, opacity: .8 }} anim="floatY" />
+      <Deco type="sphere-blue" style={{ top: "65%", left: "8%", width: 44, opacity: .8 }} anim="floatY" />
 
       <div className="pp-hero__bg" aria-hidden>
         <svg viewBox="0 0 1440 600" preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
@@ -131,40 +130,100 @@ function PsycHero({ count }: { count: number }) {
       </div>
 
       <div className="fanus-container pp-hero__inner">
-        <div className="fanus-eyebrow"><span className="dash" /> Komandamız</div>
-        <h1>
-          Sizin yolunuzda<br />
-          <span className="fanus-serif-accent">birlikdə</span> olacaq mütəxəssislər
-        </h1>
-        <p className="pp-hero__lead">
-          Hər biri sertifikatlı, lisenziyalı və Fanus etika kodeksinə bağlıdır.
-          Sahə, yanaşma və dilə görə filtrləyin — sizə uyğun olanı tapın.
-        </p>
+        <div className="pp-hero__copy">
+          <div className="fanus-eyebrow"><span className="dash" /> Komandamız</div>
+          <h1>
+            Sizin yolunuzda<br />
+            <span className="fanus-serif-accent">birlikdə</span> olacaq mütəxəssislər
+          </h1>
+          <p className="pp-hero__lead">
+            Hər biri sertifikatlı, lisenziyalı və Fanus etika kodeksinə bağlıdır.
+            Sahə, yanaşma və dilə görə filtrləyin — sizə uyğun olanı tapın.
+          </p>
 
-        <div className="pp-hero__stats">
-          <Stat n={`${count}+`} t="Sertifikatlı psixoloq" />
-          <Stat n="8 il"  t="Orta təcrübə" />
-          <Stat n="12"    t="İxtisas sahəsi" />
-          <Stat n="3 dil" t="AZ · RU · EN" />
+          <div className="pp-hero__stats">
+            <Stat n={`${count}+`} t="Sertifikatlı psixoloq" />
+            <Stat n="8 il"  t="Orta təcrübə" />
+            <Stat n="12"    t="İxtisas sahəsi" />
+            <Stat n="3 dil" t="AZ · RU · EN" />
+          </div>
+        </div>
+
+        <div className="pp-hero__visual" aria-hidden>
+          <div className="pp-hero__glow pp-hero__glow--1" />
+          <div className="pp-hero__glow pp-hero__glow--2" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/hero-psixoloqlar.png"
+            alt="Fanus psixoloq komandası"
+            className="pp-hero__img"
+            draggable={false}
+          />
         </div>
       </div>
 
       <style>{`
         .pp-hero { position: relative; padding: 56px 0 90px; overflow: hidden; }
         .pp-hero__bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-        .pp-hero__inner { position: relative; z-index: 1; max-width: 760px; }
+        .pp-hero__inner {
+          position: relative; z-index: 1;
+          display: grid; grid-template-columns: 1.05fr 1fr;
+          gap: 48px; align-items: center;
+          min-height: 460px;
+        }
+        .pp-hero__copy { min-width: 0; }
         .pp-hero h1 {
           margin: 18px 0 18px;
           font-family: var(--font-poppins), system-ui, sans-serif;
-          font-size: clamp(38px, 5.4vw, 68px); font-weight: 800;
+          font-size: clamp(34px, 4.8vw, 60px); font-weight: 800;
           letter-spacing: -0.035em; line-height: 1.1; color: var(--fanus-ink);
         }
-        .pp-hero__lead { font-size: 18px; color: var(--fanus-ink-3); line-height: 1.6; max-width: 580px; margin: 0; }
+        .pp-hero__lead { font-size: 17px; color: var(--fanus-ink-3); line-height: 1.6; max-width: 540px; margin: 0; }
         .pp-hero__stats {
-          display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
-          margin-top: 40px; max-width: 720px;
+          display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+          margin-top: 36px; max-width: 460px;
         }
-        @media (max-width: 720px) { .pp-hero__stats { grid-template-columns: repeat(2, 1fr); } }
+
+        .pp-hero__visual {
+          position: relative;
+          width: 100%; aspect-ratio: 16/12; min-height: 380px;
+        }
+        .pp-hero__img {
+          position: absolute; inset: 0;
+          width: 100%; height: 100%;
+          object-fit: contain;
+          z-index: 2;
+          animation: ppHeroFloat 6s ease-in-out infinite;
+          user-select: none;
+        }
+        @keyframes ppHeroFloat {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-8px); }
+        }
+        .pp-hero__glow { position: absolute; border-radius: 50%; pointer-events: none; filter: blur(40px); z-index: 1; }
+        .pp-hero__glow--1 {
+          top: -6%; right: 6%; width: 240px; height: 240px;
+          background: radial-gradient(circle, rgba(245,185,70,.28), transparent 65%);
+          animation: ppHeroFlicker 3.5s ease-in-out infinite;
+        }
+        .pp-hero__glow--2 {
+          bottom: -8%; left: 4%; width: 280px; height: 280px;
+          background: radial-gradient(circle, rgba(16,81,183,.22), transparent 65%);
+          animation: ppHeroFlicker 4.5s ease-in-out infinite -2s;
+        }
+        @keyframes ppHeroFlicker {
+          0%, 100% { opacity: .9; transform: scale(1); }
+          50%      { opacity: .55; transform: scale(1.08); }
+        }
+
+        @media (max-width: 980px) {
+          .pp-hero__inner { grid-template-columns: 1fr; gap: 32px; min-height: auto; }
+          .pp-hero__visual { min-height: 280px; aspect-ratio: 16/9; max-width: 540px; margin: 0 auto; }
+          .pp-hero__stats { max-width: 100%; }
+        }
+        @media (max-width: 540px) {
+          .pp-hero__stats { grid-template-columns: 1fr 1fr; }
+        }
       `}</style>
     </section>
   );

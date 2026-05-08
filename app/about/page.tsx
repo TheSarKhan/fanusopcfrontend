@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { useScrollReveal } from "@/lib/useScrollReveal";
 
+// Bütün dəyər kartları əsas brend rəngi (#1051B7) və tonlarında.
 const VALUES = [
   {
-    color: "#002147",
-    bg: "rgba(0,33,71,0.06)",
+    color: "var(--brand)",
+    bg: "var(--brand-50)",
     title: "Məxfilik",
     desc: "Hər söhbət şifrələnir, hər məlumat sizə aiddir. Etibar — fundamentdir.",
     icon: (
@@ -18,8 +18,8 @@ const VALUES = [
     ),
   },
   {
-    color: "#7C3AED",
-    bg: "rgba(124,58,237,0.07)",
+    color: "var(--brand)",
+    bg: "var(--brand-50)",
     title: "İnsan mərkəzlilik",
     desc: "Standart deyil, sizin hekayəniz. Tempinizi, dilinizi, sınırlarınızı qoruyuruq.",
     icon: (
@@ -31,8 +31,8 @@ const VALUES = [
     ),
   },
   {
-    color: "#0D9488",
-    bg: "rgba(13,148,136,0.07)",
+    color: "var(--brand)",
+    bg: "var(--brand-50)",
     title: "Peşəkarlıq",
     desc: "Sübutla əsaslanan metodlar, davamlı supervizor dəstəyi və beynəlxalq standartlar.",
     icon: (
@@ -42,8 +42,8 @@ const VALUES = [
     ),
   },
   {
-    color: "#C97D2E",
-    bg: "rgba(201,125,46,0.08)",
+    color: "var(--brand)",
+    bg: "var(--brand-50)",
     title: "Empati",
     desc: "Mühakimə yox, yalnız anlayış. Bəzən ən mühüm söz — \"sizi eşidirəm\".",
     icon: (
@@ -68,21 +68,21 @@ const TEAM = [
     name: "Dr. Leyla Əliyeva",
     role: "Klinik psixoloq, Qurucusu",
     initials: "LƏ",
-    gradient: "linear-gradient(135deg, #002147 0%, #1a3d6a 100%)",
+    gradient: "linear-gradient(135deg, var(--brand-700) 0%, var(--brand) 100%)",
     bio: "12 il təcrübə. Travma, narahatlıq pozğunluqları və CBT üzrə ixtisaslaşma. Fanus-un baş ideyaçısı.",
   },
   {
     name: "Nigar Hüseynova",
     role: "Ailə terapisti",
     initials: "NH",
-    gradient: "linear-gradient(135deg, #7C3AED 0%, #a78bfa 100%)",
+    gradient: "linear-gradient(135deg, var(--brand) 0%, var(--brand-400) 100%)",
     bio: "Münasibətlər, valideynlik və ailə dinamikası üzrə sertifikatlı mütəxəssis. Bonn Universiteti.",
   },
   {
     name: "Rauf Məmmədov",
     role: "CBT mütəxəssisi",
     initials: "RM",
-    gradient: "linear-gradient(135deg, #0D9488 0%, #14b8a6 100%)",
+    gradient: "linear-gradient(135deg, var(--brand-600) 0%, var(--brand-300) 100%)",
     bio: "9 il təcrübə. Depressiya, panik atak və yuxu pozğunluqları üzrə sübutla əsaslanan terapiya.",
   },
 ];
@@ -130,9 +130,9 @@ function TimelineSection() {
     <section className="ap-journey">
       <div className="container">
         <div style={{ maxWidth: 760, margin: "0 auto 72px", textAlign: "center" }}>
-          <p className="label" style={{ display: "block", marginBottom: 16 }}>Yolumuz</p>
-          <h2 className="ap-hero-title" style={{ fontSize: "clamp(32px, 3.6vw, 48px)", margin: "0 0 16px" }}>
-            Bir niyyətdən bir mərkəzə
+          <div className="fanus-eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}><span className="dash" /> Yolumuz</div>
+          <h2 className="ap-hero-title" style={{ fontSize: "clamp(32px, 3.6vw, 48px)", margin: "0 0 16px", textAlign: "center", color: "var(--brand)" }}>
+            Bir niyyətdən bir <span className="fanus-serif-accent">mərkəzə</span>
           </h2>
           <p style={{ fontSize: 17, color: "var(--oxford-60)", maxWidth: 520, margin: "0 auto" }}>
             Fanus-un böyüməsi sayılarla deyil, hekayələrlə ölçülür.
@@ -144,7 +144,7 @@ function TimelineSection() {
           <div className="ap-timeline-line">
             <div style={{
               height: `${lineProgress * 100}%`,
-              background: "linear-gradient(180deg, var(--oxford) 0%, var(--lilac) 50%, var(--amber) 100%)",
+              background: "linear-gradient(180deg, var(--brand-700) 0%, var(--brand) 50%, var(--brand-300) 100%)",
               transition: "none",
             }} />
           </div>
@@ -187,8 +187,8 @@ function MissionSection() {
           }}
         >
           <div>
-            <p className="label" style={{ display: "block", marginBottom: 12 }}>Missiyamız</p>
-            <h2>Hər insan sağlam,<br />xoşbəxt olmağa layiqdir</h2>
+            <div className="fanus-eyebrow" style={{ marginBottom: 12 }}><span className="dash" /> Missiyamız</div>
+            <h2 style={{ color: "var(--brand)" }}>Hər insan <span className="fanus-serif-accent">sağlam,</span><br />xoşbəxt olmağa layiqdir</h2>
             <p>
               Fanus 2019-cu ildə Azərbaycanda psixoloji yardımı ən yüksək standartlarda
               əlçatan etmək məqsədi ilə yaradıldı. "Fanus" — qaranlıqda yol göstərən işıq
@@ -228,9 +228,9 @@ function ValuesSection() {
           transform: visible ? "translateY(0)" : "translateY(24px)",
           transition: "opacity 0.6s ease, transform 0.6s ease",
         }}>
-          <p className="label" style={{ display: "block", marginBottom: 16 }}>Dəyərlərimiz</p>
-          <h2 style={{ fontFamily: "var(--serif)", fontSize: "clamp(32px, 3.6vw, 48px)", fontWeight: 500, color: "var(--oxford)", lineHeight: 1.15, letterSpacing: "-0.01em" }}>
-            Bizi fərqli edən dəyərlər
+          <div className="fanus-eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}><span className="dash" /> Dəyərlərimiz</div>
+          <h2 style={{ fontFamily: "var(--font-poppins), system-ui, sans-serif", fontSize: "clamp(32px, 3.6vw, 48px)", fontWeight: 700, color: "var(--brand)", lineHeight: 1.15, letterSpacing: "-0.025em" }}>
+            Bizi fərqli edən <span className="fanus-serif-accent">dəyərlər</span>
           </h2>
           <p style={{ fontSize: 17, color: "var(--oxford-60)", marginTop: 16, maxWidth: 520, margin: "16px auto 0" }}>
             Hər seansın arxasında, hər söhbətdə, hər qərarda bunlar dayanır.
@@ -274,9 +274,9 @@ function TeamSection() {
           transform: visible ? "translateY(0)" : "translateY(24px)",
           transition: "opacity 0.6s ease, transform 0.6s ease",
         }}>
-          <p className="label" style={{ display: "block", marginBottom: 16 }}>Komanda</p>
-          <h2 style={{ fontFamily: "var(--serif)", fontSize: "clamp(32px, 3.6vw, 48px)", fontWeight: 500, color: "var(--oxford)", lineHeight: 1.15, letterSpacing: "-0.01em" }}>
-            Sizə dəstək olan mütəxəssislər
+          <div className="fanus-eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}><span className="dash" /> Komanda</div>
+          <h2 style={{ fontFamily: "var(--font-poppins), system-ui, sans-serif", fontSize: "clamp(32px, 3.6vw, 48px)", fontWeight: 700, color: "var(--brand)", lineHeight: 1.15, letterSpacing: "-0.025em" }}>
+            Sizə dəstək olan <span className="fanus-serif-accent">mütəxəssislər</span>
           </h2>
           <p style={{ fontSize: 17, color: "var(--oxford-60)", marginTop: 16, maxWidth: 520, margin: "16px auto 0" }}>
             Hər biri ən az 5 il klinik təcrübəyə və beynəlxalq sertifikata malikdir.
@@ -325,7 +325,7 @@ function TrustBand() {
         >
           {CERTS.map((c) => (
             <div key={c} className="ap-trust-pill">
-              <svg width="14" height="14" fill="none" stroke="var(--sage)" strokeWidth="2.5" viewBox="0 0 24 24">
+              <svg width="14" height="14" fill="none" stroke="var(--brand)" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" strokeLinecap="round" />
                 <path d="M22 4 12 14.01l-3-3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -340,21 +340,36 @@ function TrustBand() {
 
 export default function AboutPage() {
   return (
-    <>
+    <div className="fanus-root">
       {/* Hero */}
-      <section className="ap-hero">
+      <section className="ap-hero abt-hero">
         <div className="ap-hero-blob ap-hero-blob-1" />
         <div className="ap-hero-blob ap-hero-blob-2" />
         <div className="container ap-hero-inner">
-          <p className="label">Fanus Psixologiya Mərkəzi</p>
-          <h1 className="ap-hero-title">
-            İnsana inanan<br />bir mərkəz.
-          </h1>
-          <p className="ap-hero-sub">
-            2019-cu ildən Azərbaycanda emosional sağlamlığı daha əlçatan,
-            daha insani etmək üçün çalışırıq.
-          </p>
+          <div className="abt-hero-grid">
+            <div className="abt-hero-copy">
+              <div className="fanus-eyebrow"><span className="dash" /> Fanus Psixologiya Mərkəzi</div>
+              <h1 className="ap-hero-title" style={{ color: "var(--brand)" }}>
+                İnsana <span className="fanus-serif-accent">inanan</span><br />bir mərkəz.
+              </h1>
+              <p className="ap-hero-sub">
+                2019-cu ildən Azərbaycanda emosional sağlamlığı daha əlçatan,
+                daha insani etmək üçün çalışırıq.
+              </p>
+            </div>
 
+            <div className="abt-hero-visual" aria-hidden>
+              <div className="abt-hero-glow abt-hero-glow-1" />
+              <div className="abt-hero-glow abt-hero-glow-2" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/hero-haqqimizda.png"
+                alt="Fanus haqqında — psixoloji mərkəz"
+                className="abt-hero-img"
+                draggable={false}
+              />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -363,52 +378,6 @@ export default function AboutPage() {
       <TimelineSection />
       <TeamSection />
       <TrustBand />
-
-      {/* Final CTA */}
-      <section style={{
-        background: "var(--oxford)",
-        padding: "100px 0",
-        position: "relative",
-        overflow: "hidden",
-      }}>
-        <div style={{
-          position: "absolute", top: -100, right: -100,
-          width: 400, height: 400, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(140,125,201,0.2) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
-        <div style={{
-          position: "absolute", bottom: -80, left: -80,
-          width: 360, height: 360, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(201,125,46,0.15) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
-        <div className="container" style={{ textAlign: "center", maxWidth: 640, position: "relative", zIndex: 1 }}>
-          <h2 style={{
-            fontFamily: "var(--serif)", fontSize: "clamp(32px, 4vw, 52px)",
-            fontWeight: 500, color: "white", lineHeight: 1.1,
-            letterSpacing: "-0.02em", marginBottom: 20,
-          }}>
-            İlk addımı indi atın
-          </h2>
-          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.65)", lineHeight: 1.65, marginBottom: 36 }}>
-            Sizə ən uyğun psixoloqula tanış olmaq üçün bir randevu kifayətdir.
-          </p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/psychologists" className="btn btn-ghost" style={{
-              color: "white",
-              borderColor: "rgba(255,255,255,0.3)",
-            }}>
-              Psixoloqlarımız
-            </Link>
-            <Link href="/register" className="btn btn-primary" style={{
-              background: "white", color: "var(--oxford)",
-            }}>
-              Qeydiyyat
-            </Link>
-          </div>
-        </div>
-      </section>
-    </>
+    </div>
   );
 }

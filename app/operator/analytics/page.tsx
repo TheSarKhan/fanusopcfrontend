@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { operatorApi, type OperatorStats } from "@/lib/api";
@@ -34,7 +34,7 @@ export default function OperatorAnalyticsPage() {
             <Stat label="Növbədə" value={stats.pendingNow} sub="bu an" color="#92400E" />
             <Stat label="Bu gün təyin" value={stats.assignedToday} sub="randevu" color="#1E40AF" />
             <Stat label="Bu ay tamamlanmış" value={stats.completedThisMonth} sub={`${stats.totalThisMonth} cəmi`} color="#065F46" />
-            <Stat label="Orta cavab vaxtı" value={fmtMin(stats.avgResponseMinutes)} color="#5A4FC8" />
+            <Stat label="Orta cavab vaxtı" value={fmtMin(stats.avgResponseMinutes)} color="var(--brand)" />
             <Stat label="Rədd %" value={stats.rejectionRatePct != null ? `${stats.rejectionRatePct}%` : "—"} sub="bu ay" color="#DC2626" />
           </div>
 

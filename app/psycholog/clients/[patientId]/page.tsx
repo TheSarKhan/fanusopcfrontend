@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
@@ -98,7 +98,7 @@ export default function PatientNotesPage() {
           </p>
         </div>
         <button onClick={() => { reset(); setShowForm(true); }}
-          style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#1a1040,#2d1b69)", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+          style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "var(--brand)", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
           + Qeyd əlavə et
         </button>
       </div>
@@ -123,14 +123,14 @@ export default function PatientNotesPage() {
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={reset} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>Ləğv</button>
             <button onClick={save} disabled={saving}
-              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg,#1a1040,#2d1b69)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
               {saving ? "Saxlanılır…" : (editing ? "Yenilə" : "Saxla")}
             </button>
           </div>
         </div>
       )}
 
-      <div style={{ background: "#EEF2FF", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "#3730A3", marginBottom: 12 }}>
+      <div style={{ background: "#EEF2FF", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: "var(--brand-700)", marginBottom: 12 }}>
         🔒 Bütün qeydlər AES-256-GCM ilə server tərəfində şifrələnərək saxlanır. Yalnız siz oxuya bilərsiniz.
       </div>
 

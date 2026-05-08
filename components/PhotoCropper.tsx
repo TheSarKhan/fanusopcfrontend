@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 
@@ -166,7 +166,7 @@ export default function PhotoCropper({
             Ləğv et
           </button>
           <button onClick={apply}
-            style={{ flex: 1, padding: "10px 14px", border: "none", background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            style={{ flex: 1, padding: "10px 14px", border: "none", background: "var(--brand)", color: "#fff", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Tətbiq et
           </button>
         </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -16,7 +16,7 @@ type Tab = "PENDING" | "ASSIGNED" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
 
 const TAB_META: Record<Tab, { label: string; color: string }> = {
   PENDING:   { label: "Yeni müraciətlər",  color: "#92400E" },
-  ASSIGNED:  { label: "Təyin edilmiş",     color: "#1E40AF" },
+  ASSIGNED:  { label: "Təyin edilmiş",     color: "#082F6D" },
   CONFIRMED: { label: "Təsdiqlənmiş",      color: "#065F46" },
   COMPLETED: { label: "Tamamlanmış",       color: "#374151" },
   CANCELLED: { label: "Ləğv olunmuş",      color: "#991B1B" },
@@ -140,7 +140,7 @@ export default function OperatorAppointmentsPage() {
       </div>
 
       {selectMode && selected.size > 0 && (
-        <div style={{ background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", borderRadius: 12, padding: "12px 16px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ background: "var(--brand)", color: "#fff", borderRadius: 12, padding: "12px 16px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontSize: 14, fontWeight: 600 }}>
             {selected.size} müraciət seçilib
           </div>
@@ -151,7 +151,7 @@ export default function OperatorAppointmentsPage() {
         </div>
       )}
 
-      <div className="flex gap-2 mb-4 flex-wrap">
+      <div className="op-tab-row flex gap-2 mb-4 flex-wrap">
         {(Object.keys(TAB_META) as Tab[]).map(t => {
           const meta = TAB_META[t];
           const active = tab === t;
@@ -174,10 +174,11 @@ export default function OperatorAppointmentsPage() {
         })}
         <input
           type="text"
+          className="op-tab-search"
           placeholder="Axtar (ad, psixoloq, qeyd…)"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ padding: "8px 14px", borderRadius: 10, fontSize: 13, border: "1px solid #E5E7EB", background: "#fff", marginLeft: "auto", minWidth: 280 }}
+          style={{ padding: "8px 14px", borderRadius: 10, fontSize: 13, border: "1px solid #E5E7EB", background: "#fff" }}
         />
       </div>
 
@@ -235,7 +236,7 @@ function AppointmentCard({
   const canAssign = status === "PENDING" || status === "REJECTED" || status === "ASSIGNED";
   const canCancel = status !== "COMPLETED" && status !== "CANCELLED";
   return (
-    <div style={{ background: "#fff", borderRadius: 14, padding: 18, boxShadow: "0 2px 12px rgba(0,0,0,0.05)", border: selected ? "2px solid #5A4FC8" : "1px solid transparent" }}>
+    <div style={{ background: "#fff", borderRadius: 14, padding: 18, boxShadow: "0 2px 12px rgba(0,0,0,0.05)", border: selected ? "2px solid var(--brand)" : "1px solid transparent" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
         {selectable && (
           <input type="checkbox" checked={!!selected} onChange={onToggleSelect}
@@ -249,7 +250,7 @@ function AppointmentCard({
             </span>
             {a.sessionFormat && (
               <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "#EEF2F7", color: "#52718F" }}>
-                {a.sessionFormat === "ONLINE" ? "💻 Online" : "🏢 Üzbəüz"}
+                {a.sessionFormat === "ONLINE" ? "Onlayn" : "Əyani"}
               </span>
             )}
           </div>
@@ -271,7 +272,7 @@ function AppointmentCard({
           {canAssign && (
             <button
               onClick={onAssign}
-              style={{ padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#fff", background: "linear-gradient(135deg,#002147,#5A4FC8)", border: "none", borderRadius: 8, cursor: "pointer" }}>
+              style={{ padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--brand)", border: "none", borderRadius: 8, cursor: "pointer" }}>
               {status === "ASSIGNED" ? "Yenidən təyin et" : "Təyin et"}
             </button>
           )}
@@ -466,7 +467,7 @@ function AssignModal({
           <button onClick={onClose} style={{ background: "transparent", border: "none", fontSize: 22, cursor: "pointer", color: "#52718F" }}>×</button>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: history ? "300px 1fr" : "1fr", overflow: "auto", flex: 1 }}>
+        <div className={`op-assign-grid${history ? " op-assign-grid--with-aside" : ""}`} style={{ overflow: "auto", flex: 1 }}>
 
         {/* History sidebar */}
         {history && (
@@ -483,7 +484,7 @@ function AssignModal({
               )}
               {history.userId && (
                 <button onClick={blockOrUnblock}
-                  style={{ marginTop: 8, width: "100%", padding: "6px 10px", border: history.blocked ? "1px solid #C7D2FE" : "1px solid #FECACA", background: "#fff", color: history.blocked ? "#3730A3" : "#991B1B", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                  style={{ marginTop: 8, width: "100%", padding: "6px 10px", border: history.blocked ? "1px solid #C7D2FE" : "1px solid #FECACA", background: "#fff", color: history.blocked ? "var(--brand-700)" : "#991B1B", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                   {history.blocked ? "Bloku aç" : "Blokla / spam"}
                 </button>
               )}
@@ -588,7 +589,7 @@ function AssignModal({
           </select>
 
           {appointment.requestedStartAt && (
-            <div style={{ background: "#EEF2FF", border: "1px solid #C7D2FE", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#3730A3", marginBottom: 12 }}>
+            <div style={{ background: "#EEF2FF", border: "1px solid #C7D2FE", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "var(--brand-700)", marginBottom: 12 }}>
               <strong>Müştərinin istədiyi vaxt:</strong> {fmtDateTime(appointment.requestedStartAt)} — avtomatik seçildi, lazım gələrsə dəyişin.
             </div>
           )}
@@ -619,7 +620,7 @@ function AssignModal({
                           let border = "1px solid #E5E7EB";
                           let bg = "#fff";
                           let color = "#1A2535";
-                          if (active) { border = "2px solid #5A4FC8"; bg = "#EEECFB"; color = "#5A4FC8"; }
+                          if (active) { border = "2px solid var(--brand)"; bg = "var(--brand-50)"; color = "var(--brand)"; }
                           else if (isRequested) { border = "2px solid #10B981"; bg = "#ECFDF5"; color = "#065F46"; }
                           return (
                             <button
@@ -667,10 +668,10 @@ function AssignModal({
                 onClick={() => setSessionFormat(f)}
                 style={{
                   flex: 1, padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 600,
-                  border: sessionFormat === f ? "2px solid #5A4FC8" : "1px solid #E5E7EB",
-                  background: sessionFormat === f ? "#EEECFB" : "#fff", cursor: "pointer", color: "#1A2535",
+                  border: sessionFormat === f ? "2px solid var(--brand)" : "1px solid #E5E7EB",
+                  background: sessionFormat === f ? "var(--brand-50)" : "#fff", cursor: "pointer", color: "#1A2535",
                 }}>
-                {f === "ONLINE" ? "💻 Online" : "🏢 Üzbəüz"}
+                {f === "ONLINE" ? "Onlayn" : "Əyani"}
               </button>
             ))}
           </div>
@@ -692,7 +693,7 @@ function AssignModal({
               Ləğv et
             </button>
             <button onClick={submit} disabled={saving}
-              style={{ padding: "10px 22px", border: "none", background: "linear-gradient(135deg,#002147,#5A4FC8)", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 600, cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              style={{ padding: "10px 22px", border: "none", background: "var(--brand)", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 600, cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
               {saving ? "Saxlanılır…" : "Təsdiqlə və göndər"}
             </button>
           </div>
@@ -780,10 +781,10 @@ function BulkAssignModal({
               <button key={f} type="button" onClick={() => setFormat(f)}
                 style={{
                   flex: 1, padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 600,
-                  border: format === f ? "2px solid #5A4FC8" : "1px solid #E5E7EB",
-                  background: format === f ? "#EEECFB" : "#fff", cursor: "pointer", color: "#1A2535",
+                  border: format === f ? "2px solid var(--brand)" : "1px solid #E5E7EB",
+                  background: format === f ? "var(--brand-50)" : "#fff", cursor: "pointer", color: "#1A2535",
                 }}>
-                {f === "ONLINE" ? "💻 Online" : "🏢 Üzbəüz"}
+                {f === "ONLINE" ? "Onlayn" : "Əyani"}
               </button>
             ))}
           </div>
@@ -796,7 +797,7 @@ function BulkAssignModal({
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>Bağla</button>
             <button onClick={submit} disabled={saving}
-              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
               {saving ? "Göndərilir…" : `${ids.length} təyin et`}
             </button>
           </div>

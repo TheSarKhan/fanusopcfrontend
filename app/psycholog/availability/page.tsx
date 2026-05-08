@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { psychologistApi, type TimeSlot, type TimeSlotOverride } from "@/lib/api";
@@ -175,9 +175,9 @@ export default function PsychologistAvailabilityPage() {
                     onClick={() => setSessionMinutes(m)}
                     style={{
                       padding: "6px 10px", fontSize: 12, fontWeight: 600, borderRadius: 8,
-                      border: sessionMinutes === m ? "2px solid #5A4FC8" : "1px solid #E5E7EB",
-                      background: sessionMinutes === m ? "#EEECFB" : "#fff",
-                      color: sessionMinutes === m ? "#5A4FC8" : "#1A2535",
+                      border: sessionMinutes === m ? "2px solid var(--brand)" : "1px solid #E5E7EB",
+                      background: sessionMinutes === m ? "var(--brand-50)" : "#fff",
+                      color: sessionMinutes === m ? "var(--brand)" : "#1A2535",
                       cursor: "pointer",
                     }}>{m} dəq</button>
                 ))}
@@ -189,7 +189,7 @@ export default function PsychologistAvailabilityPage() {
               <button onClick={saveSessionMinutes} disabled={savingMinutes || sessionMinutes === savedMinutes}
                 style={{
                   padding: "8px 14px", borderRadius: 8, border: "none",
-                  background: sessionMinutes === savedMinutes ? "#E5E7EB" : "linear-gradient(135deg,#1a1040,#2d1b69)",
+                  background: sessionMinutes === savedMinutes ? "#E5E7EB" : "var(--brand)",
                   color: sessionMinutes === savedMinutes ? "#52718F" : "#fff",
                   fontSize: 13, fontWeight: 600,
                   cursor: savingMinutes || sessionMinutes === savedMinutes ? "default" : "pointer",
@@ -206,7 +206,7 @@ export default function PsychologistAvailabilityPage() {
           <section style={{ background: "#fff", borderRadius: 14, padding: 20, boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", marginBottom: 12 }}>Həftəlik vaxtlar</h2>
 
-            <form onSubmit={addSlot} style={{ display: "grid", gridTemplateColumns: "1fr 140px 140px auto", gap: 8, alignItems: "end", marginBottom: 16 }}>
+            <form onSubmit={addSlot} className="psy-avail-form" style={{ display: "grid", gridTemplateColumns: "1fr 140px 140px auto", gap: 8, alignItems: "end", marginBottom: 16 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "#52718F" }}>Gün</label>
                 <select value={newDay} onChange={e => setNewDay(Number(e.target.value))}
@@ -225,7 +225,7 @@ export default function PsychologistAvailabilityPage() {
                   style={{ width: "100%", minWidth: 130, padding: 8, borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13 }} />
               </div>
               <button type="submit" disabled={savingSlot}
-                style={{ padding: "8px 14px", background: "linear-gradient(135deg,#1a1040,#2d1b69)", color: "#fff", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: savingSlot ? "wait" : "pointer" }}>
+                style={{ padding: "8px 14px", background: "var(--brand)", color: "#fff", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: savingSlot ? "wait" : "pointer" }}>
                 + Əlavə et
               </button>
             </form>
@@ -291,7 +291,7 @@ export default function PsychologistAvailabilityPage() {
               <input type="text" value={oNote} onChange={e => setONote(e.target.value)} placeholder="Qeyd (məcburi deyil)"
                 style={{ padding: 8, borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 13 }} />
               <button type="submit" disabled={savingOverride}
-                style={{ padding: "8px 14px", background: "linear-gradient(135deg,#1a1040,#2d1b69)", color: "#fff", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: savingOverride ? "wait" : "pointer" }}>
+                style={{ padding: "8px 14px", background: "var(--brand)", color: "#fff", borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: savingOverride ? "wait" : "pointer" }}>
                 + Əlavə et
               </button>
             </form>

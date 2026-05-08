@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -123,15 +123,16 @@ export default function PsychologDashboard() {
     <div>
       {/* ── Hero header ───────────────────────────────────────────────────────── */}
       <div
+        className="psy-dash-hero"
         style={{
-          background: "linear-gradient(135deg, #1a1040 0%, #2d1b69 60%, #5A4FC8 100%)",
+          background: "linear-gradient(135deg, var(--brand-700) 0%, var(--brand-600) 60%, var(--brand) 100%)",
           borderRadius: 18,
           padding: "26px 28px",
           color: "#fff",
           marginBottom: 22,
           position: "relative",
           overflow: "hidden",
-          boxShadow: "0 10px 30px rgba(45, 27, 105, 0.25)",
+          boxShadow: "0 10px 30px rgba(8, 47, 109, 0.25)",
         }}
       >
         <div
@@ -172,7 +173,7 @@ export default function PsychologDashboard() {
               label="Bu ay seans"
               value={stats?.thisMonthTotal ?? 0}
               sub={`${stats?.thisMonthCompleted ?? 0} tamamlandı · ${completionRate}% bitirilib`}
-              accent="#5A4FC8"
+              accent="var(--brand)"
               bg="linear-gradient(135deg, #EEF0FF 0%, #F7F4FF 100%)"
             />
             <StatCard
@@ -202,7 +203,7 @@ export default function PsychologDashboard() {
           </div>
 
           {/* ── Two-column layout ─────────────────────────────────────────────── */}
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: 18, marginBottom: 22 }}>
+          <div className="psy-dash-2col" style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: 18, marginBottom: 22 }}>
             {/* Left: today's schedule + chart */}
             <div style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
               <Card>
@@ -253,7 +254,7 @@ export default function PsychologDashboard() {
                     title="Oxunmamış mesaj"
                     count={totalUnread}
                     href="/psycholog/chat"
-                    accent="#5A4FC8"
+                    accent="var(--brand)"
                     bg="#EDE9FE"
                   />
                   <ActionRow
@@ -396,7 +397,7 @@ function UpcomingRow({ a }: { a: AppointmentDetail }) {
     >
       <div style={{
         width: 8, height: 38, borderRadius: 4,
-        background: "linear-gradient(180deg, #5A4FC8, #8B7FE0)",
+        background: "linear-gradient(180deg, var(--brand), #8B7FE0)",
       }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "#1A2535", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -445,7 +446,7 @@ function ActionRow({ icon, title, count, href, accent, bg }:
 function QuickAction({ href, icon, label, tone, badge }:
   { href: string; icon: string; label: string; tone: "violet" | "blue" | "amber" | "emerald"; badge?: number }) {
   const palettes: Record<typeof tone, { from: string; to: string; text: string }> = {
-    violet:  { from: "#EDE9FE", to: "#DDD6FE", text: "#5A4FC8" },
+    violet:  { from: "#EDE9FE", to: "#DDD6FE", text: "var(--brand)" },
     blue:    { from: "#DBEAFE", to: "#BFDBFE", text: "#1E3A5F" },
     amber:   { from: "#FEF3C7", to: "#FDE68A", text: "#92400E" },
     emerald: { from: "#D1FAE5", to: "#A7F3D0", text: "#065F46" },
@@ -496,8 +497,8 @@ function DailyChart({ data }: { data: { date: string; count: number }[] }) {
                   style={{
                     width: "100%",
                     background: isToday
-                      ? "linear-gradient(180deg, #1a1040, #5A4FC8)"
-                      : "linear-gradient(180deg, #8B7FE0, #C7BFF1)",
+                      ? "linear-gradient(180deg, #1a1040, var(--brand))"
+                      : "linear-gradient(180deg, #8B7FE0, var(--brand-200))",
                     borderRadius: 4,
                     height: `${Math.max(3, h)}%`,
                     minHeight: 3,
@@ -555,8 +556,8 @@ function SkeletonGrid() {
 }
 
 const linkBtn: React.CSSProperties = {
-  fontSize: 12, fontWeight: 600, color: "#5A4FC8", textDecoration: "none",
-  padding: "4px 10px", borderRadius: 8, background: "#F4F1FE",
+  fontSize: 12, fontWeight: 600, color: "var(--brand)", textDecoration: "none",
+  padding: "4px 10px", borderRadius: 8, background: "var(--brand-50)",
 };
 
 function heroBtn(primary: boolean): React.CSSProperties {

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { getStoredUser } from "@/lib/auth";
@@ -42,7 +42,7 @@ export default function PatientProfilePage() {
         <div className="flex items-center gap-4 mb-8 pb-6" style={{ borderBottom: "1px solid #E5E7EB" }}>
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold"
-            style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+            style={{ background: "var(--brand)" }}
           >
             {(form.firstName?.[0] ?? "P").toUpperCase()}
           </div>
@@ -55,7 +55,7 @@ export default function PatientProfilePage() {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-[#1A2535] mb-1.5">Ad</label>
               <input
@@ -120,7 +120,7 @@ export default function PatientProfilePage() {
               type="submit"
               disabled={saving}
               className="py-3 px-8 rounded-xl text-sm font-bold text-white"
-              style={{ background: saving ? "#52718F" : "linear-gradient(135deg, #002147, #5A4FC8)" }}
+              style={{ background: saving ? "#52718F" : "var(--brand)" }}
             >
               {saving ? "Saxlanılır..." : "Yadda saxla"}
             </button>

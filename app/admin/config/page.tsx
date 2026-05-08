@@ -59,7 +59,7 @@ export default function ConfigPage() {
               onClick={handleSave}
               disabled={saving}
               className="px-6 py-3 rounded-xl text-sm font-bold text-white transition-all"
-              style={{ background: saving ? "#52718F" : "linear-gradient(135deg, #002147, #5A4FC8)" }}
+              style={{ background: saving ? "#52718F" : "var(--brand)" }}
             >
               {saving ? "Saxlanır..." : "Dəyişiklikləri saxla"}
             </button>

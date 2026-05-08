@@ -1,4 +1,4 @@
-import type { BlogPost } from "@/lib/api";
+﻿import type { BlogPost } from "@/lib/api";
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -7,7 +7,7 @@ function formatDate(dateStr: string) {
 }
 
 const GRADIENTS = [
-  "linear-gradient(135deg,#002147,#5A4FC8)",
+  "var(--brand)",
   "linear-gradient(135deg,#1a5276,#2e86c1)",
   "linear-gradient(135deg,#145a32,#27ae60)",
   "linear-gradient(135deg,#6e2f8a,#a569bd)",
@@ -45,7 +45,7 @@ export default function RelatedPosts({ posts }: { posts: BlogPost[] }) {
                 <h3 className="bl-card-title">{post.title}</h3>
                 {post.excerpt && <p className="bl-card-excerpt">{post.excerpt}</p>}
                 <div className="bl-card-author">
-                  <div className="bl-author-avatar" style={{ background: "linear-gradient(135deg,#002147,#5A4FC8)" }}>
+                  <div className="bl-author-avatar" style={{ background: "var(--brand)" }}>
                     {(post.authorName ?? "F").charAt(0).toUpperCase()}
                   </div>
                   <div>

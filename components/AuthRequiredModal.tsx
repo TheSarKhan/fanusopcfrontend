@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
 import Link from "next/link";
@@ -60,7 +60,7 @@ export default function AuthRequiredModal({
         <div className="text-center mb-6">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+            style={{ background: "var(--brand)" }}
           >
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -77,7 +77,7 @@ export default function AuthRequiredModal({
           <Link
             href={`/login${nextParam}`}
             className="py-3 rounded-xl text-sm font-bold text-white text-center transition-all"
-            style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+            style={{ background: "var(--brand)" }}
           >
             Daxil ol
           </Link>

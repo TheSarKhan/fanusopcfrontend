@@ -45,7 +45,7 @@ export default function StatsPage() {
         </div>
         <button onClick={() => setModal({ open: true, item: { ...EMPTY } })}
           className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-          style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}>
+          style={{ background: "var(--brand)" }}>
           + Əlavə et
         </button>
       </div>
@@ -103,7 +103,7 @@ export default function StatsPage() {
                   className="flex-1 py-3 rounded-xl text-sm font-semibold text-[#52718F] hover:bg-[#EEF4FB]">Ləğv et</button>
                 <button onClick={handleSave} disabled={saving}
                   className="flex-1 py-3 rounded-xl text-sm font-bold text-white"
-                  style={{ background: saving ? "#52718F" : "linear-gradient(135deg, #002147, #5A4FC8)" }}>
+                  style={{ background: saving ? "#52718F" : "var(--brand)" }}>
                   {saving ? "Saxlanır..." : "Saxla"}
                 </button>
               </div>

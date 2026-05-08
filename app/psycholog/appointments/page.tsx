@@ -82,9 +82,9 @@ export default function PsychologistAppointmentsPage() {
           <button key={t.k} onClick={() => setFilter(t.k)}
             style={{
               padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-              border: filter === t.k ? "2px solid #2d1b69" : "1px solid #E5E7EB",
+              border: filter === t.k ? "2px solid var(--brand)" : "1px solid #E5E7EB",
               background: filter === t.k ? "#fff" : "rgba(255,255,255,0.6)",
-              color: filter === t.k ? "#2d1b69" : "#52718F", cursor: "pointer",
+              color: filter === t.k ? "var(--brand)" : "#52718F", cursor: "pointer",
             }}>
             {t.label}
           </button>
@@ -109,7 +109,7 @@ export default function PsychologistAppointmentsPage() {
                     </span>
                     {a.sessionFormat && (
                       <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "#EEF2F7", color: "#52718F" }}>
-                        {a.sessionFormat === "ONLINE" ? "💻" : "🏢"}
+                        {a.sessionFormat === "ONLINE" ? "Onlayn" : "Əyani"}
                       </span>
                     )}
                   </div>

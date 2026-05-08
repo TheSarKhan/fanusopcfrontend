@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -33,7 +33,7 @@ export default function ResetPasswordPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: "linear-gradient(135deg, #0F1C2E 0%, #1E3A5F 50%, #2A57B0 100%)" }}
+      style={{ background: "linear-gradient(135deg, var(--brand-700) 0%, var(--brand) 100%)" }}
     >
       <div style={{
         background: "#fff", borderRadius: "1.5rem", padding: "2.5rem",
@@ -67,7 +67,7 @@ export default function ResetPasswordPage() {
           <button
             type="submit" disabled={loading || !token}
             className="py-3 rounded-xl text-sm font-bold text-white"
-            style={{ background: loading ? "#52718F" : "linear-gradient(135deg, #002147, #5A4FC8)" }}
+            style={{ background: loading ? "#52718F" : "var(--brand)" }}
           >
             {loading ? "Yenilənir..." : "Şifrəni yenilə →"}
           </button>

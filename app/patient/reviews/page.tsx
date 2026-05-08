@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -81,7 +81,7 @@ export default function PatientReviewsPage() {
           <Link
             href="/patient/appointments"
             className="inline-block py-2.5 px-6 rounded-xl text-sm font-bold text-white"
-            style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+            style={{ background: "var(--brand)" }}
           >
             Randevularıma bax
           </Link>
@@ -117,8 +117,8 @@ export default function PatientReviewsPage() {
                       {r.comment}
                     </p>
                     {r.reply && (
-                      <div style={{ marginTop: 12, padding: "10px 14px", background: "#F4F1FE", borderLeft: "3px solid #5A4FC8", borderRadius: "0 10px 10px 0" }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#5A4FC8", marginBottom: 4 }}>
+                      <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--brand-50)", borderLeft: "3px solid var(--brand)", borderRadius: "0 10px 10px 0" }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)", marginBottom: 4 }}>
                           Psixoloqun cavabı
                         </div>
                         <p style={{ fontSize: 13, color: "#374151", margin: 0, whiteSpace: "pre-wrap" }}>{r.reply}</p>
@@ -128,7 +128,7 @@ export default function PatientReviewsPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <button
                       onClick={() => setEditing(r)}
-                      style={{ padding: "6px 12px", fontSize: 12, border: "1px solid #C7D2FE", color: "#3730A3", background: "#EEF2FF", borderRadius: 8, cursor: "pointer", fontWeight: 500, whiteSpace: "nowrap" }}
+                      style={{ padding: "6px 12px", fontSize: 12, border: "1px solid #C7D2FE", color: "var(--brand-700)", background: "#EEF2FF", borderRadius: 8, cursor: "pointer", fontWeight: 500, whiteSpace: "nowrap" }}
                     >
                       Redaktə et
                     </button>

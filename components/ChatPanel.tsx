@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { type ChatMessage, type ChatThread } from "@/lib/api";
@@ -97,7 +97,7 @@ export default function ChatPanel({
           <strong style={{ color: "#1A2535" }}>Söhbətlər</strong>
           {onStartThread && (
             <button onClick={onStartThread}
-              style={{ padding: "4px 10px", fontSize: 11, border: "1px solid #C7D2FE", color: "#3730A3", background: "#EEF2FF", borderRadius: 6, cursor: "pointer" }}>
+              style={{ padding: "4px 10px", fontSize: 11, border: "1px solid #C7D2FE", color: "var(--brand-700)", background: "#EEF2FF", borderRadius: 6, cursor: "pointer" }}>
               + Yeni
             </button>
           )}
@@ -161,7 +161,7 @@ export default function ChatPanel({
                   <div key={m.id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
                     <div style={{
                       maxWidth: "75%",
-                      background: mine ? "linear-gradient(135deg,#002147,#5A4FC8)" : "#F3F4F6",
+                      background: mine ? "var(--brand)" : "#F3F4F6",
                       color: mine ? "#fff" : "#1A2535",
                       padding: "8px 12px", borderRadius: 12,
                       borderBottomRightRadius: mine ? 4 : 12,
@@ -190,7 +190,7 @@ export default function ChatPanel({
                 placeholder="Mesaj yazın…"
                 style={{ flex: 1, padding: "10px 12px", borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", resize: "none" }} />
               <button onClick={send} disabled={sending || !body.trim()}
-                style={{ padding: "0 18px", border: "none", borderRadius: 10, background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: sending ? "wait" : "pointer", opacity: sending || !body.trim() ? 0.6 : 1 }}>
+                style={{ padding: "0 18px", border: "none", borderRadius: 10, background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: sending ? "wait" : "pointer", opacity: sending || !body.trim() ? 0.6 : 1 }}>
                 Göndər
               </button>
             </div>

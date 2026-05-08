@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -79,7 +79,7 @@ export default function LoginModal({ open, onClose }: Props) {
         <div className="text-center mb-8">
           <div
             className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl font-bold mx-auto mb-4"
-            style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+            style={{ background: "var(--brand)" }}
           >
             F
           </div>
@@ -137,7 +137,7 @@ export default function LoginModal({ open, onClose }: Props) {
             style={{
               background: loading
                 ? "#52718F"
-                : "linear-gradient(135deg, #002147, #5A4FC8)",
+                : "var(--brand)",
             }}
           >
             {loading ? "Daxil olunur..." : "Daxil ol →"}

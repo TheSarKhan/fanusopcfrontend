@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import ChatPanel from "@/components/ChatPanel";
@@ -13,7 +13,7 @@ export default function PatientChatPage() {
     markRead: patientApi.chatMarkRead,
   }), []);
   return (
-    <div style={{ padding: "1.5rem 2rem" }}>
+    <div className="patient-chat-wrap">
       <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535", marginBottom: 14 }}>Mesajlar</h1>
       <ChatPanel api={api} role="PATIENT" onStartThread={() => setShowStart(true)} />
       {showStart && <StartThreadModal onClose={() => setShowStart(false)} />}
@@ -34,7 +34,7 @@ function StartThreadModal({ onClose }: { onClose: () => void }) {
         </p>
         <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
           <a href="/psychologists"
-            style={{ padding: "10px 18px", border: "none", borderRadius: 10, background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+            style={{ padding: "10px 18px", border: "none", borderRadius: 10, background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
             Psixoloqlara bax
           </a>
           <button onClick={onClose}

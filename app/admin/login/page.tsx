@@ -28,7 +28,7 @@ export default function AdminLoginPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center"
-      style={{ background: "linear-gradient(135deg, #0F1C2E 0%, #1E3A5F 50%, #2A57B0 100%)" }}
+      style={{ background: "linear-gradient(135deg, var(--brand-700) 0%, var(--brand) 100%)" }}
     >
       <div style={{
         background: "#fff",
@@ -41,7 +41,7 @@ export default function AdminLoginPage() {
         <div className="text-center mb-8">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4"
-            style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+            style={{ background: "var(--brand)" }}
           >
             F
           </div>
@@ -88,7 +88,7 @@ export default function AdminLoginPage() {
             type="submit"
             disabled={loading}
             className="py-3 rounded-xl text-sm font-bold text-white transition-all"
-            style={{ background: loading ? "#52718F" : "linear-gradient(135deg, #002147, #5A4FC8)" }}
+            style={{ background: loading ? "#52718F" : "var(--brand)" }}
           >
             {loading ? "Daxil olunur..." : "Daxil ol →"}
           </button>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -23,7 +23,7 @@ export default function ForgotPasswordPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: "linear-gradient(135deg, #0F1C2E 0%, #1E3A5F 50%, #2A57B0 100%)" }}
+      style={{ background: "linear-gradient(135deg, var(--brand-700) 0%, var(--brand) 100%)" }}
     >
       <div style={{
         background: "#fff",
@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
         <div className="text-center mb-8">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4"
-            style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+            style={{ background: "var(--brand)" }}
           >
             🔑
           </div>
@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
             <Link
               href="/login"
               className="block py-3 rounded-xl text-sm font-bold text-white text-center"
-              style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+              style={{ background: "var(--brand)" }}
             >
               Daxil ol səhifəsinə qayıt
             </Link>
@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
               type="submit"
               disabled={loading}
               className="py-3 rounded-xl text-sm font-bold text-white transition-all"
-              style={{ background: loading ? "#52718F" : "linear-gradient(135deg, #002147, #5A4FC8)" }}
+              style={{ background: loading ? "#52718F" : "var(--brand)" }}
             >
               {loading ? "Göndərilir..." : "Sıfırlama linki göndər →"}
             </button>

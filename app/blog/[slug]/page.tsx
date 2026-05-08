@@ -1,4 +1,4 @@
-import { getBlogPostBySlug, getBlogPosts } from "@/lib/api";
+﻿import { getBlogPostBySlug, getBlogPosts } from "@/lib/api";
 import { notFound } from "next/navigation";
 import ReadingProgressBar from "@/app/blog/components/ReadingProgressBar";
 import ShareBar from "@/app/blog/components/ShareBar";
@@ -78,7 +78,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             <div className="bl-detail-author">
               <div
                 className="bl-detail-avatar"
-                style={{ background: "linear-gradient(135deg,#002147,#5A4FC8)" }}
+                style={{ background: "var(--brand)" }}
               >
                 {(post.authorName ?? "F").charAt(0).toUpperCase()}
               </div>

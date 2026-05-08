@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -38,13 +38,13 @@ interface Item {
 
 const FALLBACK_BASE: Omit<Item, "slug">[] = [
   { id: 1, name: "Aysel Məmmədova", title: "Klinik psixoloq", specs: ["Narahatlıq", "OKD", "Panik"],     exp: 8,  rating: "4.9", sessions: "210", lang: "AZ · RU",      format: "ONLINE",    sessionMinutes: 50, cat: "anxiety",    accentColor: "#3B6FA5", bgColor: "#EEF4FB" },
-  { id: 2, name: "Rəşad Quliyev",   title: "Travma terapevti",  specs: ["Travma", "TSSP"],                exp: 11, rating: "4.8", sessions: "315", lang: "AZ · EN",      format: "BOTH",      sessionMinutes: 50, cat: "trauma",     accentColor: "#5A4FC8", bgColor: "#EFEDFB" },
+  { id: 2, name: "Rəşad Quliyev",   title: "Travma terapevti",  specs: ["Travma", "TSSP"],                exp: 11, rating: "4.8", sessions: "315", lang: "AZ · EN",      format: "BOTH",      sessionMinutes: 50, cat: "trauma",     accentColor: "var(--brand)", bgColor: "#EFEDFB" },
   { id: 3, name: "Lalə Hüseynova",  title: "Ailə terapevti",    specs: ["Münasibətlər", "Ailə"],          exp: 6,  rating: "4.7", sessions: "140", lang: "AZ",           format: "ONLINE",    sessionMinutes: 60, cat: "family",     accentColor: "#C97D2E", bgColor: "#FBF1E5" },
   { id: 4, name: "Elnur Səfərov",   title: "Klinik psixoloq",   specs: ["Depressiya", "Burnout"],         exp: 9,  rating: "4.9", sessions: "260", lang: "AZ · RU",      format: "ONLINE",    sessionMinutes: 50, cat: "depression", accentColor: "#2F7A5C", bgColor: "#E9F5EF" },
   { id: 5, name: "Nigar Kazımova",  title: "Uşaq psixoloqu",    specs: ["Yeniyetmə", "Valideyn"],         exp: 7,  rating: "4.8", sessions: "180", lang: "AZ",           format: "ONLINE",    sessionMinutes: 50, cat: "youth",      accentColor: "#3B6FA5", bgColor: "#EEF4FB" },
-  { id: 6, name: "Tural Babayev",   title: "Asılılıq mütəxəssisi", specs: ["Asılılıq", "İmpuls"],         exp: 10, rating: "4.7", sessions: "240", lang: "AZ · RU",      format: "BOTH",      sessionMinutes: 60, cat: "addiction",  accentColor: "#5A4FC8", bgColor: "#EFEDFB" },
+  { id: 6, name: "Tural Babayev",   title: "Asılılıq mütəxəssisi", specs: ["Asılılıq", "İmpuls"],         exp: 10, rating: "4.7", sessions: "240", lang: "AZ · RU",      format: "BOTH",      sessionMinutes: 60, cat: "addiction",  accentColor: "var(--brand)", bgColor: "#EFEDFB" },
   { id: 7, name: "Səbinə Əliyeva",  title: "Klinik psixoloq",   specs: ["Narahatlıq", "Stress"],          exp: 5,  rating: "4.8", sessions: "120", lang: "AZ · EN",      format: "ONLINE",    sessionMinutes: 50, cat: "anxiety",    accentColor: "#3B6FA5", bgColor: "#EEF4FB" },
-  { id: 8, name: "Cavid Rəhimli",   title: "Travma terapevti",  specs: ["Travma", "Yas", "EMDR"],         exp: 12, rating: "5.0", sessions: "390", lang: "AZ · RU · EN", format: "BOTH",      sessionMinutes: 60, cat: "trauma",     accentColor: "#5A4FC8", bgColor: "#EFEDFB" },
+  { id: 8, name: "Cavid Rəhimli",   title: "Travma terapevti",  specs: ["Travma", "Yas", "EMDR"],         exp: 12, rating: "5.0", sessions: "390", lang: "AZ · RU · EN", format: "BOTH",      sessionMinutes: 60, cat: "trauma",     accentColor: "var(--brand)", bgColor: "#EFEDFB" },
   { id: 9, name: "Günel Həsənli",   title: "Cütlük terapevti",  specs: ["Cütlük", "Boşanma"],             exp: 8,  rating: "4.9", sessions: "200", lang: "AZ",           format: "ONLINE",    sessionMinutes: 60, cat: "family",     accentColor: "#C97D2E", bgColor: "#FBF1E5" },
 ];
 const FALLBACK: Item[] = withSlugs(FALLBACK_BASE);
@@ -418,7 +418,7 @@ function PsyCard({ p }: { p: Item }) {
           <ArrowRight />
         </Link>
         <Link
-          href={`/book/${p.id}`}
+          href={`/book/${p.slug ?? p.id}`}
           className="pp-btn pp-btn--primary"
         >
           <CalIcon /> Randevu al

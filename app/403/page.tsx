@@ -1,10 +1,10 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 export default function ForbiddenPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: "linear-gradient(135deg, #0F1C2E 0%, #1E3A5F 50%, #2A57B0 100%)" }}
+      style={{ background: "linear-gradient(135deg, var(--brand-700) 0%, var(--brand) 100%)" }}
     >
       <div style={{
         background: "#fff", borderRadius: "1.5rem", padding: "3rem",
@@ -21,7 +21,7 @@ export default function ForbiddenPage() {
         <Link
           href="/login"
           className="inline-block py-3 px-8 rounded-xl text-sm font-bold text-white"
-          style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+          style={{ background: "var(--brand)" }}
         >
           Daxil ol →
         </Link>

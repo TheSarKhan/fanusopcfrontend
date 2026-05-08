@@ -319,6 +319,7 @@ export default async function PsychologistProfilePage(
               </div>
               <BookingCta
                 psychologistId={psychologist.id}
+                psychologistSlug={psychologist.slug}
                 name={psychologist.name}
                 accentColor={BRAND}
               />

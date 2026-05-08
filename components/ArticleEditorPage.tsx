@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { adminApi, type BlogPost, type BlogCategory } from "@/lib/api";
@@ -347,7 +347,7 @@ export default function ArticleEditorPage({ article }: Props) {
             style={{
               padding: "7px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: publishing ? "not-allowed" : "pointer",
               border: "none",
-              background: publishing ? "#52718F" : "linear-gradient(135deg, #002147, #5A4FC8)",
+              background: publishing ? "#52718F" : "var(--brand)",
               color: "#fff",
             }}
           >

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { patientApi, type JournalEntry, type MoodTrend } from "@/lib/api";
@@ -110,7 +110,7 @@ export default function PatientJournalPage() {
           </p>
         </div>
         <button onClick={() => { reset(); setShowForm(true); }}
-          style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+          style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "var(--brand)", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
           + Yeni qeyd
         </button>
       </div>
@@ -118,7 +118,7 @@ export default function PatientJournalPage() {
       {/* Stats */}
       {headerStat && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 16 }}>
-          <Stat label="Son 7 gün ortalama" value={headerStat.avg7?.toFixed(1) ?? "—"} suffix="/10" color="#5A4FC8" />
+          <Stat label="Son 7 gün ortalama" value={headerStat.avg7?.toFixed(1) ?? "—"} suffix="/10" color="var(--brand)" />
           <Stat label="Son 30 gün ortalama" value={headerStat.avg30?.toFixed(1) ?? "—"} suffix="/10" color="#3B82F6" />
           <Stat label="Cəmi qeyd" value={String(headerStat.total)} color="#065F46" />
         </div>
@@ -172,7 +172,7 @@ export default function PatientJournalPage() {
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={reset} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>Ləğv</button>
             <button onClick={save} disabled={saving}
-              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
               {saving ? "Saxlanılır…" : (editing ? "Yenilə" : "Saxla")}
             </button>
           </div>

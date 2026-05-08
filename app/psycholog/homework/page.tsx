@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { psychologistApi, type ClientSummary, type Homework } from "@/lib/api";
@@ -50,13 +50,13 @@ export default function PsychologHomeworkPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 18 }}>
+      <div className="psy-page-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535" }}>Tapşırıqlar</h1>
           <p style={{ fontSize: 13, color: "#52718F", marginTop: 4 }}>Müştərilərə homework təyin edin və izləyin</p>
         </div>
         <button onClick={() => setShowForm(true)}
-          style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#1a1040,#2d1b69)", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+          style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "var(--brand)", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
           + Yeni tapşırıq
         </button>
       </div>
@@ -79,7 +79,7 @@ export default function PsychologHomeworkPage() {
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 10 }}>
             <button onClick={reset} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Ləğv</button>
             <button onClick={save} disabled={saving}
-              style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "linear-gradient(135deg,#1a1040,#2d1b69)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: saving ? "wait" : "pointer" }}>
+              style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: saving ? "wait" : "pointer" }}>
               {saving ? "Saxlanılır…" : "Saxla"}
             </button>
           </div>

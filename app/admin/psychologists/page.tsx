@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { adminApi, type Psychologist, type UserRecord } from "@/lib/api";
@@ -355,7 +355,7 @@ export default function PsychologistsPage() {
           <div ref={dropRef} style={{ position: "relative" }}>
             <button
               onClick={() => setDropOpen(o => !o)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700, background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", border: "none", cursor: "pointer" }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", border: "none", cursor: "pointer" }}
             >
               <IconPlus size={14} style={{ stroke: "#fff" } as React.CSSProperties} />
               Psixoloq əlavə et

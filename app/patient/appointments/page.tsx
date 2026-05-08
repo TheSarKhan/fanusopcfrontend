@@ -8,7 +8,7 @@ import ReviewModal from "./ReviewModal";
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   PENDING:   { label: "Gözlənilir",  color: "#92400E", bg: "#FEF3C7" },
-  ASSIGNED:  { label: "Təyin edilib",color: "#1E40AF", bg: "#DBEAFE" },
+  ASSIGNED:  { label: "Təyin edilib",color: "#082F6D", bg: "#E4ECFA" },
   CONFIRMED: { label: "Təsdiqləndi", color: "#065F46", bg: "#D1FAE5" },
   COMPLETED: { label: "Tamamlandı",  color: "#374151", bg: "#F3F4F6" },
   CANCELLED: { label: "Ləğv edildi", color: "#991B1B", bg: "#FEE2E2" },
@@ -22,8 +22,8 @@ function fmtDateTime(iso?: string | null) {
 }
 
 function formatLabel(f?: string | null) {
-  if (f === "ONLINE") return "💻 Online";
-  if (f === "IN_PERSON") return "🏢 Üzbəüz";
+  if (f === "ONLINE") return "Onlayn";
+  if (f === "IN_PERSON") return "Əyani";
   return null;
 }
 
@@ -89,7 +89,7 @@ export default function PatientAppointmentsPage() {
         <Link
           href="/psychologists"
           className="py-2.5 px-5 rounded-xl text-sm font-bold text-white"
-          style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+          style={{ background: "var(--brand)" }}
         >
           + Yeni randevu
         </Link>
@@ -107,7 +107,7 @@ export default function PatientAppointmentsPage() {
           <Link
             href="/psychologists"
             className="inline-block py-2.5 px-6 rounded-xl text-sm font-bold text-white"
-            style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+            style={{ background: "var(--brand)" }}
           >
             Psixoloq seç
           </Link>
@@ -153,7 +153,7 @@ export default function PatientAppointmentsPage() {
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       <button
                         onClick={() => setReschedFor(a)}
-                        style={{ padding: "6px 12px", fontSize: 12, border: "1px solid #C7D2FE", color: "#3730A3", background: "#EEF2FF", borderRadius: 8, cursor: "pointer", fontWeight: 500 }}
+                        style={{ padding: "6px 12px", fontSize: 12, border: "1px solid var(--brand-200)", color: "var(--brand-700)", background: "var(--brand-50)", borderRadius: 8, cursor: "pointer", fontWeight: 500 }}
                       >
                         Yenidən planla
                       </button>
@@ -181,9 +181,9 @@ export default function PatientAppointmentsPage() {
                     return (
                       <button
                         onClick={() => setReviewFor(a)}
-                        style={{ padding: "6px 12px", fontSize: 12, border: "1px solid #C7BFF1", color: "#5A4FC8", background: "#F4F1FE", borderRadius: 8, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                        style={{ padding: "6px 12px", fontSize: 12, border: "1px solid var(--brand-200)", color: "var(--brand)", background: "var(--brand-50)", borderRadius: 8, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
                       >
-                        ✍️ Rəy yaz
+                        Rəy yaz
                       </button>
                     );
                   })()}
@@ -274,10 +274,10 @@ function RescheduleModal({
               <button type="button" key={f} onClick={() => setFormat(f)}
                 style={{
                   flex: 1, padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 600,
-                  border: format === f ? "2px solid #5A4FC8" : "1px solid #E5E7EB",
-                  background: format === f ? "#EEECFB" : "#fff", cursor: "pointer", color: "#1A2535",
+                  border: format === f ? "2px solid var(--brand)" : "1px solid #E5E7EB",
+                  background: format === f ? "var(--brand-50)" : "#fff", cursor: "pointer", color: "#1A2535",
                 }}>
-                {f === "ONLINE" ? "💻 Online" : "🏢 Üzbəüz"}
+                {f === "ONLINE" ? "Onlayn" : "Əyani"}
               </button>
             ))}
           </div>
@@ -294,7 +294,7 @@ function RescheduleModal({
               Bağla
             </button>
             <button onClick={submit} disabled={saving}
-              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
               {saving ? "Göndərilir…" : "Yenidən planla"}
             </button>
           </div>

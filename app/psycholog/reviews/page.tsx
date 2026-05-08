@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { psychologistApi, type PsychologistReceivedReview } from "@/lib/api";
@@ -145,15 +145,15 @@ export default function PsychologReviewsPage() {
                 </p>
 
                 {r.reply ? (
-                  <div style={{ marginTop: 12, padding: "10px 14px", background: "#F4F1FE", borderLeft: "3px solid #5A4FC8", borderRadius: "0 8px 8px 0" }}>
+                  <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--brand-50)", borderLeft: "3px solid var(--brand)", borderRadius: "0 8px 8px 0" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                      <strong style={{ fontSize: 12, color: "#5A4FC8" }}>Sizin cavabınız</strong>
+                      <strong style={{ fontSize: 12, color: "var(--brand)" }}>Sizin cavabınız</strong>
                       <span style={{ fontSize: 11, color: "#52718F" }}>{fmt(r.replyAt ?? null)}</span>
                     </div>
                     <p style={{ fontSize: 13, color: "#374151", margin: 0, whiteSpace: "pre-wrap" }}>{r.reply}</p>
                     <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                       <button onClick={() => setReplyFor(r)} disabled={busy}
-                        style={{ padding: "5px 10px", fontSize: 12, border: "1px solid #C7BFF1", color: "#5A4FC8", background: "#fff", borderRadius: 6, cursor: "pointer" }}>
+                        style={{ padding: "5px 10px", fontSize: 12, border: "1px solid var(--brand-200)", color: "var(--brand)", background: "#fff", borderRadius: 6, cursor: "pointer" }}>
                         Redaktə et
                       </button>
                       <button onClick={() => removeReply(r.id)} disabled={busy}
@@ -165,7 +165,7 @@ export default function PsychologReviewsPage() {
                 ) : (
                   <div style={{ marginTop: 12 }}>
                     <button onClick={() => setReplyFor(r)}
-                      style={{ padding: "7px 14px", fontSize: 13, fontWeight: 600, border: "1px solid #C7BFF1", color: "#5A4FC8", background: "#F4F1FE", borderRadius: 8, cursor: "pointer" }}>
+                      style={{ padding: "7px 14px", fontSize: 13, fontWeight: 600, border: "1px solid var(--brand-200)", color: "var(--brand)", background: "var(--brand-50)", borderRadius: 8, cursor: "pointer" }}>
                       💬 Cavab yaz
                     </button>
                   </div>
@@ -265,7 +265,7 @@ function ReplyModal({ review, onClose, onSaved }: {
               Bağla
             </button>
             <button onClick={submit} disabled={busy}
-              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg,#1a1040,#5A4FC8)", color: "#fff", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>
+              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg,#1a1040,var(--brand))", color: "#fff", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>
               {busy ? "Saxlanılır…" : "Saxla"}
             </button>
           </div>

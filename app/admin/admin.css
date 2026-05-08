@@ -1,4 +1,4 @@
-/* ==========================================================
+﻿/* ==========================================================
    FANUS ADMIN — design system (Oxford Blue + warm cream)
    Scoped under .admin-shell so it never leaks into public site.
    ========================================================== */
@@ -161,7 +161,7 @@
 .admin-shell .avatar {
   width: 30px; height: 30px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #b58a3c, #7c6f99);
+  background: var(--brand);
   display: grid; place-items: center;
   color: #fff;
   font-weight: 700;
@@ -791,3 +791,51 @@
 .ProseMirror iframe { max-width: 100%; border-radius: 8px; margin: 0.5rem 0; }
 .ProseMirror p { margin: 0.4rem 0; }
 .ProseMirror hr { border: none; border-top: 1px solid #E4EDF6; margin: 1rem 0; }
+
+/* ============================================================================ */
+/* Admin panel — mobile responsive layer                                        */
+/* ============================================================================ */
+@media (max-width: 1100px) {
+  .admin-shell .stats-grid { grid-template-columns: repeat(3, 1fr); }
+  .admin-shell .grid-2 { grid-template-columns: 1fr; }
+  .admin-shell .grid-3 { grid-template-columns: 1fr 1fr; }
+  .admin-shell .grid-3-2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .admin-shell .page { padding: 0; }
+  .admin-shell .page-head {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px;
+  }
+  .admin-shell .page-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .admin-shell .page-actions .btn { font-size: 12px; padding: 8px 10px; }
+  .admin-shell .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .admin-shell .stats-grid.col-4 { grid-template-columns: 1fr 1fr; }
+  .admin-shell .grid-3 { grid-template-columns: 1fr; }
+  .admin-shell .stat { padding: 12px 14px; }
+  .admin-shell .stat-value { font-size: 22px; }
+  .admin-shell .card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .admin-shell .card-pad { padding: 14px; }
+  .admin-shell .donut-wrap {
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  .admin-shell .bars { overflow-x: auto; }
+  .admin-shell .bar-label { font-size: 9px; }
+  .admin-shell .filter { font-size: 11px; padding: 4px 10px; }
+}
+@media (max-width: 480px) {
+  .admin-shell .stats-grid,
+  .admin-shell .stats-grid.col-4 { grid-template-columns: 1fr; }
+}

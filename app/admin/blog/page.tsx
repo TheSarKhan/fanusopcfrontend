@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useMemo } from "react";
 import { adminApi, type BlogPost } from "@/lib/api";
@@ -312,7 +312,7 @@ export default function ArticlesPage() {
           style={{
             display: "inline-flex", alignItems: "center", gap: 6,
             padding: "9px 18px", borderRadius: 10, fontSize: 13, fontWeight: 700,
-            background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", textDecoration: "none",
+            background: "var(--brand)", color: "#fff", textDecoration: "none",
           }}
         >
           <IconPlus /> Yeni məqalə
@@ -324,7 +324,7 @@ export default function ArticlesPage() {
         <StatCard label="Ümumi" value={stats.total} color="#1A2535" />
         <StatCard label="Yayımlandı" value={stats.published} color="#166534" />
         <StatCard label="Qaralama" value={stats.draft} color="#92400E" />
-        <StatCard label="Gözlənilən" value={stats.pending} color="#5A4FC8" />
+        <StatCard label="Gözlənilən" value={stats.pending} color="var(--brand)" />
       </div>
 
       {/* ── Filter bar ── */}
@@ -449,16 +449,16 @@ export default function ArticlesPage() {
               Filtri sıfırla
             </button>
           ) : (
-            <a href="/admin/blog/new" style={{ display: "inline-block", padding: "8px 18px", borderRadius: 8, background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
+            <a href="/admin/blog/new" style={{ display: "inline-block", padding: "8px 18px", borderRadius: 8, background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
               İlk məqaləni yaz
             </a>
           )}
         </div>
       ) : (
-        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E4EDF6", overflow: "hidden" }}>
+        <div className="admin-blog-table" style={{ background: "#fff", borderRadius: 16, border: "1px solid #E4EDF6", overflowX: "auto" }}>
 
           {/* Table head */}
-          <div style={{ display: "grid", gridTemplateColumns: "40px 52px 1fr 140px 130px 120px 100px 130px", alignItems: "center", padding: "10px 16px", borderBottom: "1.5px solid #E4EDF6", background: "#F8FAFC" }}>
+          <div data-keep-cols style={{ display: "grid", gridTemplateColumns: "40px 52px 1fr 140px 130px 120px 100px 130px", alignItems: "center", padding: "10px 16px", borderBottom: "1.5px solid #E4EDF6", background: "#F8FAFC", minWidth: 880 }}>
             <div>
               <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
                 style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#002147" }} />
@@ -481,6 +481,7 @@ export default function ArticlesPage() {
             return (
               <div
                 key={p.id}
+                data-keep-cols
                 style={{
                   display: "grid",
                   gridTemplateColumns: "40px 52px 1fr 140px 130px 120px 100px 130px",
@@ -489,6 +490,7 @@ export default function ArticlesPage() {
                   borderBottom: idx < filtered.length - 1 ? "1px solid #F1F5F9" : "none",
                   background: isSelected ? "#F0F7FF" : "#fff",
                   transition: "background 0.15s",
+                  minWidth: 880,
                 }}
               >
                 {/* Checkbox */}
@@ -525,7 +527,7 @@ export default function ArticlesPage() {
                       </span>
                     )}
                     {p.hasPendingDraft && (
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 10, background: "#EEF5FF", color: "#5A4FC8" }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 10, background: "#EEF5FF", color: "var(--brand)" }}>
                         Gözlənilən dəyişiklik
                       </span>
                     )}
@@ -664,7 +666,7 @@ export default function ArticlesPage() {
               {filtered.length} / {items.length} məqalə göstərilir
             </span>
             {someSelected && (
-              <span style={{ fontSize: 12, color: "#5A4FC8", fontWeight: 600 }}>
+              <span style={{ fontSize: 12, color: "var(--brand)", fontWeight: 600 }}>
                 {selected.size} seçildi
               </span>
             )}

@@ -8,17 +8,19 @@ import { patientApi } from "@/lib/api";
 
 export default function BookingCta({
   psychologistId,
+  psychologistSlug,
   name,
   accentColor,
 }: {
   psychologistId: number;
+  psychologistSlug?: string;
   name: string;
   accentColor: string;
 }) {
   const router = useRouter();
   const [authOpen, setAuthOpen] = useState(false);
   const [starting, setStarting] = useState(false);
-  const target = `/book/${psychologistId}`;
+  const target = `/book/${psychologistSlug ?? psychologistId}`;
 
   const onClick = () => {
     const user = getStoredUser();

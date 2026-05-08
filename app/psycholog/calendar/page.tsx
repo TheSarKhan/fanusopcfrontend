@@ -116,6 +116,7 @@ export default function PsychologCalendarPage() {
         <div style={{ background: "#fff", borderRadius: 12, padding: 40, textAlign: "center", color: "#52718F" }}>Yüklənir…</div>
       ) : (
         <div style={{ background: "#fff", borderRadius: 14, padding: 12, overflow: "auto", boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+          <div style={{ minWidth: 720 }}>
           <div style={{ display: "grid", gridTemplateColumns: "60px repeat(7, 1fr)", borderBottom: "1px solid #EFF2F7", paddingBottom: 8, marginBottom: 8 }}>
             <div />
             {weekDays.map((d, i) => (
@@ -173,6 +174,7 @@ export default function PsychologCalendarPage() {
             <Legend label="Təsdiqlənib" bg="#D1FAE5" fg="#065F46" />
             <Legend label="Tamamlanıb" bg="#E5E7EB" fg="#374151" />
             <Legend label="Ləğv olunub" bg="#FEE2E2" fg="#991B1B" />
+          </div>
           </div>
         </div>
       )}

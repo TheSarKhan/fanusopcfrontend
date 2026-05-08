@@ -5,7 +5,7 @@ import { adminApi, type Testimonial } from "@/lib/api";
 
 const EMPTY: Omit<Testimonial, "id"> = {
   quote: "", authorName: "", authorRole: "", initials: "",
-  gradient: "linear-gradient(135deg, #002147, #5A4FC8)", rating: 5, active: true,
+  gradient: "var(--brand)", rating: 5, active: true,
 };
 
 export default function TestimonialsPage() {
@@ -48,7 +48,7 @@ export default function TestimonialsPage() {
         </div>
         <button onClick={() => setModal({ open: true, item: { ...EMPTY } })}
           className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-          style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}>
+          style={{ background: "var(--brand)" }}>
           + Əlavə et
         </button>
       </div>
@@ -101,7 +101,7 @@ export default function TestimonialsPage() {
                 { label: "Ad Soyad", field: "authorName", placeholder: "Aytən Hüseynova" },
                 { label: "Vəzifə/Rol", field: "authorRole", placeholder: "Marketinq Meneceri, 28" },
                 { label: "Baş hərflər", field: "initials", placeholder: "AH" },
-                { label: "Gradient CSS", field: "gradient", placeholder: "linear-gradient(135deg, #002147, #5A4FC8)" },
+                { label: "Gradient CSS", field: "gradient", placeholder: "var(--brand)" },
               ].map(({ label, field, placeholder }) => (
                 <div key={field}>
                   <label className="block text-xs font-semibold text-[#1A2535] mb-1">{label}</label>
@@ -129,7 +129,7 @@ export default function TestimonialsPage() {
                   className="flex-1 py-3 rounded-xl text-sm font-semibold text-[#52718F] hover:bg-[#EEF4FB]">Ləğv et</button>
                 <button onClick={handleSave} disabled={saving}
                   className="flex-1 py-3 rounded-xl text-sm font-bold text-white"
-                  style={{ background: saving ? "#52718F" : "linear-gradient(135deg, #002147, #5A4FC8)" }}>
+                  style={{ background: saving ? "#52718F" : "var(--brand)" }}>
                   {saving ? "Saxlanır..." : "Saxla"}
                 </button>
               </div>

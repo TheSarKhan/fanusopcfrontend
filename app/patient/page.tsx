@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { getStoredUser } from "@/lib/auth";
@@ -49,7 +49,7 @@ export default function PatientDashboard() {
         </div>
 
         <div style={{
-          background: "linear-gradient(135deg, #002147, #5A4FC8)", borderRadius: "1rem", padding: "1.5rem",
+          background: "var(--brand)", borderRadius: "1rem", padding: "1.5rem",
           boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
         }}>
           <div className="text-3xl mb-3">🔍</div>
@@ -75,7 +75,7 @@ export default function PatientDashboard() {
         <Link
           href="/psychologists"
           className="inline-block py-2.5 px-6 rounded-xl text-sm font-bold text-white"
-          style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+          style={{ background: "var(--brand)" }}
         >
           Randevu al →
         </Link>

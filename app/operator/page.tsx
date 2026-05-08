@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -58,7 +58,7 @@ export default function OperatorDashboard() {
             </p>
             <Link
               href="/operator/appointments"
-              style={{ display: "inline-block", padding: "10px 18px", background: "linear-gradient(135deg,#002147,#5A4FC8)", color: "#fff", borderRadius: 10, fontWeight: 600, fontSize: 13, textDecoration: "none" }}>
+              style={{ display: "inline-block", padding: "10px 18px", background: "var(--brand)", color: "#fff", borderRadius: 10, fontWeight: 600, fontSize: 13, textDecoration: "none" }}>
               Müraciətlərə bax →
             </Link>
           </div>

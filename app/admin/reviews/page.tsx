@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -155,7 +155,7 @@ export default function AdminReviewsPage() {
                     </div>
                     <div style={{ fontSize: 13, color: "#52718F" }}>
                       <strong style={{ color: "#1A2535" }}>{r.patientName ?? "Anonim"}</strong> →{" "}
-                      <Link href={`/psychologists/${r.psychologistId}`} style={{ color: "#3730A3", textDecoration: "none" }}>
+                      <Link href={`/psychologists/${r.psychologistId}`} style={{ color: "var(--brand-700)", textDecoration: "none" }}>
                         {r.psychologistName ?? "Psixoloq"}
                       </Link>
                     </div>
@@ -163,8 +163,8 @@ export default function AdminReviewsPage() {
                       {r.comment}
                     </p>
                     {r.reply && (
-                      <div style={{ marginTop: 10, padding: "8px 12px", background: "#F4F1FE", borderLeft: "3px solid #5A4FC8", borderRadius: "0 8px 8px 0", fontSize: 12 }}>
-                        <strong style={{ color: "#5A4FC8" }}>Psixoloqun cavabı:</strong>{" "}
+                      <div style={{ marginTop: 10, padding: "8px 12px", background: "var(--brand-50)", borderLeft: "3px solid var(--brand)", borderRadius: "0 8px 8px 0", fontSize: 12 }}>
+                        <strong style={{ color: "var(--brand)" }}>Psixoloqun cavabı:</strong>{" "}
                         <span style={{ color: "#374151" }}>{r.reply}</span>
                       </div>
                     )}

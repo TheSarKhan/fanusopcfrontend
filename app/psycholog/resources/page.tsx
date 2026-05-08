@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { psychologistApi, type ClientSummary, type FollowupTemplate, type ResourceItem } from "@/lib/api";
@@ -18,8 +18,8 @@ export default function PsychologResourcesPage() {
           <button key={t} onClick={() => setTab(t)}
             style={{
               padding: "8px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600,
-              border: tab === t ? "2px solid #5A4FC8" : "1px solid #E5E7EB",
-              background: tab === t ? "#EEECFB" : "#fff", color: tab === t ? "#5A4FC8" : "#52718F",
+              border: tab === t ? "2px solid var(--brand)" : "1px solid #E5E7EB",
+              background: tab === t ? "var(--brand-50)" : "#fff", color: tab === t ? "var(--brand)" : "#52718F",
               cursor: "pointer",
             }}>
             {t === "resources" ? "📚 Resurs kitabxanası" : "🔁 Follow-up template-ləri"}
@@ -79,7 +79,7 @@ function ResourcesTab() {
     <>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
         <button onClick={() => setShowForm(true)}
-          style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "linear-gradient(135deg,#1a1040,#2d1b69)", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+          style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "var(--brand)", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
           + Yeni resurs
         </button>
       </div>
@@ -104,7 +104,7 @@ function ResourcesTab() {
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={reset} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Ləğv</button>
             <button onClick={save}
-              style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "linear-gradient(135deg,#1a1040,#2d1b69)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
               Saxla
             </button>
           </div>
@@ -125,7 +125,7 @@ function ResourcesTab() {
                 {r.description && <div style={{ fontSize: 11, color: "#52718F" }}>{r.description}</div>}
               </div>
               <button onClick={() => setShareFor(r)}
-                style={{ padding: "6px 12px", fontSize: 11, border: "1px solid #C7D2FE", color: "#3730A3", background: "#EEF2FF", borderRadius: 6, cursor: "pointer" }}>
+                style={{ padding: "6px 12px", fontSize: 11, border: "1px solid #C7D2FE", color: "var(--brand-700)", background: "#EEF2FF", borderRadius: 6, cursor: "pointer" }}>
                 Paylaş
               </button>
               <button onClick={() => remove(r.id)}
@@ -172,7 +172,7 @@ function ShareModal({ resource, clients, onClose }: { resource: ResourceItem; cl
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Bağla</button>
           <button onClick={send} disabled={saving || !patientId}
-            style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "linear-gradient(135deg,#1a1040,#2d1b69)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: saving ? "wait" : "pointer", opacity: !patientId ? 0.6 : 1 }}>
+            style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: saving ? "wait" : "pointer", opacity: !patientId ? 0.6 : 1 }}>
             Paylaş
           </button>
         </div>
@@ -233,7 +233,7 @@ function TemplatesTab() {
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           {editing && <button onClick={reset} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Ləğv</button>}
           <button onClick={save}
-            style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "linear-gradient(135deg,#1a1040,#2d1b69)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             {editing ? "Yenilə" : "Saxla"}
           </button>
         </div>
@@ -251,7 +251,7 @@ function TemplatesTab() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <strong style={{ color: "#1A2535", fontSize: 13 }}>{t.name}</strong>
                   <div style={{ display: "flex", gap: 4 }}>
-                    <button onClick={() => copy(t.body)} style={{ fontSize: 11, color: "#3730A3", background: "#EEF2FF", border: "1px solid #C7D2FE", padding: "3px 8px", borderRadius: 6, cursor: "pointer" }}>Kopyala</button>
+                    <button onClick={() => copy(t.body)} style={{ fontSize: 11, color: "var(--brand-700)", background: "#EEF2FF", border: "1px solid #C7D2FE", padding: "3px 8px", borderRadius: 6, cursor: "pointer" }}>Kopyala</button>
                     <button onClick={() => startEdit(t)} style={{ fontSize: 11, color: "#52718F", background: "transparent", border: "1px solid #E5E7EB", padding: "3px 8px", borderRadius: 6, cursor: "pointer" }}>Düzəlt</button>
                     <button onClick={() => remove(t.id)} style={{ fontSize: 11, color: "#991B1B", background: "transparent", border: "1px solid #FECACA", padding: "3px 8px", borderRadius: 6, cursor: "pointer" }}>Sil</button>
                   </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -28,7 +28,7 @@ export default function VerifyPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
-      style={{ background: "linear-gradient(135deg, #0F1C2E 0%, #1E3A5F 50%, #2A57B0 100%)" }}
+      style={{ background: "linear-gradient(135deg, var(--brand-700) 0%, var(--brand) 100%)" }}
     >
       <div style={{
         background: "#fff",
@@ -57,7 +57,7 @@ export default function VerifyPage() {
             <Link
               href="/login"
               className="block py-3 rounded-xl text-sm font-bold text-white"
-              style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+              style={{ background: "var(--brand)" }}
             >
               Daxil ol →
             </Link>
@@ -74,7 +74,7 @@ export default function VerifyPage() {
             <Link
               href="/register"
               className="block py-3 rounded-xl text-sm font-bold text-white"
-              style={{ background: "linear-gradient(135deg, #002147, #5A4FC8)" }}
+              style={{ background: "var(--brand)" }}
             >
               Yenidən qeydiyyat
             </Link>

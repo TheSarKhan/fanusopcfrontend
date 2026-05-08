@@ -972,6 +972,27 @@ export const notificationsApi = {
   markAllRead: () => authedRequest<{ updated: number }>("POST", "/me/notifications/read-all"),
 };
 
+// ─── /me — generic user profile ─────────────────────────────────────────────
+export interface MeProfile {
+  id: number;
+  email: string;
+  role: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
+  emailVerified: boolean;
+  lastLogin?: string | null;
+  createdAt: string;
+}
+
+export const meApi = {
+  get: () => authedRequest<MeProfile>("GET", "/me"),
+  update: (data: { firstName?: string | null; lastName?: string | null; phone?: string | null }) =>
+    authedRequest<MeProfile>("PUT", "/me", data),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    authedRequest<void>("POST", "/me/password", data),
+};
+
 // ─── Psychologist API ─────────────────────────────────────────────────────────
 export const psychologistApi = {
   me: () => authedRequest<Psychologist>("GET", "/psychologist/me"),

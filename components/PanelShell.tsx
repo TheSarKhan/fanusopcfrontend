@@ -32,6 +32,8 @@ interface PanelShellProps {
   searchPlaceholder?: string;
   /** Optional primary CTA on the topbar (e.g. "Yeni seans" for psycholog). */
   topbarAction?: React.ReactNode;
+  /** Profile page path. Defaults to `${homeHref}/profile`. */
+  profileHref?: string;
 }
 
 export default function PanelShell({
@@ -42,7 +44,9 @@ export default function PanelShell({
   user,
   searchPlaceholder = "Axtar...",
   topbarAction,
+  profileHref,
 }: PanelShellProps) {
+  const resolvedProfileHref = profileHref ?? `${homeHref.replace(/\/$/, "")}/profile`;
   const pathname = usePathname();
   const [loggingOut, setLoggingOut] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -101,11 +105,18 @@ export default function PanelShell({
         </nav>
 
         <div className="ps-side__user">
-          <div className="ps-side__avatar">{user.initials}</div>
-          <div className="ps-side__user-text">
-            <div className="ps-side__uname">{user.name}</div>
-            <div className="ps-side__umeta">{user.role}</div>
-          </div>
+          <Link
+            href={resolvedProfileHref}
+            className="ps-side__user-link"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Profilə bax"
+          >
+            <div className="ps-side__avatar">{user.initials}</div>
+            <div className="ps-side__user-text">
+              <div className="ps-side__uname">{user.name}</div>
+              <div className="ps-side__umeta">{user.role}</div>
+            </div>
+          </Link>
           <button
             className="ps-side__logout"
             aria-label="Çıxış"

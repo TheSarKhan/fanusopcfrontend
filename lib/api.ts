@@ -382,6 +382,14 @@ export interface AppointmentDetail {
   assignedByOperatorId?: number | null;
   createdAt: string;
   updatedAt?: string | null;
+  // Mutual session confirmation
+  patientConfirmedAt?: string | null;
+  psychologistConfirmedAt?: string | null;
+  patientDisputed?: boolean;
+  psychologistDisputed?: boolean;
+  disputeReason?: string | null;
+  disputeResolvedAt?: string | null;
+  autoConfirmedAt?: string | null;
 }
 
 export interface TimeSlot {
@@ -858,6 +866,11 @@ export const patientApi = {
   reschedule: (appointmentId: number, data: PatientBookingPayload) =>
     authedRequest<AppointmentDetail>("POST", `/patient/appointments/${appointmentId}/reschedule`, data),
 
+  confirmSession: (id: number) =>
+    authedRequest<AppointmentDetail>("POST", `/patient/appointments/${id}/confirm-session`),
+  disputeSession: (id: number, reason?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/patient/appointments/${id}/dispute-session`, { reason }),
+
   // Chat
   chatThreads: () => authedRequest<ChatThread[]>("GET", "/patient/chat/threads"),
   chatStart: (psychologistId: number) =>
@@ -986,6 +999,10 @@ export const psychologistApi = {
     authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/confirm`),
   reject: (id: number, note?: string) =>
     authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/reject`, { note }),
+  confirmSession: (id: number) =>
+    authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/confirm-session`),
+  disputeSession: (id: number, reason?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/dispute-session`, { reason }),
   complete: (id: number) =>
     authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/complete`),
 
@@ -1222,6 +1239,8 @@ export const operatorApi = {
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/assign`, data),
   cancel: (id: number, note?: string) =>
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/cancel`, { note }),
+  resolveDispute: (id: number, decision: "COMPLETE" | "CANCEL", note?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/resolve-dispute`, { decision, note }),
 
   listPsychologists: () => authedRequest<Psychologist[]>("GET", "/operator/psychologists"),
   availability: (psychologistId: number, from?: string, to?: string) => {

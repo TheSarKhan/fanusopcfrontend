@@ -12,12 +12,13 @@ import {
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 
-type Tab = "PENDING" | "ASSIGNED" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
+type Tab = "PENDING" | "ASSIGNED" | "CONFIRMED" | "DISPUTED" | "COMPLETED" | "CANCELLED";
 
 const TAB_META: Record<Tab, { label: string; color: string }> = {
   PENDING:   { label: "Yeni müraciətlər",  color: "#92400E" },
   ASSIGNED:  { label: "Təyin edilmiş",     color: "#082F6D" },
   CONFIRMED: { label: "Təsdiqlənmiş",      color: "#065F46" },
+  DISPUTED:  { label: "Mübahisəli",        color: "#991B1B" },
   COMPLETED: { label: "Tamamlanmış",       color: "#374151" },
   CANCELLED: { label: "Ləğv olunmuş",      color: "#991B1B" },
 };
@@ -50,6 +51,7 @@ export default function OperatorAppointmentsPage() {
   const [tab, setTab] = useState<Tab>("PENDING");
   const [search, setSearch] = useState("");
   const [assignFor, setAssignFor] = useState<AppointmentDetail | null>(null);
+  const [resolveFor, setResolveFor] = useState<AppointmentDetail | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -76,7 +78,9 @@ export default function OperatorAppointmentsPage() {
     const q = search.trim().toLowerCase();
     return items.filter(a => {
       if (tab === "PENDING" && !(a.status === "PENDING" || a.status === "REJECTED")) return false;
-      if (tab !== "PENDING" && a.status !== tab) return false;
+      // CONFIRMED tab also covers AWAITING_CONFIRMATION (post-session, not yet final)
+      if (tab === "CONFIRMED" && !(a.status === "CONFIRMED" || a.status === "AWAITING_CONFIRMATION")) return false;
+      if (tab !== "PENDING" && tab !== "CONFIRMED" && a.status !== tab) return false;
       if (!q) return true;
       const hay = `${a.id} ${a.patientName ?? ""} ${a.psychologistName ?? ""} ${a.requestedPsychologistName ?? ""} ${a.note ?? ""}`.toLowerCase();
       return hay.includes(q);
@@ -84,9 +88,10 @@ export default function OperatorAppointmentsPage() {
   }, [items, tab, search]);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { PENDING: 0, ASSIGNED: 0, CONFIRMED: 0, COMPLETED: 0, CANCELLED: 0 };
+    const c: Record<string, number> = { PENDING: 0, ASSIGNED: 0, CONFIRMED: 0, DISPUTED: 0, COMPLETED: 0, CANCELLED: 0 };
     for (const a of items) {
       if (a.status === "PENDING" || a.status === "REJECTED") c.PENDING++;
+      else if (a.status === "AWAITING_CONFIRMATION") c.CONFIRMED++;
       else if (c[a.status] !== undefined) c[a.status]++;
     }
     return c;
@@ -198,7 +203,8 @@ export default function OperatorAppointmentsPage() {
               selected={selected.has(a.id)}
               onToggleSelect={() => toggleSelected(a.id)}
               onAssign={() => setAssignFor(a)}
-              onCancel={() => onCancel(a.id)} />
+              onCancel={() => onCancel(a.id)}
+              onResolve={() => setResolveFor(a)} />
           ))}
         </div>
       )}
@@ -218,12 +224,23 @@ export default function OperatorAppointmentsPage() {
           onDone={onBulkDone}
         />
       )}
+
+      {resolveFor && (
+        <ResolveDisputeModal
+          appointment={resolveFor}
+          onClose={() => setResolveFor(null)}
+          onDone={(updated) => {
+            setItems(prev => prev.map(a => a.id === updated.id ? updated : a));
+            setResolveFor(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
 function AppointmentCard({
-  a, selectable, selected, onToggleSelect, onAssign, onCancel,
+  a, selectable, selected, onToggleSelect, onAssign, onCancel, onResolve,
 }: {
   a: AppointmentDetail;
   selectable?: boolean;
@@ -231,10 +248,12 @@ function AppointmentCard({
   onToggleSelect?: () => void;
   onAssign: () => void;
   onCancel: () => void;
+  onResolve: () => void;
 }) {
   const status = a.status;
   const canAssign = status === "PENDING" || status === "REJECTED" || status === "ASSIGNED";
   const canCancel = status !== "COMPLETED" && status !== "CANCELLED";
+  const canResolve = status === "DISPUTED";
   return (
     <div style={{ background: "#fff", borderRadius: 14, padding: 18, boxShadow: "0 2px 12px rgba(0,0,0,0.05)", border: selected ? "2px solid var(--brand)" : "1px solid transparent" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
@@ -267,8 +286,32 @@ function AppointmentCard({
           </div>
           {a.note && <div style={{ fontSize: 13, color: "#374151", marginTop: 8, padding: "8px 12px", background: "#F9FAFB", borderRadius: 8 }}>«{a.note}»</div>}
           {a.operatorNote && <div style={{ fontSize: 12, color: "#52718F", marginTop: 6 }}><strong>Qeyd:</strong> {a.operatorNote}</div>}
+          {status === "DISPUTED" && (
+            <div style={{ fontSize: 12, color: "#991B1B", marginTop: 8, padding: "8px 12px", background: "#FEE2E2", border: "1px solid #FECACA", borderRadius: 8 }}>
+              ⚠ <strong>Mübahisə:</strong>{" "}
+              {a.patientDisputed && a.psychologistDisputed ? "İkisi də 'olmadı' dedi"
+                : a.patientDisputed ? "Pasient 'olmadı' dedi"
+                : a.psychologistDisputed ? "Psixoloq 'olmadı' dedi"
+                : "Mübahisə açıldı"}
+              {a.disputeReason && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.disputeReason}»</div>}
+            </div>
+          )}
+          {status === "AWAITING_CONFIRMATION" && (
+            <div style={{ fontSize: 12, color: "#92400E", marginTop: 8, padding: "8px 12px", background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 8 }}>
+              ⏳ Təsdiq gözlənir{" "}
+              {a.patientConfirmedAt && <span>· pasient ✓</span>}
+              {a.psychologistConfirmedAt && <span>· psixoloq ✓</span>}
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {canResolve && (
+            <button
+              onClick={onResolve}
+              style={{ padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#fff", background: "#DC2626", border: "none", borderRadius: 8, cursor: "pointer" }}>
+              Həll et
+            </button>
+          )}
           {canAssign && (
             <button
               onClick={onAssign}
@@ -276,7 +319,7 @@ function AppointmentCard({
               {status === "ASSIGNED" ? "Yenidən təyin et" : "Təyin et"}
             </button>
           )}
-          {canCancel && (
+          {canCancel && !canResolve && (
             <button
               onClick={onCancel}
               style={{ padding: "6px 12px", fontSize: 12, color: "#991B1B", background: "#FFF5F5", border: "1px solid #FECACA", borderRadius: 8, cursor: "pointer" }}>
@@ -799,6 +842,111 @@ function BulkAssignModal({
             <button onClick={submit} disabled={saving}
               style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
               {saving ? "Göndərilir…" : `${ids.length} təyin et`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Resolve dispute modal ──────────────────────────────────────────────── */
+
+function ResolveDisputeModal({
+  appointment, onClose, onDone,
+}: {
+  appointment: AppointmentDetail;
+  onClose: () => void;
+  onDone: (updated: AppointmentDetail) => void;
+}) {
+  const [decision, setDecision] = useState<"COMPLETE" | "CANCEL">("COMPLETE");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    setErr(null);
+    setSaving(true);
+    try {
+      const updated = await operatorApi.resolveDispute(appointment.id, decision, note.trim() || undefined);
+      onDone(updated);
+    } catch (e) {
+      setErr((e as Error).message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(15,28,46,0.5)", zIndex: 70, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, width: "min(560px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
+        <div style={{ padding: "16px 22px", borderBottom: "1px solid #EFF2F7" }}>
+          <div style={{ fontSize: 11, color: "#52718F" }}>#FNS-{String(appointment.id).padStart(4, "0")}</div>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: "2px 0 0" }}>Mübahisəni həll et</h2>
+          <div style={{ fontSize: 13, color: "#52718F", marginTop: 4 }}>
+            <strong>{appointment.patientName ?? "—"}</strong> ↔ {appointment.psychologistName ?? "—"}
+          </div>
+          {appointment.disputeReason && (
+            <div style={{ fontSize: 12, color: "#991B1B", marginTop: 8, padding: "8px 10px", background: "#FEE2E2", borderRadius: 8 }}>
+              <strong>Səbəb:</strong> «{appointment.disputeReason}»
+            </div>
+          )}
+          <div style={{ fontSize: 12, color: "#52718F", marginTop: 6 }}>
+            {appointment.patientDisputed && "Pasient 'olmadı' dedi"}
+            {appointment.patientDisputed && appointment.psychologistDisputed && " · "}
+            {appointment.psychologistDisputed && "Psixoloq 'olmadı' dedi"}
+          </div>
+        </div>
+        <div style={{ padding: 22 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 8 }}>Qərar</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+            <button type="button" onClick={() => setDecision("COMPLETE")}
+              style={{
+                padding: 12, borderRadius: 10, fontSize: 13, fontWeight: 600,
+                border: decision === "COMPLETE" ? "2px solid #10B981" : "1px solid #E5E7EB",
+                background: decision === "COMPLETE" ? "#D1FAE5" : "#fff",
+                color: decision === "COMPLETE" ? "#065F46" : "#1A2535",
+                cursor: "pointer", textAlign: "left",
+              }}>
+              <div style={{ fontWeight: 700 }}>✓ Tamamlanmış say</div>
+              <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>Seans baş tutdu, hesablamaya daxildir</div>
+            </button>
+            <button type="button" onClick={() => setDecision("CANCEL")}
+              style={{
+                padding: 12, borderRadius: 10, fontSize: 13, fontWeight: 600,
+                border: decision === "CANCEL" ? "2px solid #DC2626" : "1px solid #E5E7EB",
+                background: decision === "CANCEL" ? "#FEE2E2" : "#fff",
+                color: decision === "CANCEL" ? "#991B1B" : "#1A2535",
+                cursor: "pointer", textAlign: "left",
+              }}>
+              <div style={{ fontWeight: 700 }}>✗ Ləğv et</div>
+              <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>Seans baş tutmadı, hesablamadan kənar</div>
+            </button>
+          </div>
+
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
+            Operator qeydi (məcburi deyil)
+          </label>
+          <textarea
+            rows={3} value={note} onChange={e => setNote(e.target.value)}
+            placeholder="Mübahisənin necə həll edildiyini qısa qeyd edin"
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12 }} />
+
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>{err}</div>}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>
+              Bağla
+            </button>
+            <button onClick={submit} disabled={saving}
+              style={{
+                padding: "8px 18px", border: "none", borderRadius: 8,
+                fontSize: 13, fontWeight: 600,
+                background: decision === "COMPLETE" ? "#10B981" : "#DC2626",
+                color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1,
+              }}>
+              {saving ? "Göndərilir…" : decision === "COMPLETE" ? "Tamamlanmış say" : "Ləğv et"}
             </button>
           </div>
         </div>

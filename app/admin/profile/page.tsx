@@ -3,68 +3,41 @@
 import Link from "next/link";
 import ProfileShell from "@/components/ProfileShell";
 
+const LINKS = [
+  { href: "/admin/users",          icon: "👥", title: "İstifadəçilər", subtitle: "Pasiyent, psixoloq, operator" },
+  { href: "/admin/psychologists",  icon: "🧠", title: "Psixoloqlar",   subtitle: "Profil və ərizələr" },
+  { href: "/admin/blog",           icon: "📝", title: "Məqalələr",     subtitle: "Blog kontentinin idarəsi" },
+  { href: "/admin/reviews",        icon: "⭐", title: "Rəylər",        subtitle: "Moderasiya növbəsi" },
+  { href: "/admin/settings",       icon: "⚙",  title: "Parametrlər",  subtitle: "Sistem konfiqurasiyası" },
+];
+
 export default function AdminProfilePage() {
   return (
     <ProfileShell
       title="Profil"
       subtitle="Admin hesabınız və əlaqə məlumatları"
-      extras={
-        <div className="uprof-card">
-          <div className="uprof-card-head">
-            <h2>Admin əməliyyatları</h2>
-            <p>İdarə paneli sürətli giriş</p>
+      sideExtras={
+        <div className="uprof-card uprof-side-card">
+          <div className="uprof-side-card-head">
+            <h3>Sürətli giriş</h3>
           </div>
-          <div style={{ padding: 20, display: "grid", gap: 8 }}>
-            <Link href="/admin/users" style={cardLinkStyle}>
-              <span style={{ fontSize: 20 }}>👥</span>
-              <div>
-                <strong>İstifadəçilər</strong>
-                <small>Pasiyent, psixoloq, operator idarəsi</small>
+          {LINKS.map((l, i) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="uprof-side-link"
+              style={i > 0 ? { borderTop: "1px solid var(--brand-100)" } : undefined}
+            >
+              <div className="uprof-side-link-icon">{l.icon}</div>
+              <div className="uprof-side-link-text">
+                <strong>{l.title}</strong>
+                <small>{l.subtitle}</small>
               </div>
+              <span className="uprof-side-link-arrow">›</span>
             </Link>
-            <Link href="/admin/psychologists" style={cardLinkStyle}>
-              <span style={{ fontSize: 20 }}>🧠</span>
-              <div>
-                <strong>Psixoloqlar</strong>
-                <small>Profil və ərizələr</small>
-              </div>
-            </Link>
-            <Link href="/admin/blog" style={cardLinkStyle}>
-              <span style={{ fontSize: 20 }}>📝</span>
-              <div>
-                <strong>Məqalələr</strong>
-                <small>Blog kontentinin idarəsi</small>
-              </div>
-            </Link>
-            <Link href="/admin/reviews" style={cardLinkStyle}>
-              <span style={{ fontSize: 20 }}>⭐</span>
-              <div>
-                <strong>Rəylər</strong>
-                <small>Moderasiya növbəsi</small>
-              </div>
-            </Link>
-            <Link href="/admin/settings" style={cardLinkStyle}>
-              <span style={{ fontSize: 20 }}>⚙</span>
-              <div>
-                <strong>Parametrlər</strong>
-                <small>Sistem konfiqurasiyası</small>
-              </div>
-            </Link>
-          </div>
+          ))}
         </div>
       }
     />
   );
 }
-
-const cardLinkStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  padding: "12px 14px",
-  borderRadius: 10,
-  background: "var(--brand-50)",
-  textDecoration: "none",
-  color: "var(--oxford)",
-  transition: "background 0.15s ease",
-};

@@ -8,49 +8,37 @@ export default function OperatorProfilePage() {
     <ProfileShell
       title="Profil"
       subtitle="Operator hesabınız və əlaqə məlumatları"
-      extras={
-        <div className="uprof-card">
-          <div className="uprof-card-head">
-            <h2>Operator imkanları</h2>
-            <p>Sürətli giriş nöqtələri</p>
+      sideExtras={
+        <div className="uprof-card uprof-side-card">
+          <div className="uprof-side-card-head">
+            <h3>Sürətli giriş</h3>
           </div>
-          <div style={{ padding: 20, display: "grid", gap: 8 }}>
-            <Link href="/operator" style={cardLinkStyle}>
-              <span style={{ fontSize: 20 }}>📊</span>
-              <div>
-                <strong>Dashboard</strong>
-                <small>Triage queue və KPI-lər</small>
-              </div>
-            </Link>
-            <Link href="/operator/appointments" style={cardLinkStyle}>
-              <span style={{ fontSize: 20 }}>📋</span>
-              <div>
-                <strong>Müraciətlər</strong>
-                <small>Müraciətləri psixoloqlara təyin et</small>
-              </div>
-            </Link>
-            <Link href="/operator/analytics" style={cardLinkStyle}>
-              <span style={{ fontSize: 20 }}>📈</span>
-              <div>
-                <strong>Analitika</strong>
-                <small>Performans və trendlər</small>
-              </div>
-            </Link>
-          </div>
+          <Link href="/operator" className="uprof-side-link">
+            <div className="uprof-side-link-icon">📊</div>
+            <div className="uprof-side-link-text">
+              <strong>Dashboard</strong>
+              <small>Triage queue və KPI-lər</small>
+            </div>
+            <span className="uprof-side-link-arrow">›</span>
+          </Link>
+          <Link href="/operator/appointments" className="uprof-side-link" style={{ borderTop: "1px solid var(--brand-100)" }}>
+            <div className="uprof-side-link-icon">📋</div>
+            <div className="uprof-side-link-text">
+              <strong>Müraciətlər</strong>
+              <small>Müraciətləri psixoloqlara təyin et</small>
+            </div>
+            <span className="uprof-side-link-arrow">›</span>
+          </Link>
+          <Link href="/operator/analytics" className="uprof-side-link" style={{ borderTop: "1px solid var(--brand-100)" }}>
+            <div className="uprof-side-link-icon">📈</div>
+            <div className="uprof-side-link-text">
+              <strong>Analitika</strong>
+              <small>Performans və trendlər</small>
+            </div>
+            <span className="uprof-side-link-arrow">›</span>
+          </Link>
         </div>
       }
     />
   );
 }
-
-const cardLinkStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  padding: "12px 14px",
-  borderRadius: 10,
-  background: "var(--brand-50)",
-  textDecoration: "none",
-  color: "var(--oxford)",
-  transition: "background 0.15s ease",
-};

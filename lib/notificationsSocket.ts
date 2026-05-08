@@ -8,12 +8,11 @@
  * Auto-reconnects with exponential backoff. No external dependencies.
  */
 
-import type { ChatMessage, NotificationItem } from "./api";
+import type { NotificationItem } from "./api";
 
 const NULL = "\0";
 
 type Listener = (n: NotificationItem) => void;
-type ChatListener = (m: ChatMessage) => void;
 
 let socket: WebSocket | null = null;
 let connected = false;
@@ -21,7 +20,6 @@ let reconnectAttempt = 0;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let manuallyClosed = false;
 let listeners = new Set<Listener>();
-let chatListeners = new Set<ChatListener>();
 
 function apiHost(): string {
   const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
@@ -104,25 +102,15 @@ function connect() {
     if (frame.command === "CONNECTED") {
       connected = true;
       reconnectAttempt = 0;
-      // Subscribe to user-targeted notifications + chat
+      // Subscribe to user-targeted notifications
       socket?.send(buildFrame("SUBSCRIBE", {
         id: "sub-notifications",
         destination: "/user/queue/notifications",
       }));
-      socket?.send(buildFrame("SUBSCRIBE", {
-        id: "sub-chat",
-        destination: "/user/queue/chat",
-      }));
     } else if (frame.command === "MESSAGE") {
-      const dest = frame.headers["destination"] ?? "";
       try {
-        if (dest.endsWith("/queue/chat")) {
-          const msg = JSON.parse(frame.body) as ChatMessage;
-          chatListeners.forEach(l => { try { l(msg); } catch { /* ignore */ } });
-        } else {
-          const payload = JSON.parse(frame.body) as NotificationItem;
-          listeners.forEach(l => { try { l(payload); } catch { /* ignore */ } });
-        }
+        const payload = JSON.parse(frame.body) as NotificationItem;
+        listeners.forEach(l => { try { l(payload); } catch { /* ignore */ } });
       } catch { /* malformed */ }
     } else if (frame.command === "ERROR") {
       // Auth failure or backend rejection — don't reconnect aggressively
@@ -148,13 +136,6 @@ export function subscribeNotifications(listener: Listener): () => void {
   return () => { listeners.delete(listener); };
 }
 
-export function subscribeChat(listener: ChatListener): () => void {
-  manuallyClosed = false;
-  chatListeners.add(listener);
-  if (!connected) connect();
-  return () => { chatListeners.delete(listener); };
-}
-
 export function disconnectNotifications() {
   manuallyClosed = true;
   if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
@@ -163,7 +144,6 @@ export function disconnectNotifications() {
   connected = false;
   reconnectAttempt = 0;
   listeners = new Set();
-  chatListeners = new Set();
 }
 
 if (typeof window !== "undefined") {

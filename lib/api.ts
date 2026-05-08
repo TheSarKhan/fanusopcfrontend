@@ -390,6 +390,52 @@ export interface AppointmentDetail {
   disputeReason?: string | null;
   disputeResolvedAt?: string | null;
   autoConfirmedAt?: string | null;
+  // Cancellation detail
+  cancelReasonCode?: string | null;
+  cancelReasonText?: string | null;
+  cancelledBy?: string | null;
+  cancelledAt?: string | null;
+  lateCancel?: boolean;
+  cancelWindowHours?: number | null;
+  // Reschedule chain
+  rescheduleChainId?: string | null;
+  rescheduleIndex?: number;
+}
+
+// ─── Structured cancellation reasons ────────────────────────────────────
+export type CancellationRole = "PATIENT" | "PSYCHOLOGIST" | "OPERATOR";
+
+export interface CancellationReasonOption {
+  code: string;
+  label: string;
+  role: CancellationRole;
+}
+
+export const CANCEL_REASONS: CancellationReasonOption[] = [
+  { code: "PATIENT_BUSY",          label: "Məşğul oldum",            role: "PATIENT" },
+  { code: "PATIENT_HEALTH",        label: "Xəstələndim",             role: "PATIENT" },
+  { code: "PATIENT_FORGOT",        label: "Unutdum",                 role: "PATIENT" },
+  { code: "PATIENT_NOT_NEEDED",    label: "Lazım deyil artıq",       role: "PATIENT" },
+  { code: "PATIENT_TECHNICAL",     label: "Texniki problem",         role: "PATIENT" },
+  { code: "PATIENT_TIME_CONFLICT", label: "Vaxt uyğun deyil",        role: "PATIENT" },
+  { code: "PATIENT_OTHER",         label: "Digər",                   role: "PATIENT" },
+
+  { code: "PSY_HEALTH",            label: "Xəstələndim",             role: "PSYCHOLOGIST" },
+  { code: "PSY_EMERGENCY",         label: "Təcili məsələ",           role: "PSYCHOLOGIST" },
+  { code: "PSY_TECHNICAL",         label: "Texniki problem",         role: "PSYCHOLOGIST" },
+  { code: "PSY_INCOMPATIBLE",      label: "Profil uyğun deyil",      role: "PSYCHOLOGIST" },
+  { code: "PSY_OTHER",             label: "Digər",                   role: "PSYCHOLOGIST" },
+
+  { code: "OPERATOR_PATIENT_REQUEST",    label: "Pasient telefonla bildirdi", role: "OPERATOR" },
+  { code: "OPERATOR_PSY_UNAVAILABLE",    label: "Psixoloq mövcud deyil",       role: "OPERATOR" },
+  { code: "OPERATOR_DISPUTE_RESOLUTION", label: "Mübahisə həlli",              role: "OPERATOR" },
+  { code: "OPERATOR_NO_SHOW_BOTH",       label: "İkisi də gəlmədi",            role: "OPERATOR" },
+  { code: "OPERATOR_PATIENT_BLOCKED",    label: "Pasient bloklandı",           role: "OPERATOR" },
+  { code: "OPERATOR_OTHER",              label: "Digər",                       role: "OPERATOR" },
+];
+
+export function reasonsForRole(role: CancellationRole): CancellationReasonOption[] {
+  return CANCEL_REASONS.filter(r => r.role === role);
 }
 
 export interface TimeSlot {
@@ -694,8 +740,48 @@ export interface PagedUsersResponse {
   roleCounts: Record<string, number>;
 }
 
+export interface AuditLogEntry {
+  id: number;
+  actorUserId: number | null;
+  actorEmail: string | null;
+  actorRole: string | null;
+  action: string;
+  targetType: string | null;
+  targetId: number | null;
+  summary: string | null;
+  metadata: string | null;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface PagedAuditLogs {
+  content: AuditLogEntry[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+}
+
 export const adminApi = {
   getDashboard: () => authedRequest<Record<string, number>>("GET", "/admin/dashboard"),
+
+  // Audit log
+  getAuditLogs: (params: {
+    action?: string; actorId?: number; targetType?: string; targetId?: number;
+    since?: string; page?: number; size?: number;
+  } = {}) => {
+    const q = new URLSearchParams();
+    if (params.action)     q.set("action", params.action);
+    if (params.actorId)    q.set("actorId", String(params.actorId));
+    if (params.targetType) q.set("targetType", params.targetType);
+    if (params.targetId)   q.set("targetId", String(params.targetId));
+    if (params.since)      q.set("since", params.since);
+    if (params.page  !== undefined) q.set("page", String(params.page));
+    if (params.size  !== undefined) q.set("size", String(params.size));
+    const qs = q.toString();
+    return authedRequest<PagedAuditLogs>("GET", `/admin/audit-logs${qs ? `?${qs}` : ""}`);
+  },
   getDashboardMetrics: () => authedRequest<DashboardMetrics>("GET", "/admin/dashboard/metrics"),
   getUsersSummary: () => authedRequest<Record<string, number>>("GET", "/admin/users/summary"),
   getReports: () => authedRequest<ReportsData>("GET", "/admin/reports"),
@@ -855,8 +941,8 @@ export const patientApi = {
   myAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/patient/appointments"),
   book: (data: PatientBookingPayload) =>
     authedRequest<AppointmentDetail>("POST", "/patient/appointments", data),
-  cancel: (id: number) =>
-    authedRequest<AppointmentDetail>("POST", `/patient/appointments/${id}/cancel`),
+  cancel: (id: number, reasonCode: string, reasonText?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/patient/appointments/${id}/cancel`, { reasonCode, reasonText }),
 
   favorites: () => authedRequest<Psychologist[]>("GET", "/patient/favorites"),
   favoriteIds: () => authedRequest<number[]>("GET", "/patient/favorites/ids"),
@@ -866,39 +952,40 @@ export const patientApi = {
   reschedule: (appointmentId: number, data: PatientBookingPayload) =>
     authedRequest<AppointmentDetail>("POST", `/patient/appointments/${appointmentId}/reschedule`, data),
 
+  // Reschedule proposals (psychologist → patient)
+  pendingRescheduleProposals: () =>
+    authedRequest<RescheduleProposal[]>("GET", "/patient/reschedule-proposals"),
+  getRescheduleProposal: (id: number) =>
+    authedRequest<RescheduleProposal>("GET", `/patient/reschedule-proposals/${id}`),
+  acceptRescheduleProposal: (id: number, optionIndex: number) =>
+    authedRequest<RescheduleProposal>("POST", `/patient/reschedule-proposals/${id}/accept`, { optionIndex }),
+  rejectRescheduleProposal: (id: number, reason?: string) =>
+    authedRequest<RescheduleProposal>("POST", `/patient/reschedule-proposals/${id}/reject`, { reason }),
+
+  // Per-session feedback (private — separate from public reviews)
+  getSessionFeedback: (appointmentId: number) =>
+    authedRequest<SessionFeedback | null>("GET", `/patient/appointments/${appointmentId}/feedback`),
+  submitSessionFeedback: (appointmentId: number, data: { rating: number; comment?: string; followUpNeeded?: boolean }) =>
+    authedRequest<SessionFeedback>("POST", `/patient/appointments/${appointmentId}/feedback`, data),
+
+  // Recurring booking series
+  createBookingSeries: (data: {
+    firstBooking: PatientBookingPayload;
+    frequency: "WEEKLY" | "BIWEEKLY";
+    totalCount: number;
+  }) => authedRequest<BookingSeries>("POST", "/patient/booking-series", data),
+  myBookingSeries: () => authedRequest<BookingSeries[]>("GET", "/patient/booking-series"),
+
   confirmSession: (id: number) =>
     authedRequest<AppointmentDetail>("POST", `/patient/appointments/${id}/confirm-session`),
   disputeSession: (id: number, reason?: string) =>
     authedRequest<AppointmentDetail>("POST", `/patient/appointments/${id}/dispute-session`, { reason }),
 
-  // Chat
-  chatThreads: () => authedRequest<ChatThread[]>("GET", "/patient/chat/threads"),
-  chatStart: (psychologistId: number) =>
-    authedRequest<ChatThread>("POST", "/patient/chat/threads", { psychologistId }),
-  chatMessages: (threadId: number) =>
-    authedRequest<ChatMessage[]>("GET", `/patient/chat/threads/${threadId}/messages`),
-  chatSend: (threadId: number, body: string) =>
-    authedRequest<ChatMessage>("POST", "/patient/chat/messages", { threadId, body }),
-  chatMarkRead: (threadId: number) =>
-    authedRequest<{ updated: number }>("POST", `/patient/chat/threads/${threadId}/read`),
 
   // Homework
   homework: () => authedRequest<Homework[]>("GET", "/patient/homework"),
   markHomework: (id: number, data: { status: "COMPLETED" | "SKIPPED" | "PENDING"; completionNote?: string }) =>
     authedRequest<Homework>("POST", `/patient/homework/${id}/mark`, data),
-
-  // Library
-  library: () => authedRequest<SharedResource[]>("GET", "/patient/library"),
-  markLibraryViewed: (shareId: number) =>
-    authedRequest<void>("POST", `/patient/library/${shareId}/viewed`),
-
-  journalList: () => authedRequest<JournalEntry[]>("GET", "/patient/journal"),
-  journalTrend: (days = 30) => authedRequest<MoodTrend>("GET", `/patient/journal/trend?days=${days}`),
-  createJournal: (data: JournalEntryPayload) =>
-    authedRequest<JournalEntry>("POST", "/patient/journal", data),
-  updateJournal: (id: number, data: JournalEntryPayload) =>
-    authedRequest<JournalEntry>("PUT", `/patient/journal/${id}`, data),
-  deleteJournal: (id: number) => authedRequest<void>("DELETE", `/patient/journal/${id}`),
 
   // Reviews
   myReviews: () => authedRequest<MyReview[]>("GET", "/patient/reviews"),
@@ -928,28 +1015,6 @@ export interface MyReview {
   replyAt?: string | null;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface JournalEntry {
-  id: number;
-  entryDate: string;          // YYYY-MM-DD
-  moodScore?: number | null;
-  title?: string | null;
-  body?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-export interface JournalEntryPayload {
-  entryDate: string;
-  moodScore?: number | null;
-  title?: string | null;
-  body?: string | null;
-}
-export interface MoodTrend {
-  daily: { date: string; averageMood: number | null; entryCount: number }[];
-  averageLast7: number | null;
-  averageLast30: number | null;
-  totalEntries: number;
 }
 
 // ─── Notifications (any authenticated role) ───────────────────────────────────
@@ -1007,7 +1072,40 @@ export const meApi = {
     return res.json();
   },
   deletePhoto: () => authedRequest<void>("DELETE", "/me/photo"),
+
+  // GDPR
+  accountStatus: () => authedRequest<AccountStatus>("GET", "/me/account-status"),
+  deleteAccount: (data: { currentPassword: string; confirmation: string }) =>
+    authedRequest<AccountStatus>("POST", "/me/delete-account", data),
+  /** Triggers a browser download of the GDPR data export ZIP. */
+  exportData: async (): Promise<void> => {
+    const res = await fetch(`${BASE}/me/export`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` },
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(text || `Yükləmə uğursuz oldu (${res.status})`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const cd = res.headers.get("Content-Disposition") ?? "";
+    const m  = /filename=("?)([^";]+)\1/.exec(cd);
+    a.download = m ? m[2] : "fanus-export.zip";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+  },
 };
+
+export interface AccountStatus {
+  active: boolean;
+  deletionRequestedAt: string | null;
+  daysUntilPurge: number;
+}
 
 // ─── Psychologist API ─────────────────────────────────────────────────────────
 export const psychologistApi = {
@@ -1034,8 +1132,10 @@ export const psychologistApi = {
   myAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/psychologist/appointments"),
   confirm: (id: number) =>
     authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/confirm`),
-  reject: (id: number, note?: string) =>
-    authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/reject`, { note }),
+  reject: (id: number, reasonCode: string, reasonText?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/reject`, { reasonCode, reasonText }),
+  cancel: (id: number, reasonCode: string, reasonText?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/cancel`, { reasonCode, reasonText }),
   confirmSession: (id: number) =>
     authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/confirm-session`),
   disputeSession: (id: number, reason?: string) =>
@@ -1054,14 +1154,36 @@ export const psychologistApi = {
   deleteNote: (id: number) =>
     authedRequest<void>("DELETE", `/psychologist/client-notes/${id}`),
 
-  // Chat
-  chatThreads: () => authedRequest<ChatThread[]>("GET", "/psychologist/chat/threads"),
-  chatMessages: (threadId: number) =>
-    authedRequest<ChatMessage[]>("GET", `/psychologist/chat/threads/${threadId}/messages`),
-  chatSend: (threadId: number, body: string) =>
-    authedRequest<ChatMessage>("POST", "/psychologist/chat/messages", { threadId, body }),
-  chatMarkRead: (threadId: number) =>
-    authedRequest<{ updated: number }>("POST", `/psychologist/chat/threads/${threadId}/read`),
+  // Vacation / out-of-office
+  listVacations: () =>
+    authedRequest<Vacation[]>("GET", "/psychologist/vacations"),
+  createVacation: (data: { startDate: string; endDate: string; reason?: string; notifyPatients?: boolean }) =>
+    authedRequest<Vacation>("POST", "/psychologist/vacations", data),
+  cancelVacation: (id: number) =>
+    authedRequest<void>("DELETE", `/psychologist/vacations/${id}`),
+
+  // Reschedule proposals (psy side)
+  myRescheduleProposals: () =>
+    authedRequest<RescheduleProposal[]>("GET", "/psychologist/reschedule-proposals"),
+  proposeReschedule: (appointmentId: number, data: {
+    options: { startAt: string; endAt: string; sessionFormat?: string }[];
+    reason?: string;
+    expiresInHours?: number;
+  }) =>
+    authedRequest<RescheduleProposal>("POST", `/psychologist/appointments/${appointmentId}/reschedule-proposals`, data),
+  withdrawRescheduleProposal: (id: number) =>
+    authedRequest<RescheduleProposal>("DELETE", `/psychologist/reschedule-proposals/${id}`),
+
+  // Patient tags (private to the psychologist)
+  patientTags: (patientId: number) =>
+    authedRequest<PatientTag[]>("GET", `/psychologist/clients/${patientId}/tags`),
+  allMyPatientTags: () =>
+    authedRequest<PatientTag[]>("GET", "/psychologist/patient-tags"),
+  createPatientTag: (patientId: number, data: { label: string; color?: string }) =>
+    authedRequest<PatientTag>("POST", `/psychologist/clients/${patientId}/tags`, data),
+  deletePatientTag: (tagId: number) =>
+    authedRequest<void>("DELETE", `/psychologist/patient-tags/${tagId}`),
+
 
   // Homework
   homework: () => authedRequest<Homework[]>("GET", "/psychologist/homework"),
@@ -1071,15 +1193,6 @@ export const psychologistApi = {
     authedRequest<Homework>("PUT", `/psychologist/homework/${id}`, data),
   deleteHomework: (id: number) =>
     authedRequest<void>("DELETE", `/psychologist/homework/${id}`),
-
-  // Resources
-  resources: () => authedRequest<ResourceItem[]>("GET", "/psychologist/resources"),
-  createResource: (data: { title: string; description?: string; fileUrl?: string; externalUrl?: string; resourceType: "FILE" | "LINK" | "ARTICLE" }) =>
-    authedRequest<ResourceItem>("POST", "/psychologist/resources", data),
-  deleteResource: (id: number) =>
-    authedRequest<void>("DELETE", `/psychologist/resources/${id}`),
-  shareResource: (data: { resourceId: number; patientId: number; note?: string }) =>
-    authedRequest<void>("POST", "/psychologist/resources/share", data),
 
   // Templates
   templates: () => authedRequest<FollowupTemplate[]>("GET", "/psychologist/templates"),
@@ -1111,27 +1224,7 @@ export interface PsychologistReceivedReview {
   createdAt: string;
 }
 
-// ─── Chat / Homework / Resource / Template types ─────────────────────────────
-export interface ChatThread {
-  id: number;
-  patientId: number;
-  patientName: string;
-  psychologistId: number;
-  psychologistName: string;
-  lastMessageAt?: string | null;
-  unreadCount: number;
-  lastMessagePreview?: string | null;
-}
-export interface ChatMessage {
-  id: number;
-  threadId: number;
-  senderUserId: number;
-  senderName: string;
-  senderRole: string;
-  body: string;
-  readAt?: string | null;
-  createdAt: string;
-}
+// ─── Homework / Resource / Template types ─────────────────────────────
 export interface Homework {
   id: number;
   psychologistId: number;
@@ -1145,29 +1238,6 @@ export interface Homework {
   completedAt?: string | null;
   completionNote?: string | null;
   createdAt: string;
-}
-export interface ResourceItem {
-  id: number;
-  title: string;
-  description?: string | null;
-  fileUrl?: string | null;
-  externalUrl?: string | null;
-  resourceType: "FILE" | "LINK" | "ARTICLE";
-  createdAt: string;
-}
-export interface SharedResource {
-  shareId: number;
-  resourceId: number;
-  title: string;
-  description?: string | null;
-  fileUrl?: string | null;
-  externalUrl?: string | null;
-  resourceType: "FILE" | "LINK" | "ARTICLE";
-  note?: string | null;
-  psychologistId: number;
-  psychologistName: string;
-  sharedAt: string;
-  viewedAt?: string | null;
 }
 export interface FollowupTemplate {
   id: number; name: string; body: string; createdAt: string;
@@ -1191,8 +1261,12 @@ export interface ClientSummary {
   email?: string | null;
   phone?: string | null;
   totalSessions: number;
+  completedSessions: number;
   noteCount: number;
   lastAppointmentAt?: string | null;
+  autoFlag?: string | null;
+  noShowCount: number;
+  lateCancelCount: number;
 }
 
 export interface ClientNote {
@@ -1213,6 +1287,96 @@ export interface ClientNotePayload {
   title?: string | null;
   body: string;
   moodScore?: number | null;
+}
+
+export type PatientTagColor = "brand" | "good" | "warn" | "danger" | "neutral" | "purple" | "teal";
+export interface PatientTag {
+  id: number;
+  patientId: number;
+  label: string;
+  color: PatientTagColor;
+  createdAt: string;
+}
+
+export interface Vacation {
+  id: number;
+  psychologistId: number;
+  startDate: string;        // ISO date (YYYY-MM-DD)
+  endDate: string;          // inclusive
+  reason: string | null;
+  notifyPatients: boolean;
+  cancelledAt: string | null;
+  createdAt: string;
+  affectedAppointments: number;
+}
+
+export type RescheduleStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED" | "CANCELLED";
+
+export interface RescheduleProposalOption {
+  index: number;
+  startAt: string;
+  endAt: string;
+  sessionFormat: string | null;
+}
+
+export type BookingFrequency = "WEEKLY" | "BIWEEKLY";
+
+export interface BookingSeries {
+  id: number;
+  patientId: number;
+  requestedPsychologistId: number | null;
+  requestedPsychologistName: string | null;
+  frequency: BookingFrequency;
+  totalCount: number;
+  cancelledAt: string | null;
+  createdAt: string;
+  createdAppointments: number;
+  skippedOccurrences: number;
+  appointmentIds: number[];
+  skippedDates: string[];
+}
+
+export interface SessionFeedback {
+  id: number;
+  appointmentId: number;
+  psychologistId: number | null;
+  psychologistName: string | null;
+  patientId: number;
+  patientName: string;
+  rating: number;
+  comment: string | null;
+  followUpNeeded: boolean;
+  operatorSeenAt: string | null;
+  createdAt: string;
+  appointmentStartAt: string | null;
+}
+
+export interface FeedbackTriageResponse {
+  content: SessionFeedback[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+  unseenFollowUpCount: number;
+  lowRatingCount: number;
+}
+
+export interface RescheduleProposal {
+  id: number;
+  appointmentId: number;
+  psychologistId: number;
+  psychologistName: string | null;
+  patientUserId: number | null;
+  reason: string | null;
+  status: RescheduleStatus;
+  expiresAt: string;
+  acceptedOption: number | null;
+  decidedAt: string | null;
+  newAppointmentId: number | null;
+  createdAt: string;
+  options: RescheduleProposalOption[];
+  originalStartAt: string | null;
+  originalEndAt: string | null;
 }
 
 // ─── Operator API (also accessible to ADMIN) ──────────────────────────────────
@@ -1274,10 +1438,34 @@ export const operatorApi = {
   getAppointment: (id: number) => authedRequest<AppointmentDetail>("GET", `/operator/appointments/${id}`),
   assign: (id: number, data: OperatorAssignPayload) =>
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/assign`, data),
-  cancel: (id: number, note?: string) =>
-    authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/cancel`, { note }),
-  resolveDispute: (id: number, decision: "COMPLETE" | "CANCEL", note?: string) =>
-    authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/resolve-dispute`, { decision, note }),
+  cancel: (id: number, reasonCode: string, note?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/cancel`, { reasonCode, note }),
+  resolveDispute: (
+    id: number,
+    decision: "COMPLETE" | "CANCEL",
+    note?: string,
+    blameSide?: "PATIENT" | "PSYCHOLOGIST"
+  ) =>
+    authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/resolve-dispute`, { decision, note, blameSide }),
+
+  // Session feedback triage
+  feedbackTriage: (params: {
+    onlyFollowUp?: boolean; onlyUnseen?: boolean;
+    minRating?: number; maxRating?: number;
+    page?: number; size?: number;
+  } = {}) => {
+    const q = new URLSearchParams();
+    if (params.onlyFollowUp) q.set("onlyFollowUp", "true");
+    if (params.onlyUnseen)   q.set("onlyUnseen", "true");
+    if (params.minRating !== undefined) q.set("minRating", String(params.minRating));
+    if (params.maxRating !== undefined) q.set("maxRating", String(params.maxRating));
+    if (params.page !== undefined) q.set("page", String(params.page));
+    if (params.size !== undefined) q.set("size", String(params.size));
+    const qs = q.toString();
+    return authedRequest<FeedbackTriageResponse>("GET", `/operator/feedback${qs ? `?${qs}` : ""}`);
+  },
+  feedbackMarkSeen: (id: number) =>
+    authedRequest<SessionFeedback>("POST", `/operator/feedback/${id}/seen`),
 
   listPsychologists: () => authedRequest<Psychologist[]>("GET", "/operator/psychologists"),
   availability: (psychologistId: number, from?: string, to?: string) => {

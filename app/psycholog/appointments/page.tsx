@@ -9,6 +9,8 @@ import {
   type ClientSummary,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
+import CancelModal from "@/components/CancelModal";
+import RescheduleComposeModal from "@/components/RescheduleComposeModal";
 
 const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"];
 const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
@@ -72,6 +74,9 @@ export default function PsychologistAppointmentsPage() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [now, setNow] = useState(new Date());
   const [disputeFor, setDisputeFor] = useState<AppointmentDetail | null>(null);
+  const [rejectFor, setRejectFor] = useState<AppointmentDetail | null>(null);
+  const [cancelFor, setCancelFor] = useState<AppointmentDetail | null>(null);
+  const [rescheduleProposeFor, setRescheduleProposeFor] = useState<AppointmentDetail | null>(null);
 
   // Tick every minute so countdown stays fresh
   useEffect(() => {
@@ -204,6 +209,9 @@ export default function PsychologistAppointmentsPage() {
             busyId={busyId}
             onAction={action}
             onDispute={(a) => setDisputeFor(a)}
+            onReject={(a) => setRejectFor(a)}
+            onCancel={(a) => setCancelFor(a)}
+            onPropose={(a) => setRescheduleProposeFor(a)}
           />
 
           {awaitingConfirm.length > 0 && (
@@ -272,6 +280,37 @@ export default function PsychologistAppointmentsPage() {
               }}
             />
           )}
+          {rejectFor && (
+            <CancelModal
+              appointment={rejectFor}
+              role="PSYCHOLOGIST"
+              mode="reject"
+              onClose={() => setRejectFor(null)}
+              onDone={(updated) => {
+                setItems(prev => prev.map(x => x.id === updated.id ? updated : x));
+                setRejectFor(null);
+              }}
+            />
+          )}
+          {cancelFor && (
+            <CancelModal
+              appointment={cancelFor}
+              role="PSYCHOLOGIST"
+              mode="cancel"
+              onClose={() => setCancelFor(null)}
+              onDone={(updated) => {
+                setItems(prev => prev.map(x => x.id === updated.id ? updated : x));
+                setCancelFor(null);
+              }}
+            />
+          )}
+          {rescheduleProposeFor && (
+            <RescheduleComposeModal
+              appointment={rescheduleProposeFor}
+              onClose={() => setRescheduleProposeFor(null)}
+              onCreated={() => { setRescheduleProposeFor(null); load(); }}
+            />
+          )}
 
           <Section title="Tarixçə" count={history.length} icon="📂" defaultCollapsed>
             {history.length === 0 ? (
@@ -294,7 +333,7 @@ export default function PsychologistAppointmentsPage() {
 }
 
 function NextSessionHero({
-  appt, now, client, note, busyId, onAction, onDispute,
+  appt, now, client, note, busyId, onAction, onDispute, onReject, onCancel, onPropose,
 }: {
   appt: AppointmentDetail | null;
   now: Date;
@@ -303,6 +342,9 @@ function NextSessionHero({
   busyId: number | null;
   onAction: (id: number, fn: () => Promise<AppointmentDetail>) => Promise<void>;
   onDispute: (a: AppointmentDetail) => void;
+  onReject: (a: AppointmentDetail) => void;
+  onCancel: (a: AppointmentDetail) => void;
+  onPropose: (a: AppointmentDetail) => void;
 }) {
   if (!appt || !appt.startAt) {
     return (
@@ -358,12 +400,36 @@ function NextSessionHero({
           ⏰ {tu.text}
         </span>
         {appt.status === "ASSIGNED" && (
-          <button
-            disabled={busyId === appt.id}
-            onClick={() => onAction(appt.id, () => psychologistApi.confirm(appt.id))}
-            className="psy-hero__btn psy-hero__btn--primary">
-            {busyId === appt.id ? "…" : "Təsdiqlə"}
-          </button>
+          <>
+            <button
+              disabled={busyId === appt.id}
+              onClick={() => onAction(appt.id, () => psychologistApi.confirm(appt.id))}
+              className="psy-hero__btn psy-hero__btn--primary">
+              {busyId === appt.id ? "…" : "Təsdiqlə"}
+            </button>
+            <button
+              onClick={() => onReject(appt)}
+              className="psy-hero__btn psy-hero__btn--ghost">
+              Rədd et
+            </button>
+          </>
+        )}
+        {(appt.status === "CONFIRMED" || appt.status === "ASSIGNED") && !tu.expired && (
+          <>
+            <button
+              onClick={() => onPropose(appt)}
+              className="psy-hero__btn psy-hero__btn--ghost"
+              style={{ marginLeft: "auto" }}>
+              Yenidən planla
+            </button>
+            {appt.status === "CONFIRMED" && (
+              <button
+                onClick={() => onCancel(appt)}
+                className="psy-hero__btn psy-hero__btn--ghost">
+                Ləğv et
+              </button>
+            )}
+          </>
         )}
         {((appt.status === "CONFIRMED" && tu.expired) || appt.status === "AWAITING_CONFIRMATION") && !appt.psychologistConfirmedAt && (
           <>
@@ -494,7 +560,7 @@ function TodayCard({
           </div>
           <div className="psy-card__ctx">
             {client && client.noteCount > 0 && <span>📝 {client.noteCount} qeyd</span>}
-            {note?.moodScore && <span>💭 son ovqat {note.moodScore}/10</span>}
+            {note?.moodScore && <span>💭 son əhval-ruhiyyə {note.moodScore}/10</span>}
             {a.note && (
               <span className="psy-card__ctx-quote">
                 «{a.note.slice(0, 80)}{a.note.length > 80 ? "…" : ""}»

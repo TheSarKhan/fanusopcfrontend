@@ -58,6 +58,12 @@ export default function BookPsychologistPage() {
   const [success, setSuccess] = useState(false);
   const [appointmentsUrl, setAppointmentsUrl] = useState("/patient/appointments");
 
+  // Recurring booking
+  const [recurring, setRecurring] = useState(false);
+  const [frequency, setFrequency] = useState<"WEEKLY" | "BIWEEKLY">("WEEKLY");
+  const [totalCount, setTotalCount] = useState<number>(4);
+  const [seriesResult, setSeriesResult] = useState<{ created: number; skipped: number } | null>(null);
+
   useEffect(() => {
     setAppointmentsUrl(`${buildPanelUrl("PATIENT")}/appointments`);
   }, []);
@@ -135,14 +141,28 @@ export default function BookPsychologistPage() {
       setError("Qısa olsa belə problem təsvirini yazın");
       return;
     }
+    if (recurring && !pickedSlot) {
+      setError("Davamlı rezervasiya üçün ilk vaxtı seçməlisiniz");
+      return;
+    }
     setSubmitting(true);
     try {
-      await patientApi.book({
+      const payload = {
         note: note.trim(),
         requestedPsychologistId: psychologist.id,
         requestedStartAt: pickedSlot ? pickedSlot.startAt : null,
         sessionFormat,
-      });
+      };
+      if (recurring && pickedSlot) {
+        const series = await patientApi.createBookingSeries({
+          firstBooking: payload,
+          frequency,
+          totalCount,
+        });
+        setSeriesResult({ created: series.createdAppointments, skipped: series.skippedOccurrences });
+      } else {
+        await patientApi.book(payload);
+      }
       setSuccess(true);
     } catch (err) {
       setError((err as Error).message || "Müraciət göndərilərkən xəta baş verdi");
@@ -160,11 +180,22 @@ export default function BookPsychologistPage() {
               <path d="M20 6L9 17l-5-5" />
             </svg>
           </div>
-          <h1>Müraciətiniz qəbul edildi</h1>
-          <p>
-            Operator komandamız tezliklə müraciətinizə baxıb sizə geri dönəcək.
-            Statusu <strong>Randevularım</strong> bölməsindən izləyə bilərsiniz.
-          </p>
+          <h1>{seriesResult ? "Davamlı seans yaradıldı" : "Müraciətiniz qəbul edildi"}</h1>
+          {seriesResult ? (
+            <p>
+              <strong>{seriesResult.created}</strong> randevu yaradıldı
+              {seriesResult.skipped > 0 && (
+                <> · <strong>{seriesResult.skipped}</strong> həftə məzuniyyətə görə atlandı</>
+              )}.
+              Hər biri ayrı-ayrı operator təsdiqi üçün siyahıya düşüb.
+              Statusu <strong>Randevularım</strong> bölməsindən izləyə bilərsiniz.
+            </p>
+          ) : (
+            <p>
+              Operator komandamız tezliklə müraciətinizə baxıb sizə geri dönəcək.
+              Statusu <strong>Randevularım</strong> bölməsindən izləyə bilərsiniz.
+            </p>
+          )}
           <div className="bk-success-actions">
             <a className="bk-btn bk-btn-primary" href={appointmentsUrl}>Randevularıma keç</a>
             <a className="bk-btn bk-btn-ghost" href="/psychologists">Psixoloqlara qayıt</a>
@@ -194,7 +225,14 @@ export default function BookPsychologistPage() {
               <div className="bk-aside-card">
                 <div className="bk-avatar">
                   {psychologist.photoUrl ? (
-                    <Image src={psychologist.photoUrl} alt={psychologist.name} width={88} height={88} />
+                    <Image
+                      src={psychologist.photoUrl}
+                      alt={psychologist.name}
+                      width={88}
+                      height={88}
+                      unoptimized
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
                   ) : (
                     <span>{initials(psychologist.name)}</span>
                   )}
@@ -338,6 +376,41 @@ export default function BookPsychologistPage() {
                   onChange={(e) => setNote(e.target.value)}
                 />
                 <p className="bk-hint">Məlumatlarınız tam məxfi saxlanılır və yalnız təyin olunan psixoloq və operator görəcək.</p>
+              </section>
+
+              <section className="bk-section bk-recurring">
+                <label className="bk-recurring-toggle">
+                  <input type="checkbox" checked={recurring}
+                    onChange={(e) => setRecurring(e.target.checked)} />
+                  <div>
+                    <strong>Davamlı seans rezerv et</strong>
+                    <small>Eyni saat və günü təkrar bron edirik — hər seansı ayrı götürmək lazım deyil.</small>
+                  </div>
+                </label>
+                {recurring && (
+                  <div className="bk-recurring-opts">
+                    <label>
+                      <span>Tezlik</span>
+                      <select value={frequency} onChange={(e) => setFrequency(e.target.value as "WEEKLY"|"BIWEEKLY")}>
+                        <option value="WEEKLY">Hər həftə</option>
+                        <option value="BIWEEKLY">Hər 2 həftə</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Cəmi seans (1-ci daxil)</span>
+                      <input
+                        type="number" min={2} max={12}
+                        value={totalCount}
+                        onChange={(e) => setTotalCount(Math.max(2, Math.min(12, Number(e.target.value) || 4)))}
+                      />
+                    </label>
+                    <p className="bk-recurring-hint">
+                      İlk seans <strong>{pickedSlot ? `${dayLabel(pickedSlot.startAt)}, ${fmtTime(pickedSlot.startAt)}` : "seçilməyib"}</strong>,
+                      sonra {frequency === "WEEKLY" ? "hər həftə" : "hər 2 həftə"} eyni saatda təkrar olunacaq.
+                      Psixoloq məzuniyyətdə olan həftələr avtomatik atlanacaq.
+                    </p>
+                  </div>
+                )}
               </section>
 
               {error && <div className="bk-error">{error}</div>}

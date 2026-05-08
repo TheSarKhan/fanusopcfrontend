@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getStoredUser, buildPanelUrl } from "@/lib/auth";
+import { getStoredUser } from "@/lib/auth";
 import AuthRequiredModal from "@/components/AuthRequiredModal";
-import { patientApi } from "@/lib/api";
 
 export default function BookingCta({
   psychologistId,
@@ -19,23 +18,12 @@ export default function BookingCta({
 }) {
   const router = useRouter();
   const [authOpen, setAuthOpen] = useState(false);
-  const [starting, setStarting] = useState(false);
   const target = `/book/${psychologistSlug ?? psychologistId}`;
 
   const onClick = () => {
     const user = getStoredUser();
     if (!user || user.role !== "PATIENT") { setAuthOpen(true); return; }
     router.push(target);
-  };
-
-  const onMessage = async () => {
-    const user = getStoredUser();
-    if (!user || user.role !== "PATIENT") { setAuthOpen(true); return; }
-    setStarting(true);
-    try {
-      await patientApi.chatStart(psychologistId);
-      window.location.href = `${buildPanelUrl("PATIENT")}/chat`;
-    } catch { setStarting(false); }
   };
 
   return (
@@ -53,14 +41,6 @@ export default function BookingCta({
                viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
-        </button>
-        <button
-          onClick={onMessage}
-          disabled={starting}
-          style={{ background: "#fff", color: accentColor, border: `1.5px solid ${accentColor}`, padding: "10px 20px", borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: starting ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 6 }}
-          aria-label={`${name} ilə mesaj göndər`}
-        >
-          💬 {starting ? "Açılır…" : "Mesaj göndər"}
         </button>
       </div>
     </>

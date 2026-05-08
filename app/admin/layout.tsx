@@ -12,6 +12,7 @@ const NAV: PanelNavItem[] = [
   { href: "/admin/psychologists",  label: "Psixoloqlar",   icon: "user" },
   { href: "/admin/blog",           label: "Məqalələr",     icon: "content" },
   { href: "/admin/reviews",        label: "Rəylər",        icon: "megaphone" },
+  { href: "/admin/audit-logs",     label: "Audit log",     icon: "clipboard" },
 ];
 
 function AdminShell({ children }: { children: React.ReactNode }) {

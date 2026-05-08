@@ -31,6 +31,7 @@ export type IconName =
   | "chart"
   | "megaphone"
   | "content"
+  | "clipboard"
   | "lock"
   | "heart"
   | "x"
@@ -121,6 +122,8 @@ export default function PanelIcon({
       return <svg {...props}><path d="M3 11l18-5v12L3 13v-2zM11 5L11 11M11 13l0 7M3 11s-2 1-2 4 2 4 2 4" /></svg>;
     case "content":
       return <svg {...props}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>;
+    case "clipboard":
+      return <svg {...props}><rect x="6" y="4" width="12" height="18" rx="2" /><rect x="9" y="2" width="6" height="4" rx="1" /><line x1="9" y1="11" x2="15" y2="11" /><line x1="9" y1="15" x2="13" y2="15" /></svg>;
     case "lock":
       return <svg {...props}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>;
     case "heart":

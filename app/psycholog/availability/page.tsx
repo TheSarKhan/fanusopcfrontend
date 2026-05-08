@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { psychologistApi, type TimeSlot, type TimeSlotOverride } from "@/lib/api";
+import { psychologistApi, type TimeSlot, type TimeSlotOverride, type Vacation } from "@/lib/api";
 
 const WEEKDAYS_AZ = [
   { iso: 1, label: "Bazar ertəsi" },
@@ -46,6 +46,14 @@ export default function PsychologistAvailabilityPage() {
   const [oNote, setONote] = useState("");
   const [savingOverride, setSavingOverride] = useState(false);
 
+  // Vacations
+  const [vacations, setVacations] = useState<Vacation[]>([]);
+  const [vStart, setVStart] = useState("");
+  const [vEnd, setVEnd] = useState("");
+  const [vReason, setVReason] = useState("");
+  const [vNotify, setVNotify] = useState(true);
+  const [vSaving, setVSaving] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
@@ -54,11 +62,38 @@ export default function PsychologistAvailabilityPage() {
       psychologistApi.listSlots().catch(() => []),
       psychologistApi.listOverrides().catch(() => []),
       psychologistApi.me().catch(() => null),
-    ]).then(([s, o, me]) => {
-      setSlots(s); setOverrides(o);
+      psychologistApi.listVacations().catch(() => [] as Vacation[]),
+    ]).then(([s, o, me, v]) => {
+      setSlots(s); setOverrides(o); setVacations(v);
       const m = me?.defaultSessionMinutes && me.defaultSessionMinutes > 0 ? me.defaultSessionMinutes : 50;
       setSessionMinutes(m); setSavedMinutes(m);
     }).finally(() => setLoading(false));
+  };
+
+  const addVacation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!vStart || !vEnd) { setError("Tarixləri seçin"); return; }
+    if (vEnd < vStart) { setError("Bitiş tarixi başlanğıcdan sonra olmalıdır"); return; }
+    setVSaving(true);
+    try {
+      const created = await psychologistApi.createVacation({
+        startDate: vStart, endDate: vEnd,
+        reason: vReason.trim() || undefined,
+        notifyPatients: vNotify,
+      });
+      setVacations(prev => [...prev, created].sort((a, b) => a.startDate.localeCompare(b.startDate)));
+      setVStart(""); setVEnd(""); setVReason(""); setVNotify(true);
+    } catch (err) { setError((err as Error).message); }
+    finally { setVSaving(false); }
+  };
+
+  const cancelVacation = async (id: number) => {
+    if (!confirm("Məzuniyyəti ləğv edirsiniz?")) return;
+    try {
+      await psychologistApi.cancelVacation(id);
+      setVacations(prev => prev.filter(v => v.id !== id));
+    } catch (e) { alert((e as Error).message); }
   };
 
   useEffect(load, []);
@@ -315,6 +350,73 @@ export default function PsychologistAvailabilityPage() {
                     <button onClick={() => deleteOverride(o.id)} style={{ fontSize: 11, color: "#991B1B", background: "transparent", border: "1px solid #FECACA", padding: "4px 10px", borderRadius: 6, cursor: "pointer" }}>
                       Sil
                     </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ─── Məzuniyyət (out-of-office) ──────────────────────────────── */}
+          <section className="vac-card">
+            <div className="vac-head">
+              <div>
+                <h2 className="vac-title">🌴 Məzuniyyət</h2>
+                <p className="vac-sub">Məzuniyyət dövründə yeni rezervasiya bağlanır, mövcud randevular operator komandasına ötürülür.</p>
+              </div>
+            </div>
+
+            <form onSubmit={addVacation} className="vac-form">
+              <div className="vac-row">
+                <label>
+                  <span>Başlanğıc</span>
+                  <input type="date" value={vStart} onChange={e => setVStart(e.target.value)} required />
+                </label>
+                <label>
+                  <span>Bitiş</span>
+                  <input type="date" value={vEnd} onChange={e => setVEnd(e.target.value)} required />
+                </label>
+              </div>
+              <label className="vac-reason">
+                <span>Səbəb (məcburi deyil)</span>
+                <input
+                  type="text" value={vReason} onChange={e => setVReason(e.target.value)}
+                  placeholder="Məs. illik məzuniyyət, konfrans, sağlamlıq…" maxLength={255} />
+              </label>
+              <label className="vac-notify">
+                <input
+                  type="checkbox" checked={vNotify}
+                  onChange={e => setVNotify(e.target.checked)} />
+                <span>Təsirlənən pasientlərə bildiriş göndər</span>
+              </label>
+              <button type="submit" disabled={vSaving} className="vac-add-btn">
+                {vSaving ? "Əlavə olunur…" : "+ Məzuniyyət əlavə et"}
+              </button>
+            </form>
+
+            {vacations.length === 0 ? (
+              <div className="vac-empty">Aktiv məzuniyyət yoxdur.</div>
+            ) : (
+              <div className="vac-list">
+                {vacations.map(v => (
+                  <div key={v.id} className="vac-item">
+                    <div className="vac-item-icon">🌴</div>
+                    <div className="vac-item-main">
+                      <div className="vac-item-dates">
+                        <strong>{v.startDate}</strong> → <strong>{v.endDate}</strong>
+                      </div>
+                      {v.reason && <div className="vac-item-reason">{v.reason}</div>}
+                      <div className="vac-item-meta">
+                        {v.affectedAppointments > 0 ? (
+                          <span className="vac-badge vac-badge--warn">
+                            ⚠ {v.affectedAppointments} randevu təsirlənib — operator yenidən planlaşdıracaq
+                          </span>
+                        ) : (
+                          <span className="vac-badge vac-badge--good">randevu münaqişəsi yoxdur</span>
+                        )}
+                        {v.notifyPatients && <span className="vac-badge vac-badge--mute">pasientlərə bildiriş göndərilib</span>}
+                      </div>
+                    </div>
+                    <button onClick={() => cancelVacation(v.id)} className="vac-cancel">Ləğv et</button>
                   </div>
                 ))}
               </div>

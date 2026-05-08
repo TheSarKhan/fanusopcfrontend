@@ -7,12 +7,8 @@ import { getStoredUser } from "@/lib/auth";
 const NAV: PanelNavItem[] = [
   { href: "/patient",              label: "Ümumi baxış",  icon: "home" },
   { href: "/patient/appointments", label: "Randevularım", icon: "calendar" },
-  { href: "/patient/chat",         label: "Mesajlar",     icon: "chat" },
   { href: "/patient/homework",     label: "Tapşırıqlar",  icon: "check" },
-  { href: "/patient/library",      label: "Resurslar",    icon: "book" },
-  { href: "/patient/journal",      label: "Jurnal & Mood", icon: "journal" },
   { href: "/patient/favorites",    label: "Favoritlərim", icon: "heart" },
-  { href: "/patient/reviews",      label: "Rəylərim",     icon: "edit" },
   { href: "/patient/profile",      label: "Profilim",     icon: "user" },
 ];
 

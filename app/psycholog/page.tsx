@@ -6,7 +6,6 @@ import {
   psychologistApi,
   type PsychologistStats,
   type AppointmentDetail,
-  type ChatThread,
   type Homework,
 } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
@@ -62,7 +61,6 @@ export default function PsychologDashboard() {
   const user = getStoredUser();
   const [stats, setStats] = useState<PsychologistStats | null>(null);
   const [appointments, setAppointments] = useState<AppointmentDetail[]>([]);
-  const [threads, setThreads] = useState<ChatThread[]>([]);
   const [homework, setHomework] = useState<Homework[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -71,14 +69,12 @@ export default function PsychologDashboard() {
     Promise.allSettled([
       psychologistApi.stats(),
       psychologistApi.myAppointments(),
-      psychologistApi.chatThreads(),
       psychologistApi.homework(),
     ]).then((results) => {
       if (!active) return;
       if (results[0].status === "fulfilled") setStats(results[0].value);
       if (results[1].status === "fulfilled") setAppointments(results[1].value);
-      if (results[2].status === "fulfilled") setThreads(results[2].value);
-      if (results[3].status === "fulfilled") setHomework(results[3].value);
+      if (results[2].status === "fulfilled") setHomework(results[2].value);
       setLoading(false);
     });
     return () => { active = false; };
@@ -105,10 +101,6 @@ export default function PsychologDashboard() {
   const pendingRequests = useMemo(
     () => appointments.filter(a => a.status === "ASSIGNED" || a.status === "PENDING").length,
     [appointments]
-  );
-  const totalUnread = useMemo(
-    () => threads.reduce((sum, t) => sum + (t.unreadCount || 0), 0),
-    [threads]
   );
   const pendingHomework = useMemo(
     () => homework.filter(h => h.status === "PENDING").length,
@@ -250,14 +242,6 @@ export default function PsychologDashboard() {
                     bg="#DBEAFE"
                   />
                   <ActionRow
-                    icon="💬"
-                    title="Oxunmamış mesaj"
-                    count={totalUnread}
-                    href="/psycholog/chat"
-                    accent="var(--brand)"
-                    bg="#EDE9FE"
-                  />
-                  <ActionRow
                     icon="🎯"
                     title="Açıq tapşırıq"
                     count={pendingHomework}
@@ -292,9 +276,7 @@ export default function PsychologDashboard() {
             </h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
               <QuickAction href="/psycholog/clients"   icon="👥" label="Müştərilər"   tone="violet" />
-              <QuickAction href="/psycholog/chat"      icon="💬" label="Mesajlar"     tone="blue"   badge={totalUnread} />
               <QuickAction href="/psycholog/homework"  icon="🎯" label="Tapşırıqlar"  tone="amber"  badge={pendingHomework} />
-              <QuickAction href="/psycholog/resources" icon="📚" label="Resurslar"    tone="emerald" />
             </div>
           </div>
         </>

@@ -9,9 +9,7 @@ const NAV: PanelNavItem[] = [
   { href: "/psycholog/calendar",     label: "Təqvim",      icon: "calendar" },
   { href: "/psycholog/appointments", label: "Randevular",  icon: "video" },
   { href: "/psycholog/clients",      label: "Müştərilər",  icon: "users" },
-  { href: "/psycholog/chat",         label: "Mesajlar",    icon: "chat" },
   { href: "/psycholog/homework",     label: "Tapşırıqlar", icon: "check" },
-  { href: "/psycholog/resources",    label: "Resurslar",   icon: "book" },
   { href: "/psycholog/availability", label: "Açıq vaxtlar", icon: "clock" },
   { href: "/psycholog/reviews",      label: "Rəylər",      icon: "star" },
 ];

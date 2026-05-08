@@ -6,9 +6,15 @@ import {
   patientApi,
   type AppointmentDetail,
   type MyReview,
+  type RescheduleProposal,
+  type SessionFeedback,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import ReviewModal from "./ReviewModal";
+import CancelModal from "@/components/CancelModal";
+import RescheduleProposalModal from "@/components/RescheduleProposalModal";
+import AddToCalendarMenu from "@/components/AddToCalendarMenu";
+import SessionFeedbackModal from "@/components/SessionFeedbackModal";
 
 const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"];
 const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
@@ -73,6 +79,12 @@ export default function PatientAppointmentsPage() {
   const [reschedFor, setReschedFor] = useState<AppointmentDetail | null>(null);
   const [reviewFor, setReviewFor] = useState<AppointmentDetail | null>(null);
   const [disputeFor, setDisputeFor] = useState<AppointmentDetail | null>(null);
+  const [cancelFor, setCancelFor] = useState<AppointmentDetail | null>(null);
+  const [proposals, setProposals] = useState<RescheduleProposal[]>([]);
+  const [proposalFor, setProposalFor] = useState<RescheduleProposal | null>(null);
+  const [feedbackFor, setFeedbackFor] = useState<AppointmentDetail | null>(null);
+  const [existingFeedback, setExistingFeedback] = useState<SessionFeedback | null>(null);
+  const [feedbackGiven, setFeedbackGiven] = useState<Set<number>>(new Set());
 
   // Tick every minute for countdown
   useEffect(() => {
@@ -85,10 +97,12 @@ export default function PatientAppointmentsPage() {
     Promise.all([
       patientApi.myAppointments(),
       patientApi.myReviews().catch(() => [] as MyReview[]),
+      patientApi.pendingRescheduleProposals().catch(() => [] as RescheduleProposal[]),
     ])
-      .then(([appts, revs]) => {
+      .then(([appts, revs, props]) => {
         setItems(appts);
         setMyReviews(revs);
+        setProposals(props);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -162,10 +176,7 @@ export default function PatientAppointmentsPage() {
     }
   };
 
-  const cancel = (a: AppointmentDetail) => {
-    if (!confirm("Randevunu ləğv etmək istədiyinizə əminsiniz?")) return;
-    action(a.id, () => patientApi.cancel(a.id));
-  };
+  const cancel = (a: AppointmentDetail) => setCancelFor(a);
 
   const sessionCountFor = (psyId?: number | null) => {
     if (!psyId) return null;
@@ -178,6 +189,15 @@ export default function PatientAppointmentsPage() {
 
   const reviewedFor = (psyId?: number | null) =>
     psyId ? myReviews.find(r => r.psychologistId === psyId) ?? null : null;
+
+  const openFeedback = async (a: AppointmentDetail) => {
+    setExistingFeedback(null); setFeedbackFor(a);
+    try {
+      const fb = await patientApi.getSessionFeedback(a.id);
+      setExistingFeedback(fb);
+      if (fb) setFeedbackGiven(prev => new Set(prev).add(a.id));
+    } catch { /* opening modal fresh — backend may have returned 200 with null */ }
+  };
 
   return (
     <div className="psy-appt-page">
@@ -198,6 +218,26 @@ export default function PatientAppointmentsPage() {
           + Yeni randevu
         </Link>
       </header>
+
+      {proposals.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {proposals.map(p => (
+            <div key={p.id} className="rsc-banner">
+              <div className="rsc-banner-icon">📅</div>
+              <div className="rsc-banner-main">
+                <div className="rsc-banner-title">Saat təklifi gözləyir</div>
+                <p className="rsc-banner-text">
+                  {p.psychologistName ?? "Psixoloqunuz"} {p.options.length} alternativ saat təklif edir.
+                  Birini seçin və ya hamısını rədd edin.
+                </p>
+              </div>
+              <button className="rsc-banner-action" onClick={() => setProposalFor(p)}>
+                Bax və seç
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>
@@ -295,7 +335,9 @@ export default function PatientAppointmentsPage() {
                     key={a.id}
                     a={a}
                     review={reviewedFor(a.psychologistId)}
+                    feedbackGiven={feedbackGiven.has(a.id)}
                     onWriteReview={() => setReviewFor(a)}
+                    onFeedback={() => openFeedback(a)}
                   />
                 ))}
                 {history.length > 30 && (
@@ -335,6 +377,36 @@ export default function PatientAppointmentsPage() {
           onDone={(updated) => {
             setItems(prev => prev.map(x => x.id === updated.id ? updated : x));
             setDisputeFor(null);
+          }}
+        />
+      )}
+      {cancelFor && (
+        <CancelModal
+          appointment={cancelFor}
+          role="PATIENT"
+          onClose={() => setCancelFor(null)}
+          onDone={(updated) => {
+            setItems(prev => prev.map(x => x.id === updated.id ? updated : x));
+            setCancelFor(null);
+          }}
+        />
+      )}
+      {proposalFor && (
+        <RescheduleProposalModal
+          proposal={proposalFor}
+          onClose={() => setProposalFor(null)}
+          onResolved={() => { setProposalFor(null); load(); }}
+        />
+      )}
+      {feedbackFor && (
+        <SessionFeedbackModal
+          appointment={feedbackFor}
+          existing={existingFeedback}
+          onClose={() => { setFeedbackFor(null); setExistingFeedback(null); }}
+          onSubmitted={(fb) => {
+            setFeedbackGiven(prev => new Set(prev).add(feedbackFor.id));
+            setExistingFeedback(fb);
+            setFeedbackFor(null);
           }}
         />
       )}
@@ -428,6 +500,7 @@ function NextSessionHero({
         )}
         {!tu.expired && (
           <>
+            <AddToCalendarMenu appointment={appt} variant="compact" />
             <button
               onClick={() => onReschedule(appt)}
               className="psy-hero__btn psy-hero__btn--ghost">
@@ -678,17 +751,20 @@ function WeekRow({
 /* ─── History row ────────────────────────────────────────────────────────── */
 
 function HistoryRow({
-  a, review, onWriteReview,
+  a, review, feedbackGiven, onWriteReview, onFeedback,
 }: {
   a: AppointmentDetail;
   review: MyReview | null;
+  feedbackGiven: boolean;
   onWriteReview: () => void;
+  onFeedback: () => void;
 }) {
   const ref = a.startAt ?? a.endAt;
   if (!ref) return null;
   const d = new Date(ref);
   const status = STATUS[a.status] ?? STATUS.COMPLETED;
   const canReview = a.status === "COMPLETED" && a.psychologistId && !review;
+  const canFeedback = a.status === "COMPLETED" || a.status === "AWAITING_CONFIRMATION";
   const reviewLabel = review
     ? review.status === "PENDING" ? "Rəy gözləyir" : review.status === "APPROVED" ? "Rəyim ✓" : "Rəyim"
     : null;
@@ -699,6 +775,15 @@ function HistoryRow({
       <span className="psy-hist-row__badge" style={{ color: status.color, background: status.bg }}>
         {status.label}
       </span>
+      {canFeedback && (
+        feedbackGiven ? (
+          <span className="sf-given">⭐ rəy verildi</span>
+        ) : (
+          <button onClick={onFeedback} className="sf-cta" type="button">
+            Necə keçdi?
+          </button>
+        )
+      )}
       {canReview ? (
         <button
           onClick={onWriteReview}
@@ -706,10 +791,9 @@ function HistoryRow({
           Rəy yaz
         </button>
       ) : reviewLabel ? (
-        <Link href="/patient/reviews"
-          style={{ fontSize: 11.5, color: "var(--oxford-60)", textDecoration: "none", fontWeight: 500 }}>
+        <span style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 500 }}>
           {reviewLabel}
-        </Link>
+        </span>
       ) : <span />}
     </div>
   );

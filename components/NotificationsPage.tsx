@@ -17,9 +17,7 @@ const TYPE_ICON: Record<string, string> = {
   APPOINTMENT_DISPUTE_RESOLVED:       "🤝",
   REVIEW_PENDING:                     "⭐",
   REVIEW_APPROVED:                    "⭐",
-  CHAT_MESSAGE:                       "💬",
   HOMEWORK_ASSIGNED:                  "🎯",
-  RESOURCE_SHARED:                    "📚",
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -34,9 +32,7 @@ const TYPE_LABEL: Record<string, string> = {
   APPOINTMENT_DISPUTE_RESOLVED:       "Mübahisə həll",
   REVIEW_PENDING:                     "Rəy",
   REVIEW_APPROVED:                    "Rəy",
-  CHAT_MESSAGE:                       "Mesaj",
   HOMEWORK_ASSIGNED:                  "Tapşırıq",
-  RESOURCE_SHARED:                    "Resurs",
 };
 
 function timeAgo(iso: string, now: Date = new Date()): string {

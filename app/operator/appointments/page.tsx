@@ -12,6 +12,7 @@ import {
   type PsychologistSuggestion,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
+import CancelModal from "@/components/CancelModal";
 
 type Tab = "PENDING" | "ASSIGNED" | "CONFIRMED" | "DISPUTED" | "COMPLETED" | "CANCELLED";
 
@@ -60,6 +61,7 @@ export default function OperatorAppointmentsPage() {
   }, [searchParams]);
   const [assignFor, setAssignFor] = useState<AppointmentDetail | null>(null);
   const [resolveFor, setResolveFor] = useState<AppointmentDetail | null>(null);
+  const [cancelFor, setCancelFor] = useState<AppointmentDetail | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -110,15 +112,7 @@ export default function OperatorAppointmentsPage() {
     setAssignFor(null);
   };
 
-  const onCancel = async (id: number) => {
-    const note = prompt("Ləğv səbəbini qeyd edin (məcburi deyil):") ?? undefined;
-    try {
-      const updated = await operatorApi.cancel(id, note);
-      setItems(prev => prev.map(a => a.id === id ? updated : a));
-    } catch (e) {
-      alert((e as Error).message);
-    }
-  };
+  const onCancel = (a: AppointmentDetail) => setCancelFor(a);
 
   const toggleSelected = (id: number) => {
     setSelected(prev => {
@@ -211,7 +205,7 @@ export default function OperatorAppointmentsPage() {
               selected={selected.has(a.id)}
               onToggleSelect={() => toggleSelected(a.id)}
               onAssign={() => setAssignFor(a)}
-              onCancel={() => onCancel(a.id)}
+              onCancel={() => onCancel(a)}
               onResolve={() => setResolveFor(a)} />
           ))}
         </div>
@@ -240,6 +234,18 @@ export default function OperatorAppointmentsPage() {
           onDone={(updated) => {
             setItems(prev => prev.map(a => a.id === updated.id ? updated : a));
             setResolveFor(null);
+          }}
+        />
+      )}
+
+      {cancelFor && (
+        <CancelModal
+          appointment={cancelFor}
+          role="OPERATOR"
+          onClose={() => setCancelFor(null)}
+          onDone={(updated) => {
+            setItems(prev => prev.map(a => a.id === updated.id ? updated : a));
+            setCancelFor(null);
           }}
         />
       )}
@@ -868,6 +874,7 @@ function ResolveDisputeModal({
   onDone: (updated: AppointmentDetail) => void;
 }) {
   const [decision, setDecision] = useState<"COMPLETE" | "CANCEL">("COMPLETE");
+  const [blameSide, setBlameSide] = useState<"PATIENT" | "PSYCHOLOGIST" | "NONE">("NONE");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -876,7 +883,8 @@ function ResolveDisputeModal({
     setErr(null);
     setSaving(true);
     try {
-      const updated = await operatorApi.resolveDispute(appointment.id, decision, note.trim() || undefined);
+      const blame = decision === "CANCEL" && blameSide !== "NONE" ? blameSide : undefined;
+      const updated = await operatorApi.resolveDispute(appointment.id, decision, note.trim() || undefined, blame);
       onDone(updated);
     } catch (e) {
       setErr((e as Error).message);
@@ -932,6 +940,33 @@ function ResolveDisputeModal({
               <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>Seans baş tutmadı, hesablamadan kənar</div>
             </button>
           </div>
+
+          {decision === "CANCEL" && (
+            <>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
+                Kim "no-show" sayğacına işlənsin?
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 14 }}>
+                {[
+                  { v: "NONE",          label: "Heç kim",   sub: "Texniki / mübahisəli" },
+                  { v: "PATIENT",       label: "Pasient",   sub: "Pasient gəlmədi" },
+                  { v: "PSYCHOLOGIST",  label: "Psixoloq",  sub: "Psixoloq gəlmədi" },
+                ].map(o => (
+                  <button key={o.v} type="button" onClick={() => setBlameSide(o.v as typeof blameSide)}
+                    style={{
+                      padding: 10, borderRadius: 10, fontSize: 12.5, fontWeight: 600,
+                      border: blameSide === o.v ? "2px solid var(--brand)" : "1px solid #E5E7EB",
+                      background: blameSide === o.v ? "var(--brand-50)" : "#fff",
+                      color: blameSide === o.v ? "var(--brand-700)" : "#1A2535",
+                      cursor: "pointer", textAlign: "left",
+                    }}>
+                    <div style={{ fontWeight: 700 }}>{o.label}</div>
+                    <div style={{ fontSize: 10.5, opacity: 0.85, marginTop: 2 }}>{o.sub}</div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
             Operator qeydi (məcburi deyil)

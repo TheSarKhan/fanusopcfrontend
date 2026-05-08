@@ -7,6 +7,7 @@ import { getStoredUser } from "@/lib/auth";
 const NAV: PanelNavItem[] = [
   { href: "/operator",              label: "Ümumi baxış", icon: "home" },
   { href: "/operator/appointments", label: "Randevular",  icon: "calendar" },
+  { href: "/operator/feedback",     label: "Seans rəyləri", icon: "star" },
   { href: "/operator/analytics",    label: "Analytics",   icon: "chart" },
 ];
 

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { notificationsApi, type NotificationItem } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
@@ -17,11 +19,18 @@ function timeAgo(iso: string): string {
 }
 
 export default function NotificationBell() {
+  const pathname = usePathname();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Derive role-aware "all notifications" path from current panel location
+  const allHref = (() => {
+    const m = pathname?.match(/^\/(patient|psycholog|operator|admin)(?:\/|$)/);
+    return m ? `/${m[1]}/notifications` : "/notifications";
+  })();
 
   const refreshCount = async () => {
     try {
@@ -164,7 +173,7 @@ export default function NotificationBell() {
                 Hələ bildiriş yoxdur.
               </div>
             ) : (
-              items.map(n => (
+              items.slice(0, 8).map(n => (
                 <button
                   key={n.id}
                   onClick={() => onItemClick(n)}
@@ -193,6 +202,19 @@ export default function NotificationBell() {
               ))
             )}
           </div>
+
+          <Link
+            href={allHref}
+            onClick={() => setOpen(false)}
+            style={{
+              display: "block", padding: "10px 16px", textAlign: "center",
+              fontSize: 12.5, fontWeight: 600, color: "var(--brand)",
+              textDecoration: "none", borderTop: "1px solid #EFF2F7",
+              background: "var(--brand-50)",
+            }}
+          >
+            Bütün bildirişləri gör →
+          </Link>
         </div>
       )}
     </div>

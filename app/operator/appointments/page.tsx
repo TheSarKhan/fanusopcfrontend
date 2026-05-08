@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   operatorApi,
   type AppointmentDetail,
@@ -46,10 +47,17 @@ function toDateTimeLocal(iso: string) {
 }
 
 export default function OperatorAppointmentsPage() {
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("PENDING");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
+
+  // React to topbar search updates
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q !== null) setSearch(q);
+  }, [searchParams]);
   const [assignFor, setAssignFor] = useState<AppointmentDetail | null>(null);
   const [resolveFor, setResolveFor] = useState<AppointmentDetail | null>(null);
   const [selectMode, setSelectMode] = useState(false);

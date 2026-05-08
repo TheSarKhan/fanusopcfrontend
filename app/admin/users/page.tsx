@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { adminApi, type UserRecord, type Psychologist, type PagedUsersResponse, type PsychologistApplication } from "@/lib/api";
 import { IconSearch, IconChevron, IconUser, IconUsers, IconSettings, IconClock, IconEye, IconCheck, IconX, IconAlert, IconDownload } from "../_components/icons";
 
@@ -87,9 +88,16 @@ export default function UsersPage() {
   const [loading, setLoading]   = useState(true);
   
   // Params
+  const searchParams = useSearchParams();
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
-  const [search, setSearch]     = useState("");
+  const [search, setSearch]     = useState(() => searchParams.get("q") ?? "");
   const debouncedSearch = useDebounce(search, 300);
+
+  // React to topbar search updates
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q !== null) setSearch(q);
+  }, [searchParams]);
   const [page, setPage]         = useState(0);
   const [size, setSize]         = useState(20);
   const [sort, setSort]         = useState("createdAt");

@@ -980,6 +980,7 @@ export interface MeProfile {
   firstName?: string | null;
   lastName?: string | null;
   phone?: string | null;
+  photoUrl?: string | null;
   emailVerified: boolean;
   lastLogin?: string | null;
   createdAt: string;
@@ -991,6 +992,21 @@ export const meApi = {
     authedRequest<MeProfile>("PUT", "/me", data),
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
     authedRequest<void>("POST", "/me/password", data),
+  uploadPhoto: async (file: File): Promise<{ url: string }> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`${BASE}/me/photo`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` },
+      body: fd,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(text || `Upload uğursuz oldu (${res.status})`);
+    }
+    return res.json();
+  },
+  deletePhoto: () => authedRequest<void>("DELETE", "/me/photo"),
 };
 
 // ─── Psychologist API ─────────────────────────────────────────────────────────

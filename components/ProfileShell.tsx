@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { meApi, type MeProfile } from "@/lib/api";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -74,7 +75,7 @@ export default function ProfileShell({ extras, title = "Profil", subtitle }: Pro
 
       {/* Identity card */}
       <div className="uprof-card uprof-card--identity">
-        <div className="uprof-avatar">{initialsOf(me)}</div>
+        <AvatarUploader me={me} onChanged={setMe} />
         <div className="uprof-identity-info">
           <div className="uprof-identity-name">
             {(me.firstName || me.lastName) ? `${me.firstName ?? ""} ${me.lastName ?? ""}`.trim() : "—"}
@@ -100,6 +101,104 @@ export default function ProfileShell({ extras, title = "Profil", subtitle }: Pro
 
       {/* Role-specific extras */}
       {extras}
+    </div>
+  );
+}
+
+function AvatarUploader({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfile) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const onSelectFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setErr(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErr("Yalnız şəkil faylı seçə bilərsiniz");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setErr("Şəkil ölçüsü 5MB-dan böyük ola bilməz");
+      return;
+    }
+    setUploading(true);
+    try {
+      const { url } = await meApi.uploadPhoto(file);
+      onChanged({ ...me, photoUrl: url });
+    } catch (e) {
+      setErr((e as Error).message || "Yükləmə uğursuz oldu");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  const onRemove = async () => {
+    if (!confirm("Profil şəklini silmək istəyirsiniz?")) return;
+    setErr(null);
+    setRemoving(true);
+    try {
+      await meApi.deletePhoto();
+      onChanged({ ...me, photoUrl: null });
+    } catch (e) {
+      setErr((e as Error).message || "Silmə uğursuz oldu");
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  return (
+    <div className="uprof-avatar-wrap">
+      <button
+        type="button"
+        className="uprof-avatar uprof-avatar--clickable"
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        aria-label="Profil şəklini dəyişdir"
+        title={uploading ? "Yüklənir…" : "Şəkli dəyişdir"}
+      >
+        {me.photoUrl ? (
+          <Image
+            src={me.photoUrl}
+            alt={me.firstName ?? me.email}
+            width={64}
+            height={64}
+            unoptimized
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <span>{initialsOf(me)}</span>
+        )}
+        {!uploading && (
+          <span className="uprof-avatar-edit" aria-hidden>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 21h18" />
+              <path d="M12 17l-4 1 1-4 9-9 3 3-9 9z" />
+            </svg>
+          </span>
+        )}
+        {uploading && <span className="uprof-avatar-spin" aria-hidden>⟳</span>}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        onChange={onSelectFile}
+        style={{ display: "none" }}
+      />
+      {me.photoUrl && (
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={removing}
+          className="uprof-avatar-remove"
+        >
+          {removing ? "..." : "Sil"}
+        </button>
+      )}
+      {err && <div className="uprof-avatar-err">{err}</div>}
     </div>
   );
 }

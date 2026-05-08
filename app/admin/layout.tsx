@@ -47,7 +47,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       homeHref="/admin"
       navItems={navWithBadges}
       user={me}
-      searchPlaceholder="İstifadəçi, məqalə, randevu axtar..."
+      searchPlaceholder="İstifadəçi axtar..."
+      searchHref="/admin/users"
     >
       {/* Wrap admin pages in .admin-shell so existing admin.css selectors apply. */}
       <div className="admin-shell">{children}</div>

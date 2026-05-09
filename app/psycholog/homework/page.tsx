@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { psychologistApi, type ClientSummary, type Homework } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function PsychologHomeworkPage() {
+  const { t } = useT();
   const [items, setItems] = useState<Homework[]>([]);
   const [clients, setClients] = useState<ClientSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,12 +54,12 @@ export default function PsychologHomeworkPage() {
     <div>
       <div className="psy-page-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535" }}>Tapşırıqlar</h1>
-          <p style={{ fontSize: 13, color: "#52718F", marginTop: 4 }}>Müştərilərə homework təyin edin və izləyin</p>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535" }}>{t("staff.psyHomeworkTitle")}</h1>
+          <p style={{ fontSize: 13, color: "#52718F", marginTop: 4 }}>{t("staff.psyHomeworkSub")}</p>
         </div>
         <button onClick={() => setShowForm(true)}
           style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "var(--brand)", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
-          + Yeni tapşırıq
+          {t("staff.psyHomeworkNew")}
         </button>
       </div>
 

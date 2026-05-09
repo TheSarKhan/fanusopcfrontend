@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import Deco from "@/components/Deco";
 import type { BlogPost } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 type Cat = "all" | "anxiety" | "relations" | "selfcare" | "sleep" | "youth" | "mindful";
 type Illu = "sun" | "people" | "flame" | "moon" | "waves" | "compass";
@@ -124,6 +125,7 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
 }
 
 function ArtHero({ search, setSearch }: { search: string; setSearch: (v: string) => void }) {
+  const { t } = useT();
   return (
     <section className="ap-hero">
       <Deco type="wave-top" style={{ top: -20, left: "-4%", width: 520, opacity: .55 }} anim="drift" />
@@ -143,25 +145,20 @@ function ArtHero({ search, setSearch }: { search: string; setSearch: (v: string)
 
       <div className="fanus-container ap-hero__inner">
         <div className="ap-hero__copy">
-          <div className="fanus-eyebrow"><span className="dash" /> Məqalələr</div>
-          <h1>
-            Oxuyun, düşünün,<br />
-            <span className="fanus-serif-accent">addım atın</span>
-          </h1>
-          <p className="ap-hero__lead">
-            Psixoloqlarımızın qələmindən — gündəlik həyatınızda istifadə edə biləcəyiniz baxış və alətlər.
-          </p>
+          <div className="fanus-eyebrow"><span className="dash" /> {t("articles.eyebrow")}</div>
+          <h1>{t("articles.title")}</h1>
+          <p className="ap-hero__lead">{t("articles.lead")}</p>
 
           <div className="ap-search">
             <SparkleIcon />
             <input
               type="text"
-              placeholder="Mövzu axtar — narahatlıq, yuxu, sərhəd..."
+              placeholder={t("common.search")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
             {search && (
-              <button className="ap-search__clear" onClick={() => setSearch("")} aria-label="Təmizlə">
+              <button className="ap-search__clear" onClick={() => setSearch("")} aria-label={t("common.close")}>
                 <CloseIcon />
               </button>
             )}

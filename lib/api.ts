@@ -7,10 +7,24 @@ if (!API_URL.endsWith("/api")) API_URL += "/api";
 
 const BASE = API_URL;
 
+/** Read the user's chosen UI locale from the cookie set by LocaleProvider.
+ *  Returns the BCP-47 tag the backend can match against (`az`, `ru`, `en`). */
+function readLocaleCookie(): string {
+  if (typeof document === "undefined") return "az";
+  const m = document.cookie.match(/(?:^|;\s*)fanus-locale=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : "az";
+}
+
+/** Backend reads Accept-Language to localize error messages. */
+function localeHeaders(): Record<string, string> {
+  return { "Accept-Language": readLocaleCookie() };
+}
+
 async function get<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     next: { revalidate: 30 },
     credentials: "include",
+    headers: { ...localeHeaders(), ...(opts?.headers as Record<string, string> | undefined) },
     ...opts,
   });
   if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
@@ -146,6 +160,7 @@ function buildHeaders(token: string | null, isJson = true) {
   return {
     ...(isJson ? { "Content-Type": "application/json" } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...localeHeaders(),
   };
 }
 
@@ -546,7 +561,7 @@ export const login = async (email: string, password: string) => {
   const res = await fetch(`${BASE}/auth/login`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...localeHeaders() },
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) {
@@ -588,7 +603,7 @@ export const registerPatient = (data: {
 }) => fetch(`${BASE}/auth/register/patient`, {
   method: "POST",
   credentials: "include",
-  headers: { "Content-Type": "application/json" },
+  headers: { "Content-Type": "application/json", ...localeHeaders() },
   body: JSON.stringify(data),
 }).then(async r => {
   const body = await r.json();
@@ -658,6 +673,7 @@ export const registerPsychologist = (
   return fetch(`${BASE}/auth/register/psychologist`, {
     method: "POST",
     credentials: "include",
+    headers: localeHeaders(),
     body: form,
   }).then(async r => {
     const body = await r.json();
@@ -1072,6 +1088,11 @@ export const meApi = {
     return res.json();
   },
   deletePhoto: () => authedRequest<void>("DELETE", "/me/photo"),
+
+  /** Persist the user's UI/email locale preference server-side.
+   *  Called from LanguageSwitcher when a logged-in user changes language. */
+  setLocale: (locale: string) =>
+    authedRequest<{ locale: string }>("POST", "/me/locale", { locale }),
 
   // GDPR
   accountStatus: () => authedRequest<AccountStatus>("GET", "/me/account-status"),

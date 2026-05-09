@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { psychologistApi, type AppointmentDetail } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const DAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"]; // Mon..Sun
 const DEFAULT_HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07..20
@@ -37,6 +38,7 @@ const STATUS_COLOR: Record<string, { bg: string; fg: string; dashed?: boolean }>
 };
 
 export default function PsychologCalendarPage() {
+  const { t } = useT();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
@@ -103,7 +105,7 @@ export default function PsychologCalendarPage() {
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535" }}>Calendar</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535" }}>{t("staff.psyCalendarTitle")}</h1>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <button onClick={() => setRefreshNonce(x => x + 1)} style={btnStyle()} title="Yenilə">↻</button>
           <button onClick={() => setWeekStart(addDays(weekStart, -7))} style={btnStyle()}>‹ Əvvəlki</button>

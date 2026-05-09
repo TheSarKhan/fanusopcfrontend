@@ -5,6 +5,7 @@ import "./globals.css";
 import SiteChrome from "@/components/SiteChrome";
 import { BookingProvider } from "@/context/BookingContext";
 import { MoodProvider } from "@/context/MoodContext";
+import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -50,15 +51,17 @@ export default async function RootLayout({
   return (
     <html lang="az" className={`${poppins.variable} ${playfair.variable}`} suppressHydrationWarning>
       <body className="min-h-screen flex flex-col" suppressHydrationWarning>
-        {isPanel ? (
-          children
-        ) : (
-          <MoodProvider>
-            <BookingProvider>
-              <SiteChrome>{children}</SiteChrome>
-            </BookingProvider>
-          </MoodProvider>
-        )}
+        <LocaleProvider>
+          {isPanel ? (
+            children
+          ) : (
+            <MoodProvider>
+              <BookingProvider>
+                <SiteChrome>{children}</SiteChrome>
+              </BookingProvider>
+            </MoodProvider>
+          )}
+        </LocaleProvider>
       </body>
     </html>
   );

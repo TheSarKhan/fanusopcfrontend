@@ -9,6 +9,7 @@ import {
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import BookingCta from "./BookingCta";
+import T from "@/components/T";
 
 // Fanus brand palette — keep this page on-brand (#1051B7 və tonları)
 const BRAND      = "#1051B7";
@@ -232,7 +233,7 @@ export default async function PsychologistProfilePage(
                  viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
               <path d="M19 12H5M12 5l-7 7 7 7" />
             </svg>
-            Psixoloqlara qayıt
+            <T k="psyDetail.backToList" />
           </a>
 
           <div className="prof-hero__grid">
@@ -269,21 +270,21 @@ export default async function PsychologistProfilePage(
                     <StarIcon size={14} />
                   </span>
                   <strong>{psychologist.rating}</strong>
-                  <span className="prof-quick__sub">Reytinq</span>
+                  <span className="prof-quick__sub"><T k="psyDetail.rating" /></span>
                 </div>
                 <div className="prof-quick__item">
                   <span className="prof-quick__icon" style={{ background: BRAND_50, color: BRAND }}>
                     <UsersIcon />
                   </span>
                   <strong>{psychologist.sessionsCount}</strong>
-                  <span className="prof-quick__sub">Seans</span>
+                  <span className="prof-quick__sub"><T k="psyDetail.sessionsCompleted" /></span>
                 </div>
                 <div className="prof-quick__item">
                   <span className="prof-quick__icon" style={{ background: BRAND_100, color: BRAND_700 }}>
                     <ClockIcon />
                   </span>
                   <strong>{psychologist.experience}</strong>
-                  <span className="prof-quick__sub">Təcrübə</span>
+                  <span className="prof-quick__sub"><T k="psyList.yearsExp" /></span>
                 </div>
                 {psychologist.activityFormat && (
                   <div className="prof-quick__item">
@@ -291,7 +292,7 @@ export default async function PsychologistProfilePage(
                       <MonitorIcon />
                     </span>
                     <strong>{activityFormatLabel}</strong>
-                    <span className="prof-quick__sub">Format</span>
+                    <span className="prof-quick__sub"><T k="psyDetail.sessionFormat" /></span>
                   </div>
                 )}
               </div>
@@ -314,8 +315,8 @@ export default async function PsychologistProfilePage(
             {/* Sticky booking */}
             <aside className="prof-book">
               <div className="prof-book__price">
-                <span>Standart seans</span>
-                <strong>{sessionMinutes} dəq</strong>
+                <span><T k="psyDetail.sessionDuration" /></span>
+                <strong><T k="psyDetail.minutes" vars={{ n: sessionMinutes }} /></strong>
               </div>
               <BookingCta
                 psychologistId={psychologist.id}
@@ -324,9 +325,9 @@ export default async function PsychologistProfilePage(
                 accentColor={BRAND}
               />
               <ul className="prof-book__list">
-                <li><ShieldIcon size={14} /> Sertifikatlı və doğrulanmış</li>
-                <li><HeartIcon /> Tam məxfilik</li>
-                <li><ClockIcon /> Təsdiqdən sonra ödəniş</li>
+                <li><ShieldIcon size={14} /> <T k="why.privacyTitle" /></li>
+                <li><HeartIcon /> <T k="why.privacyTitle" /></li>
+                <li><ClockIcon /> <T k="how.step3Title" /></li>
               </ul>
             </aside>
           </div>
@@ -343,9 +344,9 @@ export default async function PsychologistProfilePage(
               <article className="prof-block prof-block--full">
                 <div className="prof-block__head">
                   <span className="prof-block__eyebrow" style={{ color: BRAND }}>
-                    <span className="prof-block__dash" style={{ background: BRAND }} /> Tanış olaq
+                    <span className="prof-block__dash" style={{ background: BRAND }} /> <T k="psyDetail.aboutMe" />
                   </span>
-                  <h2 className="prof-block__title">Haqqımda</h2>
+                  <h2 className="prof-block__title"><T k="psyDetail.aboutMe" /></h2>
                 </div>
                 <p className="prof-bio">{psychologist.bio}</p>
               </article>
@@ -356,9 +357,9 @@ export default async function PsychologistProfilePage(
               <article className="prof-block">
                 <div className="prof-block__head">
                   <span className="prof-block__eyebrow" style={{ color: BRAND }}>
-                    <span className="prof-block__dash" style={{ background: BRAND }} /> İxtisaslaşma
+                    <span className="prof-block__dash" style={{ background: BRAND }} /> <T k="psyDetail.specializations" />
                   </span>
-                  <h2 className="prof-block__title">Yanaşma və mütəxəssis sahələri</h2>
+                  <h2 className="prof-block__title"><T k="psyDetail.specializations" /></h2>
                 </div>
                 <div className="prof-skills">
                   {psychologist.specializations.map((s) => (
@@ -375,11 +376,11 @@ export default async function PsychologistProfilePage(
               <article className="prof-block">
                 <div className="prof-block__head">
                   <span className="prof-block__eyebrow" style={{ color: BRAND }}>
-                    <span className="prof-block__dash" style={{ background: BRAND }} /> Akademik fon
+                    <span className="prof-block__dash" style={{ background: BRAND }} /> <T k="psyDetail.education" />
                   </span>
-                  <h2 className="prof-block__title">Təhsil</h2>
+                  <h2 className="prof-block__title"><T k="psyDetail.education" /></h2>
                 </div>
-                <ol className="prof-edu" aria-label="Təhsil tarixçəsi">
+                <ol className="prof-edu">
                   {educations.map((e, i) => (
                     <li key={i} className="prof-edu__item" style={{ background: BRAND_50 }}>
                       {e.graduationYear && (
@@ -400,32 +401,32 @@ export default async function PsychologistProfilePage(
               <article className="prof-block">
                 <div className="prof-block__head">
                   <span className="prof-block__eyebrow" style={{ color: BRAND }}>
-                    <span className="prof-block__dash" style={{ background: BRAND }} /> Seans məlumatı
+                    <span className="prof-block__dash" style={{ background: BRAND }} /> <T k="psyDetail.sessionFormat" />
                   </span>
-                  <h2 className="prof-block__title">Format və dillər</h2>
+                  <h2 className="prof-block__title"><T k="psyDetail.sessionFormat" /></h2>
                 </div>
                 <div className="prof-info">
                   {psychologist.languages && (
                     <div className="prof-info__row">
-                      <span>Dillər</span>
+                      <span><T k="psyDetail.languages" /></span>
                       <strong>{psychologist.languages}</strong>
                     </div>
                   )}
                   {psychologist.activityFormat && (
                     <div className="prof-info__row">
-                      <span>Format</span>
+                      <span><T k="psyDetail.sessionFormat" /></span>
                       <strong>{activityFormatLabel}</strong>
                     </div>
                   )}
                   {psychologist.sessionTypes && (
                     <div className="prof-info__row">
-                      <span>Seans növü</span>
+                      <span><T k="psyDetail.sessionFormat" /></span>
                       <strong>{psychologist.sessionTypes}</strong>
                     </div>
                   )}
                   <div className="prof-info__row">
-                    <span>Seans müddəti</span>
-                    <strong>{sessionMinutes} dəqiqə</strong>
+                    <span><T k="psyDetail.sessionDuration" /></span>
+                    <strong><T k="psyDetail.minutes" vars={{ n: sessionMinutes }} /></strong>
                   </div>
                 </div>
               </article>
@@ -434,9 +435,9 @@ export default async function PsychologistProfilePage(
             <article className="prof-block">
               <div className="prof-block__head">
                 <span className="prof-block__eyebrow" style={{ color: BRAND }}>
-                  <span className="prof-block__dash" style={{ background: BRAND }} /> Pasiyent rəyləri
+                  <span className="prof-block__dash" style={{ background: BRAND }} /> <T k="psyDetail.reviews" />
                 </span>
-                <h2 className="prof-block__title">Müştərilər nə deyir</h2>
+                <h2 className="prof-block__title"><T k="psyDetail.reviews" /></h2>
               </div>
               <CompactReviews reviews={reviews} summary={reviewSummary} accentColor={BRAND} />
             </article>

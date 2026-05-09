@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { patientApi, type Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function PatientFavoritesPage() {
+  const { t } = useT();
   const [items, setItems] = useState<Psychologist[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -30,22 +32,22 @@ export default function PatientFavoritesPage() {
 
   return (
     <div style={{ padding: "2rem" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, color: "#1A2535" }}>Favorit psixoloqlarım</h1>
+      <h1 style={{ fontSize: 24, fontWeight: 700, color: "#1A2535" }}>{t("staff.patFavTitle")}</h1>
       <p style={{ color: "#52718F", fontSize: 14, marginTop: 4, marginBottom: 24 }}>
-        Buradan birbaşa yenidən randevu ala bilərsiniz.
+        {t("staff.patFavSub")}
       </p>
 
       {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 12, borderRadius: 10, marginBottom: 16 }}>{err}</div>}
 
       {loading ? (
-        <div style={{ background: "#fff", padding: 40, borderRadius: 14, textAlign: "center", color: "#52718F" }}>Yüklənir…</div>
+        <div style={{ background: "#fff", padding: 40, borderRadius: 14, textAlign: "center", color: "#52718F" }}>{t("common.loading")}</div>
       ) : items.length === 0 ? (
         <div style={{ background: "#fff", padding: 48, borderRadius: 14, textAlign: "center" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>⭐</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "#1A2535", marginBottom: 4 }}>Hələ favoritiniz yoxdur</div>
-          <p style={{ fontSize: 13, color: "#52718F", marginBottom: 16 }}>Psixoloq kartlarındakı qəlb işarəsinə klik edərək favoritə əlavə edin.</p>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "#1A2535", marginBottom: 4 }}>{t("staff.patFavEmpty")}</div>
+          <p style={{ fontSize: 13, color: "#52718F", marginBottom: 16 }}>{t("staff.patFavEmptySub")}</p>
           <a href="/psychologists" style={{ background: "var(--brand)", color: "#fff", padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
-            Psixoloqlara bax
+            {t("staff.patFavBrowse")}
           </a>
         </div>
       ) : (
@@ -71,11 +73,11 @@ export default function PatientFavoritesPage() {
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
                 <a href={`/book/${p.slug}`} style={{ flex: 1, textAlign: "center", background: "var(--brand)", color: "#fff", padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
-                  Yenidən randevu
+                  {t("staff.patFavRebook")}
                 </a>
                 <button onClick={() => remove(p.id)}
                   style={{ padding: "8px 12px", border: "1px solid #FECACA", color: "#991B1B", background: "#fff", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>
-                  Sil
+                  {t("common.delete")}
                 </button>
               </div>
             </div>

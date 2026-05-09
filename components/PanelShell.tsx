@@ -7,6 +7,7 @@ import { logout } from "@/lib/api";
 import { getMainSiteUrl } from "@/lib/auth";
 import PanelIcon, { type IconName } from "./PanelIcon";
 import NotificationBell from "./NotificationBell";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 export interface PanelNavItem {
   href: string;
@@ -164,6 +165,7 @@ export default function PanelShell({
           </form>
 
           <div className="ps-top__right">
+            <LanguageSwitcher variant="compact" />
             <NotificationBell />
             {topbarAction}
           </div>

@@ -11,6 +11,7 @@ import {
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import CancelModal from "@/components/CancelModal";
 import RescheduleComposeModal from "@/components/RescheduleComposeModal";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"];
 const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
@@ -67,6 +68,7 @@ const STATUS: Record<string, { label: string; color: string; bg: string; accent:
 const ACTIVE_STATUSES = new Set(["ASSIGNED", "CONFIRMED"]);
 
 export default function PsychologistAppointmentsPage() {
+  const { t } = useT();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [clients, setClients] = useState<ClientSummary[]>([]);
   const [notesByPatient, setNotesByPatient] = useState<Record<number, ClientNote | null>>({});
@@ -189,15 +191,15 @@ export default function PsychologistAppointmentsPage() {
   return (
     <div className="psy-appt-page">
       <header style={{ marginBottom: 18 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Randevular</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>{t("staff.psyApptTitle")}</h1>
         <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4 }}>
-          Bugünkü iş axınınız və yaxınlaşan seanslar
+          {t("staff.psyApptSub")}
         </p>
       </header>
 
       {loading ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>
-          Yüklənir…
+          {t("common.loading")}
         </div>
       ) : (
         <>

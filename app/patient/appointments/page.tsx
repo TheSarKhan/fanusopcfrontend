@@ -15,6 +15,7 @@ import CancelModal from "@/components/CancelModal";
 import RescheduleProposalModal from "@/components/RescheduleProposalModal";
 import AddToCalendarMenu from "@/components/AddToCalendarMenu";
 import SessionFeedbackModal from "@/components/SessionFeedbackModal";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"];
 const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
@@ -71,6 +72,7 @@ const STATUS: Record<string, { label: string; color: string; bg: string; accent:
 const ACTIVE_STATUSES = new Set(["ASSIGNED", "CONFIRMED", "PENDING", "REJECTED"]);
 
 export default function PatientAppointmentsPage() {
+  const { t } = useT();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [myReviews, setMyReviews] = useState<MyReview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -203,10 +205,8 @@ export default function PatientAppointmentsPage() {
     <div className="psy-appt-page">
       <header style={{ marginBottom: 18, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Randevularım</h1>
-          <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4 }}>
-            Randevularınızı izləyin, seans sonrası təsdiqləyin
-          </p>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>{t("appt.pageTitle")}</h1>
+          <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4 }}>{t("appt.pageSub")}</p>
         </div>
         <Link
           href="/psychologists"
@@ -215,7 +215,7 @@ export default function PatientAppointmentsPage() {
             padding: "10px 18px", borderRadius: 10,
             fontSize: 13, fontWeight: 600, textDecoration: "none",
           }}>
-          + Yeni randevu
+          {t("appt.newCta")}
         </Link>
       </header>
 
@@ -271,7 +271,7 @@ export default function PatientAppointmentsPage() {
 
           {/* Pending confirmation — appears prominently if any */}
           {awaitingConfirm.length > 0 && (
-            <Section title="Təsdiq gözlənir" count={awaitingConfirm.length} icon="⏳">
+            <Section title={t("appt.sectionAwaiting")} count={awaitingConfirm.length} icon="⏳">
               <div style={{ display: "grid", gap: 10 }}>
                 {awaitingConfirm.map(a => (
                   <AwaitingCard
@@ -286,7 +286,7 @@ export default function PatientAppointmentsPage() {
             </Section>
           )}
 
-          <Section title="Bu gün" count={today.length} icon="🟢">
+          <Section title={t("appt.sectionToday")} count={today.length} icon="🟢">
             {today.length === 0 ? (
               <Empty msg="Bu gün başqa randevunuz yoxdur" />
             ) : (
@@ -306,7 +306,7 @@ export default function PatientAppointmentsPage() {
             )}
           </Section>
 
-          <Section title="Bu həftə" count={thisWeek.length} icon="📅">
+          <Section title={t("appt.sectionWeek")} count={thisWeek.length} icon="📅">
             {thisWeek.length === 0 ? (
               <Empty msg="Bu həftə başqa randevunuz yoxdur" />
             ) : (
@@ -325,7 +325,7 @@ export default function PatientAppointmentsPage() {
             )}
           </Section>
 
-          <Section title="Tarixçə" count={history.length} icon="📂" defaultCollapsed>
+          <Section title={t("appt.sectionHistory")} count={history.length} icon="📂" defaultCollapsed>
             {history.length === 0 ? (
               <Empty msg="Hələ tamamlanmış seansınız yoxdur" />
             ) : (
@@ -428,6 +428,7 @@ function NextSessionHero({
   onReschedule: (a: AppointmentDetail) => void;
   onCancel: (a: AppointmentDetail) => void;
 }) {
+  const { t } = useT();
   if (!appt || !appt.startAt) {
     return (
       <div className="psy-hero psy-hero--empty">
@@ -484,18 +485,18 @@ function NextSessionHero({
               disabled={busyId === appt.id}
               onClick={() => onConfirm(appt)}
               className="psy-hero__btn psy-hero__btn--primary">
-              {busyId === appt.id ? "…" : "✓ Təsdiqlə"}
+              {busyId === appt.id ? "…" : `✓ ${t("staff.cardConfirm")}`}
             </button>
             <button
               onClick={() => onDispute(appt)}
               className="psy-hero__btn psy-hero__btn--ghost">
-              Olmadı
+              {t("staff.cardDispute")}
             </button>
           </>
         )}
         {showConfirm && alreadyConfirmed && (
           <span className="psy-hero__btn psy-hero__btn--ghost" style={{ cursor: "default" }}>
-            ✓ Siz təsdiqlədiniz · psixoloqdan gözlənilir
+            {t("appt.youConfirmed")}
           </span>
         )}
         {!tu.expired && (
@@ -504,12 +505,12 @@ function NextSessionHero({
             <button
               onClick={() => onReschedule(appt)}
               className="psy-hero__btn psy-hero__btn--ghost">
-              Vaxtı dəyiş
+              {t("staff.cardReschedule")}
             </button>
             <button
               onClick={() => onCancel(appt)}
               className="psy-hero__btn psy-hero__btn--ghost">
-              Ləğv et
+              {t("staff.cardCancel")}
             </button>
           </>
         )}
@@ -585,6 +586,7 @@ function AwaitingCard({
   onConfirm: () => void;
   onDispute: () => void;
 }) {
+  const { t } = useT();
   const status = STATUS[a.status] ?? STATUS.AWAITING_CONFIRMATION;
   const fmt = a.sessionFormat === "ONLINE" ? "Onlayn" : a.sessionFormat === "IN_PERSON" ? "Əyani" : null;
   const start = a.startAt ? new Date(a.startAt) : null;
@@ -623,12 +625,12 @@ function AwaitingCard({
             disabled={busyId === a.id}
             onClick={onConfirm}
             className="psy-card__btn psy-card__btn--primary">
-            {busyId === a.id ? "…" : "✓ Təsdiqlə"}
+            {busyId === a.id ? "…" : `✓ ${t("staff.cardConfirm")}`}
           </button>
           <button
             onClick={onDispute}
             className="psy-card__btn psy-card__btn--ghost">
-            Olmadı
+            {t("staff.cardDispute")}
           </button>
         </div>
       )}
@@ -648,6 +650,7 @@ function TodayCard({
   onReschedule: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useT();
   if (!a.startAt) return null;
   const start = new Date(a.startAt);
   const status = STATUS[a.status] ?? STATUS.ASSIGNED;
@@ -694,14 +697,14 @@ function TodayCard({
           onClick={onReschedule}
           disabled={busyId === a.id}
           className="psy-card__btn psy-card__btn--ghost">
-          Vaxtı dəyiş
+          {t("staff.cardReschedule")}
         </button>
         <button
           onClick={onCancel}
           disabled={busyId === a.id}
           className="psy-card__btn psy-card__btn--ghost"
           style={{ color: "#991B1B", borderColor: "#FECACA" }}>
-          Ləğv et
+          {t("staff.cardCancel")}
         </button>
       </div>
     </div>
@@ -719,6 +722,7 @@ function WeekRow({
   onReschedule: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useT();
   if (!a.startAt) return null;
   const start = new Date(a.startAt);
   const status = STATUS[a.status] ?? STATUS.ASSIGNED;
@@ -737,11 +741,11 @@ function WeekRow({
       <div style={{ display: "flex", gap: 6 }}>
         <button onClick={onReschedule}
           style={{ fontSize: 11, color: "var(--brand-700)", background: "var(--brand-50)", border: "1px solid var(--brand-200)", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontWeight: 600 }}>
-          Dəyiş
+          {t("staff.cardReschedule")}
         </button>
         <button onClick={onCancel}
           style={{ fontSize: 11, color: "#991B1B", background: "#FFF5F5", border: "1px solid #FECACA", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontWeight: 600 }}>
-          Ləğv
+          {t("staff.cardCancel")}
         </button>
       </div>
     </div>

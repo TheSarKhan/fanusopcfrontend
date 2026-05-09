@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Deco from "@/components/Deco";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 type Service = {
   icon: "user" | "couple" | "video" | "group" | "shield" | "child";
@@ -11,16 +12,16 @@ type Service = {
   bg: string;
 };
 
-const SERVICES: Service[] = [
-  { icon: "user",   title: "Fərdi terapiya",       text: "Özünüzlə baş-başa qalın. Peşəkar psixoloq ilə məxfi, dərin söhbətlər vasitəsilə daxili aləminizi kəşf edin.", tag: "01", bg: "#F2F6FD" },
-  { icon: "couple", title: "Cütlük terapiyası",    text: "Münasibətlərinizdə harmoniya qurun. Ortaq problemləri birlikdə həll etmək üçün peşəkar dəstək alın.",         tag: "02", bg: "#FFF7E8" },
-  { icon: "video",  title: "Onlayn seans",         text: "Evinizin rahatlığından çıxmadan psixoloji dəstək alın. Video, səs və ya yazılı formatda seans seçimi.",        tag: "03", bg: "#E4ECFA" },
-  { icon: "group",  title: "Qrup terapiyası",      text: "Oxşar təcrübələri olan insanlarla qrup seanslarına qoşulun. Birlikdə inkişaf edin, bir-birinizi dəstəkləyin.", tag: "04", bg: "#F2F6FD" },
-  { icon: "shield", title: "Böhran dəstəyi",       text: "Çətin anlarda yanınızdayıq. Kəskin stress, travma və ya böhran vəziyyətlərində tez müdaxilə xidməti.",        tag: "05", bg: "#FFF7E8" },
-  { icon: "child",  title: "Uşaq & yeniyetmə",     text: "Gənclərin emosional inkişafı üçün xüsusi yanaşma. Valideynlər üçün də dəstək proqramları mövcuddur.",          tag: "06", bg: "#E4ECFA" },
-];
-
 export default function Services() {
+  const { t } = useT();
+  const SERVICES: Service[] = [
+    { icon: "user",   title: t("services.individualTitle"), text: t("services.individualText"), tag: "01", bg: "#F2F6FD" },
+    { icon: "couple", title: t("services.coupleTitle"),     text: t("services.coupleText"),     tag: "02", bg: "#FFF7E8" },
+    { icon: "video",  title: t("services.onlineTitle"),     text: t("services.onlineText"),     tag: "03", bg: "#E4ECFA" },
+    { icon: "group",  title: t("services.groupTitle"),      text: t("services.groupText"),      tag: "04", bg: "#F2F6FD" },
+    { icon: "shield", title: t("services.crisisTitle"),     text: t("services.crisisText"),     tag: "05", bg: "#FFF7E8" },
+    { icon: "child",  title: t("services.childTitle"),      text: t("services.childText"),      tag: "06", bg: "#E4ECFA" },
+  ];
   return (
     <section className="fanus-svc" id="services">
       <Deco type="cards" style={{ top: 60, right: "-3%", width: 280, opacity: .55 }} anim="drift" />
@@ -29,16 +30,12 @@ export default function Services() {
       <div className="fanus-container">
         <div className="fanus-svc__head">
           <div>
-            <div className="fanus-eyebrow"><span className="dash" /> Xidmətlərimiz</div>
-            <h2 style={{ marginTop: 14 }}>
-              Hər ehtiyac üçün <span className="fanus-serif-accent">düşünülmüş</span> dəstək.
-            </h2>
-            <p className="fanus-svc__lead">
-              Fərdi terapiyadan qrup seanslarına, böhran dəstəyindən uşaq psixologiyasına — sizə uyğun proqramı seçin.
-            </p>
+            <div className="fanus-eyebrow"><span className="dash" /> {t("services.eyebrow")}</div>
+            <h2 style={{ marginTop: 14 }}>{t("services.title")}</h2>
+            <p className="fanus-svc__lead">{t("services.lead")}</p>
           </div>
           <Link href="/xidmetler" className="fanus-btn fanus-btn-ghost">
-            Ətraflı bax <Arrow />
+            {t("services.moreCta")} <Arrow />
           </Link>
         </div>
 
@@ -50,7 +47,7 @@ export default function Services() {
               <h3 className="fanus-svc-card__title">{s.title}</h3>
               <p className="fanus-svc-card__text">{s.text}</p>
               <Link href="/book" className="fanus-svc-card__link">
-                Randevu al <Arrow size={14} />
+                {t("services.bookCta")} <Arrow size={14} />
               </Link>
               <div className="fanus-svc-card__shine" />
             </article>

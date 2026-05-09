@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { patientApi, type Homework } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const STATUS_BG: Record<string, string> = {
   PENDING: "#FEF3C7", COMPLETED: "#D1FAE5", SKIPPED: "#E5E7EB",
@@ -11,6 +12,7 @@ const STATUS_FG: Record<string, string> = {
 };
 
 export default function PatientHomeworkPage() {
+  const { t } = useT();
   const [items, setItems] = useState<Homework[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,18 +36,17 @@ export default function PatientHomeworkPage() {
 
   return (
     <div style={{ padding: "2rem" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535" }}>Tapşırıqlar</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535" }}>{t("staff.patHwTitle")}</h1>
       <p style={{ fontSize: 13, color: "#52718F", marginTop: 4, marginBottom: 20 }}>
-        Psixoloqunuzun tapşırdığı işlər. Tamamladıqda işarələyin.
+        {t("staff.patHwSub")}
       </p>
 
       {loading ? (
-        <div style={{ background: "#fff", padding: 40, borderRadius: 14, textAlign: "center", color: "#52718F" }}>Yüklənir…</div>
+        <div style={{ background: "#fff", padding: 40, borderRadius: 14, textAlign: "center", color: "#52718F" }}>{t("common.loading")}</div>
       ) : items.length === 0 ? (
         <div style={{ background: "#fff", padding: 48, borderRadius: 14, textAlign: "center" }}>
           <div style={{ fontSize: 36, marginBottom: 10 }}>🎯</div>
-          <div style={{ fontWeight: 600, color: "#1A2535" }}>Hələ tapşırıq yoxdur</div>
-          <p style={{ fontSize: 13, color: "#52718F", marginTop: 4 }}>Psixoloqunuz tapşırıq verəndə burada görünəcək.</p>
+          <div style={{ fontWeight: 600, color: "#1A2535" }}>{t("staff.patHwEmpty")}</div>
         </div>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
@@ -79,11 +80,11 @@ export default function PatientHomeworkPage() {
                 <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
                   <button onClick={() => mark(h, "COMPLETED")}
                     style={{ flex: 1, padding: "8px 12px", border: "none", borderRadius: 8, background: "#10B981", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                    ✓ Tamamladım
+                    {t("staff.patHwDone")}
                   </button>
                   <button onClick={() => mark(h, "SKIPPED")}
                     style={{ padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", color: "#52718F", fontSize: 12, cursor: "pointer" }}>
-                    Ötür
+                    {t("common.cancel")}
                   </button>
                 </div>
               )}

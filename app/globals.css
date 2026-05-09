@@ -7135,6 +7135,40 @@ a.contact-chip:hover {
 }
 .vac-cancel:hover { background: #FEE2E2; }
 
+/* ─── Language switcher (native select, btn-ghost aesthetic) ────────── */
+.lang-switcher {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  height: 38px;
+  padding: 0 30px 0 14px;
+  border-radius: var(--r-btn);
+  border: 1.5px solid var(--brand-200);
+  background-color: transparent;
+  color: var(--oxford);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  line-height: 1;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12' fill='none' stroke='%230A1A33' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M3 4.5 6 7.5l3-3'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.lang-switcher:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+  background-color: var(--white);
+}
+.lang-switcher:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-50);
+}
+.lang-switcher--compact { height: 34px; padding: 0 28px 0 12px; font-size: 12.5px; }
+
 /* ─── Recurring booking toggle ──────────────────────────────────────── */
 .bk-recurring { background: var(--brand-50); border-radius: 12px; padding: 14px; }
 .bk-recurring-toggle {

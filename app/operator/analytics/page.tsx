@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { operatorApi, type OperatorStats } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 function fmtMin(min: number | null) {
   if (min == null) return "—";
@@ -12,6 +13,7 @@ function fmtMin(min: number | null) {
 }
 
 export default function OperatorAnalyticsPage() {
+  const { t } = useT();
   const [stats, setStats] = useState<OperatorStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -21,13 +23,13 @@ export default function OperatorAnalyticsPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535", marginBottom: 6 }}>Operator Analytics</h1>
-      <p style={{ fontSize: 13, color: "#52718F", marginBottom: 20 }}>Triage performansı və 30 günlük trend</p>
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535", marginBottom: 6 }}>{t("staff.opAnalyticsTitle")}</h1>
+      <p style={{ fontSize: 13, color: "#52718F", marginBottom: 20 }}>{t("staff.opAnalyticsSub")}</p>
 
       {loading ? (
-        <div style={{ background: "#fff", padding: 40, borderRadius: 14, textAlign: "center", color: "#52718F" }}>Yüklənir…</div>
+        <div style={{ background: "#fff", padding: 40, borderRadius: 14, textAlign: "center", color: "#52718F" }}>{t("common.loading")}</div>
       ) : !stats ? (
-        <div style={{ background: "#FEF2F2", padding: 16, borderRadius: 12, color: "#991B1B" }}>Məlumat alınmadı.</div>
+        <div style={{ background: "#FEF2F2", padding: 16, borderRadius: 12, color: "#991B1B" }}>{t("common.error")}</div>
       ) : (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 16 }}>

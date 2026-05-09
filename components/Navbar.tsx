@@ -4,18 +4,21 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { buildPanelUrl, decodeAccessToken, isTokenExpired } from "@/lib/auth";
-
-const navLinks = [
-  { label: "Haqqımızda", href: "/about" },
-  { label: "Xidmətlərimiz", href: "/xidmetler" },
-  { label: "Psixoloqlarımız", href: "/psychologists" },
-  { label: "Məqalələr", href: "/blog" },
-];
+import { useT } from "@/lib/i18n/LocaleProvider";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function Navbar() {
+  const { t } = useT();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [panelUrl, setPanelUrl] = useState<string | null>(null);
+
+  const navLinks = [
+    { label: t("nav.about"),          href: "/about" },
+    { label: t("home.heroSecondaryCta"), href: "/xidmetler" },
+    { label: t("nav.psychologists"),  href: "/psychologists" },
+    { label: t("nav.blog"),           href: "/blog" },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -60,15 +63,16 @@ export default function Navbar() {
         </nav>
 
         <div className="fanus-nav__cta">
+          <LanguageSwitcher variant="compact" />
           {isLoggedIn ? (
             <a href={panelUrl!} className="fanus-btn fanus-btn-primary fanus-btn-sm">
-              Panelə keç
+              {t("nav.myAccount")}
             </a>
           ) : (
             <>
-              <Link href="/login" className="fanus-nav__login">Daxil ol</Link>
+              <Link href="/login" className="fanus-nav__login">{t("nav.login")}</Link>
               <Link href="/register" className="fanus-btn fanus-btn-primary fanus-btn-sm">
-                Qeydiyyat
+                {t("nav.register")}
                 <ArrowRight />
               </Link>
             </>
@@ -96,12 +100,13 @@ export default function Navbar() {
             </Link>
           ))}
           <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+            <LanguageSwitcher variant="compact" />
             {isLoggedIn ? (
-              <a href={panelUrl!} className="fanus-btn fanus-btn-primary" style={{ flex: 1 }}>Panelə keç</a>
+              <a href={panelUrl!} className="fanus-btn fanus-btn-primary" style={{ flex: 1 }}>{t("nav.myAccount")}</a>
             ) : (
               <>
-                <Link href="/login" className="fanus-btn fanus-btn-ghost" style={{ flex: 1 }} onClick={() => setOpen(false)}>Daxil ol</Link>
-                <Link href="/register" className="fanus-btn fanus-btn-primary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Qeydiyyat</Link>
+                <Link href="/login" className="fanus-btn fanus-btn-ghost" style={{ flex: 1 }} onClick={() => setOpen(false)}>{t("nav.login")}</Link>
+                <Link href="/register" className="fanus-btn fanus-btn-primary" style={{ flex: 1 }} onClick={() => setOpen(false)}>{t("nav.register")}</Link>
               </>
             )}
           </div>

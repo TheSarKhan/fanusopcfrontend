@@ -3,28 +3,30 @@
 import PanelAuthGuard from "@/components/PanelAuthGuard";
 import PanelShell, { type PanelNavItem } from "@/components/PanelShell";
 import { getStoredUser } from "@/lib/auth";
-
-const NAV: PanelNavItem[] = [
-  { href: "/operator",              label: "Ümumi baxış", icon: "home" },
-  { href: "/operator/appointments", label: "Randevular",  icon: "calendar" },
-  { href: "/operator/feedback",     label: "Seans rəyləri", icon: "star" },
-  { href: "/operator/analytics",    label: "Analytics",   icon: "chart" },
-];
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 function OperatorShell({ children }: { children: React.ReactNode }) {
+  const { t } = useT();
   const u = getStoredUser();
   const first = u?.firstName ?? "";
   const last = u?.lastName ?? "";
   const name = (first + " " + last).trim() || u?.email || "Operator";
   const initials = ((first[0] ?? "") + (last[0] ?? "")).toUpperCase() || "O";
 
+  const nav: PanelNavItem[] = [
+    { href: "/operator",              label: t("nav.dashboard"),       icon: "home" },
+    { href: "/operator/appointments", label: t("nav.appointments"),    icon: "calendar" },
+    { href: "/operator/feedback",     label: t("nav.feedbackTriage"),  icon: "star" },
+    { href: "/operator/analytics",    label: t("nav.analytics"),       icon: "chart" },
+  ];
+
   return (
     <PanelShell
-      brandLabel="Operator paneli"
+      brandLabel="Operator"
       homeHref="/operator"
-      navItems={NAV}
+      navItems={nav}
       user={{ name, initials, role: "Operator" }}
-      searchPlaceholder="Randevu, pasiyent axtar..."
+      searchPlaceholder={t("common.search")}
     >
       {children}
     </PanelShell>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { adminApi, type Psychologist, type UserRecord } from "@/lib/api";
 import { IconSearch, IconPlus, IconDownload, IconChevron } from "../_components/icons";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -197,6 +198,7 @@ const EMPTY: Omit<Psychologist, "id"> = {
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function PsychologistsPage() {
+  const { t } = useT();
   const [items, setItems] = useState<Psychologist[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -345,8 +347,8 @@ export default function PsychologistsPage() {
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#1A2535", margin: 0 }}>Psixoloqlar</h1>
-          <p style={{ fontSize: 13, color: "#8AAABF", marginTop: 3, marginBottom: 0 }}>Psixoloq profilləri, statistika və idarəetmə</p>
+          <h1 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#1A2535", margin: 0 }}>{t("staff.adminPsyTitle")}</h1>
+          <p style={{ fontSize: 13, color: "#8AAABF", marginTop: 3, marginBottom: 0 }}>{t("staff.adminPsySub")}</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>

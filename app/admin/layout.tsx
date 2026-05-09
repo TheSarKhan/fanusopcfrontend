@@ -6,21 +6,15 @@ import { adminApi } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
 import PanelAuthGuard from "@/components/PanelAuthGuard";
 import PanelShell, { type PanelNavItem } from "@/components/PanelShell";
-
-const NAV: PanelNavItem[] = [
-  { href: "/admin/users",          label: "İstifadəçilər", icon: "users" },
-  { href: "/admin/psychologists",  label: "Psixoloqlar",   icon: "user" },
-  { href: "/admin/blog",           label: "Məqalələr",     icon: "content" },
-  { href: "/admin/reviews",        label: "Rəylər",        icon: "megaphone" },
-  { href: "/admin/audit-logs",     label: "Audit log",     icon: "clipboard" },
-];
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 function AdminShell({ children }: { children: React.ReactNode }) {
+  const { t } = useT();
   const [reviewBadge, setReviewBadge] = useState<number | undefined>(undefined);
   const [me, setMe] = useState<{ name: string; initials: string; role: string }>({
     name: "Admin",
     initials: "A",
-    role: "Super admin",
+    role: "Admin",
   });
 
   useEffect(() => {
@@ -31,24 +25,28 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       const name = (first + " " + last).trim() || u.email;
       const initials = ((first[0] ?? "") + (last[0] ?? "")).toUpperCase()
         || (u.email?.[0] ?? "A").toUpperCase();
-      setMe({ name, initials, role: "Super admin" });
+      setMe({ name, initials, role: "Admin" });
     }
     adminApi.getPendingReviewCount()
       .then((res) => setReviewBadge(res.count))
       .catch(() => {});
   }, []);
 
-  const navWithBadges = NAV.map(item =>
-    item.href === "/admin/reviews" ? { ...item, badge: reviewBadge } : item
-  );
+  const nav: PanelNavItem[] = [
+    { href: "/admin/users",          label: t("nav.users"),         icon: "users" },
+    { href: "/admin/psychologists",  label: t("nav.psychologists"), icon: "user" },
+    { href: "/admin/blog",           label: t("nav.blog"),          icon: "content" },
+    { href: "/admin/reviews",        label: t("nav.reviews"),       icon: "megaphone", badge: reviewBadge },
+    { href: "/admin/audit-logs",     label: t("nav.audit"),         icon: "clipboard" },
+  ];
 
   return (
     <PanelShell
-      brandLabel="Admin paneli"
+      brandLabel="Admin"
       homeHref="/admin"
-      navItems={navWithBadges}
+      navItems={nav}
       user={me}
-      searchPlaceholder="İstifadəçi axtar..."
+      searchPlaceholder={t("common.search")}
       searchHref="/admin/users"
     >
       {/* Wrap admin pages in .admin-shell so existing admin.css selectors apply. */}

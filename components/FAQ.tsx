@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Faq } from "@/lib/api";
 import Deco from "@/components/Deco";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const FALLBACK: Faq[] = [
   { id: 1, question: "Onlayn seans canlı seans qədər təsirlidirmi?", answer: "Bəli. Çoxsaylı tədqiqatlar göstərir ki, peşəkar psixoloqla aparılan onlayn seanslar üzbəüz seanslarla eyni dərəcədə effektivdir. Üstəlik, rahat mühitdə daha açıq danışmaq mümkündür.", displayOrder: 1, active: true },
@@ -14,6 +15,7 @@ const FALLBACK: Faq[] = [
 ];
 
 export default function FAQ({ faqs }: { faqs?: Faq[] }) {
+  const { t } = useT();
   const data = (faqs && faqs.length > 0) ? faqs : FALLBACK;
   const [open, setOpen] = useState(0);
 
@@ -23,15 +25,11 @@ export default function FAQ({ faqs }: { faqs?: Faq[] }) {
       <Deco type="blob-1" style={{ bottom: 80, left: "-4%", width: 280, opacity: .55 }} anim="drift" />
       <div className="fanus-container fanus-faq__container">
         <div className="fanus-faq__left">
-          <div className="fanus-eyebrow"><span className="dash" /> Sual-cavab</div>
-          <h2 style={{ marginTop: 14 }}>
-            Əvvəlcə <span className="fanus-serif-accent">cavab.</span><br />Sonra qərar.
-          </h2>
-          <p className="fanus-faq__lead">
-            Sualınızı burada tapmadınız? Bizə yazın — 24 saat ərzində cavab veririk.
-          </p>
+          <div className="fanus-eyebrow"><span className="dash" /> {t("faq.eyebrow")}</div>
+          <h2 style={{ marginTop: 14 }}>{t("faq.title")}</h2>
+          <p className="fanus-faq__lead">{t("faq.lead")}</p>
           <a href="#contact" className="fanus-btn fanus-btn-light" style={{ marginTop: 20 }}>
-            <MsgIcon /> Bizə yazın
+            <MsgIcon /> {t("faq.contactCta")}
           </a>
         </div>
 

@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import CancelModal from "@/components/CancelModal";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 type Tab = "PENDING" | "ASSIGNED" | "CONFIRMED" | "DISPUTED" | "COMPLETED" | "CANCELLED";
 
@@ -48,6 +49,7 @@ function toDateTimeLocal(iso: string) {
 }
 
 export default function OperatorAppointmentsPage() {
+  const { t } = useT();
   const searchParams = useSearchParams();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,8 +134,8 @@ export default function OperatorAppointmentsPage() {
     <div>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A2535]">Randevular</h1>
-          <p className="text-[#52718F] text-sm mt-1">Müraciətləri psixoloqlara təyin edin və status izləyin</p>
+          <h1 className="text-2xl font-bold text-[#1A2535]">{t("staff.opApptTitle")}</h1>
+          <p className="text-[#52718F] text-sm mt-1">{t("staff.opDashSub")}</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => { setSelectMode(s => !s); setSelected(new Set()); }}

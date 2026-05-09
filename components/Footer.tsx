@@ -2,32 +2,33 @@
 
 import Link from "next/link";
 import Image from "next/image";
-
-const COLS = [
-  { title: "Fanus", links: [
-    { label: "Haqqımızda", href: "/about" },
-    { label: "Komandamız", href: "/about#team" },
-    { label: "Karyera", href: "/career" },
-    { label: "Mətbuat", href: "/press" },
-    { label: "Tərəfdaşlıq", href: "/partners" },
-  ] },
-  { title: "Xidmətlər", links: [
-    { label: "Fərdi seans", href: "/xidmetler" },
-    { label: "Cütlük seansı", href: "/xidmetler" },
-    { label: "Yeniyetmə", href: "/xidmetler" },
-    { label: "Korporativ", href: "/xidmetler" },
-    { label: "Test və qiymətləndirmə", href: "/xidmetler" },
-  ] },
-  { title: "Resurslar", links: [
-    { label: "Məqalələr", href: "/blog" },
-    { label: "Podkast", href: "/blog" },
-    { label: "Əhval testi", href: "/#mood" },
-    { label: "Lüğət", href: "/blog" },
-    { label: "Tez-tez verilən suallar", href: "/#faq" },
-  ] },
-];
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function Footer() {
+  const { t } = useT();
+  const COLS = [
+    { title: t("footer2.columnFanus"), links: [
+      { label: t("footer2.linkAbout"),    href: "/about" },
+      { label: t("footer2.linkTeam"),     href: "/about#team" },
+      { label: t("footer2.linkCareer"),   href: "/career" },
+      { label: t("footer2.linkPress"),    href: "/press" },
+      { label: t("footer2.linkPartners"), href: "/partners" },
+    ] },
+    { title: t("footer2.columnServices"), links: [
+      { label: t("footer2.linkServiceIndividual"), href: "/xidmetler" },
+      { label: t("footer2.linkServiceCouple"),     href: "/xidmetler" },
+      { label: t("footer2.linkServiceTeen"),       href: "/xidmetler" },
+      { label: t("footer2.linkServiceCorporate"),  href: "/xidmetler" },
+      { label: t("footer2.linkServiceTest"),       href: "/xidmetler" },
+    ] },
+    { title: t("footer2.columnResources"), links: [
+      { label: t("footer2.linkArticles"), href: "/blog" },
+      { label: t("footer2.linkPodcast"),  href: "/blog" },
+      { label: t("footer2.linkMoodTest"), href: "/#mood" },
+      { label: t("footer2.linkGlossary"), href: "/blog" },
+      { label: t("footer2.linkFaq"),      href: "/#faq" },
+    ] },
+  ];
   return (
     <footer className="fanus-ftr" id="contact">
       <div className="fanus-ftr-cta">
@@ -36,12 +37,12 @@ export default function Footer() {
             <Image src="/images/logos/logo-white.png" alt="Fanus" width={72} height={72} style={{ objectFit: "contain" }} />
           </div>
           <div>
-            <h3 className="fanus-ftr-cta__title">İlk addımı bu gün atın.</h3>
-            <p className="fanus-ftr-cta__sub">Pulsuz tanışlıq görüşü — heç bir öhdəlik yoxdur.</p>
+            <h3 className="fanus-ftr-cta__title">{t("footer2.ctaTitle")}</h3>
+            <p className="fanus-ftr-cta__sub">{t("footer2.ctaSub")}</p>
           </div>
           <div className="fanus-ftr-cta__btns">
-            <Link href="/register" className="fanus-btn fanus-btn-light">Qeydiyyat <Arrow /></Link>
-            <Link href="/book" className="fanus-btn fanus-ftr-cta__ghost">İndi danış</Link>
+            <Link href="/register" className="fanus-btn fanus-btn-light">{t("nav.register")} <Arrow /></Link>
+            <Link href="/book" className="fanus-btn fanus-ftr-cta__ghost">{t("footer2.ctaTalkNow")}</Link>
           </div>
         </div>
       </div>
@@ -55,7 +56,7 @@ export default function Footer() {
               <span className="fanus-ftr__lockup-sub">Onlayn psixoloji mərkəz</span>
             </span>
           </Link>
-          <p className="fanus-ftr__tag">İçəridəki işığı birlikdə tapaq.</p>
+          <p className="fanus-ftr__tag">{t("footer2.tag")}</p>
 
           <div className="fanus-ftr__contact">
             <a href="tel:+994121234567" className="fanus-ftr__contact-row">
@@ -88,24 +89,21 @@ export default function Footer() {
         ))}
 
         <div className="fanus-ftr__col fanus-ftr__col--news">
-          <h4 className="fanus-ftr__col-title">Bülleten</h4>
-          <p className="fanus-ftr__news-text">Ayda bir dəfə — yalnız oxumağa dəyər məqalələr.</p>
-          <form className="fanus-ftr__form" onSubmit={(e) => { e.preventDefault(); alert("Təşəkkürlər!"); }}>
+          <h4 className="fanus-ftr__col-title">{t("footer2.newsletter")}</h4>
+          <p className="fanus-ftr__news-text">{t("footer2.newsletterText")}</p>
+          <form className="fanus-ftr__form" onSubmit={(e) => { e.preventDefault(); alert(t("footer2.newsletterThanks")); }}>
             <input type="email" placeholder="email@nümunə.az" required />
-            <button type="submit" aria-label="Göndər"><SendIcon /></button>
+            <button type="submit" aria-label={t("common.submit")}><SendIcon /></button>
           </form>
-          <div className="fanus-ftr__lang">
-            <GlobeIcon /> Azərbaycan dili
-          </div>
         </div>
       </div>
 
       <div className="fanus-container fanus-ftr__bottom">
-        <div>© 2026 Fanus OPC · Bütün hüquqlar qorunur</div>
+        <div>{t("footer2.rights")}</div>
         <div className="fanus-ftr__bottom-links">
-          <Link href="/privacy">Məxfilik</Link>
-          <Link href="/terms">İstifadə şərtləri</Link>
-          <Link href="/ethics">Etika kodeksi</Link>
+          <Link href="/privacy">{t("footer2.privacy")}</Link>
+          <Link href="/terms">{t("footer2.terms")}</Link>
+          <Link href="/ethics">{t("footer2.ethics")}</Link>
         </div>
       </div>
 
@@ -226,4 +224,3 @@ function PhoneIcon() { return <svg width="16" height="16" fill="none" stroke="cu
 function MailIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>; }
 function PinIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s7-6 7-12a7 7 0 00-14 0c0 6 7 12 7 12z" /><circle cx="12" cy="9" r="2.5" /></svg>; }
 function SendIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M21 3L3 10l7 3 3 7 8-17z" /><path d="M10 13l7-7" /></svg>; }
-function GlobeIcon() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18" /></svg>; }

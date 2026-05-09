@@ -3,17 +3,20 @@
 import Link from "next/link";
 import type { BlogPost } from "@/lib/api";
 import Deco from "@/components/Deco";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const COLORS = ["#5089E0", "#1051B7", "#0B3F90", "#2A6BD0"];
 
 export default function Articles({ posts }: { posts?: BlogPost[] }) {
+  const { t, locale } = useT();
+  const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "az-AZ";
   const data = (posts && posts.length > 0)
     ? posts.slice(0, 4).map((p, i) => ({
         slug: p.slug,
         tag: p.category,
         title: p.title,
-        date: new Date(p.publishedDate).toLocaleDateString("az-AZ", { day: "numeric", month: "short", year: "numeric" }),
-        read: `${p.readTimeMinutes} dəq`,
+        date: new Date(p.publishedDate).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" }),
+        read: t("articles.minutes", { n: p.readTimeMinutes }),
         color: p.categoryColor || COLORS[i % COLORS.length],
         coverUrl: p.coverImageUrl,
       }))
@@ -31,16 +34,12 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
       <div className="fanus-container">
         <div className="fanus-art__head">
           <div>
-            <div className="fanus-eyebrow"><span className="dash" /> Məqalələr</div>
-            <h2 style={{ marginTop: 14 }}>
-              Oxuyun, düşünün, <span className="fanus-serif-accent">addım atın.</span>
-            </h2>
-            <p className="fanus-art__lead">
-              Psixoloqlarımızın qələmindən — gündəlik həyatınızda istifadə edə biləcəyiniz baxış və alətlər.
-            </p>
+            <div className="fanus-eyebrow"><span className="dash" /> {t("articles.eyebrow")}</div>
+            <h2 style={{ marginTop: 14 }}>{t("articles.title")}</h2>
+            <p className="fanus-art__lead">{t("articles.lead")}</p>
           </div>
           <Link href="/blog" className="fanus-btn fanus-btn-ghost">
-            Bütün məqalələr <Arrow />
+            {t("articles.seeAll")} <Arrow />
           </Link>
         </div>
 

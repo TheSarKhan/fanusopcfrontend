@@ -2,6 +2,7 @@
 
 import type { Testimonial } from "@/lib/api";
 import Deco from "@/components/Deco";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const FALLBACK: Testimonial[] = [
   { id: 1, quote: "Fanusda ilk seansdan sonra çiynimdə nə qədər ağırlıq daşıdığımı anladım. İndi nəfəs almaq daha asandır.", authorName: "Aynurə K.", authorRole: "Bakı · Narahatlıq", initials: "AK", gradient: "linear-gradient(135deg,#5089E0,#1051B7)", rating: 5, active: true },
@@ -59,6 +60,7 @@ function MarqueeRow({ items, reverse }: { items: Testimonial[]; reverse?: boolea
 }
 
 export default function Testimonials({ testimonials }: { testimonials?: Testimonial[] }) {
+  const { t } = useT();
   const items = (testimonials && testimonials.length > 0) ? testimonials : FALLBACK;
   const half = Math.ceil(items.length / 2);
   const row1 = items.slice(0, half);
@@ -70,11 +72,9 @@ export default function Testimonials({ testimonials }: { testimonials?: Testimon
       <Deco type="cards" style={{ bottom: 30, right: "4%", width: 220, opacity: .6 }} />
       <div className="fanus-container">
         <div className="fanus-tst__head">
-          <div className="fanus-eyebrow"><span className="dash" /> Müştəri rəyləri <span className="dash" /></div>
-          <h2 style={{ marginTop: 14 }}>
-            Onların <span className="fanus-serif-accent">hekayələri</span>
-          </h2>
-          <p>Adlar dəyişdirilib, sözlər həqiqi.</p>
+          <div className="fanus-eyebrow"><span className="dash" /> {t("test.eyebrow")} <span className="dash" /></div>
+          <h2 style={{ marginTop: 14 }}>{t("test.title")}</h2>
+          <p>{t("test.sub")}</p>
         </div>
       </div>
 

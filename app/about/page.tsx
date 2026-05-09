@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useScrollReveal } from "@/lib/useScrollReveal";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 // Bütün dəyər kartları əsas brend rəngi (#1051B7) və tonlarında.
 const VALUES = [
@@ -339,6 +340,7 @@ function TrustBand() {
 }
 
 export default function AboutPage() {
+  const { t } = useT();
   return (
     <div className="fanus-root">
       {/* Hero */}
@@ -348,14 +350,11 @@ export default function AboutPage() {
         <div className="container ap-hero-inner">
           <div className="abt-hero-grid">
             <div className="abt-hero-copy">
-              <div className="fanus-eyebrow"><span className="dash" /> Fanus Psixologiya Mərkəzi</div>
+              <div className="fanus-eyebrow"><span className="dash" /> {t("about.pageTitle")}</div>
               <h1 className="ap-hero-title" style={{ color: "var(--brand)" }}>
-                İnsana <span className="fanus-serif-accent">inanan</span><br />bir mərkəz.
+                {t("about.pageTitle")}
               </h1>
-              <p className="ap-hero-sub">
-                2019-cu ildən Azərbaycanda emosional sağlamlığı daha əlçatan,
-                daha insani etmək üçün çalışırıq.
-              </p>
+              <p className="ap-hero-sub">{t("home.heroSub")}</p>
             </div>
 
             <div className="abt-hero-visual" aria-hidden>

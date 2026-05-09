@@ -5,17 +5,19 @@ import Link from "next/link";
 import Deco from "@/components/Deco";
 import type { Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 type Cat = "all" | "anxiety" | "trauma" | "family" | "depression" | "youth" | "addiction";
 
-const FILTERS: { id: Cat; label: string }[] = [
-  { id: "all",        label: "Hamısı" },
-  { id: "anxiety",    label: "Narahatlıq" },
-  { id: "trauma",     label: "Travma" },
-  { id: "family",     label: "Münasibət · Ailə" },
-  { id: "depression", label: "Depressiya" },
-  { id: "youth",      label: "Yeniyetmə" },
-  { id: "addiction",  label: "Asılılıq" },
+const FILTER_KEYS: { id: Cat; key: MessageKey }[] = [
+  { id: "all",        key: "psyList.filterAll" },
+  { id: "anxiety",    key: "psyList.filterAnxiety" },
+  { id: "trauma",     key: "psyList.filterTrauma" },
+  { id: "family",     key: "psyList.filterFamily" },
+  { id: "depression", key: "psyList.filterDepression" },
+  { id: "youth",      key: "psyList.filterYouth" },
+  { id: "addiction",  key: "psyList.filterAddiction" },
 ];
 
 interface Item {
@@ -64,13 +66,6 @@ function getInitials(name: string) {
   return name.split(" ").filter(w => w.length > 1).map(w => w[0]).slice(0, 2).join("");
 }
 
-function formatLabel(f: Item["format"]) {
-  if (f === "ONLINE")    return "Onlayn";
-  if (f === "IN_PERSON") return "Əyani";
-  if (f === "BOTH")      return "Onlayn & Əyani";
-  return null;
-}
-
 export default function PsychologistsPage({ psychologists }: { psychologists?: Psychologist[] }) {
   const [filter, setFilter] = useState<Cat>("all");
 
@@ -112,6 +107,7 @@ export default function PsychologistsPage({ psychologists }: { psychologists?: P
 }
 
 function PsycHero({ count }: { count: number }) {
+  const { t } = useT();
   return (
     <section className="pp-hero">
       <Deco type="wave-top" style={{ top: -20, left: "-4%", width: 520, opacity: .55 }} anim="drift" />
@@ -131,21 +127,15 @@ function PsycHero({ count }: { count: number }) {
 
       <div className="fanus-container pp-hero__inner">
         <div className="pp-hero__copy">
-          <div className="fanus-eyebrow"><span className="dash" /> Komandamız</div>
-          <h1>
-            Sizin yolunuzda<br />
-            <span className="fanus-serif-accent">birlikdə</span> olacaq mütəxəssislər
-          </h1>
-          <p className="pp-hero__lead">
-            Hər biri sertifikatlı, lisenziyalı və Fanus etika kodeksinə bağlıdır.
-            Sahə, yanaşma və dilə görə filtrləyin — sizə uyğun olanı tapın.
-          </p>
+          <div className="fanus-eyebrow"><span className="dash" /> {t("psyList.eyebrow")}</div>
+          <h1>{t("psyList.title")}</h1>
+          <p className="pp-hero__lead">{t("psyList.lead")}</p>
 
           <div className="pp-hero__stats">
-            <Stat n={`${count}+`} t="Sertifikatlı psixoloq" />
-            <Stat n="8 il"  t="Orta təcrübə" />
-            <Stat n="12"    t="İxtisas sahəsi" />
-            <Stat n="3 dil" t="AZ · RU · EN" />
+            <Stat n={`${count}+`} t={t("home.statTotalPsychologists")} />
+            <Stat n={`8 ${t("psyList.yearsExp")}`}  t={t("psyList.avgExp")} />
+            <Stat n="12"    t={t("psyDetail.specializations")} />
+            <Stat n="3"     t={t("language.label")} />
           </div>
         </div>
 
@@ -244,28 +234,29 @@ function Stat({ n, t }: { n: string; t: string }) {
 }
 
 function PsycFilters({ active, onChange }: { active: Cat; onChange: (c: Cat) => void }) {
+  const { t } = useT();
   return (
     <div className="pp-filters">
       <div className="fanus-container pp-filters__inner">
         <div className="pp-filters__chips">
-          {FILTERS.map((f) => (
+          {FILTER_KEYS.map((f) => (
             <button
               key={f.id}
               className={`pp-chip ${active === f.id ? "is-active" : ""}`}
               onClick={() => onChange(f.id)}
             >
-              {f.label}
+              {t(f.key)}
             </button>
           ))}
         </div>
         <div className="pp-filters__tools">
           <select className="pp-select" defaultValue="online">
-            <option value="online">Onlayn / şəxsən</option>
-            <option value="onlineonly">Yalnız onlayn</option>
+            <option value="online">{t("psyList.formatBoth")}</option>
+            <option value="onlineonly">{t("psyList.formatOnline")}</option>
           </select>
           <select className="pp-select" defaultValue="any">
-            <option value="any">İstənilən dil</option>
-            <option value="az">Azərbaycanca</option>
+            <option value="any">{t("psyList.filterAll")}</option>
+            <option value="az">Azərbaycan</option>
             <option value="ru">Русский</option>
             <option value="en">English</option>
           </select>
@@ -348,11 +339,15 @@ function PsycList({ items }: { items: Item[] }) {
 }
 
 function PsyCard({ p }: { p: Item }) {
+  const { t } = useT();
   const initials = getInitials(p.name);
   const ratingNum = parseFloat(p.rating);
   const filledStars = isFinite(ratingNum) ? Math.round(ratingNum) : 0;
   const hasSessions = p.sessions && p.sessions !== "0" && p.sessions !== "—";
-  const fmt = formatLabel(p.format);
+  const fmt =
+    p.format === "ONLINE"    ? t("psyList.formatOnline") :
+    p.format === "IN_PERSON" ? t("psyList.formatInPerson") :
+    p.format === "BOTH"      ? t("psyList.formatBoth") : null;
 
   return (
     <article className="pp-card">
@@ -385,7 +380,7 @@ function PsyCard({ p }: { p: Item }) {
               <Stars value={filledStars} />
               <strong>{p.rating}</strong>
               {hasSessions && <span className="pp-card__rating-sep">·</span>}
-              {hasSessions && <span className="pp-card__rating-sub">{p.sessions} seans</span>}
+              {hasSessions && <span className="pp-card__rating-sub">{t("psyList.sessionsCount", { count: p.sessions })}</span>}
             </div>
           )}
         </div>
@@ -405,8 +400,8 @@ function PsyCard({ p }: { p: Item }) {
       <ul className="pp-card__meta">
         <li><GlobeIcon /> {p.lang}</li>
         {fmt && <li><MonitorIcon /> {fmt}</li>}
-        <li><ClockIcon /> {p.exp} il təcrübə</li>
-        <li><HourIcon /> {p.sessionMinutes} dəq seans</li>
+        <li><ClockIcon /> {p.exp} {t("psyList.yearsExp")}</li>
+        <li><HourIcon /> {t("psyList.minutes", { n: p.sessionMinutes })}</li>
       </ul>
 
       <div className="pp-card__foot">
@@ -414,14 +409,14 @@ function PsyCard({ p }: { p: Item }) {
           href={`/psychologists/${p.slug ?? p.id}`}
           className="pp-btn pp-btn--ghost"
         >
-          Profilə bax
+          {t("psyList.profile")}
           <ArrowRight />
         </Link>
         <Link
           href={`/book/${p.slug ?? p.id}`}
           className="pp-btn pp-btn--primary"
         >
-          <CalIcon /> Randevu al
+          <CalIcon /> {t("psyList.bookCta")}
         </Link>
       </div>
 
@@ -599,20 +594,21 @@ function Stars({ value }: { value: number }) {
 }
 
 function PsycCTA() {
+  const { t } = useT();
   return (
     <section className="pp-cta">
       <Deco type="circles-mix" style={{ top: 30, right: "6%", width: 220, opacity: .55 }} />
       <Deco type="target" style={{ bottom: 30, left: "8%", width: 130, opacity: .55 }} anim="drift" />
       <div className="fanus-container">
         <div className="pp-cta__head">
-          <div className="fanus-eyebrow"><span className="dash" /> Əmin deyilsiniz? <span className="dash" /></div>
-          <h2>Sizə uyğun mütəxəssisi <span className="fanus-serif-accent">tapaq</span></h2>
-          <p>Bir neçə qısa sual cavablandırın — sizə ən uyğun 3 psixoloqu təklif edək. İlk tanışlıq görüşü ödənişsizdir.</p>
+          <div className="fanus-eyebrow"><span className="dash" /> {t("psyList.matchCtaTitle")} <span className="dash" /></div>
+          <h2>{t("home.heroTitle")}</h2>
+          <p>{t("psyList.matchCtaSub")}</p>
           <div className="pp-cta__btns">
             <Link href="/register" className="fanus-btn fanus-btn-primary">
-              Uyğunluq testini başlat <ArrowRight />
+              {t("how.cta")} <ArrowRight />
             </Link>
-            <Link href="/xidmetler" className="fanus-btn fanus-btn-ghost">Xidmətlərə bax</Link>
+            <Link href="/xidmetler" className="fanus-btn fanus-btn-ghost">{t("services.eyebrow")}</Link>
           </div>
         </div>
       </div>

@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import { buildPanelUrl, getStoredUser } from "@/lib/auth";
 import { withSlugs } from "@/lib/slug";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"];
 
@@ -42,6 +43,7 @@ function initials(name: string) {
 type FormatT = "ONLINE" | "IN_PERSON";
 
 export default function BookPsychologistPage() {
+  const { t } = useT();
   const params = useParams<{ slug: string }>();
   const router = useRouter();
   const rawSlug = decodeURIComponent(params.slug ?? "");
@@ -138,11 +140,11 @@ export default function BookPsychologistPage() {
     setError(null);
     if (!psychologist) return;
     if (note.trim().length < 5) {
-      setError("Qısa olsa belə problem təsvirini yazın");
+      setError(t("book.errorNoteShort"));
       return;
     }
     if (recurring && !pickedSlot) {
-      setError("Davamlı rezervasiya üçün ilk vaxtı seçməlisiniz");
+      setError(t("book.errorMissingSlot"));
       return;
     }
     setSubmitting(true);
@@ -180,25 +182,15 @@ export default function BookPsychologistPage() {
               <path d="M20 6L9 17l-5-5" />
             </svg>
           </div>
-          <h1>{seriesResult ? "Davamlı seans yaradıldı" : "Müraciətiniz qəbul edildi"}</h1>
+          <h1>{seriesResult ? t("book.recurringSuccessTitle") : t("book.successTitle")}</h1>
           {seriesResult ? (
-            <p>
-              <strong>{seriesResult.created}</strong> randevu yaradıldı
-              {seriesResult.skipped > 0 && (
-                <> · <strong>{seriesResult.skipped}</strong> həftə məzuniyyətə görə atlandı</>
-              )}.
-              Hər biri ayrı-ayrı operator təsdiqi üçün siyahıya düşüb.
-              Statusu <strong>Randevularım</strong> bölməsindən izləyə bilərsiniz.
-            </p>
+            <p>{t("book.recurringSuccessBody", { created: seriesResult.created, skipped: seriesResult.skipped })}</p>
           ) : (
-            <p>
-              Operator komandamız tezliklə müraciətinizə baxıb sizə geri dönəcək.
-              Statusu <strong>Randevularım</strong> bölməsindən izləyə bilərsiniz.
-            </p>
+            <p>{t("book.successBody")}</p>
           )}
           <div className="bk-success-actions">
-            <a className="bk-btn bk-btn-primary" href={appointmentsUrl}>Randevularıma keç</a>
-            <a className="bk-btn bk-btn-ghost" href="/psychologists">Psixoloqlara qayıt</a>
+            <a className="bk-btn bk-btn-primary" href={appointmentsUrl}>{t("book.successCta")}</a>
+            <a className="bk-btn bk-btn-ghost" href="/psychologists">{t("book.backToList")}</a>
           </div>
         </div>
       </main>
@@ -212,11 +204,11 @@ export default function BookPsychologistPage() {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
-          Profilə qayıt
+          {t("common.back")}
         </a>
 
         {loading ? (
-          <div className="bk-card bk-card-loading">Yüklənir…</div>
+          <div className="bk-card bk-card-loading">{t("common.loading")}</div>
         ) : !psychologist ? (
           <div className="bk-card bk-card-error">{error ?? "Psixoloq tapılmadı."}</div>
         ) : (
@@ -267,16 +259,14 @@ export default function BookPsychologistPage() {
 
             <form onSubmit={onSubmit} className="bk-form">
               <header className="bk-form-head">
-                <p className="bk-eyebrow">Randevu al</p>
-                <h1>Sizə uyğun vaxtı seçin</h1>
-                <p className="bk-form-sub">
-                  Operator müraciətinizi 24 saat ərzində təsdiqləyəcək. İstədiyiniz vaxt mümkün deyilsə, ən yaxın alternativi təklif edəcək.
-                </p>
+                <p className="bk-eyebrow">{t("book.title")}</p>
+                <h1>{t("book.subtitle")}</h1>
+                <p className="bk-form-sub">{t("book.submitBlurb")}</p>
               </header>
 
               <section className="bk-section">
                 <div className="bk-section-head">
-                  <h3>Vaxt</h3>
+                  <h3>{t("book.timeSection")}</h3>
                   {pickedSlot && (
                     <span className="bk-pill bk-pill-brand">
                       {dayLabel(pickedSlot.startAt)}, {fmtTime(pickedSlot.startAt)}
@@ -285,9 +275,7 @@ export default function BookPsychologistPage() {
                 </div>
 
                 {grouped.length === 0 ? (
-                  <div className="bk-empty">
-                    Bu psixoloq hələ açıq vaxt göstərməyib. İstənilən halda müraciət göndərə bilərsiniz — operator sizə uyğun başqa vaxt təklif edəcək.
-                  </div>
+                  <div className="bk-empty">{t("book.noSlots")}</div>
                 ) : (
                   <>
                     <div className="bk-day-tabs" role="tablist">
@@ -330,7 +318,7 @@ export default function BookPsychologistPage() {
 
               <section className="bk-section">
                 <div className="bk-section-head">
-                  <h3>Seans formatı</h3>
+                  <h3>{t("book.formatSection")}</h3>
                 </div>
                 <div className="bk-format">
                   {(["ONLINE", "IN_PERSON"] as const).map(f => {
@@ -355,8 +343,8 @@ export default function BookPsychologistPage() {
                           )}
                         </span>
                         <span className="bk-format-text">
-                          <strong>{f === "ONLINE" ? "Onlayn" : "Əyani"}</strong>
-                          <small>{f === "ONLINE" ? "Video zəng üzərindən" : "Mərkəzdə üzbəüz görüş"}</small>
+                          <strong>{f === "ONLINE" ? t("book.formatOnline") : t("book.formatInPerson")}</strong>
+                          <small>{f === "ONLINE" ? t("book.formatOnlineSub") : t("book.formatInPersonSub")}</small>
                         </span>
                       </button>
                     );
@@ -366,16 +354,16 @@ export default function BookPsychologistPage() {
 
               <section className="bk-section">
                 <div className="bk-section-head">
-                  <h3>Mövzu / Qısa təsvir</h3>
+                  <h3>{t("book.noteSection")}</h3>
                 </div>
                 <textarea
                   rows={4}
                   className="bk-textarea"
-                  placeholder="Məsələn: son aylarda anksiyete və yuxu problemləri…"
+                  placeholder={t("book.notePlaceholder")}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                 />
-                <p className="bk-hint">Məlumatlarınız tam məxfi saxlanılır və yalnız təyin olunan psixoloq və operator görəcək.</p>
+                <p className="bk-hint">{t("book.noteHint")}</p>
               </section>
 
               <section className="bk-section bk-recurring">
@@ -383,21 +371,21 @@ export default function BookPsychologistPage() {
                   <input type="checkbox" checked={recurring}
                     onChange={(e) => setRecurring(e.target.checked)} />
                   <div>
-                    <strong>Davamlı seans rezerv et</strong>
-                    <small>Eyni saat və günü təkrar bron edirik — hər seansı ayrı götürmək lazım deyil.</small>
+                    <strong>{t("book.recurringTitle")}</strong>
+                    <small>{t("book.recurringSub")}</small>
                   </div>
                 </label>
                 {recurring && (
                   <div className="bk-recurring-opts">
                     <label>
-                      <span>Tezlik</span>
+                      <span>{t("book.recurringFreq")}</span>
                       <select value={frequency} onChange={(e) => setFrequency(e.target.value as "WEEKLY"|"BIWEEKLY")}>
-                        <option value="WEEKLY">Hər həftə</option>
-                        <option value="BIWEEKLY">Hər 2 həftə</option>
+                        <option value="WEEKLY">{t("book.recurringWeekly")}</option>
+                        <option value="BIWEEKLY">{t("book.recurringBiweekly")}</option>
                       </select>
                     </label>
                     <label>
-                      <span>Cəmi seans (1-ci daxil)</span>
+                      <span>{t("book.recurringCount")}</span>
                       <input
                         type="number" min={2} max={12}
                         value={totalCount}
@@ -405,9 +393,10 @@ export default function BookPsychologistPage() {
                       />
                     </label>
                     <p className="bk-recurring-hint">
-                      İlk seans <strong>{pickedSlot ? `${dayLabel(pickedSlot.startAt)}, ${fmtTime(pickedSlot.startAt)}` : "seçilməyib"}</strong>,
-                      sonra {frequency === "WEEKLY" ? "hər həftə" : "hər 2 həftə"} eyni saatda təkrar olunacaq.
-                      Psixoloq məzuniyyətdə olan həftələr avtomatik atlanacaq.
+                      {t("book.recurringHint", {
+                        first: pickedSlot ? `${dayLabel(pickedSlot.startAt)}, ${fmtTime(pickedSlot.startAt)}` : "—",
+                        freq: frequency === "WEEKLY" ? t("book.recurringWeekly").toLowerCase() : t("book.recurringBiweekly").toLowerCase(),
+                      })}
                     </p>
                   </div>
                 )}
@@ -417,10 +406,10 @@ export default function BookPsychologistPage() {
 
               <div className="bk-actions">
                 <button type="button" className="bk-btn bk-btn-ghost" onClick={() => router.back()}>
-                  Ləğv et
+                  {t("common.cancel")}
                 </button>
                 <button type="submit" className="bk-btn bk-btn-primary" disabled={submitting}>
-                  {submitting ? "Göndərilir…" : "Müraciət göndər"}
+                  {submitting ? t("common.sending") : t("book.submitCta")}
                 </button>
               </div>
             </form>

@@ -3,8 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { forgotPassword } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function ForgotPasswordPage() {
+  const { t } = useT();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -40,30 +42,29 @@ export default function ForgotPasswordPage() {
           >
             🔑
           </div>
-          <h1 className="text-2xl font-bold text-[#1A2535]">Şifrəni sıfırla</h1>
+          <h1 className="text-2xl font-bold text-[#1A2535]">{t("auth.forgotTitle")}</h1>
           <p className="text-sm text-[#52718F] mt-1">
-            {sent ? "Email göndərildi" : "Email ünvanınızı daxil edin"}
+            {sent ? t("auth.successForgot") : t("auth.forgotSubtitle")}
           </p>
         </div>
 
         {sent ? (
           <div className="text-center">
             <p className="text-[#374151] text-sm leading-relaxed mb-6">
-              Əgər <strong>{email}</strong> sistemdə mövcuddursa,
-              şifrə sıfırlama linki göndərildi. Email-inizi yoxlayın.
+              <strong>{email}</strong> — {t("auth.successForgot")}
             </p>
             <Link
               href="/login"
               className="block py-3 rounded-xl text-sm font-bold text-white text-center"
               style={{ background: "var(--brand)" }}
             >
-              Daxil ol səhifəsinə qayıt
+              {t("auth.backToLogin")}
             </Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="block text-xs font-semibold text-[#1A2535] mb-1.5">Email</label>
+              <label className="block text-xs font-semibold text-[#1A2535] mb-1.5">{t("auth.email")}</label>
               <input
                 type="email"
                 value={email}
@@ -81,14 +82,14 @@ export default function ForgotPasswordPage() {
               className="py-3 rounded-xl text-sm font-bold text-white transition-all"
               style={{ background: loading ? "#52718F" : "var(--brand)" }}
             >
-              {loading ? "Göndərilir..." : "Sıfırlama linki göndər →"}
+              {loading ? t("common.sending") : `${t("auth.forgotCta")} →`}
             </button>
 
             <Link
               href="/login"
               className="text-center text-sm text-[#52718F] hover:underline"
             >
-              ← Geri qayıt
+              ← {t("auth.backToLogin")}
             </Link>
           </form>
         )}

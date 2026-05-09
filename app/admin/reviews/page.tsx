@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { adminApi, type AdminReview } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 type Status = "PENDING" | "APPROVED" | "REJECTED" | "ALL";
 
@@ -32,6 +33,7 @@ function Stars({ value }: { value: number }) {
 }
 
 export default function AdminReviewsPage() {
+  const { t } = useT();
   const [items, setItems] = useState<AdminReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Status>("PENDING");
@@ -89,9 +91,9 @@ export default function AdminReviewsPage() {
   return (
     <div style={{ padding: 24 }}>
       <div style={{ marginBottom: 18 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535", margin: 0 }}>Pasiyent rəyləri</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535", margin: 0 }}>{t("staff.adminReviewsTitle")}</h1>
         <p style={{ fontSize: 13, color: "#52718F", marginTop: 4 }}>
-          Daxil olan rəyləri təsdiqləyin və ya rədd edin. Təsdiqlənən rəylər public profildə dərhal görünür.
+          {t("staff.adminReviewsSub")}
         </p>
       </div>
 

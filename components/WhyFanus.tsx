@@ -1,43 +1,23 @@
 "use client";
 
 import Deco from "@/components/Deco";
-
-const REASONS = [
-  {
-    icon: "shield",
-    title: "Tam məxfilik",
-    text: "Bütün seanslar uçdan-uca şifrələnir. Hekayəniz yalnız sizin və psixoloqunuzun arasındadır.",
-    tag: "01",
-    bg: "#F2F6FD",
-  },
-  {
-    icon: "sparkle",
-    title: "Sizə uyğun psixoloq",
-    text: "Qısa anketdən sonra ehtiyacınıza, dilinizə və tempinizə uyğun mütəxəssis təqdim edirik.",
-    tag: "02",
-    bg: "#FFF7E8",
-  },
-  {
-    icon: "heart",
-    title: "Hər yerdən, rahatca",
-    text: "Telefon və ya kompüterdən. Trafik yox, gözləmə yox — sadəcə sizə ayrılmış bir saat.",
-    tag: "03",
-    bg: "#E4ECFA",
-  },
-];
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function WhyFanus() {
+  const { t } = useT();
+  const REASONS = [
+    { icon: "shield",  title: t("why.privacyTitle"),   text: t("why.privacyText"),   tag: "01", bg: "#F2F6FD" },
+    { icon: "sparkle", title: t("why.matchTitle"),     text: t("why.matchText"),     tag: "02", bg: "#FFF7E8" },
+    { icon: "heart",   title: t("why.anywhereTitle"),  text: t("why.anywhereText"),  tag: "03", bg: "#E4ECFA" },
+  ];
   return (
     <section className="fanus-why" id="about">
       <Deco type="mesh-blob" style={{ top: 40, right: "-4%", width: 420, opacity: .55 }} anim="drift" />
       <Deco type="sphere" style={{ bottom: 60, left: "-3%", width: 240, opacity: .6 }} anim="drift" />
       <div className="fanus-container">
         <div className="fanus-why__head">
-          <div className="fanus-eyebrow"><span className="dash" /> Niyə Fanus? <span className="dash" /></div>
-          <h2>
-            İçərideki <span className="fanus-serif-accent">işıq</span> üçün<br />
-            doğru məkan.
-          </h2>
+          <div className="fanus-eyebrow"><span className="dash" /> {t("why.eyebrow")} <span className="dash" /></div>
+          <h2>{t("why.title")}</h2>
         </div>
 
         <div className="fanus-why__grid">

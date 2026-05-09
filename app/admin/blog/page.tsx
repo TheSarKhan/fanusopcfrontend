@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { adminApi, type BlogPost } from "@/lib/api";
 import { getMainSiteUrl } from "@/lib/auth";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -169,6 +170,7 @@ function ConfirmModal({ message, onConfirm, onCancel }: { message: string; onCon
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function ArticlesPage() {
+  const { t } = useT();
   const [items, setItems] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -302,9 +304,9 @@ export default function ArticlesPage() {
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#1A2535", margin: 0 }}>Məqalələr</h1>
+          <h1 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#1A2535", margin: 0 }}>{t("staff.adminBlogTitle")}</h1>
           <p style={{ fontSize: 13, color: "#8AAABF", marginTop: 3, marginBottom: 0 }}>
-            Admin və psixoloq məqalələrinin idarəsi
+            {t("staff.adminBlogSub")}
           </p>
         </div>
         <a

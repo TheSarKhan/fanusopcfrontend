@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { psychologistApi, type PsychologistReceivedReview } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   PENDING:  { label: "Moderasiyada", color: "#92400E", bg: "#FEF3C7" },
@@ -29,6 +30,7 @@ function Stars({ value, size = 14 }: { value: number; size?: number }) {
 }
 
 export default function PsychologReviewsPage() {
+  const { t } = useT();
   const [items, setItems] = useState<PsychologistReceivedReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"ALL" | "APPROVED" | "PENDING">("APPROVED");
@@ -79,18 +81,18 @@ export default function PsychologReviewsPage() {
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535", margin: 0 }}>Pasiyent rəyləri</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535", margin: 0 }}>{t("staff.psyReviewsTitle")}</h1>
         <p style={{ fontSize: 13, color: "#52718F", marginTop: 4 }}>
-          Müştərilərinizin yazdığı rəylərə baxın və lazım gələrsə cavab yazın.
+          {t("staff.psyReviewsSub")}
         </p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 18 }}>
-        <Stat label="Orta reytinq" value={summary.total > 0 ? summary.avg.toFixed(1) : "—"}
+        <Stat label={t("staff.psyReviewsAvg")} value={summary.total > 0 ? summary.avg.toFixed(1) : "—"}
               extra={summary.total > 0 ? <Stars value={Math.round(summary.avg)} size={14} /> : null} />
-        <Stat label="Public rəylər" value={String(counts.APPROVED ?? 0)} />
-        <Stat label="Moderasiyada" value={String(counts.PENDING ?? 0)} />
-        <Stat label="Cəmi rəy" value={String(counts.ALL ?? 0)} />
+        <Stat label={t("psyDetail.reviews")} value={String(counts.APPROVED ?? 0)} />
+        <Stat label={t("appt.statusPending")} value={String(counts.PENDING ?? 0)} />
+        <Stat label={t("psyList.filterAll")} value={String(counts.ALL ?? 0)} />
       </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>

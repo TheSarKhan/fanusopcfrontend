@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Deco from "@/components/Deco";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function ServicesPage() {
   return (
@@ -14,6 +15,7 @@ export default function ServicesPage() {
 }
 
 function ServicesHero() {
+  const { t } = useT();
   return (
     <section className="svc-hero">
       <Deco type="wave-top" style={{ top: -20, left: "-4%", width: 520, opacity: .55 }} anim="drift" />
@@ -35,17 +37,12 @@ function ServicesHero() {
 
       <div className="fanus-container svc-hero__inner">
         <div className="svc-hero__copy">
-          <div className="fanus-eyebrow"><span className="dash" /> Xidmətlər</div>
-          <h1>
-            Hansı dəstəyə<br />
-            <span className="fanus-serif-accent">ehtiyacınız</span> var?
-          </h1>
-          <p className="svc-hero__lead">
-            Hər ehtiyac üçün düşünülmüş psixoloji proqramlar. Sizin tempinizdə, sizin dilinizdə.
-          </p>
+          <div className="fanus-eyebrow"><span className="dash" /> {t("services.eyebrow")}</div>
+          <h1>{t("services.title")}</h1>
+          <p className="svc-hero__lead">{t("services.lead")}</p>
           <div className="svc-hero__cta">
             <Link href="#programs" className="fanus-btn fanus-btn-primary fanus-btn-lg">
-              Pulsuz başla — qeydiyyat <Arrow />
+              {t("how.cta")} <Arrow />
             </Link>
           </div>
         </div>
@@ -169,6 +166,7 @@ const PROGRAMS = [
 ];
 
 function ServicesPrograms() {
+  const { t } = useT();
   return (
     <section className="svc-prog" id="programs">
       <Deco type="mesh-blob" style={{ top: 60, right: "-5%", width: 400, opacity: .45 }} anim="drift" />
@@ -176,9 +174,9 @@ function ServicesPrograms() {
 
       <div className="fanus-container">
         <div className="svc-head">
-          <div className="fanus-eyebrow"><span className="dash" /> Proqramlar <span className="dash" /></div>
-          <h2>Sizə uyğun olanı <span className="fanus-serif-accent">seçin</span></h2>
-          <p>Əmin deyilsiniz? Pulsuz 15 dəqiqəlik uyğunluq görüşü sizə kömək edər.</p>
+          <div className="fanus-eyebrow"><span className="dash" /> {t("services.eyebrow")} <span className="dash" /></div>
+          <h2>{t("services.title")}</h2>
+          <p>{t("psyList.matchCtaSub")}</p>
         </div>
 
         <div className="svc-prog__grid">
@@ -197,7 +195,7 @@ function ServicesPrograms() {
                 ))}
               </ul>
               <Link href="/register" className="svc-card__btn">
-                Başla <Arrow size={14} />
+                {t("how.cta")} <Arrow size={14} />
               </Link>
             </article>
           ))}
@@ -260,6 +258,7 @@ function ServicesPrograms() {
 }
 
 function ServicesMatch() {
+  const { t } = useT();
   return (
     <section className="svc-match">
       <Deco type="circles-mix" style={{ top: 30, right: "6%", width: 220, opacity: .55 }} />
@@ -267,19 +266,14 @@ function ServicesMatch() {
 
       <div className="fanus-container">
         <div className="svc-head">
-          <div className="fanus-eyebrow"><span className="dash" /> Haradan başlamaq lazımdır? <span className="dash" /></div>
-          <h2>
-            Hələ əmin deyilsiniz?<br />
-            Psixoloqlarımızla <span className="fanus-serif-accent">tanış olun</span>
-          </h2>
-          <p>
-            Sahə, yanaşma və təcrübəyə görə filtrləyin — sizə ən uyğun mütəxəssisi tapın. İlk tanışlıq seansı ödənişsizdir.
-          </p>
+          <div className="fanus-eyebrow"><span className="dash" /> {t("psyList.matchCtaTitle")} <span className="dash" /></div>
+          <h2>{t("psyList.title")}</h2>
+          <p>{t("psyList.matchCtaSub")}</p>
           <div className="svc-match__cta">
             <Link href="/psychologists" className="fanus-btn fanus-btn-primary">
-              Psixoloqlara bax <Arrow />
+              {t("psyList.seeAll")} <Arrow />
             </Link>
-            <Link href="/register" className="fanus-btn fanus-btn-ghost">Qeydiyyat</Link>
+            <Link href="/register" className="fanus-btn fanus-btn-ghost">{t("nav.register")}</Link>
           </div>
         </div>
       </div>

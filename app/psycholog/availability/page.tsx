@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { psychologistApi, type TimeSlot, type TimeSlotOverride, type Vacation } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const WEEKDAYS_AZ = [
   { iso: 1, label: "Bazar ertəsi" },
@@ -23,6 +24,7 @@ function trimSeconds(t: string) {
 }
 
 export default function PsychologistAvailabilityPage() {
+  const { t } = useT();
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [overrides, setOverrides] = useState<TimeSlotOverride[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,8 +183,8 @@ export default function PsychologistAvailabilityPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#1A2535]">Açıq vaxtlarım</h1>
-        <p className="text-[#52718F] text-sm mt-1">Həftəlik təkrarlanan vaxtlar və konkret tarix istisnaları</p>
+        <h1 className="text-2xl font-bold text-[#1A2535]">{t("staff.psyAvailTitle")}</h1>
+        <p className="text-[#52718F] text-sm mt-1">{t("staff.psyAvailSub")}</p>
       </div>
 
       {error && (

@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { getStoredUser } from "@/lib/auth";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const MONTHS_AZ = ["Yanvar","Fevral","Mart","Aprel","May","İyun","İyul","Avqust","Sentyabr","Oktyabr","Noyabr","Dekabr"];
 const DAYS_AZ = ["Bazar","Bazar ertəsi","Çərşənbə axşamı","Çərşənbə","Cümə axşamı","Cümə","Şənbə"];
@@ -52,6 +53,7 @@ function fmtMin(n: number | null) {
 }
 
 export default function OperatorDashboard() {
+  const { t } = useT();
   const user = getStoredUser();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [stats, setStats] = useState<OperatorStats | null>(null);
@@ -132,24 +134,22 @@ export default function OperatorDashboard() {
       <div className="op-dash-header">
         <div>
           <p className="op-dash-eyebrow">{todayLabel()}</p>
-          <h1 className="op-dash-title">Salam{user?.firstName ? `, ${user.firstName}` : ""} 👋</h1>
-          <p className="op-dash-sub">
-            Bugünkü iş axınınız — diqqət tələb edən müraciətlər və aktiv seanslar
-          </p>
+          <h1 className="op-dash-title">{t("staff.opDashTitle")}{user?.firstName ? ` · ${user.firstName}` : ""} 👋</h1>
+          <p className="op-dash-sub">{t("staff.opDashSub")}</p>
         </div>
         <div className="op-dash-actions">
           <Link href="/operator/appointments" className="op-dash-btn op-dash-btn--ghost">
-            Bütün müraciətlər
+            {t("staff.opViewAll")}
           </Link>
           <Link href="/operator/analytics" className="op-dash-btn op-dash-btn--ghost">
-            📊 Analitika
+            📊 {t("nav.analytics")}
           </Link>
         </div>
       </div>
 
       {loading ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 60, textAlign: "center", color: "var(--oxford-60)" }}>
-          Yüklənir…
+          {t("common.loading")}
         </div>
       ) : (
         <>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { Psychologist } from "@/lib/api";
 import Deco from "@/components/Deco";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const FALLBACK: Array<{ name: string; spec: string; exp: number; tags: string[]; color: string; online: boolean }> = [
   { name: "Aysel Məmmədova", spec: "Narahatlıq · OKD · Panik", exp: 8, tags: ["KDT", "Sxem"], color: "#5089E0", online: true },
@@ -14,6 +15,7 @@ const FALLBACK: Array<{ name: string; spec: string; exp: number; tags: string[];
 ];
 
 export default function Psychologists({ psychologists }: { psychologists?: Psychologist[] }) {
+  const { t } = useT();
   const data = (psychologists && psychologists.length > 0)
     ? psychologists.slice(0, 6).map((p) => ({
         id: p.id,
@@ -34,14 +36,12 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
       <div className="fanus-container">
         <div className="fanus-psyc__head">
           <div>
-            <div className="fanus-eyebrow"><span className="dash" /> Komandamız</div>
-            <h2 style={{ marginTop: 14 }}>Psixoloqlarımız</h2>
-            <p className="fanus-psyc__lead">
-              Hər biri sertifikatlı, ən az 5 illik təcrübəyə malik və Fanus etika kodeksinə bağlı mütəxəssislərdir.
-            </p>
+            <div className="fanus-eyebrow"><span className="dash" /> {t("psyList.eyebrow")}</div>
+            <h2 style={{ marginTop: 14 }}>{t("psyList.title")}</h2>
+            <p className="fanus-psyc__lead">{t("psyList.lead")}</p>
           </div>
           <Link href="/psychologists" className="fanus-btn fanus-btn-ghost">
-            Hamısına bax <Arrow />
+            {t("psyList.seeAll")} <Arrow />
           </Link>
         </div>
 
@@ -60,7 +60,7 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
                 </div>
                 <div className="fanus-psyc-card__exp">
                   <strong>{p.exp}</strong>
-                  <span>il təcrübə</span>
+                  <span>{t("psyList.yearsExp")}</span>
                 </div>
               </div>
               <h3 className="fanus-psyc-card__name">{p.name}</h3>
@@ -69,9 +69,9 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
                 {p.tags.map((t: string, j: number) => <span key={j} className="fanus-psyc-tag">{t}</span>)}
               </div>
               <div className="fanus-psyc-card__foot">
-                <Link href={`/psychologists/${p.id}`} className="fanus-btn fanus-btn-light fanus-btn-sm">Profil</Link>
+                <Link href={`/psychologists/${p.id}`} className="fanus-btn fanus-btn-light fanus-btn-sm">{t("psyList.profile")}</Link>
                 <Link href={`/book?psychologist=${p.id}`} className="fanus-btn fanus-btn-primary fanus-btn-sm" style={{ flex: 1, justifyContent: "center" }}>
-                  <CalIcon /> Randevu al
+                  <CalIcon /> {t("psyList.bookCta")}
                 </Link>
               </div>
             </article>

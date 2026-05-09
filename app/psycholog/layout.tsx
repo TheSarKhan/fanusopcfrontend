@@ -3,31 +3,33 @@
 import PanelAuthGuard from "@/components/PanelAuthGuard";
 import PanelShell, { type PanelNavItem } from "@/components/PanelShell";
 import { getStoredUser } from "@/lib/auth";
-
-const NAV: PanelNavItem[] = [
-  { href: "/psycholog",              label: "Ümumi baxış", icon: "home" },
-  { href: "/psycholog/calendar",     label: "Təqvim",      icon: "calendar" },
-  { href: "/psycholog/appointments", label: "Randevular",  icon: "video" },
-  { href: "/psycholog/clients",      label: "Müştərilər",  icon: "users" },
-  { href: "/psycholog/homework",     label: "Tapşırıqlar", icon: "check" },
-  { href: "/psycholog/availability", label: "Açıq vaxtlar", icon: "clock" },
-  { href: "/psycholog/reviews",      label: "Rəylər",      icon: "star" },
-];
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 function PsychologShell({ children }: { children: React.ReactNode }) {
+  const { t } = useT();
   const u = getStoredUser();
   const first = u?.firstName ?? "";
   const last = u?.lastName ?? "";
-  const name = (first + " " + last).trim() || u?.email || "Psixoloq";
+  const name = (first + " " + last).trim() || u?.email || t("nav.psychologists");
   const initials = ((first[0] ?? "") + (last[0] ?? "")).toUpperCase() || "P";
+
+  const nav: PanelNavItem[] = [
+    { href: "/psycholog",              label: t("nav.dashboard"),    icon: "home" },
+    { href: "/psycholog/calendar",     label: t("nav.calendar"),     icon: "calendar" },
+    { href: "/psycholog/appointments", label: t("nav.appointments"), icon: "video" },
+    { href: "/psycholog/clients",      label: t("nav.clients"),      icon: "users" },
+    { href: "/psycholog/homework",     label: t("nav.homework"),     icon: "check" },
+    { href: "/psycholog/availability", label: t("vacation.title"),   icon: "clock" },
+    { href: "/psycholog/reviews",      label: t("nav.reviews"),      icon: "star" },
+  ];
 
   return (
     <PanelShell
-      brandLabel="Psixoloq paneli"
+      brandLabel={t("nav.psychologists")}
       homeHref="/psycholog"
-      navItems={NAV}
-      user={{ name, initials, role: "Klinik psixoloq" }}
-      searchPlaceholder="Pasiyent, seans və ya qeyd axtar..."
+      navItems={nav}
+      user={{ name, initials, role: t("nav.psychologists") }}
+      searchPlaceholder={t("common.search")}
     >
       {children}
     </PanelShell>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { psychologistApi, type ClientSummary, type PatientTag } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const ACTIVE_DAYS = 30;
 const DORMANT_DAYS = 90;
@@ -32,6 +33,7 @@ function lastSessionPill(days: number | null): { text: string; tone: string } {
 }
 
 export default function PsychologClientsPage() {
+  const { t } = useT();
   const [clients, setClients] = useState<ClientSummary[]>([]);
   const [tagsByPatient, setTagsByPatient] = useState<Record<number, PatientTag[]>>({});
   const [loading, setLoading] = useState(true);
@@ -99,24 +101,24 @@ export default function PsychologClientsPage() {
     <div>
       <div className="psy-clients-head mb-6 flex items-end justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A2535]">Müştərilər</h1>
-          <p className="text-[#52718F] text-sm mt-1">Hər müştəriyə dair gizli qeydləri buradan idarə edin</p>
+          <h1 className="text-2xl font-bold text-[#1A2535]">{t("staff.psyClientsTitle")}</h1>
+          <p className="text-[#52718F] text-sm mt-1">{t("staff.psyClientsSub")}</p>
         </div>
         <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Ad / email / telefon"
+          placeholder={t("common.search")}
           className="psy-clients-search"
           style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 13 }} />
       </div>
 
       {/* Stat strip */}
       <div className="cli-stats">
-        <StatCard label="Cəmi müştəri"   value={counters.all}                           tone="brand"
+        <StatCard label={t("staff.psyClientsFilterAll")}   value={counters.all}     tone="brand"
                   active={filter === "ALL"}     onClick={() => setFilter("ALL")} />
-        <StatCard label={`Aktiv (${ACTIVE_DAYS} gün)`} value={counters.active}                 tone="good"
+        <StatCard label={`${t("staff.psyClientsFilterActive")} (${ACTIVE_DAYS}d)`} value={counters.active}    tone="good"
                   active={filter === "ACTIVE"}  onClick={() => setFilter("ACTIVE")} />
-        <StatCard label={`Passiv (${DORMANT_DAYS}+)`}  value={counters.dormant}                tone="warn"
+        <StatCard label={`${t("staff.psyClientsFilterDormant")} (${DORMANT_DAYS}+)`}  value={counters.dormant} tone="warn"
                   active={filter === "DORMANT"} onClick={() => setFilter("DORMANT")} />
-        <StatCard label="İşarələnmiş"     value={counters.flagged}                       tone="danger"
+        <StatCard label={t("staff.psyClientsFilterFlagged")} value={counters.flagged}                       tone="danger"
                   active={filter === "FLAGGED"} onClick={() => setFilter("FLAGGED")} />
       </div>
 
@@ -146,7 +148,7 @@ export default function PsychologClientsPage() {
         <div style={{ background: "#fff", padding: 40, borderRadius: 14, textAlign: "center", color: "#52718F" }}>Yüklənir…</div>
       ) : visible.length === 0 ? (
         <div style={{ background: "#fff", padding: 48, borderRadius: 14, textAlign: "center", color: "#52718F" }}>
-          {clients.length === 0 ? "Hələ müştəriniz yoxdur." : "Seçilmiş filtrlərə uyğun müştəri tapılmadı."}
+          {clients.length === 0 ? t("staff.psyClientsEmpty") : t("appt.emptyAll")}
         </div>
       ) : (
         <div style={{ display: "grid", gap: 8 }}>

@@ -2,30 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Deco from "@/components/Deco";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 type MoodId = "anxious" | "sad" | "tired" | "angry" | "mixed" | "lonely" | "hopeful" | "happy";
 type Mood = { id: MoodId; label: string; color: string };
 
-const MOODS: Mood[] = [
-  { id: "anxious", label: "Narahat",  color: "#88AEEC" },
-  { id: "sad",     label: "Kədərli",  color: "#5089E0" },
-  { id: "tired",   label: "Yorğun",   color: "#2A6BD0" },
-  { id: "angry",   label: "Əsəbi",    color: "#1051B7" },
-  { id: "mixed",   label: "Qarışıq",  color: "#0B3F90" },
-  { id: "lonely",  label: "Yalnız",   color: "#1A3B7A" },
-  { id: "hopeful", label: "Ümidli",   color: "#3D70C8" },
-  { id: "happy",   label: "Xoşbəxt",  color: "#1051B7" },
-];
-
-const MESSAGES: Record<MoodId, string> = {
-  anxious: "Nəfəs alın. Narahatlıq keçicidir, siz qalıcısınız.",
-  sad: "Kədərinizə yer verin — o, sizə nəyin önəmli olduğunu deyir.",
-  tired: "Yorğunluq zəiflik deyil, dincəlmək üçün dəvətdir.",
-  angry: "Əsəbiniz altındakı ehtiyacı eşitsəniz, o sizinlə danışmağa hazırdır.",
-  mixed: "Hər şeyi bir anda hiss etmək insani bir gücdür.",
-  lonely: "Yalnız hiss etmək, yalnız olmaq demək deyil. Biz buradayıq.",
-  hopeful: "Ümid kiçik bir alovdur — onu qoruyun, böyütməyə kömək edək.",
-  happy: "Bu anı özünüzdə yaşadın. Onu xatırlamaq lazım gələ bilər.",
+const MOOD_COLORS: Record<MoodId, string> = {
+  anxious: "#88AEEC",
+  sad:     "#5089E0",
+  tired:   "#2A6BD0",
+  angry:   "#1051B7",
+  mixed:   "#0B3F90",
+  lonely:  "#1A3B7A",
+  hopeful: "#3D70C8",
+  happy:   "#1051B7",
 };
 
 function MoodIcon({ id, size = 30 }: { id: MoodId; size?: number }) {
@@ -43,8 +33,20 @@ function MoodIcon({ id, size = 30 }: { id: MoodId; size?: number }) {
 }
 
 export default function MoodCheckIn() {
+  const { t } = useT();
   const [selected, setSelected] = useState<Mood | null>(null);
   const [open, setOpen] = useState(false);
+
+  const MOODS: Mood[] = [
+    { id: "anxious", label: t("mood.moodAnxious"), color: MOOD_COLORS.anxious },
+    { id: "sad",     label: t("mood.moodSad"),     color: MOOD_COLORS.sad },
+    { id: "tired",   label: t("mood.moodTired"),   color: MOOD_COLORS.tired },
+    { id: "angry",   label: t("mood.moodAngry"),   color: MOOD_COLORS.angry },
+    { id: "mixed",   label: t("mood.moodMixed"),   color: MOOD_COLORS.mixed },
+    { id: "lonely",  label: t("mood.moodLonely"),  color: MOOD_COLORS.lonely },
+    { id: "hopeful", label: t("mood.moodHopeful"), color: MOOD_COLORS.hopeful },
+    { id: "happy",   label: t("mood.moodHappy"),   color: MOOD_COLORS.happy },
+  ];
 
   const onPick = (m: Mood) => {
     setSelected(m);
@@ -61,13 +63,9 @@ export default function MoodCheckIn() {
       </div>
       <div className="fanus-container">
         <div className="fanus-mood__head">
-          <div className="fanus-eyebrow"><span className="dash" /> Bir an dayanın <span className="dash" /></div>
-          <h2>
-            Bu gün özünüzü <span className="fanus-serif-accent">necə</span> hiss edirsiniz?
-          </h2>
-          <p>
-            Hisslərinizi seçin — biz sizə uyğun məqalələri, motivasiya sözlərini və psixoloqlarımızı təklif edək.
-          </p>
+          <div className="fanus-eyebrow"><span className="dash" /> {t("mood.eyebrow")} <span className="dash" /></div>
+          <h2>{t("mood.title")}</h2>
+          <p>{t("mood.sub")}</p>
         </div>
 
         <div className="fanus-mood__chips">
@@ -156,53 +154,65 @@ export default function MoodCheckIn() {
 }
 
 function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }) {
+  const { t } = useT();
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
   }, []);
 
+  const MESSAGE_KEYS: Record<MoodId, "mood.msgAnxious" | "mood.msgSad" | "mood.msgTired" | "mood.msgAngry" | "mood.msgMixed" | "mood.msgLonely" | "mood.msgHopeful" | "mood.msgHappy"> = {
+    anxious: "mood.msgAnxious",
+    sad:     "mood.msgSad",
+    tired:   "mood.msgTired",
+    angry:   "mood.msgAngry",
+    mixed:   "mood.msgMixed",
+    lonely:  "mood.msgLonely",
+    hopeful: "mood.msgHopeful",
+    happy:   "mood.msgHappy",
+  };
+
   const articles = [
-    { tag: "Narahatlıq", title: "Səhər narahatlığı ilə necə oyanmamalı", read: "6 dəq" },
-    { tag: "Nəfəs", title: "4-7-8 nəfəs texnikası: addım-addım təlimat", read: "4 dəq" },
-    { tag: "Düşüncə", title: "Avtomatik mənfi düşüncələri tutmaq", read: "8 dəq" },
+    { tag: t("psyList.filterAnxiety"), title: t("articles.title"),       read: t("articles.minutes", { n: 6 }) },
+    { tag: t("how.eyebrow"),           title: t("how.step1Text"),        read: t("articles.minutes", { n: 4 }) },
+    { tag: t("psyList.filterAnxiety"), title: t("home.heroSub"),         read: t("articles.minutes", { n: 8 }) },
   ];
   const psyc = [
-    { name: "Aysel Məmmədova", spec: "Narahatlıq, OKD", exp: "8 il", color: "#5089E0" },
-    { name: "Rəşad Quliyev", spec: "Travma, KDT", exp: "11 il", color: "#F5B946" },
-    { name: "Lalə Hüseynova", spec: "Münasibətlər", exp: "6 il", color: "#1051B7" },
+    { name: "Aysel Məmmədova", spec: t("psyList.filterAnxiety"),  exp: `8 ${t("psyList.yearsExp")}`,  color: "#5089E0" },
+    { name: "Rəşad Quliyev",   spec: t("psyList.filterTrauma"),   exp: `11 ${t("psyList.yearsExp")}`, color: "#F5B946" },
+    { name: "Lalə Hüseynova",  spec: t("psyList.filterFamily"),   exp: `6 ${t("psyList.yearsExp")}`,  color: "#1051B7" },
   ];
 
   return (
     <div className="fanus-mm-backdrop" onClick={onClose}>
       <div className="fanus-mm-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="fanus-mm-close" onClick={onClose} aria-label="Bağla">
+        <button className="fanus-mm-close" onClick={onClose} aria-label={t("common.close")}>
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </button>
         <div className="fanus-mm-head">
           <div className="fanus-eyebrow" style={{ color: mood.color }}>
-            <MoodIcon id={mood.id} size={18} /> {mood.label} hiss edirsiniz
+            <MoodIcon id={mood.id} size={18} /> {t("mood.feeling", { mood: mood.label })}
           </div>
           <h3 className="fanus-mm-quote">
             <span className="fanus-serif-accent">&ldquo;</span>
-            {MESSAGES[mood.id]}
+            {t(MESSAGE_KEYS[mood.id])}
             <span className="fanus-serif-accent">&rdquo;</span>
           </h3>
         </div>
         <div className="fanus-mm-body">
           <div>
-            <div className="fanus-mm-title">SİZƏ UYĞUN MƏQALƏLƏR</div>
+            <div className="fanus-mm-title">{t("mood.suggestedArticles")}</div>
             <div className="fanus-mm-articles">
               {articles.map((a, i) => (
                 <a key={i} className="fanus-mm-article" href="/blog">
                   <span className="fanus-mm-article__tag">{a.tag}</span>
                   <span className="fanus-mm-article__title">{a.title}</span>
-                  <span className="fanus-mm-article__meta">{a.read} oxuma →</span>
+                  <span className="fanus-mm-article__meta">{a.read} →</span>
                 </a>
               ))}
             </div>
           </div>
           <div>
-            <div className="fanus-mm-title">TÖVSİYƏ OLUNAN PSİXOLOQLAR</div>
+            <div className="fanus-mm-title">{t("mood.suggestedPsychologists")}</div>
             <div className="fanus-mm-psyc">
               {psyc.map((p, i) => (
                 <div key={i} className="fanus-mm-psyc-card">
@@ -213,15 +223,15 @@ function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }) {
                     <div className="fanus-mm-psyc-card__name">{p.name}</div>
                     <div className="fanus-mm-psyc-card__spec">{p.spec} · {p.exp}</div>
                   </div>
-                  <button className="fanus-btn fanus-btn-light fanus-btn-sm">Seans</button>
+                  <button className="fanus-btn fanus-btn-light fanus-btn-sm">{t("mood.sessionShort")}</button>
                 </div>
               ))}
             </div>
           </div>
         </div>
         <div className="fanus-mm-foot">
-          <button className="fanus-btn fanus-btn-ghost" onClick={onClose}>Sonra</button>
-          <a href="/psychologists" className="fanus-btn fanus-btn-primary">Mənə uyğun psixoloq tap →</a>
+          <button className="fanus-btn fanus-btn-ghost" onClick={onClose}>{t("mood.later")}</button>
+          <a href="/psychologists" className="fanus-btn fanus-btn-primary">{t("mood.findMatch")}</a>
         </div>
       </div>
 

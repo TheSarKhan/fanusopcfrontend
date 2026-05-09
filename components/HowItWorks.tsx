@@ -2,22 +2,23 @@
 
 import Link from "next/link";
 import Deco from "@/components/Deco";
-
-const STEPS = [
-  { n: "01", title: "Müraciət", text: "Qısa formanı doldurun: nə hiss edirsiniz, nə axtarırsınız. 3 dəqiqə vaxt aparır.", icon: "send" },
-  { n: "02", title: "Tanışlıq", text: "Sizə uyğun 3 psixoloq təklif edirik. 15 dəqiqəlik ilk söhbət — pulsuz.", icon: "users" },
-  { n: "03", title: "Seans", text: "Seçim sizindir. Sevdiyiniz psixoloqla onlayn seansa başlayın — istədiyiniz zamanda.", icon: "video" },
-];
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function HowItWorks() {
+  const { t } = useT();
+  const STEPS = [
+    { n: "01", title: t("how.step1Title"), text: t("how.step1Text"), icon: "send" },
+    { n: "02", title: t("how.step2Title"), text: t("how.step2Text"), icon: "users" },
+    { n: "03", title: t("how.step3Title"), text: t("how.step3Text"), icon: "video" },
+  ];
   return (
     <section className="fanus-how" id="how">
       <Deco type="wave-line" style={{ top: "20%", left: "-8%", width: 600, opacity: .55 }} anim="drift" />
       <Deco type="blob-3" style={{ bottom: 40, right: "-3%", width: 320, opacity: .55 }} anim="drift" />
       <div className="fanus-container">
         <div className="fanus-how__head">
-          <div className="fanus-eyebrow"><span className="dash" /> Necə işləyirik? <span className="dash" /></div>
-          <h2>Üç addım. <span className="fanus-serif-accent">Sizin tempinizdə.</span></h2>
+          <div className="fanus-eyebrow"><span className="dash" /> {t("how.eyebrow")} <span className="dash" /></div>
+          <h2>{t("how.title")}</h2>
         </div>
 
         <div className="fanus-how__steps">
@@ -39,9 +40,9 @@ export default function HowItWorks() {
 
         <div className="fanus-how__cta">
           <Link href="/register" className="fanus-btn fanus-btn-primary">
-            İndi başlayın <Arrow />
+            {t("how.cta")} <Arrow />
           </Link>
-          <span style={{ color: "var(--fanus-ink-3)", fontSize: 14 }}>İlk söhbət pulsuzdur · Heç bir öhdəlik yoxdur</span>
+          <span style={{ color: "var(--fanus-ink-3)", fontSize: 14 }}>{t("how.ctaNote")}</span>
         </div>
       </div>
 

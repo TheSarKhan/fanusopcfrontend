@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import Deco from "@/components/Deco";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function Hero() {
+  const { t } = useT();
   return (
     <section className="fanus-hero" id="hero">
       <div className="fanus-hero__bg" aria-hidden>
@@ -29,30 +31,23 @@ export default function Hero() {
       <div className="fanus-container fanus-hero__inner">
         <div className="fanus-hero__copy">
           <h1>
-            Həyatınıza uyğun<br />
-            <span className="fanus-hero__hl">peşəkar dəstək.</span>
+            <span className="fanus-hero__eyebrow-line">{t("home.heroEyebrow")}</span><br />
+            <span className="fanus-hero__hl">{t("home.heroTitle")}</span>
           </h1>
           <p className="fanus-hero__lead">
-            Fanus — sizi lisenziyalı psixoloqlarla təhlükəsiz, məxfi və rahat onlayn seanslarda qarşılaşdırır.
-            Birlikdə addımlayaq.
+            {t("home.heroSub")}
           </p>
 
           <div className="fanus-hero__cta">
-            <Link href="#mood" className="fanus-btn fanus-btn-primary fanus-btn-lg">
-              Başlayaq <Arrow />
+            <Link href="/psychologists" className="fanus-btn fanus-btn-primary fanus-btn-lg">
+              {t("home.heroCta")} <Arrow />
             </Link>
             <Link href="#how" className="fanus-hero__text-cta">
               <span className="fanus-hero__play">
                 <svg width="11" height="11" fill="var(--fanus-primary)" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7V5z" /></svg>
               </span>
-              Necə işləyir?
+              {t("home.heroSecondaryCta")}
             </Link>
-          </div>
-
-          <div className="fanus-hero__features">
-            <Feature icon="lock" title="Təhlükəsiz və məxfi" sub="Məxfiliyiniz prioritetdir" />
-            <Feature icon="badge" title="Lisenziyalı mütəxəssislər" sub="Yoxlanılmış peşəkarlar" />
-            <Feature icon="heart" title="Fərdi yanaşma" sub="Sizin tempinizdə" />
           </div>
         </div>
 
@@ -117,33 +112,6 @@ export default function Hero() {
 
 function Arrow() {
   return <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
-}
-
-function Feature({ icon, title, sub }: { icon: "lock" | "badge" | "heart"; title: string; sub: string }) {
-  return (
-    <div className="fanus-hf">
-      <div className="fanus-hf__icon">
-        {icon === "lock" && <svg width="18" height="18" fill="none" stroke="var(--fanus-primary)" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>}
-        {icon === "badge" && <svg width="18" height="18" fill="none" stroke="var(--fanus-primary)" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l2.5 2.2 3.3-.4.9 3.2 2.8 1.7-1.4 3 1.4 3-2.8 1.7-.9 3.2-3.3-.4L12 21l-2.5-2.2-3.3.4-.9-3.2L2.5 14l1.4-3-1.4-3 2.8-1.7.9-3.2 3.3.4L12 3z" /><path d="M9 12l2 2 4-4" /></svg>}
-        {icon === "heart" && <svg width="18" height="18" fill="none" stroke="var(--fanus-primary)" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 10c0 5.5-7 10-7 10z" /></svg>}
-      </div>
-      <div>
-        <div className="fanus-hf__title">{title}</div>
-        <div className="fanus-hf__sub">{sub}</div>
-      </div>
-      <style>{`
-        .fanus-hf { display: flex; gap: 12px; align-items: flex-start; }
-        .fanus-hf__icon {
-          width: 38px; height: 38px; border-radius: 10px;
-          background: #E4ECFA;
-          display: inline-flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-        }
-        .fanus-hf__title { font-size: 13.5px; font-weight: 700; color: var(--fanus-ink); line-height: 1.25; }
-        .fanus-hf__sub { font-size: 12px; color: var(--fanus-ink-3); margin-top: 2px; line-height: 1.4; }
-      `}</style>
-    </div>
-  );
 }
 
 function HeroIllustration() {

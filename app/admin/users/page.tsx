@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { adminApi, type UserRecord, type Psychologist, type PagedUsersResponse, type PsychologistApplication } from "@/lib/api";
 import { IconSearch, IconChevron, IconUser, IconUsers, IconSettings, IconClock, IconEye, IconCheck, IconX, IconAlert, IconDownload } from "../_components/icons";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 // ── Types ────────────────────────────────────────────────────────
 type RoleFilter = "all" | "PATIENT" | "PSYCHOLOGIST" | "OPERATOR" | "ADMIN";
@@ -81,6 +82,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 // ── Main Page Component ──────────────────────────────────────────
 export default function UsersPage() {
+  const { t } = useT();
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -374,7 +376,7 @@ export default function UsersPage() {
         <div style={{ display: "flex", alignItems: "flex-end", gap: 12 }}>
           <div className="btn-group sm" style={{ background: "var(--surface)", padding: 4, borderRadius: 10, border: "1px solid var(--border)" }}>
             <button className={`btn sm ${mainTab === "users" ? "primary" : "ghost"}`} onClick={() => setMainTab("users")}>
-              İstifadəçilər
+              {t("staff.adminUsersTitle")}
             </button>
             <button className={`btn sm ${mainTab === "applications" ? "primary" : "ghost"}`} onClick={() => setMainTab("applications")}>
               Psixoloq müraciətləri

@@ -34,7 +34,7 @@ function fmtLocalIcs(d: Date): string {
     pad2(d.getSeconds())
   );
 }
-
+console.log("Salam");
 /** UTC datetime with Z — used for DTSTAMP only. */
 function fmtUtcIcs(d: Date): string {
   return (

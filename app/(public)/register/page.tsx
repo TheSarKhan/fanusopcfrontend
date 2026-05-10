@@ -39,11 +39,6 @@ const PANEL = {
 const SPEC_OPTIONS = ["Depressiya", "Anksiyete", "Travma", "Münasibətlər", "Stress", "Özünüinkişaf", "Ailə terapiyası", "Uşaq psixologiyası", "Asılılıq", "Yuxu pozğunluqları", "Sevgi", "Böhran dəstəyi"];
 const SESSION_TYPES = ["Fərdi seans", "Cütlük terapiyası", "Qrup terapiyası", "Uşaq terapiyası"];
 const LANGUAGE_OPTIONS = ["Azərbaycan dili", "Rus dili", "İngilis dili", "Türk dili", "Alman dili", "Fransız dili"];
-const ACTIVITY_OPTIONS = [
-  { value: "ONLINE", label: "Onlayn" },
-  { value: "IN_PERSON", label: "Əyani" },
-  { value: "BOTH", label: "Onlayn & Əyani" },
-] as const;
 const DEGREE_OPTIONS = ["Bakalavr", "Magistr", "PhD / Doktor", "Rezident", "Digər"];
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -194,7 +189,6 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
 
   const [professional, setProfessional] = useState({
     title: "", experienceYears: "",
-    activityFormat: "" as "" | "ONLINE" | "IN_PERSON" | "BOTH",
     languages: [] as string[],
     specializations: [] as string[],
     sessionTypes: [] as string[],
@@ -249,7 +243,6 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
   const validateStep2 = () => {
     if (!professional.title) return "İxtisas / vəzifə adı daxil edin";
     if (!professional.experienceYears) return "Təcrübəni seçin";
-    if (!professional.activityFormat) return "İş formatını seçin";
     if (professional.languages.length === 0) return "Ən azı bir dil seçin";
     if (professional.specializations.length === 0) return "Ən azı bir ixtisaslaşma seçin";
     const bioLen = professional.bio.trim().length;
@@ -289,7 +282,6 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
         finId: personal.finId,
         title: professional.title,
         experienceYears: professional.experienceYears,
-        activityFormat: professional.activityFormat as "ONLINE" | "IN_PERSON" | "BOTH",
         languages: professional.languages,
         specializations: professional.specializations,
         sessionTypes: professional.sessionTypes,
@@ -473,22 +465,13 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
               placeholder="Klinik Psixoloq" required />
           </Field>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Field label="Ümumi təcrübə">
-              <select className="auth-select" value={professional.experienceYears}
-                onChange={e => setProfessional(p => ({ ...p, experienceYears: e.target.value }))} required>
-                <option value="">Seçin</option>
-                {EXP_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </Field>
-            <Field label="İş formatı">
-              <select className="auth-select" value={professional.activityFormat}
-                onChange={e => setProfessional(p => ({ ...p, activityFormat: e.target.value as "" | "ONLINE" | "IN_PERSON" | "BOTH" }))} required>
-                <option value="">Seçin</option>
-                {ACTIVITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </Field>
-          </div>
+          <Field label="Ümumi təcrübə">
+            <select className="auth-select" value={professional.experienceYears}
+              onChange={e => setProfessional(p => ({ ...p, experienceYears: e.target.value }))} required>
+              <option value="">Seçin</option>
+              {EXP_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </Field>
 
           <Field label="Bildiyi dillər (bir neçə seçin)">
             <ChipToggle options={LANGUAGE_OPTIONS} selected={professional.languages}

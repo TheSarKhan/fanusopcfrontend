@@ -409,9 +409,11 @@ export const en: typeof az = {
   },
 
   services: {
-    eyebrow: "Our services",
-    title: "Support tailored to every need.",
-    lead: "From individual therapy to group sessions, from crisis support to child psychology — pick the programme that fits.",
+    eyebrow: "Services",
+    title: "Services for you",
+    lead: "Individual therapy, couples, groups, acute support, teens — pick what fits.",
+    programsTitle: "Where we work",
+    programsSub: "We find a certified psychologist for each programme.",
     moreCta: "Learn more",
     bookCta: "Book",
     individualTitle: "Individual therapy",

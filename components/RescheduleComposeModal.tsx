@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { psychologistApi, type AppointmentDetail, type RescheduleProposal } from "@/lib/api";
+import { azFormatDateTime } from "@/lib/datetime";
 
 const MAX_OPTIONS = 3;
 
@@ -20,11 +21,12 @@ function combine(date: string, time: string, addMin: number = 0): string | null 
   const [y, mo, d] = date.split("-").map(Number);
   const [h, mi]    = time.split(":").map(Number);
   if ([y, mo, d, h, mi].some(x => Number.isNaN(x))) return null;
-  const dt = new Date(y, mo - 1, d, h, mi, 0, 0);
-  if (addMin) dt.setMinutes(dt.getMinutes() + addMin);
-  // Backend expects LocalDateTime → ISO without offset.
+  // Build the AZ wall-clock value via UTC arithmetic so the result is independent
+  // of the browser's local timezone. Backend stores this as LocalDateTime (AZ).
+  const utcMs = Date.UTC(y, mo - 1, d, h, mi, 0) + addMin * 60_000;
+  const dt = new Date(utcMs);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}:00`;
+  return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}T${pad(dt.getUTCHours())}:${pad(dt.getUTCMinutes())}:00`;
 }
 
 /**
@@ -80,7 +82,13 @@ export default function RescheduleComposeModal({
       const startAt = combine(o.date, o.startTime, 0);
       const endAt   = combine(o.date, o.startTime, o.durationMin);
       if (!startAt || !endAt) { setError("Tarix/saat formatı yanlışdır"); return; }
-      if (new Date(startAt).getTime() <= Date.now()) {
+      // startAt is an AZ wall-clock LocalDateTime; convert to UTC ms (subtract +4h)
+      // before comparing to Date.now() so the check is timezone-independent.
+      const [sd, st] = startAt.split("T");
+      const [sy, sm, sday] = sd.split("-").map(Number);
+      const [sh, smin] = st.split(":").map(Number);
+      const startUtcMs = Date.UTC(sy, sm - 1, sday, sh - 4, smin);
+      if (startUtcMs <= Date.now()) {
         setError("Saatlar gələcəkdə olmalıdır"); return;
       }
       payloadOptions.push({ startAt, endAt });
@@ -112,7 +120,7 @@ export default function RescheduleComposeModal({
 
         {appointment.startAt && (
           <div className="rsc-modal-original">
-            <strong>Cari vaxt:</strong> {new Date(appointment.startAt).toLocaleString("az-AZ")}
+            <strong>Cari vaxt:</strong> {azFormatDateTime(appointment.startAt)}
           </div>
         )}
 

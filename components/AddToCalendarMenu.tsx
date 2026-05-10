@@ -3,6 +3,7 @@
 import { downloadIcs, googleCalendarUrl } from "@/lib/calendar";
 import type { AppointmentDetail } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { appUrl } from "@/lib/appUrl";
 
 interface Props {
   appointment: AppointmentDetail;
@@ -28,10 +29,11 @@ export default function AddToCalendarMenu({
   const end = new Date(appointment.endAt);
 
   const summary = title ?? `Fanus seansı${appointment.psychologistName ? ` — ${appointment.psychologistName}` : ""}`;
+  const apptsUrl = appUrl("/patient/appointments");
   const description = [
     appointment.psychologistName ? `Psixoloq: ${appointment.psychologistName}` : null,
     appointment.note ? `Qeyd: ${appointment.note}` : null,
-    "https://fanusopc.com/patient/appointments",
+    apptsUrl,
   ].filter(Boolean).join("\n");
 
   const ev = {
@@ -40,7 +42,7 @@ export default function AddToCalendarMenu({
     description,
     location: "Online (Fanus)",
     start, end,
-    url: "https://fanusopc.com/patient/appointments",
+    url: apptsUrl,
   };
 
   return (

@@ -46,7 +46,7 @@ export default function PatientFavoritesPage() {
           <div style={{ fontSize: 36, marginBottom: 12 }}>⭐</div>
           <div style={{ fontSize: 16, fontWeight: 600, color: "#1A2535", marginBottom: 4 }}>{t("staff.patFavEmpty")}</div>
           <p style={{ fontSize: 13, color: "#52718F", marginBottom: 16 }}>{t("staff.patFavEmptySub")}</p>
-          <a href="/psychologists" style={{ background: "var(--brand)", color: "#fff", padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+          <a href="/patient/psychologists" style={{ background: "var(--brand)", color: "#fff", padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
             {t("staff.patFavBrowse")}
           </a>
         </div>
@@ -72,7 +72,7 @@ export default function PatientFavoritesPage() {
                 ))}
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
-                <a href={`/book/${p.slug}`} style={{ flex: 1, textAlign: "center", background: "var(--brand)", color: "#fff", padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                <a href={`/patient/book/${p.slug}`} style={{ flex: 1, textAlign: "center", background: "var(--brand)", color: "#fff", padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
                   {t("staff.patFavRebook")}
                 </a>
                 <button onClick={() => remove(p.id)}

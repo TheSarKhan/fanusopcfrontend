@@ -315,7 +315,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
       <p style={{ fontSize: 14, color: "var(--oxford-60)", marginBottom: 28 }}>
         Komandamız məlumatlarınızı yoxladıqdan sonra <strong style={{ color: "var(--oxford)" }}>{personal.email}</strong> ünvanına bildiriş göndərəcək.
       </p>
-      <Link href="/login" className="btn btn-primary" style={{ borderRadius: 10, display: "block", textAlign: "center", height: 50, lineHeight: "50px" }}>Ana səhifəyə qayıt</Link>
+      <Link href="/" className="btn btn-primary" style={{ borderRadius: 10, display: "block", textAlign: "center", height: 50, lineHeight: "50px" }}>Ana səhifəyə qayıt</Link>
     </div>
   );
 
@@ -336,32 +336,39 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
                   <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#8AAABF", fontSize: 24 }}>?</div>
                 )}
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                 <label style={{ display: "inline-block", cursor: "pointer" }}>
                   <input type="file" accept="image/*" onChange={onPickPhoto} style={{ display: "none" }} />
-                  <span style={{ display: "inline-block", padding: "8px 14px", border: "1.5px solid var(--oxford)", borderRadius: 8, fontSize: 13, color: "var(--oxford)", background: "#fff" }}>
+                  <span style={{ display: "inline-block", padding: "8px 14px", border: "1.5px solid var(--oxford)", borderRadius: 8, fontSize: 13, color: "var(--oxford)", background: "#fff", whiteSpace: "nowrap" }}>
                     {photoFile ? "Şəkli dəyiş" : "Şəkil seç və düzəlt"}
                   </span>
                 </label>
-                <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>JPG/PNG · sürüşdür və zoom et</div>
+                {photoFile && (
+                  <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={photoFile.name}>
+                    {photoFile.name}
+                  </div>
+                )}
+                {!photoFile && (
+                  <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>JPG/PNG · sürüşdür və zoom et</div>
+                )}
               </div>
             </div>
           </Field>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Field label="Ad"><input className="auth-input" value={personal.firstName} onChange={setP("firstName")} required /></Field>
-            <Field label="Soyad"><input className="auth-input" value={personal.lastName} onChange={setP("lastName")} required /></Field>
+            <Field label="Ad"><input className="auth-input" value={personal.firstName} onChange={setP("firstName")} required style={{ minWidth: 0, width: "100%" }} /></Field>
+            <Field label="Soyad"><input className="auth-input" value={personal.lastName} onChange={setP("lastName")} required style={{ minWidth: 0, width: "100%" }} /></Field>
           </div>
-          <Field label="Email"><input type="email" className="auth-input" value={personal.email} onChange={setP("email")} required /></Field>
+          <Field label="Email"><input type="email" className="auth-input" value={personal.email} onChange={setP("email")} required style={{ minWidth: 0, width: "100%" }} /></Field>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Field label="Telefon"><input type="tel" className="auth-input" value={personal.phone} onChange={setP("phone")} placeholder="+994 50 000 00 00" required /></Field>
-            <Field label="Doğum tarixi"><input type="date" className="auth-input" value={personal.birthDate} onChange={setP("birthDate")} required /></Field>
+            <Field label="Telefon"><input type="tel" className="auth-input" value={personal.phone} onChange={setP("phone")} placeholder="+994 50 000 00 00" required style={{ minWidth: 0, width: "100%" }} /></Field>
+            <Field label="Doğum tarixi"><input type="date" className="auth-input" value={personal.birthDate} onChange={setP("birthDate")} required style={{ minWidth: 0, width: "100%" }} /></Field>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <Field label="Cinsiyyət">
-              <select className="auth-select" value={personal.gender} onChange={setP("gender")} required>
+              <select className="auth-select" value={personal.gender} onChange={setP("gender")} required style={{ minWidth: 0, width: "100%" }}>
                 <option value="">Seçin</option>
                 <option value="FEMALE">Qadın</option>
                 <option value="MALE">Kişi</option>
@@ -369,7 +376,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
               </select>
             </Field>
             <Field label="FIN / ID nömrəsi">
-              <input className="auth-input" value={personal.finId} onChange={setP("finId")} placeholder="məs. 1ABC234" required />
+              <input className="auth-input" value={personal.finId} onChange={setP("finId")} placeholder="məs. 1ABC234" required style={{ minWidth: 0, width: "100%" }} />
             </Field>
           </div>
 

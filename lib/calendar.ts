@@ -10,6 +10,8 @@
  * timezones explicitly, switch to TZID-anchored DTSTART.
  */
 
+import { APP_HOST } from "./appUrl";
+
 interface CalendarEvent {
   uid: string;            // stable identifier (use appointment id)
   title: string;
@@ -65,7 +67,7 @@ export function generateIcs(ev: CalendarEvent): string {
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    `UID:fanus-appt-${ev.uid}@fanusopc.com`,
+    `UID:fanus-appt-${ev.uid}@${APP_HOST.split(":")[0]}`,
     `DTSTAMP:${fmtUtcIcs(new Date())}`,
     `DTSTART:${fmtLocalIcs(ev.start)}`,
     `DTEND:${fmtLocalIcs(ev.end)}`,

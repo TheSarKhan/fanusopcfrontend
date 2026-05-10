@@ -56,7 +56,7 @@ export default function PatientDashboard() {
           <div className="text-lg font-bold text-white">Psixoloq tap</div>
           <p className="text-white/70 text-sm mt-1">Sizə uyğun psixoloqu seçin</p>
           <Link
-            href="/psychologists"
+            href="/patient/psychologists"
             className="inline-block mt-4 text-xs font-semibold text-white hover:underline"
           >
             Psixoloqlara bax →
@@ -73,7 +73,7 @@ export default function PatientDashboard() {
           Psixologlarımızdan biri ilə vaxtını ayır
         </p>
         <Link
-          href="/psychologists"
+          href="/patient/psychologists"
           className="inline-block py-2.5 px-6 rounded-xl text-sm font-bold text-white"
           style={{ background: "var(--brand)" }}
         >

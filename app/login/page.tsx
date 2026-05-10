@@ -29,8 +29,8 @@ const TRUST = [
         <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
       </svg>
     ),
-    title: "100% Məxfi",
-    sub: "Bütün söhbətlər şifrələnir",
+    title: "Məxfi söhbət",
+    sub: "Yazdıqlarınız sizdə və psixoloqunuzda qalır",
   },
   {
     icon: (
@@ -39,8 +39,8 @@ const TRUST = [
         <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
     ),
-    title: "15+ Mütəxəssis",
-    sub: "Sertifikatlı psixoloqlar",
+    title: "Sertifikatlı psixoloqlar",
+    sub: "Hamısı yoxlanılıb və təsdiqlənib",
   },
   {
     icon: (
@@ -48,8 +48,8 @@ const TRUST = [
         <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
       </svg>
     ),
-    title: "7/24 Onlayn",
-    sub: "İstənilən vaxt, istənilən yerdən",
+    title: "Onlayn seans",
+    sub: "Evdən, telefondan və ya kompüterdən",
   },
 ];
 

@@ -218,7 +218,9 @@ async function authedRequest<T>(
   }
 
   if (res.status === 204) return undefined as T;
-  return res.json();
+  const text = await res.text();
+  if (!text) return undefined as T;
+  return JSON.parse(text) as T;
 }
 
 async function authedBlobRequest(
@@ -1113,6 +1115,11 @@ export const meApi = {
   accountStatus: () => authedRequest<AccountStatus>("GET", "/me/account-status"),
   deleteAccount: (data: { currentPassword: string; confirmation: string }) =>
     authedRequest<AccountStatus>("POST", "/me/delete-account", data),
+  /** Cancel a pending self-service deletion within the 30-day grace window.
+   *  Restores the account to fully-active. Idempotent: harmless to call when
+   *  no deletion is pending. */
+  cancelDeletionRequest: () =>
+    authedRequest<AccountStatus>("DELETE", "/me/deletion-request"),
   /** Triggers a browser download of the GDPR data export ZIP. */
   exportData: async (): Promise<void> => {
     const res = await fetch(`${BASE}/me/export`, {

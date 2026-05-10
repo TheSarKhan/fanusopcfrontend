@@ -14,6 +14,7 @@ import {
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import CancelModal from "@/components/CancelModal";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { azLocalToISO, isoToAzLocal, azFormatDate, azFormatTime, azFormatDateTime } from "@/lib/datetime";
 
 type Tab = "PENDING" | "ASSIGNED" | "CONFIRMED" | "DISPUTED" | "COMPLETED" | "CANCELLED" | "CANCEL_REQUESTED";
 
@@ -29,24 +30,19 @@ const TAB_META: Record<Tab, { label: string; color: string }> = {
 
 function fmtDateTime(iso?: string | null) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return azFormatDateTime(iso);
 }
 function fmtTime(iso: string) {
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return azFormatTime(iso);
 }
 function fmtDay(iso: string) {
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+  return azFormatDate(iso);
 }
 function isoDateOnly(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 function toDateTimeLocal(iso: string) {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return isoToAzLocal(iso);
 }
 
 export default function OperatorAppointmentsPage() {
@@ -530,8 +526,8 @@ function AssignModal({
       const slot = slots.find(s => s.startAt === startAt);
       if (slot) endAt = slot.endAt;
     } else if (manualStart && manualEnd) {
-      startAt = new Date(manualStart).toISOString();
-      endAt = new Date(manualEnd).toISOString();
+      startAt = azLocalToISO(manualStart);
+      endAt = azLocalToISO(manualEnd);
     }
     if (!startAt || !endAt) { setError("Vaxt seçin və ya əl ilə daxil edin"); return; }
     if (new Date(startAt) >= new Date(endAt)) { setError("Başlama vaxtı bitiş vaxtından əvvəl olmalıdır"); return; }
@@ -825,8 +821,8 @@ function BulkAssignModal({
     try {
       const updated = await operatorApi.bulkAssign(ids, {
         psychologistId: psyId,
-        startAt: new Date(start).toISOString(),
-        endAt: new Date(end).toISOString(),
+        startAt: azLocalToISO(start),
+        endAt: azLocalToISO(end),
         operatorNote: note.trim() || null,
       });
       onDone(updated);

@@ -248,14 +248,6 @@ function PsycFilters({ active, onChange }: { active: Cat; onChange: (c: Cat) => 
             </button>
           ))}
         </div>
-        <div className="pp-filters__tools">
-          <select className="pp-select" defaultValue="any">
-            <option value="any">{t("psyList.filterAll")}</option>
-            <option value="az">Azərbaycan</option>
-            <option value="ru">Русский</option>
-            <option value="en">English</option>
-          </select>
-        </div>
       </div>
       <style>{`
         .pp-filters {
@@ -293,14 +285,6 @@ function PsycList({ items }: { items: Item[] }) {
       <div className="fanus-container">
         <div className="pp-list__head">
           <span className="pp-list__count"><strong>{items.length}</strong> mütəxəssis</span>
-          <div className="pp-list__sort">
-            <span>Sırala:</span>
-            <select className="pp-select" defaultValue="rec">
-              <option value="rec">Tövsiyə olunan</option>
-              <option value="exp">Təcrübəyə görə</option>
-              <option value="rating">Reytinqə görə</option>
-            </select>
-          </div>
         </div>
 
         <div className="pp-grid">

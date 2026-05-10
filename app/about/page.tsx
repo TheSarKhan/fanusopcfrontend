@@ -55,100 +55,6 @@ const VALUES = [
   },
 ];
 
-const TIMELINE = [
-  { year: "2019", text: "Fanus quruldu. İlk 3 psixoloq Bakıda kiçik bir kabinetdən başladı." },
-  { year: "2020", text: "İlk 100 müştəri. Pandemiya boyu pulsuz dəstək xətti açıldı." },
-  { year: "2021", text: "Onlayn seanslar başladı. Platforma istənilən şəhərdən əlçatan oldu." },
-  { year: "2022", text: "10 mütəxəssisə qədər böyüdük. Cütlük və ailə terapiyası əlavə edildi." },
-  { year: "2023", text: "1000+ tamamlanmış seans. APA və ISO 27001 sertifikatları alındı." },
-  { year: "2024", text: "EMDR, uşaq terapiyası və qrup formatları platformaya əlavə olundu." },
-];
-
-const CERTS = ["APA üzvü", "CBT Sertifikatlı", "EMDR Akkreditasiyası", "Mindfulness", "ISO 27001", "GDPR uyğun"];
-
-const STATS = [
-  { value: "6+", label: "il təcrübə" },
-  { value: "2000+", label: "məmnun müştəri" },
-  { value: "15+", label: "mütəxəssis" },
-  { value: "8+", label: "seans növü" },
-];
-
-function TimelineSection() {
-  const timelineRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  const [lineProgress, setLineProgress] = useState(0);
-
-  useEffect(() => {
-    const el = timelineRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setVisible(true); },
-      { threshold: 0.1 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!visible) return;
-    let frame: number;
-    let start: number | null = null;
-    const animate = (ts: number) => {
-      if (!start) start = ts;
-      const p = Math.min((ts - start) / 1200, 1);
-      setLineProgress(p);
-      if (p < 1) frame = requestAnimationFrame(animate);
-    };
-    const t = setTimeout(() => { frame = requestAnimationFrame(animate); }, 300);
-    return () => { clearTimeout(t); cancelAnimationFrame(frame); };
-  }, [visible]);
-
-  return (
-    <section className="ap-journey">
-      <div className="container">
-        <div style={{ maxWidth: 760, margin: "0 auto 72px", textAlign: "center" }}>
-          <div className="fanus-eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}><span className="dash" /> Yolumuz</div>
-          <h2 className="ap-hero-title" style={{ fontSize: "clamp(32px, 3.6vw, 48px)", margin: "0 0 16px", textAlign: "center", color: "var(--brand)" }}>
-            Bir niyyətdən bir <span className="fanus-serif-accent">mərkəzə</span>
-          </h2>
-          <p style={{ fontSize: 17, color: "var(--oxford-60)", maxWidth: 520, margin: "0 auto" }}>
-            Fanus-un böyüməsi sayılarla deyil, hekayələrlə ölçülür.
-          </p>
-        </div>
-
-        <div ref={timelineRef} className="ap-timeline">
-          {/* Animated spine */}
-          <div className="ap-timeline-line">
-            <div style={{
-              height: `${lineProgress * 100}%`,
-              background: "linear-gradient(180deg, var(--brand-700) 0%, var(--brand) 50%, var(--brand-300) 100%)",
-              transition: "none",
-            }} />
-          </div>
-
-          {TIMELINE.map((t, i) => (
-            <div
-              key={t.year}
-              className={`ap-tl-item ${i % 2 === 0 ? "left" : "right"}`}
-              style={{
-                opacity: visible ? 1 : 0,
-                transform: visible ? "translateY(0)" : "translateY(20px)",
-                transition: `opacity 0.6s ease ${i * 0.1}s, transform 0.6s ease ${i * 0.1}s`,
-              }}
-            >
-              <div className="ap-tl-node" />
-              <div className="ap-tl-card">
-                <div className="ap-tl-year">{t.year}</div>
-                <div className="ap-tl-text">{t.text}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function MissionSection() {
   const { ref, visible } = useScrollReveal<HTMLElement>(0.1);
 
@@ -179,14 +85,6 @@ function MissionSection() {
             </p>
           </div>
 
-          <div className="ap-mission-stats">
-            {STATS.map((s) => (
-              <div key={s.label} className="ap-stat">
-                <div className="ap-stat-value">{s.value}</div>
-                <div className="ap-stat-label">{s.label}</div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </section>
@@ -239,36 +137,6 @@ function ValuesSection() {
   );
 }
 
-function TrustBand() {
-  const { ref, visible } = useScrollReveal<HTMLElement>(0.2);
-
-  return (
-    <section ref={ref} className="ap-trust">
-      <div className="container">
-        <div className="ap-trust-label">Sertifikat və üzvlüklər</div>
-        <div
-          className="ap-trust-pills"
-          style={{
-            opacity: visible ? 1 : 0,
-            transform: visible ? "translateY(0)" : "translateY(16px)",
-            transition: "opacity 0.6s ease, transform 0.6s ease",
-          }}
-        >
-          {CERTS.map((c) => (
-            <div key={c} className="ap-trust-pill">
-              <svg width="14" height="14" fill="none" stroke="var(--brand)" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" strokeLinecap="round" />
-                <path d="M22 4 12 14.01l-3-3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              {c}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export default function AboutPage() {
   const { t } = useT();
   return (
@@ -304,8 +172,6 @@ export default function AboutPage() {
 
       <MissionSection />
       <ValuesSection />
-      <TimelineSection />
-      <TrustBand />
     </div>
   );
 }

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { meApi, type MeProfile } from "@/lib/api";
+import { meApi, type AccountStatus, type MeProfile } from "@/lib/api";
 
 const ROLE_LABEL: Record<string, string> = {
   PATIENT: "Pasiyent",
@@ -50,12 +50,21 @@ export default function ProfileShell({ extras, sideExtras, title = "Profil", sub
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
+  // GDPR account status — drives the pending-deletion banner. Fetched alongside
+  // the profile so the user sees "cancel deletion" instantly after login.
+  const [status, setStatus] = useState<AccountStatus | null>(null);
+
+  const refreshStatus = useCallback(() => {
+    meApi.accountStatus().then(setStatus).catch(() => { /* non-fatal */ });
+  }, []);
+
   useEffect(() => {
     meApi.get()
       .then(setMe)
       .catch(e => setErr((e as Error).message))
       .finally(() => setLoading(false));
-  }, []);
+    refreshStatus();
+  }, [refreshStatus]);
 
   if (loading) return <div className="uprof-page"><div className="uprof-loading">Yüklənir…</div></div>;
   if (err || !me) return <div className="uprof-page"><div className="uprof-error">{err || "Profil yüklənə bilmədi"}</div></div>;
@@ -70,6 +79,10 @@ export default function ProfileShell({ extras, sideExtras, title = "Profil", sub
         </div>
       </header>
 
+      {status?.deletionRequestedAt && (
+        <DeletionBanner status={status} onCancelled={refreshStatus} />
+      )}
+
       <IdentityHero me={me} onChanged={setMe} />
 
       <div className="uprof-grid">
@@ -77,7 +90,7 @@ export default function ProfileShell({ extras, sideExtras, title = "Profil", sub
           <BasicInfoCard me={me} onUpdated={setMe} />
           <PasswordCard />
           {extras}
-          <PrivacyCard email={me.email} />
+          <PrivacyCard email={me.email} status={status} onStatusChanged={refreshStatus} />
         </div>
         <aside className="uprof-side">
           {sideExtras}
@@ -85,6 +98,67 @@ export default function ProfileShell({ extras, sideExtras, title = "Profil", sub
           <ActivityShortcutCard role={me.role} />
         </aside>
       </div>
+    </div>
+  );
+}
+
+/* ─── Pending-deletion banner (top of every panel profile page) ──────────── */
+
+function DeletionBanner({ status, onCancelled }: { status: AccountStatus; onCancelled: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const purgeDate = status.deletionRequestedAt
+    ? new Date(new Date(status.deletionRequestedAt).getTime() + 30 * 24 * 60 * 60 * 1000)
+    : null;
+  const purgeLabel = purgeDate ? fmtDate(purgeDate.toISOString()) : "—";
+
+  const onCancel = async () => {
+    if (!confirm("Hesab silmə tələbini ləğv etmək istəyirsiniz?")) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      await meApi.cancelDeletionRequest();
+      onCancelled();
+    } catch (e) {
+      setErr((e as Error).message || "Ləğv etmə uğursuz oldu");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      role="alert"
+      style={{
+        border: "1px solid #f0b4b4",
+        background: "#fff5f5",
+        color: "#7a1f1f",
+        padding: "14px 18px",
+        borderRadius: 12,
+        marginBottom: 20,
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 12,
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      <div style={{ flex: "1 1 320px" }}>
+        <strong>⚠ Hesabınız {purgeLabel} tarixində silinəcək</strong>
+        <div style={{ fontSize: 13, marginTop: 4 }}>
+          Silmə tələbi qüvvədədir ({status.daysUntilPurge} gün qalır). Bu müddət ərzində
+          tələbi ləğv etsəniz, hesabınız tam aktiv olacaq.
+        </div>
+        {err && <div style={{ color: "#b00020", fontSize: 13, marginTop: 6 }}>{err}</div>}
+      </div>
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={busy}
+        className="uprof-btn uprof-btn--primary"
+      >
+        {busy ? "Ləğv edilir…" : "Silmə tələbini ləğv et"}
+      </button>
     </div>
   );
 }
@@ -392,7 +466,15 @@ function PasswordCard() {
 
 /* ─── Privacy / GDPR card (data export + delete account) ─────────────── */
 
-function PrivacyCard({ email }: { email: string }) {
+function PrivacyCard({
+  email,
+  status,
+  onStatusChanged,
+}: {
+  email: string;
+  status: AccountStatus | null;
+  onStatusChanged: () => void;
+}) {
   const [exporting, setExporting] = useState(false);
   const [exportErr, setExportErr] = useState<string | null>(null);
 
@@ -401,7 +483,9 @@ function PrivacyCard({ email }: { email: string }) {
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteErr, setDeleteErr] = useState<string | null>(null);
-  const [done, setDone] = useState<{ days: number } | null>(null);
+
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelErr, setCancelErr] = useState<string | null>(null);
 
   const onExport = async () => {
     setExportErr(null); setExporting(true);
@@ -421,27 +505,27 @@ function PrivacyCard({ email }: { email: string }) {
     }
     setDeleting(true);
     try {
-      const res = await meApi.deleteAccount({ currentPassword: pwd, confirmation: confirmText });
-      setDone({ days: res.daysUntilPurge });
+      await meApi.deleteAccount({ currentPassword: pwd, confirmation: confirmText });
+      setDeleteOpen(false);
+      setPwd(""); setConfirmText("");
+      onStatusChanged();
     } catch (e) {
       setDeleteErr((e as Error).message);
     } finally { setDeleting(false); }
   };
 
-  if (done) {
-    return (
-      <div className="uprof-card uprof-card--privacy">
-        <h2 className="uprof-card-title">⚠ Hesab silinmə tələbi qəbul edildi</h2>
-        <p className="uprof-card-sub">
-          Hesabınız {done.days} gün ərzində tamamilə silinəcək. Bu müddət bitənə qədər
-          fikrinizi dəyişsəniz, support@fanusopc.com ünvanına yazın.
-        </p>
-        <p className="uprof-card-sub" style={{ marginTop: 8 }}>
-          Sistemdən çıxmaq üçün “Çıxış” düyməsini istifadə edin.
-        </p>
-      </div>
-    );
-  }
+  const onCancelDeletion = async () => {
+    setCancelErr(null);
+    setCancelling(true);
+    try {
+      await meApi.cancelDeletionRequest();
+      onStatusChanged();
+    } catch (e) {
+      setCancelErr((e as Error).message);
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return (
     <div className="uprof-card uprof-card--privacy">
@@ -465,16 +549,34 @@ function PrivacyCard({ email }: { email: string }) {
       <div className="uprof-priv-row uprof-priv-row--danger">
         <div className="uprof-priv-info">
           <strong>🗑 Hesabımı sil</strong>
-          <small>30 gün gözləmə müddətindən sonra bütün data tamamilə silinəcək.</small>
+          {status?.deletionRequestedAt ? (
+            <small>
+              Silmə tələbi qüvvədədir — {status.daysUntilPurge} gün qalır.
+              İstənilən anda ləğv edə bilərsiniz.
+            </small>
+          ) : (
+            <small>30 gün gözləmə müddətindən sonra bütün data tamamilə silinəcək.</small>
+          )}
         </div>
-        {!deleteOpen && (
-          <button onClick={() => setDeleteOpen(true)} className="uprof-btn uprof-btn--danger">
-            Sil
+        {status?.deletionRequestedAt ? (
+          <button
+            onClick={onCancelDeletion}
+            disabled={cancelling}
+            className="uprof-btn uprof-btn--primary"
+          >
+            {cancelling ? "Ləğv edilir…" : "Silmə tələbini ləğv et"}
           </button>
+        ) : (
+          !deleteOpen && (
+            <button onClick={() => setDeleteOpen(true)} className="uprof-btn uprof-btn--danger">
+              Sil
+            </button>
+          )
         )}
       </div>
+      {cancelErr && <div className="uprof-error-inline">{cancelErr}</div>}
 
-      {deleteOpen && (
+      {deleteOpen && !status?.deletionRequestedAt && (
         <div className="uprof-priv-confirm">
           <p>
             <strong>Diqqət:</strong> bu əməliyyat geri qaytarıla bilməz.

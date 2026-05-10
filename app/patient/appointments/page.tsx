@@ -10,6 +10,7 @@ import {
   type SessionFeedback,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
+import { azFormatTime, azFormatDate } from "@/lib/datetime";
 import ReviewModal from "./ReviewModal";
 import CancelModal from "@/components/CancelModal";
 import RescheduleProposalModal from "@/components/RescheduleProposalModal";
@@ -21,17 +22,28 @@ const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"];
 const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
 
 function pad2(n: number) { return String(n).padStart(2, "0"); }
-function fmtTime(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+function fmtTime(d: Date) { return azFormatTime(d); }
+// AZ-zone year/month/day key for a Date — uses Intl with Asia/Baku.
+function azDayKey(d: Date): string {
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Baku", year: "numeric", month: "2-digit", day: "2-digit" });
+}
 function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return azDayKey(a) === azDayKey(b);
 }
 function relativeDayLabel(d: Date, now: Date) {
-  const today = new Date(now);
-  const tomorrow = new Date(now); tomorrow.setDate(today.getDate() + 1);
-  if (isSameDay(d, today)) return "Bu gün";
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  if (isSameDay(d, now)) return "Bu gün";
   if (isSameDay(d, tomorrow)) return "Sabah";
-  const isoDow = (d.getDay() + 6) % 7;
-  return `${WEEKDAYS_AZ[isoDow]} · ${pad2(d.getDate())} ${MONTHS_AZ[d.getMonth()]}`;
+  // Pull weekday/day/month components in AZ tz
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Baku", weekday: "short", day: "2-digit", month: "numeric" })
+    .formatToParts(d);
+  const weekdayShort = parts.find(p => p.type === "weekday")?.value ?? "";
+  const dayNum = Number(parts.find(p => p.type === "day")?.value ?? 0);
+  const monthNum = Number(parts.find(p => p.type === "month")?.value ?? 1);
+  // Map US weekday short → AZ
+  const map: Record<string, string> = { Mon: "B.e", Tue: "Ç.a", Wed: "Ç", Thu: "C.a", Fri: "C", Sat: "Ş", Sun: "B" };
+  const azWd = map[weekdayShort] ?? weekdayShort;
+  return `${azWd} · ${pad2(dayNum)} ${MONTHS_AZ[monthNum - 1]}`;
 }
 
 interface CountdownInfo {
@@ -210,7 +222,7 @@ export default function PatientAppointmentsPage() {
           <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4 }}>{t("appt.pageSub")}</p>
         </div>
         <Link
-          href="/psychologists"
+          href="/patient/psychologists"
           style={{
             background: "var(--brand)", color: "#fff",
             padding: "10px 18px", borderRadius: 10,
@@ -252,7 +264,7 @@ export default function PatientAppointmentsPage() {
             Psixoloqlarımızdan biri ilə randevu alaraq başlayın
           </p>
           <Link
-            href="/psychologists"
+            href="/patient/psychologists"
             style={{ background: "var(--brand)", color: "#fff", padding: "10px 22px", borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: "none", display: "inline-block" }}>
             Psixoloq seç
           </Link>
@@ -836,7 +848,7 @@ function RescheduleModal({
       await patientApi.reschedule(appointment.id, {
         note: trimmed,
         requestedPsychologistId: appointment.psychologistId ?? appointment.requestedPsychologistId ?? null,
-        requestedStartAt: new Date(datetime).toISOString(),
+        requestedStartAt: azLocalToISO(datetime),
       });
       onDone();
     } catch (e) {

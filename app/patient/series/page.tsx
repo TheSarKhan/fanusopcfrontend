@@ -80,7 +80,7 @@ export default function PatientSeriesPage() {
         <div style={{ background: "#fff", padding: 48, borderRadius: 14, textAlign: "center" }}>
           <div style={{ fontSize: 16, fontWeight: 600, color: "#1A2535", marginBottom: 4 }}>{t("series.empty")}</div>
           <a
-            href="/psychologists"
+            href="/patient/psychologists"
             style={{ display: "inline-block", marginTop: 12, background: "var(--brand)", color: "#fff", padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: "none" }}
           >
             {t("series.emptyCta")}

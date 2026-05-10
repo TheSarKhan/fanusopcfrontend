@@ -56,6 +56,20 @@ const SUBDOMAIN_PATH: Record<string, string> = {
   admin: "/admin",
 };
 
+/** Public-facing routes that must remain reachable from any panel subdomain
+ *  unmodified — auth & marketing pages. Booking flow and psychologist
+ *  profile pages are NOT here: panels embed their own copies that re-render
+ *  inside the panel shell (sidebar + header). */
+const SHARED_PATHS = [
+  "/blog",
+  "/about",
+  "/xidmetler",
+  "/login",
+  "/logout",
+  "/register",
+  "/403",
+];
+
 export function proxy(request: NextRequest) {
   const host = request.headers.get("host") || "";
   const subdomain = getSubdomain(host);
@@ -102,6 +116,11 @@ export function proxy(request: NextRequest) {
       url.pathname = "/403";
       return NextResponse.rewrite(url);
     }
+  }
+
+  // ── Shared public routes pass through unmodified ────────────────────────
+  if (SHARED_PATHS.some(p => pathname === p || pathname.startsWith(p + "/"))) {
+    return NextResponse.next();
   }
 
   // ── Rewrite: operator.fanusopc.com/xyz → /operator/xyz ───────────────────

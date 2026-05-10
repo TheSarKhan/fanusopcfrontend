@@ -40,8 +40,6 @@ function initials(name: string) {
   return name.split(" ").filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase();
 }
 
-type FormatT = "ONLINE" | "IN_PERSON";
-
 export default function BookPsychologistPage() {
   const { t } = useT();
   const params = useParams<{ slug: string }>();
@@ -53,7 +51,6 @@ export default function BookPsychologistPage() {
   const [loading, setLoading] = useState(true);
   const [activeDayKey, setActiveDayKey] = useState<string | null>(null);
   const [pickedSlot, setPickedSlot] = useState<AvailableSlot | null>(null);
-  const [sessionFormat, setSessionFormat] = useState<FormatT>("ONLINE");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -153,7 +150,6 @@ export default function BookPsychologistPage() {
         note: note.trim(),
         requestedPsychologistId: psychologist.id,
         requestedStartAt: pickedSlot ? pickedSlot.startAt : null,
-        sessionFormat,
       };
       if (recurring && pickedSlot) {
         const series = await patientApi.createBookingSeries({
@@ -184,7 +180,11 @@ export default function BookPsychologistPage() {
           </div>
           <h1>{seriesResult ? t("book.recurringSuccessTitle") : t("book.successTitle")}</h1>
           {seriesResult ? (
-            <p>{t("book.recurringSuccessBody", { created: seriesResult.created, skipped: seriesResult.skipped })}</p>
+            <p>
+              {seriesResult.skipped > 0
+                ? t("book.recurringSuccessBodyWithSkipped", { created: seriesResult.created, skipped: seriesResult.skipped })
+                : t("book.recurringSuccessBody", { created: seriesResult.created })}
+            </p>
           ) : (
             <p>{t("book.successBody")}</p>
           )}
@@ -245,14 +245,14 @@ export default function BookPsychologistPage() {
                   </div>
                   <div>
                     <span>Format</span>
-                    <strong>Onlayn & Əyani</strong>
+                    <strong>Onlayn (video)</strong>
                   </div>
                 </div>
               </div>
 
               <ol className="bk-steps">
                 <li><span>1</span>Vaxt seçin</li>
-                <li><span>2</span>Format və qeyd</li>
+                <li><span>2</span>Qısa qeyd</li>
                 <li><span>3</span>Operator təsdiqi</li>
               </ol>
             </aside>
@@ -314,42 +314,6 @@ export default function BookPsychologistPage() {
                     </div>
                   </>
                 )}
-              </section>
-
-              <section className="bk-section">
-                <div className="bk-section-head">
-                  <h3>{t("book.formatSection")}</h3>
-                </div>
-                <div className="bk-format">
-                  {(["ONLINE", "IN_PERSON"] as const).map(f => {
-                    const active = sessionFormat === f;
-                    return (
-                      <button
-                        type="button"
-                        key={f}
-                        className={`bk-format-card${active ? " is-active" : ""}`}
-                        onClick={() => setSessionFormat(f)}
-                      >
-                        <span className="bk-format-icon" aria-hidden>
-                          {f === "ONLINE" ? (
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="2" y="4" width="20" height="14" rx="2" />
-                              <path d="M8 22h8M12 18v4" />
-                            </svg>
-                          ) : (
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h2M9 13h2M9 17h2M13 9h2M13 13h2M13 17h2" />
-                            </svg>
-                          )}
-                        </span>
-                        <span className="bk-format-text">
-                          <strong>{f === "ONLINE" ? t("book.formatOnline") : t("book.formatInPerson")}</strong>
-                          <small>{f === "ONLINE" ? t("book.formatOnlineSub") : t("book.formatInPersonSub")}</small>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
               </section>
 
               <section className="bk-section">

@@ -439,11 +439,6 @@ export default function PatientDetailPage() {
                 <div className="pcli-upcoming-label">Növbəti seans</div>
                 <div className="pcli-upcoming-when">
                   {fmtDateTime(upcoming.startAt)}
-                  {upcoming.sessionFormat && (
-                    <span className="pcli-upcoming-fmt">
-                      · {upcoming.sessionFormat === "ONLINE" ? "Onlayn" : "Əyani"}
-                    </span>
-                  )}
                 </div>
               </div>
               <Link href="/psycholog/calendar" className="pcli-btn pcli-btn--ghost">Cədvələ keç</Link>
@@ -570,7 +565,6 @@ function HistoryRow({ a }: { a: AppointmentDetail }) {
   const status = STATUS[a.status] ?? STATUS.ASSIGNED;
   const ref = a.startAt ?? a.endAt ?? a.createdAt;
   const d = new Date(ref);
-  const fmt = a.sessionFormat === "ONLINE" ? "Onlayn" : a.sessionFormat === "IN_PERSON" ? "Əyani" : null;
   const isCancelled = a.status === "CANCELLED";
   const isCompleted = a.status === "COMPLETED";
 
@@ -585,7 +579,6 @@ function HistoryRow({ a }: { a: AppointmentDetail }) {
           <span className="pcli-row-badge" style={{ color: status.color, background: status.bg }}>
             {status.label}
           </span>
-          {fmt && <span className="pcli-row-chip">{fmt}</span>}
           {a.lateCancel && <span className="pcli-row-chip pcli-row-chip--warn">Geç ləğv</span>}
           {isCompleted && a.autoConfirmedAt && (
             <span className="pcli-row-chip">Auto-təsdiq</span>

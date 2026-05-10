@@ -6,12 +6,14 @@ import Deco from "@/components/Deco";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 const FALLBACK: Faq[] = [
-  { id: 1, question: "Onlayn seans canlı seans qədər təsirlidirmi?", answer: "Bəli. Çoxsaylı tədqiqatlar göstərir ki, peşəkar psixoloqla aparılan onlayn seanslar üzbəüz seanslarla eyni dərəcədə effektivdir. Üstəlik, rahat mühitdə daha açıq danışmaq mümkündür.", displayOrder: 1, active: true },
-  { id: 2, question: "Məlumatlarım və danışdıqlarım təhlükəsizdirmi?", answer: "Tamamilə. Bütün seanslar uçdan-uca şifrələnir, qeydlər saxlanmır. Məlumatlar Fanus məxfilik siyasətinə uyğun, üçüncü tərəflərlə paylaşılmadan qorunur.", displayOrder: 2, active: true },
-  { id: 3, question: "Bir seans nə qədər çəkir və nə qədər başa gəlir?", answer: "Standart seans 50 dəqiqədir. Qiymətlər seçdiyiniz psixoloqdan asılı olaraq dəyişir. İlk 15 dəqiqəlik tanışlıq görüşü pulsuzdur.", displayOrder: 3, active: true },
-  { id: 4, question: "Mənə uyğun psixoloqu necə tapacağam?", answer: "Qısa anketdən sonra alqoritmimiz sizə 3 uyğun mütəxəssis təklif edir. Tanışlıq görüşündən sonra qərar tamamilə sizindir — istədiyiniz vaxt başqasını seçə bilərsiniz.", displayOrder: 4, active: true },
-  { id: 5, question: "Seansı ləğv edə və ya təxirə sala bilərəmmi?", answer: "Bəli. Seansdan ən az 12 saat əvvəl ödənişsiz olaraq dəyişdirə bilərsiniz. Sonra ödənişin yarısı saxlanılır.", displayOrder: 5, active: true },
-  { id: 6, question: "Hansı problemlərlə müraciət edə bilərəm?", answer: "Narahatlıq, depressiya, münasibət, travma, burnout, yuxu problemləri, valideynlik, asılılıq və s. Əgər sualınız varsa — bizə yazın, sizə yönləndirək.", displayOrder: 6, active: true },
+  { id: 1, question: "Onlayn seans nə qədər təsirlidir?", answer: "Tədqiqatlar göstərir ki, peşəkar psixoloqla aparılan onlayn seanslar effektivlik baxımından klinik müayinələrlə müqayisə oluna bilir. Üstəlik öz mühitinizdə daha açıq danışmaq mümkün olur, yol və gözləmə vaxtı sıfırdır.", displayOrder: 1, active: true },
+  { id: 2, question: "Məlumatlarım təhlükəsizdirmi?", answer: "Bəli. Seans qeydləri saxlanmır. Şəxsi məlumatlarınız üçüncü tərəflərlə paylaşılmır. İstədiyiniz vaxt anonim profil yarada və ya hesabınızı silə bilərsiniz.", displayOrder: 2, active: true },
+  { id: 3, question: "Bir seans nə qədər çəkir və nə qədər başa gəlir?", answer: "Standart seans 50 dəqiqədir. Qiymət psixoloqdan asılı olaraq dəyişir — hər mütəxəssisin profilində açıq göstərilib. Seçdiyiniz psixoloqla ilk 15 dəqiqəlik tanışlıq görüşü pulsuzdur.", displayOrder: 3, active: true },
+  { id: 4, question: "Mənə uyğun psixoloqu necə seçirsiniz?", answer: "Qısa müraciətinizi operator komandamız oxuyur — alqoritm yox, insan. Ehtiyacınıza, dilinizə və büdcənizə uyğun mütəxəssisi qısa müddətdə təklif edirik. İlk tanışlıq görüşündən sonra istəyirsinizsə başqa psixoloqa keçə bilərsiniz.", displayOrder: 4, active: true },
+  { id: 5, question: "Seansı ləğv edə və ya təxirə sala bilərəmmi?", answer: "Bəli. Seansdan ən az 12 saat əvvəl ödənişsiz dəyişdirə bilərsiniz. Daha gec ləğvlərdə ödənişin müəyyən hissəsi tutulur — dəqiq qaydalar müraciət təsdiqi anında göstərilir.", displayOrder: 5, active: true },
+  { id: 6, question: "Hansı problemlərlə müraciət edə bilərəm?", answer: "Narahatlıq, depressiya, münasibət problemləri, travma, burnout, yuxu pozğunluğu, valideynlik stress-i, asılılıqlar. Əmin deyilsinizsə — qısa müraciət göndərin, operator komandamız sizə uyğun mütəxəssisi yönləndirəcək.", displayOrder: 6, active: true },
+  { id: 7, question: "Hansı dildə seans keçirilir?", answer: "Hər psixoloqun profilində çalışdığı dillər (Azərbaycan, rus, ingilis) göstərilib. Müraciətinizdə üstünlük verdiyiniz dili qeyd edirsiniz.", displayOrder: 7, active: true },
+  { id: 8, question: "Texniki problem olarsa nə edim?", answer: "Video zəng linki seansdan əvvəl e-poçt və SMS ilə gəlir. Bağlantı kəsilərsə bizə yazın — operator dərhal psixoloqla əlaqə saxlayır və ya seansı yenidən planlaşdırır. Heç nə endirmək lazım deyil — link brauzerdə açılır.", displayOrder: 8, active: true },
 ];
 
 export default function FAQ({ faqs }: { faqs?: Faq[] }) {

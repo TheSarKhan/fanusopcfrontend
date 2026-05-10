@@ -514,9 +514,9 @@ function ArtNewsletter() {
       <Deco type="target" style={{ bottom: 30, left: "8%", width: 130, opacity: .55 }} anim="drift" />
       <div className="fanus-container">
         <div className="ap-news__head">
-          <div className="fanus-eyebrow"><span className="dash" /> Bülleten <span className="dash" /></div>
-          <h2>Ayda bir dəfə — yalnız <span className="fanus-serif-accent">oxumağa dəyər</span></h2>
-          <p>Spam yox. Mübaliğəli klik tələləri yox. Yalnız Fanus psixoloqlarının seçilmiş yazıları və alətlər.</p>
+          <div className="fanus-eyebrow"><span className="dash" /> E-bülleten <span className="dash" /></div>
+          <h2>Aylıq məqalə bülletenimizə <span className="fanus-serif-accent">abunə olun</span></h2>
+          <p>Hər ay Fanus psixoloqlarının seçilmiş yazıları birbaşa e-poçtunuza gəlsin.</p>
           <form className="ap-news__form" onSubmit={(e) => { e.preventDefault(); alert("Təşəkkürlər!"); }}>
             <input type="email" placeholder="email@nümunə.az" required />
             <button type="submit" className="fanus-btn fanus-btn-primary">

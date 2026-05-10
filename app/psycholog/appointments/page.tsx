@@ -363,7 +363,6 @@ function NextSessionHero({
   const start = new Date(appt.startAt);
   const tu = timeUntil(start, now);
   const sessionNumber = client ? client.totalSessions + 1 : null;
-  const fmt = appt.sessionFormat === "ONLINE" ? "Onlayn" : appt.sessionFormat === "IN_PERSON" ? "Əyani" : null;
 
   return (
     <div className={`psy-hero${tu.urgent || tu.expired ? " psy-hero--urgent" : ""}`}>
@@ -383,7 +382,6 @@ function NextSessionHero({
           <div className="psy-hero__name">
             <span>{appt.patientName ?? "Pasient"}</span>
             {sessionNumber && <span className="psy-hero__nth">{sessionNumber}-ci seans</span>}
-            {fmt && <span className="psy-hero__fmt">{fmt}</span>}
           </div>
           {note ? (
             <div className="psy-hero__quote">
@@ -530,11 +528,11 @@ function TodayCard({
   onAction: (id: number, fn: () => Promise<AppointmentDetail>) => Promise<void>;
   onDispute: () => void;
 }) {
+  const { t } = useT();
   if (!a.startAt) return null;
   const start = new Date(a.startAt);
   const status = STATUS[a.status] ?? STATUS.ASSIGNED;
   const sessionNumber = client ? client.totalSessions + 1 : null;
-  const fmt = a.sessionFormat === "ONLINE" ? "Onlayn" : a.sessionFormat === "IN_PERSON" ? "Əyani" : null;
   const expired = !!a.endAt && new Date(a.endAt).getTime() < now.getTime();
   const canConfirmSession = (a.status === "CONFIRMED" && expired) || a.status === "AWAITING_CONFIRMATION";
 
@@ -549,7 +547,11 @@ function TodayCard({
           <span className="psy-card__badge" style={{ color: status.color, background: status.bg }}>
             {status.label}
           </span>
-          {fmt && <span className="psy-card__chip">{fmt}</span>}
+          {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
+            <span className="psy-card__chip" style={{ background: "var(--brand-50)", color: "var(--brand-700)", fontWeight: 600 }}>
+              {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
+            </span>
+          )}
           {isNext && <span className="psy-card__chip psy-card__chip--next">Növbəti</span>}
         </div>
       </div>
@@ -560,6 +562,11 @@ function TodayCard({
             {a.patientName ?? "Pasient"}
             {sessionNumber && <span className="psy-card__nth"> · {sessionNumber}-ci seans</span>}
           </div>
+          {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--brand-700)", marginTop: 2 }}>
+              {t("series.courseLine", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
+            </div>
+          )}
           <div className="psy-card__ctx">
             {client && client.noteCount > 0 && <span>📝 {client.noteCount} qeyd</span>}
             {note?.moodScore && <span>💭 son əhval-ruhiyyə {note.moodScore}/10</span>}
@@ -603,6 +610,9 @@ function TodayCard({
             Pasient
           </Link>
         )}
+        <Link href={`/psycholog/appointments/${a.id}/intake`} className="psy-card__btn psy-card__btn--ghost">
+          {t("intake.psyTitle")}
+        </Link>
       </div>
     </div>
   );
@@ -619,7 +629,6 @@ function WeekRow({
   const start = new Date(a.startAt);
   const status = STATUS[a.status] ?? STATUS.ASSIGNED;
   const sessionNumber = client ? client.totalSessions + 1 : null;
-  const fmt = a.sessionFormat === "ONLINE" ? "Onlayn" : a.sessionFormat === "IN_PERSON" ? "Əyani" : null;
   return (
     <div className="psy-week-row" style={{ borderLeft: `3px solid ${status.accent}` }}>
       <div className="psy-week-row__day">
@@ -630,7 +639,6 @@ function WeekRow({
         {a.patientName ?? "Pasient"}
         {sessionNumber && <small> · {sessionNumber}-ci seans</small>}
       </div>
-      {fmt && <span className="psy-week-row__chip">{fmt}</span>}
       {a.patientId ? (
         <Link href={`/psycholog/clients/${a.patientId}`} className="psy-week-row__link" aria-label="Pasient profilinə git">›</Link>
       ) : <span />}
@@ -668,8 +676,8 @@ function AwaitingCard({
   onConfirm: () => void;
   onDispute: () => void;
 }) {
+  const { t } = useT();
   const status = STATUS[a.status] ?? STATUS.AWAITING_CONFIRMATION;
-  const fmt = a.sessionFormat === "ONLINE" ? "Onlayn" : a.sessionFormat === "IN_PERSON" ? "Əyani" : null;
   const start = a.startAt ? new Date(a.startAt) : null;
   const sessionNumber = client ? client.totalSessions + 1 : null;
   const alreadyConfirmed = !!a.psychologistConfirmedAt;
@@ -683,7 +691,11 @@ function AwaitingCard({
           <span className="psy-card__badge" style={{ color: status.color, background: status.bg }}>
             {status.label}
           </span>
-          {fmt && <span className="psy-card__chip">{fmt}</span>}
+          {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
+            <span className="psy-card__chip" style={{ background: "var(--brand-50)", color: "var(--brand-700)", fontWeight: 600 }}>
+              {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
+            </span>
+          )}
         </div>
       </div>
       <div className="psy-card__body">

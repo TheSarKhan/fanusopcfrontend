@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { getStoredUser } from "@/lib/auth";
 
 export default function Footer() {
   const { t } = useT();
+  const [isAuthed, setIsAuthed] = useState(false);
+  useEffect(() => { setIsAuthed(!!getStoredUser()); }, []);
   const COLS = [
     { title: t("footer2.columnFanus"), links: [
       { label: t("footer2.linkAbout"),    href: "/about" },
@@ -31,21 +35,23 @@ export default function Footer() {
   ];
   return (
     <footer className="fanus-ftr" id="contact">
-      <div className="fanus-ftr-cta">
-        <div className="fanus-container fanus-ftr-cta__inner">
-          <div className="fanus-ftr-cta__lantern">
-            <Image src="/images/logos/logo-white.png" alt="Fanus" width={72} height={72} style={{ objectFit: "contain" }} />
-          </div>
-          <div>
-            <h3 className="fanus-ftr-cta__title">{t("footer2.ctaTitle")}</h3>
-            <p className="fanus-ftr-cta__sub">{t("footer2.ctaSub")}</p>
-          </div>
-          <div className="fanus-ftr-cta__btns">
-            <Link href="/register" className="fanus-btn fanus-btn-light">{t("nav.register")} <Arrow /></Link>
-            <Link href="/book" className="fanus-btn fanus-ftr-cta__ghost">{t("footer2.ctaTalkNow")}</Link>
+      {!isAuthed && (
+        <div className="fanus-ftr-cta">
+          <div className="fanus-container fanus-ftr-cta__inner">
+            <div className="fanus-ftr-cta__lantern">
+              <Image src="/images/logos/logo-white.png" alt="Fanus" width={72} height={72} style={{ objectFit: "contain" }} />
+            </div>
+            <div>
+              <h3 className="fanus-ftr-cta__title">{t("footer2.ctaTitle")}</h3>
+              <p className="fanus-ftr-cta__sub">{t("footer2.ctaSub")}</p>
+            </div>
+            <div className="fanus-ftr-cta__btns">
+              <Link href="/register" className="fanus-btn fanus-btn-light">{t("nav.register")} <Arrow /></Link>
+              <Link href="/book" className="fanus-btn fanus-ftr-cta__ghost">{t("footer2.ctaTalkNow")}</Link>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="fanus-container fanus-ftr__main">
         <div className="fanus-ftr__brand">

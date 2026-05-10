@@ -104,11 +104,6 @@ export default function RescheduleProposalModal({
               <span className="rsc-option-num">{opt.index + 1}</span>
               <div className="rsc-option-info">
                 <div className="rsc-option-when">{fmtRange(opt.startAt, opt.endAt)}</div>
-                {opt.sessionFormat && (
-                  <div className="rsc-option-fmt">
-                    {opt.sessionFormat === "ONLINE" ? "Onlayn" : opt.sessionFormat === "IN_PERSON" ? "Əyani" : opt.sessionFormat}
-                  </div>
-                )}
               </div>
               <span className="rsc-option-arrow">{busyOption === opt.index ? "…" : "→"}</span>
             </button>

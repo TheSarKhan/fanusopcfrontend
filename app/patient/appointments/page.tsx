@@ -66,10 +66,11 @@ const STATUS: Record<string, { label: string; color: string; bg: string; accent:
   DISPUTED:               { label: "Mübahisəli",       color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
   COMPLETED:              { label: "Tamamlandı",       color: "#374151",          bg: "#F3F4F6",         accent: "#9CA3AF" },
   CANCELLED:              { label: "Ləğv edildi",      color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
+  CANCEL_REQUESTED:       { label: "Ləğv gözlənir",    color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
   REJECTED:               { label: "Yenidən təyin",    color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
 };
 
-const ACTIVE_STATUSES = new Set(["ASSIGNED", "CONFIRMED", "PENDING", "REJECTED"]);
+const ACTIVE_STATUSES = new Set(["ASSIGNED", "CONFIRMED", "PENDING", "REJECTED", "CANCEL_REQUESTED"]);
 
 export default function PatientAppointmentsPage() {
   const { t } = useT();
@@ -443,7 +444,6 @@ function NextSessionHero({
 
   const start = new Date(appt.startAt);
   const tu = timeUntil(start, now);
-  const fmt = appt.sessionFormat === "ONLINE" ? "Onlayn" : appt.sessionFormat === "IN_PERSON" ? "Əyani" : null;
   const showConfirm = tu.expired && (appt.status === "CONFIRMED" || appt.status === "AWAITING_CONFIRMATION");
   const alreadyConfirmed = !!appt.patientConfirmedAt;
 
@@ -465,7 +465,6 @@ function NextSessionHero({
           <div className="psy-hero__name">
             <span>{appt.psychologistName ?? "Operator psixoloq təyin edəcək"}</span>
             {sessionNumber && <span className="psy-hero__nth">{sessionNumber}-ci seans</span>}
-            {fmt && <span className="psy-hero__fmt">{fmt}</span>}
           </div>
           {appt.note && (
             <div className="psy-hero__quote">
@@ -588,7 +587,6 @@ function AwaitingCard({
 }) {
   const { t } = useT();
   const status = STATUS[a.status] ?? STATUS.AWAITING_CONFIRMATION;
-  const fmt = a.sessionFormat === "ONLINE" ? "Onlayn" : a.sessionFormat === "IN_PERSON" ? "Əyani" : null;
   const start = a.startAt ? new Date(a.startAt) : null;
   const alreadyConfirmed = !!a.patientConfirmedAt;
   const isDisputed = a.status === "DISPUTED";
@@ -601,7 +599,11 @@ function AwaitingCard({
           <span className="psy-card__badge" style={{ color: status.color, background: status.bg }}>
             {status.label}
           </span>
-          {fmt && <span className="psy-card__chip">{fmt}</span>}
+          {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
+            <span className="psy-card__chip" style={{ background: "var(--brand-50)", color: "var(--brand-700)", fontWeight: 600 }}>
+              {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
+            </span>
+          )}
         </div>
       </div>
       <div className="psy-card__body">
@@ -654,7 +656,6 @@ function TodayCard({
   if (!a.startAt) return null;
   const start = new Date(a.startAt);
   const status = STATUS[a.status] ?? STATUS.ASSIGNED;
-  const fmt = a.sessionFormat === "ONLINE" ? "Onlayn" : a.sessionFormat === "IN_PERSON" ? "Əyani" : null;
 
   return (
     <div
@@ -667,7 +668,11 @@ function TodayCard({
           <span className="psy-card__badge" style={{ color: status.color, background: status.bg }}>
             {status.label}
           </span>
-          {fmt && <span className="psy-card__chip">{fmt}</span>}
+          {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
+            <span className="psy-card__chip" style={{ background: "var(--brand-50)", color: "var(--brand-700)", fontWeight: 600 }}>
+              {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
+            </span>
+          )}
           {isNext && <span className="psy-card__chip psy-card__chip--next">Növbəti</span>}
         </div>
       </div>
@@ -693,6 +698,12 @@ function TodayCard({
         </div>
       </div>
       <div className="psy-card__actions">
+        <a
+          href={`/patient/appointments/${a.id}/intake`}
+          className="psy-card__btn psy-card__btn--ghost"
+          style={{ textDecoration: "none" }}>
+          {t("intake.cta")}
+        </a>
         <button
           onClick={onReschedule}
           disabled={busyId === a.id}
@@ -726,7 +737,6 @@ function WeekRow({
   if (!a.startAt) return null;
   const start = new Date(a.startAt);
   const status = STATUS[a.status] ?? STATUS.ASSIGNED;
-  const fmt = a.sessionFormat === "ONLINE" ? "Onlayn" : a.sessionFormat === "IN_PERSON" ? "Əyani" : null;
   return (
     <div className="psy-week-row" style={{ borderLeft: `3px solid ${status.accent}` }}>
       <div className="psy-week-row__day">
@@ -737,7 +747,6 @@ function WeekRow({
         {a.psychologistName ?? "Operator təyin edəcək"}
         {sessionNumber && <small> · {sessionNumber}-ci seans</small>}
       </div>
-      {fmt && <span className="psy-week-row__chip">{fmt}</span>}
       <div style={{ display: "flex", gap: 6 }}>
         <button onClick={onReschedule}
           style={{ fontSize: 11, color: "var(--brand-700)", background: "var(--brand-50)", border: "1px solid var(--brand-200)", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontWeight: 600 }}>
@@ -813,9 +822,6 @@ function RescheduleModal({
   onDone: () => void;
 }) {
   const [datetime, setDatetime] = useState("");
-  const [format, setFormat] = useState<"ONLINE" | "IN_PERSON">(
-    (appointment.sessionFormat as "ONLINE" | "IN_PERSON") ?? "ONLINE"
-  );
   const [note, setNote] = useState(appointment.note ?? "");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -831,7 +837,6 @@ function RescheduleModal({
         note: trimmed,
         requestedPsychologistId: appointment.psychologistId ?? appointment.requestedPsychologistId ?? null,
         requestedStartAt: new Date(datetime).toISOString(),
-        sessionFormat: format,
       });
       onDone();
     } catch (e) {
@@ -855,20 +860,6 @@ function RescheduleModal({
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>Yeni vaxt</label>
           <input type="datetime-local" value={datetime} onChange={e => setDatetime(e.target.value)}
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 14 }} />
-
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>Format</label>
-          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-            {(["ONLINE", "IN_PERSON"] as const).map(f => (
-              <button type="button" key={f} onClick={() => setFormat(f)}
-                style={{
-                  flex: 1, padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 600,
-                  border: format === f ? "2px solid var(--brand)" : "1px solid #E5E7EB",
-                  background: format === f ? "var(--brand-50)" : "#fff", cursor: "pointer", color: "var(--oxford)",
-                }}>
-                {f === "ONLINE" ? "Onlayn" : "Əyani"}
-              </button>
-            ))}
-          </div>
 
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>Qısa təsvir</label>
           <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}

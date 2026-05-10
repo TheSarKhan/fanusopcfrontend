@@ -65,7 +65,7 @@ function fullName(u: UserRecord) {
 const EMPTY_PROFILE: Omit<Psychologist, "id"> = {
   name: "", title: "Psixoloq", specializations: [], experience: "—",
   sessionsCount: "0", rating: "0.0", photoUrl: "", bio: "", phone: "",
-  email: "", languages: "", sessionTypes: "", activityFormat: "",
+  email: "", languages: "", sessionTypes: "",
   university: "", degree: "", graduationYear: "",
   accentColor: "#2f5283", bgColor: "#eef1f7", displayOrder: 0, active: true,
 };
@@ -701,12 +701,6 @@ export default function UsersPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <InfoRow label="İxtisas / vəzifə" value={detailApp.title ?? "—"} />
                     <InfoRow label="Təcrübə" value={detailApp.experienceYears ?? "—"} />
-                    <InfoRow label="Format" value={
-                      detailApp.activityFormat === "BOTH" ? "Onlayn & Əyani" :
-                      detailApp.activityFormat === "ONLINE" ? "Onlayn" :
-                      detailApp.activityFormat === "IN_PERSON" ? "Əyani" :
-                      (detailApp.activityFormat ?? "—")
-                    } />
                     <InfoRow label="Dillər" value={detailApp.languages?.split(",").map(s => s.trim()).filter(Boolean).join(", ") || "—"} />
                   </div>
                   {detailApp.specializations && (
@@ -1048,11 +1042,7 @@ export default function UsersPage() {
                           onChange={(e) => setProfData((p) => p && ({ ...p, email: e.target.value }))} />
                       </Field>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                      <Field label="Fəaliyyət formatı">
-                        <input className="input" placeholder="Onlayn / Əyani / Onlayn & Əyani" value={profData.activityFormat ?? ""}
-                          onChange={(e) => setProfData((p) => p && ({ ...p, activityFormat: e.target.value }))} />
-                      </Field>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
                       <Field label="Şəkil URL">
                         <input className="input" placeholder="https://..." value={profData.photoUrl ?? ""}
                           onChange={(e) => setProfData((p) => p && ({ ...p, photoUrl: e.target.value }))} />

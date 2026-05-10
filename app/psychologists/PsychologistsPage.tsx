@@ -30,7 +30,6 @@ interface Item {
   rating: string;
   sessions: string;
   lang: string;
-  format: "ONLINE" | "IN_PERSON" | "BOTH" | null;
   sessionMinutes: number;
   cat: Cat;
   photoUrl?: string;
@@ -39,15 +38,15 @@ interface Item {
 }
 
 const FALLBACK_BASE: Omit<Item, "slug">[] = [
-  { id: 1, name: "Aysel Məmmədova", title: "Klinik psixoloq", specs: ["Narahatlıq", "OKD", "Panik"],     exp: 8,  rating: "4.9", sessions: "210", lang: "AZ · RU",      format: "ONLINE",    sessionMinutes: 50, cat: "anxiety",    accentColor: "#3B6FA5", bgColor: "#EEF4FB" },
-  { id: 2, name: "Rəşad Quliyev",   title: "Travma terapevti",  specs: ["Travma", "TSSP"],                exp: 11, rating: "4.8", sessions: "315", lang: "AZ · EN",      format: "BOTH",      sessionMinutes: 50, cat: "trauma",     accentColor: "var(--brand)", bgColor: "#EFEDFB" },
-  { id: 3, name: "Lalə Hüseynova",  title: "Ailə terapevti",    specs: ["Münasibətlər", "Ailə"],          exp: 6,  rating: "4.7", sessions: "140", lang: "AZ",           format: "ONLINE",    sessionMinutes: 60, cat: "family",     accentColor: "#C97D2E", bgColor: "#FBF1E5" },
-  { id: 4, name: "Elnur Səfərov",   title: "Klinik psixoloq",   specs: ["Depressiya", "Burnout"],         exp: 9,  rating: "4.9", sessions: "260", lang: "AZ · RU",      format: "ONLINE",    sessionMinutes: 50, cat: "depression", accentColor: "#2F7A5C", bgColor: "#E9F5EF" },
-  { id: 5, name: "Nigar Kazımova",  title: "Uşaq psixoloqu",    specs: ["Yeniyetmə", "Valideyn"],         exp: 7,  rating: "4.8", sessions: "180", lang: "AZ",           format: "ONLINE",    sessionMinutes: 50, cat: "youth",      accentColor: "#3B6FA5", bgColor: "#EEF4FB" },
-  { id: 6, name: "Tural Babayev",   title: "Asılılıq mütəxəssisi", specs: ["Asılılıq", "İmpuls"],         exp: 10, rating: "4.7", sessions: "240", lang: "AZ · RU",      format: "BOTH",      sessionMinutes: 60, cat: "addiction",  accentColor: "var(--brand)", bgColor: "#EFEDFB" },
-  { id: 7, name: "Səbinə Əliyeva",  title: "Klinik psixoloq",   specs: ["Narahatlıq", "Stress"],          exp: 5,  rating: "4.8", sessions: "120", lang: "AZ · EN",      format: "ONLINE",    sessionMinutes: 50, cat: "anxiety",    accentColor: "#3B6FA5", bgColor: "#EEF4FB" },
-  { id: 8, name: "Cavid Rəhimli",   title: "Travma terapevti",  specs: ["Travma", "Yas", "EMDR"],         exp: 12, rating: "5.0", sessions: "390", lang: "AZ · RU · EN", format: "BOTH",      sessionMinutes: 60, cat: "trauma",     accentColor: "var(--brand)", bgColor: "#EFEDFB" },
-  { id: 9, name: "Günel Həsənli",   title: "Cütlük terapevti",  specs: ["Cütlük", "Boşanma"],             exp: 8,  rating: "4.9", sessions: "200", lang: "AZ",           format: "ONLINE",    sessionMinutes: 60, cat: "family",     accentColor: "#C97D2E", bgColor: "#FBF1E5" },
+  { id: 1, name: "Aysel Məmmədova", title: "Klinik psixoloq", specs: ["Narahatlıq", "OKD", "Panik"],     exp: 8,  rating: "4.9", sessions: "210", lang: "AZ · RU",      sessionMinutes: 50, cat: "anxiety",    accentColor: "#3B6FA5", bgColor: "#EEF4FB" },
+  { id: 2, name: "Rəşad Quliyev",   title: "Travma terapevti",  specs: ["Travma", "TSSP"],                exp: 11, rating: "4.8", sessions: "315", lang: "AZ · EN",      sessionMinutes: 50, cat: "trauma",     accentColor: "var(--brand)", bgColor: "#EFEDFB" },
+  { id: 3, name: "Lalə Hüseynova",  title: "Ailə terapevti",    specs: ["Münasibətlər", "Ailə"],          exp: 6,  rating: "4.7", sessions: "140", lang: "AZ",           sessionMinutes: 60, cat: "family",     accentColor: "#C97D2E", bgColor: "#FBF1E5" },
+  { id: 4, name: "Elnur Səfərov",   title: "Klinik psixoloq",   specs: ["Depressiya", "Burnout"],         exp: 9,  rating: "4.9", sessions: "260", lang: "AZ · RU",      sessionMinutes: 50, cat: "depression", accentColor: "#2F7A5C", bgColor: "#E9F5EF" },
+  { id: 5, name: "Nigar Kazımova",  title: "Uşaq psixoloqu",    specs: ["Yeniyetmə", "Valideyn"],         exp: 7,  rating: "4.8", sessions: "180", lang: "AZ",           sessionMinutes: 50, cat: "youth",      accentColor: "#3B6FA5", bgColor: "#EEF4FB" },
+  { id: 6, name: "Tural Babayev",   title: "Asılılıq mütəxəssisi", specs: ["Asılılıq", "İmpuls"],         exp: 10, rating: "4.7", sessions: "240", lang: "AZ · RU",      sessionMinutes: 60, cat: "addiction",  accentColor: "var(--brand)", bgColor: "#EFEDFB" },
+  { id: 7, name: "Səbinə Əliyeva",  title: "Klinik psixoloq",   specs: ["Narahatlıq", "Stress"],          exp: 5,  rating: "4.8", sessions: "120", lang: "AZ · EN",      sessionMinutes: 50, cat: "anxiety",    accentColor: "#3B6FA5", bgColor: "#EEF4FB" },
+  { id: 8, name: "Cavid Rəhimli",   title: "Travma terapevti",  specs: ["Travma", "Yas", "EMDR"],         exp: 12, rating: "5.0", sessions: "390", lang: "AZ · RU · EN", sessionMinutes: 60, cat: "trauma",     accentColor: "var(--brand)", bgColor: "#EFEDFB" },
+  { id: 9, name: "Günel Həsənli",   title: "Cütlük terapevti",  specs: ["Cütlük", "Boşanma"],             exp: 8,  rating: "4.9", sessions: "200", lang: "AZ",           sessionMinutes: 60, cat: "family",     accentColor: "#C97D2E", bgColor: "#FBF1E5" },
 ];
 const FALLBACK: Item[] = withSlugs(FALLBACK_BASE);
 
@@ -82,7 +81,6 @@ export default function PsychologistsPage({ psychologists }: { psychologists?: P
         rating: p.rating ?? "—",
         sessions: p.sessionsCount ?? "0",
         lang: (p.languages || "AZ").split(",").map((l) => l.trim()).filter(Boolean).join(" · ") || "AZ",
-        format: (p.activityFormat as Item["format"]) || null,
         sessionMinutes: p.defaultSessionMinutes ?? 50,
         cat: deriveCategory(specs),
         photoUrl: p.photoUrl?.trim() || undefined,
@@ -98,7 +96,7 @@ export default function PsychologistsPage({ psychologists }: { psychologists?: P
 
   return (
     <div className="fanus-root">
-      <PsycHero count={items.length} />
+      <PsycHero />
       <PsycFilters active={filter} onChange={setFilter} />
       <PsycList items={visible} />
       <PsycCTA />
@@ -106,7 +104,7 @@ export default function PsychologistsPage({ psychologists }: { psychologists?: P
   );
 }
 
-function PsycHero({ count }: { count: number }) {
+function PsycHero() {
   const { t } = useT();
   return (
     <section className="pp-hero">
@@ -130,13 +128,11 @@ function PsycHero({ count }: { count: number }) {
           <div className="fanus-eyebrow"><span className="dash" /> {t("psyList.eyebrow")}</div>
           <h1>{t("psyList.title")}</h1>
           <p className="pp-hero__lead">{t("psyList.lead")}</p>
-
-          <div className="pp-hero__stats">
-            <Stat n={`${count}+`} t={t("home.statTotalPsychologists")} />
-            <Stat n={`8 ${t("psyList.yearsExp")}`}  t={t("psyList.avgExp")} />
-            <Stat n="12"    t={t("psyDetail.specializations")} />
-            <Stat n="3"     t={t("language.label")} />
-          </div>
+          <ul className="pp-hero__strip" role="list">
+            <li><strong>12+</strong> sertifikatlı psixoloq</li>
+            <li><strong>5+ il</strong> orta təcrübə</li>
+            <li><strong>3 dil</strong>: AZ · RU · EN</li>
+          </ul>
         </div>
 
         <div className="pp-hero__visual" aria-hidden>
@@ -169,9 +165,30 @@ function PsycHero({ count }: { count: number }) {
           letter-spacing: -0.035em; line-height: 1.1; color: var(--fanus-ink);
         }
         .pp-hero__lead { font-size: 17px; color: var(--fanus-ink-3); line-height: 1.6; max-width: 540px; margin: 0; }
-        .pp-hero__stats {
-          display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
-          margin-top: 36px; max-width: 460px;
+        .pp-hero__strip {
+          list-style: none; padding: 0; margin: 28px 0 0;
+          display: flex; flex-wrap: wrap; gap: 12px 28px;
+          font-size: 14.5px; color: var(--fanus-ink-3);
+        }
+        .pp-hero__strip li {
+          position: relative; padding-right: 28px;
+          line-height: 1.4;
+        }
+        .pp-hero__strip li:not(:last-child)::after {
+          content: ""; position: absolute; right: 0; top: 50%;
+          width: 4px; height: 4px; border-radius: 50%;
+          background: var(--fanus-primary); opacity: .35;
+          transform: translateY(-50%);
+        }
+        .pp-hero__strip li:last-child { padding-right: 0; }
+        .pp-hero__strip strong {
+          color: var(--fanus-primary); font-weight: 700;
+          margin-right: 4px;
+        }
+        @media (max-width: 540px) {
+          .pp-hero__strip { gap: 10px 0; flex-direction: column; }
+          .pp-hero__strip li { padding-right: 0; }
+          .pp-hero__strip li:not(:last-child)::after { display: none; }
         }
 
         .pp-hero__visual {
@@ -209,27 +226,9 @@ function PsycHero({ count }: { count: number }) {
         @media (max-width: 980px) {
           .pp-hero__inner { grid-template-columns: 1fr; gap: 32px; min-height: auto; }
           .pp-hero__visual { min-height: 280px; aspect-ratio: 16/9; max-width: 540px; margin: 0 auto; }
-          .pp-hero__stats { max-width: 100%; }
-        }
-        @media (max-width: 540px) {
-          .pp-hero__stats { grid-template-columns: 1fr 1fr; }
         }
       `}</style>
     </section>
-  );
-}
-
-function Stat({ n, t }: { n: string; t: string }) {
-  return (
-    <div className="pp-stat">
-      <strong>{n}</strong>
-      <span>{t}</span>
-      <style>{`
-        .pp-stat { background: white; border: 1px solid var(--fanus-line); border-radius: 16px; padding: 18px 20px; }
-        .pp-stat strong { display: block; font-size: 26px; font-weight: 800; color: var(--fanus-primary); letter-spacing: -.02em; }
-        .pp-stat span { font-size: 12.5px; color: var(--fanus-ink-3); margin-top: 4px; display: block; }
-      `}</style>
-    </div>
   );
 }
 
@@ -250,10 +249,6 @@ function PsycFilters({ active, onChange }: { active: Cat; onChange: (c: Cat) => 
           ))}
         </div>
         <div className="pp-filters__tools">
-          <select className="pp-select" defaultValue="online">
-            <option value="online">{t("psyList.formatBoth")}</option>
-            <option value="onlineonly">{t("psyList.formatOnline")}</option>
-          </select>
           <select className="pp-select" defaultValue="any">
             <option value="any">{t("psyList.filterAll")}</option>
             <option value="az">Azərbaycan</option>
@@ -344,10 +339,6 @@ function PsyCard({ p }: { p: Item }) {
   const ratingNum = parseFloat(p.rating);
   const filledStars = isFinite(ratingNum) ? Math.round(ratingNum) : 0;
   const hasSessions = p.sessions && p.sessions !== "0" && p.sessions !== "—";
-  const fmt =
-    p.format === "ONLINE"    ? t("psyList.formatOnline") :
-    p.format === "IN_PERSON" ? t("psyList.formatInPerson") :
-    p.format === "BOTH"      ? t("psyList.formatBoth") : null;
 
   return (
     <article className="pp-card">
@@ -399,7 +390,6 @@ function PsyCard({ p }: { p: Item }) {
 
       <ul className="pp-card__meta">
         <li><GlobeIcon /> {p.lang}</li>
-        {fmt && <li><MonitorIcon /> {fmt}</li>}
         <li><ClockIcon /> {p.exp} {t("psyList.yearsExp")}</li>
         <li><HourIcon /> {t("psyList.minutes", { n: p.sessionMinutes })}</li>
       </ul>

@@ -9,11 +9,10 @@ interface OptionDraft {
   date: string;       // YYYY-MM-DD
   startTime: string;  // HH:mm
   durationMin: number;
-  sessionFormat: "ONLINE" | "IN_PERSON" | "";
 }
 
 function blankOption(): OptionDraft {
-  return { date: "", startTime: "", durationMin: 50, sessionFormat: "" };
+  return { date: "", startTime: "", durationMin: 50 };
 }
 
 function combine(date: string, time: string, addMin: number = 0): string | null {
@@ -48,7 +47,7 @@ export default function RescheduleComposeModal({
     : 50;
 
   const [options, setOptions] = useState<OptionDraft[]>([
-    { ...blankOption(), durationMin: initialDuration, sessionFormat: (appointment.sessionFormat as ("ONLINE"|"IN_PERSON")) || "" },
+    { ...blankOption(), durationMin: initialDuration },
   ]);
   const [reason, setReason] = useState("");
   const [expiresHours, setExpiresHours] = useState<number>(24);
@@ -65,7 +64,7 @@ export default function RescheduleComposeModal({
     setOptions(prev => prev.map((o, idx) => idx === i ? { ...o, ...patch } : o));
 
   const addOption = () => setOptions(prev => prev.length < MAX_OPTIONS
-    ? [...prev, { ...blankOption(), durationMin: initialDuration, sessionFormat: prev[0]?.sessionFormat ?? "" }]
+    ? [...prev, { ...blankOption(), durationMin: initialDuration }]
     : prev);
 
   const removeOption = (i: number) => setOptions(prev =>
@@ -73,7 +72,7 @@ export default function RescheduleComposeModal({
 
   const submit = async () => {
     setError(null);
-    const payloadOptions: { startAt: string; endAt: string; sessionFormat?: string }[] = [];
+    const payloadOptions: { startAt: string; endAt: string }[] = [];
     for (const o of options) {
       if (!o.date || !o.startTime) {
         setError("Hər seçim üçün tarix və başlama saatı tələb olunur"); return;
@@ -84,10 +83,7 @@ export default function RescheduleComposeModal({
       if (new Date(startAt).getTime() <= Date.now()) {
         setError("Saatlar gələcəkdə olmalıdır"); return;
       }
-      payloadOptions.push({
-        startAt, endAt,
-        sessionFormat: o.sessionFormat || undefined,
-      });
+      payloadOptions.push({ startAt, endAt });
     }
 
     setSaving(true);
@@ -145,15 +141,6 @@ export default function RescheduleComposeModal({
                   <input type="number" min={15} max={240} step={5}
                     value={o.durationMin}
                     onChange={e => update(i, { durationMin: Math.max(15, Math.min(240, Number(e.target.value) || 50)) })} />
-                </label>
-                <label>
-                  <span>Format</span>
-                  <select value={o.sessionFormat}
-                    onChange={e => update(i, { sessionFormat: e.target.value as OptionDraft["sessionFormat"] })}>
-                    <option value="">—</option>
-                    <option value="ONLINE">Onlayn</option>
-                    <option value="IN_PERSON">Əyani</option>
-                  </select>
                 </label>
               </div>
             </div>

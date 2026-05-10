@@ -203,12 +203,7 @@ export default async function PsychologistProfilePage(
         graduationYear: psychologist.graduationYear ?? "",
       }]
     : [];
-  const hasInfo = !!(psychologist.languages || psychologist.sessionTypes || psychologist.activityFormat);
-  const activityFormatLabel =
-    psychologist.activityFormat === "BOTH"      ? "Onlayn & Əyani"
-  : psychologist.activityFormat === "ONLINE"    ? "Onlayn"
-  : psychologist.activityFormat === "IN_PERSON" ? "Əyani"
-  : psychologist.activityFormat ?? "";
+  const hasInfo = !!(psychologist.languages || psychologist.sessionTypes);
   const sessionMinutes = psychologist.defaultSessionMinutes ?? 50;
 
   const ratingNum = parseFloat(psychologist.rating);
@@ -286,15 +281,6 @@ export default async function PsychologistProfilePage(
                   <strong>{psychologist.experience}</strong>
                   <span className="prof-quick__sub"><T k="psyList.yearsExp" /></span>
                 </div>
-                {psychologist.activityFormat && (
-                  <div className="prof-quick__item">
-                    <span className="prof-quick__icon" style={{ background: BRAND_50, color: BRAND }}>
-                      <MonitorIcon />
-                    </span>
-                    <strong>{activityFormatLabel}</strong>
-                    <span className="prof-quick__sub"><T k="psyDetail.sessionFormat" /></span>
-                  </div>
-                )}
               </div>
 
               {psychologist.specializations.length > 0 && (
@@ -396,14 +382,14 @@ export default async function PsychologistProfilePage(
               </article>
             )}
 
-            {/* Row 3 — Format və dillər | Müştəri rəyləri */}
+            {/* Row 3 — Dillər və seans məlumatları | Müştəri rəyləri */}
             {hasInfo && (
               <article className="prof-block">
                 <div className="prof-block__head">
                   <span className="prof-block__eyebrow" style={{ color: BRAND }}>
-                    <span className="prof-block__dash" style={{ background: BRAND }} /> <T k="psyDetail.sessionFormat" />
+                    <span className="prof-block__dash" style={{ background: BRAND }} /> <T k="psyDetail.languages" />
                   </span>
-                  <h2 className="prof-block__title"><T k="psyDetail.sessionFormat" /></h2>
+                  <h2 className="prof-block__title"><T k="psyDetail.languages" /></h2>
                 </div>
                 <div className="prof-info">
                   {psychologist.languages && (
@@ -412,15 +398,9 @@ export default async function PsychologistProfilePage(
                       <strong>{psychologist.languages}</strong>
                     </div>
                   )}
-                  {psychologist.activityFormat && (
-                    <div className="prof-info__row">
-                      <span><T k="psyDetail.sessionFormat" /></span>
-                      <strong>{activityFormatLabel}</strong>
-                    </div>
-                  )}
                   {psychologist.sessionTypes && (
                     <div className="prof-info__row">
-                      <span><T k="psyDetail.sessionFormat" /></span>
+                      <span><T k="psyDetail.sessionDuration" /></span>
                       <strong>{psychologist.sessionTypes}</strong>
                     </div>
                   )}

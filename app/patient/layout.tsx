@@ -14,11 +14,13 @@ function PatientShell({ children }: { children: React.ReactNode }) {
   const initials = ((first[0] ?? "") + (last[0] ?? "")).toUpperCase() || "P";
 
   const nav: PanelNavItem[] = [
-    { href: "/patient",              label: t("nav.dashboard"),     icon: "home" },
-    { href: "/patient/appointments", label: t("nav.appointments"),  icon: "calendar" },
-    { href: "/patient/homework",     label: t("nav.homework"),      icon: "check" },
-    { href: "/patient/favorites",    label: t("nav.favorites"),     icon: "heart" },
-    { href: "/patient/profile",      label: t("nav.profile"),       icon: "user" },
+    { href: "/patient",                label: t("nav.dashboard"),     icon: "home" },
+    { href: "/patient/psychologists",  label: t("nav.psychologists"), icon: "users" },
+    { href: "/patient/appointments",   label: t("nav.appointments"),  icon: "calendar" },
+    { href: "/patient/series",         label: t("nav.series"),        icon: "clock" },
+    { href: "/patient/homework",       label: t("nav.homework"),      icon: "check" },
+    { href: "/patient/favorites",      label: t("nav.favorites"),     icon: "heart" },
+    { href: "/patient/profile",        label: t("nav.profile"),       icon: "user" },
   ];
 
   return (

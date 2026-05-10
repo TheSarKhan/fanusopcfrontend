@@ -124,44 +124,37 @@ const PROGRAMS = [
   {
     icon: "compass",
     title: "Fərdi terapiya",
-    tag: "Özünüzlə baş-başa",
-    body: "Bir psixoloqla, sizə uyğun tempdə işləyin. Narahatlıq, depressiya, özgüvən və həyat dönüşləri üzrə.",
-    bullets: ["50 dəq seans", "Sizə uyğun mütəxəssis", "İlk görüş pulsuz", "Həftəlik və ya 2 həftədə bir"],
+    tag: "Tək-tək söhbət",
+    body: "Narahatlıq, depressiya, özünə güvən, həyat qərarları. Bir psixoloqla, sizə uyğun tempdə.",
+    bullets: ["50 dəqiqəlik seans", "İlk görüş pulsuz", "Həftəlik və ya 2 həftədə bir"],
   },
   {
     icon: "people",
-    title: "Cütlük terapiyası",
-    tag: "Birlikdə daha güclü",
-    body: "Münasibətdəki gərginliyi yumşaq, neytral məkanda araşdırın. Hər iki tərəf eşidilir.",
-    bullets: ["Hər iki tərəf üçün məkan", "Kommunikasiya alətləri", "Münaqişə həlli", "Etibarın bərpası"],
-  },
-  {
-    icon: "monitor",
-    title: "Onlayn seans",
-    tag: "Harada olsanız yanınızdayıq",
-    body: "Brauzer və ya tətbiq. Heç bir quraşdırma yoxdur. Evdən, ofisdən və ya yoldan iştirak edin.",
-    bullets: ["Şifrələnmiş video", "Mobil və masaüstü", "Xatırlatma bildirişləri", "Asan dəyişdirmə"],
+    title: "Cütlük və ailə",
+    tag: "Birlikdə qoşulun",
+    body: "Anlaşılmama, etibar problemi, valideynlik. Hər iki tərəf eşidilir, mütəxəssis tərəf saxlamır.",
+    bullets: ["Cütlük və ya ailə birgə", "Münaqişə həlli", "Etibarın bərpası"],
   },
   {
     icon: "chat",
-    title: "Qrup terapiyası",
-    tag: "Birlikdə sağalın",
-    body: "8-12 nəfərlik kiçik qrup. Eyni mövzunu yaşayan insanlarla peşəkar rəhbərlikdə.",
-    bullets: ["8-12 nəfərlik qrup", "Həftəlik 90 dəq", "Tematik sessiyalar", "Qarşılıqlı dəstək"],
+    title: "Qrup seansları",
+    tag: "Eyni mövzuda birlikdə",
+    body: "Eyni problemi yaşayanlarla 8-12 nəfərlik kiçik qrup. Psixoloq idarə edir.",
+    bullets: ["8-12 nəfərlik qrup", "Həftəlik 90 dəq", "Tematik mövzular"],
   },
   {
     icon: "heart",
-    title: "Böhran dəstəyi",
-    tag: "Çətin anlarda yanınızdayıq",
-    body: "Kəskin emosional ağrıda yumşaq, peşəkar müşaiət. Heç bir mühakimə yoxdur — yalnız dəstək.",
-    bullets: ["24 saat ərzində cavab", "Kəskin sessiyalar", "Davamlı plan", "113 ilə əməkdaşlıq"],
+    title: "Akut dəstək",
+    tag: "Çətin anlarda",
+    body: "Travma, kəskin stress, panik. Operator komandamız sizə uyğun psixoloqu qısa müddətdə tapır.",
+    bullets: ["Tezliklə cavab", "Kəskin sessiyalar", "Davamlı plan"],
   },
   {
     icon: "smile",
-    title: "Uşaq & yeniyetmə",
-    tag: "Gənclikdən güclü başlanğıc",
-    body: "8-18 yaş üçün xüsusi olaraq hazırlanmış format. Valideyn ilə birlikdə yumşaq yanaşma.",
-    bullets: ["Yaşa uyğun yanaşma", "Valideyn iclasları", "Oyun terapiyası", "Məktəb əlaqəsi"],
+    title: "Yeniyetmələr və valideynlər",
+    tag: "13–18 yaş",
+    body: "13–18 yaş gənclər üçün ayrı yanaşma. Valideynlər üçün də ayrı dəstək.",
+    bullets: ["Yaşa uyğun yanaşma", "Valideyn iclasları", "Məktəb əlaqəsi"],
   },
 ];
 
@@ -174,9 +167,9 @@ function ServicesPrograms() {
 
       <div className="fanus-container">
         <div className="svc-head">
-          <div className="fanus-eyebrow"><span className="dash" /> {t("services.eyebrow")} <span className="dash" /></div>
-          <h2>{t("services.title")}</h2>
-          <p>{t("psyList.matchCtaSub")}</p>
+          <div className="fanus-eyebrow"><span className="dash" /> Proqramlar <span className="dash" /></div>
+          <h2>{t("services.programsTitle")}</h2>
+          <p>{t("services.programsSub")}</p>
         </div>
 
         <div className="svc-prog__grid">
@@ -214,8 +207,15 @@ function ServicesPrograms() {
           margin: 16px 0 14px;
         }
         .svc-head p { font-size: 17px; color: var(--fanus-ink-3); margin: 0; }
-        .svc-prog__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+        .svc-prog__grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 22px;
+          justify-content: center;
+        }
         .svc-card {
+          flex: 0 0 calc((100% - 44px) / 3);
+          max-width: calc((100% - 44px) / 3);
           background: white; border: 1px solid var(--fanus-line);
           border-radius: 22px; padding: 28px;
           display: flex; flex-direction: column; gap: 14px;
@@ -250,8 +250,18 @@ function ServicesPrograms() {
           transition: background .2s, color .2s, transform .2s;
         }
         .svc-card__btn:hover { background: var(--fanus-primary); color: white; transform: translateY(-1px); }
-        @media (max-width: 1080px) { .svc-prog__grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 640px) { .svc-prog__grid { grid-template-columns: 1fr; } }
+        @media (max-width: 1080px) {
+          .svc-card {
+            flex: 0 0 calc((100% - 22px) / 2);
+            max-width: calc((100% - 22px) / 2);
+          }
+        }
+        @media (max-width: 640px) {
+          .svc-card {
+            flex: 0 0 100%;
+            max-width: 100%;
+          }
+        }
       `}</style>
     </section>
   );
@@ -266,9 +276,9 @@ function ServicesMatch() {
 
       <div className="fanus-container">
         <div className="svc-head">
-          <div className="fanus-eyebrow"><span className="dash" /> {t("psyList.matchCtaTitle")} <span className="dash" /></div>
-          <h2>{t("psyList.title")}</h2>
-          <p>{t("psyList.matchCtaSub")}</p>
+          <div className="fanus-eyebrow"><span className="dash" /> Başlamağa hazırsınız? <span className="dash" /></div>
+          <h2>Sizə uyğun psixoloqu birlikdə tapaq</h2>
+          <p>Yazdığınızı oxuyub uyğun mütəxəssisi qısa müddətdə təklif edirik. İlk 15 dəqiqəlik tanışlıq pulsuzdur.</p>
           <div className="svc-match__cta">
             <Link href="/psychologists" className="fanus-btn fanus-btn-primary">
               {t("psyList.seeAll")} <Arrow />

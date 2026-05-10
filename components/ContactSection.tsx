@@ -170,7 +170,7 @@ export default function ContactSection() {
                 <svg width="12" height="12" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round">
                   <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
                 </svg>
-                Ortalama cavab müddəti: 2–4 saat
+                Tezliklə cavab veririk
               </p>
             </div>
           </div>

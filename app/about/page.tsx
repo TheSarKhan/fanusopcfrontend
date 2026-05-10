@@ -64,30 +64,6 @@ const TIMELINE = [
   { year: "2024", text: "EMDR, uşaq terapiyası və qrup formatları platformaya əlavə olundu." },
 ];
 
-const TEAM = [
-  {
-    name: "Dr. Leyla Əliyeva",
-    role: "Klinik psixoloq, Qurucusu",
-    initials: "LƏ",
-    gradient: "linear-gradient(135deg, var(--brand-700) 0%, var(--brand) 100%)",
-    bio: "12 il təcrübə. Travma, narahatlıq pozğunluqları və CBT üzrə ixtisaslaşma. Fanus-un baş ideyaçısı.",
-  },
-  {
-    name: "Nigar Hüseynova",
-    role: "Ailə terapisti",
-    initials: "NH",
-    gradient: "linear-gradient(135deg, var(--brand) 0%, var(--brand-400) 100%)",
-    bio: "Münasibətlər, valideynlik və ailə dinamikası üzrə sertifikatlı mütəxəssis. Bonn Universiteti.",
-  },
-  {
-    name: "Rauf Məmmədov",
-    role: "CBT mütəxəssisi",
-    initials: "RM",
-    gradient: "linear-gradient(135deg, var(--brand-600) 0%, var(--brand-300) 100%)",
-    bio: "9 il təcrübə. Depressiya, panik atak və yuxu pozğunluqları üzrə sübutla əsaslanan terapiya.",
-  },
-];
-
 const CERTS = ["APA üzvü", "CBT Sertifikatlı", "EMDR Akkreditasiyası", "Mindfulness", "ISO 27001", "GDPR uyğun"];
 
 const STATS = [
@@ -263,52 +239,6 @@ function ValuesSection() {
   );
 }
 
-function TeamSection() {
-  const { ref, visible } = useScrollReveal<HTMLElement>(0.1);
-
-  return (
-    <section ref={ref} className="ap-team">
-      <div className="container">
-        <div style={{
-          maxWidth: 760, margin: "0 auto 72px", textAlign: "center",
-          opacity: visible ? 1 : 0,
-          transform: visible ? "translateY(0)" : "translateY(24px)",
-          transition: "opacity 0.6s ease, transform 0.6s ease",
-        }}>
-          <div className="fanus-eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}><span className="dash" /> Komanda</div>
-          <h2 style={{ fontFamily: "var(--font-poppins), system-ui, sans-serif", fontSize: "clamp(32px, 3.6vw, 48px)", fontWeight: 700, color: "var(--brand)", lineHeight: 1.15, letterSpacing: "-0.025em" }}>
-            Sizə dəstək olan <span className="fanus-serif-accent">mütəxəssislər</span>
-          </h2>
-          <p style={{ fontSize: 17, color: "var(--oxford-60)", marginTop: 16, maxWidth: 520, margin: "16px auto 0" }}>
-            Hər biri ən az 5 il klinik təcrübəyə və beynəlxalq sertifikata malikdir.
-          </p>
-        </div>
-
-        <div className="ap-team-grid" style={{ maxWidth: 960, margin: "0 auto" }}>
-          {TEAM.map((m, i) => (
-            <div
-              key={m.name}
-              className="ap-team-card"
-              style={{
-                opacity: visible ? 1 : 0,
-                transform: visible ? "translateY(0)" : "translateY(28px)",
-                transition: `opacity 0.65s ease ${i * 100}ms, transform 0.65s ease ${i * 100}ms`,
-              }}
-            >
-              <div className="ap-team-avatar" style={{ background: m.gradient }}>
-                {m.initials}
-              </div>
-              <h3>{m.name}</h3>
-              <div className="ap-team-role">{m.role}</div>
-              <p>{m.bio}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function TrustBand() {
   const { ref, visible } = useScrollReveal<HTMLElement>(0.2);
 
@@ -375,7 +305,6 @@ export default function AboutPage() {
       <MissionSection />
       <ValuesSection />
       <TimelineSection />
-      <TeamSection />
       <TrustBand />
     </div>
   );

@@ -5,7 +5,7 @@ import Deco from "@/components/Deco";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 type Service = {
-  icon: "user" | "couple" | "video" | "group" | "shield" | "child";
+  icon: "user" | "couple" | "group" | "shield" | "child";
   title: string;
   text: string;
   tag: string;
@@ -17,10 +17,9 @@ export default function Services() {
   const SERVICES: Service[] = [
     { icon: "user",   title: t("services.individualTitle"), text: t("services.individualText"), tag: "01", bg: "#F2F6FD" },
     { icon: "couple", title: t("services.coupleTitle"),     text: t("services.coupleText"),     tag: "02", bg: "#FFF7E8" },
-    { icon: "video",  title: t("services.onlineTitle"),     text: t("services.onlineText"),     tag: "03", bg: "#E4ECFA" },
-    { icon: "group",  title: t("services.groupTitle"),      text: t("services.groupText"),      tag: "04", bg: "#F2F6FD" },
-    { icon: "shield", title: t("services.crisisTitle"),     text: t("services.crisisText"),     tag: "05", bg: "#FFF7E8" },
-    { icon: "child",  title: t("services.childTitle"),      text: t("services.childText"),      tag: "06", bg: "#E4ECFA" },
+    { icon: "group",  title: t("services.groupTitle"),      text: t("services.groupText"),      tag: "03", bg: "#E4ECFA" },
+    { icon: "shield", title: t("services.crisisTitle"),     text: t("services.crisisText"),     tag: "04", bg: "#FFF7E8" },
+    { icon: "child",  title: t("services.childTitle"),      text: t("services.childText"),      tag: "05", bg: "#F2F6FD" },
   ];
   return (
     <section className="fanus-svc" id="services">
@@ -130,7 +129,6 @@ function Icon({ name }: { name: Service["icon"] }) {
   const p = { width: 26, height: 26, fill: "none", stroke: "var(--fanus-primary)", strokeWidth: 1.7, viewBox: "0 0 24 24", strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   if (name === "user")   return <svg {...p}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>;
   if (name === "couple") return <svg {...p}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
-  if (name === "video")  return <svg {...p}><rect x="3" y="6" width="13" height="12" rx="2" /><path d="M16 10l5-3v10l-5-3" /></svg>;
   if (name === "group")  return <svg {...p}><path d="M17 8h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2v4l-4-4H9a1.994 1.994 0 0 1-1.414-.586" /><path d="M15 4H3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2v4l4-4h4a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /></svg>;
   if (name === "shield") return <svg {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>;
   if (name === "child")  return <svg {...p}><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><circle cx="9" cy="9" r="1.2" fill="var(--fanus-primary)" /><circle cx="15" cy="9" r="1.2" fill="var(--fanus-primary)" /></svg>;

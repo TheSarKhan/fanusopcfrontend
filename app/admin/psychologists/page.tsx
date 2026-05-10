@@ -91,11 +91,6 @@ function ProfileModal({ p, onClose, onEdit }: { p: Psychologist; onClose: () => 
               <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: p.active ? "#DCFCE7" : "#F1F5F9", color: p.active ? "#166534" : "#6B7280" }}>
                 {p.active ? "Aktiv" : "Passiv"}
               </span>
-              {p.activityFormat && (
-                <span style={{ fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 20, background: "#EEF5FF", color: "#002147" }}>
-                  {p.activityFormat === "BOTH" ? "Onlayn & Əyani" : p.activityFormat === "ONLINE" ? "Onlayn" : p.activityFormat === "IN_PERSON" ? "Əyani" : p.activityFormat}
-                </span>
-              )}
             </div>
           </div>
 
@@ -190,7 +185,7 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 const EMPTY: Omit<Psychologist, "id"> = {
   name: "", title: "", specializations: [], experience: "",
   sessionsCount: "", rating: "", photoUrl: "",
-  bio: "", phone: "", email: "", languages: "", sessionTypes: "", activityFormat: "",
+  bio: "", phone: "", email: "", languages: "", sessionTypes: "",
   university: "", degree: "", graduationYear: "",
   accentColor: "#2f5283", bgColor: "#eef1f7", displayOrder: 0, active: true,
 };
@@ -268,7 +263,7 @@ export default function PsychologistsPage() {
         rating: p.rating ?? "", photoUrl: p.photoUrl ?? "",
         bio: p.bio ?? "", phone: p.phone ?? "", email: p.email ?? "",
         languages: p.languages ?? "", sessionTypes: p.sessionTypes ?? "",
-        activityFormat: p.activityFormat ?? "", university: p.university ?? "",
+        university: p.university ?? "",
         degree: p.degree ?? "", graduationYear: p.graduationYear ?? "",
         accentColor: p.accentColor ?? "#2f5283", bgColor: p.bgColor ?? "#eef1f7",
         displayOrder: p.displayOrder ?? 0, active: p.active ?? true,
@@ -576,16 +571,7 @@ export default function PsychologistsPage() {
                     onChange={e => setModal(m => m && { ...m, item: { ...m.item, sessionTypes: e.target.value } })} />
                 </FormField>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
-                <FormField label="Fəaliyyət formatı">
-                  <select className="input" value={modal.item.activityFormat ?? ""}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, activityFormat: e.target.value } })}>
-                    <option value="">Seçin...</option>
-                    <option value="ONLINE">Onlayn</option>
-                    <option value="IN_PERSON">Əyani</option>
-                    <option value="BOTH">Onlayn & Əyani</option>
-                  </select>
-                </FormField>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14, marginTop: 14 }}>
                 <FormField label="Sıra nömrəsi">
                   <input type="number" className="input" value={modal.item.displayOrder}
                     onChange={e => setModal(m => m && { ...m, item: { ...m.item, displayOrder: Number(e.target.value) } })} />

@@ -38,9 +38,12 @@ export default function CancelModal({ appointment, role, mode = "cancel", onClos
   const isLate = hours !== null && hours >= 0 && hours < LATE_WINDOW_HOURS;
   const isPast = hours !== null && hours < 0;
 
+  const isPatientRequest = role === "PATIENT" && mode === "cancel";
   const headerLabel = mode === "reject"
     ? "Müraciəti rədd et"
-    : "Randevunu ləğv et";
+    : isPatientRequest
+      ? "Ləğv tələbi göndər"
+      : "Randevunu ləğv et";
 
   const submit = async () => {
     setErr(null);
@@ -82,6 +85,11 @@ export default function CancelModal({ appointment, role, mode = "cancel", onClos
         </div>
 
         <div className="cm-body">
+          {isPatientRequest && !isPast && (
+            <div className="cm-warn" style={{ background: "var(--brand-50)", borderColor: "var(--brand-200)", color: "var(--brand-700)" }}>
+              ℹ Bu, ləğv <strong>tələbi</strong>dir. Operator yoxlayıb sizə bildiriş göndərəcək.
+            </div>
+          )}
           {isPast && mode === "cancel" && (
             <div className="cm-warn cm-warn--strong">
               ⚠ Seans vaxtı keçib. Əgər seans baş tutmadısa, "Olmadı" bildirişindən istifadə edin.
@@ -129,7 +137,10 @@ export default function CancelModal({ appointment, role, mode = "cancel", onClos
             onClick={submit}
             disabled={saving || !reasonCode || isPast}
             className="cm-btn cm-btn--danger">
-            {saving ? "Göndərilir…" : (mode === "reject" ? "Rədd et" : "Ləğv et")}
+            {saving ? "Göndərilir…"
+              : mode === "reject" ? "Rədd et"
+              : isPatientRequest ? "Tələb göndər"
+              : "Ləğv et"}
           </button>
         </div>
       </div>

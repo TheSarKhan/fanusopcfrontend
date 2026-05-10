@@ -356,7 +356,7 @@ function TodayRow({ a }: { a: AppointmentDetail }) {
           {a.patientName ?? "Müştəri"}
         </div>
         <div style={{ fontSize: 12, color: "#52718F", marginTop: 2 }}>
-          {a.sessionFormat ?? "Onlayn seans"}
+          Onlayn seans
         </div>
       </div>
       <span style={{

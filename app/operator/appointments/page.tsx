@@ -15,15 +15,16 @@ import { subscribeNotifications } from "@/lib/notificationsSocket";
 import CancelModal from "@/components/CancelModal";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
-type Tab = "PENDING" | "ASSIGNED" | "CONFIRMED" | "DISPUTED" | "COMPLETED" | "CANCELLED";
+type Tab = "PENDING" | "ASSIGNED" | "CONFIRMED" | "DISPUTED" | "COMPLETED" | "CANCELLED" | "CANCEL_REQUESTED";
 
 const TAB_META: Record<Tab, { label: string; color: string }> = {
-  PENDING:   { label: "Yeni müraciətlər",  color: "#92400E" },
-  ASSIGNED:  { label: "Təyin edilmiş",     color: "#082F6D" },
-  CONFIRMED: { label: "Təsdiqlənmiş",      color: "#065F46" },
-  DISPUTED:  { label: "Mübahisəli",        color: "#991B1B" },
-  COMPLETED: { label: "Tamamlanmış",       color: "#374151" },
-  CANCELLED: { label: "Ləğv olunmuş",      color: "#991B1B" },
+  PENDING:          { label: "Yeni müraciətlər",  color: "#92400E" },
+  CANCEL_REQUESTED: { label: "Ləğv tələbləri",    color: "#92400E" },
+  ASSIGNED:         { label: "Təyin edilmiş",     color: "#082F6D" },
+  CONFIRMED:        { label: "Təsdiqlənmiş",      color: "#065F46" },
+  DISPUTED:         { label: "Mübahisəli",        color: "#991B1B" },
+  COMPLETED:        { label: "Tamamlanmış",       color: "#374151" },
+  CANCELLED:        { label: "Ləğv olunmuş",      color: "#991B1B" },
 };
 
 function fmtDateTime(iso?: string | null) {
@@ -115,6 +116,21 @@ export default function OperatorAppointmentsPage() {
   };
 
   const onCancel = (a: AppointmentDetail) => setCancelFor(a);
+
+  const onApproveCancelReq = async (a: AppointmentDetail) => {
+    const note = window.prompt("Operator qeydi (məcburi deyil):", "") ?? undefined;
+    try {
+      const updated = await operatorApi.approveCancelRequest(a.id, note);
+      setItems(prev => prev.map(x => x.id === updated.id ? updated : x));
+    } catch (e) { alert((e as Error).message); }
+  };
+  const onRejectCancelReq = async (a: AppointmentDetail) => {
+    const note = window.prompt("Pasiyentə səbəb yazın:", "") ?? undefined;
+    try {
+      const updated = await operatorApi.rejectCancelRequest(a.id, note);
+      setItems(prev => prev.map(x => x.id === updated.id ? updated : x));
+    } catch (e) { alert((e as Error).message); }
+  };
 
   const toggleSelected = (id: number) => {
     setSelected(prev => {
@@ -208,7 +224,9 @@ export default function OperatorAppointmentsPage() {
               onToggleSelect={() => toggleSelected(a.id)}
               onAssign={() => setAssignFor(a)}
               onCancel={() => onCancel(a)}
-              onResolve={() => setResolveFor(a)} />
+              onResolve={() => setResolveFor(a)}
+              onApproveCancelReq={() => onApproveCancelReq(a)}
+              onRejectCancelReq={() => onRejectCancelReq(a)} />
           ))}
         </div>
       )}
@@ -256,7 +274,7 @@ export default function OperatorAppointmentsPage() {
 }
 
 function AppointmentCard({
-  a, selectable, selected, onToggleSelect, onAssign, onCancel, onResolve,
+  a, selectable, selected, onToggleSelect, onAssign, onCancel, onResolve, onApproveCancelReq, onRejectCancelReq,
 }: {
   a: AppointmentDetail;
   selectable?: boolean;
@@ -265,10 +283,14 @@ function AppointmentCard({
   onAssign: () => void;
   onCancel: () => void;
   onResolve: () => void;
+  onApproveCancelReq: () => void;
+  onRejectCancelReq: () => void;
 }) {
+  const { t } = useT();
   const status = a.status;
-  const canAssign = status === "PENDING" || status === "REJECTED" || status === "ASSIGNED";
-  const canCancel = status !== "COMPLETED" && status !== "CANCELLED";
+  const isCancelReq = status === "CANCEL_REQUESTED";
+  const canAssign = !isCancelReq && (status === "PENDING" || status === "REJECTED" || status === "ASSIGNED");
+  const canCancel = !isCancelReq && status !== "COMPLETED" && status !== "CANCELLED";
   const canResolve = status === "DISPUTED";
   return (
     <div style={{ background: "#fff", borderRadius: 14, padding: 18, boxShadow: "0 2px 12px rgba(0,0,0,0.05)", border: selected ? "2px solid var(--brand)" : "1px solid transparent" }}>
@@ -283,9 +305,9 @@ function AppointmentCard({
             <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "#EEF2F7", color: "#374151" }}>
               {status}
             </span>
-            {a.sessionFormat && (
-              <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "#EEF2F7", color: "#52718F" }}>
-                {a.sessionFormat === "ONLINE" ? "Onlayn" : "Əyani"}
+            {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
+              <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "var(--brand-50)", color: "var(--brand-700)", fontWeight: 600 }}>
+                {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
               </span>
             )}
           </div>
@@ -342,8 +364,29 @@ function AppointmentCard({
               Ləğv et
             </button>
           )}
+          {isCancelReq && (
+            <>
+              <button
+                onClick={onApproveCancelReq}
+                style={{ padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#fff", background: "#DC2626", border: "none", borderRadius: 8, cursor: "pointer" }}>
+                Ləğvi təsdiqlə
+              </button>
+              <button
+                onClick={onRejectCancelReq}
+                style={{ padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#0A1A33", background: "#fff", border: "1.5px solid var(--brand-200)", borderRadius: 8, cursor: "pointer" }}>
+                Tələbi rədd et
+              </button>
+            </>
+          )}
         </div>
       </div>
+      {isCancelReq && (
+        <div style={{ marginTop: 12, padding: "10px 14px", background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 8, fontSize: 13, color: "#92400E" }}>
+          <strong>Pasient ləğv tələb edib.</strong>
+          {a.cancelRequestReasonCode && <span> Səbəb kodu: <code style={{ background: "#fff", padding: "1px 6px", borderRadius: 4 }}>{a.cancelRequestReasonCode}</code></span>}
+          {a.cancelRequestReasonText && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.cancelRequestReasonText}»</div>}
+        </div>
+      )}
     </div>
   );
 }
@@ -365,9 +408,6 @@ function AssignModal({
   const [pickedSlot, setPickedSlot] = useState<string | null>(null); // ISO startAt
   const [manualStart, setManualStart] = useState<string>("");
   const [manualEnd, setManualEnd] = useState<string>("");
-  const [sessionFormat, setSessionFormat] = useState<"ONLINE" | "IN_PERSON">(
-    (appointment.sessionFormat as "ONLINE" | "IN_PERSON") ?? "ONLINE"
-  );
   const [note, setNote] = useState(appointment.operatorNote ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -499,7 +539,7 @@ function AssignModal({
     setSaving(true);
     try {
       const updated = await operatorApi.assign(appointment.id, {
-        psychologistId: psyId, startAt, endAt, sessionFormat, operatorNote: note || null,
+        psychologistId: psyId, startAt, endAt, operatorNote: note || null,
       });
       onAssigned(updated);
     } catch (e) {
@@ -719,22 +759,6 @@ function AssignModal({
             </>
           )}
 
-          <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>Format</label>
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            {(["ONLINE", "IN_PERSON"] as const).map(f => (
-              <button
-                type="button" key={f}
-                onClick={() => setSessionFormat(f)}
-                style={{
-                  flex: 1, padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 600,
-                  border: sessionFormat === f ? "2px solid var(--brand)" : "1px solid #E5E7EB",
-                  background: sessionFormat === f ? "var(--brand-50)" : "#fff", cursor: "pointer", color: "#1A2535",
-                }}>
-                {f === "ONLINE" ? "Onlayn" : "Əyani"}
-              </button>
-            ))}
-          </div>
-
           <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>Operator qeydi (məcburi deyil)</label>
           <textarea
             value={note} onChange={e => setNote(e.target.value)} rows={3}
@@ -784,7 +808,6 @@ function BulkAssignModal({
   const [psyId, setPsyId] = useState<number | null>(null);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
-  const [format, setFormat] = useState<"ONLINE" | "IN_PERSON">("ONLINE");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -804,7 +827,6 @@ function BulkAssignModal({
         psychologistId: psyId,
         startAt: new Date(start).toISOString(),
         endAt: new Date(end).toISOString(),
-        sessionFormat: format,
         operatorNote: note.trim() || null,
       });
       onDone(updated);
@@ -833,19 +855,6 @@ function BulkAssignModal({
               style={{ padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13 }} />
             <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)}
               style={{ padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13 }} />
-          </div>
-
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            {(["ONLINE", "IN_PERSON"] as const).map(f => (
-              <button key={f} type="button" onClick={() => setFormat(f)}
-                style={{
-                  flex: 1, padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 600,
-                  border: format === f ? "2px solid var(--brand)" : "1px solid #E5E7EB",
-                  background: format === f ? "var(--brand-50)" : "#fff", cursor: "pointer", color: "#1A2535",
-                }}>
-                {f === "ONLINE" ? "Onlayn" : "Əyani"}
-              </button>
-            ))}
           </div>
 
           <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Operator qeydi (opsional)"

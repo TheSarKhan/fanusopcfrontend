@@ -14,10 +14,10 @@ export default function Navbar() {
   const [panelUrl, setPanelUrl] = useState<string | null>(null);
 
   const navLinks = [
-    { label: t("nav.about"),          href: "/about" },
-    { label: t("home.heroSecondaryCta"), href: "/xidmetler" },
-    { label: t("nav.psychologists"),  href: "/psychologists" },
-    { label: t("nav.blog"),           href: "/blog" },
+    { label: t("nav.about"),         href: "/about" },
+    { label: t("nav.services"),      href: "/xidmetler" },
+    { label: t("nav.psychologists"), href: "/psychologists" },
+    { label: t("nav.blog"),          href: "/blog" },
   ];
 
   useEffect(() => {

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import BookingModal from "./BookingModal";
+import BackToTop from "./BackToTop";
 
 const AUTH_PATHS = new Set(["/login", "/register", "/verify", "/forgot-password", "/reset-password"]);
 
@@ -25,6 +26,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
       <main className="flex-1">{children}</main>
       <Footer />
       <BookingModal />
+      <BackToTop />
     </>
   );
 }

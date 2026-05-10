@@ -31,7 +31,6 @@ export default function Hero() {
       <div className="fanus-container fanus-hero__inner">
         <div className="fanus-hero__copy">
           <h1>
-            <span className="fanus-hero__eyebrow-line">{t("home.heroEyebrow")}</span><br />
             <span className="fanus-hero__hl">{t("home.heroTitle")}</span>
           </h1>
           <p className="fanus-hero__lead">
@@ -122,7 +121,7 @@ function HeroIllustration() {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/images/hero-main.png"
-        alt="Onlayn psixoloji seans — Fanus"
+        alt="Onlayn video seansda psixoloq və klient — Fanus"
         className="fanus-hart__img"
         draggable={false}
       />

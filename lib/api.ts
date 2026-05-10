@@ -314,7 +314,7 @@ export interface Psychologist {
   id: number; name: string; title: string; specializations: string[];
   experience: string; sessionsCount: string; rating: string;
   photoUrl?: string; bio?: string; phone?: string; email?: string;
-  languages?: string; sessionTypes?: string; activityFormat?: string;
+  languages?: string; sessionTypes?: string;
   university?: string; degree?: string; graduationYear?: string;
   accentColor: string; bgColor: string;
   displayOrder: number; active: boolean;
@@ -391,7 +391,6 @@ export interface AppointmentDetail {
   requestedStartAt?: string | null;
   startAt?: string | null;
   endAt?: string | null;
-  sessionFormat?: string | null;
   note?: string | null;
   operatorNote?: string | null;
   assignedByOperatorId?: number | null;
@@ -415,6 +414,15 @@ export interface AppointmentDetail {
   // Reschedule chain
   rescheduleChainId?: string | null;
   rescheduleIndex?: number;
+  // Recurring series
+  seriesId?: number | null;
+  seriesIndex?: number | null;
+  seriesTotal?: number | null;
+  // Cancel request (patient → operator approval)
+  cancelRequestedAt?: string | null;
+  cancelRequestReasonCode?: string | null;
+  cancelRequestReasonText?: string | null;
+  statusBeforeCancelRequest?: string | null;
 }
 
 // ─── Structured cancellation reasons ────────────────────────────────────
@@ -493,7 +501,7 @@ export interface PsychologistApplication {
   university?: string; degree?: string; graduationYear?: string;
   specializations?: string; sessionTypes?: string; experienceYears?: string;
   bio?: string; motivation?: string;
-  certifications?: string; languages?: string; activityFormat?: string;
+  certifications?: string; languages?: string;
   diplomaFileUrl?: string; certificateFileUrls?: string;
   educationsJson?: string;        // JSON array string
   certificatesJson?: string;      // JSON array string
@@ -622,7 +630,6 @@ export interface PsychologistRegistrationData {
   // Professional
   title: string;
   experienceYears: string;
-  activityFormat: "ONLINE" | "IN_PERSON" | "BOTH";
   languages: string[];
   specializations: string[];
   sessionTypes: string[];
@@ -655,7 +662,6 @@ export const registerPsychologist = (
   if (data.finId) form.append("finId", data.finId);
   if (data.title) form.append("title", data.title);
   if (data.experienceYears) form.append("experienceYears", data.experienceYears);
-  if (data.activityFormat) form.append("activityFormat", data.activityFormat);
   data.languages.forEach(l => form.append("languages", l));
   data.specializations.forEach(s => form.append("specializations", s));
   data.sessionTypes.forEach(s => form.append("sessionTypes", s));
@@ -950,7 +956,6 @@ export interface PatientBookingPayload {
   note: string;
   requestedPsychologistId?: number | null;
   requestedStartAt?: string | null; // ISO
-  sessionFormat?: "ONLINE" | "IN_PERSON" | null;
 }
 
 export const patientApi = {
@@ -991,6 +996,16 @@ export const patientApi = {
     totalCount: number;
   }) => authedRequest<BookingSeries>("POST", "/patient/booking-series", data),
   myBookingSeries: () => authedRequest<BookingSeries[]>("GET", "/patient/booking-series"),
+  cancelBookingSeries: (id: number) =>
+    authedRequest<BookingSeries>("DELETE", `/patient/booking-series/${id}`),
+  extendBookingSeries: (id: number, count: number) =>
+    authedRequest<BookingSeries>("POST", `/patient/booking-series/${id}/extend?count=${count}`),
+
+  // Pre-session intake form
+  getIntake: (appointmentId: number) =>
+    authedRequest<AppointmentIntake | null>("GET", `/patient/appointments/${appointmentId}/intake`),
+  submitIntake: (appointmentId: number, data: AppointmentIntakeRequest) =>
+    authedRequest<AppointmentIntake>("POST", `/patient/appointments/${appointmentId}/intake`, data),
 
   confirmSession: (id: number) =>
     authedRequest<AppointmentDetail>("POST", `/patient/appointments/${id}/confirm-session`),
@@ -1151,6 +1166,8 @@ export const psychologistApi = {
     authedRequest<void>(`DELETE`, `/psychologist/time-slot-overrides/${id}`),
 
   myAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/psychologist/appointments"),
+  getAppointmentIntake: (appointmentId: number) =>
+    authedRequest<AppointmentIntake | null>("GET", `/psychologist/appointments/${appointmentId}/intake`),
   confirm: (id: number) =>
     authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/confirm`),
   reject: (id: number, reasonCode: string, reasonText?: string) =>
@@ -1187,7 +1204,7 @@ export const psychologistApi = {
   myRescheduleProposals: () =>
     authedRequest<RescheduleProposal[]>("GET", "/psychologist/reschedule-proposals"),
   proposeReschedule: (appointmentId: number, data: {
-    options: { startAt: string; endAt: string; sessionFormat?: string }[];
+    options: { startAt: string; endAt: string }[];
     reason?: string;
     expiresInHours?: number;
   }) =>
@@ -1337,7 +1354,37 @@ export interface RescheduleProposalOption {
   index: number;
   startAt: string;
   endAt: string;
-  sessionFormat: string | null;
+}
+
+export type IntakeDuration = "LT_1M" | "M_1_3" | "M_3_6" | "GT_6M";
+
+export interface AppointmentIntakeRequest {
+  mainConcern?: string;
+  expectations?: string;
+  symptoms?: string;
+  duration?: IntakeDuration | "";
+  priorTherapy: boolean;
+  priorTherapyDetails?: string;
+  medications?: string;
+  medicalConditions?: string;
+  emergencyContact?: string;
+}
+
+export interface AppointmentIntake {
+  id: number;
+  appointmentId: number;
+  patientId: number;
+  mainConcern: string | null;
+  expectations: string | null;
+  symptoms: string | null;
+  duration: IntakeDuration | null;
+  priorTherapy: boolean;
+  priorTherapyDetails: string | null;
+  medications: string | null;
+  medicalConditions: string | null;
+  emergencyContact: string | null;
+  submittedAt: string | null;
+  updatedAt: string;
 }
 
 export type BookingFrequency = "WEEKLY" | "BIWEEKLY";
@@ -1350,6 +1397,9 @@ export interface BookingSeries {
   frequency: BookingFrequency;
   totalCount: number;
   cancelledAt: string | null;
+  cancelRequestedAt?: string | null;
+  cancelRequestReasonCode?: string | null;
+  cancelRequestReasonText?: string | null;
   createdAt: string;
   createdAppointments: number;
   skippedOccurrences: number;
@@ -1405,7 +1455,6 @@ export interface OperatorAssignPayload {
   psychologistId: number;
   startAt: string; // ISO
   endAt: string;   // ISO
-  sessionFormat?: "ONLINE" | "IN_PERSON" | null;
   operatorNote?: string | null;
 }
 
@@ -1461,6 +1510,14 @@ export const operatorApi = {
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/assign`, data),
   cancel: (id: number, reasonCode: string, note?: string) =>
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/cancel`, { reasonCode, note }),
+  approveCancelRequest: (id: number, note?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/approve-cancel`, { note }),
+  rejectCancelRequest: (id: number, note?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/reject-cancel`, { note }),
+  approveSeriesCancelRequest: (id: number, note?: string) =>
+    authedRequest<BookingSeries>("POST", `/operator/booking-series/${id}/approve-cancel`, { note }),
+  rejectSeriesCancelRequest: (id: number, note?: string) =>
+    authedRequest<BookingSeries>("POST", `/operator/booking-series/${id}/reject-cancel`, { note }),
   resolveDispute: (
     id: number,
     decision: "COMPLETE" | "CANCEL",

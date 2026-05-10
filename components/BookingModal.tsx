@@ -127,7 +127,7 @@ export default function BookingModal() {
           {/* CHOICE */}
           {step === "choice" && (
             <div className="bm-choice">
-              <p className="bm-lead">Randevu almaq üçün üsul seçin. 24 saat ərzində sizinlə əlaqə saxlanılacaq.</p>
+              <p className="bm-lead">Randevu almaq üçün üsul seçin. Qısa müddətdə sizinlə əlaqə saxlanılacaq.</p>
 
               <button className="bm-option" onClick={() => setStep("form")}>
                 <div className="bm-option-icon bm-option-icon--blue">
@@ -171,8 +171,8 @@ export default function BookingModal() {
             <form onSubmit={handleSubmit} className="bm-form">
               <p className="bm-lead">
                 {isContact
-                  ? "Sualınızı və ya müraciətinizi göndərin — 24 saat ərzində cavab alacaqsınız."
-                  : "Komandamız 24 saat ərzində sizinlə əlaqə saxlayacaq."}
+                  ? "Sualınızı və ya müraciətinizi göndərin — tezliklə cavab alacaqsınız."
+                  : "Komandamız qısa müddətdə sizinlə əlaqə saxlayacaq."}
               </p>
 
               <div className="bm-field">
@@ -246,15 +246,9 @@ export default function BookingModal() {
                 {isContact ? "Mesajınız göndərildi!" : "Müraciətiniz qəbul edildi!"}
               </h3>
               <p className="bm-success-text">
-                Komandamız <strong>24 saat</strong> ərzində{" "}
+                Komandamız qısa müddətdə{" "}
                 <strong>{form.contact}</strong> vasitəsilə sizinlə əlaqə saxlayacaq.
               </p>
-              <div className="bm-success-info">
-                <svg width="16" height="16" fill="none" stroke="var(--oxford)" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round">
-                  <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-                </svg>
-                Ortalama cavab müddəti: <strong>2–4 saat</strong>
-              </div>
               <button className="bm-submit" style={{ width: "100%" }} onClick={close}>
                 Bağla
               </button>

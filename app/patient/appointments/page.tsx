@@ -10,7 +10,7 @@ import {
   type SessionFeedback,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
-import { azFormatTime, azFormatDate } from "@/lib/datetime";
+import { azFormatTime, azFormatDate, azLocalToISO } from "@/lib/datetime";
 import ReviewModal from "./ReviewModal";
 import CancelModal from "@/components/CancelModal";
 import RescheduleProposalModal from "@/components/RescheduleProposalModal";
@@ -607,7 +607,7 @@ function AwaitingCard({
     <div className="psy-card psy-card--today" style={{ borderLeft: `4px solid ${status.accent}` }}>
       <div className="psy-card__top">
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span className="psy-card__time">{start ? `${pad2(start.getDate())}.${pad2(start.getMonth() + 1)} · ${fmtTime(start)}` : "—"}</span>
+          <span className="psy-card__time">{a.startAt ? `${azFormatDate(a.startAt).slice(0, 5)} · ${fmtTime(new Date(a.startAt))}` : "—"}</span>
           <span className="psy-card__badge" style={{ color: status.color, background: status.bg }}>
             {status.label}
           </span>
@@ -786,7 +786,6 @@ function HistoryRow({
 }) {
   const ref = a.startAt ?? a.endAt;
   if (!ref) return null;
-  const d = new Date(ref);
   const status = STATUS[a.status] ?? STATUS.COMPLETED;
   const canReview = a.status === "COMPLETED" && a.psychologistId && !review;
   const canFeedback = a.status === "COMPLETED" || a.status === "AWAITING_CONFIRMATION";
@@ -795,7 +794,7 @@ function HistoryRow({
     : null;
   return (
     <div className="psy-hist-row">
-      <span className="psy-hist-row__date">{pad2(d.getDate())}.{pad2(d.getMonth() + 1)}.{d.getFullYear()}</span>
+      <span className="psy-hist-row__date">{azFormatDate(ref)}</span>
       <span className="psy-hist-row__name">{a.psychologistName ?? "Psixoloq"}</span>
       <span className="psy-hist-row__badge" style={{ color: status.color, background: status.bg }}>
         {status.label}

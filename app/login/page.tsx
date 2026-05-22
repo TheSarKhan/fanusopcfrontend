@@ -66,6 +66,19 @@ export default function LoginPage() {
       clearSession();
       window.history.replaceState({}, "", "/login");
     }
+
+    // Warm up TCP/TLS to every role subdomain so the post-login hard-redirect
+    // doesn't pay the handshake cost. ~200–500ms saved per role on first visit.
+    const { protocol, hostname, port } = window.location;
+    const host = hostname.replace(/^[a-z]+\./, "");
+    const portStr = port ? `:${port}` : "";
+    ["patient", "psycholog", "operator", "admin"].forEach((sub) => {
+      const link = document.createElement("link");
+      link.rel = "preconnect";
+      link.href = `${protocol}//${sub}.${host}${portStr}`;
+      link.crossOrigin = "anonymous";
+      document.head.appendChild(link);
+    });
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

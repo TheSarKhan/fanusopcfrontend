@@ -11,6 +11,35 @@ function redirectToLogin() {
   }
 }
 
+/**
+ * Synchronously consume any `#_auth=…&_refresh=…` hash dropped on us by a
+ * cross-subdomain redirect. Runs once on first render so we don't paint a
+ * loader before the token has been written to localStorage.
+ */
+function consumeAuthHash() {
+  if (typeof window === "undefined") return;
+  if (!window.location.hash.includes("_auth=")) return;
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const authParam = params.get("_auth");
+  const refreshParam = params.get("_refresh");
+  if (authParam) localStorage.setItem("accessToken", decodeURIComponent(authParam));
+  if (refreshParam) localStorage.setItem("refreshToken", decodeURIComponent(refreshParam));
+  window.history.replaceState({}, "", window.location.pathname + window.location.search);
+}
+
+/**
+ * Returns true if we have a fresh, role-matching token in localStorage right
+ * now. Allows us to skip the "Yüklənir…" loader entirely on the happy path
+ * (which is by far the most common case after login or page refresh).
+ */
+function hasValidLocalToken(requiredRole: string): boolean {
+  if (typeof window === "undefined") return false;
+  const token = localStorage.getItem("accessToken");
+  if (!token || isTokenExpired(token)) return false;
+  const payload = decodeAccessToken(token);
+  return payload?.role === requiredRole;
+}
+
 export default function PanelAuthGuard({
   requiredRole,
   children,
@@ -18,12 +47,14 @@ export default function PanelAuthGuard({
   requiredRole: string;
   children: ReactNode;
 }) {
-  const [ready, setReady] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  // First render: synchronously pull tokens out of the redirect hash and
+  // decide whether we already have a usable session. If yes, skip the loader.
+  const [ready, setReady] = useState(() => {
+    consumeAuthHash();
+    return hasValidLocalToken(requiredRole);
+  });
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scheduleRef = useRef<(token: string) => void>(() => {});
-
-  useEffect(() => { setMounted(true); }, []);
 
   const scheduleProactiveRefresh = (token: string) => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
@@ -62,18 +93,8 @@ export default function PanelAuthGuard({
   scheduleRef.current = scheduleProactiveRefresh;
 
   useLayoutEffect(() => {
-    if (!mounted) return;
-
-    // Extract tokens from URL hash (cross-subdomain redirect flow).
-    // Hash is cleared immediately — tokens never stay in browser history.
-    if (window.location.hash.includes("_auth=")) {
-      const params = new URLSearchParams(window.location.hash.slice(1));
-      const authParam = params.get("_auth");
-      const refreshParam = params.get("_refresh");
-      if (authParam) localStorage.setItem("accessToken", decodeURIComponent(authParam));
-      if (refreshParam) localStorage.setItem("refreshToken", decodeURIComponent(refreshParam));
-      window.history.replaceState({}, "", window.location.pathname + window.location.search);
-    }
+    // Hash already consumed in the initial-state factory; nothing else to do
+    // synchronously here. Async work (refresh, role mismatch handling) below.
 
     const run = async () => {
       let token = localStorage.getItem("accessToken");
@@ -133,7 +154,7 @@ export default function PanelAuthGuard({
 
     run();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requiredRole, mounted]);
+  }, [requiredRole]);
 
   useEffect(() => {
     return () => {
@@ -177,12 +198,24 @@ export default function PanelAuthGuard({
     return () => window.removeEventListener("storage", onStorage);
   }, [ready]);
 
-  if (!mounted) return null;
-
   if (!ready) {
     return (
       <div suppressHydrationWarning style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}>
-        <div suppressHydrationWarning style={{ fontSize: "0.9rem", color: "#52718F" }}>Yüklənir...</div>
+        <div suppressHydrationWarning style={{ display: "inline-flex", alignItems: "center", gap: 10, fontSize: "0.9rem", color: "#52718F" }}>
+          <span
+            suppressHydrationWarning
+            style={{
+              width: 16, height: 16, borderRadius: "50%",
+              border: "2px solid #C7D6E5", borderTopColor: "#1051B7",
+              animation: "fanus-spin 0.7s linear infinite",
+              display: "inline-block",
+            }}
+          />
+          Yüklənir...
+        </div>
+        <style>{`
+          @keyframes fanus-spin { to { transform: rotate(360deg); } }
+        `}</style>
       </div>
     );
   }

@@ -19,6 +19,7 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
     { href: "/psycholog/appointments", label: t("nav.appointments"), icon: "video" },
     { href: "/psycholog/clients",      label: t("nav.clients"),      icon: "users" },
     { href: "/psycholog/homework",     label: t("nav.homework"),     icon: "check" },
+    { href: "/psycholog/articles",     label: t("nav.articles"),     icon: "book" },
     { href: "/psycholog/availability", label: t("vacation.title"),   icon: "clock" },
     { href: "/psycholog/reviews",      label: t("nav.reviews"),      icon: "star" },
   ];

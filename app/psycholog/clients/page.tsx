@@ -32,6 +32,51 @@ function lastSessionPill(days: number | null): { text: string; tone: string } {
   return { text: `Passiv: ${days} gün`, tone: "danger" };
 }
 
+function csvEscape(v: string | number | null | undefined): string {
+  if (v === null || v === undefined) return "";
+  const s = String(v);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function exportClientsCsv(clients: ClientSummary[], tagsByPatient: Record<number, PatientTag[]>) {
+  const headers = [
+    "Ad", "Email", "Telefon",
+    "Cəmi seans", "Tamamlanmış seans", "No-show",
+    "Son seans tarixi", "Son seans (gün öncə)",
+    "Qeyd sayı", "Avto-flag", "Etiketlər",
+  ];
+  const rows = clients.map(c => {
+    const days = daysSince(c.lastAppointmentAt);
+    const tagLabels = (tagsByPatient[c.patientId] ?? []).map(t => t.label).join("; ");
+    return [
+      csvEscape(c.name),
+      csvEscape(c.email ?? ""),
+      csvEscape(c.phone ?? ""),
+      csvEscape(c.totalSessions),
+      csvEscape(c.completedSessions),
+      csvEscape(c.noShowCount),
+      csvEscape(c.lastAppointmentAt ?? ""),
+      csvEscape(days ?? ""),
+      csvEscape(c.noteCount),
+      csvEscape(c.autoFlag ?? ""),
+      csvEscape(tagLabels),
+    ].join(",");
+  });
+  // Excel-friendly: BOM + CRLF
+  const csv = "﻿" + headers.join(",") + "\r\n" + rows.join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const date = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `fanus-musteriler-${date}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+}
+
 export default function PsychologClientsPage() {
   const { t } = useT();
   const [clients, setClients] = useState<ClientSummary[]>([]);
@@ -104,10 +149,36 @@ export default function PsychologClientsPage() {
           <h1 className="text-2xl font-bold text-[#1A2535]">{t("staff.psyClientsTitle")}</h1>
           <p className="text-[#52718F] text-sm mt-1">{t("staff.psyClientsSub")}</p>
         </div>
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder={t("common.search")}
-          className="psy-clients-search"
-          style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 13 }} />
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder={t("common.search")}
+            className="psy-clients-search"
+            style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 13 }} />
+          <button
+            type="button"
+            onClick={() => exportClientsCsv(visible, tagsByPatient)}
+            disabled={visible.length === 0}
+            title="Filterlənmiş siyahını CSV faylı olaraq endir"
+            style={{
+              padding: "8px 14px",
+              border: "1px solid #E5E7EB",
+              borderRadius: 10,
+              background: visible.length === 0 ? "#F3F4F6" : "#fff",
+              color: visible.length === 0 ? "#9CA3AF" : "#1A2535",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: visible.length === 0 ? "not-allowed" : "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            CSV-ə endir
+          </button>
+        </div>
       </div>
 
       {/* Stat strip */}

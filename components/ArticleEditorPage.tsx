@@ -5,6 +5,13 @@ import { adminApi, type BlogPost, type BlogCategory } from "@/lib/api";
 import { getMainSiteUrl } from "@/lib/auth";
 import ArticleEditor from "@/components/ArticleEditor";
 
+export interface ArticleEditorApi {
+  createBlogPost: (data: Omit<BlogPost, "id">) => Promise<BlogPost>;
+  updateBlogPost: (id: number, data: Omit<BlogPost, "id">) => Promise<BlogPost>;
+  getBlogCategories: () => Promise<BlogCategory[]>;
+  uploadFile: (file: File) => Promise<string>;
+}
+
 const slugify = (t: string) =>
   t.toLowerCase()
     .replace(/[əƏ]/g, "e").replace(/[ıİ]/g, "i").replace(/[öÖ]/g, "o")
@@ -38,6 +45,9 @@ interface FormState {
 
 interface Props {
   article?: BlogPost;
+  api?: ArticleEditorApi;
+  backHref?: string;
+  backLabel?: string;
 }
 
 function formatDate(dateStr: string) {
@@ -65,7 +75,12 @@ function buildPayload(data: FormState): Omit<BlogPost, "id"> {
   };
 }
 
-export default function ArticleEditorPage({ article }: Props) {
+export default function ArticleEditorPage({
+  article,
+  api = adminApi,
+  backHref = "/admin/blog",
+  backLabel = "Məqalələr",
+}: Props) {
   // If article is published and has a pending draft, load the draft version into the editor
   const hasDraft = article?.hasPendingDraft ?? false;
   const initialForm: FormState = {
@@ -93,7 +108,7 @@ export default function ArticleEditorPage({ article }: Props) {
   const [categories, setCategories] = useState<BlogCategory[]>([]);
 
   // For new articles: generate a random 4-digit suffix once; existing articles keep their slug
-  const slugSuffix = useRef(Math.floor(1000 + Math.random() * 9000).toString());
+  const [slugSuffix] = useState(() => Math.floor(1000 + Math.random() * 9000).toString());
   const isExisting = !!article?.slug;
 
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -110,7 +125,7 @@ export default function ArticleEditorPage({ article }: Props) {
     try {
       const payload = { ...buildPayload(data), status: "DRAFT" };
       if (id) {
-        await adminApi.updateBlogPost(id, payload);
+        await api.updateBlogPost(id, payload);
         setForm(f => ({ ...f, status: "DRAFT" }));
         setSaveStatus("saved");
         return id;
@@ -119,7 +134,7 @@ export default function ArticleEditorPage({ article }: Props) {
           setSaveStatus("idle");
           return null;
         }
-        const created = await adminApi.createBlogPost(payload);
+        const created = await api.createBlogPost(payload);
         setArticleId(created.id);
         articleIdRef.current = created.id;
         setSaveStatus("saved");
@@ -129,7 +144,7 @@ export default function ArticleEditorPage({ article }: Props) {
       setSaveStatus("error");
       return id;
     }
-  }, []);
+  }, [api]);
 
   const scheduleAutoSave = useCallback((data: FormState) => {
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
@@ -144,7 +159,7 @@ export default function ArticleEditorPage({ article }: Props) {
       const next = { ...prev, [key]: value };
       if (key === "title" && !isExisting) {
         const base = slugify(value as string);
-        next.slug = base ? `${base}-${slugSuffix.current}` : "";
+        next.slug = base ? `${base}-${slugSuffix}` : "";
       }
       if (isMounted.current) scheduleAutoSave(next);
       return next;
@@ -152,8 +167,8 @@ export default function ArticleEditorPage({ article }: Props) {
   }, [isExisting, slugSuffix, scheduleAutoSave]);
 
   useEffect(() => {
-    adminApi.getBlogCategories().then(setCategories).catch(() => {});
-  }, []);
+    api.getBlogCategories().then(setCategories).catch(() => {});
+  }, [api]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -171,12 +186,12 @@ export default function ArticleEditorPage({ article }: Props) {
           alert("Başlıq və ya məzmun əlavə edin");
           return;
         }
-        const created = await adminApi.createBlogPost({ ...buildPayload(formRef.current), status: "PUBLISHED" });
+        const created = await api.createBlogPost({ ...buildPayload(formRef.current), status: "PUBLISHED" });
         setArticleId(created.id);
         articleIdRef.current = created.id;
         id = created.id;
       } else {
-        await adminApi.updateBlogPost(id, { ...buildPayload(formRef.current), status: "PUBLISHED" });
+        await api.updateBlogPost(id, { ...buildPayload(formRef.current), status: "PUBLISHED" });
       }
       setForm(f => ({ ...f, status: "PUBLISHED" }));
       setSaveStatus("saved");
@@ -190,7 +205,7 @@ export default function ArticleEditorPage({ article }: Props) {
   const handleUnpublish = async () => {
     if (!articleIdRef.current) return;
     try {
-      await adminApi.updateBlogPost(articleIdRef.current, { ...buildPayload(formRef.current), status: "DRAFT" });
+      await api.updateBlogPost(articleIdRef.current, { ...buildPayload(formRef.current), status: "DRAFT" });
       setForm(f => ({ ...f, status: "DRAFT" }));
       setSaveStatus("saved");
     } catch (e) {
@@ -201,7 +216,7 @@ export default function ArticleEditorPage({ article }: Props) {
   const handleCoverUpload = async (file: File) => {
     setCoverUploading(true);
     try {
-      const url = await adminApi.uploadFile(file);
+      const url = await api.uploadFile(file);
       setField("coverImageUrl", url);
     } catch {
       alert("Şəkil yükləmə xətası");
@@ -211,7 +226,7 @@ export default function ArticleEditorPage({ article }: Props) {
   };
 
   const handleEditorUpload = async (file: File): Promise<string> => {
-    return adminApi.uploadFile(file);
+    return api.uploadFile(file);
   };
 
   const handleShare = useCallback(async () => {
@@ -291,10 +306,10 @@ export default function ArticleEditorPage({ article }: Props) {
         padding: "0 24px", height: 56, gap: 12,
       }}>
         {/* Back */}
-        <a href="/admin/blog"
+        <a href={backHref}
           style={{ display: "flex", alignItems: "center", gap: 6, textDecoration: "none", color: "#52718F", fontSize: 14, fontWeight: 500, flexShrink: 0 }}>
           <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-          Məqalələr
+          {backLabel}
         </a>
 
         {/* Save status */}

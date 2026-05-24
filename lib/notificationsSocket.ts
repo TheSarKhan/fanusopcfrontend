@@ -9,6 +9,7 @@
  */
 
 import type { NotificationItem } from "./api";
+import { getStoredUser } from "./auth";
 
 const NULL = "\0";
 
@@ -35,9 +36,11 @@ function wsUrl(): string {
   return `${proto}://${noProto}/ws-native`;
 }
 
-function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("accessToken");
+// Auth rides on the HTTP-only accessToken cookie. The backend WS handshake
+// interceptor reads it and stashes the user identity in WS session attributes.
+// We only need to gate connection attempts on "is there a session at all?".
+function hasSession(): boolean {
+  return getStoredUser() !== null;
 }
 
 function buildFrame(command: string, headers: Record<string, string>, body = ""): string {
@@ -73,8 +76,7 @@ function scheduleReconnect() {
 
 function connect() {
   if (manuallyClosed) return;
-  const token = getToken();
-  if (!token) return; // not logged in yet
+  if (!hasSession()) return; // not logged in yet
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
 
   try {
@@ -87,10 +89,11 @@ function connect() {
   }
 
   socket.onopen = () => {
+    // No Authorization header — the WS handshake captured the cookie identity
+    // and stored it in the session, so the STOMP CONNECT inherits that user.
     socket?.send(buildFrame("CONNECT", {
       "accept-version": "1.2",
       "host": "fanus",
-      "Authorization": `Bearer ${token}`,
     }));
   };
 

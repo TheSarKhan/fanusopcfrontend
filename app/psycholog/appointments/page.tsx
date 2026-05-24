@@ -79,6 +79,8 @@ export default function PsychologistAppointmentsPage() {
   const [rejectFor, setRejectFor] = useState<AppointmentDetail | null>(null);
   const [cancelFor, setCancelFor] = useState<AppointmentDetail | null>(null);
   const [rescheduleProposeFor, setRescheduleProposeFor] = useState<AppointmentDetail | null>(null);
+  const [outcomeFor, setOutcomeFor] = useState<AppointmentDetail | null>(null);
+  const [bulkCancelOpen, setBulkCancelOpen] = useState(false);
 
   // Tick every minute so countdown stays fresh
   useEffect(() => {
@@ -190,11 +192,23 @@ export default function PsychologistAppointmentsPage() {
 
   return (
     <div className="psy-appt-page">
-      <header style={{ marginBottom: 18 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>{t("staff.psyApptTitle")}</h1>
-        <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4 }}>
-          {t("staff.psyApptSub")}
-        </p>
+      <header style={{ marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>{t("staff.psyApptTitle")}</h1>
+          <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4 }}>
+            {t("staff.psyApptSub")}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setBulkCancelOpen(true)}
+          style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 10, background: "#fff", color: "#1A2535", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="15" x2="15" y2="15"/>
+          </svg>
+          Tarix aralığı ləğv et
+        </button>
       </header>
 
       {loading ? (
@@ -214,6 +228,7 @@ export default function PsychologistAppointmentsPage() {
             onReject={(a) => setRejectFor(a)}
             onCancel={(a) => setCancelFor(a)}
             onPropose={(a) => setRescheduleProposeFor(a)}
+            onAddOutcome={(a) => setOutcomeFor(a)}
           />
 
           {awaitingConfirm.length > 0 && (
@@ -227,6 +242,7 @@ export default function PsychologistAppointmentsPage() {
                     busyId={busyId}
                     onConfirm={() => action(a.id, () => psychologistApi.confirmSession(a.id))}
                     onDispute={() => setDisputeFor(a)}
+                    onAddOutcome={() => setOutcomeFor(a)}
                   />
                 ))}
               </div>
@@ -313,6 +329,20 @@ export default function PsychologistAppointmentsPage() {
               onCreated={() => { setRescheduleProposeFor(null); load(); }}
             />
           )}
+          {outcomeFor && (
+            <OutcomeModal
+              appointment={outcomeFor}
+              onClose={() => setOutcomeFor(null)}
+              onSaved={() => setOutcomeFor(null)}
+            />
+          )}
+          {bulkCancelOpen && (
+            <BulkCancelModal
+              appointments={items}
+              onClose={() => setBulkCancelOpen(false)}
+              onDone={() => { setBulkCancelOpen(false); load(); }}
+            />
+          )}
 
           <Section title="Tarixçə" count={history.length} icon="📂" defaultCollapsed>
             {history.length === 0 ? (
@@ -335,7 +365,7 @@ export default function PsychologistAppointmentsPage() {
 }
 
 function NextSessionHero({
-  appt, now, client, note, busyId, onAction, onDispute, onReject, onCancel, onPropose,
+  appt, now, client, note, busyId, onAction, onDispute, onReject, onCancel, onPropose, onAddOutcome,
 }: {
   appt: AppointmentDetail | null;
   now: Date;
@@ -347,6 +377,7 @@ function NextSessionHero({
   onReject: (a: AppointmentDetail) => void;
   onCancel: (a: AppointmentDetail) => void;
   onPropose: (a: AppointmentDetail) => void;
+  onAddOutcome: (a: AppointmentDetail) => void;
 }) {
   if (!appt || !appt.startAt) {
     return (
@@ -438,6 +469,11 @@ function NextSessionHero({
               onClick={() => onAction(appt.id, () => psychologistApi.confirmSession(appt.id))}
               className="psy-hero__btn psy-hero__btn--primary">
               {busyId === appt.id ? "…" : "✓ Təsdiqlə"}
+            </button>
+            <button
+              onClick={() => onAddOutcome(appt)}
+              className="psy-hero__btn psy-hero__btn--ghost">
+              📝 Seans qeydi
             </button>
             <button
               onClick={() => onDispute(appt)}
@@ -668,13 +704,14 @@ function HistoryRow({ a }: { a: AppointmentDetail }) {
 /* ─── Awaiting confirmation card ─────────────────────────────────────────── */
 
 function AwaitingCard({
-  a, client, busyId, onConfirm, onDispute,
+  a, client, busyId, onConfirm, onDispute, onAddOutcome,
 }: {
   a: AppointmentDetail;
   client: ClientSummary | null;
   busyId: number | null;
   onConfirm: () => void;
   onDispute: () => void;
+  onAddOutcome: () => void;
 }) {
   const { t } = useT();
   const status = STATUS[a.status] ?? STATUS.AWAITING_CONFIRMATION;
@@ -723,6 +760,9 @@ function AwaitingCard({
             onClick={onConfirm}
             className="psy-card__btn psy-card__btn--primary">
             {busyId === a.id ? "…" : "✓ Təsdiqlə"}
+          </button>
+          <button onClick={onAddOutcome} className="psy-card__btn psy-card__btn--ghost">
+            📝 Seans qeydi
           </button>
           <button onClick={onDispute} className="psy-card__btn psy-card__btn--ghost">
             Olmadı
@@ -787,6 +827,223 @@ function DisputeModal({
             <button onClick={submit} disabled={saving}
               style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "#DC2626", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
               {saving ? "Göndərilir…" : "Operator'a bildir"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Session outcome modal — write a clinical note tied to this appointment ── */
+
+function OutcomeModal({
+  appointment, onClose, onSaved,
+}: {
+  appointment: AppointmentDetail;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [body, setBody] = useState("");
+  const [mood, setMood] = useState<number | "">("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    if (!body.trim()) { setErr("Qeyd mətni boş ola bilməz"); return; }
+    if (!appointment.patientId) { setErr("Pasient ID tapılmadı"); return; }
+    setSaving(true); setErr(null);
+    try {
+      await psychologistApi.createNote({
+        patientId: appointment.patientId,
+        appointmentId: appointment.id,
+        title: null,
+        body: body.trim(),
+        moodScore: typeof mood === "number" ? mood : null,
+      });
+      onSaved();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, padding: 0, maxWidth: 540, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", overflow: "hidden" }}>
+        <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9" }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Seans qeydi</h3>
+          <p style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 4 }}>
+            {appointment.patientName ?? "Pasient"} ilə seans haqqında qısa qeyd — pasient bunu görmür, AES-256 ilə şifrələnir.
+          </p>
+        </div>
+        <div style={{ padding: 22 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
+            Seansın nəticəsi
+          </label>
+          <textarea
+            rows={6} value={body} onChange={e => setBody(e.target.value)}
+            placeholder="İşlənən mövzu, müştəri reaksiyası, gələcək plan…"
+            autoFocus
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box", resize: "vertical" }} />
+
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
+            Əhval-ruhiyyə qiymətləndirməsi (1–10, məcburi deyil)
+          </label>
+          <input type="number" min={1} max={10} value={mood}
+            onChange={e => { const v = e.target.value; setMood(v === "" ? "" : Math.max(1, Math.min(10, Number(v)))); }}
+            style={{ width: 80, padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 12 }} />
+
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>{err}</div>}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>
+              Ləğv
+            </button>
+            <button onClick={submit} disabled={saving}
+              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Saxlanılır…" : "Qeydi saxla"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+/* ─── Bulk cancel by date range ─────────────────────────────────────────── */
+
+const CANCEL_REASONS: { code: string; label: string }[] = [
+  { code: "PSY_HEALTH",    label: "Xəstələndim" },
+  { code: "PSY_EMERGENCY", label: "Təcili / fövqəladə" },
+  { code: "PSY_TECHNICAL", label: "Texniki problem" },
+  { code: "PSY_OTHER",     label: "Digər" },
+];
+
+const CANCELLABLE = new Set(["ASSIGNED", "CONFIRMED"]);
+
+function BulkCancelModal({
+  appointments, onClose, onDone,
+}: {
+  appointments: AppointmentDetail[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const today = useMemo(() => {
+    const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  }, []);
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
+  const [reasonCode, setReasonCode] = useState(CANCEL_REASONS[0].code);
+  const [reasonText, setReasonText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const targets = useMemo(() => {
+    const startMs = new Date(startDate + "T00:00:00").getTime();
+    const endMs = new Date(endDate + "T23:59:59").getTime();
+    if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs < startMs) return [];
+    return appointments.filter(a => {
+      if (!a.startAt) return false;
+      if (!CANCELLABLE.has(a.status)) return false;
+      const t = new Date(a.startAt).getTime();
+      return t >= startMs && t <= endMs;
+    }).sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
+  }, [appointments, startDate, endDate]);
+
+  const submit = async () => {
+    if (targets.length === 0) { setErr("Bu aralıqda ləğv ediləcək seans yoxdur"); return; }
+    setSubmitting(true); setErr(null);
+    try {
+      const res = await psychologistApi.bulkCancel(
+        targets.map(a => a.id),
+        reasonCode,
+        reasonText.trim() || undefined,
+      );
+      if (res.errors.length > 0 && res.cancelled.length === 0) {
+        setErr(`Ləğv edilə bilmədi: ${res.errors.map(e => e.message).join("; ")}`);
+        return;
+      }
+      onDone();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, padding: 0, maxWidth: 560, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", overflow: "hidden" }}>
+        <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9" }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Tarix aralığı üçün ləğv</h3>
+          <p style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 4 }}>
+            Seçilmiş tarix aralığındakı bütün təsdiqli/təyin edilmiş seansları bir səbəblə ləğv edin
+          </p>
+        </div>
+        <div style={{ padding: 22 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford)" }}>Başlanğıc</span>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                style={{ padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13 }} />
+            </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford)" }}>Bitiş</span>
+              <input type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)}
+                style={{ padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13 }} />
+            </label>
+          </div>
+
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>Səbəb</label>
+          <select value={reasonCode} onChange={e => setReasonCode(e.target.value)}
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 10, background: "#fff" }}>
+            {CANCEL_REASONS.map(r => <option key={r.code} value={r.code}>{r.label}</option>)}
+          </select>
+
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>Əlavə açıqlama (məcburi deyil)</label>
+          <textarea rows={2} value={reasonText} onChange={e => setReasonText(e.target.value)}
+            placeholder="Pasiyentlərə göndəriləcək qısa qeyd…"
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box", resize: "vertical" }} />
+
+          <div style={{ padding: 12, background: "#F8FAFD", borderRadius: 10, marginBottom: 12, fontSize: 13 }}>
+            <div style={{ fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>
+              {targets.length === 0 ? "Aralıqda seans yoxdur" : `${targets.length} seans ləğv ediləcək`}
+            </div>
+            {targets.length > 0 && (
+              <ul style={{ margin: 0, padding: "0 0 0 18px", color: "#52718F", maxHeight: 140, overflowY: "auto" }}>
+                {targets.slice(0, 10).map(a => {
+                  const d = new Date(a.startAt!);
+                  return (
+                    <li key={a.id} style={{ fontSize: 12, marginBottom: 2 }}>
+                      {pad2(d.getDate())}.{pad2(d.getMonth() + 1)} · {fmtTime(d)} — {a.patientName ?? "Pasient"}
+                    </li>
+                  );
+                })}
+                {targets.length > 10 && <li style={{ fontSize: 12, color: "#9CA3AF" }}>… və {targets.length - 10} daha</li>}
+              </ul>
+            )}
+          </div>
+
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>{err}</div>}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>
+              Ləğv
+            </button>
+            <button onClick={submit} disabled={submitting || targets.length === 0}
+              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                background: targets.length === 0 ? "#E5E7EB" : "#DC2626",
+                color: targets.length === 0 ? "#9CA3AF" : "#fff",
+                cursor: submitting || targets.length === 0 ? "not-allowed" : "pointer",
+                opacity: submitting ? 0.7 : 1 }}>
+              {submitting ? "Ləğv olunur…" : `${targets.length} seansı ləğv et`}
             </button>
           </div>
         </div>

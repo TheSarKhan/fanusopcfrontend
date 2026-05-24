@@ -106,6 +106,14 @@ export default function PsychologDashboard() {
     () => homework.filter(h => h.status === "PENDING").length,
     [homework]
   );
+  const overdueHomework = useMemo(() => {
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    return homework.filter(h => {
+      if (h.status !== "PENDING" || !h.dueDate) return false;
+      const due = new Date(h.dueDate + "T23:59:59");
+      return due.getTime() < todayStart.getTime();
+    }).length;
+  }, [homework]);
 
   const completionRate = stats && stats.thisMonthTotal > 0
     ? Math.round((stats.thisMonthCompleted / stats.thisMonthTotal) * 100)
@@ -243,11 +251,11 @@ export default function PsychologDashboard() {
                   />
                   <ActionRow
                     icon="🎯"
-                    title="Açıq tapşırıq"
+                    title={overdueHomework > 0 ? `Açıq tapşırıq (${overdueHomework} gecikib)` : "Açıq tapşırıq"}
                     count={pendingHomework}
                     href="/psycholog/homework"
-                    accent="#92400E"
-                    bg="#FEF3C7"
+                    accent={overdueHomework > 0 ? "#991B1B" : "#92400E"}
+                    bg={overdueHomework > 0 ? "#FEE2E2" : "#FEF3C7"}
                   />
                 </div>
               </Card>

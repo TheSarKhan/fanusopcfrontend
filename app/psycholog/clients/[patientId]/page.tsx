@@ -8,6 +8,7 @@ import {
   type AppointmentDetail,
   type ClientNote,
   type ClientSummary,
+  type FollowupTemplate,
   type PatientTag,
   type PatientTagColor,
 } from "@/lib/api";
@@ -145,6 +146,14 @@ export default function PatientDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [noteSearch, setNoteSearch] = useState("");
 
+  // Custom note templates (backend-managed, reusable across patients)
+  const [customTemplates, setCustomTemplates] = useState<FollowupTemplate[]>([]);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [tplName, setTplName] = useState("");
+  const [tplBody, setTplBody] = useState("");
+  const [tplSaving, setTplSaving] = useState(false);
+  const [tplError, setTplError] = useState<string | null>(null);
+
   const load = () => {
     setLoading(true);
     Promise.all([
@@ -152,11 +161,13 @@ export default function PatientDetailPage() {
       psychologistApi.clients().then(list => list.find(c => c.patientId === patientId) ?? null).catch(() => null),
       psychologistApi.myAppointments().catch(() => [] as AppointmentDetail[]),
       psychologistApi.patientTags(patientId).catch(() => [] as PatientTag[]),
-    ]).then(([n, c, allAppts, t]) => {
+      psychologistApi.templates().catch(() => [] as FollowupTemplate[]),
+    ]).then(([n, c, allAppts, t, tpls]) => {
       setNotes(n);
       setClient(c);
       setAppointments(allAppts.filter(a => a.patientId === patientId));
       setTags(t);
+      setCustomTemplates(tpls);
     }).finally(() => setLoading(false));
   };
 
@@ -276,10 +287,45 @@ export default function PatientDetailPage() {
   }, [notes, noteSearch]);
 
   const applyTemplate = (key: string) => {
+    if (key.startsWith("custom:")) {
+      const id = Number(key.slice("custom:".length));
+      const tpl = customTemplates.find(t => t.id === id);
+      if (!tpl) return;
+      if (!title.trim()) setTitle(tpl.name);
+      setBody(prev => prev.trim() ? prev + "\n\n" + tpl.body : tpl.body);
+      return;
+    }
     const tpl = NOTE_TEMPLATES.find(t => t.key === key);
     if (!tpl) return;
     if (!title.trim()) setTitle(tpl.title);
     setBody(prev => prev.trim() ? prev + "\n\n" + tpl.body : tpl.body);
+  };
+
+  const saveTemplate = async () => {
+    if (!tplName.trim() || !tplBody.trim()) {
+      setTplError("Ad və mətn lazımdır");
+      return;
+    }
+    setTplSaving(true); setTplError(null);
+    try {
+      const created = await psychologistApi.createTemplate({ name: tplName.trim(), body: tplBody.trim() });
+      setCustomTemplates(prev => [...prev, created]);
+      setTplName(""); setTplBody(""); setShowTemplateModal(false);
+    } catch (e) {
+      setTplError((e as Error).message);
+    } finally {
+      setTplSaving(false);
+    }
+  };
+
+  const deleteTemplate = async (id: number) => {
+    if (!confirm("Bu şablonu silmək istəyirsiniz?")) return;
+    try {
+      await psychologistApi.deleteTemplate(id);
+      setCustomTemplates(prev => prev.filter(t => t.id !== id));
+    } catch (e) {
+      alert((e as Error).message);
+    }
   };
 
   // Mood trend points from notes (chronological asc)
@@ -515,9 +561,38 @@ export default function PatientDetailPage() {
               onEdit={startEdit} onDelete={remove}
               onAddNew={() => { reset(); setShowForm(true); }}
               onApplyTemplate={applyTemplate}
+              customTemplates={customTemplates}
+              onCreateTemplate={() => { setTplName(""); setTplBody(""); setTplError(null); setShowTemplateModal(true); }}
+              onDeleteCustomTemplate={deleteTemplate}
             />
           )}
         </>
+      )}
+
+      {showTemplateModal && (
+        <div onClick={() => setShowTemplateModal(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 540, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: "0 0 4px" }}>Yeni şablon</h3>
+            <p style={{ fontSize: 12, color: "#52718F", margin: "0 0 16px" }}>
+              Tez-tez istifadə etdiyiniz qeyd strukturunu şablon olaraq saxlayın
+            </p>
+            <input value={tplName} onChange={e => setTplName(e.target.value)} placeholder="Şablon adı (məs. Anksiyete qiymətləndirməsi)"
+              style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 10, boxSizing: "border-box" }} />
+            <textarea rows={8} value={tplBody} onChange={e => setTplBody(e.target.value)} placeholder="Şablon mətni — başlıqlar, sual çərçivəsi, vs."
+              style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 10, boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" }} />
+            {tplError && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{tplError}</div>}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setShowTemplateModal(false)}
+                style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Ləğv</button>
+              <button onClick={saveTemplate} disabled={tplSaving}
+                style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: tplSaving ? "wait" : "pointer" }}>
+                {tplSaving ? "Saxlanılır…" : "Şablonu saxla"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -639,10 +714,14 @@ function NotesSection(props: {
   onDelete: (id: number) => void;
   onAddNew: () => void;
   onApplyTemplate: (key: string) => void;
+  customTemplates: FollowupTemplate[];
+  onCreateTemplate: () => void;
+  onDeleteCustomTemplate: (id: number) => void;
 }) {
   const { notes, filteredNotes, search, setSearch,
           showForm, editing, title, body, mood, saving, error,
-          setTitle, setBody, setMood, onSave, onCancel, onEdit, onDelete, onAddNew, onApplyTemplate } = props;
+          setTitle, setBody, setMood, onSave, onCancel, onEdit, onDelete, onAddNew, onApplyTemplate,
+          customTemplates, onCreateTemplate, onDeleteCustomTemplate } = props;
 
   return (
     <>
@@ -670,8 +749,8 @@ function NotesSection(props: {
         <div className="pcli-card pcli-card--form">
           <h3>{editing ? "Qeydi düzəlt" : "Yeni qeyd"}</h3>
           {!editing && (
-            <div className="pcli-template-row">
-              <label>Şablon:</label>
+            <div className="pcli-template-row" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+              <label style={{ fontSize: 11, color: "#52718F", fontWeight: 600, marginRight: 4 }}>Şablon:</label>
               {NOTE_TEMPLATES.map(t => (
                 <button key={t.key} type="button"
                   onClick={() => onApplyTemplate(t.key)}
@@ -679,6 +758,25 @@ function NotesSection(props: {
                   {t.label}
                 </button>
               ))}
+              {customTemplates.length > 0 && (
+                <span style={{ width: 1, height: 18, background: "#E5E7EB", margin: "0 4px" }} aria-hidden />
+              )}
+              {customTemplates.map(tpl => (
+                <span key={tpl.id} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <button type="button" onClick={() => onApplyTemplate(`custom:${tpl.id}`)}
+                    className="pcli-template-chip"
+                    style={{ background: "#EEF5FF", color: "#1E40AF", borderColor: "#BFDBFE" }}>
+                    ★ {tpl.name}
+                  </button>
+                  <button type="button" onClick={() => onDeleteCustomTemplate(tpl.id)}
+                    title="Şablonu sil"
+                    style={{ width: 18, height: 18, borderRadius: 4, border: "1px solid #E5E7EB", background: "#fff", color: "#991B1B", cursor: "pointer", fontSize: 11, lineHeight: 1, padding: 0 }}>×</button>
+                </span>
+              ))}
+              <button type="button" onClick={onCreateTemplate}
+                style={{ padding: "4px 10px", border: "1px dashed #C0D2E6", borderRadius: 999, background: "#fff", color: "#52718F", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                + Yeni şablon
+              </button>
             </div>
           )}
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Başlıq (məcburi deyil)"

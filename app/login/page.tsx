@@ -62,9 +62,14 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("_logout") === "1") {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("_logout") === "1") {
       clearSession();
       window.history.replaceState({}, "", "/login");
+      return;
+    }
+    if (params.get("session") === "expired") {
+      setError("Sessiyanız bitdi. Yenidən daxil olun.");
     }
 
     // Warm up TCP/TLS to every role subdomain so the post-login hard-redirect
@@ -91,7 +96,7 @@ export default function LoginPage() {
       if (next && next.startsWith("/")) {
         window.location.href = next;
       } else {
-        window.location.href = buildPanelUrl(data.role, data.accessToken, data.refreshToken);
+        window.location.href = buildPanelUrl(data.role);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Giriş uğursuz oldu");

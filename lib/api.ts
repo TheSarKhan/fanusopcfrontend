@@ -1,4 +1,4 @@
-import { storeUser, clearUser, isTokenExpiringSoon, isTokenExpired, getMainSiteUrl, decodeAccessToken } from "./auth";
+import { storeUser, clearUser, getMainSiteUrl } from "./auth";
 import { withSlugs } from "./slug";
 
 let API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
@@ -31,38 +31,9 @@ async function get<T>(path: string, opts?: RequestInit): Promise<T> {
   return res.json();
 }
 
-function cookieDomain(): string {
-  if (typeof window === "undefined") return "localhost";
-  const hostname = window.location.hostname;
-  if (hostname === "localhost" || hostname.endsWith(".localhost")) return "localhost";
-  const parts = hostname.split(".");
-  return parts.length >= 2 ? `.${parts.slice(-2).join(".")}` : hostname;
-}
-
-function readTokenCookie(): string | null {
-  if (typeof window === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
-function setTokenCookie(token: string) {
-  const domain = cookieDomain();
-  // Match cookie lifetime to actual JWT lifetime (with a tiny safety floor).
-  const payload = decodeAccessToken(token);
-  const nowSec = Math.floor(Date.now() / 1000);
-  const maxAge = payload?.exp ? Math.max(60, payload.exp - nowSec) : 3600;
-  document.cookie = `accessToken=${encodeURIComponent(token)}; domain=${domain}; path=/; SameSite=Lax; max-age=${maxAge}`;
-}
-
-function clearTokenCookie() {
-  const domain = cookieDomain();
-  document.cookie = `accessToken=; domain=${domain}; path=/; max-age=0`;
-}
-
-function getAccessToken(): string | null {
-  return (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null)
-    ?? readTokenCookie();
-}
+// Tokens live in HTTP-only cookies. JS can't read or write them — backend handles
+// set/clear on login, refresh, and logout. We just send credentials: "include"
+// and the browser does the work.
 
 // "ok"         — refreshed successfully
 // "auth_failure" — refresh token invalid/expired → must log out
@@ -72,51 +43,44 @@ export type RefreshOutcome = "ok" | "auth_failure" | "network_error";
 export function clearSession() {
   clearUser();
   if (typeof window === "undefined") return;
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  clearTokenCookie();
   // Notify module-level caches (favourites, etc.) to drop user-scoped state.
   try { window.dispatchEvent(new Event("fanus:session-cleared")); } catch { /* ignore */ }
 }
 
+/** Called when an authenticated request fails after a refresh attempt — that
+ *  always means the session genuinely expired (we had one to refresh). */
 export function redirectToLogin() {
+  if (typeof window === "undefined") return;
+  const next = window.location.pathname + window.location.search;
   clearSession();
-  if (typeof window !== "undefined") {
-    window.location.href = `${getMainSiteUrl()}/login?session=expired`;
-  }
+  const params = new URLSearchParams({ session: "expired" });
+  if (next && next !== "/" && !next.startsWith("/login")) params.set("next", next);
+  window.location.href = `${getMainSiteUrl()}/login?${params.toString()}`;
 }
 
 async function _doRefresh(): Promise<RefreshOutcome> {
-  const storedRefresh = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
   try {
     const res = await fetch(`${BASE}/auth/refresh`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      // Send body token if available; backend falls back to HTTP-only cookie otherwise
-      body: storedRefresh ? JSON.stringify({ refreshToken: storedRefresh }) : JSON.stringify({}),
+      body: JSON.stringify({}), // refresh token rides in the HTTP-only cookie
     });
 
-    if (res.status === 401 || res.status === 403) {
-      // Another tab may have already rotated the token. Check localStorage first,
-      // then briefly poll (up to 1s) in case the other tab's response is in-flight.
-      for (let i = 0; i < 5; i++) {
-        const existing = getAccessToken();
-        if (existing && !isTokenExpired(existing)) return "ok";
-        await new Promise(r => setTimeout(r, 200));
-      }
-      return "auth_failure";
-    }
+    if (res.status === 401 || res.status === 403) return "auth_failure";
     if (!res.ok) return "network_error";
 
-    const data = await res.json();
-    if (data.accessToken) {
-      localStorage.setItem("accessToken", data.accessToken);
-      setTokenCookie(data.accessToken);
-    }
-    if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
-    if (data.userId) {
-      storeUser({ userId: data.userId, email: data.email, role: data.role, firstName: data.firstName, lastName: data.lastName });
+    // Backend rotates cookies as part of the response. Body still carries the
+    // user record so we can keep the localStorage UI cache fresh.
+    const data = await res.json().catch(() => ({}));
+    if (data && data.userId) {
+      storeUser({
+        userId: data.userId,
+        email: data.email,
+        role: data.role,
+        firstName: data.firstName,
+        lastName: data.lastName,
+      });
     }
     return "ok";
   } catch {
@@ -128,8 +92,7 @@ async function _doRefresh(): Promise<RefreshOutcome> {
 let _refreshPromise: Promise<RefreshOutcome> | null = null;
 
 // Cross-tab mutex via the Web Locks API. Only one tab refreshes at a time;
-// other tabs wait, then read the freshly-stored token. Falls back to the
-// in-tab singleton on browsers without navigator.locks.
+// other tabs wait. Falls back to the in-tab singleton on browsers without locks.
 type LockManager = {
   request: <T>(name: string, cb: () => Promise<T>) => Promise<T>;
 };
@@ -142,12 +105,7 @@ function getLockManager(): LockManager | null {
 async function _refreshWithCrossTabLock(): Promise<RefreshOutcome> {
   const locks = getLockManager();
   if (!locks) return _doRefresh();
-  return locks.request("fanus-refresh-token", async () => {
-    // Inside the lock — re-check, in case another tab just rotated for us.
-    const t = getAccessToken();
-    if (t && !isTokenExpiringSoon(t, 30)) return "ok" as RefreshOutcome;
-    return _doRefresh();
-  });
+  return locks.request("fanus-refresh-token", () => _doRefresh());
 }
 
 export async function tryRefresh(): Promise<RefreshOutcome> {
@@ -156,10 +114,9 @@ export async function tryRefresh(): Promise<RefreshOutcome> {
   return _refreshPromise;
 }
 
-function buildHeaders(token: string | null, isJson = true) {
+function buildHeaders(isJson = true) {
   return {
     ...(isJson ? { "Content-Type": "application/json" } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...localeHeaders(),
   };
 }
@@ -169,33 +126,20 @@ async function authedRequest<T>(
   path: string,
   body?: unknown
 ): Promise<T> {
-  // Proactive refresh: token expiring within 60 s → refresh first
-  const currentToken = getAccessToken();
-  if (currentToken && isTokenExpiringSoon(currentToken, 60)) {
-    const outcome = await tryRefresh();
-    if (outcome === "auth_failure") {
-      redirectToLogin();
-      throw new Error("Session expired");
-    }
-    // network_error: proceed with current token, 401 handler below will catch if needed
-  }
-
-  const token = getAccessToken();
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: "include",
-    headers: buildHeaders(token),
+    headers: buildHeaders(),
     body: body ? JSON.stringify(body) : undefined,
   });
 
   if (res.status === 401) {
     const outcome = await tryRefresh();
     if (outcome === "ok") {
-      const retryToken = getAccessToken();
       const retry = await fetch(`${BASE}${path}`, {
         method,
         credentials: "include",
-        headers: buildHeaders(retryToken),
+        headers: buildHeaders(),
         body: body ? JSON.stringify(body) : undefined,
       });
       if (!retry.ok) {
@@ -228,31 +172,20 @@ async function authedBlobRequest(
   path: string,
   body?: unknown
 ): Promise<Blob> {
-  const currentToken = getAccessToken();
-  if (currentToken && isTokenExpiringSoon(currentToken, 60)) {
-    const outcome = await tryRefresh();
-    if (outcome === "auth_failure") {
-      redirectToLogin();
-      throw new Error("Session expired");
-    }
-  }
-
-  const token = getAccessToken();
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: "include",
-    headers: buildHeaders(token),
+    headers: buildHeaders(),
     body: body ? JSON.stringify(body) : undefined,
   });
 
   if (res.status === 401) {
     const outcome = await tryRefresh();
     if (outcome === "ok") {
-      const retryToken = getAccessToken();
       const retry = await fetch(`${BASE}${path}`, {
         method,
         credentials: "include",
-        headers: buildHeaders(retryToken),
+        headers: buildHeaders(),
         body: body ? JSON.stringify(body) : undefined,
       });
       if (!retry.ok) throw new Error(`API error ${retry.status}`);
@@ -271,28 +204,19 @@ async function authedMultipartRequest<T>(
   path: string,
   form: FormData
 ): Promise<T> {
-  const currentToken = getAccessToken();
-  if (currentToken && isTokenExpiringSoon(currentToken, 60)) {
-    const outcome = await tryRefresh();
-    if (outcome === "auth_failure") {
-      redirectToLogin();
-      throw new Error("Session expired");
-    }
-  }
-
-  const makeReq = (token: string | null) => fetch(`${BASE}${path}`, {
+  const makeReq = () => fetch(`${BASE}${path}`, {
     method,
     credentials: "include",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    // Don't set Content-Type — the browser adds the multipart boundary itself.
     body: form,
   });
 
-  const res = await makeReq(getAccessToken());
+  const res = await makeReq();
 
   if (res.status === 401) {
     const outcome = await tryRefresh();
     if (outcome === "ok") {
-      const retry = await makeReq(getAccessToken());
+      const retry = await makeReq();
       if (!retry.ok) {
         const err = await retry.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error ?? `API error ${retry.status}`);
@@ -378,6 +302,32 @@ export interface Faq { id: number; question: string; answer: string; displayOrde
 export interface Testimonial { id: number; quote: string; authorName: string; authorRole: string; initials: string; gradient: string; rating: number; active: boolean; }
 export interface SiteConfig { [key: string]: string; }
 export interface Appointment { id: number; patientName: string; phone: string; psychologistName?: string; note?: string; preferredDate?: string; status: string; createdAt: string; }
+
+export interface ContactMessagePayload {
+  name: string;
+  email?: string;
+  phone?: string;
+  subject?: string;
+  message: string;
+}
+
+export interface ContactMessage {
+  id: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  subject?: string | null;
+  message: string;
+  status: "NEW" | "IN_REVIEW" | "RESOLVED" | "SPAM";
+  adminNote?: string | null;
+  sourceIp?: string | null;
+  userId?: number | null;
+  userEmail?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  resolvedAt?: string | null;
+  resolvedByUserId?: number | null;
+}
 
 export interface AppointmentDetail {
   id: number;
@@ -566,7 +516,24 @@ export const bookAppointment = (data: {
   body: JSON.stringify(data),
 }).then(r => r.json());
 
+export const submitContactMessage = async (data: ContactMessagePayload): Promise<ContactMessage> => {
+  const res = await fetch(`${BASE}/contact`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...localeHeaders() },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    const msg = (e as { message?: string; error?: string }).message ?? (e as { error?: string }).error;
+    throw new Error(msg ?? `Mesaj göndərilmədi (${res.status})`);
+  }
+  return res.json();
+};
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
+// Backend sets accessToken + refreshToken as HTTP-only cookies (Domain=.fanus.com).
+// We just keep the lightweight user record locally for immediate UI rendering.
 export const login = async (email: string, password: string) => {
   const res = await fetch(`${BASE}/auth/login`, {
     method: "POST",
@@ -579,8 +546,6 @@ export const login = async (email: string, password: string) => {
     throw new Error((e as { error?: string }).error ?? "Login uğursuz oldu");
   }
   const data = await res.json();
-  if (data.accessToken) localStorage.setItem("accessToken", data.accessToken);
-  if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
   storeUser({
     userId: data.userId,
     email: data.email,
@@ -588,23 +553,20 @@ export const login = async (email: string, password: string) => {
     firstName: data.firstName,
     lastName: data.lastName,
   });
-  if (data.accessToken) {
-    setTokenCookie(data.accessToken);
-  }
   return data;
 };
 
 export const logout = async () => {
-  const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
-  clearSession();
   try {
+    // Backend clears HTTP-only cookies and revokes refresh token server-side.
     await fetch(`${BASE}/auth/logout`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: refreshToken ? JSON.stringify({ refreshToken }) : undefined,
+      body: JSON.stringify({}),
     });
   } catch { /* ignore */ }
+  clearSession();
 };
 
 // ─── Patient Auth ──────────────────────────────────────────────────────────────
@@ -921,6 +883,16 @@ export const adminApi = {
     return data.url;
   },
 
+  // Contact messages
+  getContactMessages: (status?: ContactMessage["status"]) => {
+    const qs = status ? `?status=${status}` : "";
+    return authedRequest<ContactMessage[]>("GET", `/admin/contact-messages${qs}`);
+  },
+  getNewContactMessageCount: () =>
+    authedRequest<{ count: number }>("GET", "/admin/contact-messages/count-new"),
+  updateContactMessageStatus: (id: number, status: ContactMessage["status"], adminNote?: string) =>
+    authedRequest<ContactMessage>("PUT", `/admin/contact-messages/${id}/status`, { status, adminNote }),
+
   // Reviews moderation
   getReviews: (status?: "PENDING" | "APPROVED" | "REJECTED") => {
     const qs = status ? `?status=${status}` : "";
@@ -1084,6 +1056,31 @@ export interface MeProfile {
   createdAt: string;
 }
 
+/** Probe the current session: returns the user record on 200, null on 401
+ *  (after one refresh attempt). Other errors propagate. Use this from auth
+ *  guards where you need to know "am I logged in?" without crashing on 401. */
+export async function tryGetMe(): Promise<MeProfile | null> {
+  const attempt = async (): Promise<MeProfile | "unauthorized" | null> => {
+    const res = await fetch(`${BASE}/me`, {
+      method: "GET",
+      credentials: "include",
+      headers: localeHeaders(),
+    });
+    if (res.status === 401) return "unauthorized";
+    if (!res.ok) return null; // treat other errors as "can't tell"
+    return res.json();
+  };
+
+  const first = await attempt();
+  if (first === "unauthorized") {
+    const outcome = await tryRefresh();
+    if (outcome !== "ok") return null;
+    const second = await attempt();
+    return second && second !== "unauthorized" ? second : null;
+  }
+  return first;
+}
+
 export const meApi = {
   get: () => authedRequest<MeProfile>("GET", "/me"),
   update: (data: { firstName?: string | null; lastName?: string | null; phone?: string | null }) =>
@@ -1093,16 +1090,7 @@ export const meApi = {
   uploadPhoto: async (file: File): Promise<{ url: string }> => {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch(`${BASE}/me/photo`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` },
-      body: fd,
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(text || `Upload uğursuz oldu (${res.status})`);
-    }
-    return res.json();
+    return authedMultipartRequest<{ url: string }>("POST", "/me/photo", fd);
   },
   deletePhoto: () => authedRequest<void>("DELETE", "/me/photo"),
 
@@ -1122,21 +1110,11 @@ export const meApi = {
     authedRequest<AccountStatus>("DELETE", "/me/deletion-request"),
   /** Triggers a browser download of the GDPR data export ZIP. */
   exportData: async (): Promise<void> => {
-    const res = await fetch(`${BASE}/me/export`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` },
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(text || `Yükləmə uğursuz oldu (${res.status})`);
-    }
-    const blob = await res.blob();
+    const blob = await authedBlobRequest("GET", "/me/export");
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const cd = res.headers.get("Content-Disposition") ?? "";
-    const m  = /filename=("?)([^";]+)\1/.exec(cd);
-    a.download = m ? m[2] : "fanus-export.zip";
+    a.download = "fanus-export.zip";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1181,6 +1159,10 @@ export const psychologistApi = {
     authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/reject`, { reasonCode, reasonText }),
   cancel: (id: number, reasonCode: string, reasonText?: string) =>
     authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/cancel`, { reasonCode, reasonText }),
+  bulkCancel: (ids: number[], reasonCode: string, reasonText?: string) =>
+    authedRequest<{ cancelled: AppointmentDetail[]; errors: { id: number; message: string }[] }>(
+      "POST", "/psychologist/appointments/bulk-cancel", { ids, reasonCode, reasonText }
+    ),
   confirmSession: (id: number) =>
     authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/confirm-session`),
   disputeSession: (id: number, reason?: string) =>
@@ -1255,6 +1237,32 @@ export const psychologistApi = {
     authedRequest<PsychologistReceivedReview>("POST", `/psychologist/reviews/${reviewId}/reply`, { reply }),
   deleteReviewReply: (reviewId: number) =>
     authedRequest<void>("DELETE", `/psychologist/reviews/${reviewId}/reply`),
+
+  // Articles (psychologist-owned blog posts)
+  listArticles: () => authedRequest<BlogPost[]>("GET", "/psychologist/articles"),
+  getArticleById: (id: number) => authedRequest<BlogPost>("GET", `/psychologist/articles/${id}`),
+  createArticle: (data: Omit<BlogPost, "id">) =>
+    authedRequest<BlogPost>("POST", "/psychologist/articles", data),
+  updateArticle: (id: number, data: Omit<BlogPost, "id">) =>
+    authedRequest<BlogPost>("PUT", `/psychologist/articles/${id}`, data),
+  deleteArticle: (id: number) => authedRequest<void>("DELETE", `/psychologist/articles/${id}`),
+  addArticleAttachment: async (articleId: number, file: File, displayOrder = 0): Promise<ArticleAttachment> => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("displayOrder", String(displayOrder));
+    return authedMultipartRequest<ArticleAttachment>("POST", `/psychologist/articles/${articleId}/attachments`, form);
+  },
+  deleteArticleAttachment: (articleId: number, attachmentId: number) =>
+    authedRequest<void>("DELETE", `/psychologist/articles/${articleId}/attachments/${attachmentId}`),
+
+  // Article editor helpers (mirror admin shape so ArticleEditorPage can be reused)
+  getBlogCategories: () => authedRequest<BlogCategory[]>("GET", "/blog-categories"),
+  uploadFile: async (file: File): Promise<string> => {
+    const form = new FormData();
+    form.append("file", file);
+    const data = await authedMultipartRequest<{ url: string }>("POST", "/psychologist/upload", form);
+    return data.url;
+  },
 };
 
 export interface PsychologistReceivedReview {

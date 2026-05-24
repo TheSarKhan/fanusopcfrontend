@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { buildPanelUrl, decodeAccessToken, isTokenExpired } from "@/lib/auth";
+import { buildPanelUrl, getStoredUser } from "@/lib/auth";
+import { tryGetMe } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "./LanguageSwitcher";
 
@@ -18,6 +19,7 @@ export default function Navbar() {
     { label: t("nav.services"),      href: "/xidmetler" },
     { label: t("nav.psychologists"), href: "/psychologists" },
     { label: t("nav.blog"),          href: "/blog" },
+    { label: t("nav.contact"),       href: "/contact" },
   ];
 
   useEffect(() => {
@@ -28,14 +30,18 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    const cookieMatch = document.cookie.match(/(?:^|;\s*)accessToken=([^;]+)/);
-    const token = cookieMatch ? decodeURIComponent(cookieMatch[1]) : localStorage.getItem("accessToken");
-    if (!token || isTokenExpired(token)) { setPanelUrl(null); return; }
-    const payload = decodeAccessToken(token);
-    if (payload?.role) {
-      const rt = localStorage.getItem("refreshToken");
-      setPanelUrl(buildPanelUrl(payload.role, token, rt ?? undefined));
-    }
+    // Optimistic: render panel link from the cached user record immediately…
+    const cached = getStoredUser();
+    if (cached?.role) setPanelUrl(buildPanelUrl(cached.role));
+
+    // …then verify the cookie is still valid; clear if not.
+    let cancelled = false;
+    tryGetMe().then(me => {
+      if (cancelled) return;
+      if (!me) { setPanelUrl(null); return; }
+      setPanelUrl(buildPanelUrl(me.role));
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const isLoggedIn = panelUrl !== null;

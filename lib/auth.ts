@@ -1,5 +1,9 @@
 "use client";
 
+// Access/refresh tokens live in HTTP-only cookies set by the backend (Domain=.fanus.com).
+// JS never touches them. What lives here is a tiny non-sensitive user record used
+// to render the UI immediately on page load — the cookie carries the real auth.
+
 export interface AuthUser {
   userId: number;
   email: string;
@@ -27,37 +31,9 @@ export function storeUser(user: AuthUser) {
 export function clearUser() {
   if (typeof window === "undefined") return;
   localStorage.removeItem("authUser");
-}
-
-export function decodeAccessToken(
-  token: string
-): { role?: string; exp?: number; userId?: number } | null {
-  try {
-    const payload = JSON.parse(
-      atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
-    );
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
-export function isTokenExpired(token: string): boolean {
-  const payload = decodeAccessToken(token);
-  if (!payload?.exp) return false;
-  return payload.exp * 1000 < Date.now();
-}
-
-export function isTokenExpiringSoon(token: string, bufferSeconds = 60): boolean {
-  const payload = decodeAccessToken(token);
-  if (!payload?.exp) return false;
-  return payload.exp * 1000 < Date.now() + bufferSeconds * 1000;
-}
-
-export function tokenExpiresInMs(token: string): number {
-  const payload = decodeAccessToken(token);
-  if (!payload?.exp) return 0;
-  return Math.max(0, payload.exp * 1000 - Date.now());
+  // Also wipe any tokens that older builds may have stashed; harmless if missing.
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
 }
 
 const ROLE_SUBDOMAIN: Record<string, string> = {
@@ -83,22 +59,30 @@ function getMainHost(): { mainHost: string; port: string } {
   return { mainHost, port };
 }
 
-// Tokens passed via URL hash — never sent to server, never in logs.
-// replaceState in PanelAuthGuard immediately clears the hash.
-export function buildPanelUrl(role: string, token?: string, refreshToken?: string): string {
+/** True when running on the dev host (`localhost`, `127.0.0.1`, or `*.localhost`).
+ *  In dev we route panels via paths on the same host — cross-subdomain SSO doesn't
+ *  work cleanly on bare `localhost` (cookie domain quirks, /etc/hosts dance). */
+function isLocalhostDev(): boolean {
+  if (typeof window === "undefined") return false;
+  const h = window.location.hostname;
+  return h === "localhost" || h === "127.0.0.1" || h.endsWith(".localhost");
+}
+
+// Cross-subdomain auth rides on the HTTP-only Domain=.fanus.com cookie in prod.
+// In dev (localhost), we navigate via path on the same host — no subdomain.
+export function buildPanelUrl(role: string): string {
   if (typeof window === "undefined") return "/";
   const sub = ROLE_SUBDOMAIN[role];
   if (!sub) return "/";
+
+  if (isLocalhostDev()) {
+    return `/${sub}`;
+  }
+
   const { protocol } = window.location;
   const { mainHost, port } = getMainHost();
   const portStr = port ? `:${port}` : "";
-  const base = `${protocol}//${sub}.${mainHost}${portStr}/${sub}`;
-  if (token) {
-    const parts = [`_auth=${encodeURIComponent(token)}`];
-    if (refreshToken) parts.push(`_refresh=${encodeURIComponent(refreshToken)}`);
-    return `${base}#${parts.join("&")}`;
-  }
-  return base;
+  return `${protocol}//${sub}.${mainHost}${portStr}/${sub}`;
 }
 
 export function getMainSiteUrl(): string {

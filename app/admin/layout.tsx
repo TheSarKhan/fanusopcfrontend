@@ -11,6 +11,7 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 function AdminShell({ children }: { children: React.ReactNode }) {
   const { t } = useT();
   const [reviewBadge, setReviewBadge] = useState<number | undefined>(undefined);
+  const [messageBadge, setMessageBadge] = useState<number | undefined>(undefined);
   const [me, setMe] = useState<{ name: string; initials: string; role: string }>({
     name: "Admin",
     initials: "A",
@@ -30,12 +31,16 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     adminApi.getPendingReviewCount()
       .then((res) => setReviewBadge(res.count))
       .catch(() => {});
+    adminApi.getNewContactMessageCount()
+      .then((res) => setMessageBadge(res.count > 0 ? res.count : undefined))
+      .catch(() => {});
   }, []);
 
   const nav: PanelNavItem[] = [
     { href: "/admin/users",          label: t("nav.users"),         icon: "users" },
     { href: "/admin/psychologists",  label: t("nav.psychologists"), icon: "user" },
     { href: "/admin/blog",           label: t("nav.blog"),          icon: "content" },
+    { href: "/admin/messages",       label: t("nav.messages"),      icon: "message", badge: messageBadge },
     { href: "/admin/reviews",        label: t("nav.reviews"),       icon: "megaphone", badge: reviewBadge },
     { href: "/admin/audit-logs",     label: t("nav.audit"),         icon: "clipboard" },
   ];

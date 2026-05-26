@@ -234,6 +234,7 @@ export default function PsychologArticlesPage() {
           onEdit={() => window.location.assign(`/psycholog/articles/${hero.id}/edit`)}
           onView={() => window.open(`${getMainSiteUrl()}/blog/${hero.slug}`, "_blank")}
           onToggle={() => toggleStatus(hero)}
+          onDelete={() => setConfirm({ id: hero.id, title: hero.title || "Başlıqsız" })}
           isToggling={togglingId === hero.id} />
       )}
 
@@ -242,12 +243,15 @@ export default function PsychologArticlesPage() {
         <div style={{ display: "grid", gridTemplateColumns: view === "grid" ? "repeat(auto-fill, minmax(260px, 1fr))" : "1fr", gap: 12 }}>
           {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} mode={view} />)}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : filtered.length === 0 && !hero ? (
+        // Only show the "no articles" empty state when there's truly nothing
+        // to show. If the hero banner is visible, the user already sees an
+        // article on the page — no need for the empty state alongside it.
         <EmptyState
           filtered={search.trim() !== "" || tab !== "ALL" || categoryFilter !== "ALL"}
           onClear={() => { setSearch(""); setTab("ALL"); setCategoryFilter("ALL"); }}
         />
-      ) : view === "grid" ? (
+      ) : filtered.length === 0 ? null : view === "grid" ? (
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
@@ -289,11 +293,12 @@ export default function PsychologArticlesPage() {
 
 /* ─── Hero featured banner ────────────────────────────────────────────────── */
 
-function HeroArticle({ p, onEdit, onView, onToggle, isToggling }: {
+function HeroArticle({ p, onEdit, onView, onToggle, onDelete, isToggling }: {
   p: BlogPost;
   onEdit: () => void;
   onView: () => void;
   onToggle: () => void;
+  onDelete: () => void;
   isToggling: boolean;
 }) {
   const published = p.status === "PUBLISHED";
@@ -364,6 +369,9 @@ function HeroArticle({ p, onEdit, onView, onToggle, isToggling }: {
             <button onClick={onToggle} disabled={isToggling} style={heroBtn(false)}>
               {published ? "Qaralamaya keçir" : "Yayımla"}
             </button>
+            <button onClick={onDelete} style={heroBtnDanger}>
+              <IconTrash /> Sil
+            </button>
           </div>
         </div>
       </div>
@@ -387,10 +395,18 @@ function GridCard({ p, onToggle, isToggling, onDelete, menuOpen, onMenuToggle }:
 
   return (
     <div style={{
+      position: "relative",
+      // No overflow:hidden on the card itself — would clip the open kebab
+      // dropdown and the menu items would visually fall behind sibling cards.
+      // The cover image is clipped by its own container below.
       background: "#fff", borderRadius: 14,
-      border: "1px solid var(--oxford-10)", overflow: "hidden",
+      border: "1px solid var(--oxford-10)",
       display: "flex", flexDirection: "column",
       transition: "transform 0.15s, box-shadow 0.15s, border-color 0.15s",
+      // The card needs to participate in a stacking context so its open
+      // dropdown floats above neighbouring cards. We bump z-index only when
+      // the menu is actually open (avoids permanent stacking weirdness).
+      zIndex: menuOpen ? 20 : "auto",
     }}
       onMouseEnter={e => {
         e.currentTarget.style.transform = "translateY(-2px)";
@@ -402,12 +418,15 @@ function GridCard({ p, onToggle, isToggling, onDelete, menuOpen, onMenuToggle }:
         e.currentTarget.style.boxShadow = "none";
         e.currentTarget.style.borderColor = "var(--oxford-10)";
       }}>
-      {/* Cover */}
+      {/* Cover — overflow:hidden so the image clips inside its rounded top
+          corners. Status pill + pending-draft pill stay inside because they
+          don't need to overflow. */}
       <div style={{
         position: "relative", height: 130,
         background: p.coverImageUrl ? "transparent" : (p.categoryBg || "var(--brand-50)"),
         display: "flex", alignItems: "center", justifyContent: "center",
         overflow: "hidden",
+        borderRadius: "14px 14px 0 0",
       }}>
         {p.coverImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -427,33 +446,36 @@ function GridCard({ p, onToggle, isToggling, onDelete, menuOpen, onMenuToggle }:
             color: "#fff", backdropFilter: "blur(4px)",
           }}>{published ? "Yayımlandı" : "Qaralama"}</span>
         </div>
-        {/* Kebab menu */}
-        <div data-article-menu style={{ position: "absolute", top: 8, right: 8 }}>
-          <button onClick={onMenuToggle} style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: "rgba(255,255,255,0.92)", border: "none",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", backdropFilter: "blur(4px)",
-            color: "var(--oxford)",
-          }} title="Daha çox">
-            <IconKebab />
-          </button>
-          {menuOpen && (
-            <KebabMenu
-              p={p}
-              onToggle={onToggle}
-              isToggling={isToggling}
-              onDelete={onDelete}
-              onClose={onMenuToggle}
-            />
-          )}
-        </div>
         {p.hasPendingDraft && (
           <div style={{
             position: "absolute", bottom: 8, right: 8,
             padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700,
             background: "rgba(255,255,255,0.92)", color: "var(--brand-700)",
           }}>Gözlənilən dəyişiklik</div>
+        )}
+      </div>
+
+      {/* Kebab — lives outside the overflow:hidden cover so the open dropdown
+          can extend past the cover into the body / past the card border. */}
+      <div data-article-menu style={{ position: "absolute", top: 8, right: 8, zIndex: 25 }}>
+        <button onClick={onMenuToggle} style={{
+          width: 30, height: 30, borderRadius: 8,
+          background: "rgba(255,255,255,0.92)", border: "none",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer", backdropFilter: "blur(4px)",
+          color: "var(--oxford)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
+        }} title="Daha çox">
+          <IconKebab />
+        </button>
+        {menuOpen && (
+          <KebabMenu
+            p={p}
+            onToggle={onToggle}
+            isToggling={isToggling}
+            onDelete={onDelete}
+            onClose={onMenuToggle}
+          />
         )}
       </div>
 
@@ -833,6 +855,15 @@ function heroBtn(primary: boolean): React.CSSProperties {
     backdropFilter: primary ? "none" : "blur(4px)",
   };
 }
+
+const heroBtnDanger: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 6,
+  padding: "8px 14px", borderRadius: 9, fontSize: 12.5, fontWeight: 700,
+  border: "1px solid rgba(255, 200, 200, 0.4)",
+  background: "rgba(220, 38, 38, 0.18)",
+  color: "#FECACA", backdropFilter: "blur(4px)",
+  cursor: "pointer",
+};
 
 function iconActionStyle(color: string, bg: string): React.CSSProperties {
   return {

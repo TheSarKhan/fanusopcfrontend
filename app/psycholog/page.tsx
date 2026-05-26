@@ -160,7 +160,7 @@ export default function PsychologDashboard() {
               <IconCalendar /> Cədvəlim
             </Link>
             <Link href="/psycholog/availability" style={heroBtn(false)}>
-              <IconClock /> Açıq vaxtlar
+              <IconClock /> İş vaxtları
             </Link>
           </div>
         </div>

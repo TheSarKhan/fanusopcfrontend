@@ -57,6 +57,7 @@ export const ru: typeof az = {
     calendar: "Расписание",
     homework: "Задания",
     articles: "Мои статьи",
+    workHours: "Рабочие часы",
     reviews: "Отзывы",
     audit: "Журнал аудита",
     feedbackTriage: "Отзывы о сессиях",

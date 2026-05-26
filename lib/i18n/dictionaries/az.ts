@@ -61,6 +61,7 @@ export const az = {
     calendar: "Cədvəl",
     homework: "Tapşırıqlar",
     articles: "Məqalələrim",
+    workHours: "İş vaxtları",
     reviews: "Rəylər",
     audit: "Audit log",
     feedbackTriage: "Seans rəyləri",

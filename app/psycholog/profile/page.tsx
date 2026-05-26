@@ -34,7 +34,7 @@ export default function PsychologProfilePage() {
             <Link href="/psycholog/availability" className="uprof-side-link" style={{ borderTop: "1px solid var(--brand-100)" }}>
               <div className="uprof-side-link-icon">🕓</div>
               <div className="uprof-side-link-text">
-                <strong>Açıq vaxtlar</strong>
+                <strong>İş vaxtları</strong>
                 <small>Həftəlik cədvəl və istisnalar</small>
               </div>
               <span className="uprof-side-link-arrow">›</span>

@@ -54,6 +54,7 @@ export const en: typeof az = {
     calendar: "Schedule",
     homework: "Homework",
     articles: "My articles",
+    workHours: "Working hours",
     reviews: "Reviews",
     audit: "Audit log",
     feedbackTriage: "Session feedback",

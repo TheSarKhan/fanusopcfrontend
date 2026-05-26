@@ -59,26 +59,14 @@ function getMainHost(): { mainHost: string; port: string } {
   return { mainHost, port };
 }
 
-/** True when running on the dev host (`localhost`, `127.0.0.1`, or `*.localhost`).
- *  In dev we route panels via paths on the same host — cross-subdomain SSO doesn't
- *  work cleanly on bare `localhost` (cookie domain quirks, /etc/hosts dance). */
-function isLocalhostDev(): boolean {
-  if (typeof window === "undefined") return false;
-  const h = window.location.hostname;
-  return h === "localhost" || h === "127.0.0.1" || h.endsWith(".localhost");
-}
-
-// Cross-subdomain auth rides on the HTTP-only Domain=.fanus.com cookie in prod.
-// In dev (localhost), we navigate via path on the same host — no subdomain.
+// Cross-subdomain auth rides on the HTTP-only cookie. In prod that cookie is
+// Domain=.fanus.com; in dev it's Domain=localhost and modern browsers do send
+// it to `<sub>.localhost`. Either way we just navigate to the subdomain URL
+// and the browser carries the cookie for us.
 export function buildPanelUrl(role: string): string {
   if (typeof window === "undefined") return "/";
   const sub = ROLE_SUBDOMAIN[role];
   if (!sub) return "/";
-
-  if (isLocalhostDev()) {
-    return `/${sub}`;
-  }
-
   const { protocol } = window.location;
   const { mainHost, port } = getMainHost();
   const portStr = port ? `:${port}` : "";

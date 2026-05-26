@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { psychologistApi, type AppointmentDetail } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 const DAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"]; // Mon..Sun
-const DEFAULT_HOURS = Array.from({ length: 14 }, (_, i) => i + 7); // 07..20
+
+const HOUR_PX = 56;                  // 1 minute ≈ 0.93px — comfortable for 50-min sessions
+const PX_PER_MIN = HOUR_PX / 60;
+const DROP_SNAP_MIN = 15;            // drop targets snap to a 15-minute grid
+const DEFAULT_HOUR_MIN = 7;
+const DEFAULT_HOUR_MAX = 21;         // exclusive upper bound (last visible hour label = 20)
 
 function startOfWeek(d: Date) {
   const x = new Date(d);
@@ -28,9 +33,13 @@ function isoDay(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function pad2(n: number) { return String(n).padStart(2, "0"); }
+
+function fmtHM(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+
 function fmtFullDateTime(d: Date) {
   const dayLabel = DAYS_AZ[(d.getDay() + 6) % 7];
-  return `${dayLabel} · ${fmtDay(d)} · ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return `${dayLabel} · ${fmtDay(d)} · ${fmtHM(d)}`;
 }
 
 const STATUS_COLOR: Record<string, { bg: string; fg: string; dashed?: boolean }> = {
@@ -45,6 +54,51 @@ const STATUS_COLOR: Record<string, { bg: string; fg: string; dashed?: boolean }>
 const DRAGGABLE_STATUSES = new Set(["ASSIGNED", "CONFIRMED"]);
 const DRAG_MIME = "application/x-fanus-appointment";
 
+interface PositionedEvent {
+  item: AppointmentDetail;
+  start: Date;
+  end: Date;
+  startMinOfDay: number;
+  endMinOfDay: number;
+  // Lane layout for overlapping events
+  laneIndex: number;
+  laneCount: number;
+}
+
+/** Pack overlapping events into lanes (columns). Returns the same events with
+ *  laneIndex/laneCount filled in so siblings can split horizontal space. */
+function layoutEvents(events: Omit<PositionedEvent, "laneIndex" | "laneCount">[]): PositionedEvent[] {
+  const sorted = [...events].sort((a, b) => a.startMinOfDay - b.startMinOfDay);
+  const result: PositionedEvent[] = [];
+  // Greedy lane assignment grouped by overlapping clusters.
+  let cluster: PositionedEvent[] = [];
+  let clusterEnd = -1;
+
+  const flush = () => {
+    if (cluster.length === 0) return;
+    const laneCount = Math.max(...cluster.map(e => e.laneIndex)) + 1;
+    cluster.forEach(e => { e.laneCount = laneCount; });
+    result.push(...cluster);
+    cluster = [];
+    clusterEnd = -1;
+  };
+
+  for (const ev of sorted) {
+    if (ev.startMinOfDay >= clusterEnd) flush();
+    // Find first lane whose latest end is <= this event's start
+    const lanesEnd: number[] = [];
+    for (const c of cluster) {
+      lanesEnd[c.laneIndex] = Math.max(lanesEnd[c.laneIndex] ?? -Infinity, c.endMinOfDay);
+    }
+    let lane = 0;
+    while (lane < lanesEnd.length && lanesEnd[lane] > ev.startMinOfDay) lane++;
+    cluster.push({ ...ev, laneIndex: lane, laneCount: 0 });
+    clusterEnd = Math.max(clusterEnd, ev.endMinOfDay);
+  }
+  flush();
+  return result;
+}
+
 export default function PsychologCalendarPage() {
   const { t } = useT();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
@@ -54,8 +108,10 @@ export default function PsychologCalendarPage() {
 
   // Drag-and-drop state
   const [draggingId, setDraggingId] = useState<number | null>(null);
-  const [dropTarget, setDropTarget] = useState<{ day: string; hour: number } | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ day: string; minute: number } | null>(null);
   const [proposalFor, setProposalFor] = useState<{ appointment: AppointmentDetail; newStart: Date } | null>(null);
+
+  const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -87,38 +143,67 @@ export default function PsychologCalendarPage() {
 
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
-  // Group appointments by day. Use startAt if set, otherwise requestedStartAt
-  // (so PENDING / patient-requested appointments are visible too).
-  const byDay = useMemo(() => {
-    const map = new Map<string, { item: AppointmentDetail; effectiveStart: string }[]>();
+  // Compute visible hour range: expand if any event leaks outside the default window.
+  const { hourMin, hourMax } = useMemo(() => {
+    let lo = DEFAULT_HOUR_MIN;
+    let hi = DEFAULT_HOUR_MAX;
     for (const a of items) {
       const eff = a.startAt ?? a.requestedStartAt;
       if (!eff) continue;
-      const key = isoDay(new Date(eff));
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push({ item: a, effectiveStart: eff });
+      const s = new Date(eff);
+      const e = a.endAt ? new Date(a.endAt) : new Date(s.getTime() + 50 * 60_000);
+      lo = Math.min(lo, s.getHours());
+      // Round end up to the next hour so events never get clipped.
+      hi = Math.max(hi, e.getHours() + (e.getMinutes() > 0 ? 1 : 0));
     }
-    return map;
+    return { hourMin: lo, hourMax: hi };
   }, [items]);
 
-  // Dynamically expand the visible hour range if any appointment falls outside default 7-20.
-  const hours = useMemo(() => {
-    let min = DEFAULT_HOURS[0];
-    let max = DEFAULT_HOURS[DEFAULT_HOURS.length - 1];
+  const hours = useMemo(
+    () => Array.from({ length: hourMax - hourMin }, (_, i) => i + hourMin),
+    [hourMin, hourMax]
+  );
+  const gridHeight = (hourMax - hourMin) * HOUR_PX;
+
+  // Auto-scroll to current time on first mount of the grid each week.
+  useEffect(() => {
+    if (loading) return;
+    const now = new Date();
+    if (now.getHours() < hourMin || now.getHours() >= hourMax) return;
+    const el = gridScrollRef.current;
+    if (!el) return;
+    const targetTop = (now.getHours() - hourMin) * HOUR_PX + now.getMinutes() * PX_PER_MIN - 120;
+    el.scrollTop = Math.max(0, targetTop);
+    // Only on initial paint of a given week.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, weekStart]);
+
+  // Group + layout per-day events
+  const byDay = useMemo(() => {
+    const map = new Map<string, PositionedEvent[]>();
+    const raw = new Map<string, Omit<PositionedEvent, "laneIndex" | "laneCount">[]>();
     for (const a of items) {
       const eff = a.startAt ?? a.requestedStartAt;
       if (!eff) continue;
-      const h = new Date(eff).getHours();
-      if (h < min) min = h;
-      if (h > max) max = h;
+      const start = new Date(eff);
+      const end = a.endAt
+        ? new Date(a.endAt)
+        : new Date(start.getTime() + 50 * 60_000);
+      const key = isoDay(start);
+      if (!raw.has(key)) raw.set(key, []);
+      raw.get(key)!.push({
+        item: a, start, end,
+        startMinOfDay: start.getHours() * 60 + start.getMinutes(),
+        endMinOfDay: end.getHours() * 60 + end.getMinutes(),
+      });
     }
-    return Array.from({ length: max - min + 1 }, (_, i) => i + min);
+    raw.forEach((evs, key) => map.set(key, layoutEvents(evs)));
+    return map;
   }, [items]);
 
   // ─── Drag handlers ──────────────────────────────────────────────────────
   const handleDragStart = (a: AppointmentDetail, e: React.DragEvent) => {
     if (!DRAGGABLE_STATUSES.has(a.status) || !a.startAt) return;
-    // Don't allow moving past sessions
     // eslint-disable-next-line react-hooks/purity
     if (new Date(a.startAt).getTime() < Date.now()) return;
     setDraggingId(a.id);
@@ -131,28 +216,43 @@ export default function PsychologCalendarPage() {
     setDropTarget(null);
   };
 
-  const handleDragOver = (day: string, hour: number, e: React.DragEvent) => {
+  /** Convert a vertical pointer offset (px from top of day column) into a
+   *  minute-of-day, snapped to DROP_SNAP_MIN. */
+  const yToMinute = (y: number): number => {
+    const minutes = y / PX_PER_MIN + hourMin * 60;
+    const snapped = Math.round(minutes / DROP_SNAP_MIN) * DROP_SNAP_MIN;
+    return Math.max(hourMin * 60, Math.min(hourMax * 60 - DROP_SNAP_MIN, snapped));
+  };
+
+  const handleColumnDragOver = (day: string, e: React.DragEvent<HTMLDivElement>) => {
     if (draggingId === null) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    if (dropTarget?.day !== day || dropTarget?.hour !== hour) {
-      setDropTarget({ day, hour });
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const minute = yToMinute(y);
+    if (dropTarget?.day !== day || dropTarget?.minute !== minute) {
+      setDropTarget({ day, minute });
     }
   };
 
-  const handleDrop = (day: Date, hour: number, e: React.DragEvent) => {
+  const handleColumnDrop = (day: Date, e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const idStr = e.dataTransfer.getData(DRAG_MIME) || String(draggingId ?? "");
     const id = Number(idStr);
     if (!id) { setDraggingId(null); setDropTarget(null); return; }
     const appt = items.find(a => a.id === id);
     if (!appt || !appt.startAt) { setDraggingId(null); setDropTarget(null); return; }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const minute = yToMinute(e.clientY - rect.top);
     const original = new Date(appt.startAt);
-    // Preserve original minute offset within the hour
     const newStart = new Date(day);
-    newStart.setHours(hour, original.getMinutes(), 0, 0);
-    // No-op if dropped on the same slot
+    newStart.setHours(Math.floor(minute / 60), minute % 60, 0, 0);
     if (newStart.getTime() === original.getTime()) {
+      setDraggingId(null); setDropTarget(null); return;
+    }
+    // Don't allow dropping into the past
+    if (newStart.getTime() < Date.now()) {
       setDraggingId(null); setDropTarget(null); return;
     }
     setProposalFor({ appointment: appt, newStart });
@@ -160,13 +260,16 @@ export default function PsychologCalendarPage() {
     setDropTarget(null);
   };
 
+  const dropPreviewTopPx = (minute: number) => (minute - hourMin * 60) * PX_PER_MIN;
+  const dropPreviewHeightPx = () => DROP_SNAP_MIN * PX_PER_MIN;
+
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535" }}>{t("staff.psyCalendarTitle")}</h1>
           <p style={{ fontSize: 11, color: "#8AAABF", marginTop: 2 }}>
-            💡 İpucu: gələcək təsdiqli/təyin edilmiş seansları sürükləyib başqa saata buraxaraq yenidən təklif edə bilərsiniz
+            İpucu: gələcək təsdiqli/təyin edilmiş seansları sürükləyib başqa saata buraxaraq yenidən təklif edə bilərsiniz (15 dəq-lik addımlarla)
           </p>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -180,94 +283,207 @@ export default function PsychologCalendarPage() {
       {loading ? (
         <div style={{ background: "#fff", borderRadius: 12, padding: 40, textAlign: "center", color: "#52718F" }}>Yüklənir…</div>
       ) : (
-        <div style={{ background: "#fff", borderRadius: 14, padding: 12, overflow: "auto", boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
-          <div style={{ minWidth: 720 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "60px repeat(7, 1fr)", borderBottom: "1px solid #EFF2F7", paddingBottom: 8, marginBottom: 8 }}>
-            <div />
-            {weekDays.map((d, i) => (
-              <div key={i} style={{ textAlign: "center", fontSize: 12, color: "#52718F" }}>
-                <div style={{ fontWeight: 700, color: "#1A2535" }}>{DAYS_AZ[i]}</div>
-                <div>{fmtDay(d)}</div>
-              </div>
-            ))}
-          </div>
-          {hours.map(h => (
-            <div key={h} style={{ display: "grid", gridTemplateColumns: "60px repeat(7, 1fr)", minHeight: 60, borderBottom: "1px solid #F3F4F6" }}>
-              <div style={{ fontSize: 11, color: "#8AAABF", paddingTop: 6, textAlign: "right", paddingRight: 6 }}>
-                {String(h).padStart(2, "0")}:00
-              </div>
-              {weekDays.map((d, di) => {
-                const dayKey = isoDay(d);
-                const list = (byDay.get(dayKey) ?? [])
-                  .filter(({ effectiveStart }) => new Date(effectiveStart).getHours() === h);
-                const isDropTarget = dropTarget?.day === dayKey && dropTarget?.hour === h;
-                const isDropDisabled = draggingId !== null && new Date(d).setHours(h, 0, 0, 0) < Date.now();
+        <div style={{ background: "#fff", borderRadius: 14, padding: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+          <div style={{ minWidth: 760 }}>
+            {/* Day header row */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: `60px repeat(7, 1fr)`,
+              borderBottom: "1px solid #EFF2F7",
+              paddingBottom: 8,
+              marginBottom: 0,
+              position: "sticky", top: 0, zIndex: 5, background: "#fff",
+            }}>
+              <div />
+              {weekDays.map((d, i) => {
+                const isToday = isoDay(d) === isoDay(new Date());
                 return (
-                  <div key={di}
-                    onDragOver={e => !isDropDisabled && handleDragOver(dayKey, h, e)}
-                    onDrop={e => !isDropDisabled && handleDrop(d, h, e)}
-                    style={{
-                      borderLeft: "1px solid #F3F4F6",
-                      padding: 4,
-                      position: "relative",
-                      background: isDropTarget ? (isDropDisabled ? "#FEE2E2" : "#DBEAFE") : "transparent",
-                      transition: "background 0.1s",
-                    }}>
-                    {list.map(({ item: a, effectiveStart }) => {
-                      const start = new Date(effectiveStart);
-                      const end = a.endAt ? new Date(a.endAt) : new Date(start.getTime() + 50 * 60_000);
-                      const minutes = (end.getTime() - start.getTime()) / 60_000;
-                      const colors = STATUS_COLOR[a.status] ?? STATUS_COLOR.PENDING;
-                      const time = `${String(start.getHours()).padStart(2,"0")}:${String(start.getMinutes()).padStart(2,"0")}`;
-                      const draggable = DRAGGABLE_STATUSES.has(a.status) && !!a.startAt && new Date(a.startAt).getTime() > Date.now();
-                      const isBeingDragged = draggingId === a.id;
-                      return (
-                        <div key={a.id}
-                          draggable={draggable}
-                          onDragStart={e => handleDragStart(a, e)}
-                          onDragEnd={handleDragEnd}
-                          title={draggable
-                            ? `${a.patientName ?? "—"} · ${time} · ${a.status}\nSürükləyib başqa saata burax`
-                            : `${a.patientName ?? "—"} · ${time} · ${a.status}`}
-                          style={{
-                            padding: "4px 6px", borderRadius: 6,
-                            background: colors.bg, color: colors.fg,
-                            border: colors.dashed ? `1px dashed ${colors.fg}` : "1px solid transparent",
-                            fontSize: 11, fontWeight: 600,
-                            marginBottom: 2, lineHeight: 1.2,
-                            minHeight: Math.max(28, (minutes / 60) * 56),
-                            opacity: a.status === "CANCELLED" ? 0.6 : isBeingDragged ? 0.4 : 1,
-                            cursor: draggable ? "grab" : "default",
-                            position: "relative",
-                          }}>
-                          <a href="/psycholog/appointments"
-                            onClick={e => { if (draggable) e.stopPropagation(); }}
-                            style={{ color: "inherit", textDecoration: "none", display: "block" }}>
-                            <div style={{ fontSize: 10, opacity: 0.9, display: "flex", justifyContent: "space-between", gap: 4 }}>
-                              <span>{time} · {a.status}</span>
-                              {draggable && <span style={{ opacity: 0.6 }}>⠿</span>}
-                            </div>
-                            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {a.patientName ?? "—"}
-                            </div>
-                          </a>
-                        </div>
-                      );
-                    })}
+                  <div key={i} style={{ textAlign: "center", fontSize: 12, color: "#52718F" }}>
+                    <div style={{ fontWeight: 700, color: isToday ? "var(--brand)" : "#1A2535" }}>{DAYS_AZ[i]}</div>
+                    <div style={{ color: isToday ? "var(--brand)" : "#52718F" }}>{fmtDay(d)}</div>
                   </div>
                 );
               })}
             </div>
-          ))}
 
-          {/* Legend */}
-          <div style={{ display: "flex", gap: 12, marginTop: 12, fontSize: 11, color: "#52718F", flexWrap: "wrap" }}>
-            <Legend label="Gözləmədə" bg="#FEF3C7" fg="#92400E" dashed />
-            <Legend label="Təyin edilib" bg="#DBEAFE" fg="#1E40AF" />
-            <Legend label="Təsdiqlənib" bg="#D1FAE5" fg="#065F46" />
-            <Legend label="Tamamlanıb" bg="#E5E7EB" fg="#374151" />
-            <Legend label="Ləğv olunub" bg="#FEE2E2" fg="#991B1B" />
-          </div>
+            {/* Scrollable time grid */}
+            <div ref={gridScrollRef} style={{ maxHeight: "70vh", overflow: "auto", position: "relative" }}>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: `60px repeat(7, 1fr)`,
+                position: "relative",
+                height: gridHeight,
+              }}>
+                {/* Hour labels column */}
+                <div style={{ position: "relative" }}>
+                  {hours.map(h => (
+                    <div key={h} style={{
+                      position: "absolute",
+                      top: (h - hourMin) * HOUR_PX,
+                      right: 6,
+                      fontSize: 11,
+                      color: "#8AAABF",
+                      transform: "translateY(-6px)",
+                    }}>
+                      {pad2(h)}:00
+                    </div>
+                  ))}
+                </div>
+
+                {/* Day columns */}
+                {weekDays.map((d, di) => {
+                  const dayKey = isoDay(d);
+                  const events = byDay.get(dayKey) ?? [];
+                  const isToday = dayKey === isoDay(new Date());
+                  const isDayDropTarget = dropTarget?.day === dayKey;
+                  return (
+                    <div
+                      key={di}
+                      onDragOver={e => handleColumnDragOver(dayKey, e)}
+                      onDrop={e => handleColumnDrop(d, e)}
+                      style={{
+                        position: "relative",
+                        borderLeft: "1px solid #F3F4F6",
+                        background: isToday ? "rgba(16,81,183,0.02)" : "transparent",
+                      }}
+                    >
+                      {/* Hourly horizontal lines + half-hour ticks */}
+                      {hours.map(h => (
+                        <div key={h} style={{
+                          position: "absolute",
+                          left: 0, right: 0,
+                          top: (h - hourMin) * HOUR_PX,
+                          borderTop: "1px solid #F3F4F6",
+                          height: 0,
+                          pointerEvents: "none",
+                        }} />
+                      ))}
+                      {hours.map(h => (
+                        <div key={`half-${h}`} style={{
+                          position: "absolute",
+                          left: 0, right: 0,
+                          top: (h - hourMin) * HOUR_PX + HOUR_PX / 2,
+                          borderTop: "1px dashed #F8FAFC",
+                          height: 0,
+                          pointerEvents: "none",
+                        }} />
+                      ))}
+
+                      {/* Drop preview marker */}
+                      {isDayDropTarget && dropTarget && (
+                        <div style={{
+                          position: "absolute",
+                          left: 2, right: 2,
+                          top: dropPreviewTopPx(dropTarget.minute),
+                          height: dropPreviewHeightPx(),
+                          background: "rgba(16,81,183,0.12)",
+                          border: "1px dashed var(--brand)",
+                          borderRadius: 6,
+                          pointerEvents: "none",
+                          zIndex: 1,
+                        }}>
+                          <div style={{
+                            position: "absolute", top: -16, left: 4,
+                            fontSize: 10, fontWeight: 700, color: "var(--brand)",
+                            background: "#fff", padding: "1px 4px", borderRadius: 4,
+                            border: "1px solid var(--brand)",
+                          }}>
+                            {pad2(Math.floor(dropTarget.minute / 60))}:{pad2(dropTarget.minute % 60)}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Events */}
+                      {events.map(ev => {
+                        const colors = STATUS_COLOR[ev.item.status] ?? STATUS_COLOR.PENDING;
+                        const top = (ev.startMinOfDay - hourMin * 60) * PX_PER_MIN;
+                        // Ensure visually-clickable minimum even for very short events
+                        const rawHeight = (ev.endMinOfDay - ev.startMinOfDay) * PX_PER_MIN;
+                        const height = Math.max(22, rawHeight);
+                        const widthPct = 100 / ev.laneCount;
+                        const leftPct = widthPct * ev.laneIndex;
+                        const draggable = DRAGGABLE_STATUSES.has(ev.item.status)
+                          && !!ev.item.startAt
+                          && ev.start.getTime() > Date.now();
+                        const isBeingDragged = draggingId === ev.item.id;
+                        const a = ev.item;
+                        const compact = height < 38;
+                        return (
+                          <div key={a.id}
+                            draggable={draggable}
+                            onDragStart={e => handleDragStart(a, e)}
+                            onDragEnd={handleDragEnd}
+                            title={`${a.patientName ?? "—"} · ${fmtHM(ev.start)}–${fmtHM(ev.end)} · ${a.status}${draggable ? "\nSürükləyib başqa vaxta burax" : ""}`}
+                            style={{
+                              position: "absolute",
+                              top,
+                              height,
+                              left: `calc(${leftPct}% + 2px)`,
+                              width: `calc(${widthPct}% - 4px)`,
+                              background: colors.bg,
+                              color: colors.fg,
+                              border: colors.dashed ? `1px dashed ${colors.fg}` : `1px solid ${colors.bg}`,
+                              borderLeft: `3px solid ${colors.fg}`,
+                              borderRadius: 6,
+                              padding: compact ? "1px 5px" : "4px 6px",
+                              fontSize: 11,
+                              lineHeight: 1.2,
+                              overflow: "hidden",
+                              opacity: a.status === "CANCELLED" ? 0.55 : isBeingDragged ? 0.4 : 1,
+                              cursor: draggable ? "grab" : "default",
+                              zIndex: 2,
+                              boxShadow: isBeingDragged ? "none" : "0 1px 2px rgba(16,81,183,0.08)",
+                            }}>
+                            <a href="/psycholog/appointments"
+                              onClick={e => { if (draggable) e.stopPropagation(); }}
+                              style={{ color: "inherit", textDecoration: "none", display: "block", overflow: "hidden" }}>
+                              {compact ? (
+                                <div style={{
+                                  display: "flex", justifyContent: "space-between", gap: 4,
+                                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                                  fontWeight: 600,
+                                }}>
+                                  <span>{fmtHM(ev.start)} {a.patientName ?? "—"}</span>
+                                  {draggable && <span style={{ opacity: 0.6 }}>⠿</span>}
+                                </div>
+                              ) : (
+                                <>
+                                  <div style={{
+                                    display: "flex", justifyContent: "space-between", gap: 4,
+                                    fontSize: 10, opacity: 0.9, fontWeight: 700,
+                                  }}>
+                                    <span>{fmtHM(ev.start)}–{fmtHM(ev.end)}</span>
+                                    {draggable && <span style={{ opacity: 0.6 }}>⠿</span>}
+                                  </div>
+                                  <div style={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                    {a.patientName ?? "—"}
+                                  </div>
+                                  {height >= 56 && (
+                                    <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>
+                                      {a.status}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </a>
+                          </div>
+                        );
+                      })}
+
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div style={{ display: "flex", gap: 12, marginTop: 12, fontSize: 11, color: "#52718F", flexWrap: "wrap" }}>
+              <Legend label="Gözləmədə" bg="#FEF3C7" fg="#92400E" dashed />
+              <Legend label="Təyin edilib" bg="#DBEAFE" fg="#1E40AF" />
+              <Legend label="Təsdiqlənib" bg="#D1FAE5" fg="#065F46" />
+              <Legend label="Tamamlanıb" bg="#E5E7EB" fg="#374151" />
+              <Legend label="Ləğv olunub" bg="#FEE2E2" fg="#991B1B" />
+            </div>
           </div>
         </div>
       )}
@@ -349,8 +565,8 @@ function DragProposalModal({
         </div>
         <div style={{ padding: 22 }}>
           <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
-            <Row label="Köhnə saat" value={originalStart ? fmtFullDateTime(originalStart) : "—"} muted />
-            <Row label="Yeni təklif" value={fmtFullDateTime(newStart)} highlight />
+            <Row label="Köhnə saat" value={originalStart ? `${fmtFullDateTime(originalStart)}–${fmtHM(new Date(originalStart.getTime() + duration))}` : "—"} muted />
+            <Row label="Yeni təklif" value={`${fmtFullDateTime(newStart)}–${fmtHM(newEnd)}`} highlight />
           </div>
 
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>

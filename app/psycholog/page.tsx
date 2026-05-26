@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -12,9 +12,9 @@ import { getStoredUser } from "@/lib/auth";
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   PENDING:   { label: "Yeni",        color: "#92400E", bg: "#FEF3C7" },
-  ASSIGNED:  { label: "Sizə təyin",  color: "#1E40AF", bg: "#DBEAFE" },
-  CONFIRMED: { label: "Təsdiqli",    color: "#065F46", bg: "#D1FAE5" },
-  COMPLETED: { label: "Bitdi",       color: "#374151", bg: "#F3F4F6" },
+  ASSIGNED:  { label: "Sizə təyin",  color: "var(--brand-700)", bg: "var(--brand-100)" },
+  CONFIRMED: { label: "Təsdiqli",    color: "#0F766E", bg: "#CCFBF1" },
+  COMPLETED: { label: "Bitdi",       color: "var(--oxford-60)", bg: "var(--oxford-10)" },
   CANCELLED: { label: "Ləğv",        color: "#991B1B", bg: "#FEE2E2" },
   REJECTED:  { label: "Rədd",        color: "#92400E", bg: "#FEF3C7" },
 };
@@ -125,39 +125,43 @@ export default function PsychologDashboard() {
       <div
         className="psy-dash-hero"
         style={{
-          background: "linear-gradient(135deg, var(--brand-700) 0%, var(--brand-600) 60%, var(--brand) 100%)",
+          background: "linear-gradient(135deg, var(--brand-700) 0%, var(--brand-600) 55%, var(--brand) 100%)",
           borderRadius: 18,
           padding: "26px 28px",
           color: "#fff",
           marginBottom: 22,
           position: "relative",
           overflow: "hidden",
-          boxShadow: "0 10px 30px rgba(8, 47, 109, 0.25)",
+          boxShadow: "0 10px 30px rgba(8, 47, 109, 0.22)",
         }}
       >
         <div
           aria-hidden
           style={{
             position: "absolute", right: -40, top: -40, width: 220, height: 220,
-            background: "radial-gradient(circle, rgba(255,255,255,0.18), rgba(255,255,255,0) 70%)",
+            background: "radial-gradient(circle, rgba(255,255,255,0.14), rgba(255,255,255,0) 70%)",
             borderRadius: "50%",
           }}
         />
         <div style={{ position: "relative", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
-            <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 500, letterSpacing: 0.4, textTransform: "uppercase" }}>
+            <div style={{ fontSize: 12, opacity: 0.75, fontWeight: 600, letterSpacing: 0.6, textTransform: "uppercase" }}>
               {todayLabel()}
             </div>
-            <h1 style={{ fontSize: 26, fontWeight: 700, margin: "6px 0 4px" }}>
+            <h1 style={{ fontSize: 26, fontWeight: 700, margin: "6px 0 4px", color: "#fff" }}>
               {greet()}, Dr. {user?.firstName ?? "Psixoloq"}
             </h1>
-            <p style={{ fontSize: 14, opacity: 0.78, margin: 0 }}>
+            <p style={{ fontSize: 14, opacity: 0.82, margin: 0 }}>
               Bugünkü cədvəlinizə və müştərilərinizin son fəaliyyətinə nəzər salın.
             </p>
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Link href="/psycholog/calendar" style={heroBtn(true)}>🗓️ Cədvəlim</Link>
-            <Link href="/psycholog/availability" style={heroBtn(false)}>🕓 Açıq vaxtlar</Link>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <Link href="/psycholog/calendar" style={heroBtn(true)}>
+              <IconCalendar /> Cədvəlim
+            </Link>
+            <Link href="/psycholog/availability" style={heroBtn(false)}>
+              <IconClock /> Açıq vaxtlar
+            </Link>
           </div>
         </div>
       </div>
@@ -169,36 +173,28 @@ export default function PsychologDashboard() {
           {/* ── Stat row ───────────────────────────────────────────────────────── */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 22 }}>
             <StatCard
-              icon="📈"
+              icon={<IconChart />}
               label="Bu ay seans"
               value={stats?.thisMonthTotal ?? 0}
               sub={`${stats?.thisMonthCompleted ?? 0} tamamlandı · ${completionRate}% bitirilib`}
-              accent="var(--brand)"
-              bg="linear-gradient(135deg, #EEF0FF 0%, #F7F4FF 100%)"
             />
             <StatCard
-              icon="🗓️"
+              icon={<IconCalendar />}
               label="Bu həftə"
               value={stats?.thisWeekTotal ?? 0}
               sub="planlaşdırılmış seans"
-              accent="#1E3A5F"
-              bg="linear-gradient(135deg, #E5F0FF 0%, #F0F7FF 100%)"
             />
             <StatCard
-              icon="⏳"
+              icon={<IconClock />}
               label="Yaxınlaşan"
               value={stats?.upcomingCount ?? 0}
               sub="növbəti randevular"
-              accent="#065F46"
-              bg="linear-gradient(135deg, #DCFCE7 0%, #F0FDF4 100%)"
             />
             <StatCard
-              icon="👥"
+              icon={<IconUsers />}
               label="Aktiv müştəri"
               value={stats?.activeClientsLast90Days ?? 0}
               sub="son 90 gün"
-              accent="#92400E"
-              bg="linear-gradient(135deg, #FEF3C7 0%, #FFFBEB 100%)"
             />
           </div>
 
@@ -214,7 +210,6 @@ export default function PsychologDashboard() {
                 />
                 {today.length === 0 ? (
                   <EmptyState
-                    icon="🌿"
                     title="Bu gün cədvəliniz boşdur"
                     body="Sərbəst günü bilik artırmaq üçün istifadə edin və ya açıq vaxtlarınızı yeniləyin."
                   />
@@ -242,20 +237,18 @@ export default function PsychologDashboard() {
                 <CardHeader title="Diqqət tələb edir" subtitle="Yığılmış işlər" />
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <ActionRow
-                    icon="📋"
+                    icon={<IconClipboard />}
                     title="Təsdiq gözləyən randevu"
                     count={pendingRequests}
                     href="/psycholog/appointments"
-                    accent="#1E40AF"
-                    bg="#DBEAFE"
+                    tone="brand"
                   />
                   <ActionRow
-                    icon="🎯"
+                    icon={<IconTarget />}
                     title={overdueHomework > 0 ? `Açıq tapşırıq (${overdueHomework} gecikib)` : "Açıq tapşırıq"}
                     count={pendingHomework}
                     href="/psycholog/homework"
-                    accent={overdueHomework > 0 ? "#991B1B" : "#92400E"}
-                    bg={overdueHomework > 0 ? "#FEE2E2" : "#FEF3C7"}
+                    tone={overdueHomework > 0 ? "danger" : "warning"}
                   />
                 </div>
               </Card>
@@ -267,7 +260,7 @@ export default function PsychologDashboard() {
                   right={<Link href="/psycholog/calendar" style={linkBtn}>Cədvəl →</Link>}
                 />
                 {upcoming.length === 0 ? (
-                  <EmptyState icon="📭" title="Yaxınlaşan seans yoxdur" body="Yeni randevular əlavə olunduqda burada görünəcək." />
+                  <EmptyState title="Yaxınlaşan seans yoxdur" body="Yeni randevular əlavə olunduqda burada görünəcək." />
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {upcoming.map(a => <UpcomingRow key={a.id} a={a} />)}
@@ -279,12 +272,12 @@ export default function PsychologDashboard() {
 
           {/* ── Quick actions ─────────────────────────────────────────────────── */}
           <div>
-            <h2 style={{ fontSize: 13, fontWeight: 700, color: "#52718F", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
+            <h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
               Sürətli giriş
             </h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-              <QuickAction href="/psycholog/clients"   icon="👥" label="Müştərilər"   tone="violet" />
-              <QuickAction href="/psycholog/homework"  icon="🎯" label="Tapşırıqlar"  tone="amber"  badge={pendingHomework} />
+              <QuickAction href="/psycholog/clients"  icon={<IconUsers />}   label="Müştərilər" />
+              <QuickAction href="/psycholog/homework" icon={<IconTarget />}  label="Tapşırıqlar" badge={pendingHomework} />
             </div>
           </div>
         </>
@@ -300,7 +293,7 @@ function Card({ children }: { children: React.ReactNode }) {
     <div style={{
       background: "#fff", borderRadius: 16, padding: 20,
       boxShadow: "0 2px 14px rgba(15, 23, 42, 0.06)",
-      border: "1px solid rgba(226, 232, 240, 0.7)",
+      border: "1px solid var(--oxford-10)",
     }}>{children}</div>
   );
 }
@@ -309,61 +302,64 @@ function CardHeader({ title, subtitle, right }: { title: string; subtitle?: stri
   return (
     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14, gap: 12 }}>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#1A2535" }}>{title}</div>
-        {subtitle && <div style={{ fontSize: 12, color: "#8AAABF", marginTop: 2 }}>{subtitle}</div>}
+        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{title}</div>
+        {subtitle && <div style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 2 }}>{subtitle}</div>}
       </div>
       {right}
     </div>
   );
 }
 
-function StatCard({ icon, label, value, sub, accent, bg }:
-  { icon: string; label: string; value: number; sub?: string; accent: string; bg: string }) {
+/** Uniform stat card: white background, navy left accent, monochrome brand icon. */
+function StatCard({ icon, label, value, sub }:
+  { icon: React.ReactNode; label: string; value: number; sub?: string }) {
   return (
     <div style={{
       background: "#fff", borderRadius: 16, padding: 18,
       boxShadow: "0 2px 14px rgba(15, 23, 42, 0.06)",
-      border: "1px solid rgba(226, 232, 240, 0.7)",
+      border: "1px solid var(--oxford-10)",
       position: "relative", overflow: "hidden",
     }}>
-      <div style={{ position: "absolute", inset: 0, background: bg, opacity: 0.55 }} />
-      <div style={{ position: "relative" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 10,
-            background: "rgba(255,255,255,0.85)", display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-          }}>{icon}</div>
-          <div style={{ fontSize: 11, color: "#52718F", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
-            {label}
-          </div>
+      <div style={{
+        position: "absolute", left: 0, top: 0, bottom: 0, width: 3,
+        background: "var(--brand)",
+      }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: 10,
+          background: "var(--brand-50)", color: "var(--brand-700)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          border: "1px solid var(--brand-100)",
+        }}>{icon}</div>
+        <div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          {label}
         </div>
-        <div style={{ fontSize: 30, fontWeight: 700, color: accent, lineHeight: 1.1 }}>{value}</div>
-        {sub && <div style={{ fontSize: 11, color: "#52718F", marginTop: 4 }}>{sub}</div>}
       </div>
+      <div style={{ fontSize: 30, fontWeight: 700, color: "var(--oxford)", lineHeight: 1.1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }
 
 function TodayRow({ a }: { a: AppointmentDetail }) {
-  const badge = STATUS_BADGE[a.status] ?? { label: a.status, color: "#374151", bg: "#F3F4F6" };
+  const badge = STATUS_BADGE[a.status] ?? { label: a.status, color: "var(--oxford-60)", bg: "var(--oxford-10)" };
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 12, padding: "10px 12px",
-      borderRadius: 12, background: "#F8FAFC", border: "1px solid #EEF2F7",
+      borderRadius: 12, background: "var(--brand-50)", border: "1px solid var(--brand-100)",
     }}>
       <div style={{
         width: 56, textAlign: "center", padding: "6px 0", borderRadius: 10,
-        background: "#fff", border: "1px solid #E2E8F0",
+        background: "#fff", border: "1px solid var(--brand-100)",
       }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: "#1A2535" }}>{formatTime(a.startAt)}</div>
-        <div style={{ fontSize: 10, color: "#8AAABF" }}>{a.endAt ? formatTime(a.endAt) : "—"}</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{formatTime(a.startAt)}</div>
+        <div style={{ fontSize: 10, color: "var(--oxford-60)" }}>{a.endAt ? formatTime(a.endAt) : "—"}</div>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: "#1A2535", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--oxford)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {a.patientName ?? "Müştəri"}
         </div>
-        <div style={{ fontSize: 12, color: "#52718F", marginTop: 2 }}>
+        <div style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 2 }}>
           Onlayn seans
         </div>
       </div>
@@ -381,19 +377,19 @@ function UpcomingRow({ a }: { a: AppointmentDetail }) {
       href="/psycholog/appointments"
       style={{
         display: "flex", alignItems: "center", gap: 12, padding: "10px 12px",
-        borderRadius: 12, background: "#F8FAFC", border: "1px solid #EEF2F7",
+        borderRadius: 12, background: "var(--brand-50)", border: "1px solid var(--brand-100)",
         textDecoration: "none", color: "inherit",
       }}
     >
       <div style={{
-        width: 8, height: 38, borderRadius: 4,
-        background: "linear-gradient(180deg, var(--brand), #8B7FE0)",
+        width: 4, height: 38, borderRadius: 4,
+        background: "var(--brand)",
       }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "#1A2535", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {a.patientName ?? "Müştəri"}
         </div>
-        <div style={{ fontSize: 11, color: "#52718F", marginTop: 2 }}>
+        <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 2 }}>
           {formatDayShort(a.startAt)} · {formatTime(a.startAt)}
         </div>
       </div>
@@ -401,31 +397,42 @@ function UpcomingRow({ a }: { a: AppointmentDetail }) {
   );
 }
 
-function ActionRow({ icon, title, count, href, accent, bg }:
-  { icon: string; title: string; count: number; href: string; accent: string; bg: string }) {
+type ActionTone = "brand" | "warning" | "danger";
+const ACTION_TONE: Record<ActionTone, { accent: string; bg: string; border: string }> = {
+  brand:   { accent: "var(--brand-700)", bg: "var(--brand-50)",  border: "var(--brand-100)" },
+  warning: { accent: "#92400E",          bg: "#FEF3C7",          border: "#FDE68A" },
+  danger:  { accent: "#991B1B",          bg: "#FEE2E2",          border: "#FECACA" },
+};
+
+function ActionRow({ icon, title, count, href, tone }:
+  { icon: React.ReactNode; title: string; count: number; href: string; tone: ActionTone }) {
   const empty = count === 0;
+  const t = ACTION_TONE[tone];
   return (
     <Link href={href} style={{
       display: "flex", alignItems: "center", gap: 12, padding: "10px 12px",
-      borderRadius: 12, background: empty ? "#F8FAFC" : bg,
-      border: `1px solid ${empty ? "#EEF2F7" : "transparent"}`,
+      borderRadius: 12,
+      background: empty ? "var(--brand-50)" : t.bg,
+      border: `1px solid ${empty ? "var(--brand-100)" : t.border}`,
       textDecoration: "none", color: "inherit",
     }}>
       <div style={{
         width: 36, height: 36, borderRadius: 10,
-        background: empty ? "#fff" : "rgba(255,255,255,0.7)", display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 18,
+        background: empty ? "#fff" : "rgba(255,255,255,0.85)",
+        color: empty ? "var(--brand-700)" : t.accent,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        border: `1px solid ${empty ? "var(--brand-100)" : "rgba(255,255,255,0.6)"}`,
       }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "#1A2535" }}>{title}</div>
-        <div style={{ fontSize: 11, color: empty ? "#8AAABF" : accent, marginTop: 2, fontWeight: empty ? 400 : 600 }}>
-          {empty ? "Hər şey nizamındadır" : `${count} ${count === 1 ? "elementə" : "elementə"} baxılmalıdır`}
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford)" }}>{title}</div>
+        <div style={{ fontSize: 11, color: empty ? "var(--oxford-60)" : t.accent, marginTop: 2, fontWeight: empty ? 400 : 600 }}>
+          {empty ? "Hər şey nizamındadır" : `${count} elementə baxılmalıdır`}
         </div>
       </div>
       {!empty && (
         <span style={{
           minWidth: 28, height: 28, borderRadius: 14, padding: "0 8px",
-          background: accent, color: "#fff", fontSize: 12, fontWeight: 700,
+          background: t.accent, color: "#fff", fontSize: 12, fontWeight: 700,
           display: "inline-flex", alignItems: "center", justifyContent: "center",
         }}>{count}</span>
       )}
@@ -433,33 +440,31 @@ function ActionRow({ icon, title, count, href, accent, bg }:
   );
 }
 
-function QuickAction({ href, icon, label, tone, badge }:
-  { href: string; icon: string; label: string; tone: "violet" | "blue" | "amber" | "emerald"; badge?: number }) {
-  const palettes: Record<typeof tone, { from: string; to: string; text: string }> = {
-    violet:  { from: "#EDE9FE", to: "#DDD6FE", text: "var(--brand)" },
-    blue:    { from: "#DBEAFE", to: "#BFDBFE", text: "#1E3A5F" },
-    amber:   { from: "#FEF3C7", to: "#FDE68A", text: "#92400E" },
-    emerald: { from: "#D1FAE5", to: "#A7F3D0", text: "#065F46" },
-  };
-  const p = palettes[tone];
+function QuickAction({ href, icon, label, badge }:
+  { href: string; icon: React.ReactNode; label: string; badge?: number }) {
   return (
     <Link href={href} style={{
       position: "relative",
-      background: `linear-gradient(135deg, ${p.from}, ${p.to})`,
-      borderRadius: 14, padding: 18, color: p.text, textDecoration: "none",
-      border: "1px solid rgba(255,255,255,0.6)",
+      background: "#fff",
+      borderRadius: 14, padding: 18, color: "var(--oxford)", textDecoration: "none",
+      border: "1px solid var(--oxford-10)",
       boxShadow: "0 2px 10px rgba(15, 23, 42, 0.04)",
-      display: "block",
+      display: "flex", alignItems: "center", gap: 12,
+      transition: "border-color 0.15s, box-shadow 0.15s",
     }}>
-      <div style={{ fontSize: 26, marginBottom: 8 }}>{icon}</div>
+      <div style={{
+        width: 40, height: 40, borderRadius: 10,
+        background: "var(--brand-50)", color: "var(--brand-700)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        border: "1px solid var(--brand-100)",
+      }}>{icon}</div>
       <div style={{ fontSize: 14, fontWeight: 700 }}>{label}</div>
       {badge != null && badge > 0 && (
         <span style={{
           position: "absolute", top: 12, right: 12,
           minWidth: 22, height: 22, padding: "0 7px", borderRadius: 11,
-          background: "#fff", color: p.text, fontSize: 11, fontWeight: 700,
+          background: "var(--brand)", color: "#fff", fontSize: 11, fontWeight: 700,
           display: "inline-flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
         }}>{badge}</span>
       )}
     </Link>
@@ -469,7 +474,7 @@ function QuickAction({ href, icon, label, tone, badge }:
 function DailyChart({ data }: { data: { date: string; count: number }[] }) {
   const max = Math.max(1, ...data.map(d => d.count));
   if (data.length === 0) {
-    return <EmptyState icon="📊" title="Məlumat yoxdur" body="Aktivliyiniz burada görünəcək." />;
+    return <EmptyState title="Məlumat yoxdur" body="Aktivliyiniz burada görünəcək." />;
   }
   return (
     <div>
@@ -487,8 +492,8 @@ function DailyChart({ data }: { data: { date: string; count: number }[] }) {
                   style={{
                     width: "100%",
                     background: isToday
-                      ? "linear-gradient(180deg, #1a1040, var(--brand))"
-                      : "linear-gradient(180deg, #8B7FE0, var(--brand-200))",
+                      ? "linear-gradient(180deg, var(--brand-700), var(--brand))"
+                      : "linear-gradient(180deg, var(--brand-300), var(--brand-200))",
                     borderRadius: 4,
                     height: `${Math.max(3, h)}%`,
                     minHeight: 3,
@@ -500,7 +505,7 @@ function DailyChart({ data }: { data: { date: string; count: number }[] }) {
           );
         })}
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 10, color: "#8AAABF" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 10, color: "var(--oxford-60)" }}>
         <span>{shortDate(data[0]?.date)}</span>
         {data.length > 14 && <span>{shortDate(data[Math.floor(data.length / 2)]?.date)}</span>}
         <span>{shortDate(data[data.length - 1]?.date)}</span>
@@ -515,11 +520,10 @@ function shortDate(iso?: string) {
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function EmptyState({ icon, title, body }: { icon: string; title: string; body: string }) {
+function EmptyState({ title, body }: { title: string; body: string }) {
   return (
-    <div style={{ textAlign: "center", padding: "24px 12px", color: "#52718F" }}>
-      <div style={{ fontSize: 32, marginBottom: 6 }}>{icon}</div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: "#1A2535" }}>{title}</div>
+    <div style={{ textAlign: "center", padding: "24px 12px", color: "var(--oxford-60)" }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford)" }}>{title}</div>
       <div style={{ fontSize: 12, marginTop: 4 }}>{body}</div>
     </div>
   );
@@ -528,9 +532,9 @@ function EmptyState({ icon, title, body }: { icon: string; title: string; body: 
 function SkeletonGrid() {
   const block = (h: number) => (
     <div style={{ background: "#fff", borderRadius: 16, height: h, padding: 18,
-      boxShadow: "0 2px 14px rgba(15,23,42,0.05)", border: "1px solid #EEF2F7" }}>
-      <div style={{ width: "40%", height: 12, background: "#EEF2F7", borderRadius: 4, marginBottom: 10 }} />
-      <div style={{ width: "70%", height: 22, background: "#F1F5F9", borderRadius: 4 }} />
+      boxShadow: "0 2px 14px rgba(15,23,42,0.05)", border: "1px solid var(--oxford-10)" }}>
+      <div style={{ width: "40%", height: 12, background: "var(--oxford-10)", borderRadius: 4, marginBottom: 10 }} />
+      <div style={{ width: "70%", height: 22, background: "var(--brand-50)", borderRadius: 4 }} />
     </div>
   );
   return (
@@ -546,16 +550,56 @@ function SkeletonGrid() {
 }
 
 const linkBtn: React.CSSProperties = {
-  fontSize: 12, fontWeight: 600, color: "var(--brand)", textDecoration: "none",
+  fontSize: 12, fontWeight: 600, color: "var(--brand-700)", textDecoration: "none",
   padding: "4px 10px", borderRadius: 8, background: "var(--brand-50)",
+  border: "1px solid var(--brand-100)",
 };
 
 function heroBtn(primary: boolean): React.CSSProperties {
   return {
-    fontSize: 13, fontWeight: 600, padding: "9px 14px", borderRadius: 10,
-    background: primary ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.12)",
-    color: primary ? "#1a1040" : "#fff",
-    border: primary ? "none" : "1px solid rgba(255,255,255,0.25)",
-    textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6,
+    fontSize: 13, fontWeight: 600, padding: "10px 16px", borderRadius: 10,
+    background: primary ? "#fff" : "transparent",
+    color: primary ? "var(--brand-700)" : "#fff",
+    border: primary ? "1px solid #fff" : "1px solid rgba(255,255,255,0.45)",
+    textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8,
+    boxShadow: primary ? "0 2px 8px rgba(0,0,0,0.10)" : "none",
   };
+}
+
+/* ─── Inline icons (no emojis — looks AI-generated otherwise) ───────────── */
+
+const sw = { width: 16, height: 16, fill: "none", stroke: "currentColor", strokeWidth: 1.8,
+  strokeLinecap: "round" as const, strokeLinejoin: "round" as const, viewBox: "0 0 24 24" };
+
+function IconCalendar() {
+  return (
+    <svg {...sw}><rect x="3" y="4" width="18" height="18" rx="2" />
+      <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" /></svg>
+  );
+}
+function IconClock() {
+  return (<svg {...sw}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>);
+}
+function IconChart() {
+  return (<svg {...sw}><path d="M3 3v18h18" /><path d="M7 14l4-4 4 4 5-7" /></svg>);
+}
+function IconUsers() {
+  return (
+    <svg {...sw}>
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+function IconClipboard() {
+  return (
+    <svg {...sw}>
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <rect x="8" y="2" width="8" height="4" rx="1" />
+    </svg>
+  );
+}
+function IconTarget() {
+  return (<svg {...sw}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>);
 }

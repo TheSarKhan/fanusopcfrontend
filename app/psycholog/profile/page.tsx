@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import ProfileShell from "@/components/ProfileShell";
+import GoogleCalendarCard from "@/components/GoogleCalendarCard";
 import { psychologistApi, type Psychologist } from "@/lib/api";
 
 export default function PsychologProfilePage() {
@@ -51,6 +52,8 @@ export default function PsychologProfilePage() {
       }
       extras={
         me ? (
+          <>
+          <GoogleCalendarCard />
           <div className="uprof-card">
             <div className="uprof-card-head">
               <h2>Public psixoloq profili</h2>
@@ -100,11 +103,12 @@ export default function PsychologProfilePage() {
               </dl>
 
               <p style={{ fontSize: 11.5, color: "var(--oxford-60)", margin: 0, lineHeight: 1.6, padding: "10px 12px", background: "var(--brand-50)", borderRadius: 8, borderLeft: "3px solid var(--brand-200)" }}>
-                💡 Bio, ixtisas və sertifikat dəyişiklikləri üçün admin komandasıyla əlaqə saxlayın —
+                Bio, ixtisas və sertifikat dəyişiklikləri üçün admin komandasıyla əlaqə saxlayın —
                 hər güncəlləmə pasiyentlər tərəfindən görünür və yoxlanılır.
               </p>
             </div>
           </div>
+          </>
         ) : null
       }
     />

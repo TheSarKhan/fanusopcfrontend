@@ -1263,7 +1263,23 @@ export const psychologistApi = {
     const data = await authedMultipartRequest<{ url: string }>("POST", "/psychologist/upload", form);
     return data.url;
   },
+
+  // Google Calendar integration
+  googleStatus: () => authedRequest<GoogleCalendarStatus>("GET", "/psychologist/google/status"),
+  googleAuthUrl: () => authedRequest<{ url: string }>("GET", "/psychologist/google/auth-url"),
+  googleDisconnect: () => authedRequest<void>("POST", "/psychologist/google/disconnect"),
+  googleResync: () => authedRequest<{ queued: number }>("POST", "/psychologist/google/resync"),
 };
+
+export interface GoogleCalendarStatus {
+  configured: boolean;
+  connected: boolean;
+  email?: string;
+  connectedAt?: string;
+  lastSyncAt?: string | null;
+  lastError?: string | null;
+  calendarId?: string;
+}
 
 export interface PsychologistReceivedReview {
   id: number;

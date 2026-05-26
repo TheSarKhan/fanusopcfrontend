@@ -37,8 +37,17 @@ export default function PanelAuthGuard({
     const hadPrior = getStoredUser() !== null;
 
     const check = async () => {
-      const me = await tryGetMe();
+      // Cookies set by a cross-origin login response occasionally don't make
+      // it into the jar before the next page's first request fires. Retry
+      // once after a short delay before declaring the session dead.
+      let me = await tryGetMe();
       if (cancelled) return;
+      if (!me) {
+        await new Promise(r => setTimeout(r, 250));
+        if (cancelled) return;
+        me = await tryGetMe();
+        if (cancelled) return;
+      }
 
       if (!me) {
         bounceToLogin({ hadPriorSession: hadPrior });

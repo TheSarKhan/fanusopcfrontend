@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { login, clearSession } from "@/lib/api";
+import { login, clearSession, tryGetMe } from "@/lib/api";
 import { buildPanelUrl } from "@/lib/auth";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -92,15 +92,42 @@ export default function LoginPage() {
     setError("");
     try {
       const data = await login(email, password);
-      const next = new URLSearchParams(window.location.search).get("next");
-      if (next && next.startsWith("/")) {
-        window.location.href = next;
-      } else {
-        window.location.href = buildPanelUrl(data.role);
+
+      // Browsers occasionally finish navigation before committing the Set-Cookie
+      // from a cross-origin response, leaving the next page to call /api/me
+      // without a cookie and bounce back here. Verify the cookie is live before
+      // redirecting; retry a couple times with tiny backoff if needed.
+      let verified = false;
+      for (let i = 0; i < 4; i++) {
+        const me = await tryGetMe();
+        if (me) { verified = true; break; }
+        await new Promise(r => setTimeout(r, 120));
       }
+      if (!verified) {
+        throw new Error("Sessiya yaradıla bilmədi. Yenidən cəhd edin.");
+      }
+
+      // Always land on the role's subdomain. If a `?next=` deep-link was
+      // captured by the auth guard, keep its path but rewrite the origin
+      // to the panel subdomain (and only honour it for the matching role
+      // — otherwise the panel guard would just bounce again).
+      const ROLE_PANEL_PATH: Record<string, string> = {
+        ADMIN: "/admin", OPERATOR: "/operator", PATIENT: "/patient", PSYCHOLOGIST: "/psycholog",
+      };
+      const expectedPanel = ROLE_PANEL_PATH[data.role];
+      const panelUrl = buildPanelUrl(data.role);
+      const next = new URLSearchParams(window.location.search).get("next");
+      let target = panelUrl;
+      if (next && expectedPanel && next.startsWith(expectedPanel)) {
+        try {
+          const u = new URL(panelUrl);
+          u.pathname = next;
+          target = u.toString();
+        } catch { /* fall through to panelUrl */ }
+      }
+      window.location.href = target;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Giriş uğursuz oldu");
-    } finally {
       setLoading(false);
     }
   };

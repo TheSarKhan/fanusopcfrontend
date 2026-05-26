@@ -991,6 +991,28 @@ export const patientApi = {
   homework: () => authedRequest<Homework[]>("GET", "/patient/homework"),
   markHomework: (id: number, data: { status: "COMPLETED" | "SKIPPED" | "PENDING"; completionNote?: string }) =>
     authedRequest<Homework>("POST", `/patient/homework/${id}/mark`, data),
+  homeworkMove: (id: number, status: HomeworkStatus, position: number) =>
+    authedRequest<Homework>("PATCH", `/patient/homework/${id}/move`, { status, position }),
+  homeworkAddItem: (id: number, label: string) =>
+    authedRequest<HomeworkChecklistItem>("POST", `/patient/homework/${id}/checklist`, { label }),
+  homeworkToggleItem: (id: number, itemId: number, completed: boolean) =>
+    authedRequest<HomeworkChecklistItem>("POST", `/patient/homework/${id}/checklist/${itemId}/toggle`, { completed }),
+  homeworkUploadAttachment: async (id: number, file: File): Promise<HomeworkAttachment> => {
+    const form = new FormData();
+    form.append("file", file);
+    return authedMultipartRequest<HomeworkAttachment>("POST", `/patient/homework/${id}/attachments`, form);
+  },
+  homeworkDeleteAttachment: (id: number, attachmentId: number) =>
+    authedRequest<void>("DELETE", `/patient/homework/${id}/attachments/${attachmentId}`),
+
+  homeworkComments: (id: number) =>
+    authedRequest<HomeworkComment[]>("GET", `/patient/homework/${id}/comments`),
+  homeworkAddComment: (id: number, body: string) =>
+    authedRequest<HomeworkComment>("POST", `/patient/homework/${id}/comments`, { body }),
+  homeworkDeleteComment: (id: number, commentId: number) =>
+    authedRequest<void>("DELETE", `/patient/homework/${id}/comments/${commentId}`),
+  homeworkActivity: (id: number) =>
+    authedRequest<HomeworkActivity[]>("GET", `/patient/homework/${id}/activity`),
 
   // Reviews
   myReviews: () => authedRequest<MyReview[]>("GET", "/patient/reviews"),
@@ -1056,29 +1078,66 @@ export interface MeProfile {
   createdAt: string;
 }
 
-/** Probe the current session: returns the user record on 200, null on 401
- *  (after one refresh attempt). Other errors propagate. Use this from auth
- *  guards where you need to know "am I logged in?" without crashing on 401. */
+/** Probe the current session. Returns:
+ *    - MeProfile when the server confirms we're logged in (or after a
+ *      successful refresh).
+ *    - null ONLY when refresh itself returned 401/403 (definitively logged out).
+ *    - A cached MeProfile (from localStorage) on any other failure — network
+ *      blip, 5xx, CORS hiccup. Returning null on those used to bounce the
+ *      user to /login on every transient glitch (laptop wake-up, weak wifi),
+ *      which the user experienced as fast random logouts. */
 export async function tryGetMe(): Promise<MeProfile | null> {
-  const attempt = async (): Promise<MeProfile | "unauthorized" | null> => {
-    const res = await fetch(`${BASE}/me`, {
-      method: "GET",
-      credentials: "include",
-      headers: localeHeaders(),
-    });
-    if (res.status === 401) return "unauthorized";
-    if (!res.ok) return null; // treat other errors as "can't tell"
-    return res.json();
+  type AttemptResult = MeProfile | "unauthorized" | "unreachable";
+  const attempt = async (): Promise<AttemptResult> => {
+    try {
+      const res = await fetch(`${BASE}/me`, {
+        method: "GET",
+        credentials: "include",
+        headers: localeHeaders(),
+      });
+      if (res.status === 401) return "unauthorized";
+      if (!res.ok) return "unreachable";
+      return await res.json() as MeProfile;
+    } catch {
+      return "unreachable";
+    }
   };
 
   const first = await attempt();
+  if (first === "unreachable") {
+    // Server can't be reached. Hand back the cached identity so the UI
+    // keeps rendering; the next real request will retry.
+    return getStoredUserAsMeProfile();
+  }
   if (first === "unauthorized") {
     const outcome = await tryRefresh();
-    if (outcome !== "ok") return null;
+    if (outcome === "auth_failure") return null;        // definitively logged out
+    if (outcome === "network_error") return getStoredUserAsMeProfile();
     const second = await attempt();
-    return second && second !== "unauthorized" ? second : null;
+    if (second === "unauthorized") return null;
+    if (second === "unreachable") return getStoredUserAsMeProfile();
+    return second;
   }
   return first;
+}
+
+function getStoredUserAsMeProfile(): MeProfile | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("authUser");
+    if (!raw) return null;
+    const u = JSON.parse(raw) as { userId: number; email: string; role: string; firstName?: string; lastName?: string };
+    // We only have a slim user record cached client-side; fill the rest with
+    // safe defaults so the MeProfile shape stays whole. This is purely UI
+    // continuity during a network blip — the next successful /me call
+    // replaces it with the authoritative server copy.
+    return {
+      id: u.userId, email: u.email, role: u.role,
+      firstName: u.firstName ?? null, lastName: u.lastName ?? null,
+      emailVerified: true,
+      createdAt: new Date(0).toISOString(),
+    };
+  } catch { return null; }
 }
 
 export const meApi = {
@@ -1214,12 +1273,58 @@ export const psychologistApi = {
 
   // Homework
   homework: () => authedRequest<Homework[]>("GET", "/psychologist/homework"),
-  createHomework: (data: { patientId: number; title: string; description?: string; dueDate?: string }) =>
+  createHomework: (data: {
+    patientId: number; title: string; description?: string; dueDate?: string;
+    checklist?: string[]; priority?: HomeworkPriority; labelIds?: number[];
+  }) =>
     authedRequest<Homework>("POST", "/psychologist/homework", data),
-  updateHomework: (id: number, data: { patientId: number; title: string; description?: string; dueDate?: string }) =>
+  updateHomework: (id: number, data: {
+    patientId: number; title: string; description?: string; dueDate?: string;
+    priority?: HomeworkPriority; labelIds?: number[];
+  }) =>
     authedRequest<Homework>("PUT", `/psychologist/homework/${id}`, data),
   deleteHomework: (id: number) =>
     authedRequest<void>("DELETE", `/psychologist/homework/${id}`),
+  homeworkMove: (id: number, status: HomeworkStatus, position: number) =>
+    authedRequest<Homework>("PATCH", `/psychologist/homework/${id}/move`, { status, position }),
+  homeworkSetPriority: (id: number, priority: HomeworkPriority) =>
+    authedRequest<Homework>("PATCH", `/psychologist/homework/${id}/priority`, { priority }),
+  homeworkAddItem: (id: number, label: string) =>
+    authedRequest<HomeworkChecklistItem>("POST", `/psychologist/homework/${id}/checklist`, { label }),
+  homeworkToggleItem: (id: number, itemId: number, completed: boolean) =>
+    authedRequest<HomeworkChecklistItem>("POST", `/psychologist/homework/${id}/checklist/${itemId}/toggle`, { completed }),
+  homeworkDeleteItem: (id: number, itemId: number) =>
+    authedRequest<void>("DELETE", `/psychologist/homework/${id}/checklist/${itemId}`),
+  homeworkUploadAttachment: async (id: number, file: File): Promise<HomeworkAttachment> => {
+    const form = new FormData();
+    form.append("file", file);
+    return authedMultipartRequest<HomeworkAttachment>("POST", `/psychologist/homework/${id}/attachments`, form);
+  },
+  homeworkDeleteAttachment: (id: number, attachmentId: number) =>
+    authedRequest<void>("DELETE", `/psychologist/homework/${id}/attachments/${attachmentId}`),
+
+  // Labels (psychologist's personal palette)
+  homeworkLabels: () => authedRequest<HomeworkLabel[]>("GET", "/psychologist/homework-labels"),
+  homeworkLabelCreate: (label: string, color: HomeworkLabelColor) =>
+    authedRequest<HomeworkLabel>("POST", "/psychologist/homework-labels", { label, color }),
+  homeworkLabelUpdate: (id: number, label: string, color: HomeworkLabelColor) =>
+    authedRequest<HomeworkLabel>("PUT", `/psychologist/homework-labels/${id}`, { label, color }),
+  homeworkLabelDelete: (id: number) =>
+    authedRequest<void>("DELETE", `/psychologist/homework-labels/${id}`),
+  homeworkAttachLabel: (id: number, labelId: number) =>
+    authedRequest<Homework>("POST", `/psychologist/homework/${id}/labels/${labelId}`),
+  homeworkDetachLabel: (id: number, labelId: number) =>
+    authedRequest<Homework>("DELETE", `/psychologist/homework/${id}/labels/${labelId}`),
+
+  // Comments + activity
+  homeworkComments: (id: number) =>
+    authedRequest<HomeworkComment[]>("GET", `/psychologist/homework/${id}/comments`),
+  homeworkAddComment: (id: number, body: string) =>
+    authedRequest<HomeworkComment>("POST", `/psychologist/homework/${id}/comments`, { body }),
+  homeworkDeleteComment: (id: number, commentId: number) =>
+    authedRequest<void>("DELETE", `/psychologist/homework/${id}/comments/${commentId}`),
+  homeworkActivity: (id: number) =>
+    authedRequest<HomeworkActivity[]>("GET", `/psychologist/homework/${id}/activity`),
 
   // Templates
   templates: () => authedRequest<FollowupTemplate[]>("GET", "/psychologist/templates"),
@@ -1245,6 +1350,10 @@ export const psychologistApi = {
     authedRequest<BlogPost>("POST", "/psychologist/articles", data),
   updateArticle: (id: number, data: Omit<BlogPost, "id">) =>
     authedRequest<BlogPost>("PUT", `/psychologist/articles/${id}`, data),
+  /** Flip status only — bypasses the shadow-draft auto-save path so
+   *  unpublishing actually unpublishes. */
+  setArticleStatus: (id: number, status: "PUBLISHED" | "DRAFT") =>
+    authedRequest<BlogPost>("PATCH", `/psychologist/articles/${id}/status`, { status }),
   deleteArticle: (id: number) => authedRequest<void>("DELETE", `/psychologist/articles/${id}`),
   addArticleAttachment: async (articleId: number, file: File, displayOrder = 0): Promise<ArticleAttachment> => {
     const form = new FormData();
@@ -1294,6 +1403,50 @@ export interface PsychologistReceivedReview {
 }
 
 // ─── Homework / Resource / Template types ─────────────────────────────
+export type HomeworkStatus = "PENDING" | "COMPLETED" | "SKIPPED";
+export type HomeworkPriority = "LOW" | "MEDIUM" | "HIGH";
+export type HomeworkLabelColor =
+  "blue" | "red" | "green" | "yellow" | "purple" | "orange" | "pink" | "teal" | "gray";
+
+export interface HomeworkChecklistItem {
+  id: number;
+  label: string;
+  position: number;
+  completed: boolean;
+  completedAt?: string | null;
+}
+export interface HomeworkAttachment {
+  id: number;
+  fileUrl: string;
+  fileName: string;
+  fileSize?: number | null;
+  contentType?: string | null;
+  uploadedByRole: "PSYCHOLOGIST" | "PATIENT";
+  uploadedByName?: string | null;
+  createdAt: string;
+}
+export interface HomeworkLabel {
+  id: number;
+  label: string;
+  color: HomeworkLabelColor;
+}
+export interface HomeworkComment {
+  id: number;
+  body: string;
+  authorRole: "PSYCHOLOGIST" | "PATIENT";
+  authorName?: string | null;
+  authorUserId?: number | null;
+  createdAt: string;
+  editedAt?: string | null;
+}
+export interface HomeworkActivity {
+  id: number;
+  action: string;
+  meta?: string | null;
+  actorRole?: string | null;
+  actorName?: string | null;
+  createdAt: string;
+}
 export interface Homework {
   id: number;
   psychologistId: number;
@@ -1303,10 +1456,18 @@ export interface Homework {
   title: string;
   description?: string | null;
   dueDate?: string | null;
-  status: "PENDING" | "COMPLETED" | "SKIPPED";
+  status: HomeworkStatus;
+  priority: HomeworkPriority;
+  position: number;
   completedAt?: string | null;
   completionNote?: string | null;
   createdAt: string;
+  checklistTotal: number;
+  checklistCompleted: number;
+  checklist: HomeworkChecklistItem[];
+  attachments: HomeworkAttachment[];
+  labels: HomeworkLabel[];
+  commentCount: number;
 }
 export interface FollowupTemplate {
   id: number; name: string; body: string; createdAt: string;

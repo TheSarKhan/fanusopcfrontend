@@ -2,7 +2,17 @@
 
 import { useState, useEffect, ReactNode } from "react";
 import { getMainSiteUrl, getStoredUser, storeUser } from "@/lib/auth";
-import { tryGetMe, clearSession } from "@/lib/api";
+import { tryGetMe, tryRefresh, clearSession } from "@/lib/api";
+
+/** Proactively refresh the access cookie every 20 minutes. The default access
+ *  token lifetime is 1 hour (legacy) or 7 days (current default); refreshing
+ *  every 20 min keeps it well clear of expiry even in the legacy case and
+ *  also serves as a heartbeat that rotates the Redis-backed refresh token.
+ *
+ *  Doing this proactively avoids the 401→refresh→retry round-trip on every
+ *  authed request and prevents user-visible blips when the access cookie
+ *  expires mid-action. */
+const PROACTIVE_REFRESH_MS = 20 * 60 * 1000;
 
 /** Send the user to the login page. If they had a session before (cached
  *  authUser in localStorage), we surface a "session expired" hint. If this
@@ -75,17 +85,35 @@ export default function PanelAuthGuard({
     return () => { cancelled = true; };
   }, [requiredRole, mounted]);
 
-  // When the tab returns to focus, re-verify the session in case cookies expired
-  // while we were idle. tryGetMe handles refresh internally.
+  // Proactive silent refresh — keep the access cookie fresh without waiting
+  // for a 401. Runs in the background while the panel is mounted.
   useEffect(() => {
     if (!ready) return;
-    const onVisible = async () => {
+    const tick = async () => {
+      const outcome = await tryRefresh();
+      if (outcome === "auth_failure") {
+        // Refresh token is genuinely dead (revoked / expired in Redis).
+        // No way to recover silently — surface the expired-session UI.
+        bounceToLogin({ hadPriorSession: true });
+      }
+      // "network_error" → leave alone; next attempt will retry.
+    };
+    const id = setInterval(tick, PROACTIVE_REFRESH_MS);
+    // Also refresh whenever the tab returns to focus AFTER being hidden for
+    // a while — covers laptop-sleep / long background tabs where setInterval
+    // is throttled. Inline guard: only if last refresh was >10 min ago.
+    let lastRefreshAt = Date.now();
+    const onVisible = () => {
       if (document.visibilityState !== "visible") return;
-      const me = await tryGetMe();
-      if (!me) bounceToLogin({ hadPriorSession: true });
+      if (Date.now() - lastRefreshAt < 10 * 60 * 1000) return;
+      lastRefreshAt = Date.now();
+      tick();
     };
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [ready]);
 
   if (!mounted) return null;

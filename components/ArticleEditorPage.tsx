@@ -27,6 +27,23 @@ function estimateReadTime(html: string): number {
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
+const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;       // matches backend max-file-size
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+/** Validate a file before we even hit the server so we can give the user a
+ *  precise reason instead of a generic "Şəkil yükləmə xətası". */
+function validateImage(file: File): string | null {
+  if (!file) return "Fayl seçilmədi";
+  if (!file.type.startsWith("image/") && !ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    return "Yalnız şəkil faylları (JPG, PNG, WEBP, GIF) qəbul olunur";
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    const mb = (file.size / (1024 * 1024)).toFixed(1);
+    return `Şəkil çox böyükdür (${mb} MB). Maksimum 30 MB.`;
+  }
+  return null;
+}
+
 interface FormState {
   title: string;
   content: string;
@@ -57,8 +74,11 @@ function formatDate(dateStr: string) {
 }
 
 function buildPayload(data: FormState): Omit<BlogPost, "id"> {
+  // Backend requires @NotBlank title — provide a safe placeholder for drafts
+  // so the user can upload a cover or start typing the body first.
+  const safeTitle = data.title.trim() || "Başlıqsız qaralama";
   return {
-    title: data.title,
+    title: safeTitle,
     content: data.content,
     excerpt: data.excerpt,
     coverImageUrl: data.coverImageUrl || undefined,
@@ -102,6 +122,7 @@ export default function ArticleEditorPage({
   const [form, setForm] = useState<FormState>(initialForm);
   const [articleId, setArticleId] = useState<number | null>(article?.id ?? null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
@@ -122,6 +143,7 @@ export default function ArticleEditorPage({
 
   const doSave = useCallback(async (data: FormState, id: number | null): Promise<number | null> => {
     setSaveStatus("saving");
+    setSaveError(null);
     try {
       const payload = { ...buildPayload(data), status: "DRAFT" };
       if (id) {
@@ -130,7 +152,9 @@ export default function ArticleEditorPage({
         setSaveStatus("saved");
         return id;
       } else {
-        if (!data.title.trim() && !data.content.trim()) {
+        // Don't fire a create call for a completely empty article (nothing
+        // typed AND no cover uploaded). Avoids spamming the DB with empties.
+        if (!data.title.trim() && !data.content.trim() && !data.coverImageUrl) {
           setSaveStatus("idle");
           return null;
         }
@@ -140,11 +164,21 @@ export default function ArticleEditorPage({
         setSaveStatus("saved");
         return created.id;
       }
-    } catch {
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Naməlum xəta";
+      setSaveError(msg);
       setSaveStatus("error");
       return id;
     }
   }, [api]);
+
+  /** Fire an immediate save now — used by retry buttons and after explicit
+   *  user actions (e.g. uploading a cover) where waiting 2s for debounce
+   *  would feel laggy. */
+  const flushSave = useCallback(async () => {
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    return doSave(formRef.current, articleIdRef.current);
+  }, [doSave]);
 
   const scheduleAutoSave = useCallback((data: FormState) => {
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
@@ -178,14 +212,18 @@ export default function ArticleEditorPage({
   }, []);
 
   const handlePublish = async () => {
+    // Validate explicitly so the backend doesn't reject us with a generic 400.
+    const t = formRef.current.title.trim();
+    if (!t) { alert("Yayımlamadan əvvəl başlıq əlavə edin"); return; }
+    if (!formRef.current.content.trim()) {
+      if (!confirm("Məzmun boşdur. Hər halda yayımlamaq istəyirsiniz?")) return;
+    }
+
     setPublishing(true);
+    setSaveError(null);
     try {
       let id = articleIdRef.current;
       if (!id) {
-        if (!formRef.current.title.trim() && !formRef.current.content.trim()) {
-          alert("Başlıq və ya məzmun əlavə edin");
-          return;
-        }
         const created = await api.createBlogPost({ ...buildPayload(formRef.current), status: "PUBLISHED" });
         setArticleId(created.id);
         articleIdRef.current = created.id;
@@ -196,7 +234,10 @@ export default function ArticleEditorPage({
       setForm(f => ({ ...f, status: "PUBLISHED" }));
       setSaveStatus("saved");
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Xəta baş verdi");
+      const msg = e instanceof Error ? e.message : "Xəta baş verdi";
+      setSaveError(msg);
+      setSaveStatus("error");
+      alert("Yayım uğursuz oldu: " + msg);
     } finally {
       setPublishing(false);
     }
@@ -214,19 +255,37 @@ export default function ArticleEditorPage({
   };
 
   const handleCoverUpload = async (file: File) => {
+    const validationError = validateImage(file);
+    if (validationError) { alert(validationError); return; }
+
     setCoverUploading(true);
     try {
       const url = await api.uploadFile(file);
       setField("coverImageUrl", url);
-    } catch {
-      alert("Şəkil yükləmə xətası");
+      // Push the cover to the server right away — don't wait for the 2s
+      // debounce. If we waited and the user navigated quickly, they'd
+      // think the cover was lost.
+      await flushSave();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Naməlum xəta";
+      alert(`Şəkil yüklənə bilmədi: ${msg}`);
     } finally {
       setCoverUploading(false);
     }
   };
 
   const handleEditorUpload = async (file: File): Promise<string> => {
-    return api.uploadFile(file);
+    const validationError = validateImage(file);
+    if (validationError) {
+      // Throw — the rich-text editor expects either a URL or an exception.
+      throw new Error(validationError);
+    }
+    try {
+      return await api.uploadFile(file);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Naməlum xəta";
+      throw new Error(`Şəkil yüklənə bilmədi: ${msg}`);
+    }
   };
 
   const handleShare = useCallback(async () => {
@@ -319,11 +378,30 @@ export default function ArticleEditorPage({
               Yayımlandı
             </span>
           )}
-          <span style={{ fontSize: 12, color: saveStatus === "error" ? "#EF4444" : "#8AAABF" }}>
-            {saveStatus === "saving" && "Saxlanır..."}
-            {saveStatus === "saved" && (form.status === "PUBLISHED" ? "✓ Yayımlandı" : "✓ Qaralama olaraq saxlanıldı")}
-            {saveStatus === "error" && "⚠ Saxlanmadı"}
-          </span>
+          {saveStatus === "error" ? (
+            <span title={saveError ?? undefined}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                fontSize: 12, color: "#B91C1C",
+                background: "#FEE2E2", padding: "3px 10px", borderRadius: 20,
+                border: "1px solid #FECACA",
+              }}>
+              <SaveErrorIcon /> Saxlanmadı{saveError ? ` · ${truncate(saveError, 48)}` : ""}
+              <button onClick={() => flushSave()}
+                style={{
+                  background: "transparent", border: "none", color: "#991B1B",
+                  fontWeight: 700, cursor: "pointer", fontSize: 11, padding: 0,
+                  textDecoration: "underline",
+                }}>
+                Yenidən cəhd et
+              </button>
+            </span>
+          ) : (
+            <span style={{ fontSize: 12, color: "#8AAABF" }}>
+              {saveStatus === "saving" && "Saxlanır…"}
+              {saveStatus === "saved" && (form.status === "PUBLISHED" ? "✓ Yayımlandı" : "✓ Qaralama olaraq saxlanıldı")}
+            </span>
+          )}
         </div>
 
         {/* Actions */}
@@ -500,5 +578,21 @@ export default function ArticleEditorPage({
         />
       </div>
     </div>
+  );
+}
+
+function truncate(s: string, n: number): string {
+  if (s.length <= n) return s;
+  return s.slice(0, n - 1) + "…";
+}
+
+function SaveErrorIcon() {
+  return (
+    <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.4"
+      viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
   );
 }

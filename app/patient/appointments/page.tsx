@@ -84,6 +84,8 @@ const STATUS: Record<string, { label: string; color: string; bg: string; accent:
 
 const ACTIVE_STATUSES = new Set(["ASSIGNED", "CONFIRMED", "PENDING", "REJECTED", "CANCEL_REQUESTED"]);
 
+type StatusFilter = "all" | "confirmed" | "pending";
+
 export default function PatientAppointmentsPage() {
   const { t } = useT();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
@@ -100,6 +102,8 @@ export default function PatientAppointmentsPage() {
   const [feedbackFor, setFeedbackFor] = useState<AppointmentDetail | null>(null);
   const [existingFeedback, setExistingFeedback] = useState<SessionFeedback | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<Set<number>>(new Set());
+  const [psyFilter, setPsyFilter] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   // Tick every minute for countdown
   useEffect(() => {
@@ -132,52 +136,87 @@ export default function PatientAppointmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const today = useMemo(() => {
-    return items
-      .filter(a => a.startAt && isSameDay(new Date(a.startAt), now))
-      .filter(a => ACTIVE_STATUSES.has(a.status))
-      .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
-  }, [items, now]);
+  /** Psychologist filter chips: every psy from any active appointment, sorted by upcoming count. */
+  const psyChips = useMemo(() => {
+    const map = new Map<number, { id: number; name: string; count: number }>();
+    for (const a of items) {
+      if (!a.psychologistId || !a.psychologistName) continue;
+      if (!ACTIVE_STATUSES.has(a.status) && a.status !== "AWAITING_CONFIRMATION" && a.status !== "DISPUTED") continue;
+      const entry = map.get(a.psychologistId) ?? { id: a.psychologistId, name: a.psychologistName, count: 0 };
+      entry.count += 1;
+      map.set(a.psychologistId, entry);
+    }
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [items]);
+
+  const matchesFilters = (a: AppointmentDetail) => {
+    if (psyFilter != null && a.psychologistId !== psyFilter) return false;
+    if (statusFilter === "confirmed" && a.status !== "CONFIRMED") return false;
+    if (statusFilter === "pending"
+      && a.status !== "ASSIGNED"
+      && a.status !== "PENDING"
+      && a.status !== "AWAITING_CONFIRMATION"
+      && a.status !== "CANCEL_REQUESTED"
+      && a.status !== "REJECTED") return false;
+    return true;
+  };
 
   const next = useMemo(() => {
     return items
       .filter(a => a.startAt && new Date(a.startAt).getTime() > now.getTime() - 30 * 60_000)
       .filter(a => a.status === "ASSIGNED" || a.status === "CONFIRMED")
+      .filter(matchesFilters)
       .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())[0] ?? null;
-  }, [items, now]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, now, psyFilter, statusFilter]);
 
   const awaitingConfirm = useMemo(() => {
     return items
       .filter(a => a.status === "AWAITING_CONFIRMATION" || a.status === "DISPUTED")
+      .filter(matchesFilters)
       .sort((a, b) => {
         const da = new Date(a.endAt ?? a.startAt ?? 0).getTime();
         const db = new Date(b.endAt ?? b.startAt ?? 0).getTime();
         return db - da;
       });
-  }, [items]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, psyFilter, statusFilter]);
 
-  const thisWeek = useMemo(() => {
-    const weekEnd = new Date(now);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-    return items
-      .filter(a => a.startAt
-        && new Date(a.startAt).getTime() > now.getTime()
-        && new Date(a.startAt).getTime() < weekEnd.getTime()
-        && !isSameDay(new Date(a.startAt), now)
-      )
+  /** All upcoming (today + future), filtered, grouped by AZ day key. */
+  const agendaGroups = useMemo(() => {
+    const list = items
+      .filter(a => a.startAt && new Date(a.startAt).getTime() > now.getTime() - 30 * 60_000)
       .filter(a => ACTIVE_STATUSES.has(a.status))
+      .filter(matchesFilters)
       .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
-  }, [items, now]);
+    const groups: { key: string; label: string; items: AppointmentDetail[] }[] = [];
+    let last: typeof groups[number] | null = null;
+    for (const a of list) {
+      const d = new Date(a.startAt!);
+      const key = azDayKey(d);
+      if (!last || last.key !== key) {
+        last = { key, label: relativeDayLabel(d, now), items: [] };
+        groups.push(last);
+      }
+      last.items.push(a);
+    }
+    return groups;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, now, psyFilter, statusFilter]);
+
+  const agendaTotal = useMemo(() => agendaGroups.reduce((n, g) => n + g.items.length, 0), [agendaGroups]);
 
   const history = useMemo(() => {
     return items
       .filter(a => ["COMPLETED", "CANCELLED"].includes(a.status))
+      .filter(matchesFilters)
       .sort((a, b) => {
         const da = new Date(a.startAt ?? a.endAt ?? 0).getTime();
         const db = new Date(b.startAt ?? b.endAt ?? 0).getTime();
         return db - da;
       });
-  }, [items]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, psyFilter, statusFilter]);
 
   const action = async (id: number, fn: () => Promise<AppointmentDetail>) => {
     setBusyId(id);
@@ -271,6 +310,16 @@ export default function PatientAppointmentsPage() {
         </div>
       ) : (
         <>
+          {(psyChips.length > 1 || statusFilter !== "all" || psyFilter != null) && (
+            <FilterBar
+              psyChips={psyChips}
+              psyFilter={psyFilter}
+              statusFilter={statusFilter}
+              onPsy={setPsyFilter}
+              onStatus={setStatusFilter}
+            />
+          )}
+
           <NextSessionHero
             appt={next}
             now={now}
@@ -299,40 +348,32 @@ export default function PatientAppointmentsPage() {
             </Section>
           )}
 
-          <Section title={t("appt.sectionToday")} count={today.length} icon="🟢">
-            {today.length === 0 ? (
-              <Empty msg="Bu gün başqa randevunuz yoxdur" />
+          <Section title="Yaxınlaşan" count={agendaTotal} icon="📅">
+            {agendaGroups.length === 0 ? (
+              <Empty msg={
+                psyFilter != null || statusFilter !== "all"
+                  ? "Bu filtrlərə uyğun yaxınlaşan randevu yoxdur"
+                  : "Yaxınlaşan randevu yoxdur"
+              } />
             ) : (
-              <div style={{ display: "grid", gap: 10 }}>
-                {today.map(a => (
-                  <TodayCard
-                    key={a.id}
-                    a={a}
-                    isNext={next?.id === a.id}
-                    sessionNumber={a.psychologistId ? sessionCountFor(a.psychologistId) : null}
-                    busyId={busyId}
-                    onReschedule={() => setReschedFor(a)}
-                    onCancel={() => cancel(a)}
-                  />
-                ))}
-              </div>
-            )}
-          </Section>
-
-          <Section title={t("appt.sectionWeek")} count={thisWeek.length} icon="📅">
-            {thisWeek.length === 0 ? (
-              <Empty msg="Bu həftə başqa randevunuz yoxdur" />
-            ) : (
-              <div style={{ display: "grid", gap: 6 }}>
-                {thisWeek.map(a => (
-                  <WeekRow
-                    key={a.id}
-                    a={a}
-                    sessionNumber={a.psychologistId ? sessionCountFor(a.psychologistId) : null}
-                    now={now}
-                    onReschedule={() => setReschedFor(a)}
-                    onCancel={() => cancel(a)}
-                  />
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {agendaGroups.map(g => (
+                  <div key={g.key}>
+                    <div className="agenda-day-head">{g.label}</div>
+                    <div style={{ display: "grid", gap: 4 }}>
+                      {g.items.map(a => (
+                        <AgendaRow
+                          key={a.id}
+                          a={a}
+                          isNext={next?.id === a.id}
+                          now={now}
+                          sessionNumber={a.psychologistId ? sessionCountFor(a.psychologistId) : null}
+                          onReschedule={() => setReschedFor(a)}
+                          onCancel={() => cancel(a)}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -530,6 +571,140 @@ function NextSessionHero({
   );
 }
 
+/* ─── Filter bar ─────────────────────────────────────────────────────────── */
+
+function FilterBar({
+  psyChips, psyFilter, statusFilter, onPsy, onStatus,
+}: {
+  psyChips: { id: number; name: string; count: number }[];
+  psyFilter: number | null;
+  statusFilter: StatusFilter;
+  onPsy: (id: number | null) => void;
+  onStatus: (s: StatusFilter) => void;
+}) {
+  const totalUpcoming = psyChips.reduce((n, c) => n + c.count, 0);
+  return (
+    <div className="appt-filterbar">
+      <div className="appt-filterbar__row appt-filterbar__row--scroll">
+        <button
+          className={`appt-chip${psyFilter === null ? " is-active" : ""}`}
+          onClick={() => onPsy(null)}
+          type="button">
+          Hamısı <span className="appt-chip__n">{totalUpcoming}</span>
+        </button>
+        {psyChips.map(p => (
+          <button key={p.id}
+            className={`appt-chip${psyFilter === p.id ? " is-active" : ""}`}
+            onClick={() => onPsy(psyFilter === p.id ? null : p.id)}
+            type="button">
+            <span className="appt-chip__avatar">{initialsOf(p.name)}</span>
+            {p.name}
+            <span className="appt-chip__n">{p.count}</span>
+          </button>
+        ))}
+      </div>
+      <div className="appt-filterbar__row appt-filterbar__row--right">
+        {(["all", "confirmed", "pending"] as StatusFilter[]).map(s => (
+          <button key={s}
+            className={`appt-chip appt-chip--status${statusFilter === s ? " is-active" : ""}`}
+            onClick={() => onStatus(s)}
+            type="button">
+            {s === "all" ? "Hamısı" : s === "confirmed" ? "Təsdiqlənmiş" : "Gözləyir"}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Compact agenda row ─────────────────────────────────────────────────── */
+
+function AgendaRow({
+  a, isNext, now, sessionNumber, onReschedule, onCancel,
+}: {
+  a: AppointmentDetail;
+  isNext: boolean;
+  now: Date;
+  sessionNumber: number | null;
+  onReschedule: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useT();
+  if (!a.startAt) return null;
+  const start = new Date(a.startAt);
+  const status = STATUS[a.status] ?? STATUS.ASSIGNED;
+  const tu = timeUntil(start, now);
+  const isToday = isSameDay(start, now);
+  return (
+    <div className={`agenda-row${isNext ? " agenda-row--next" : ""}`}
+      style={{ borderLeftColor: status.accent }}>
+      <div className="agenda-row__time">{fmtTime(start)}</div>
+      <div className="agenda-row__avatar">{initialsOf(a.psychologistName)}</div>
+      <div className="agenda-row__main">
+        <div className="agenda-row__name">
+          {a.psychologistName ?? "Operator təyin edəcək"}
+          {sessionNumber != null && <span className="agenda-row__nth"> · {sessionNumber}-ci seans</span>}
+          {isNext && <span className="agenda-row__next-pill">Növbəti</span>}
+        </div>
+        <div className="agenda-row__meta">
+          <span className="agenda-row__badge" style={{ color: status.color, background: status.bg }}>
+            {status.label}
+          </span>
+          {isToday && !tu.expired && (
+            <span className="agenda-row__count">⏰ {tu.text}</span>
+          )}
+          {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
+            <span className="agenda-row__series">
+              {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="agenda-row__actions">
+        {isToday && (
+          <a href={`/patient/appointments/${a.id}/intake`}
+            className="agenda-row__icon-btn"
+            title={t("intake.cta")}>
+            <IconClipboard />
+          </a>
+        )}
+        <button onClick={onReschedule}
+          className="agenda-row__icon-btn"
+          title={t("staff.cardReschedule")}>
+          <IconClock />
+        </button>
+        <button onClick={onCancel}
+          className="agenda-row__icon-btn agenda-row__icon-btn--danger"
+          title={t("staff.cardCancel")}>
+          <IconX />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function IconClipboard() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 2h6a2 2 0 0 1 2 2v2H7V4a2 2 0 0 1 2-2z"/><path d="M5 4h2v18a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm14 0h-2v18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
+    </svg>
+  );
+}
+function IconClock() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+  );
+}
+function IconX() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  );
+}
+
 /* ─── Sections wrapper ───────────────────────────────────────────────────── */
 
 function Section({
@@ -648,127 +823,6 @@ function AwaitingCard({
           </button>
         </div>
       )}
-    </div>
-  );
-}
-
-/* ─── Today card ─────────────────────────────────────────────────────────── */
-
-function TodayCard({
-  a, isNext, sessionNumber, busyId, onReschedule, onCancel,
-}: {
-  a: AppointmentDetail;
-  isNext: boolean;
-  sessionNumber: number | null;
-  busyId: number | null;
-  onReschedule: () => void;
-  onCancel: () => void;
-}) {
-  const { t } = useT();
-  if (!a.startAt) return null;
-  const start = new Date(a.startAt);
-  const status = STATUS[a.status] ?? STATUS.ASSIGNED;
-
-  return (
-    <div
-      className={`psy-card psy-card--today${isNext ? " psy-card--next" : ""}`}
-      style={{ borderLeft: `4px solid ${status.accent}` }}
-    >
-      <div className="psy-card__top">
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span className="psy-card__time">{fmtTime(start)}</span>
-          <span className="psy-card__badge" style={{ color: status.color, background: status.bg }}>
-            {status.label}
-          </span>
-          {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
-            <span className="psy-card__chip" style={{ background: "var(--brand-50)", color: "var(--brand-700)", fontWeight: 600 }}>
-              {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
-            </span>
-          )}
-          {isNext && <span className="psy-card__chip psy-card__chip--next">Növbəti</span>}
-        </div>
-      </div>
-      <div className="psy-card__body">
-        <div className="psy-card__avatar">{initialsOf(a.psychologistName)}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="psy-card__name">
-            {a.psychologistName ?? "Operator təyin edəcək"}
-            {sessionNumber && <span className="psy-card__nth"> · {sessionNumber}-ci seans</span>}
-          </div>
-          <div className="psy-card__ctx">
-            {a.note && (
-              <span className="psy-card__ctx-quote">
-                «{a.note.slice(0, 80)}{a.note.length > 80 ? "…" : ""}»
-              </span>
-            )}
-            {a.operatorNote && (
-              <span className="psy-card__ctx-quote">
-                <strong>Operator:</strong> {a.operatorNote.slice(0, 80)}{a.operatorNote.length > 80 ? "…" : ""}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="psy-card__actions">
-        <a
-          href={`/patient/appointments/${a.id}/intake`}
-          className="psy-card__btn psy-card__btn--ghost"
-          style={{ textDecoration: "none" }}>
-          {t("intake.cta")}
-        </a>
-        <button
-          onClick={onReschedule}
-          disabled={busyId === a.id}
-          className="psy-card__btn psy-card__btn--ghost">
-          {t("staff.cardReschedule")}
-        </button>
-        <button
-          onClick={onCancel}
-          disabled={busyId === a.id}
-          className="psy-card__btn psy-card__btn--ghost"
-          style={{ color: "#991B1B", borderColor: "#FECACA" }}>
-          {t("staff.cardCancel")}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Week row ───────────────────────────────────────────────────────────── */
-
-function WeekRow({
-  a, sessionNumber, now, onReschedule, onCancel,
-}: {
-  a: AppointmentDetail;
-  sessionNumber: number | null;
-  now: Date;
-  onReschedule: () => void;
-  onCancel: () => void;
-}) {
-  const { t } = useT();
-  if (!a.startAt) return null;
-  const start = new Date(a.startAt);
-  const status = STATUS[a.status] ?? STATUS.ASSIGNED;
-  return (
-    <div className="psy-week-row" style={{ borderLeft: `3px solid ${status.accent}` }}>
-      <div className="psy-week-row__day">
-        <strong>{relativeDayLabel(start, now)}</strong>
-        <span>{fmtTime(start)}</span>
-      </div>
-      <div className="psy-week-row__name">
-        {a.psychologistName ?? "Operator təyin edəcək"}
-        {sessionNumber && <small> · {sessionNumber}-ci seans</small>}
-      </div>
-      <div style={{ display: "flex", gap: 6 }}>
-        <button onClick={onReschedule}
-          style={{ fontSize: 11, color: "var(--brand-700)", background: "var(--brand-50)", border: "1px solid var(--brand-200)", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontWeight: 600 }}>
-          {t("staff.cardReschedule")}
-        </button>
-        <button onClick={onCancel}
-          style={{ fontSize: 11, color: "#991B1B", background: "#FFF5F5", border: "1px solid #FECACA", borderRadius: 6, padding: "4px 8px", cursor: "pointer", fontWeight: 600 }}>
-          {t("staff.cardCancel")}
-        </button>
-      </div>
     </div>
   );
 }

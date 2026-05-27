@@ -1378,7 +1378,21 @@ export const psychologistApi = {
   googleAuthUrl: () => authedRequest<{ url: string }>("GET", "/psychologist/google/auth-url"),
   googleDisconnect: () => authedRequest<void>("POST", "/psychologist/google/disconnect"),
   googleResync: () => authedRequest<{ queued: number }>("POST", "/psychologist/google/resync"),
+  googleEvents: (fromIso: string, toIso: string) =>
+    authedRequest<GoogleExternalEvent[]>(
+      "GET",
+      `/psychologist/google/events?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`
+    ),
 };
+
+export interface GoogleExternalEvent {
+  id: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+  status?: string | null;
+  htmlLink?: string | null;
+}
 
 export interface GoogleCalendarStatus {
   configured: boolean;

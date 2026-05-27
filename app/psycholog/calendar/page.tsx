@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { psychologistApi, type AppointmentDetail } from "@/lib/api";
+import { psychologistApi, type AppointmentDetail, type GoogleCalendarStatus, type GoogleExternalEvent } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 const DAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"]; // Mon..Sun
+
+// Google Calendar overlay is wired up but hidden for now — flip to true to re-enable.
+const SHOW_GOOGLE_INTEGRATION = false;
 
 const HOUR_PX = 56;                  // 1 minute ≈ 0.93px — comfortable for 50-min sessions
 const PX_PER_MIN = HOUR_PX / 60;
@@ -31,6 +34,17 @@ function fmtDay(d: Date) {
 
 function isoDay(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** ISO without timezone (LocalDateTime), matches Spring's LocalDateTime parser. */
+function toLocalIso(d: Date) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`;
 }
 
 function pad2(n: number) { return String(n).padStart(2, "0"); }
@@ -63,6 +77,14 @@ interface PositionedEvent {
   // Lane layout for overlapping events
   laneIndex: number;
   laneCount: number;
+}
+
+interface PositionedExternal {
+  ev: GoogleExternalEvent;
+  start: Date;
+  end: Date;
+  startMinOfDay: number;
+  endMinOfDay: number;
 }
 
 /** Pack overlapping events into lanes (columns). Returns the same events with
@@ -111,6 +133,14 @@ export default function PsychologCalendarPage() {
   const [dropTarget, setDropTarget] = useState<{ day: string; minute: number } | null>(null);
   const [proposalFor, setProposalFor] = useState<{ appointment: AppointmentDetail; newStart: Date } | null>(null);
 
+  // Google Calendar overlay
+  const [gStatus, setGStatus] = useState<GoogleCalendarStatus | null>(null);
+  const [gEvents, setGEvents] = useState<GoogleExternalEvent[]>([]);
+  const [gLoading, setGLoading] = useState(false);
+  const [gShown, setGShown] = useState(true);
+  const [gConnecting, setGConnecting] = useState(false);
+  const [gError, setGError] = useState<string | null>(null);
+
   const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
   const load = () => {
@@ -141,6 +171,25 @@ export default function PsychologCalendarPage() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
+  // Google Calendar status (one-shot on mount) — gated by feature flag.
+  useEffect(() => {
+    if (!SHOW_GOOGLE_INTEGRATION) return;
+    psychologistApi.googleStatus().then(setGStatus).catch(() => setGStatus(null));
+  }, []);
+
+  // Fetch Google events for the visible week whenever week or connection changes.
+  useEffect(() => {
+    if (!SHOW_GOOGLE_INTEGRATION) return;
+    if (!gStatus?.connected) { setGEvents([]); return; }
+    const from = new Date(weekStart); from.setHours(0, 0, 0, 0);
+    const to = addDays(weekStart, 7);
+    setGLoading(true); setGError(null);
+    psychologistApi.googleEvents(toLocalIso(from), toLocalIso(to))
+      .then(setGEvents)
+      .catch((e: Error) => { setGEvents([]); setGError(e.message); })
+      .finally(() => setGLoading(false));
+  }, [gStatus?.connected, weekStart, refreshNonce]);
+
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
   // Compute visible hour range: expand if any event leaks outside the default window.
@@ -153,11 +202,37 @@ export default function PsychologCalendarPage() {
       const s = new Date(eff);
       const e = a.endAt ? new Date(a.endAt) : new Date(s.getTime() + 50 * 60_000);
       lo = Math.min(lo, s.getHours());
-      // Round end up to the next hour so events never get clipped.
       hi = Math.max(hi, e.getHours() + (e.getMinutes() > 0 ? 1 : 0));
     }
+    if (gShown && gStatus?.connected) {
+      for (const ev of gEvents) {
+        const s = new Date(ev.startAt);
+        const e = new Date(ev.endAt);
+        if (s.getTime() < weekStart.getTime() || s.getTime() >= addDays(weekStart, 7).getTime()) continue;
+        lo = Math.min(lo, s.getHours());
+        hi = Math.max(hi, e.getHours() + (e.getMinutes() > 0 ? 1 : 0));
+      }
+    }
     return { hourMin: lo, hourMax: hi };
-  }, [items]);
+  }, [items, gEvents, gShown, gStatus?.connected, weekStart]);
+
+  // Compute which appointments overlap with any external event (visual warning).
+  const conflictIds = useMemo(() => {
+    const out = new Set<number>();
+    if (!gShown || !gStatus?.connected || gEvents.length === 0) return out;
+    for (const a of items) {
+      if (!a.startAt) continue;
+      if (a.status === "CANCELLED" || a.status === "REJECTED") continue;
+      const aStart = new Date(a.startAt).getTime();
+      const aEnd = a.endAt ? new Date(a.endAt).getTime() : aStart + 50 * 60_000;
+      for (const ev of gEvents) {
+        const eS = new Date(ev.startAt).getTime();
+        const eE = new Date(ev.endAt).getTime();
+        if (aStart < eE && eS < aEnd) { out.add(a.id); break; }
+      }
+    }
+    return out;
+  }, [items, gEvents, gShown, gStatus?.connected]);
 
   const hours = useMemo(
     () => Array.from({ length: hourMax - hourMin }, (_, i) => i + hourMin),
@@ -177,6 +252,44 @@ export default function PsychologCalendarPage() {
     // Only on initial paint of a given week.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, weekStart]);
+
+  // Group external (Google) events per visible day. Events that span across
+  // midnight are split into two day buckets so each fragment renders correctly.
+  const externalByDay = useMemo(() => {
+    const map = new Map<string, PositionedExternal[]>();
+    if (!gShown || !gStatus?.connected) return map;
+    const weekStartMs = weekStart.getTime();
+    const weekEndMs = addDays(weekStart, 7).getTime();
+    for (const ev of gEvents) {
+      const s0 = new Date(ev.startAt);
+      const e0 = new Date(ev.endAt);
+      if (e0.getTime() <= weekStartMs || s0.getTime() >= weekEndMs) continue;
+
+      // Walk per day from start to end, clipping at day boundaries.
+      let cursor = new Date(s0);
+      cursor.setHours(0, 0, 0, 0); // start of the event's day
+      // start from event start day, not midnight earlier
+      cursor = new Date(s0);
+      while (cursor < e0) {
+        const dayKey = isoDay(cursor);
+        const dayEnd = new Date(cursor); dayEnd.setHours(24, 0, 0, 0);
+        const segStart = cursor;
+        const segEnd = e0 < dayEnd ? e0 : dayEnd;
+        if (!map.has(dayKey)) map.set(dayKey, []);
+        map.get(dayKey)!.push({
+          ev,
+          start: new Date(segStart),
+          end: new Date(segEnd),
+          startMinOfDay: segStart.getHours() * 60 + segStart.getMinutes(),
+          endMinOfDay: segEnd.getHours() === 0 && segEnd.getMinutes() === 0
+            ? 24 * 60
+            : segEnd.getHours() * 60 + segEnd.getMinutes(),
+        });
+        cursor = dayEnd;
+      }
+    }
+    return map;
+  }, [gEvents, gShown, gStatus?.connected, weekStart]);
 
   // Group + layout per-day events
   const byDay = useMemo(() => {
@@ -263,6 +376,30 @@ export default function PsychologCalendarPage() {
   const dropPreviewTopPx = (minute: number) => (minute - hourMin * 60) * PX_PER_MIN;
   const dropPreviewHeightPx = () => DROP_SNAP_MIN * PX_PER_MIN;
 
+  const handleGoogleConnect = async () => {
+    setGConnecting(true); setGError(null);
+    try {
+      const { url } = await psychologistApi.googleAuthUrl();
+      window.location.href = url;
+    } catch (e) {
+      setGError((e as Error).message);
+      setGConnecting(false);
+    }
+  };
+
+  const handleGoogleResync = async () => {
+    setGLoading(true); setGError(null);
+    try {
+      await psychologistApi.googleResync();
+      setRefreshNonce(x => x + 1);
+      psychologistApi.googleStatus().then(setGStatus).catch(() => {});
+    } catch (e) {
+      setGError((e as Error).message);
+    } finally {
+      setGLoading(false);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
@@ -279,6 +416,22 @@ export default function PsychologCalendarPage() {
           <button onClick={() => setWeekStart(addDays(weekStart, 7))} style={btnStyle()}>Növbəti ›</button>
         </div>
       </div>
+
+      {SHOW_GOOGLE_INTEGRATION && (
+        <GoogleStatusBanner
+          status={gStatus}
+          loading={gLoading}
+          shown={gShown}
+          eventCount={gEvents.length}
+          conflictCount={conflictIds.size}
+          connecting={gConnecting}
+          error={gError}
+          onConnect={handleGoogleConnect}
+          onResync={handleGoogleResync}
+          onToggleShown={() => setGShown(s => !s)}
+          onDismissError={() => setGError(null)}
+        />
+      )}
 
       {loading ? (
         <div style={{ background: "#fff", borderRadius: 12, padding: 40, textAlign: "center", color: "#52718F" }}>Yüklənir…</div>
@@ -369,6 +522,47 @@ export default function PsychologCalendarPage() {
                         }} />
                       ))}
 
+                      {/* Google external events (background layer) */}
+                      {SHOW_GOOGLE_INTEGRATION && gShown && gStatus?.connected && (externalByDay.get(dayKey) ?? []).map((ex, idx) => {
+                        const top = Math.max(0, (ex.startMinOfDay - hourMin * 60) * PX_PER_MIN);
+                        const rawHeight = (ex.endMinOfDay - ex.startMinOfDay) * PX_PER_MIN;
+                        const height = Math.max(18, rawHeight);
+                        return (
+                          <a key={`gx-${ex.ev.id}-${idx}`}
+                            href={ex.ev.htmlLink ?? "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={e => { if (!ex.ev.htmlLink) e.preventDefault(); }}
+                            title={`Google: ${ex.ev.title}\n${fmtHM(ex.start)}–${fmtHM(ex.end)}`}
+                            style={{
+                              position: "absolute",
+                              top, height,
+                              left: 2, right: 2,
+                              background: "repeating-linear-gradient(135deg, rgba(66,133,244,0.10) 0 6px, rgba(66,133,244,0.04) 6px 12px)",
+                              border: "1px solid rgba(66,133,244,0.35)",
+                              borderLeft: "3px solid #4285F4",
+                              borderRadius: 6,
+                              padding: "2px 6px",
+                              fontSize: 10.5,
+                              lineHeight: 1.25,
+                              color: "#1E3A8A",
+                              overflow: "hidden",
+                              cursor: ex.ev.htmlLink ? "pointer" : "default",
+                              textDecoration: "none",
+                              zIndex: 1,
+                            }}>
+                            <div style={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {ex.ev.title}
+                            </div>
+                            {height >= 36 && (
+                              <div style={{ fontSize: 9.5, opacity: 0.7, marginTop: 1 }}>
+                                {fmtHM(ex.start)}–{fmtHM(ex.end)} · Google
+                              </div>
+                            )}
+                          </a>
+                        );
+                      })}
+
                       {/* Drop preview marker */}
                       {isDayDropTarget && dropTarget && (
                         <div style={{
@@ -408,12 +602,13 @@ export default function PsychologCalendarPage() {
                         const isBeingDragged = draggingId === ev.item.id;
                         const a = ev.item;
                         const compact = height < 38;
+                        const hasConflict = conflictIds.has(a.id);
                         return (
                           <div key={a.id}
                             draggable={draggable}
                             onDragStart={e => handleDragStart(a, e)}
                             onDragEnd={handleDragEnd}
-                            title={`${a.patientName ?? "—"} · ${fmtHM(ev.start)}–${fmtHM(ev.end)} · ${a.status}${draggable ? "\nSürükləyib başqa vaxta burax" : ""}`}
+                            title={`${a.patientName ?? "—"} · ${fmtHM(ev.start)}–${fmtHM(ev.end)} · ${a.status}${hasConflict ? "\nGoogle Calendar ilə zaman üst-üstə düşür" : ""}${draggable ? "\nSürükləyib başqa vaxta burax" : ""}`}
                             style={{
                               position: "absolute",
                               top,
@@ -422,8 +617,10 @@ export default function PsychologCalendarPage() {
                               width: `calc(${widthPct}% - 4px)`,
                               background: colors.bg,
                               color: colors.fg,
-                              border: colors.dashed ? `1px dashed ${colors.fg}` : `1px solid ${colors.bg}`,
-                              borderLeft: `3px solid ${colors.fg}`,
+                              border: hasConflict
+                                ? "1px solid #DC2626"
+                                : colors.dashed ? `1px dashed ${colors.fg}` : `1px solid ${colors.bg}`,
+                              borderLeft: `3px solid ${hasConflict ? "#DC2626" : colors.fg}`,
                               borderRadius: 6,
                               padding: compact ? "1px 5px" : "4px 6px",
                               fontSize: 11,
@@ -432,7 +629,9 @@ export default function PsychologCalendarPage() {
                               opacity: a.status === "CANCELLED" ? 0.55 : isBeingDragged ? 0.4 : 1,
                               cursor: draggable ? "grab" : "default",
                               zIndex: 2,
-                              boxShadow: isBeingDragged ? "none" : "0 1px 2px rgba(16,81,183,0.08)",
+                              boxShadow: hasConflict
+                                ? "0 0 0 1px rgba(220, 38, 38, 0.25), 0 1px 2px rgba(220, 38, 38, 0.18)"
+                                : isBeingDragged ? "none" : "0 1px 2px rgba(16,81,183,0.08)",
                             }}>
                             <a href="/psycholog/appointments"
                               onClick={e => { if (draggable) e.stopPropagation(); }}
@@ -483,6 +682,12 @@ export default function PsychologCalendarPage() {
               <Legend label="Təsdiqlənib" bg="#D1FAE5" fg="#065F46" />
               <Legend label="Tamamlanıb" bg="#E5E7EB" fg="#374151" />
               <Legend label="Ləğv olunub" bg="#FEE2E2" fg="#991B1B" />
+              {SHOW_GOOGLE_INTEGRATION && gStatus?.connected && gShown && (
+                <Legend label="Google hadisəsi" bg="rgba(66,133,244,0.10)" fg="#4285F4" />
+              )}
+              {SHOW_GOOGLE_INTEGRATION && conflictIds.size > 0 && (
+                <Legend label="Konflikt" bg="#FEE2E2" fg="#DC2626" />
+              )}
             </div>
           </div>
         </div>
@@ -495,6 +700,207 @@ export default function PsychologCalendarPage() {
           onClose={() => setProposalFor(null)}
           onSubmitted={() => { setProposalFor(null); setRefreshNonce(x => x + 1); }}
         />
+      )}
+    </div>
+  );
+}
+
+function GoogleIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <path d="M21.8 12.2c0-.6-.1-1.2-.2-1.7H12v3.4h5.5c-.2 1.2-1 2.3-2 3v2.4h3.3c1.9-1.8 3-4.4 3-7.1z" fill="#4285F4"/>
+      <path d="M12 22c2.7 0 5-.9 6.7-2.5l-3.3-2.4c-.9.6-2.1 1-3.4 1-2.6 0-4.8-1.7-5.6-4.1H3v2.5C4.7 19.8 8.1 22 12 22z" fill="#34A853"/>
+      <path d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.5H3C2.4 9 2 10.5 2 12s.4 3 1 4.5L6.4 14z" fill="#FBBC04"/>
+      <path d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9C16.9 2.9 14.6 2 12 2 8.1 2 4.7 4.2 3 7.5L6.4 10c.8-2.4 3-4.1 5.6-4.1z" fill="#EA4335"/>
+    </svg>
+  );
+}
+
+function GoogleStatusBanner({
+  status, loading, shown, eventCount, conflictCount, connecting, error,
+  onConnect, onResync, onToggleShown, onDismissError,
+}: {
+  status: GoogleCalendarStatus | null;
+  loading: boolean;
+  shown: boolean;
+  eventCount: number;
+  conflictCount: number;
+  connecting: boolean;
+  error: string | null;
+  onConnect: () => void;
+  onResync: () => void;
+  onToggleShown: () => void;
+  onDismissError: () => void;
+}) {
+  const baseCard: React.CSSProperties = {
+    display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+    padding: "10px 14px",
+    borderRadius: 12,
+    marginBottom: 12,
+    fontSize: 12.5,
+  };
+
+  // Still loading status — show a neutral placeholder so the slot is visible.
+  if (!status) {
+    return (
+      <div style={{
+        ...baseCard,
+        background: "#F8FAFC", border: "1px solid #E2E8F0",
+        color: "#475569",
+      }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: "50%",
+          background: "#fff", border: "1px solid #E2E8F0",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <GoogleIcon size={16} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, color: "#1A2535" }}>Google Calendar</div>
+          <div style={{ fontSize: 11.5, marginTop: 2 }}>Status yoxlanılır…</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Backend env not configured by admin (GOOGLE_CLIENT_ID etc. missing).
+  if (!status.configured) {
+    return (
+      <div style={{
+        ...baseCard,
+        background: "#FFFBEB", border: "1px solid #FDE68A",
+        color: "#854D0E",
+      }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: "50%",
+          background: "#fff", border: "1px solid #FDE68A",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <GoogleIcon size={16} />
+        </div>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontWeight: 700 }}>Google Calendar inteqrasiyası hələ konfiqurasiya olunmayıb</div>
+          <div style={{ fontSize: 11.5, marginTop: 2 }}>
+            Bu xidmətdən istifadə etmək üçün admin komandası backend-də{" "}
+            <code style={{ fontSize: 11 }}>GOOGLE_CLIENT_ID</code>,{" "}
+            <code style={{ fontSize: 11 }}>GOOGLE_CLIENT_SECRET</code> və{" "}
+            <code style={{ fontSize: 11 }}>GOOGLE_REDIRECT_URI</code> dəyərlərini qurmalıdır.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!status.connected) {
+    return (
+      <div style={{
+        ...baseCard,
+        background: "linear-gradient(135deg, #F8FAFF 0%, #EFF6FF 100%)",
+        border: "1px solid #DBEAFE",
+        color: "#1E3A8A",
+      }}>
+        <div style={{
+          width: 34, height: 34, borderRadius: "50%",
+          background: "#fff", border: "1px solid #DBEAFE",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <GoogleIcon size={16} />
+        </div>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontWeight: 700, color: "#1E3A8A" }}>Google Calendar bağlı deyil</div>
+          <div style={{ color: "#3B5BA5", fontSize: 11.5, marginTop: 2 }}>
+            Şəxsi cədvəlinizi qoşduğunuz halda Fanus randevuları ilə konfliktlər avtomatik göstəriləcək.
+          </div>
+        </div>
+        <button onClick={onConnect} disabled={connecting} style={{
+          padding: "8px 14px", borderRadius: 8,
+          border: "1px solid #DBEAFE", background: "#fff",
+          color: "#1E3A8A", fontWeight: 600, fontSize: 12.5,
+          cursor: connecting ? "wait" : "pointer", opacity: connecting ? 0.7 : 1,
+          display: "inline-flex", alignItems: "center", gap: 6,
+        }}>
+          <GoogleIcon size={13} /> {connecting ? "Yönləndirilir…" : "Google ilə qoşul"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      ...baseCard,
+      background: conflictCount > 0
+        ? "linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)"
+        : "linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)",
+      border: conflictCount > 0 ? "1px solid #FDE68A" : "1px solid #A7F3D0",
+      color: conflictCount > 0 ? "#854D0E" : "#065F46",
+    }}>
+      <div style={{
+        width: 34, height: 34, borderRadius: "50%",
+        background: "#fff",
+        border: conflictCount > 0 ? "1px solid #FDE68A" : "1px solid #A7F3D0",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0,
+      }}>
+        <GoogleIcon size={16} />
+      </div>
+      <div style={{ flex: 1, minWidth: 200 }}>
+        <div style={{ fontWeight: 700 }}>
+          {status.email || "Google Calendar qoşulub"}
+        </div>
+        <div style={{ fontSize: 11.5, marginTop: 2, opacity: 0.85 }}>
+          {loading
+            ? "Yüklənir…"
+            : eventCount > 0
+              ? `Bu həftədə ${eventCount} hadisə`
+              : "Bu həftədə hadisə yoxdur"}
+          {conflictCount > 0 && (
+            <> · <strong style={{ color: "#B45309" }}>{conflictCount} konflikt</strong></>
+          )}
+          {status.lastSyncAt && (
+            <> · son sinxron {new Date(status.lastSyncAt).toLocaleString("az-AZ")}</>
+          )}
+        </div>
+      </div>
+      <label style={{
+        display: "inline-flex", alignItems: "center", gap: 6,
+        fontSize: 12, fontWeight: 600,
+        cursor: "pointer", userSelect: "none",
+      }}>
+        <input
+          type="checkbox"
+          checked={shown}
+          onChange={onToggleShown}
+          style={{ accentColor: "#4285F4", width: 14, height: 14 }}
+        />
+        Göstər
+      </label>
+      <button onClick={onResync} disabled={loading} style={{
+        padding: "7px 12px", borderRadius: 8,
+        border: conflictCount > 0 ? "1px solid #FDE68A" : "1px solid #A7F3D0",
+        background: "#fff",
+        color: conflictCount > 0 ? "#854D0E" : "#065F46",
+        fontWeight: 600, fontSize: 12,
+        cursor: loading ? "wait" : "pointer", opacity: loading ? 0.7 : 1,
+      }}>
+        {loading ? "Yüklənir…" : "Yenilə"}
+      </button>
+      {error && (
+        <div style={{
+          width: "100%",
+          background: "#FEF2F2", border: "1px solid #FECACA",
+          color: "#991B1B",
+          padding: "8px 10px", borderRadius: 8, fontSize: 11.5,
+          display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
+        }}>
+          <span>{error}</span>
+          <button onClick={onDismissError} aria-label="Bağla" style={{
+            border: 0, background: "transparent", color: "#991B1B",
+            fontSize: 14, cursor: "pointer", padding: 0, lineHeight: 1,
+          }}>×</button>
+        </div>
       )}
     </div>
   );

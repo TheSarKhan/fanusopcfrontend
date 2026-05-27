@@ -51,6 +51,7 @@ interface PatientBucket {
   total: number;
   completed: number;
   pending: number;
+  skipped: number;
   overdue: number;
   completionRate: number;
   lastActivityAt: number | null;        // ms
@@ -64,7 +65,7 @@ function bucketByPatient(items: Homework[]): Map<number, PatientBucket> {
     if (!b) {
       b = {
         patientId: h.patientId, patientName: h.patientName,
-        homeworks: [], total: 0, completed: 0, pending: 0, overdue: 0,
+        homeworks: [], total: 0, completed: 0, pending: 0, skipped: 0, overdue: 0,
         completionRate: 0, lastActivityAt: null, daysSinceActivity: null,
       };
       map.set(h.patientId, b);
@@ -73,6 +74,7 @@ function bucketByPatient(items: Homework[]): Map<number, PatientBucket> {
     b.total += 1;
     if (h.status === "COMPLETED") b.completed += 1;
     if (h.status === "PENDING") b.pending += 1;
+    if (h.status === "SKIPPED") b.skipped += 1;
     if (isOverdue(h)) b.overdue += 1;
     const at = new Date(h.completedAt ?? h.createdAt).getTime();
     if (b.lastActivityAt == null || at > b.lastActivityAt) b.lastActivityAt = at;
@@ -91,7 +93,7 @@ function bucketByPatient(items: Homework[]): Map<number, PatientBucket> {
   return map;
 }
 
-type SubTab = "pending" | "completed" | "all";
+type SubTab = "pending" | "completed" | "skipped" | "all";
 
 export default function PsychologHomeworkPage() {
   const { t } = useT();
@@ -128,7 +130,7 @@ export default function PsychologHomeworkPage() {
       if (!all.has(c.patientId)) {
         all.set(c.patientId, {
           patientId: c.patientId, patientName: c.name,
-          homeworks: [], total: 0, completed: 0, pending: 0, overdue: 0,
+          homeworks: [], total: 0, completed: 0, pending: 0, skipped: 0, overdue: 0,
           completionRate: 0, lastActivityAt: null, daysSinceActivity: null,
         });
       }
@@ -160,6 +162,7 @@ export default function PsychologHomeworkPage() {
     total: items.length,
     pending: items.filter(h => h.status === "PENDING").length,
     completed: items.filter(h => h.status === "COMPLETED").length,
+    skipped: items.filter(h => h.status === "SKIPPED").length,
     overdue: items.filter(isOverdue).length,
     activePatients: buckets.size,
     avgCompletion: buckets.size > 0
@@ -242,6 +245,7 @@ export default function PsychologHomeworkPage() {
         <StatCell label="Cəmi tapşırıq"   value={counts.total}          tone="brand" />
         <StatCell label="Gözləyir"        value={counts.pending}        tone="warn" />
         <StatCell label="Tamamlandı"      value={counts.completed}      tone="good" />
+        <StatCell label="Atlandı"         value={counts.skipped}        tone="muted" />
         <StatCell label="Gecikən"         value={counts.overdue}        tone="danger" highlight={counts.overdue > 0} />
         <StatCell label="Orta tamamlama"  value={counts.avgCompletion}  tone="muted" suffix="%" />
       </div>
@@ -432,7 +436,8 @@ function PatientWorkspace({
   const ring = makeRing(bucket.completionRate);
   const visible = bucket.homeworks.filter(h => {
     if (subTab === "pending") return h.status === "PENDING";
-    if (subTab === "completed") return h.status === "COMPLETED" || h.status === "SKIPPED";
+    if (subTab === "completed") return h.status === "COMPLETED";
+    if (subTab === "skipped") return h.status === "SKIPPED";
     return true;
   });
 
@@ -463,6 +468,7 @@ function PatientWorkspace({
             <span><b style={{ color: "var(--oxford)" }}>{bucket.total}</b> cəmi</span>
             <span><b style={{ color: "#92400E" }}>{bucket.pending}</b> gözləyir</span>
             <span><b style={{ color: "#065F46" }}>{bucket.completed}</b> bitib</span>
+            {bucket.skipped > 0 && <span><b style={{ color: "#6B7280" }}>{bucket.skipped}</b> atlandı</span>}
             {bucket.overdue > 0 && <span><b style={{ color: "#991B1B" }}>{bucket.overdue}</b> gecikən</span>}
             {bucket.lastActivityAt && <span>Son aktivlik: {formatTimeAgo(new Date(bucket.lastActivityAt).toISOString())}</span>}
           </div>
@@ -476,8 +482,8 @@ function PatientWorkspace({
         borderRadius: 10, border: "1px solid var(--oxford-10)", width: "fit-content",
       }}>
         <TabBtn label={`Aktiv (${bucket.pending})`} active={subTab === "pending"} onClick={() => onSubTab("pending")} />
-        <TabBtn label={`Bitib (${bucket.completed + (bucket.total - bucket.pending - bucket.completed)})`}
-          active={subTab === "completed"} onClick={() => onSubTab("completed")} />
+        <TabBtn label={`Bitib (${bucket.completed})`} active={subTab === "completed"} onClick={() => onSubTab("completed")} />
+        <TabBtn label={`Atlandı (${bucket.skipped})`} active={subTab === "skipped"} onClick={() => onSubTab("skipped")} />
         <TabBtn label={`Bütün (${bucket.total})`} active={subTab === "all"} onClick={() => onSubTab("all")} />
       </div>
 

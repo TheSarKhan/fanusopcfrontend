@@ -14,6 +14,15 @@ const PRIORITY: Record<HomeworkPriority, { label: string; color: string; hint: s
   HIGH:   { label: "Yüksək",  color: "#DC2626", hint: "İlk növbədə diqqət edilməli" },
 };
 
+const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20 MB per file
+
+function fmtBytes(n?: number | null): string {
+  if (!n || n <= 0) return "";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function todayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -54,11 +63,15 @@ export default function HomeworkCreateModal({
   const [draftChecklist, setDraftChecklist] = useState<string[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [draftLabelIds, setDraftLabelIds] = useState<number[]>([]);
+  const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
+  const [savingStage, setSavingStage] = useState<string>("");
   const [err, setErr] = useState<string | null>(null);
 
   const titleRef = useRef<HTMLInputElement | null>(null);
   const checklistInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const dueInputRef = useRef<HTMLInputElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Reset state every time the modal re-opens.
@@ -74,8 +87,10 @@ export default function HomeworkCreateModal({
     setDraftChecklist([]);
     setNewChecklistItem("");
     setDraftLabelIds([]);
+    setDraftFiles([]);
     setErr(null);
     setSaving(false);
+    setSavingStage("");
     // Autofocus the title field a tick after the open animation.
     setTimeout(() => titleRef.current?.focus(), 80);
   }, [open, initialPatientId]);
@@ -93,7 +108,7 @@ export default function HomeworkCreateModal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, patientId, title, description, dueDate, priority, draftChecklist, draftLabelIds]);
+  }, [open, patientId, title, description, dueDate, priority, draftChecklist, draftLabelIds, draftFiles]);
 
   const selectedPatient = useMemo(
     () => clients.find(c => c.patientId === patientId) ?? null,
@@ -128,13 +143,37 @@ export default function HomeworkCreateModal({
     });
   };
 
+  const addFiles = (files: FileList | File[] | null) => {
+    if (!files) return;
+    const incoming = Array.from(files);
+    const rejected = incoming.filter(f => f.size > MAX_FILE_BYTES);
+    if (rejected.length > 0) {
+      setErr(`Bu fayl(lar) çox böyükdür (limit 20 MB): ${rejected.map(f => f.name).join(", ")}`);
+    } else {
+      setErr(null);
+    }
+    const accepted = incoming.filter(f => f.size <= MAX_FILE_BYTES);
+    setDraftFiles(prev => {
+      const existingKeys = new Set(prev.map(f => `${f.name}-${f.size}`));
+      const next = [...prev];
+      for (const f of accepted) {
+        if (!existingKeys.has(`${f.name}-${f.size}`)) next.push(f);
+      }
+      return next;
+    });
+  };
+
+  const removeFile = (i: number) => {
+    setDraftFiles(prev => prev.filter((_, j) => j !== i));
+  };
+
   const save = async () => {
     if (!canSave) {
       if (!patientValid) setErr("Müştəri seçin");
       else if (!titleValid) setErr("Başlıq lazımdır");
       return;
     }
-    setSaving(true); setErr(null);
+    setSaving(true); setErr(null); setSavingStage("");
     try {
       const created = await psychologistApi.createHomework({
         patientId: patientId!,
@@ -145,9 +184,26 @@ export default function HomeworkCreateModal({
         checklist: draftChecklist.length > 0 ? draftChecklist : undefined,
         labelIds: draftLabelIds.length > 0 ? draftLabelIds : undefined,
       });
-      onCreated(created);
+
+      let withAttachments = created;
+      if (draftFiles.length > 0) {
+        const uploaded: typeof created.attachments = [...(created.attachments ?? [])];
+        for (let i = 0; i < draftFiles.length; i++) {
+          const f = draftFiles[i];
+          setSavingStage(`Fayl yüklənir (${i + 1}/${draftFiles.length}) · ${f.name}`);
+          try {
+            const att = await psychologistApi.homeworkUploadAttachment(created.id, f);
+            uploaded.push(att);
+          } catch (e) {
+            setErr(`"${f.name}" yüklənmədi: ${(e as Error).message}. Tapşırıq yaradıldı, sənədi sonra əlavə edə bilərsiniz.`);
+          }
+        }
+        withAttachments = { ...created, attachments: uploaded };
+      }
+
+      onCreated(withAttachments);
     } catch (e) { setErr((e as Error).message); }
-    finally { setSaving(false); }
+    finally { setSaving(false); setSavingStage(""); }
   };
 
   if (!open) return null;
@@ -253,125 +309,8 @@ export default function HomeworkCreateModal({
               onBlur={e => (e.currentTarget.style.boxShadow = "none")} />
           </Field>
 
-          {/* Description */}
-          <Field label="Təsvir" hint="Pasiyent nə etməlidir, hansı qayda ilə? (Markdown desteklenmir)">
-            <textarea value={description} onChange={e => setDescription(e.target.value)}
-              rows={3}
-              placeholder="Təlimatları ətraflı yazın…"
-              style={{
-                width: "100%", padding: "12px 14px",
-                borderRadius: 12, border: "1.5px solid var(--oxford-10)",
-                fontSize: 13.5, color: "var(--oxford)", lineHeight: 1.5,
-                outline: "none", boxSizing: "border-box", resize: "vertical",
-                fontFamily: "inherit",
-                transition: "border-color 0.15s, box-shadow 0.15s",
-              }}
-              onFocus={e => (e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16,81,183,0.15)")}
-              onBlur={e => (e.currentTarget.style.boxShadow = "none")} />
-          </Field>
-
-          {/* Due date + Priority side by side */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <Field label="Son tarix">
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                  {[
-                    { label: "Bu gün",   iso: todayIso() },
-                    { label: "Sabah",    iso: daysFromNowIso(1) },
-                    { label: "3 gün",    iso: daysFromNowIso(3) },
-                    { label: "Həftə",    iso: daysFromNowIso(7) },
-                  ].map(opt => (
-                    <QuickChip key={opt.label}
-                      active={dueDate === opt.iso}
-                      onClick={() => setDueDate(dueDate === opt.iso ? "" : opt.iso)}>
-                      {opt.label}
-                    </QuickChip>
-                  ))}
-                </div>
-                <input type="date" value={dueDate} min={todayIso()}
-                  onChange={e => setDueDate(e.target.value)}
-                  style={{
-                    padding: "10px 12px", borderRadius: 10,
-                    border: "1.5px solid var(--oxford-10)",
-                    fontSize: 13, color: "var(--oxford)", outline: "none",
-                    boxSizing: "border-box", width: "100%",
-                  }} />
-                {dueDate && (
-                  <div style={{ fontSize: 11, color: "var(--brand-700)", fontWeight: 600 }}>
-                    Seçilib: {fmtDate(dueDate)}
-                    <button onClick={() => setDueDate("")}
-                      style={{ background: "transparent", border: "none", color: "var(--oxford-60)", cursor: "pointer", fontSize: 12, marginLeft: 6, padding: 0 }}>
-                      təmizlə
-                    </button>
-                  </div>
-                )}
-              </div>
-            </Field>
-
-            <Field label="Prioritet">
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {(["HIGH", "MEDIUM", "LOW"] as HomeworkPriority[]).map(p => {
-                  const pd = PRIORITY[p];
-                  const active = priority === p;
-                  return (
-                    <button key={p} onClick={() => setPriority(p)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 10,
-                        padding: "10px 12px", borderRadius: 10,
-                        border: `1.5px solid ${active ? pd.color : "var(--oxford-10)"}`,
-                        background: active ? `${pd.color}15` : "#fff",
-                        cursor: "pointer", textAlign: "left",
-                        transition: "all 0.15s",
-                      }}>
-                      <span style={{
-                        width: 10, height: 10, borderRadius: "50%",
-                        background: pd.color, flexShrink: 0,
-                      }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 700, color: active ? pd.color : "var(--oxford)" }}>
-                          {pd.label}
-                        </div>
-                        <div style={{ fontSize: 10.5, color: "var(--oxford-60)", marginTop: 1 }}>{pd.hint}</div>
-                      </div>
-                      {active && <IconCheck color={pd.color} />}
-                    </button>
-                  );
-                })}
-              </div>
-            </Field>
-          </div>
-
-          {/* Labels */}
-          {labels.length > 0 && (
-            <Field label="Etiketlər" hint="Tapşırığı kateqoriyalaşdırın (məcburi deyil)">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {labels.map(l => {
-                  const active = draftLabelIds.includes(l.id);
-                  const c = labelColors(l.color);
-                  return (
-                    <button key={l.id}
-                      onClick={() => setDraftLabelIds(prev =>
-                        prev.includes(l.id) ? prev.filter(x => x !== l.id) : [...prev, l.id])}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        padding: "5px 12px", borderRadius: 999,
-                        background: active ? c.fg : c.bg,
-                        color: active ? "#fff" : c.fg,
-                        border: `1.5px solid ${active ? c.fg : c.border}`,
-                        fontSize: 11.5, fontWeight: 600,
-                        cursor: "pointer", transition: "all 0.15s",
-                      }}>
-                      {active && <IconCheck color="#fff" size={10} />}
-                      {l.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </Field>
-          )}
-
-          {/* Checklist */}
-          <Field label="Alt-tapşırıqlar" hint="Pasiyent ayrı-ayrılıqda işarələyəcək (məcburi deyil)">
+          {/* Checklist — promoted up so the core "todo" is visible without scrolling */}
+          <Field label="Alt-tapşırıqlar" hint={draftChecklist.length > 0 ? `${draftChecklist.length} bənd` : "Pasiyent ayrı-ayrılıqda işarələyəcək"}>
             <div style={{
               border: "1.5px solid var(--oxford-10)", borderRadius: 12,
               padding: 10, background: "var(--brand-50)",
@@ -428,6 +367,224 @@ export default function HomeworkCreateModal({
             </div>
           </Field>
 
+          {/* File attachments */}
+          <Field label="Fayllar" hint={draftFiles.length > 0 ? `${draftFiles.length} fayl seçildi` : "PDF, şəkil, audio — fayl başına 20 MB"}>
+            <div
+              onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+              onDrop={e => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
+              style={{
+                border: "1.5px dashed var(--brand-200)", borderRadius: 12,
+                padding: 12, background: "var(--brand-50)",
+              }}>
+              {draftFiles.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
+                  {draftFiles.map((f, i) => (
+                    <div key={`${f.name}-${i}`} style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "8px 10px", borderRadius: 8,
+                      background: "#fff", border: "1px solid var(--brand-100)",
+                    }}>
+                      <div style={{
+                        width: 30, height: 30, borderRadius: 7,
+                        background: "var(--brand-50)", color: "var(--brand-700)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        flexShrink: 0,
+                      }}>
+                        <IconPaperclip />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: 12.5, fontWeight: 600, color: "var(--oxford)",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>{f.name}</div>
+                        <div style={{ fontSize: 10.5, color: "var(--oxford-60)", marginTop: 1 }}>
+                          {fmtBytes(f.size)}{f.type ? ` · ${f.type}` : ""}
+                        </div>
+                      </div>
+                      <button onClick={() => removeFile(i)}
+                        style={{ background: "transparent", border: "none", color: "var(--oxford-60)", cursor: "pointer", fontSize: 16, padding: 4, lineHeight: 1 }}
+                        title="Sil">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>
+                  Sürükləyib buraxın və ya
+                </div>
+                <button type="button" onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "7px 14px", borderRadius: 8,
+                    border: "1.5px solid var(--brand-200)", background: "#fff",
+                    color: "var(--brand-700)", fontSize: 12, fontWeight: 600,
+                    cursor: "pointer",
+                  }}>
+                  <IconPaperclip /> Fayl seç
+                </button>
+                <input ref={fileInputRef} type="file" multiple
+                  onChange={e => { addFiles(e.target.files); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                  style={{ display: "none" }} />
+              </div>
+            </div>
+          </Field>
+
+          {/* Meta row: priority + due date in one compact strip */}
+          <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 14, alignItems: "start" }}>
+            <Field label="Prioritet">
+              <div style={{
+                display: "inline-flex",
+                padding: 3,
+                borderRadius: 10,
+                border: "1.5px solid var(--oxford-10)",
+                background: "#fff",
+                gap: 2,
+              }}>
+                {(["LOW", "MEDIUM", "HIGH"] as HomeworkPriority[]).map(p => {
+                  const pd = PRIORITY[p];
+                  const active = priority === p;
+                  return (
+                    <button key={p} onClick={() => setPriority(p)}
+                      title={pd.hint}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "6px 12px", borderRadius: 7,
+                        border: "none",
+                        background: active ? `${pd.color}1a` : "transparent",
+                        color: active ? pd.color : "var(--oxford-60)",
+                        fontSize: 12, fontWeight: 700,
+                        cursor: "pointer", transition: "all 0.15s",
+                      }}>
+                      <span style={{
+                        width: 8, height: 8, borderRadius: "50%",
+                        background: pd.color, flexShrink: 0,
+                      }} />
+                      {pd.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+
+            <Field label="Son tarix">
+              {(() => {
+                const presets = [
+                  { label: "Bu gün", iso: todayIso() },
+                  { label: "Sabah",  iso: daysFromNowIso(1) },
+                  { label: "3 gün",  iso: daysFromNowIso(3) },
+                  { label: "Həftə",  iso: daysFromNowIso(7) },
+                ];
+                const matched = presets.find(p => p.iso === dueDate);
+                const isCustom = !!dueDate && !matched;
+                return (
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                    {presets.map(opt => (
+                      <QuickChip key={opt.label}
+                        active={dueDate === opt.iso}
+                        onClick={() => setDueDate(dueDate === opt.iso ? "" : opt.iso)}>
+                        {opt.label}
+                      </QuickChip>
+                    ))}
+                    {isCustom ? (
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "4px 4px 4px 12px", borderRadius: 999,
+                        background: "var(--brand)", color: "#fff",
+                        fontSize: 11.5, fontWeight: 700,
+                        border: "1.5px solid var(--brand)",
+                      }}>
+                        {fmtDate(dueDate)}
+                        <button onClick={() => dueInputRef.current?.showPicker?.()}
+                          title="Tarixi dəyişdir"
+                          style={{
+                            background: "rgba(255,255,255,0.18)", border: "none",
+                            color: "#fff", cursor: "pointer",
+                            width: 20, height: 20, borderRadius: "50%",
+                            display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          }}>
+                          <IconCalendar />
+                        </button>
+                        <button onClick={() => setDueDate("")}
+                          title="Təmizlə"
+                          style={{
+                            background: "rgba(255,255,255,0.18)", border: "none",
+                            color: "#fff", cursor: "pointer",
+                            width: 20, height: 20, borderRadius: "50%",
+                            fontSize: 13, lineHeight: 1,
+                          }}>×</button>
+                      </span>
+                    ) : (
+                      <button type="button"
+                        onClick={() => dueInputRef.current?.showPicker?.() ?? dueInputRef.current?.focus()}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 5,
+                          padding: "5px 12px", borderRadius: 999,
+                          border: "1.5px dashed var(--oxford-10)",
+                          background: "#fff", color: "var(--oxford-60)",
+                          fontSize: 11.5, fontWeight: 600, cursor: "pointer",
+                        }}
+                        title="Custom tarix seç">
+                        <IconCalendar /> Başqa…
+                      </button>
+                    )}
+                    <input ref={dueInputRef} type="date" value={dueDate} min={todayIso()}
+                      onChange={e => setDueDate(e.target.value)}
+                      style={{
+                        position: "absolute", width: 1, height: 1,
+                        opacity: 0, pointerEvents: "none",
+                      }} />
+                  </div>
+                );
+              })()}
+            </Field>
+          </div>
+
+          {/* Description (kept after meta so the modal opens with task essentials visible) */}
+          <Field label="Təsvir" hint="İstəyə bağlı təlimat və ya kontekst">
+            <textarea value={description} onChange={e => setDescription(e.target.value)}
+              rows={2}
+              placeholder="Pasiyent nə etməlidir, hansı qayda ilə?"
+              style={{
+                width: "100%", padding: "10px 14px",
+                borderRadius: 12, border: "1.5px solid var(--oxford-10)",
+                fontSize: 13, color: "var(--oxford)", lineHeight: 1.5,
+                outline: "none", boxSizing: "border-box", resize: "vertical",
+                fontFamily: "inherit", minHeight: 64,
+                transition: "border-color 0.15s, box-shadow 0.15s",
+              }}
+              onFocus={e => (e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16,81,183,0.15)")}
+              onBlur={e => (e.currentTarget.style.boxShadow = "none")} />
+          </Field>
+
+          {/* Labels */}
+          {labels.length > 0 && (
+            <Field label="Etiketlər" hint="Tapşırığı kateqoriyalaşdırın (məcburi deyil)">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {labels.map(l => {
+                  const active = draftLabelIds.includes(l.id);
+                  const c = labelColors(l.color);
+                  return (
+                    <button key={l.id}
+                      onClick={() => setDraftLabelIds(prev =>
+                        prev.includes(l.id) ? prev.filter(x => x !== l.id) : [...prev, l.id])}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "5px 12px", borderRadius: 999,
+                        background: active ? c.fg : c.bg,
+                        color: active ? "#fff" : c.fg,
+                        border: `1.5px solid ${active ? c.fg : c.border}`,
+                        fontSize: 11.5, fontWeight: 600,
+                        cursor: "pointer", transition: "all 0.15s",
+                      }}>
+                      {active && <IconCheck color="#fff" size={10} />}
+                      {l.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+          )}
+
           {err && (
             <div style={{
               padding: "10px 14px", borderRadius: 10,
@@ -467,7 +624,7 @@ export default function HomeworkCreateModal({
               }}
               onMouseDown={e => canSave && (e.currentTarget.style.transform = "translateY(1px)")}
               onMouseUp={e => (e.currentTarget.style.transform = "translateY(0)")}>
-              {saving ? "Saxlanılır…" : "Tapşırığı yarat"}
+              {saving ? (savingStage || "Saxlanılır…") : "Tapşırığı yarat"}
             </button>
           </div>
         </div>
@@ -637,6 +794,23 @@ function IconUser() {
     <svg width="18" height="18" {...sw}>
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+function IconCalendar() {
+  return (
+    <svg width="12" height="12" {...sw}>
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+function IconPaperclip() {
+  return (
+    <svg width="14" height="14" {...sw}>
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
     </svg>
   );
 }

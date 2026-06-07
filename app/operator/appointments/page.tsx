@@ -61,6 +61,7 @@ export default function OperatorAppointmentsPage() {
   const [assignFor, setAssignFor] = useState<AppointmentDetail | null>(null);
   const [resolveFor, setResolveFor] = useState<AppointmentDetail | null>(null);
   const [cancelFor, setCancelFor] = useState<AppointmentDetail | null>(null);
+  const [logContactFor, setLogContactFor] = useState<AppointmentDetail | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -222,7 +223,8 @@ export default function OperatorAppointmentsPage() {
               onCancel={() => onCancel(a)}
               onResolve={() => setResolveFor(a)}
               onApproveCancelReq={() => onApproveCancelReq(a)}
-              onRejectCancelReq={() => onRejectCancelReq(a)} />
+              onRejectCancelReq={() => onRejectCancelReq(a)}
+              onLogContact={() => setLogContactFor(a)} />
           ))}
         </div>
       )}
@@ -265,12 +267,74 @@ export default function OperatorAppointmentsPage() {
           }}
         />
       )}
+
+      {logContactFor && (
+        <LogContactModal
+          appointment={logContactFor}
+          onClose={() => setLogContactFor(null)}
+          onLogged={(log) => {
+            setItems(prev => prev.map(a => a.id === logContactFor.id
+              ? { ...a, lastContactAt: log.createdAt, lastContactChannel: log.channel, lastContactOutcome: log.outcome }
+              : a));
+            setLogContactFor(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
+const STATUS_TONE: Record<string, { label: string; bg: string; fg: string }> = {
+  PENDING:               { label: "Gözlənilir",      bg: "#FEF3C7", fg: "#92400E" },
+  REJECTED:              { label: "Yenidən təyin",   bg: "#FEF3C7", fg: "#92400E" },
+  ASSIGNED:              { label: "Təyin edilib",    bg: "var(--brand-50)", fg: "var(--brand-700)" },
+  CONFIRMED:             { label: "Təsdiqlənib",     bg: "#D1FAE5", fg: "#065F46" },
+  AWAITING_CONFIRMATION: { label: "Təsdiq gözlənir", bg: "#FEF3C7", fg: "#92400E" },
+  DISPUTED:              { label: "Mübahisəli",      bg: "#FEE2E2", fg: "#991B1B" },
+  COMPLETED:             { label: "Tamamlanıb",      bg: "#F3F4F6", fg: "#374151" },
+  CANCELLED:             { label: "Ləğv edilib",     bg: "#FEE2E2", fg: "#991B1B" },
+  CANCEL_REQUESTED:      { label: "Ləğv gözlənir",   bg: "#FEF3C7", fg: "#92400E" },
+};
+
+const CHANNEL_LABEL: Record<string, string> = {
+  CALL: "Zəng", WHATSAPP: "WhatsApp", SMS: "SMS", EMAIL: "Email", OTHER: "Digər",
+};
+const OUTCOME_LABEL: Record<string, { label: string; tone: "good" | "warn" | "danger" | "neutral" }> = {
+  ANSWERED:    { label: "Cavab verdi",    tone: "good" },
+  NO_ANSWER:   { label: "Cavab vermədi",  tone: "warn" },
+  BUSY:        { label: "Məşğul",         tone: "warn" },
+  REFUSED:     { label: "İmtina etdi",    tone: "danger" },
+  RESCHEDULED: { label: "Vaxt dəyişdi",   tone: "neutral" },
+  OTHER:       { label: "Digər",          tone: "neutral" },
+};
+
+function normalizePhone(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const digits = raw.replace(/[^\d+]/g, "");
+  if (!digits) return null;
+  return digits;
+}
+
+function whatsappLink(phone: string): string {
+  const digits = phone.replace(/^\+/, "").replace(/[^\d]/g, "");
+  return `https://wa.me/${digits}`;
+}
+
+function timeAgo(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.round(ms / 60000);
+  if (min < 1) return "indicə";
+  if (min < 60) return `${min} dəq öncə`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `${h} saat öncə`;
+  const d = Math.round(h / 24);
+  if (d < 30) return `${d} gün öncə`;
+  return `${Math.round(d / 30)} ay öncə`;
+}
+
 function AppointmentCard({
-  a, selectable, selected, onToggleSelect, onAssign, onCancel, onResolve, onApproveCancelReq, onRejectCancelReq,
+  a, selectable, selected, onToggleSelect, onAssign, onCancel, onResolve, onApproveCancelReq, onRejectCancelReq, onLogContact,
 }: {
   a: AppointmentDetail;
   selectable?: boolean;
@@ -281,6 +345,7 @@ function AppointmentCard({
   onResolve: () => void;
   onApproveCancelReq: () => void;
   onRejectCancelReq: () => void;
+  onLogContact: () => void;
 }) {
   const { t } = useT();
   const status = a.status;
@@ -288,41 +353,112 @@ function AppointmentCard({
   const canAssign = !isCancelReq && (status === "PENDING" || status === "REJECTED" || status === "ASSIGNED");
   const canCancel = !isCancelReq && status !== "COMPLETED" && status !== "CANCELLED";
   const canResolve = status === "DISPUTED";
+  const phone = normalizePhone(a.patientPhone);
+  const statusMeta = STATUS_TONE[status] ?? { label: status, bg: "#EEF2F7", fg: "#374151" };
+  const lastOutcomeMeta = a.lastContactOutcome ? OUTCOME_LABEL[a.lastContactOutcome] : null;
+
   return (
-    <div style={{ background: "#fff", borderRadius: 14, padding: 18, boxShadow: "0 2px 12px rgba(0,0,0,0.05)", border: selected ? "2px solid var(--brand)" : "1px solid transparent" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+    <div className={`op-appt${selected ? " op-appt--selected" : ""}`}>
+      <div className="op-appt__head">
         {selectable && (
           <input type="checkbox" checked={!!selected} onChange={onToggleSelect}
-            style={{ width: 18, height: 18, marginTop: 4, cursor: "pointer" }} />
+            style={{ width: 18, height: 18, marginTop: 4, cursor: "pointer", flexShrink: 0 }} />
         )}
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <div style={{ fontSize: 11, color: "#52718F" }}>#FNS-{String(a.id).padStart(4, "0")}</div>
-            <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "#EEF2F7", color: "#374151" }}>
-              {status}
+        <div className="op-appt__head-main">
+          <div className="op-appt__chips">
+            <span className="op-appt__id">#FNS-{String(a.id).padStart(4, "0")}</span>
+            <span className="op-appt__status" style={{ background: statusMeta.bg, color: statusMeta.fg }}>
+              {statusMeta.label}
             </span>
             {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
-              <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "var(--brand-50)", color: "var(--brand-700)", fontWeight: 600 }}>
+              <span className="op-appt__series">
                 {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
               </span>
             )}
+            <span className="op-appt__time">{fmtDateTime(a.createdAt)} yaradılıb</span>
           </div>
-          <div style={{ fontWeight: 600, color: "#1A2535", fontSize: 15 }}>
-            {a.patientName ?? "—"}
-            {a.patientPhone && <span style={{ color: "#52718F", fontSize: 12, fontWeight: 400, marginLeft: 8 }}>{a.patientPhone}</span>}
+
+          <div className="op-appt__name">{a.patientName ?? "—"}</div>
+
+          {(phone || a.patientEmail) && (
+            <div className="op-appt__contact">
+              {phone && (
+                <>
+                  <a href={`tel:${phone}`} className="op-contact-btn op-contact-btn--call" title={`Zəng et: ${phone}`}>
+                    <IconPhone /> Zəng et
+                  </a>
+                  <a href={whatsappLink(phone)} target="_blank" rel="noopener noreferrer"
+                    className="op-contact-btn op-contact-btn--wa" title={`WhatsApp: ${phone}`}>
+                    <IconWhatsApp /> WhatsApp
+                  </a>
+                  <span className="op-contact-phone">{a.patientPhone}</span>
+                </>
+              )}
+              {a.patientEmail && (
+                <a href={`mailto:${a.patientEmail}`} className="op-contact-btn op-contact-btn--mail" title={a.patientEmail}>
+                  <IconMail /> Email
+                </a>
+              )}
+            </div>
+          )}
+
+          {a.note && (
+            <div className="op-appt__topic">
+              <div className="op-appt__topic-label">Mövzu</div>
+              <div className="op-appt__topic-text">«{a.note}»</div>
+            </div>
+          )}
+
+          <div className="op-appt__assign">
+            {a.psychologistName ? (
+              <>
+                <strong>Təyin olundu:</strong> {a.psychologistName} · {fmtDateTime(a.startAt)}
+              </>
+            ) : a.requestedPsychologistName ? (
+              <>
+                <strong>Tövsiyə olunan:</strong> <em>{a.requestedPsychologistName}</em>
+                {a.requestedStartAt && ` · ${fmtDateTime(a.requestedStartAt)}`}
+              </>
+            ) : (
+              <em>Psixoloq seçilməyib — operator təyin edəcək</em>
+            )}
           </div>
-          <div style={{ fontSize: 13, color: "#52718F", marginTop: 2 }}>
-            {a.psychologistName
-              ? <>Təyin: <strong>{a.psychologistName}</strong> · {fmtDateTime(a.startAt)}</>
-              : a.requestedPsychologistName
-                ? <>İstənilən: <em>{a.requestedPsychologistName}</em>{a.requestedStartAt ? `, ${fmtDateTime(a.requestedStartAt)}` : ""}</>
-                : <em>Psixoloq seçilməyib — operator təyin edəcək</em>}
+
+          {a.operatorNote && (
+            <div className="op-appt__op-note">
+              <strong>Operator qeydi:</strong> {a.operatorNote}
+            </div>
+          )}
+
+          <div className="op-appt__followup">
+            <div className="op-appt__followup-info">
+              <span className="op-appt__followup-label">Son izləmə:</span>
+              {a.lastContactAt ? (
+                <>
+                  <strong>{timeAgo(a.lastContactAt)}</strong>
+                  {a.lastContactChannel && (
+                    <span className="op-appt__followup-chan">
+                      · {CHANNEL_LABEL[a.lastContactChannel] ?? a.lastContactChannel}
+                    </span>
+                  )}
+                  {lastOutcomeMeta && (
+                    <span className="op-appt__followup-outcome" data-tone={lastOutcomeMeta.tone}>
+                      {lastOutcomeMeta.label}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="op-appt__followup-empty">qeyd yoxdur</span>
+              )}
+            </div>
+            <button type="button" onClick={onLogContact} className="op-appt__followup-btn">
+              + İzləmə əlavə et
+            </button>
           </div>
-          {a.note && <div style={{ fontSize: 13, color: "#374151", marginTop: 8, padding: "8px 12px", background: "#F9FAFB", borderRadius: 8 }}>«{a.note}»</div>}
-          {a.operatorNote && <div style={{ fontSize: 12, color: "#52718F", marginTop: 6 }}><strong>Qeyd:</strong> {a.operatorNote}</div>}
+
           {status === "DISPUTED" && (
-            <div style={{ fontSize: 12, color: "#991B1B", marginTop: 8, padding: "8px 12px", background: "#FEE2E2", border: "1px solid #FECACA", borderRadius: 8 }}>
-              ⚠ <strong>Mübahisə:</strong>{" "}
+            <div className="op-appt__alert op-appt__alert--danger">
+              <strong>Mübahisə:</strong>{" "}
               {a.patientDisputed && a.psychologistDisputed ? "İkisi də 'olmadı' dedi"
                 : a.patientDisputed ? "Pasient 'olmadı' dedi"
                 : a.psychologistDisputed ? "Psixoloq 'olmadı' dedi"
@@ -331,58 +467,161 @@ function AppointmentCard({
             </div>
           )}
           {status === "AWAITING_CONFIRMATION" && (
-            <div style={{ fontSize: 12, color: "#92400E", marginTop: 8, padding: "8px 12px", background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 8 }}>
-              ⏳ Təsdiq gözlənir{" "}
-              {a.patientConfirmedAt && <span>· pasient ✓</span>}
-              {a.psychologistConfirmedAt && <span>· psixoloq ✓</span>}
+            <div className="op-appt__alert op-appt__alert--warn">
+              Təsdiq gözlənir
+              {a.patientConfirmedAt && <span> · pasient təsdiqlədi</span>}
+              {a.psychologistConfirmedAt && <span> · psixoloq təsdiqlədi</span>}
+            </div>
+          )}
+          {isCancelReq && (
+            <div className="op-appt__alert op-appt__alert--warn">
+              <strong>Pasient ləğv tələb edib.</strong>
+              {a.cancelRequestReasonCode && <> · kod: <code>{a.cancelRequestReasonCode}</code></>}
+              {a.cancelRequestReasonText && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.cancelRequestReasonText}»</div>}
             </div>
           )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+
+        <div className="op-appt__actions">
           {canResolve && (
-            <button
-              onClick={onResolve}
-              style={{ padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#fff", background: "#DC2626", border: "none", borderRadius: 8, cursor: "pointer" }}>
-              Həll et
-            </button>
+            <button onClick={onResolve} className="op-appt__btn op-appt__btn--danger">Həll et</button>
           )}
           {canAssign && (
-            <button
-              onClick={onAssign}
-              style={{ padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--brand)", border: "none", borderRadius: 8, cursor: "pointer" }}>
+            <button onClick={onAssign} className="op-appt__btn op-appt__btn--primary">
               {status === "ASSIGNED" ? "Yenidən təyin et" : "Təyin et"}
             </button>
           )}
           {canCancel && !canResolve && (
-            <button
-              onClick={onCancel}
-              style={{ padding: "6px 12px", fontSize: 12, color: "#991B1B", background: "#FFF5F5", border: "1px solid #FECACA", borderRadius: 8, cursor: "pointer" }}>
-              Ləğv et
-            </button>
+            <button onClick={onCancel} className="op-appt__btn op-appt__btn--ghost-danger">Ləğv et</button>
           )}
           {isCancelReq && (
             <>
-              <button
-                onClick={onApproveCancelReq}
-                style={{ padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#fff", background: "#DC2626", border: "none", borderRadius: 8, cursor: "pointer" }}>
-                Ləğvi təsdiqlə
-              </button>
-              <button
-                onClick={onRejectCancelReq}
-                style={{ padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#0A1A33", background: "#fff", border: "1.5px solid var(--brand-200)", borderRadius: 8, cursor: "pointer" }}>
-                Tələbi rədd et
-              </button>
+              <button onClick={onApproveCancelReq} className="op-appt__btn op-appt__btn--danger">Ləğvi təsdiqlə</button>
+              <button onClick={onRejectCancelReq} className="op-appt__btn op-appt__btn--ghost">Tələbi rədd et</button>
             </>
           )}
         </div>
       </div>
-      {isCancelReq && (
-        <div style={{ marginTop: 12, padding: "10px 14px", background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 8, fontSize: 13, color: "#92400E" }}>
-          <strong>Pasient ləğv tələb edib.</strong>
-          {a.cancelRequestReasonCode && <span> Səbəb kodu: <code style={{ background: "#fff", padding: "1px 6px", borderRadius: 4 }}>{a.cancelRequestReasonCode}</code></span>}
-          {a.cancelRequestReasonText && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.cancelRequestReasonText}»</div>}
+    </div>
+  );
+}
+
+function IconPhone() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+    </svg>
+  );
+}
+function IconWhatsApp() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.5 14.4c-.3-.1-1.8-.9-2-1-.3-.1-.5-.1-.7.2-.2.3-.8 1-1 1.2-.2.2-.4.3-.7.1-2-.7-3.3-2.3-3.7-2.7-.2-.3 0-.5.1-.6.1-.1.3-.4.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.7-1.7-1-2.3-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1 2.9 1.1 3.1c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.6-.7 1.8-1.3.2-.6.2-1.2.1-1.3 0-.1-.2-.2-.5-.3zM12 2C6.5 2 2 6.5 2 12c0 1.7.5 3.4 1.3 4.9L2 22l5.3-1.4c1.4.8 3 1.2 4.7 1.2 5.5 0 10-4.5 10-10S17.5 2 12 2z"/>
+    </svg>
+  );
+}
+function IconMail() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+    </svg>
+  );
+}
+
+function LogContactModal({
+  appointment, onClose, onLogged,
+}: {
+  appointment: AppointmentDetail;
+  onClose: () => void;
+  onLogged: (log: ContactLog) => void;
+}) {
+  const [channel, setChannel] = useState<ContactLog["channel"]>("CALL");
+  const [outcome, setOutcome] = useState<ContactLog["outcome"]>("ANSWERED");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    setSaving(true); setErr(null);
+    try {
+      const log = await operatorApi.addContactLog(appointment.id, {
+        channel, outcome, note: note.trim() || undefined,
+      });
+      onLogged(log);
+    } catch (e) {
+      setErr((e as Error).message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(10, 22, 51, 0.5)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 16 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, width: "min(480px, 100%)", boxShadow: "0 20px 50px rgba(0,0,0,0.2)" }}>
+        <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--brand-100)" }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>İzləmə qeydi əlavə et</h2>
+          <p style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 4 }}>
+            #{appointment.id} · {appointment.patientName ?? "—"}
+          </p>
         </div>
-      )}
+        <div style={{ padding: 20, display: "grid", gap: 14 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--oxford)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>Kanal</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {(["CALL", "WHATSAPP", "SMS", "EMAIL", "OTHER"] as const).map(c => (
+                <button key={c} onClick={() => setChannel(c)}
+                  style={{
+                    padding: "6px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600,
+                    border: `1.5px solid ${channel === c ? "var(--brand)" : "var(--brand-100)"}`,
+                    background: channel === c ? "var(--brand)" : "#fff",
+                    color: channel === c ? "#fff" : "var(--oxford-80)",
+                    cursor: "pointer",
+                  }}>
+                  {CHANNEL_LABEL[c] ?? c}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--oxford)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>Nəticə</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {(["ANSWERED", "NO_ANSWER", "BUSY", "REFUSED", "RESCHEDULED", "OTHER"] as const).map(o => {
+                const meta = OUTCOME_LABEL[o];
+                return (
+                  <button key={o} onClick={() => setOutcome(o)}
+                    style={{
+                      padding: "6px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600,
+                      border: `1.5px solid ${outcome === o ? "var(--brand)" : "var(--brand-100)"}`,
+                      background: outcome === o ? "var(--brand)" : "#fff",
+                      color: outcome === o ? "#fff" : "var(--oxford-80)",
+                      cursor: "pointer",
+                    }}>
+                    {meta.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--oxford)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>Qeyd (məcburi deyil)</div>
+            <textarea value={note} onChange={e => setNote(e.target.value)} rows={3}
+              placeholder="Qısa təfərrüat — söhbətin nəticəsi, növbəti addım…"
+              style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />
+          </div>
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12 }}>{err}</div>}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={onClose}
+              style={{ padding: "8px 14px", border: "1px solid var(--brand-100)", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>
+              Bağla
+            </button>
+            <button onClick={submit} disabled={saving}
+              style={{ padding: "8px 20px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Saxlanılır…" : "Qeyd et"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

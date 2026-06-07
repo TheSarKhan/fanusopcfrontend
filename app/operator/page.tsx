@@ -59,6 +59,7 @@ export default function OperatorDashboard() {
   const [stats, setStats] = useState<OperatorStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(new Date());
+  const [activityScope, setActivityScope] = useState<"all" | "mine">("all");
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -121,12 +122,29 @@ export default function OperatorDashboard() {
     return pending.filter(a => new Date(a.createdAt).getTime() < cutoff);
   }, [pending, now]);
 
+  /** Severity tiers: undefined < 4h · "warn" 4-24h · "warn-2" 24-48h · "danger" 48h+ */
+  const staleSeverity = (a: AppointmentDetail): "warn" | "warn-2" | "danger" | undefined => {
+    const ms = now.getTime() - new Date(a.createdAt).getTime();
+    if (ms >= 48 * 60 * 60_000) return "danger";
+    if (ms >= 24 * 60 * 60_000) return "warn-2";
+    if (ms >= 4 * 60 * 60_000)  return "warn";
+    return undefined;
+  };
+
   const recentActions = useMemo(() => {
-    return items
-      .filter(a => a.assignedByOperatorId)
+    let list = items.filter(a => a.assignedByOperatorId);
+    if (activityScope === "mine" && user?.userId) {
+      list = list.filter(a => a.assignedByOperatorId === user.userId);
+    }
+    return list
       .sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime())
       .slice(0, 6);
-  }, [items]);
+  }, [items, activityScope, user?.userId]);
+
+  const mineCount = useMemo(
+    () => user?.userId ? items.filter(a => a.assignedByOperatorId === user.userId).length : 0,
+    [items, user?.userId]
+  );
 
   return (
     <div>
@@ -134,7 +152,7 @@ export default function OperatorDashboard() {
       <div className="op-dash-header">
         <div>
           <p className="op-dash-eyebrow">{todayLabel()}</p>
-          <h1 className="op-dash-title">{t("staff.opDashTitle")}{user?.firstName ? ` · ${user.firstName}` : ""} 👋</h1>
+          <h1 className="op-dash-title">{t("staff.opDashTitle")}{user?.firstName ? ` · ${user.firstName}` : ""}</h1>
           <p className="op-dash-sub">{t("staff.opDashSub")}</p>
         </div>
         <div className="op-dash-actions">
@@ -142,7 +160,7 @@ export default function OperatorDashboard() {
             {t("staff.opViewAll")}
           </Link>
           <Link href="/operator/analytics" className="op-dash-btn op-dash-btn--ghost">
-            📊 {t("nav.analytics")}
+            <IconChart /> {t("nav.analytics")}
           </Link>
         </div>
       </div>
@@ -156,7 +174,7 @@ export default function OperatorDashboard() {
           {/* ── KPI strip ─────────────────────────────────────────────────── */}
           <div className="op-dash-kpis">
             <Kpi
-              icon="📋"
+              icon={<IconClipboard />}
               label="Növbədə"
               value={pending.length}
               hint={stalePending.length > 0 ? `${stalePending.length} > 4 saat` : "yeni müraciətlər"}
@@ -164,7 +182,7 @@ export default function OperatorDashboard() {
               href="/operator/appointments"
             />
             <Kpi
-              icon="⚠"
+              icon={<IconAlert />}
               label="Mübahisəli"
               value={disputed.length}
               hint={disputed.length > 0 ? "həll et" : "boşdur"}
@@ -172,7 +190,7 @@ export default function OperatorDashboard() {
               href="/operator/appointments"
             />
             <Kpi
-              icon="↻"
+              icon={<IconRefresh />}
               label="Yenidən təyin"
               value={rejected.length}
               hint="psixoloq rədd etdi"
@@ -180,14 +198,14 @@ export default function OperatorDashboard() {
               href="/operator/appointments"
             />
             <Kpi
-              icon="✓"
+              icon={<IconCheck />}
               label="Bu gün təyin"
               value={stats?.assignedToday ?? 0}
               hint="müraciət"
               tone="good"
             />
             <Kpi
-              icon="⏱"
+              icon={<IconStopwatch />}
               label="Orta cavab"
               value={fmtMin(stats?.avgResponseMinutes ?? null)}
               hint="bu ay"
@@ -202,7 +220,7 @@ export default function OperatorDashboard() {
             <div className="op-dash-col">
               {disputed.length === 0 && rejected.length === 0 && pending.length === 0 ? (
                 <div className="op-dash-card op-dash-empty">
-                  <div style={{ fontSize: 36, marginBottom: 8 }}>🌿</div>
+                  <div className="op-dash-empty-icon"><IconLeaf /></div>
                   <div className="op-dash-empty-title">Növbə boşdur</div>
                   <p className="op-dash-empty-sub">
                     Bütün müraciətlər həll edilib. Yeni müraciət gəldikdə burada görünəcək.
@@ -213,7 +231,7 @@ export default function OperatorDashboard() {
                   {disputed.length > 0 && (
                     <QueueBlock
                       title="Acil həll et"
-                      icon="⚠"
+                      icon={<IconAlert />}
                       tone="danger"
                       count={disputed.length}
                       ctaText="Həll panelinə keç →"
@@ -229,7 +247,7 @@ export default function OperatorDashboard() {
                   {rejected.length > 0 && (
                     <QueueBlock
                       title="Yenidən təyin lazımdır"
-                      icon="↻"
+                      icon={<IconRefresh />}
                       tone="warn"
                       count={rejected.length}
                       ctaText="Hamısı →"
@@ -245,7 +263,7 @@ export default function OperatorDashboard() {
                   {pending.length > 0 && (
                     <QueueBlock
                       title="Yeni müraciətlər"
-                      icon="📋"
+                      icon={<IconClipboard />}
                       tone={stalePending.length > 0 ? "warn" : "brand"}
                       count={pending.length}
                       ctaText="Hamısı →"
@@ -257,7 +275,7 @@ export default function OperatorDashboard() {
                           a={a}
                           now={now}
                           kind="pending"
-                          isStale={stalePending.some(s => s.id === a.id)}
+                          severity={staleSeverity(a)}
                         />
                       ))}
                       {pending.length > 6 && <Overflow n={pending.length - 6} />}
@@ -303,7 +321,7 @@ export default function OperatorDashboard() {
                 )}
                 {awaitingConfirm.length > 0 && (
                   <div className="op-dash-today-foot">
-                    <span>⏳ {awaitingConfirm.length} təsdiq gözləyir</span>
+                    <span><IconHourglass /> {awaitingConfirm.length} təsdiq gözləyir</span>
                     <Link href="/operator/appointments">izlə →</Link>
                   </div>
                 )}
@@ -316,14 +334,14 @@ export default function OperatorDashboard() {
                 </div>
                 <div className="op-dash-quick">
                   <Link href="/operator/appointments" className="op-dash-quick-btn">
-                    <span>📋</span>
+                    <span><IconClipboard /></span>
                     <div>
                       <strong>Triage paneli</strong>
                       <small>Müraciətləri təyin et</small>
                     </div>
                   </Link>
                   <Link href="/operator/analytics" className="op-dash-quick-btn">
-                    <span>📊</span>
+                    <span><IconChart /></span>
                     <div>
                       <strong>Analitika</strong>
                       <small>Performans və trend</small>
@@ -364,7 +382,22 @@ export default function OperatorDashboard() {
             <div className="op-dash-card" style={{ marginTop: 22 }}>
               <div className="op-dash-card-head">
                 <h3>Son fəaliyyət</h3>
-                <Link href="/operator/appointments" className="op-dash-card-link">Hamısı →</Link>
+                <div className="op-dash-activity-tools">
+                  <div className="op-dash-activity-scope" role="tablist">
+                    <button type="button"
+                      className={`op-dash-activity-scope-btn${activityScope === "all" ? " is-active" : ""}`}
+                      onClick={() => setActivityScope("all")}>
+                      Bütün operatorlar
+                    </button>
+                    <button type="button"
+                      className={`op-dash-activity-scope-btn${activityScope === "mine" ? " is-active" : ""}`}
+                      onClick={() => setActivityScope("mine")}
+                      disabled={!user?.userId || mineCount === 0}>
+                      Mənim ({mineCount})
+                    </button>
+                  </div>
+                  <Link href="/operator/appointments" className="op-dash-card-link">Hamısı →</Link>
+                </div>
               </div>
               <div className="op-dash-activity">
                 {recentActions.map(a => (
@@ -389,7 +422,7 @@ export default function OperatorDashboard() {
 function Kpi({
   icon, label, value, hint, tone, href,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   value: number | string;
   hint?: string;
@@ -417,7 +450,7 @@ function QueueBlock({
   title, icon, tone, count, ctaText, ctaHref, children,
 }: {
   title: string;
-  icon: string;
+  icon: React.ReactNode;
   tone: "danger" | "warn" | "brand";
   count: number;
   ctaText: string;
@@ -440,19 +473,25 @@ function QueueBlock({
 }
 
 function QueueRow({
-  a, now, kind, isStale,
+  a, now, kind, severity,
 }: {
   a: AppointmentDetail;
   now: Date;
   kind: "disputed" | "rejected" | "pending";
-  isStale?: boolean;
+  severity?: "warn" | "warn-2" | "danger";
 }) {
   return (
-    <Link href="/operator/appointments" className="op-dash-queue-row" data-stale={isStale}>
+    <Link href="/operator/appointments" className="op-dash-queue-row" data-severity={severity}>
       <div className="op-dash-queue-row-main">
         <div className="op-dash-queue-name">
           {a.patientName ?? "—"}
           <span className="op-dash-queue-id">#FNS-{String(a.id).padStart(4, "0")}</span>
+          {severity === "danger" && (
+            <span className="op-dash-queue-sev" data-severity="danger">48h+ gözləyir</span>
+          )}
+          {severity === "warn-2" && (
+            <span className="op-dash-queue-sev" data-severity="warn-2">24h+ gözləyir</span>
+          )}
         </div>
         <div className="op-dash-queue-meta">
           {kind === "disputed" && (
@@ -487,7 +526,7 @@ function QueueRow({
           ? <span>{timeAgo(a.updatedAt ?? a.createdAt, now)} əvvəl</span>
           : kind === "rejected"
           ? <span>{timeAgo(a.updatedAt ?? a.createdAt, now)} əvvəl</span>
-          : <span data-stale={isStale}>{timeAgo(a.createdAt, now)} gözləyir</span>}
+          : <span data-severity={severity}>{timeAgo(a.createdAt, now)} gözləyir</span>}
       </div>
     </Link>
   );
@@ -513,4 +552,31 @@ function statusVerb(status: string): string {
     case "PENDING":               return "Yeni müraciət";
     default:                       return status;
   }
+}
+
+/* ─── Inline SVG icons (no emojis) ────────────────────────────────────── */
+const SW = { fill: "none" as const, stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, viewBox: "0 0 24 24" };
+function IconClipboard() {
+  return (<svg width="16" height="16" {...SW}><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /></svg>);
+}
+function IconAlert() {
+  return (<svg width="16" height="16" {...SW} strokeWidth={2.2}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>);
+}
+function IconRefresh() {
+  return (<svg width="16" height="16" {...SW}><polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></svg>);
+}
+function IconCheck() {
+  return (<svg width="16" height="16" {...SW} strokeWidth={2.4}><polyline points="20 6 9 17 4 12" /></svg>);
+}
+function IconStopwatch() {
+  return (<svg width="16" height="16" {...SW}><circle cx="12" cy="13" r="8" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="9" y1="2" x2="15" y2="2" /></svg>);
+}
+function IconChart() {
+  return (<svg width="14" height="14" {...SW}><path d="M3 3v18h18" /><path d="M7 14l4-4 4 4 5-7" /></svg>);
+}
+function IconHourglass() {
+  return (<svg width="14" height="14" {...SW}><path d="M5 2h14" /><path d="M5 22h14" /><path d="M7 2v3a5 5 0 0 0 10 0V2" /><path d="M7 22v-3a5 5 0 0 1 10 0v3" /></svg>);
+}
+function IconLeaf() {
+  return (<svg width="36" height="36" {...SW} strokeWidth={1.4}><path d="M11 20A7 7 0 0 1 4 13c0-4 3-9 11-12 0 0 5 6 5 12a7 7 0 0 1-7 7c-2 0-4-1-5-3" /><path d="M2 22c4-1 7-4 9-8" /></svg>);
 }

@@ -33,6 +33,8 @@ interface PanelShellProps {
   searchPlaceholder?: string;
   /** Optional primary CTA on the topbar (e.g. "Yeni seans" for psycholog). */
   topbarAction?: React.ReactNode;
+  /** Optional auxiliary controls rendered next to the language switcher (e.g. a search trigger). */
+  topbarExtras?: React.ReactNode;
   /** Profile page path. Defaults to `${homeHref}/profile`. */
   profileHref?: string;
   /** Where the topbar search submits to. Defaults to `${homeHref}/appointments`. */
@@ -47,6 +49,7 @@ export default function PanelShell({
   user,
   searchPlaceholder = "Axtar...",
   topbarAction,
+  topbarExtras,
   profileHref,
   searchHref,
 }: PanelShellProps) {
@@ -165,6 +168,7 @@ export default function PanelShell({
           </form>
 
           <div className="ps-top__right">
+            {topbarExtras}
             <LanguageSwitcher variant="compact" />
             <NotificationBell />
             {topbarAction}

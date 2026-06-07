@@ -170,6 +170,9 @@ export default function PsychologDashboard() {
         <SkeletonGrid />
       ) : (
         <>
+          {/* ── Engagement strip — long-term metrics that motivate ───────────── */}
+          <EngagementStrip stats={stats} />
+
           {/* ── Stat row ───────────────────────────────────────────────────────── */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 22 }}>
             <StatCard
@@ -282,6 +285,130 @@ export default function PsychologDashboard() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* ─── Engagement strip ───────────────────────────────────────────────────── */
+
+function EngagementStrip({ stats }: { stats: PsychologistStats | null }) {
+  const completion = stats?.completionRatePct ?? null;
+  const rating = stats?.averageRating ?? null;
+  const reviews = stats?.totalReviews ?? 0;
+  const returning = stats?.returningClients ?? 0;
+  const returningPct = stats?.returningClientsPct ?? null;
+  const hours = stats?.sessionHoursThisMonth ?? 0;
+  const streak = stats?.weeklyStreak ?? 0;
+
+  return (
+    <div className="psy-engage" style={{ marginBottom: 18 }}>
+      <RingMetric
+        label="Seans tamamlama"
+        value={completion != null ? `${completion}%` : "—"}
+        ringPct={completion ?? 0}
+        sub="son 90 gün"
+        tone="brand"
+      />
+      <RingMetric
+        label="Orta reytinq"
+        value={rating != null ? `${rating.toFixed(1)} ★` : "—"}
+        ringPct={rating != null ? (rating / 5) * 100 : 0}
+        sub={reviews > 0 ? `${reviews} rəyə əsasən` : "hələ rəy yoxdur"}
+        tone="gold"
+      />
+      <RingMetric
+        label="Qayıdan müştəri"
+        value={String(returning)}
+        ringPct={returningPct ?? 0}
+        sub={returningPct != null ? `aktivlərin ${returningPct}%-i` : "son 90 gün"}
+        tone="good"
+      />
+      <FlatMetric
+        label="Bu ay klinik saat"
+        value={`${hours}`}
+        unit="saat"
+        sub={hours > 0 ? "tamamlanmış seans müddətləri" : "hələ seans yoxdur"}
+        icon={<IconClock />}
+        tone="brand"
+      />
+      <FlatMetric
+        label="Davamlılıq"
+        value={String(streak)}
+        unit={streak === 1 ? "həftə" : "həftə"}
+        sub={streak > 0 ? "ardıcıl aktiv həftələr" : "yeni başlayın"}
+        icon={<IconFlame />}
+        tone={streak >= 4 ? "warm" : streak > 0 ? "brand" : "muted"}
+      />
+    </div>
+  );
+}
+
+function RingMetric({
+  label, value, ringPct, sub, tone,
+}: {
+  label: string;
+  value: string;
+  ringPct: number;
+  sub: string;
+  tone: "brand" | "gold" | "good";
+}) {
+  const pct = Math.max(0, Math.min(100, ringPct));
+  const r = 28;
+  const c = 2 * Math.PI * r;
+  const dash = (pct / 100) * c;
+  const colors = {
+    brand: { stroke: "var(--brand)",  track: "var(--brand-100)", fg: "var(--brand-700)" },
+    gold:  { stroke: "#F59E0B",       track: "#FEF3C7",          fg: "#92400E" },
+    good:  { stroke: "#10B981",       track: "#D1FAE5",          fg: "#065F46" },
+  }[tone];
+  return (
+    <div className="psy-engage__card">
+      <div className="psy-engage__ring">
+        <svg width="72" height="72" viewBox="0 0 72 72">
+          <circle cx="36" cy="36" r={r} fill="none" stroke={colors.track} strokeWidth="6" />
+          <circle cx="36" cy="36" r={r} fill="none"
+            stroke={colors.stroke} strokeWidth="6" strokeLinecap="round"
+            strokeDasharray={`${dash} ${c}`}
+            transform="rotate(-90 36 36)" />
+        </svg>
+        <div className="psy-engage__ring-val" style={{ color: colors.fg }}>{value}</div>
+      </div>
+      <div className="psy-engage__body">
+        <div className="psy-engage__label">{label}</div>
+        <div className="psy-engage__sub">{sub}</div>
+      </div>
+    </div>
+  );
+}
+
+function FlatMetric({
+  label, value, unit, sub, icon, tone,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+  sub: string;
+  icon: React.ReactNode;
+  tone: "brand" | "warm" | "muted";
+}) {
+  const colors = {
+    brand: { bg: "var(--brand-50)",  border: "var(--brand-100)", fg: "var(--brand-700)" },
+    warm:  { bg: "#FEF3C7",          border: "#FDE68A",          fg: "#92400E" },
+    muted: { bg: "var(--oxford-10)", border: "var(--oxford-10)", fg: "var(--oxford-60)" },
+  }[tone];
+  return (
+    <div className="psy-engage__card">
+      <div className="psy-engage__icon" style={{ background: colors.bg, borderColor: colors.border, color: colors.fg }}>
+        {icon}
+      </div>
+      <div className="psy-engage__body">
+        <div className="psy-engage__big">
+          <span className="psy-engage__big-val">{value}</span>
+          <span className="psy-engage__big-unit">{unit}</span>
+        </div>
+        <div className="psy-engage__label">{label}</div>
+        <div className="psy-engage__sub">{sub}</div>
+      </div>
     </div>
   );
 }
@@ -602,4 +729,12 @@ function IconClipboard() {
 }
 function IconTarget() {
   return (<svg {...sw}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>);
+}
+function IconFlame() {
+  return (
+    <svg {...sw}>
+      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-1-2.6-2.5-3.5C7 7.6 6 6 6 4c3 0 5 2 6 4 1-2 2-4 5-4 0 5-3 8-6 8-1 1-2.5 1.5-2.5 2.5z" />
+      <path d="M12 22c-3 0-6-2-6-5 0-2 1-3 2-4 .5 1 1 2 2 3 1 1 2 1 2 2 0 .5-.5 1-1 1.5" />
+    </svg>
+  );
 }

@@ -8,7 +8,13 @@ import {
   type AppointmentDetail,
   type ClientNote,
   type ClientSummary,
+  type CrisisCheckIn,
   type FollowupTemplate,
+  type PatientGoal,
+  type PatientGoalPayload,
+  type PatientGoalStatus,
+  type PatientRisk,
+  type PatientRiskLevel,
   type PatientTag,
   type PatientTagColor,
 } from "@/lib/api";
@@ -116,7 +122,21 @@ const REASON_LABELS: Record<string, string> = {
   OPERATOR_OTHER: "Digər",
 };
 
-type Tab = "history" | "notes";
+type Tab = "history" | "notes" | "goals";
+
+const RISK_META: Record<PatientRiskLevel, { label: string; tone: string; bg: string; fg: string; border: string }> = {
+  LOW:      { label: "Aşağı risk",    tone: "warn",   bg: "#FEF3C7", fg: "#92400E", border: "#FDE68A" },
+  MEDIUM:   { label: "Orta risk",     tone: "warn",   bg: "#FED7AA", fg: "#9A3412", border: "#FDBA74" },
+  HIGH:     { label: "Yüksək risk",   tone: "danger", bg: "#FEE2E2", fg: "#991B1B", border: "#FCA5A5" },
+  CRITICAL: { label: "Kritik risk",   tone: "danger", bg: "#FEE2E2", fg: "#7F1D1D", border: "#EF4444" },
+};
+
+const GOAL_STATUS_META: Record<PatientGoalStatus, { label: string; bg: string; fg: string; border: string }> = {
+  OPEN:        { label: "Açıq",       bg: "var(--brand-50)", fg: "var(--brand-700)", border: "var(--brand-100)" },
+  IN_PROGRESS: { label: "Davam edir", bg: "#FEF3C7",         fg: "#92400E",         border: "#FDE68A" },
+  ACHIEVED:    { label: "Çatdı",      bg: "#D1FAE5",         fg: "#065F46",         border: "#A7F3D0" },
+  ABANDONED:   { label: "Tərk edilib", bg: "#F3F4F6",        fg: "#374151",         border: "#E5E7EB" },
+};
 
 export default function PatientDetailPage() {
   const params = useParams<{ patientId: string }>();
@@ -126,8 +146,14 @@ export default function PatientDetailPage() {
   const [appointments, setAppointments] = useState<AppointmentDetail[]>([]);
   const [notes, setNotes] = useState<ClientNote[]>([]);
   const [tags, setTags] = useState<PatientTag[]>([]);
+  const [risk, setRisk] = useState<PatientRisk | null>(null);
+  const [goals, setGoals] = useState<PatientGoal[]>([]);
+  const [crisis, setCrisis] = useState<CrisisCheckIn[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("history");
+  const [riskModalOpen, setRiskModalOpen] = useState(false);
+  const [goalModalGoal, setGoalModalGoal] = useState<PatientGoal | null>(null);
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
 
   // Tags inline composer
   const [tagDraft, setTagDraft] = useState("");
@@ -162,12 +188,18 @@ export default function PatientDetailPage() {
       psychologistApi.myAppointments().catch(() => [] as AppointmentDetail[]),
       psychologistApi.patientTags(patientId).catch(() => [] as PatientTag[]),
       psychologistApi.templates().catch(() => [] as FollowupTemplate[]),
-    ]).then(([n, c, allAppts, t, tpls]) => {
+      psychologistApi.patientRisk(patientId).catch(() => null as PatientRisk | null),
+      psychologistApi.patientGoals(patientId).catch(() => [] as PatientGoal[]),
+      psychologistApi.patientCrisisHistory(patientId).catch(() => [] as CrisisCheckIn[]),
+    ]).then(([n, c, allAppts, t, tpls, r, gs, ch]) => {
       setNotes(n);
       setClient(c);
       setAppointments(allAppts.filter(a => a.patientId === patientId));
       setTags(t);
       setCustomTemplates(tpls);
+      setRisk(r);
+      setGoals(gs);
+      setCrisis(ch);
     }).finally(() => setLoading(false));
   };
 
@@ -348,6 +380,32 @@ export default function PatientDetailPage() {
         <div className="pcli-error">Müştəri tapılmadı.</div>
       ) : (
         <>
+          {/* ── Risk banner — sticky red callout for HIGH / CRITICAL ─────── */}
+          {risk?.riskLevel && (risk.riskLevel === "HIGH" || risk.riskLevel === "CRITICAL") && (
+            <div className="pcli-risk-banner" data-tone={risk.riskLevel}>
+              <div className="pcli-risk-banner__icon" aria-hidden>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div className="pcli-risk-banner__body">
+                <div className="pcli-risk-banner__title">
+                  {RISK_META[risk.riskLevel].label}
+                  {risk.riskLevel === "CRITICAL" && " — intihar təhlükəsi"}
+                </div>
+                {risk.riskNote && <div className="pcli-risk-banner__note">«{risk.riskNote}»</div>}
+                <div className="pcli-risk-banner__meta">
+                  {risk.riskSetByName && <>İşarələyən: <strong>{risk.riskSetByName}</strong> · </>}
+                  {risk.riskSetAt && fmtDateTime(risk.riskSetAt)}
+                </div>
+              </div>
+              <button type="button" onClick={() => setRiskModalOpen(true)} className="pcli-btn pcli-btn--ghost">
+                Dəyişdir
+              </button>
+            </div>
+          )}
+
           {/* ── Header card ─────────────────────────────────────────────────── */}
           <div className="pcli-hero">
             <div className="pcli-hero-avatar">{initialsOf(client.name)}</div>
@@ -363,6 +421,20 @@ export default function PatientDetailPage() {
                     %{completionPct} tamamlanma
                   </span>
                 )}
+                {risk?.riskLevel && (
+                  <button
+                    type="button"
+                    onClick={() => setRiskModalOpen(true)}
+                    className="pcli-risk-pill"
+                    style={{
+                      background: RISK_META[risk.riskLevel].bg,
+                      color: RISK_META[risk.riskLevel].fg,
+                      borderColor: RISK_META[risk.riskLevel].border,
+                    }}
+                    title="Risk səviyyəsini dəyişdir">
+                    {RISK_META[risk.riskLevel].label}
+                  </button>
+                )}
                 {client.noShowCount > 0 && (
                   <span className="pcli-pill pcli-pill--warn">
                     {client.noShowCount} no-show
@@ -375,12 +447,17 @@ export default function PatientDetailPage() {
                 )}
                 {flag && (
                   <span className={`pcli-pill pcli-pill--${flag.tone}`}>
-                    ⚠ {flag.label}
+                    {flag.label}
                   </span>
                 )}
               </div>
             </div>
             <div className="pcli-hero-actions">
+              {!risk?.riskLevel && (
+                <button onClick={() => setRiskModalOpen(true)} className="pcli-btn pcli-btn--ghost">
+                  Risk işarələ
+                </button>
+              )}
               <button onClick={() => { reset(); setShowForm(true); setTab("notes"); }}
                 className="pcli-btn pcli-btn--primary">
                 + Qeyd əlavə et
@@ -515,6 +592,9 @@ export default function PatientDetailPage() {
             </div>
           )}
 
+          {/* ── Crisis check-in history (last 30 days) ──────────────────── */}
+          {crisis.length > 0 && <CrisisHistoryCard items={crisis} />}
+
           {/* ── Mood trend chart (from notes) ───────────────────────────── */}
           {moodPoints.length >= 2 && (
             <MoodTrendChart points={moodPoints} />
@@ -540,10 +620,30 @@ export default function PatientDetailPage() {
               onClick={() => setTab("notes")}>
               Klinik qeydlər <span>{notes.length}</span>
             </button>
+            <button role="tab" aria-selected={tab === "goals"}
+              className={`pcli-tab${tab === "goals" ? " is-active" : ""}`}
+              onClick={() => setTab("goals")}>
+              Hədəflər <span>{goals.length}</span>
+            </button>
           </div>
 
           {tab === "history" && (
             <HistorySection items={sortedHistory} />
+          )}
+
+          {tab === "goals" && (
+            <GoalsSection
+              goals={goals}
+              onCreate={() => { setGoalModalGoal(null); setGoalModalOpen(true); }}
+              onEdit={(g) => { setGoalModalGoal(g); setGoalModalOpen(true); }}
+              onDelete={async (id) => {
+                if (!confirm("Bu hədəfi silmək istəyirsiniz?")) return;
+                try {
+                  await psychologistApi.deleteGoal(id);
+                  setGoals(prev => prev.filter(g => g.id !== id));
+                } catch (e) { alert((e as Error).message); }
+              }}
+            />
           )}
 
           {tab === "notes" && (
@@ -567,6 +667,31 @@ export default function PatientDetailPage() {
             />
           )}
         </>
+      )}
+
+      {riskModalOpen && client && (
+        <RiskModal
+          patientId={patientId}
+          patientName={client.name}
+          current={risk}
+          onClose={() => setRiskModalOpen(false)}
+          onSaved={(updated) => { setRisk(updated); setRiskModalOpen(false); }}
+        />
+      )}
+
+      {goalModalOpen && (
+        <GoalModal
+          patientId={patientId}
+          goal={goalModalGoal}
+          onClose={() => { setGoalModalOpen(false); setGoalModalGoal(null); }}
+          onSaved={(saved) => {
+            setGoals(prev => {
+              if (goalModalGoal) return prev.map(g => g.id === saved.id ? saved : g);
+              return [saved, ...prev];
+            });
+            setGoalModalOpen(false); setGoalModalGoal(null);
+          }}
+        />
       )}
 
       {showTemplateModal && (
@@ -594,6 +719,379 @@ export default function PatientDetailPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─── Risk modal ─────────────────────────────────────────────────────────── */
+
+function RiskModal({
+  patientId, patientName, current, onClose, onSaved,
+}: {
+  patientId: number;
+  patientName: string;
+  current: PatientRisk | null;
+  onClose: () => void;
+  onSaved: (r: PatientRisk) => void;
+}) {
+  const [level, setLevel] = useState<PatientRiskLevel | null>(current?.riskLevel ?? null);
+  const [note, setNote] = useState<string>(current?.riskNote ?? "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const save = async () => {
+    setSaving(true); setErr(null);
+    try {
+      const updated = await psychologistApi.setPatientRisk(patientId, {
+        riskLevel: level,
+        riskNote: note.trim() || null,
+      });
+      onSaved(updated);
+    } catch (e) {
+      setErr((e as Error).message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(10,22,51,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, padding: 0, maxWidth: 520, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden" }}>
+        <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--brand-100)" }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Risk səviyyəsi</h3>
+          <p style={{ fontSize: 12, color: "var(--oxford-60)", margin: "4px 0 0" }}>
+            {patientName} — klinik təhlükə qiymətləndirməsi. Yüksək / Kritik səviyyələrdə operator komandasına avtomatik bildiriş gedir.
+          </p>
+        </div>
+        <div style={{ padding: 22, display: "grid", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+            {(["LOW", "MEDIUM", "HIGH", "CRITICAL"] as PatientRiskLevel[]).map(lv => {
+              const meta = RISK_META[lv];
+              const active = level === lv;
+              return (
+                <button key={lv} type="button" onClick={() => setLevel(lv)}
+                  style={{
+                    padding: "12px 14px", borderRadius: 12,
+                    border: `1.5px solid ${active ? meta.border : "var(--oxford-10)"}`,
+                    background: active ? meta.bg : "#fff",
+                    color: active ? meta.fg : "var(--oxford)",
+                    cursor: "pointer", textAlign: "left",
+                    fontSize: 13, fontWeight: 700,
+                  }}>
+                  {meta.label}
+                  {lv === "CRITICAL" && <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2, opacity: 0.85 }}>intihar təhlükəsi</div>}
+                </button>
+              );
+            })}
+          </div>
+
+          {level !== null && (
+            <button type="button" onClick={() => setLevel(null)}
+              style={{ background: "transparent", border: "none", color: "var(--oxford-60)", cursor: "pointer", fontSize: 12.5, padding: "4px 0", textAlign: "left", fontWeight: 600 }}>
+              ↺ Risk işarəsini təmizlə
+            </button>
+          )}
+
+          <div>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+              Qeyd (məcburi deyil)
+            </label>
+            <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
+              placeholder="Müşahidə olunan əlamətlər, son insident, planlaşdırılan addımlar…"
+              style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />
+          </div>
+
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12 }}>{err}</div>}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={onClose}
+              style={{ padding: "8px 14px", border: "1px solid var(--brand-100)", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>
+              Bağla
+            </button>
+            <button onClick={save} disabled={saving}
+              style={{ padding: "8px 20px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Saxlanılır…" : "Saxla"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Crisis check-in history ────────────────────────────────────────────── */
+
+function CrisisHistoryCard({ items }: { items: CrisisCheckIn[] }) {
+  // Restrict to last 30 days for the sparkline.
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const recent = items.filter(c => new Date(c.createdAt).getTime() >= cutoff);
+  if (recent.length === 0) return null;
+  const lowCount = recent.filter(c => c.moodScore <= 2).length;
+  const sortedAsc = [...recent].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const sparkW = 240, sparkH = 36;
+  const dots = sortedAsc.map((c, i) => {
+    const x = sortedAsc.length === 1 ? sparkW / 2 : (i / (sortedAsc.length - 1)) * (sparkW - 12) + 6;
+    const y = sparkH - ((c.moodScore - 1) / 4) * (sparkH - 10) - 5;
+    return { x, y, mood: c.moodScore, ts: c.createdAt };
+  });
+  const path = dots.map((d, i) => `${i === 0 ? "M" : "L"} ${d.x.toFixed(1)} ${d.y.toFixed(1)}`).join(" ");
+
+  return (
+    <div className="pcli-crisis">
+      <div className="pcli-crisis__head">
+        <div>
+          <h3>Böhran check-in tarixçəsi</h3>
+          <p>Son 30 gündə {recent.length} check-in
+            {lowCount > 0 && <> · <strong style={{ color: "#991B1B" }}>{lowCount} aşağı əhval</strong></>}
+          </p>
+        </div>
+      </div>
+      <svg className="pcli-crisis__spark" viewBox={`0 0 ${sparkW} ${sparkH}`} preserveAspectRatio="none">
+        <line x1="0" y1={sparkH - 5} x2={sparkW} y2={sparkH - 5} stroke="#FCA5A5" strokeWidth="0.6" strokeDasharray="2 2" opacity="0.6" />
+        {dots.length > 1 && (
+          <path d={path} fill="none" stroke="var(--brand)" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+        )}
+        {dots.map((d, i) => (
+          <circle key={i} cx={d.x} cy={d.y} r="3"
+            fill={d.mood <= 2 ? "#DC2626" : d.mood === 3 ? "#F59E0B" : "#10B981"}>
+            <title>{`${d.mood}/5 · ${new Date(d.ts).toLocaleDateString("az-AZ")}`}</title>
+          </circle>
+        ))}
+      </svg>
+      <div className="pcli-crisis__list">
+        {recent.slice(0, 5).map(c => (
+          <div key={c.id} className="pcli-crisis__row" data-tone={c.moodScore <= 2 ? "low" : c.moodScore === 3 ? "mid" : "good"}>
+            <span className="pcli-crisis__row-mood">{c.moodScore}/5</span>
+            <div className="pcli-crisis__row-body">
+              {c.note && <div className="pcli-crisis__row-note">«{c.note}»</div>}
+              <div className="pcli-crisis__row-time">{fmtDateTime(c.createdAt)}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Goals section ──────────────────────────────────────────────────────── */
+
+function GoalsSection({
+  goals, onCreate, onEdit, onDelete,
+}: {
+  goals: PatientGoal[];
+  onCreate: () => void;
+  onEdit: (g: PatientGoal) => void;
+  onDelete: (id: number) => void;
+}) {
+  const grouped = useMemo(() => {
+    const open = goals.filter(g => g.status === "OPEN" || g.status === "IN_PROGRESS");
+    const done = goals.filter(g => g.status === "ACHIEVED");
+    const abandoned = goals.filter(g => g.status === "ABANDONED");
+    return { open, done, abandoned };
+  }, [goals]);
+
+  return (
+    <div className="pcli-goals">
+      <div className="pcli-goals__head">
+        <div>
+          <h3>Terapiya hədəfləri</h3>
+          <p>Müştəri ilə razılaşdırılmış hədəflər və onların inkişafı</p>
+        </div>
+        <button onClick={onCreate} className="pcli-btn pcli-btn--primary">+ Yeni hədəf</button>
+      </div>
+
+      {goals.length === 0 ? (
+        <div className="pcli-goals__empty">
+          <div className="pcli-goals__empty-title">Hələ hədəf əlavə edilməyib</div>
+          <div className="pcli-goals__empty-body">
+            Hədəf əlavə edərək müştərinin inkişafını ölçə bilərsiniz: "anksiyetə hücumlarını azaltmaq", "gündəlik rituallar yaratmaq" və s.
+          </div>
+        </div>
+      ) : (
+        <>
+          {grouped.open.length > 0 && (
+            <GoalList title="Aktiv" goals={grouped.open} onEdit={onEdit} onDelete={onDelete} />
+          )}
+          {grouped.done.length > 0 && (
+            <GoalList title="Çatdı" goals={grouped.done} onEdit={onEdit} onDelete={onDelete} />
+          )}
+          {grouped.abandoned.length > 0 && (
+            <GoalList title="Tərk edilib" goals={grouped.abandoned} onEdit={onEdit} onDelete={onDelete} />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function GoalList({
+  title, goals, onEdit, onDelete,
+}: {
+  title: string; goals: PatientGoal[];
+  onEdit: (g: PatientGoal) => void; onDelete: (id: number) => void;
+}) {
+  return (
+    <div className="pcli-goals__group">
+      <div className="pcli-goals__group-title">{title} <span>{goals.length}</span></div>
+      <div style={{ display: "grid", gap: 8 }}>
+        {goals.map(g => <GoalCard key={g.id} g={g} onEdit={() => onEdit(g)} onDelete={() => onDelete(g.id)} />)}
+      </div>
+    </div>
+  );
+}
+
+function GoalCard({ g, onEdit, onDelete }: { g: PatientGoal; onEdit: () => void; onDelete: () => void }) {
+  const meta = GOAL_STATUS_META[g.status];
+  const overdue = g.targetDate && g.status !== "ACHIEVED" && g.status !== "ABANDONED"
+    && new Date(g.targetDate + "T23:59:59").getTime() < Date.now();
+  return (
+    <div className="pcli-goal-card">
+      <div className="pcli-goal-card__top">
+        <div className="pcli-goal-card__title">{g.title}</div>
+        <span className="pcli-goal-card__status" style={{ background: meta.bg, color: meta.fg, borderColor: meta.border }}>
+          {meta.label}
+        </span>
+      </div>
+      {g.description && <div className="pcli-goal-card__desc">{g.description}</div>}
+      <div className="pcli-goal-card__progress">
+        <div className="pcli-goal-card__progress-bar">
+          <div className="pcli-goal-card__progress-fill" style={{ width: `${g.progressPct}%` }} />
+        </div>
+        <span className="pcli-goal-card__progress-val">{g.progressPct}%</span>
+      </div>
+      <div className="pcli-goal-card__meta">
+        {g.targetDate && (
+          <span className={`pcli-goal-card__date${overdue ? " is-overdue" : ""}`}>
+            Hədəf tarixi: {fmtShort(g.targetDate)}
+            {overdue && " · gecikib"}
+          </span>
+        )}
+        {g.achievedAt && (
+          <span>Tamamlandı: {fmtShort(g.achievedAt)}</span>
+        )}
+        <div className="pcli-goal-card__actions">
+          <button onClick={onEdit} className="pcli-btn pcli-btn--ghost pcli-btn--mini">Redaktə</button>
+          <button onClick={onDelete} className="pcli-btn pcli-btn--ghost pcli-btn--mini" style={{ color: "#991B1B" }}>Sil</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Goal modal ─────────────────────────────────────────────────────────── */
+
+function GoalModal({
+  patientId, goal, onClose, onSaved,
+}: {
+  patientId: number;
+  goal: PatientGoal | null;
+  onClose: () => void;
+  onSaved: (g: PatientGoal) => void;
+}) {
+  const [title, setTitle] = useState(goal?.title ?? "");
+  const [description, setDescription] = useState(goal?.description ?? "");
+  const [targetDate, setTargetDate] = useState(goal?.targetDate ?? "");
+  const [status, setStatus] = useState<PatientGoalStatus>(goal?.status ?? "OPEN");
+  const [progressPct, setProgressPct] = useState<number>(goal?.progressPct ?? 0);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const save = async () => {
+    if (!title.trim()) { setErr("Başlıq tələb olunur"); return; }
+    setSaving(true); setErr(null);
+    try {
+      const payload: PatientGoalPayload = {
+        title: title.trim(),
+        description: description.trim() || null,
+        targetDate: targetDate || null,
+        status,
+        progressPct: status === "ACHIEVED" ? 100 : progressPct,
+      };
+      const saved = goal
+        ? await psychologistApi.updateGoal(goal.id, payload)
+        : await psychologistApi.createGoal(patientId, payload);
+      onSaved(saved);
+    } catch (e) {
+      setErr((e as Error).message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(10,22,51,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, padding: 0, maxWidth: 560, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden" }}>
+        <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--brand-100)" }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>
+            {goal ? "Hədəfi redaktə et" : "Yeni hədəf"}
+          </h3>
+        </div>
+        <div style={{ padding: 22, display: "grid", gap: 14 }}>
+          <div>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+              Başlıq *
+            </label>
+            <input value={title} onChange={e => setTitle(e.target.value)}
+              placeholder="Məs. Anksiyetə hücumlarını həftədə 2-dən aşağı endirmək"
+              style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 14, boxSizing: "border-box" }} />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+              Təfərrüat
+            </label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
+              placeholder="İstifadə olunan strategiya, ölçü meyarları…"
+              style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+                Hədəf tarixi
+              </label>
+              <input type="date" value={targetDate ?? ""} onChange={e => setTargetDate(e.target.value)}
+                style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, boxSizing: "border-box" }} />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+                Status
+              </label>
+              <select value={status} onChange={e => setStatus(e.target.value as PatientGoalStatus)}
+                style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, boxSizing: "border-box", background: "#fff" }}>
+                <option value="OPEN">Açıq</option>
+                <option value="IN_PROGRESS">Davam edir</option>
+                <option value="ACHIEVED">Çatdı</option>
+                <option value="ABANDONED">Tərk edilib</option>
+              </select>
+            </div>
+          </div>
+          {status !== "ACHIEVED" && (
+            <div>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+                İrəliləyiş: <strong>{progressPct}%</strong>
+              </label>
+              <input type="range" min={0} max={100} step={5}
+                value={progressPct}
+                onChange={e => setProgressPct(Number(e.target.value))}
+                style={{ width: "100%" }} />
+            </div>
+          )}
+
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12 }}>{err}</div>}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={onClose}
+              style={{ padding: "8px 14px", border: "1px solid var(--brand-100)", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>
+              Bağla
+            </button>
+            <button onClick={save} disabled={saving}
+              style={{ padding: "8px 20px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Saxlanılır…" : (goal ? "Yenilə" : "Yarat")}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

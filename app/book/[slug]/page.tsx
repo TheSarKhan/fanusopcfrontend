@@ -39,6 +39,67 @@ function isoDateOnly(d: Date) {
 function initials(name: string) {
   return name.split(" ").filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase();
 }
+function fmtRange(startIso: string, minutes: number) {
+  const s = new Date(startIso);
+  const e = new Date(s.getTime() + minutes * 60_000);
+  return `${fmtTime(startIso)}–${String(e.getHours()).padStart(2, "0")}:${String(e.getMinutes()).padStart(2, "0")}`;
+}
+function timeOfDay(iso: string): "morning" | "afternoon" | "evening" {
+  const h = new Date(iso).getHours();
+  if (h < 12) return "morning";
+  if (h < 17) return "afternoon";
+  return "evening";
+}
+const TOD_LABEL: Record<"morning" | "afternoon" | "evening", string> = {
+  morning: "Səhər",
+  afternoon: "Günorta",
+  evening: "Axşam",
+};
+
+const NOTE_TEMPLATES: { key: string; label: string; body: string }[] = [
+  {
+    key: "first",
+    label: "İlk müraciət",
+    body: "Bu mənim ilk seansımdır. Son zamanlar [vəziyyəti qısa təsvir edin] yaşadığımı hiss edirəm. İlk növbədə bu mövzunu müzakirə etmək istəyirəm.",
+  },
+  {
+    key: "continue",
+    label: "Davam edən mövzu",
+    body: "Əvvəlki seansda müzakirə etdiyimiz [mövzu] istiqamətində davam etmək istəyirəm. Bu həftə [müşahidələr / hisslər]…",
+  },
+  {
+    key: "urgent",
+    label: "Təcili",
+    body: "Yaxın günlərdə kəskin stress / narahatlıq yaşayıram və mümkün qədər tez seans almaq istəyirəm. Mövzu: [qısaca].",
+  },
+];
+
+function downloadIcs(opts: { uid: string; start: Date; end: Date; title: string; description: string }) {
+  const toIcs = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const content = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Fanus//AZ//EN",
+    "BEGIN:VEVENT",
+    `UID:${opts.uid}`,
+    `DTSTAMP:${toIcs(new Date())}`,
+    `DTSTART:${toIcs(opts.start)}`,
+    `DTEND:${toIcs(opts.end)}`,
+    `SUMMARY:${opts.title.replace(/\n/g, " ")}`,
+    `DESCRIPTION:${opts.description.replace(/\n/g, "\\n")}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+  const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "fanus-seans.ics";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+}
 
 export default function BookPsychologistPage() {
   const { t } = useT();
@@ -170,6 +231,18 @@ export default function BookPsychologistPage() {
   };
 
   if (success) {
+    const sessionMin = psychologist?.defaultSessionMinutes ?? 50;
+    const handleIcsExport = () => {
+      if (!pickedSlot || !psychologist) return;
+      const start = new Date(pickedSlot.startAt);
+      const end = new Date(start.getTime() + sessionMin * 60_000);
+      downloadIcs({
+        uid: `fanus-${Date.now()}@fanusopc.com`,
+        start, end,
+        title: `Seans · ${psychologist.name}`,
+        description: `Psixoloq: ${psychologist.name}\nFanus platforması\n${note.slice(0, 240)}`,
+      });
+    };
     return (
       <main className="bk-page">
         <div className="bk-success">
@@ -188,8 +261,25 @@ export default function BookPsychologistPage() {
           ) : (
             <p>{t("book.successBody")}</p>
           )}
+
+          <div className="bk-success-sla">
+            <strong>1 saat içində</strong> operator komandamız sizinlə əlaqə saxlayacaq.
+          </div>
+
+          <ol className="bk-success-steps">
+            <li><span>1</span> Operator zəng edir / yazır</li>
+            <li><span>2</span> Vaxt təsdiqlənir</li>
+            <li><span>3</span> Seansın linki email/SMS ilə gəlir</li>
+            <li><span>4</span> Seansa qoşulursunuz</li>
+          </ol>
+
           <div className="bk-success-actions">
             <a className="bk-btn bk-btn-primary" href={appointmentsUrl}>{t("book.successCta")}</a>
+            {pickedSlot && (
+              <button type="button" className="bk-btn bk-btn-ghost" onClick={handleIcsExport}>
+                Təqvimə əlavə et (.ics)
+              </button>
+            )}
             <a className="bk-btn bk-btn-ghost" href="/psychologists">{t("book.backToList")}</a>
           </div>
         </div>
@@ -278,8 +368,15 @@ export default function BookPsychologistPage() {
                   <div className="bk-empty">{t("book.noSlots")}</div>
                 ) : (
                   <>
+                    <div className="bk-tz-hint">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      Bütün vaxtlar Asia/Baku zonası
+                    </div>
+
                     <div className="bk-day-tabs" role="tablist">
-                      {grouped.map(([k, daySlots]) => {
+                      {grouped.map(([k, daySlots], idx) => {
                         const active = k === activeDayKey;
                         return (
                           <button
@@ -290,6 +387,7 @@ export default function BookPsychologistPage() {
                             className={`bk-day-tab${active ? " is-active" : ""}`}
                             onClick={() => setActiveDayKey(k)}
                           >
+                            {idx === 0 && <span className="bk-day-tab__badge">Ən tez</span>}
                             {dayLabel(daySlots[0].startAt)}
                             <small>{daySlots.length} vaxt</small>
                           </button>
@@ -297,21 +395,48 @@ export default function BookPsychologistPage() {
                       })}
                     </div>
 
-                    <div className="bk-slots">
-                      {activeSlots.map(s => {
-                        const active = pickedSlot?.startAt === s.startAt;
+                    {(() => {
+                      const sessionMin = psychologist.defaultSessionMinutes ?? 50;
+                      const byTod: Record<"morning" | "afternoon" | "evening", AvailableSlot[]> = {
+                        morning: [], afternoon: [], evening: [],
+                      };
+                      for (const s of activeSlots) byTod[timeOfDay(s.startAt)].push(s);
+                      const groups = (["morning", "afternoon", "evening"] as const).filter(g => byTod[g].length > 0);
+                      if (groups.length === 0) {
                         return (
-                          <button
-                            type="button"
-                            key={s.startAt}
-                            className={`bk-slot${active ? " is-active" : ""}`}
-                            onClick={() => setPickedSlot(active ? null : s)}
-                          >
-                            {fmtTime(s.startAt)}
-                          </button>
+                          <div className="bk-empty">
+                            Bu gündə boş vaxt yoxdur.
+                            {grouped.length > 1 && " Növbəti günü yoxlayın →"}
+                          </div>
                         );
-                      })}
-                    </div>
+                      }
+                      return (
+                        <div className="bk-tod-stack">
+                          {groups.map(g => (
+                            <div key={g} className="bk-tod">
+                              <div className="bk-tod__label">{TOD_LABEL[g]}</div>
+                              <div className="bk-slots">
+                                {byTod[g].map(s => {
+                                  const active = pickedSlot?.startAt === s.startAt;
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={s.startAt}
+                                      className={`bk-slot${active ? " is-active" : ""}`}
+                                      onClick={() => setPickedSlot(active ? null : s)}
+                                      title={fmtRange(s.startAt, sessionMin)}
+                                    >
+                                      <span className="bk-slot__time">{fmtTime(s.startAt)}</span>
+                                      <span className="bk-slot__range">{sessionMin} dəq</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </section>
@@ -320,6 +445,15 @@ export default function BookPsychologistPage() {
                 <div className="bk-section-head">
                   <h3>{t("book.noteSection")}</h3>
                 </div>
+                <div className="bk-note-templates">
+                  {NOTE_TEMPLATES.map(tpl => (
+                    <button key={tpl.key} type="button"
+                      className="bk-note-template"
+                      onClick={() => setNote(note ? note + "\n\n" + tpl.body : tpl.body)}>
+                      + {tpl.label}
+                    </button>
+                  ))}
+                </div>
                 <textarea
                   rows={4}
                   className="bk-textarea"
@@ -327,7 +461,12 @@ export default function BookPsychologistPage() {
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                 />
-                <p className="bk-hint">{t("book.noteHint")}</p>
+                <div className="bk-note-foot">
+                  <span className="bk-hint">{t("book.noteHint")}</span>
+                  <span className={`bk-counter${note.trim().length >= 5 ? " is-ok" : ""}`}>
+                    {note.trim().length >= 5 ? "✓ kifayətdir" : `${note.trim().length} / minimum 5`}
+                  </span>
+                </div>
               </section>
 
               <section className="bk-section bk-recurring">
@@ -348,38 +487,120 @@ export default function BookPsychologistPage() {
                         <option value="BIWEEKLY">{t("book.recurringBiweekly")}</option>
                       </select>
                     </label>
-                    <label>
+                    <div>
                       <span>{t("book.recurringCount")}</span>
-                      <input
-                        type="number" min={2} max={12}
-                        value={totalCount}
-                        onChange={(e) => setTotalCount(Math.max(2, Math.min(12, Number(e.target.value) || 4)))}
-                      />
-                    </label>
-                    <p className="bk-recurring-hint">
-                      {t("book.recurringHint", {
-                        first: pickedSlot ? `${dayLabel(pickedSlot.startAt)}, ${fmtTime(pickedSlot.startAt)}` : "—",
-                        freq: frequency === "WEEKLY" ? t("book.recurringWeekly").toLowerCase() : t("book.recurringBiweekly").toLowerCase(),
-                      })}
-                    </p>
+                      <div className="bk-recurring-presets">
+                        {[2, 4, 6, 8].map(n => (
+                          <button key={n} type="button"
+                            className={`bk-recurring-preset${totalCount === n ? " is-active" : ""}`}
+                            onClick={() => setTotalCount(n)}>
+                            {n}
+                          </button>
+                        ))}
+                        <input
+                          type="number" min={2} max={12}
+                          value={totalCount}
+                          onChange={(e) => setTotalCount(Math.max(2, Math.min(12, Number(e.target.value) || 4)))}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live summary */}
+                    {(() => {
+                      if (!pickedSlot) {
+                        return (
+                          <p className="bk-recurring-hint">
+                            Yekun planı görmək üçün yuxarıda vaxt seçin.
+                          </p>
+                        );
+                      }
+                      const step = frequency === "WEEKLY" ? 7 : 14;
+                      const start = new Date(pickedSlot.startAt);
+                      const last = new Date(start.getTime() + step * (totalCount - 1) * 24 * 60 * 60 * 1000);
+                      return (
+                        <div className="bk-recurring-summary">
+                          <div className="bk-recurring-summary__row">
+                            <span>İlk seans</span>
+                            <strong>{dayLabel(pickedSlot.startAt)}, {fmtTime(pickedSlot.startAt)}</strong>
+                          </div>
+                          <div className="bk-recurring-summary__row">
+                            <span>Cəmi seans</span>
+                            <strong>{totalCount}</strong>
+                          </div>
+                          <div className="bk-recurring-summary__row">
+                            <span>Müddət</span>
+                            <strong>{(totalCount - 1) * step / 7} həftə</strong>
+                          </div>
+                          <div className="bk-recurring-summary__row">
+                            <span>Son seans</span>
+                            <strong>{dayLabel(last.toISOString())}</strong>
+                          </div>
+                          <p className="bk-recurring-note">
+                            Psixoloqun məzuniyyət günlərinə düşənlər avtomatik atlanır — sonra «Genişləndir» düyməsi ilə əlavə edə bilərsiniz.
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </section>
 
-              {error && <div className="bk-error">{error}</div>}
+              {(() => {
+                const noteOk = note.trim().length >= 5;
+                const slotOk = !!pickedSlot || !recurring;
+                const blockers: string[] = [];
+                if (recurring && !pickedSlot) blockers.push("Davamlı rezerv üçün vaxt seçin");
+                if (!noteOk) blockers.push("Mövzu üçün ən azı 5 simvol yazın");
+                const ready = noteOk && slotOk;
+                return (
+                  <>
+                    <div className="bk-checklist">
+                      <div className={`bk-check${psychologist ? " is-ok" : ""}`}>
+                        <CheckIconSmall ok={!!psychologist} /> Psixoloq seçildi
+                      </div>
+                      <div className={`bk-check${slotOk ? " is-ok" : ""}`}>
+                        <CheckIconSmall ok={slotOk} /> {pickedSlot ? "Vaxt seçildi" : recurring ? "Vaxt seçilməlidir" : "Vaxt (istəyə bağlı)"}
+                      </div>
+                      <div className={`bk-check${noteOk ? " is-ok" : ""}`}>
+                        <CheckIconSmall ok={noteOk} /> Mövzu yazıldı
+                      </div>
+                    </div>
 
-              <div className="bk-actions">
-                <button type="button" className="bk-btn bk-btn-ghost" onClick={() => router.back()}>
-                  {t("common.cancel")}
-                </button>
-                <button type="submit" className="bk-btn bk-btn-primary" disabled={submitting}>
-                  {submitting ? t("common.sending") : t("book.submitCta")}
-                </button>
-              </div>
+                    {error && <div className="bk-error">{error}</div>}
+
+                    <div className="bk-actions">
+                      <button type="button" className="bk-btn bk-btn-ghost" onClick={() => router.back()}>
+                        {t("common.cancel")}
+                      </button>
+                      <button type="submit"
+                        className="bk-btn bk-btn-primary"
+                        disabled={submitting || !ready}
+                        title={!ready ? blockers.join(" · ") : undefined}>
+                        {submitting ? t("common.sending") : t("book.submitCta")}
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </form>
           </div>
         )}
       </div>
     </main>
+  );
+}
+
+function CheckIconSmall({ ok }: { ok: boolean }) {
+  if (ok) {
+    return (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    );
+  }
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+    </svg>
   );
 }

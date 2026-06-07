@@ -375,6 +375,10 @@ export interface AppointmentDetail {
   cancelRequestReasonCode?: string | null;
   cancelRequestReasonText?: string | null;
   statusBeforeCancelRequest?: string | null;
+  // Operator follow-up trail (populated only on operator endpoints)
+  lastContactAt?: string | null;
+  lastContactChannel?: "CALL" | "SMS" | "EMAIL" | "WHATSAPP" | "OTHER" | null;
+  lastContactOutcome?: "ANSWERED" | "NO_ANSWER" | "BUSY" | "REFUSED" | "RESCHEDULED" | "OTHER" | null;
 }
 
 // ─── Structured cancellation reasons ────────────────────────────────────
@@ -1014,6 +1018,18 @@ export const patientApi = {
   homeworkActivity: (id: number) =>
     authedRequest<HomeworkActivity[]>("GET", `/patient/homework/${id}/activity`),
 
+  // Crisis support
+  crisisStatus: () => authedRequest<CrisisStatus>("GET", "/patient/crisis/status"),
+  crisisCheckIn: (data: { moodScore: number; note?: string | null }) =>
+    authedRequest<CrisisCheckIn>("POST", "/patient/crisis/check-in", data),
+
+  // Treatment goals (read-only + progress self-report)
+  goals: () => authedRequest<PatientGoalView[]>("GET", "/patient/goals"),
+  updateGoalProgress: (id: number, progressPct: number, note?: string | null) =>
+    authedRequest<PatientGoalView>("PATCH", `/patient/goals/${id}/progress`, {
+      progressPct, note: note ?? null,
+    }),
+
   // Reviews
   myReviews: () => authedRequest<MyReview[]>("GET", "/patient/reviews"),
   canReview: (psychologistId: number) =>
@@ -1062,6 +1078,10 @@ export const notificationsApi = {
   unreadCount: () => authedRequest<{ count: number }>("GET", "/me/notifications/unread-count"),
   markRead: (id: number) => authedRequest<void>("POST", `/me/notifications/${id}/read`),
   markAllRead: () => authedRequest<{ updated: number }>("POST", "/me/notifications/read-all"),
+  markReadBulk: (ids: number[]) =>
+    authedRequest<{ updated: number }>("POST", "/me/notifications/bulk-read", { ids }),
+  deleteBulk: (ids: number[]) =>
+    authedRequest<{ deleted: number }>("POST", "/me/notifications/bulk-delete", { ids }),
 };
 
 // ─── /me — generic user profile ─────────────────────────────────────────────
@@ -1270,6 +1290,26 @@ export const psychologistApi = {
   deletePatientTag: (tagId: number) =>
     authedRequest<void>("DELETE", `/psychologist/patient-tags/${tagId}`),
 
+  // Patient clinical risk flag
+  patientRisk: (patientId: number) =>
+    authedRequest<PatientRisk>("GET", `/psychologist/clients/${patientId}/risk`),
+  setPatientRisk: (patientId: number, data: { riskLevel: PatientRiskLevel | null; riskNote?: string | null }) =>
+    authedRequest<PatientRisk>("PUT", `/psychologist/clients/${patientId}/risk`, {
+      riskLevel: data.riskLevel ?? "",
+      riskNote: data.riskNote ?? null,
+    }),
+
+  // Patient treatment goals
+  patientGoals: (patientId: number) =>
+    authedRequest<PatientGoal[]>("GET", `/psychologist/clients/${patientId}/goals`),
+  createGoal: (patientId: number, data: PatientGoalPayload) =>
+    authedRequest<PatientGoal>("POST", `/psychologist/clients/${patientId}/goals`, data),
+  updateGoal: (goalId: number, data: PatientGoalPayload) =>
+    authedRequest<PatientGoal>("PUT", `/psychologist/goals/${goalId}`, data),
+  deleteGoal: (goalId: number) =>
+    authedRequest<void>("DELETE", `/psychologist/goals/${goalId}`),
+  patientCrisisHistory: (patientId: number) =>
+    authedRequest<CrisisCheckIn[]>("GET", `/psychologist/clients/${patientId}/crisis-check-ins`),
 
   // Homework
   homework: () => authedRequest<Homework[]>("GET", "/psychologist/homework"),
@@ -1497,6 +1537,15 @@ export interface PsychologistStats {
   upcomingCount: number;
   activeClientsLast90Days: number;
   last30Days: { date: string; count: number }[];
+  // Engagement metrics
+  completionRatePct?: number | null;
+  averageRating?: number | null;
+  totalReviews?: number;
+  returningClients?: number;
+  returningClientsPct?: number | null;
+  sessionHoursThisMonth?: number;
+  weeklyStreak?: number;
+  noShowsLast90Days?: number;
 }
 
 export interface ClientSummary {
@@ -1540,6 +1589,50 @@ export interface PatientTag {
   label: string;
   color: PatientTagColor;
   createdAt: string;
+}
+
+export type PatientRiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export interface PatientRisk {
+  patientId: number;
+  riskLevel: PatientRiskLevel | null;
+  riskNote: string | null;
+  riskSetAt: string | null;
+  riskSetByName: string | null;
+}
+
+export type PatientGoalStatus = "OPEN" | "IN_PROGRESS" | "ACHIEVED" | "ABANDONED";
+export interface PatientGoal {
+  id: number;
+  patientId: number;
+  psychologistId: number;
+  title: string;
+  description: string | null;
+  targetDate: string | null;
+  status: PatientGoalStatus;
+  progressPct: number;
+  createdAt: string;
+  updatedAt: string;
+  achievedAt: string | null;
+}
+export interface PatientGoalPayload {
+  title: string;
+  description?: string | null;
+  targetDate?: string | null;
+  status?: PatientGoalStatus;
+  progressPct?: number;
+}
+export interface PatientGoalView {
+  id: number;
+  psychologistId: number | null;
+  psychologistName: string | null;
+  title: string;
+  description: string | null;
+  targetDate: string | null;
+  status: PatientGoalStatus;
+  progressPct: number;
+  createdAt: string;
+  updatedAt: string;
+  achievedAt: string | null;
 }
 
 export interface Vacation {
@@ -1700,13 +1793,42 @@ export interface ContactLog {
 
 export interface OperatorStats {
   pendingNow: number;
+  unansweredOver24h: number;
   assignedToday: number;
   completedThisMonth: number;
   rejectedThisMonth: number;
   totalThisMonth: number;
+  assignedThisMonth: number;
   avgResponseMinutes: number | null;
   rejectionRatePct: number | null;
+  conversionRatePct: number | null;
   last30Days: { date: string; incoming: number; assigned: number; rejected: number }[];
+  psyConcerns: PsychologistConcern[];
+  patientsNeedingAttention: PatientFlagged[];
+  perOperator: OperatorBreakdown[];
+}
+export interface PsychologistConcern {
+  psychologistId: number;
+  name: string;
+  received: number;
+  rejected: number;
+  rejectionRatePct: number | null;
+  avgConfirmMinutes: number | null;
+}
+export interface PatientFlagged {
+  patientId: number;
+  name: string;
+  reason: string;
+  noShowCount: number;
+  lateCancelCount: number;
+  rejectCount: number;
+  lastIncidentAt: string | null;
+}
+export interface OperatorBreakdown {
+  operatorId: number;
+  name: string;
+  assignedCount: number;
+  avgResponseMinutes: number | null;
 }
 
 export const operatorApi = {
@@ -1796,4 +1918,60 @@ export const operatorApi = {
   unblockUser: (userId: number) =>
     authedRequest<void>("POST", `/operator/users/${userId}/unblock`),
   stats: () => authedRequest<OperatorStats>("GET", "/operator/stats"),
+  crisisCheckIns: () => authedRequest<OperatorCrisisCheckIn[]>("GET", "/operator/crisis/check-ins"),
+  search: (q: string, limit = 10) =>
+    authedRequest<OperatorSearchResponse>(
+      "GET",
+      `/operator/search?q=${encodeURIComponent(q)}&limit=${limit}`
+    ),
 };
+
+export interface OperatorSearchHit {
+  type: "PATIENT" | "PSYCHOLOGIST" | "APPOINTMENT";
+  id: number;
+  title: string;
+  subtitle: string;
+  href: string;
+}
+export interface OperatorSearchResponse {
+  patients: OperatorSearchHit[];
+  psychologists: OperatorSearchHit[];
+  appointments: OperatorSearchHit[];
+}
+
+export interface CrisisCheckIn {
+  id: number;
+  moodScore: number;
+  note: string | null;
+  createdAt: string;
+}
+export interface CrisisHotline {
+  name: string;
+  description: string;
+  phone: string;
+  hours: string;
+  alwaysOpen: boolean;
+}
+export interface CrisisContactPsy {
+  userId: number | null;
+  name: string;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+}
+export interface CrisisStatus {
+  riskLevel: PatientRiskLevel | null;
+  recentCheckIns: CrisisCheckIn[];
+  hotlines: CrisisHotline[];
+  myPsychologist: CrisisContactPsy | null;
+  supportOperator: CrisisContactPsy;
+}
+export interface OperatorCrisisCheckIn {
+  id: number;
+  patientId: number;
+  patientName: string;
+  riskLevel: PatientRiskLevel | null;
+  moodScore: number;
+  note: string | null;
+  createdAt: string;
+}

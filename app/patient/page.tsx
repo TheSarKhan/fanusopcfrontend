@@ -71,6 +71,7 @@ export default function PatientDashboard() {
   const [allPsy, setAllPsy] = useState<Psychologist[]>([]);
   const [goals, setGoals] = useState<PatientGoalView[]>([]);
   const [loading, setLoading] = useState(true);
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     Promise.allSettled([
@@ -96,12 +97,11 @@ export default function PatientDashboard() {
 
   // Derived
   const next = useMemo(() => {
-    const now = Date.now();
     return appts
       .filter(a => a.startAt && new Date(a.startAt).getTime() > now - 30 * 60_000)
       .filter(a => a.status === "ASSIGNED" || a.status === "CONFIRMED")
       .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())[0] ?? null;
-  }, [appts]);
+  }, [appts, now]);
 
   const monthStats = useMemo(() => {
     const ms = new Date(); ms.setDate(1); ms.setHours(0, 0, 0, 0);
@@ -123,10 +123,10 @@ export default function PatientDashboard() {
     const total = pending + completed + tasks.filter(t => t.status === "SKIPPED").length;
     const overdue = tasks.filter(t => {
       if (t.status !== "PENDING" || !t.dueDate) return false;
-      return new Date(t.dueDate + "T23:59:59").getTime() < Date.now();
+      return new Date(t.dueDate + "T23:59:59").getTime() < now;
     }).length;
     return { pending, completed, total, overdue };
-  }, [tasks]);
+  }, [tasks, now]);
 
   const recommended = useMemo(() => {
     const favList = withSlugs(favorites).filter(p => p.active);
@@ -410,7 +410,7 @@ function PsyRecCard({ p, favorite }: { p: Psychologist; favorite: boolean }) {
       className="pdash-psy-card">
       <div className="pdash-psy-card__avatar">
         {p.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
+           
           <img src={p.photoUrl} alt={p.name} />
         ) : (
           <span>{initials(p.name)}</span>

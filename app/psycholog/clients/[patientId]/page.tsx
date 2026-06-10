@@ -150,6 +150,7 @@ export default function PatientDetailPage() {
   const [goals, setGoals] = useState<PatientGoal[]>([]);
   const [crisis, setCrisis] = useState<CrisisCheckIn[]>([]);
   const [loading, setLoading] = useState(true);
+  const [now] = useState(() => Date.now());
   const [tab, setTab] = useState<Tab>("history");
   const [riskModalOpen, setRiskModalOpen] = useState(false);
   const [goalModalGoal, setGoalModalGoal] = useState<PatientGoal | null>(null);
@@ -228,7 +229,8 @@ export default function PatientDetailPage() {
     }
   };
 
-  useEffect(() => { if (Number.isFinite(patientId)) load(); /* eslint-disable-next-line */ }, [patientId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load identity changes every render; re-fetch only on patientId change
+  useEffect(() => { if (Number.isFinite(patientId)) load(); }, [patientId]);
 
   const reset = () => { setEditing(null); setTitle(""); setBody(""); setMood(""); setShowForm(false); setError(null); };
 
@@ -287,12 +289,11 @@ export default function PatientDetailPage() {
   }, [appointments]);
 
   const upcoming = useMemo(() => {
-    const now = Date.now();
     return appointments
       .filter(a => a.startAt && new Date(a.startAt).getTime() > now)
       .filter(a => a.status === "ASSIGNED" || a.status === "CONFIRMED")
       .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())[0] ?? null;
-  }, [appointments]);
+  }, [appointments, now]);
 
   const firstNote = useMemo(() => {
     return appointments
@@ -824,7 +825,7 @@ function RiskModal({
 
 function CrisisHistoryCard({ items }: { items: CrisisCheckIn[] }) {
   // Restrict to last 30 days for the sparkline.
-  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const [cutoff] = useState(() => Date.now() - 30 * 24 * 60 * 60 * 1000);
   const recent = items.filter(c => new Date(c.createdAt).getTime() >= cutoff);
   if (recent.length === 0) return null;
   const lowCount = recent.filter(c => c.moodScore <= 2).length;
@@ -942,9 +943,10 @@ function GoalList({
 }
 
 function GoalCard({ g, onEdit, onDelete }: { g: PatientGoal; onEdit: () => void; onDelete: () => void }) {
+  const [now] = useState(() => Date.now());
   const meta = GOAL_STATUS_META[g.status];
   const overdue = g.targetDate && g.status !== "ACHIEVED" && g.status !== "ABANDONED"
-    && new Date(g.targetDate + "T23:59:59").getTime() < Date.now();
+    && new Date(g.targetDate + "T23:59:59").getTime() < now;
   return (
     <div className="pcli-goal-card">
       <div className="pcli-goal-card__top">

@@ -40,7 +40,7 @@ export default function Deco({
     anim === "none"   ? "" : "fanus-deco--float";
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
+     
     <img
       src={ASSETS[type]}
       alt=""

@@ -873,7 +873,7 @@ export const adminApi = {
   updateUserPsychologistProfile: (id: number, data: Omit<Psychologist, "id">) =>
     authedRequest<Psychologist>("PUT", `/admin/users/${id}/psychologist-profile`, data),
   getUserApplication: (id: number) =>
-    authedRequest<any>("GET", `/admin/users/${id}/application`),
+    authedRequest<PsychologistApplication>("GET", `/admin/users/${id}/application`),
 
   // Operators
   createOperator: (data: { email: string; firstName: string; lastName: string; phone?: string }) =>

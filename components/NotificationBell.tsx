@@ -72,6 +72,7 @@ export default function NotificationBell() {
     });
 
     return () => { clearInterval(t); document.removeEventListener("visibilitychange", onVis); unsub(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- subscribe once on mount; setItems already de-dupes
   }, []);
 
   // Ask once for browser notification permission (operator wants the popup ping)
@@ -105,7 +106,7 @@ export default function NotificationBell() {
       setItems(prev => prev.map(x => x.id === n.id ? { ...x, readAt: new Date().toISOString() } : x));
       setUnread(c => Math.max(0, c - 1));
     }
-    if (n.link) window.location.href = n.link;
+    if (n.link) window.location.assign(n.link);
     else setOpen(false);
   };
 

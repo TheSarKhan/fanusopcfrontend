@@ -49,7 +49,8 @@ export default function AdminReviewsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(filter); /* eslint-disable-next-line */ }, [filter]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load identity changes every render; re-fetch only on filter change
+  useEffect(() => { load(filter); }, [filter]);
 
   const counts = useMemo(() => {
     const c = { PENDING: 0, APPROVED: 0, REJECTED: 0 } as Record<string, number>;

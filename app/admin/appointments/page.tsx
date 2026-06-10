@@ -52,6 +52,7 @@ export default function AppointmentsPage() {
   const [filter, setFilter] = useState<"all" | "today" | "week" | "urgent">("all");
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
+  const [now] = useState(() => Date.now());
 
   const load = () => {
     setLoading(true);
@@ -76,12 +77,12 @@ export default function AppointmentsPage() {
         return new Date(a.createdAt) >= weekAgo;
       }
       if (filter === "urgent") {
-        const ageMin = (Date.now() - new Date(a.createdAt).getTime()) / 60000;
+        const ageMin = (now - new Date(a.createdAt).getTime()) / 60000;
         return a.status === "PENDING" && ageMin < 120;
       }
       return true;
     });
-  }, [items, search, filter]);
+  }, [items, search, filter, now]);
 
   const grouped = useMemo(() => {
     const map: Record<string, Appointment[]> = { PENDING: [], CONFIRMED: [], COMPLETED: [], CANCELLED: [] };
@@ -152,7 +153,7 @@ export default function AppointmentsPage() {
           { k: "all", label: "Bütün psixoloqlar" },
           { k: "today", label: "Bu gün" },
           { k: "week", label: "Bu həftə" },
-          { k: "urgent", label: `Təcili (${items.filter((a) => a.status === "PENDING" && (Date.now() - new Date(a.createdAt).getTime()) / 60000 < 120).length})` },
+          { k: "urgent", label: `Təcili (${items.filter((a) => a.status === "PENDING" && (now - new Date(a.createdAt).getTime()) / 60000 < 120).length})` },
         ] as const).map((f) => (
           <button
             key={f.k}

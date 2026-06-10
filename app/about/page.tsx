@@ -158,7 +158,7 @@ export default function AboutPage() {
             <div className="abt-hero-visual" aria-hidden>
               <div className="abt-hero-glow abt-hero-glow-1" />
               <div className="abt-hero-glow abt-hero-glow-2" />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+              { }
               <img
                 src="/images/hero-haqqimizda.png"
                 alt="Fanus haqqında — psixoloji mərkəz"

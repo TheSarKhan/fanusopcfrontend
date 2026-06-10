@@ -1,4 +1,5 @@
-﻿import type { BlogPost } from "@/lib/api";
+﻿import Link from "next/link";
+import type { BlogPost } from "@/lib/api";
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -23,9 +24,9 @@ export default function BlogPreview({ posts }: { posts: BlogPost[] }) {
               Məqalələr & Tövsiyələr
             </h2>
           </div>
-          <a href="/blog" className="btn-outline self-start sm:self-auto">
+          <Link href="/blog" className="btn-outline self-start sm:self-auto">
             Hamısına bax →
-          </a>
+          </Link>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">

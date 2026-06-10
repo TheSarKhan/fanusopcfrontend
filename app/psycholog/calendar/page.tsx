@@ -365,6 +365,7 @@ export default function PsychologCalendarPage() {
       setDraggingId(null); setDropTarget(null); return;
     }
     // Don't allow dropping into the past
+    // eslint-disable-next-line react-hooks/purity -- event handler, runs on drop only
     if (newStart.getTime() < Date.now()) {
       setDraggingId(null); setDropTarget(null); return;
     }

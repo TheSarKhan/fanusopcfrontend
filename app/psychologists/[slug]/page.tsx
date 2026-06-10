@@ -6,6 +6,7 @@ import {
   type PublicReview,
   type ReviewSummary,
 } from "@/lib/api";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import BookingCta from "./BookingCta";
@@ -223,20 +224,20 @@ export default async function PsychologistProfilePage(
           style={{ background: `radial-gradient(circle, ${BRAND}26, transparent 70%)` }}
         />
         <div className="prof-shell">
-          <a href="/psychologists" className="prof-back">
+          <Link href="/psychologists" className="prof-back">
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.4"
                  viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
               <path d="M19 12H5M12 5l-7 7 7 7" />
             </svg>
             <T k="psyDetail.backToList" />
-          </a>
+          </Link>
 
           <div className="prof-hero__grid">
             {/* Avatar */}
             <div className="prof-avatar">
               <div className="prof-avatar__inner" style={{ background: BRAND }}>
                 {hasPhoto ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                   
                   <img src={psychologist.photoUrl} alt={psychologist.name} />
                 ) : (
                   <span>{initials}</span>
@@ -449,7 +450,7 @@ export default async function PsychologistProfilePage(
                     >
                       <div className="bl-card-visual">
                         {post.coverImageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
+                           
                           <img src={post.coverImageUrl} alt={post.title} className="bl-card-img" />
                         ) : (
                           <div

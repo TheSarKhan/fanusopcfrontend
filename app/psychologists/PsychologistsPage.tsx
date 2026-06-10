@@ -138,7 +138,7 @@ function PsycHero() {
         <div className="pp-hero__visual" aria-hidden>
           <div className="pp-hero__glow pp-hero__glow--1" />
           <div className="pp-hero__glow pp-hero__glow--2" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          { }
           <img
             src="/images/hero-psixoloqlar.png"
             alt="Fanus psixoloq komandası"
@@ -331,7 +331,7 @@ function PsyCard({ p }: { p: Item }) {
       <Link href={`/psychologists/${p.slug ?? p.id}`} className="pp-card__head" aria-label={`${p.name} profili`}>
         <div className="pp-card__photo">
           {p.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
+             
             <img src={p.photoUrl} alt={p.name} />
           ) : (
             <span className="pp-card__initials">{initials}</span>

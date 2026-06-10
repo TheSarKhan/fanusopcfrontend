@@ -63,6 +63,7 @@ export default function PsychologDashboard() {
   const [appointments, setAppointments] = useState<AppointmentDetail[]>([]);
   const [homework, setHomework] = useState<Homework[]>([]);
   const [loading, setLoading] = useState(true);
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     let active = true;
@@ -89,14 +90,13 @@ export default function PsychologDashboard() {
   }, [appointments]);
 
   const upcoming = useMemo(() => {
-    const now = Date.now();
     return appointments
       .filter(a => a.startAt && new Date(a.startAt).getTime() > now)
       .filter(a => !isSameDay(new Date(a.startAt!), new Date()))
       .filter(a => !["CANCELLED", "REJECTED"].includes(a.status))
       .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())
       .slice(0, 4);
-  }, [appointments]);
+  }, [appointments, now]);
 
   const pendingRequests = useMemo(
     () => appointments.filter(a => a.status === "ASSIGNED" || a.status === "PENDING").length,

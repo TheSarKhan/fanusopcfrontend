@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { patientApi, type Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
@@ -46,9 +47,9 @@ export default function PatientFavoritesPage() {
           <div style={{ fontSize: 36, marginBottom: 12 }}>⭐</div>
           <div style={{ fontSize: 16, fontWeight: 600, color: "#1A2535", marginBottom: 4 }}>{t("staff.patFavEmpty")}</div>
           <p style={{ fontSize: 13, color: "#52718F", marginBottom: 16 }}>{t("staff.patFavEmptySub")}</p>
-          <a href="/patient/psychologists" style={{ background: "var(--brand)", color: "#fff", padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+          <Link href="/patient/psychologists" style={{ background: "var(--brand)", color: "#fff", padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
             {t("staff.patFavBrowse")}
-          </a>
+          </Link>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
@@ -57,7 +58,7 @@ export default function PatientFavoritesPage() {
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--brand-50)", color: "var(--brand)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, overflow: "hidden", border: "1px solid var(--brand-100)" }}>
                   {p.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
+                     
                     <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : p.name.split(" ").filter(Boolean).map(s => s[0]).slice(0, 2).join("")}
                 </div>

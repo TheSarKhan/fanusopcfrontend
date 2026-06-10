@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import Deco from "@/components/Deco";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -203,11 +204,11 @@ function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }) {
             <div className="fanus-mm-title">{t("mood.suggestedArticles")}</div>
             <div className="fanus-mm-articles">
               {articles.map((a, i) => (
-                <a key={i} className="fanus-mm-article" href="/blog">
+                <Link key={i} className="fanus-mm-article" href="/blog">
                   <span className="fanus-mm-article__tag">{a.tag}</span>
                   <span className="fanus-mm-article__title">{a.title}</span>
                   <span className="fanus-mm-article__meta">{a.read} →</span>
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -231,7 +232,7 @@ function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }) {
         </div>
         <div className="fanus-mm-foot">
           <button className="fanus-btn fanus-btn-ghost" onClick={onClose}>{t("mood.later")}</button>
-          <a href="/psychologists" className="fanus-btn fanus-btn-primary">{t("mood.findMatch")}</a>
+          <Link href="/psychologists" className="fanus-btn fanus-btn-primary">{t("mood.findMatch")}</Link>
         </div>
       </div>
 

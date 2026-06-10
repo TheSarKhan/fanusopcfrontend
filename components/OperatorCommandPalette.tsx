@@ -106,11 +106,11 @@ export default function OperatorCommandPalette({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, flat, activeIdx, onClose]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const navigate = (hit: OperatorSearchHit) => {
+  function navigate(hit: OperatorSearchHit) {
     pushRecent(q);
     onClose();
     router.push(hit.href);
-  };
+  }
 
   if (!open) return null;
 

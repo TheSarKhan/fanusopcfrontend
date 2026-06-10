@@ -256,7 +256,7 @@ function PsyCard({
       <div className="pcat-card__top">
         <div className="pcat-card__avatar">
           {p.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
+             
             <img src={p.photoUrl} alt={p.name} />
           ) : (
             <span>{initialsOf(p.name)}</span>

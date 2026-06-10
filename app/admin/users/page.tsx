@@ -117,7 +117,7 @@ export default function UsersPage() {
   const [editTab, setEditTab] = useState<EditTab>("account");
 
   // Application state
-  const [appData, setAppData] = useState<any>(null);
+  const [appData, setAppData] = useState<PsychologistApplication | null>(null);
   const [appLoading, setAppLoading] = useState(false);
 
   // Profile Form state
@@ -345,7 +345,7 @@ export default function UsersPage() {
     </span>
   );
 
-  const SortIndicator = ({ field }: { field: string }) => {
+  const sortIndicator = (field: string) => {
     if (sort !== field) return <span style={{ opacity: 0.3, marginLeft: 4 }}>↕</span>;
     return <span style={{ marginLeft: 4, color: "var(--ox)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
   };
@@ -457,12 +457,12 @@ export default function UsersPage() {
         <table className="t">
           <thead>
             <tr>
-              <th onClick={() => handleSort("firstName")} style={{ cursor: "pointer" }}>İstifadəçi <SortIndicator field="firstName" /></th>
-              <th onClick={() => handleSort("role")} style={{ cursor: "pointer" }}>Rol <SortIndicator field="role" /></th>
+              <th onClick={() => handleSort("firstName")} style={{ cursor: "pointer" }}>İstifadəçi {sortIndicator("firstName")}</th>
+              <th onClick={() => handleSort("role")} style={{ cursor: "pointer" }}>Rol {sortIndicator("role")}</th>
               <th>Telefon</th>
               <th>Status</th>
-              <th onClick={() => handleSort("lastLogin")} style={{ cursor: "pointer" }}>Son giriş <SortIndicator field="lastLogin" /></th>
-              <th onClick={() => handleSort("createdAt")} style={{ cursor: "pointer" }}>Qeydiyyat <SortIndicator field="createdAt" /></th>
+              <th onClick={() => handleSort("lastLogin")} style={{ cursor: "pointer" }}>Son giriş {sortIndicator("lastLogin")}</th>
+              <th onClick={() => handleSort("createdAt")} style={{ cursor: "pointer" }}>Qeydiyyat {sortIndicator("createdAt")}</th>
               <th style={{ width: 60, textAlign: "right" }}></th>
             </tr>
           </thead>
@@ -661,7 +661,7 @@ export default function UsersPage() {
                 {/* Photo + name header */}
                 {detailApp.photoUrl && (
                   <div style={{ display: "flex", alignItems: "center", gap: 14, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    { }
                     <img src={detailApp.photoUrl} alt={detailApp.firstName}
                       style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", border: "2px solid var(--border)" }} />
                     <div>
@@ -1258,8 +1258,4 @@ function CertificateList({ json, legacyCerts }: { json?: string; legacyCerts?: s
       ))}
     </div>
   );
-}
-
-function SortIndicator({ field }: { field: string }) {
-  return null;
 }

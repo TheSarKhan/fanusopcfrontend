@@ -39,10 +39,11 @@ export default function RescheduleProposalModal({
   const [busyOption, setBusyOption] = useState<number | null>(null);
   const [rejecting, setRejecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [now] = useState(() => Date.now());
 
   const expired = useMemo(
-    () => new Date(proposal.expiresAt).getTime() <= Date.now(),
-    [proposal.expiresAt]
+    () => new Date(proposal.expiresAt).getTime() <= now,
+    [proposal.expiresAt, now]
   );
 
   useEffect(() => {
@@ -124,7 +125,7 @@ export default function RescheduleProposalModal({
           <button type="button" className="rsc-btn rsc-btn--close" onClick={onClose}>
             Bağla
           </button>
-        </div>
+                </div>
       </div>
     </div>
   );

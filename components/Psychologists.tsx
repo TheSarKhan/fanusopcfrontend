@@ -104,7 +104,7 @@ function PsyCard({ p }: { p: CardItem }) {
       <Link href={`/psychologists/${p.slug}`} className="pp-card__head" aria-label={`${p.name} profili`}>
         <div className="pp-card__photo">
           {p.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
+             
             <img src={p.photoUrl} alt={p.name} />
           ) : (
             <span className="pp-card__initials">{initials}</span>

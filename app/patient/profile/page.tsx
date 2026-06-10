@@ -141,7 +141,7 @@ export default function PatientProfilePage() {
             <div className="ppr-psy">
               <div className="ppr-psy__avatar">
                 {psyDetails.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                   
                   <img src={psyDetails.photoUrl} alt={psyDetails.name} />
                 ) : (
                   <span>{initials(psyDetails.name)}</span>

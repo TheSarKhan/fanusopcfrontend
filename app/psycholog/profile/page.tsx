@@ -69,7 +69,7 @@ export default function PsychologProfilePage() {
                   border: "1px solid var(--brand-100)", overflow: "hidden",
                 }}>
                   {me.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
+                     
                     <img src={me.photoUrl} alt={me.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (
                     me.name.split(" ").filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase()

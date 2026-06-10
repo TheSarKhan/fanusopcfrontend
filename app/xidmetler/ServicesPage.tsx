@@ -50,7 +50,7 @@ function ServicesHero() {
         <div className="svc-hero__visual" aria-hidden>
           <div className="svc-hero__glow svc-hero__glow--1" />
           <div className="svc-hero__glow svc-hero__glow--2" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          { }
           <img
             src="/images/hero-xidmetler.png"
             alt="Fanus xidmətləri — psixoloji dəstək"

@@ -118,7 +118,7 @@ function HeroIllustration() {
     <div className="fanus-hart">
       <div className="fanus-hart__glow fanus-hart__glow--1" />
       <div className="fanus-hart__glow fanus-hart__glow--2" />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
+      { }
       <img
         src="/images/hero-main.png"
         alt="Onlayn video seansda psixoloq və klient — Fanus"

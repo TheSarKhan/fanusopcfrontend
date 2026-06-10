@@ -330,7 +330,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ width: 80, height: 80, borderRadius: 10, background: "#F0F4FA", overflow: "hidden", border: "2px solid #E5E7EB", flexShrink: 0 }}>
                 {photoPreview ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                   
                   <img src={photoPreview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                   <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#8AAABF", fontSize: 24 }}>?</div>

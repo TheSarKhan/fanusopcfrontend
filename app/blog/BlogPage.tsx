@@ -168,7 +168,7 @@ function ArtHero({ search, setSearch }: { search: string; setSearch: (v: string)
         <div className="ap-hero__visual" aria-hidden>
           <div className="ap-hero__glow ap-hero__glow--1" />
           <div className="ap-hero__glow ap-hero__glow--2" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+          { }
           <img
             src="/images/hero-meqaleler.png"
             alt="Fanus məqalələri"

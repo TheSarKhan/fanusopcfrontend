@@ -53,7 +53,8 @@ export default function AdminPsychologistAvailabilityPage() {
     }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { if (Number.isFinite(psyId)) load(); /* eslint-disable-next-line */ }, [psyId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load identity changes every render; re-fetch only on psyId change
+  useEffect(() => { if (Number.isFinite(psyId)) load(); }, [psyId]);
 
   const addSlot = async (e: React.FormEvent) => {
     e.preventDefault();

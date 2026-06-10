@@ -1,4 +1,5 @@
-﻿import { getBlogPostBySlug, getBlogPosts } from "@/lib/api";
+﻿import Link from "next/link";
+import { getBlogPostBySlug, getBlogPosts } from "@/lib/api";
 import { notFound } from "next/navigation";
 import ReadingProgressBar from "@/app/blog/components/ReadingProgressBar";
 import ShareBar from "@/app/blog/components/ShareBar";
@@ -94,7 +95,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         {/* Cover image */}
         {post.coverImageUrl && (
           <div className="bl-detail-cover">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            { }
             <img src={post.coverImageUrl} alt={post.title} />
           </div>
         )}
@@ -135,7 +136,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
         {/* Back link */}
         <div className="bl-detail-back">
-          <a href="/blog">← Bütün məqalələr</a>
+          <Link href="/blog">← Bütün məqalələr</Link>
         </div>
 
         {/* Related posts */}

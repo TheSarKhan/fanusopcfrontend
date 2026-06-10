@@ -32,7 +32,7 @@ export default function RelatedPosts({ posts }: { posts: BlogPost[] }) {
             <a key={post.id} href={`/blog/${post.slug}`} className="bl-card bl-card-link">
               <div className="bl-card-visual">
                 {post.coverImageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                   
                   <img src={post.coverImageUrl} alt={post.title} className="bl-card-img" />
                 ) : (
                   <div className="bl-card-gradient-bg" style={{ background: catGradient(post.category) }}>

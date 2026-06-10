@@ -315,7 +315,7 @@ function HeroArticle({ p, onEdit, onView, onToggle, onDelete, isToggling }: {
       position: "relative",
     }}>
       {p.coverImageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
+         
         <img src={p.coverImageUrl} alt={p.title}
           style={{ width: "100%", height: "100%", objectFit: "cover", minHeight: 200, maxHeight: 280 }} />
       )}
@@ -429,7 +429,7 @@ function GridCard({ p, onToggle, isToggling, onDelete, menuOpen, onMenuToggle }:
         borderRadius: "14px 14px 0 0",
       }}>
         {p.coverImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
+           
           <img src={p.coverImageUrl} alt={p.title}
             style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
@@ -544,7 +544,7 @@ function ListRow({ p, divider, onToggle, isToggling, onDelete }: {
       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
       <div>
         {p.coverImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
+           
           <img src={p.coverImageUrl} alt="" style={{ width: 52, height: 52, borderRadius: 10, objectFit: "cover" }} />
         ) : (
           <div style={{

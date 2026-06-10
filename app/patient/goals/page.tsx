@@ -110,9 +110,10 @@ function GoalCard({
   editable?: boolean;
   onUpdated?: (u: PatientGoalView) => void;
 }) {
+  const [now] = useState(() => Date.now());
   const meta = STATUS_META[g.status];
   const overdue = g.targetDate && (g.status === "OPEN" || g.status === "IN_PROGRESS")
-    && new Date(g.targetDate + "T23:59:59").getTime() < Date.now();
+    && new Date(g.targetDate + "T23:59:59").getTime() < now;
 
   const [editing, setEditing] = useState(false);
   const [progress, setProgress] = useState(g.progressPct);

@@ -73,17 +73,14 @@ function ActivityIcon({ entry }: { entry: ActivityEntry }) {
 }
 
 function Donut({ slices }: { slices: { color: string; percent: number }[] }) {
-  let offset = 25;
   return (
     <svg className="donut" viewBox="0 0 42 42">
       <circle cx="21" cy="21" r="15.9" fill="transparent" stroke="#eef1f7" strokeWidth="6" />
       {slices.map((s, i) => {
-        const dash = `${s.percent} 100`;
-        const node = (
-          <circle key={i} cx="21" cy="21" r="15.9" fill="transparent" stroke={s.color} strokeWidth="6" strokeDasharray={dash} strokeDashoffset={-offset + 50} />
+        const offset = 25 + slices.slice(0, i).reduce((sum, x) => sum + x.percent, 0);
+        return (
+          <circle key={i} cx="21" cy="21" r="15.9" fill="transparent" stroke={s.color} strokeWidth="6" strokeDasharray={`${s.percent} 100`} strokeDashoffset={-offset + 50} />
         );
-        offset += s.percent;
-        return node;
       })}
     </svg>
   );

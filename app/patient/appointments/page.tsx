@@ -133,7 +133,7 @@ export default function PatientAppointmentsPage() {
     return subscribeNotifications((n) => {
       if (typeof n.type === "string" && n.type.startsWith("APPOINTMENT_")) load();
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   /** Psychologist filter chips: every psy from any active appointment, sorted by upcoming count. */

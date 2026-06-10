@@ -167,7 +167,7 @@ export default function HomeworkCreateModal({
     setDraftFiles(prev => prev.filter((_, j) => j !== i));
   };
 
-  const save = async () => {
+  async function save() {
     if (!canSave) {
       if (!patientValid) setErr("Müştəri seçin");
       else if (!titleValid) setErr("Başlıq lazımdır");
@@ -204,7 +204,7 @@ export default function HomeworkCreateModal({
       onCreated(withAttachments);
     } catch (e) { setErr((e as Error).message); }
     finally { setSaving(false); setSavingStage(""); }
-  };
+  }
 
   if (!open) return null;
 

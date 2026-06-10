@@ -48,7 +48,7 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
             <Link key={i} className="fanus-art-card" href={`/blog/${a.slug}`}>
               <div className="fanus-art-card__cover" style={{ background: a.color }}>
                 {a.coverUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                   
                   <img src={a.coverUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
                   <CoverArt color={a.color} variant={i % 4} />

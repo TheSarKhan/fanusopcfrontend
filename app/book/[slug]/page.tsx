@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -280,7 +281,7 @@ export default function BookPsychologistPage() {
                 Təqvimə əlavə et (.ics)
               </button>
             )}
-            <a className="bk-btn bk-btn-ghost" href="/psychologists">{t("book.backToList")}</a>
+            <Link className="bk-btn bk-btn-ghost" href="/psychologists">{t("book.backToList")}</Link>
           </div>
         </div>
       </main>

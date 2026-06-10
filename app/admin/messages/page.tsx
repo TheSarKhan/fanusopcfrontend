@@ -69,6 +69,7 @@ export default function AdminMessagesPage() {
         (m.email ?? "").toLowerCase().includes(q) ||
         (m.phone ?? "").toLowerCase().includes(q) ||
         (m.subject ?? "").toLowerCase().includes(q) ||
+        (m.ticketCode ?? "").toLowerCase().includes(q) ||
         m.message.toLowerCase().includes(q)
       );
     }
@@ -110,7 +111,7 @@ export default function AdminMessagesPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Ad, email, telefon, mesaj…"
+          placeholder="Ad, email, telefon, mesaj, FNS- kodu…"
           style={{ flex: "1 1 240px", padding: "8px 12px", borderRadius: 8, border: "1.5px solid #E4EDF6", fontSize: 13, color: "#1A2535", outline: "none" }}
         />
         <select
@@ -162,6 +163,11 @@ export default function AdminMessagesPage() {
             >
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: "#1A2535", marginBottom: 2 }}>
+                  {m.ticketCode && (
+                    <span style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: "#002147", background: "#EEF5FF", border: "1px solid #C3D6F6", borderRadius: 6, padding: "1px 6px", marginRight: 8 }}>
+                      {m.ticketCode}
+                    </span>
+                  )}
                   {m.name}
                   {m.subject && <span style={{ fontWeight: 500, color: "#52718F", marginLeft: 8 }}>— {m.subject}</span>}
                 </div>
@@ -199,6 +205,11 @@ export default function AdminMessagesPage() {
                   {openMessage.name}
                 </h3>
                 <p style={{ fontSize: 12, color: "#8AAABF", margin: 0 }}>
+                  {openMessage.ticketCode && (
+                    <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#002147", marginRight: 8 }}>
+                      {openMessage.ticketCode}
+                    </span>
+                  )}
                   {fmtDateTime(openMessage.createdAt)}
                 </p>
               </div>

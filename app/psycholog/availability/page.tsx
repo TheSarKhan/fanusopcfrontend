@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { psychologistApi, type TimeSlot, type TimeSlotOverride, type Vacation } from "@/lib/api";
+import { psychologistApi, type AppointmentDetail, type TimeSlot, type TimeSlotOverride, type Vacation } from "@/lib/api";
+import RescheduleComposeModal from "@/components/RescheduleComposeModal";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 const WEEKDAYS_AZ = [
@@ -826,21 +827,105 @@ function AddVacationModal({ onClose, onCreated }: {
   const [notify, setNotify] = useState(true);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // GAP-05: unresolved bookings in the range block activation — resolve each, then retry.
+  const [conflicts, setConflicts] = useState<AppointmentDetail[] | null>(null);
+  const [proposeFor, setProposeFor] = useState<AppointmentDetail | null>(null);
+  const [handingOffId, setHandingOffId] = useState<number | null>(null);
+  const [resolvedIds, setResolvedIds] = useState<Set<number>>(new Set());
 
   const submit = async () => {
     if (!start || !end) { setErr("Tarixləri seçin"); return; }
     if (end < start) { setErr("Bitiş başlanğıcdan sonra olmalıdır"); return; }
     setSaving(true); setErr(null);
     try {
-      const created = await psychologistApi.createVacation({
+      const result = await psychologistApi.createVacation({
         startDate: start, endDate: end,
         reason: reason.trim() || undefined,
         notifyPatients: notify,
       });
-      onCreated(created);
+      if (result.created && result.vacation) {
+        onCreated(result.vacation);
+      } else {
+        setConflicts(result.conflicts);
+      }
     } catch (e) { setErr((e as Error).message); }
     finally { setSaving(false); }
   };
+
+  const handoff = async (a: AppointmentDetail) => {
+    setHandingOffId(a.id); setErr(null);
+    try {
+      await psychologistApi.handoffToOperator(a.id, "psixoloq məzuniyyəti");
+      setResolvedIds(prev => new Set(prev).add(a.id));
+    } catch (e) { setErr((e as Error).message); }
+    finally { setHandingOffId(null); }
+  };
+
+  // ── Conflict resolution step ──────────────────────────────────────────────
+  if (conflicts !== null) {
+    const open = conflicts.filter(c => !resolvedIds.has(c.id));
+    return (
+      <>
+        <Modal onClose={onClose} title="Bu tarixlərdə randevularınız var"
+          subtitle="Məzuniyyət yalnız bütün konfliktlər həll olunandan sonra aktivləşəcək">
+          <div style={{ display: "grid", gap: 10 }}>
+            {conflicts.map(a => {
+              const resolved = resolvedIds.has(a.id);
+              return (
+                <div key={a.id} style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap",
+                  padding: "10px 14px", borderRadius: 10,
+                  border: resolved ? "1px solid #BBF7D0" : "1px solid #FECACA",
+                  background: resolved ? "#F0FDF4" : "#FEF2F2",
+                }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>
+                      {a.patientName ?? "Pasient"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--oxford-60)" }}>
+                      {a.startAt ? new Date(a.startAt).toLocaleString("az-AZ") : "—"} · {a.status}
+                    </div>
+                  </div>
+                  {resolved ? (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>✓ operatora ötürüldü</span>
+                  ) : (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button type="button" onClick={() => setProposeFor(a)}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--brand-100)", background: "var(--brand-50)", color: "var(--brand-700)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                        Yeni vaxt təklif et
+                      </button>
+                      <button type="button" onClick={() => handoff(a)} disabled={handingOffId === a.id}
+                        style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", color: "#1A2535", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                        {handingOffId === a.id ? "…" : "Operatora ötür"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <p style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 12 }}>
+            Qeyd: «Yeni vaxt təklif et» pasiyentin qəbuluna qədər randevunu aktiv saxlayır —
+            təklif qəbul olunandan sonra «Yenidən cəhd et» düyməsi ilə məzuniyyəti aktivləşdirin.
+          </p>
+
+          {err && <ErrorBox message={err} />}
+
+          <ModalActions onCancel={onClose} onSubmit={submit} submitDisabled={saving}
+            submitLabel={saving ? "Yoxlanılır…"
+              : open.length > 0 ? `Yenidən cəhd et (${open.length} konflikt)` : "Yenidən cəhd et"} />
+        </Modal>
+        {proposeFor && (
+          <RescheduleComposeModal
+            appointment={proposeFor}
+            onClose={() => setProposeFor(null)}
+            onCreated={() => setProposeFor(null)}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <Modal onClose={onClose} title="Məzuniyyət əlavə et"

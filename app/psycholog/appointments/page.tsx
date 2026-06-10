@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   psychologistApi,
+  isSlotConflict,
   type AppointmentDetail,
   type ClientNote,
   type ClientSummary,
+  type RescheduleProposal,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import CancelModal from "@/components/CancelModal";
@@ -81,6 +83,8 @@ export default function PsychologistAppointmentsPage() {
   const [rescheduleProposeFor, setRescheduleProposeFor] = useState<AppointmentDetail | null>(null);
   const [outcomeFor, setOutcomeFor] = useState<AppointmentDetail | null>(null);
   const [bulkCancelOpen, setBulkCancelOpen] = useState(false);
+  // GAP-03: incoming patient-initiated reschedule requests awaiting my decision
+  const [patientRequests, setPatientRequests] = useState<RescheduleProposal[]>([]);
 
   // Tick every minute so countdown stays fresh
   useEffect(() => {
@@ -93,10 +97,12 @@ export default function PsychologistAppointmentsPage() {
     Promise.all([
       psychologistApi.myAppointments(),
       psychologistApi.clients().catch(() => [] as ClientSummary[]),
+      psychologistApi.myRescheduleProposals().catch(() => [] as RescheduleProposal[]),
     ])
-      .then(([appts, cs]) => {
+      .then(([appts, cs, props]) => {
         setItems(appts);
         setClients(cs);
+        setPatientRequests(props.filter(p => p.initiator === "PATIENT" && p.status === "PENDING"));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -106,9 +112,10 @@ export default function PsychologistAppointmentsPage() {
 
   useEffect(() => {
     return subscribeNotifications((n) => {
-      if (typeof n.type === "string" && n.type.startsWith("APPOINTMENT_")) load();
+      if (typeof n.type === "string"
+        && (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_"))) load();
     });
-     
+
   }, []);
 
   const today = useMemo(() => {
@@ -230,6 +237,23 @@ export default function PsychologistAppointmentsPage() {
             onPropose={(a) => setRescheduleProposeFor(a)}
             onAddOutcome={(a) => setOutcomeFor(a)}
           />
+
+          {patientRequests.length > 0 && (
+            <Section title="Vaxt dəyişikliyi istəkləri" count={patientRequests.length} icon="🔁">
+              <div style={{ display: "grid", gap: 10 }}>
+                {patientRequests.map(p => (
+                  <PatientRescheduleRequestCard
+                    key={p.id}
+                    proposal={p}
+                    onDecided={(next) => {
+                      setPatientRequests(prev => prev.filter(x => x.id !== next.id));
+                      load();
+                    }}
+                  />
+                ))}
+              </div>
+            </Section>
+          )}
 
           {awaitingConfirm.length > 0 && (
             <Section title="Təsdiq gözlənir" count={awaitingConfirm.length} icon="⏳">
@@ -697,6 +721,100 @@ function HistoryRow({ a }: { a: AppointmentDetail }) {
       {a.patientId ? (
         <Link href={`/psycholog/clients/${a.patientId}`} className="psy-hist-row__link">Notə bax</Link>
       ) : <span />}
+    </div>
+  );
+}
+
+/* ─── GAP-03: patient-initiated reschedule request card ─────────────────── */
+
+function PatientRescheduleRequestCard({
+  proposal, onDecided,
+}: {
+  proposal: RescheduleProposal;
+  onDecided: (p: RescheduleProposal) => void;
+}) {
+  const [busyOption, setBusyOption] = useState<number | null>(null);
+  const [rejecting, setRejecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fmtOpt = (startIso: string, endIso: string) => {
+    const s = new Date(startIso), e = new Date(endIso);
+    return `${pad2(s.getDate())} ${MONTHS_AZ[s.getMonth()]} · ${fmtTime(s)}–${fmtTime(e)}`;
+  };
+
+  const accept = async (idx: number) => {
+    setError(null); setBusyOption(idx);
+    try {
+      const updated = await psychologistApi.acceptPatientReschedule(proposal.id, idx);
+      onDecided(updated);
+    } catch (e) {
+      setError(isSlotConflict(e)
+        ? (e as Error).message + " Digər variantlardan birini seçə bilərsiniz."
+        : (e as Error).message);
+    } finally { setBusyOption(null); }
+  };
+
+  const reject = async () => {
+    if (!confirm("İstəyi rədd etmək istəyirsiniz? Randevu köhnə vaxtında qalacaq.")) return;
+    setError(null); setRejecting(true);
+    try {
+      const updated = await psychologistApi.rejectPatientReschedule(proposal.id);
+      onDecided(updated);
+    } catch (e) { setError((e as Error).message); }
+    finally { setRejecting(false); }
+  };
+
+  return (
+    <div style={{ background: "#fff", borderRadius: 14, padding: 16, border: "1px solid var(--brand-100)", boxShadow: "0 2px 10px rgba(0,0,0,0.04)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
+        <div style={{ fontWeight: 700, color: "var(--oxford)", fontSize: 14 }}>
+          {proposal.patientName ?? "Pasiyent"} vaxt dəyişikliyi istəyir
+        </div>
+        {proposal.originalStartAt && (
+          <span style={{ fontSize: 12, color: "var(--oxford-60)" }}>
+            Hazırkı vaxt: {fmtOpt(proposal.originalStartAt, proposal.originalEndAt ?? proposal.originalStartAt)}
+          </span>
+        )}
+      </div>
+      {proposal.reason && (
+        <div style={{ fontSize: 12.5, color: "var(--oxford-60)", marginTop: 6, fontStyle: "italic" }}>
+          «{proposal.reason}»
+        </div>
+      )}
+      <div style={{ display: "grid", gap: 6, marginTop: 12 }}>
+        {proposal.options.map(opt => (
+          <button
+            key={opt.index}
+            type="button"
+            disabled={busyOption !== null || rejecting}
+            onClick={() => accept(opt.index)}
+            style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "10px 14px", borderRadius: 10, border: "1px solid var(--brand-100)",
+              background: "var(--brand-50)", fontSize: 13, fontWeight: 600,
+              color: "var(--oxford)", cursor: "pointer",
+            }}
+          >
+            <span>{opt.index + 1}. {fmtOpt(opt.startAt, opt.endAt)}</span>
+            <span style={{ color: "var(--brand)" }}>{busyOption === opt.index ? "…" : "Qəbul et →"}</span>
+          </button>
+        ))}
+      </div>
+      {error && (
+        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>
+          {error}
+        </div>
+      )}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+        <button
+          type="button"
+          disabled={busyOption !== null || rejecting}
+          onClick={reject}
+          style={{ padding: "7px 14px", border: "1px solid #FECACA", borderRadius: 8, background: "#fff", color: "#991B1B", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+        >
+          {rejecting ? "Göndərilir…" : "İmtina et"}
+        </button>
+      </div>
     </div>
   );
 }

@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import Deco from "@/components/Deco";
 import type { Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
+import { deriveCategory, type Cat } from "@/lib/moodMap";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
-
-type Cat = "all" | "anxiety" | "trauma" | "family" | "depression" | "youth" | "addiction";
 
 const FILTER_KEYS: { id: Cat; key: MessageKey }[] = [
   { id: "all",        key: "psyList.filterAll" },
@@ -50,23 +50,19 @@ const FALLBACK_BASE: Omit<Item, "slug">[] = [
 ];
 const FALLBACK: Item[] = withSlugs(FALLBACK_BASE);
 
-function deriveCategory(specs: string[]): Cat {
-  const s = specs.join(" ").toLowerCase();
-  if (s.match(/narahat|panik|okd|stress|anksi/)) return "anxiety";
-  if (s.match(/travm|tssp|yas|emdr/))            return "trauma";
-  if (s.match(/münasib|ailə|cütlük|boşanma/))    return "family";
-  if (s.match(/depres|burnout/))                 return "depression";
-  if (s.match(/yeniyetm|valideyn|uşaq/))         return "youth";
-  if (s.match(/asılıl|impuls/))                  return "addiction";
-  return "all";
-}
-
 function getInitials(name: string) {
   return name.split(" ").filter(w => w.length > 1).map(w => w[0]).slice(0, 2).join("");
 }
 
 export default function PsychologistsPage({ psychologists }: { psychologists?: Psychologist[] }) {
-  const [filter, setFilter] = useState<Cat>("all");
+  // GAP-08: the mood check-in's "Uyğununu tap" CTA deep-links ?filter=<cat>.
+  const searchParams = useSearchParams();
+  const VALID_CATS: Cat[] = ["all", "anxiety", "trauma", "family", "depression", "youth", "addiction"];
+  const initialFilter = (() => {
+    const q = searchParams.get("filter");
+    return q && (VALID_CATS as string[]).includes(q) ? (q as Cat) : "all";
+  })();
+  const [filter, setFilter] = useState<Cat>(initialFilter);
 
   const items: Item[] = useMemo(() => {
     if (!psychologists || psychologists.length === 0) return FALLBACK;

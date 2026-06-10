@@ -10,6 +10,7 @@ import {
   type PatientFlagged,
   type OperatorBreakdown,
 } from "@/lib/api";
+import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 function fmtMin(min: number | null): string {
@@ -52,15 +53,38 @@ export default function OperatorAnalyticsPage() {
   const [stats, setStats] = useState<OperatorStats | null>(null);
   const [crisis, setCrisis] = useState<OperatorCrisisCheckIn[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ackingId, setAckingId] = useState<number | null>(null);
 
-  useEffect(() => {
+  const load = () => {
     Promise.allSettled([operatorApi.stats(), operatorApi.crisisCheckIns()])
       .then(([s, c]) => {
         if (s.status === "fulfilled") setStats(s.value);
         if (c.status === "fulfilled") setCrisis(c.value);
         setLoading(false);
       });
+  };
+
+  useEffect(load, []);
+
+  // GAP-07: a new crisis check-in must surface the moment it arrives.
+  useEffect(() => {
+    return subscribeNotifications((n) => {
+      if (n.type === "CRISIS_CHECK_IN") load();
+    });
+
   }, []);
+
+  const ack = async (id: number) => {
+    setAckingId(id);
+    try {
+      const updated = await operatorApi.acknowledgeCrisisCheckIn(id);
+      setCrisis(prev => prev.map(c => c.id === id ? updated : c));
+      setStats(prev => prev
+        ? { ...prev, crisisUnackedCount: Math.max(0, prev.crisisUnackedCount - 1) }
+        : prev);
+    } catch (e) { alert((e as Error).message); }
+    finally { setAckingId(null); }
+  };
 
   return (
     <div className="op-analytics">
@@ -145,12 +169,14 @@ export default function OperatorAnalyticsPage() {
           </div>
 
           {crisis.length > 0 && (
-            <Card title="Son 7 gün — böhran check-in-ləri"
-                  subtitle="Aşağı əhval (≤2) bildirmiş pasiyentlər"
-                  count={crisis.length}
+            <Card title="Böhran — son 7 günün check-in-ləri"
+                  subtitle="Baxılmamışlar qırmızıdır — zəng edin və 'Baxıldı' işarələyin"
+                  count={crisis.filter(c => !c.acknowledgedAt).length}
                   tone="danger">
               <div className="op-list">
-                {crisis.map(c => <CrisisRow key={c.id} c={c} />)}
+                {crisis.map(c => (
+                  <CrisisRow key={c.id} c={c} acking={ackingId === c.id} onAck={() => ack(c.id)} />
+                ))}
               </div>
             </Card>
           )}
@@ -223,11 +249,19 @@ function Card({
   );
 }
 
-function CrisisRow({ c }: { c: OperatorCrisisCheckIn }) {
-  const tone = c.moodScore <= 2 ? "danger" : "warn";
+function CrisisRow({ c, acking, onAck }: {
+  c: OperatorCrisisCheckIn;
+  acking: boolean;
+  onAck: () => void;
+}) {
+  const unacked = !c.acknowledgedAt;
+  const waPhone = c.patientPhone ? c.patientPhone.replace(/[^\d]/g, "") : null;
   return (
-    <Link href={`/operator/appointments`} className="op-row">
-      <div className="op-row__avatar" data-tone={tone}>{c.moodScore}/5</div>
+    <div className="op-row"
+      style={unacked
+        ? { background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10 }
+        : { opacity: 0.65 }}>
+      <div className="op-row__avatar" data-tone={unacked ? "danger" : "neutral"}>{c.moodScore}/5</div>
       <div className="op-row__main">
         <div className="op-row__name">
           {c.patientName}
@@ -236,13 +270,41 @@ function CrisisRow({ c }: { c: OperatorCrisisCheckIn }) {
               {c.riskLevel === "CRITICAL" ? "Kritik" : c.riskLevel === "HIGH" ? "Yüksək" : c.riskLevel}
             </span>
           )}
+          {!unacked && (
+            <span className="op-row__badge" data-tone="neutral" style={{ marginLeft: 6 }}>
+              ✓ baxılıb{c.acknowledgedByName ? ` · ${c.acknowledgedByName}` : ""}
+            </span>
+          )}
         </div>
         <div className="op-row__meta">
           {c.note && <span>«{c.note.length > 90 ? c.note.slice(0, 90) + "…" : c.note}»</span>}
           <span>· {new Date(c.createdAt).toLocaleString("az-AZ")}</span>
         </div>
       </div>
-    </Link>
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+        {c.patientPhone && (
+          <>
+            <a href={`tel:${c.patientPhone}`} title={`Zəng et: ${c.patientPhone}`}
+              style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 12, fontWeight: 600, color: "#1A2535", textDecoration: "none" }}>
+              📞 Zəng
+            </a>
+            {waPhone && (
+              <a href={`https://wa.me/${waPhone}`} target="_blank" rel="noopener noreferrer"
+                title="WhatsApp ilə yaz"
+                style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #BBF7D0", background: "#F0FDF4", fontSize: 12, fontWeight: 600, color: "#166534", textDecoration: "none" }}>
+                WhatsApp
+              </a>
+            )}
+          </>
+        )}
+        {unacked && (
+          <button type="button" onClick={onAck} disabled={acking}
+            style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "#DC2626", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            {acking ? "…" : "Baxıldı"}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

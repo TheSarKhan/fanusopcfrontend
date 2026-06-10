@@ -220,6 +220,19 @@ export default function PatientDetailPage() {
     }
   };
 
+  // GAP-06 (optional CTA): nudge the patient to continue their recurring series.
+  const [suggestingRenewal, setSuggestingRenewal] = useState(false);
+  const suggestRenewal = async () => {
+    setSuggestingRenewal(true);
+    try {
+      const r = await psychologistApi.suggestSeriesRenewal(patientId);
+      alert(r.nudged > 0
+        ? "Təklif göndərildi — pasiyent bildiriş alacaq."
+        : "Bu pasiyentin sizinlə aktiv seriyası yoxdur.");
+    } catch (e) { alert((e as Error).message); }
+    finally { setSuggestingRenewal(false); }
+  };
+
   const removeTag = async (tagId: number) => {
     try {
       await psychologistApi.deletePatientTag(tagId);
@@ -459,6 +472,13 @@ export default function PatientDetailPage() {
                   Risk işarələ
                 </button>
               )}
+              <button
+                onClick={suggestRenewal}
+                disabled={suggestingRenewal}
+                className="pcli-btn pcli-btn--ghost"
+                title="Pasiyentə təkrarlanan seriyasını davam etdirmək təklifi göndər">
+                {suggestingRenewal ? "Göndərilir…" : "Seriyanı davam etdirməyi təklif et"}
+              </button>
               <button onClick={() => { reset(); setShowForm(true); setTab("notes"); }}
                 className="pcli-btn pcli-btn--primary">
                 + Qeyd əlavə et

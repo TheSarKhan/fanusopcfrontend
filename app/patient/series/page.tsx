@@ -43,6 +43,7 @@ export default function PatientSeriesPage() {
   const [err, setErr] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [extendingId, setExtendingId] = useState<number | null>(null);
+  const [renewingId, setRenewingId] = useState<number | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -84,6 +85,17 @@ export default function PatientSeriesPage() {
       alert(t("series.extendDone", { n: count }));
     } catch (e) { alert((e as Error).message); }
     finally { setExtendingId(null); }
+  };
+
+  // GAP-06: one-click renewal — same terms, next N occurrences.
+  const onRenew = async (id: number, count: number) => {
+    setRenewingId(id);
+    try {
+      const updated = await patientApi.extendBookingSeries(id, count);
+      setItems(prev => prev.map(s => s.id === id ? updated : s));
+      alert(`Seriya ${count} seans uzadıldı. Operator yeni vaxtları təsdiqləyəcək.`);
+    } catch (e) { alert((e as Error).message); }
+    finally { setRenewingId(null); }
   };
 
   return (
@@ -135,8 +147,10 @@ export default function PatientSeriesPage() {
               locale={locale}
               cancelling={cancellingId === s.id}
               extending={extendingId === s.id}
+              renewing={renewingId === s.id}
               onCancel={() => onCancel(s.id)}
               onExtend={() => onExtend(s.id, s.skippedOccurrences)}
+              onRenew={() => onRenew(s.id, Math.min(Math.max(s.totalCount ?? 4, 1), 12))}
             />
           ))}
         </div>
@@ -160,16 +174,20 @@ function StatTile({
 }
 
 function SeriesCard({
-  s, t, locale, cancelling, extending, onCancel, onExtend,
+  s, t, locale, cancelling, extending, renewing, onCancel, onExtend, onRenew,
 }: {
   s: BookingSeries;
   t: TFunction;
   locale: string;
   cancelling: boolean;
   extending: boolean;
+  renewing: boolean;
   onCancel: () => void;
   onExtend: () => void;
+  onRenew: () => void;
 }) {
+  // GAP-06: renew with the same terms — same length again, capped at 12.
+  const renewCount = Math.min(Math.max(s.totalCount ?? 4, 1), 12);
   const state = stateOf(s);
   const meta = STATE_META[state];
   const total = s.totalCount ?? 0;
@@ -246,6 +264,14 @@ function SeriesCard({
                 : t("series.extendCta", { n: s.skippedOccurrences })}
             </button>
           )}
+          {/* GAP-06: one-click renewal — same terms, next N sessions */}
+          <button
+            type="button"
+            onClick={onRenew}
+            disabled={renewing}
+            className="pser-card__btn pser-card__btn--primary">
+            {renewing ? "Uzadılır…" : `Davam et (+${renewCount} seans)`}
+          </button>
           <button
             type="button"
             onClick={onCancel}

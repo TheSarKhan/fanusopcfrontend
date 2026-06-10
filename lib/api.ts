@@ -121,6 +121,23 @@ function buildHeaders(isJson = true) {
   };
 }
 
+/** Error that keeps the HTTP status so callers can branch (e.g. 409 = slot
+ *  conflict → refresh the slot list). Still an Error — existing
+ *  `(e as Error).message` call sites keep working unchanged. */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+/** True when the failure is the GAP-02 double-booking guard (HTTP 409). */
+export function isSlotConflict(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 409;
+}
+
 async function authedRequest<T>(
   method: string,
   path: string,
@@ -144,7 +161,7 @@ async function authedRequest<T>(
       });
       if (!retry.ok) {
         const err = await retry.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? `API error ${retry.status}`);
+        throw new ApiError((err as { error?: string }).error ?? `API error ${retry.status}`, retry.status);
       }
       if (retry.status === 204) return undefined as T;
       return retry.json();
@@ -153,12 +170,12 @@ async function authedRequest<T>(
       redirectToLogin();
     }
     // network_error: don't logout, let caller handle
-    throw new Error("Unauthorized");
+    throw new ApiError("Unauthorized", 401);
   }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as { error?: string }).error ?? `API error ${res.status}`);
+    throw new ApiError((err as { error?: string }).error ?? `API error ${res.status}`, res.status);
   }
 
   if (res.status === 204) return undefined as T;
@@ -319,6 +336,7 @@ export interface ContactMessage {
   subject?: string | null;
   message: string;
   status: "NEW" | "IN_REVIEW" | "RESOLVED" | "SPAM";
+  ticketCode?: string | null;
   adminNote?: string | null;
   sourceIp?: string | null;
   userId?: number | null;
@@ -379,6 +397,8 @@ export interface AppointmentDetail {
   lastContactAt?: string | null;
   lastContactChannel?: "CALL" | "SMS" | "EMAIL" | "WHATSAPP" | "OTHER" | null;
   lastContactOutcome?: "ANSWERED" | "NO_ANSWER" | "BUSY" | "REFUSED" | "RESCHEDULED" | "OTHER" | null;
+  // GAP-01: stamped by the SLA job once the request crosses the threshold
+  slaNotifiedAt?: string | null;
 }
 
 // ─── Structured cancellation reasons ────────────────────────────────────
@@ -534,6 +554,21 @@ export const submitContactMessage = async (data: ContactMessagePayload): Promise
   }
   return res.json();
 };
+
+// ─── Funnel tracking (GAP-08) ─────────────────────────────────────────────────
+export type FunnelEventType = "MOOD_SELECTED" | "MOOD_BOOKING_CLICK" | "MOOD_MATCH_CLICK";
+
+/** Fire-and-forget conversion counter — must never break the UX it measures. */
+export function trackFunnelEvent(eventType: FunnelEventType, mood?: string): void {
+  try {
+    void fetch(`${BASE}/public/funnel-events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventType, mood }),
+      keepalive: true, // survives the page navigation that usually follows
+    }).catch(() => {});
+  } catch { /* ignore */ }
+}
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 // Backend sets accessToken + refreshToken as HTTP-only cookies (Domain=.fanus.com).
@@ -952,6 +987,12 @@ export const patientApi = {
     authedRequest<AppointmentDetail>("POST", `/patient/appointments/${appointmentId}/reschedule`, data),
 
   // Reschedule proposals (psychologist → patient)
+  /** GAP-03: patient proposes 1–3 alternative slots; psychologist decides. */
+  requestReschedule: (appointmentId: number, data: {
+    options: { startAt: string; endAt: string }[];
+    reason?: string | null;
+  }) =>
+    authedRequest<RescheduleProposal>("POST", `/patient/appointments/${appointmentId}/reschedule-request`, data),
   pendingRescheduleProposals: () =>
     authedRequest<RescheduleProposal[]>("GET", "/patient/reschedule-proposals"),
   getRescheduleProposal: (id: number) =>
@@ -1263,10 +1304,17 @@ export const psychologistApi = {
   // Vacation / out-of-office
   listVacations: () =>
     authedRequest<Vacation[]>("GET", "/psychologist/vacations"),
+  /** GAP-05: returns created=false + conflicts when active bookings overlap. */
   createVacation: (data: { startDate: string; endDate: string; reason?: string; notifyPatients?: boolean }) =>
-    authedRequest<Vacation>("POST", "/psychologist/vacations", data),
+    authedRequest<VacationCreateResult>("POST", "/psychologist/vacations", data),
   cancelVacation: (id: number) =>
     authedRequest<void>("DELETE", `/psychologist/vacations/${id}`),
+  /** GAP-05: hand a conflicting booking back to operators (→ IN_REVIEW). */
+  handoffToOperator: (appointmentId: number, reason?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${appointmentId}/handoff-to-operator`, { reason }),
+  /** GAP-06 (optional CTA): nudge a patient to continue their series. */
+  suggestSeriesRenewal: (patientId: number) =>
+    authedRequest<{ nudged: number }>("POST", `/psychologist/clients/${patientId}/suggest-series-renewal`),
 
   // Reschedule proposals (psy side)
   myRescheduleProposals: () =>
@@ -1279,6 +1327,11 @@ export const psychologistApi = {
     authedRequest<RescheduleProposal>("POST", `/psychologist/appointments/${appointmentId}/reschedule-proposals`, data),
   withdrawRescheduleProposal: (id: number) =>
     authedRequest<RescheduleProposal>("DELETE", `/psychologist/reschedule-proposals/${id}`),
+  /** GAP-03: decide a PATIENT-initiated reschedule request. */
+  acceptPatientReschedule: (id: number, optionIndex: number) =>
+    authedRequest<RescheduleProposal>("POST", `/psychologist/reschedule-proposals/${id}/accept`, { optionIndex }),
+  rejectPatientReschedule: (id: number, reason?: string) =>
+    authedRequest<RescheduleProposal>("POST", `/psychologist/reschedule-proposals/${id}/reject`, { reason }),
 
   // Patient tags (private to the psychologist)
   patientTags: (patientId: number) =>
@@ -1647,6 +1700,13 @@ export interface Vacation {
   affectedAppointments: number;
 }
 
+/** GAP-05: vacation creation result — conflicts must be resolved first. */
+export interface VacationCreateResult {
+  created: boolean;
+  vacation: Vacation | null;
+  conflicts: AppointmentDetail[];
+}
+
 export type RescheduleStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "EXPIRED" | "CANCELLED";
 
 export interface RescheduleProposalOption {
@@ -1739,6 +1799,7 @@ export interface RescheduleProposal {
   patientUserId: number | null;
   reason: string | null;
   status: RescheduleStatus;
+  initiator: "PSYCHOLOGIST" | "PATIENT";
   expiresAt: string;
   acceptedOption: number | null;
   decidedAt: string | null;
@@ -1747,6 +1808,7 @@ export interface RescheduleProposal {
   options: RescheduleProposalOption[];
   originalStartAt: string | null;
   originalEndAt: string | null;
+  patientName: string | null;
 }
 
 // ─── Operator API (also accessible to ADMIN) ──────────────────────────────────
@@ -1794,6 +1856,11 @@ export interface ContactLog {
 export interface OperatorStats {
   pendingNow: number;
   unansweredOver24h: number;
+  slaOverdueCount: number;
+  slaHours: number;
+  staleDisputedCount: number;
+  disputeTimeoutHours: number;
+  crisisUnackedCount: number;
   assignedToday: number;
   completedThisMonth: number;
   rejectedThisMonth: number;
@@ -1919,6 +1986,9 @@ export const operatorApi = {
     authedRequest<void>("POST", `/operator/users/${userId}/unblock`),
   stats: () => authedRequest<OperatorStats>("GET", "/operator/stats"),
   crisisCheckIns: () => authedRequest<OperatorCrisisCheckIn[]>("GET", "/operator/crisis/check-ins"),
+  /** GAP-07: mark a high-risk check-in as seen (idempotent). */
+  acknowledgeCrisisCheckIn: (id: number) =>
+    authedRequest<OperatorCrisisCheckIn>("POST", `/operator/crisis/check-ins/${id}/acknowledge`),
   search: (q: string, limit = 10) =>
     authedRequest<OperatorSearchResponse>(
       "GET",
@@ -1974,4 +2044,8 @@ export interface OperatorCrisisCheckIn {
   moodScore: number;
   note: string | null;
   createdAt: string;
+  // GAP-07: quick contact + acknowledgement state
+  patientPhone: string | null;
+  acknowledgedByName: string | null;
+  acknowledgedAt: string | null;
 }

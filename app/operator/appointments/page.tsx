@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   operatorApi,
+  isSlotConflict,
   type AppointmentDetail,
   type AvailableSlot,
   type ContactLog,
@@ -52,12 +53,21 @@ export default function OperatorAppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("PENDING");
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
+  // GAP-01: dashboard "Gecikmiş" badge deep-links here with ?filter=overdue
+  const [overdueOnly, setOverdueOnly] = useState(() => searchParams.get("filter") === "overdue");
+  const [slaHours, setSlaHours] = useState<number | null>(null);
+  const [now] = useState(() => Date.now());
 
   // React to topbar search updates
   useEffect(() => {
     const q = searchParams.get("q");
     if (q !== null) setSearch(q);
+    setOverdueOnly(searchParams.get("filter") === "overdue");
   }, [searchParams]);
+
+  useEffect(() => {
+    operatorApi.stats().then(s => setSlaHours(s.slaHours)).catch(() => {});
+  }, []);
   const [assignFor, setAssignFor] = useState<AppointmentDetail | null>(null);
   const [resolveFor, setResolveFor] = useState<AppointmentDetail | null>(null);
   const [cancelFor, setCancelFor] = useState<AppointmentDetail | null>(null);
@@ -84,18 +94,32 @@ export default function OperatorAppointmentsPage() {
    
   }, []);
 
+  /** GAP-01: a request is overdue when the SLA job stamped it, or (live
+   *  fallback between job runs) its age exceeds the configured SLA hours. */
+  const isOverdue = (a: AppointmentDetail) => {
+    if (a.status !== "PENDING" && a.status !== "NEW") return false;
+    if (a.slaNotifiedAt) return true;
+    if (slaHours == null) return false;
+    return now - new Date(a.createdAt).getTime() > slaHours * 3_600_000;
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter(a => {
-      if (tab === "PENDING" && !(a.status === "PENDING" || a.status === "REJECTED")) return false;
-      // CONFIRMED tab also covers AWAITING_CONFIRMATION (post-session, not yet final)
-      if (tab === "CONFIRMED" && !(a.status === "CONFIRMED" || a.status === "AWAITING_CONFIRMATION")) return false;
-      if (tab !== "PENDING" && tab !== "CONFIRMED" && a.status !== tab) return false;
+      if (overdueOnly) {
+        if (!isOverdue(a)) return false;
+      } else {
+        if (tab === "PENDING" && !(a.status === "PENDING" || a.status === "REJECTED")) return false;
+        // CONFIRMED tab also covers AWAITING_CONFIRMATION (post-session, not yet final)
+        if (tab === "CONFIRMED" && !(a.status === "CONFIRMED" || a.status === "AWAITING_CONFIRMATION")) return false;
+        if (tab !== "PENDING" && tab !== "CONFIRMED" && a.status !== tab) return false;
+      }
       if (!q) return true;
       const hay = `${a.id} ${a.patientName ?? ""} ${a.psychologistName ?? ""} ${a.requestedPsychologistName ?? ""} ${a.note ?? ""}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [items, tab, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, tab, search, overdueOnly, slaHours]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { PENDING: 0, ASSIGNED: 0, CONFIRMED: 0, DISPUTED: 0, COMPLETED: 0, CANCELLED: 0 };
@@ -176,11 +200,11 @@ export default function OperatorAppointmentsPage() {
       <div className="op-tab-row flex gap-2 mb-4 flex-wrap">
         {(Object.keys(TAB_META) as Tab[]).map(t => {
           const meta = TAB_META[t];
-          const active = tab === t;
+          const active = !overdueOnly && tab === t;
           return (
             <button
               key={t}
-              onClick={() => setTab(t)}
+              onClick={() => { setOverdueOnly(false); setTab(t); }}
               style={{
                 padding: "8px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600,
                 border: active ? `2px solid ${meta.color}` : "1px solid #E5E7EB",
@@ -194,6 +218,21 @@ export default function OperatorAppointmentsPage() {
             </button>
           );
         })}
+        <button
+          onClick={() => setOverdueOnly(o => !o)}
+          style={{
+            padding: "8px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+            border: overdueOnly ? "2px solid #DC2626" : "1px solid #FECACA",
+            background: overdueOnly ? "#fff" : "rgba(254,242,242,0.8)",
+            color: "#DC2626",
+            cursor: "pointer",
+          }}
+        >
+          ⏰ Gecikmiş
+          <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.7 }}>
+            {items.filter(isOverdue).length}
+          </span>
+        </button>
         <input
           type="text"
           className="op-tab-search"
@@ -779,6 +818,17 @@ function AssignModal({
       onAssigned(updated);
     } catch (e) {
       setError((e as Error).message);
+      // GAP-02: slot raced away — drop the stale pick and reload availability.
+      if (isSlotConflict(e) && psyId) {
+        setPickedSlot(null);
+        setLoadingSlots(true);
+        const today = new Date();
+        const to = new Date(); to.setDate(to.getDate() + 21);
+        operatorApi.availability(psyId, isoDateOnly(today), isoDateOnly(to))
+          .then(setSlots)
+          .catch(() => {})
+          .finally(() => setLoadingSlots(false));
+      }
     } finally {
       setSaving(false);
     }

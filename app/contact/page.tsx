@@ -68,6 +68,9 @@ export default function ContactPage() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  // GAP-09: tracking code shown on the success screen
+  const [ticketCode, setTicketCode] = useState<string | null>(null);
+  const [sentEmail, setSentEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { ref, visible } = useScrollReveal<HTMLElement>(0.1);
 
@@ -99,13 +102,15 @@ export default function ContactPage() {
 
     setSubmitting(true);
     try {
-      await submitContactMessage({
+      const created = await submitContactMessage({
         name: trimmed.name,
         email: trimmed.email || undefined,
         phone: trimmed.phone || undefined,
         subject: trimmed.subject || undefined,
         message: trimmed.message,
       });
+      setTicketCode(created.ticketCode ?? null);
+      setSentEmail(trimmed.email || null);
       setSuccess(true);
       setForm(EMPTY);
     } catch (err) {
@@ -200,11 +205,24 @@ export default function ContactPage() {
                 <h3 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#0F1C2E", margin: "0 0 8px" }}>
                   Mesajınız göndərildi
                 </h3>
+                {ticketCode && (
+                  <div style={{
+                    background: "#EEF5FF", border: "1px solid #C3D6F6", borderRadius: 12,
+                    padding: "14px 18px", margin: "0 auto 16px", maxWidth: 280,
+                  }}>
+                    <p style={{ fontSize: 12, color: "#52718F", margin: "0 0 4px" }}>Müraciət nömrəniz</p>
+                    <p style={{ fontSize: 22, fontWeight: 800, letterSpacing: 2, color: "#002147", margin: 0 }}>
+                      {ticketCode}
+                    </p>
+                  </div>
+                )}
                 <p style={{ fontSize: 14, color: "#52718F", margin: "0 0 24px", lineHeight: 1.5 }}>
-                  Komandamız iş günü ərzində sizinlə əlaqə saxlayacaq. Təşəkkür edirik.
+                  Komandamız iş günü ərzində sizinlə əlaqə saxlayacaq.
+                  {ticketCode ? " Statusu soruşmaq üçün bu nömrəni qeyd edin." : ""}
+                  {sentEmail ? ` Təsdiq emaili ${sentEmail} ünvanına göndərildi.` : ""}
                 </p>
                 <button
-                  onClick={() => setSuccess(false)}
+                  onClick={() => { setSuccess(false); setTicketCode(null); setSentEmail(null); }}
                   style={{
                     padding: "9px 22px", borderRadius: 10, fontSize: 13, fontWeight: 700,
                     background: "var(--brand)", color: "#fff",

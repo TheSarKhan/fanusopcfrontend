@@ -14,6 +14,7 @@ import { azFormatTime, azFormatDate, azLocalToISO } from "@/lib/datetime";
 import ReviewModal from "./ReviewModal";
 import CancelModal from "@/components/CancelModal";
 import RescheduleProposalModal from "@/components/RescheduleProposalModal";
+import PatientRescheduleRequestModal from "@/components/PatientRescheduleRequestModal";
 import AddToCalendarMenu from "@/components/AddToCalendarMenu";
 import SessionFeedbackModal from "@/components/SessionFeedbackModal";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -94,6 +95,8 @@ export default function PatientAppointmentsPage() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [now, setNow] = useState(new Date());
   const [reschedFor, setReschedFor] = useState<AppointmentDetail | null>(null);
+  // GAP-03: new no-penalty flow — patient proposes slots, psychologist decides
+  const [reschedRequestFor, setReschedRequestFor] = useState<AppointmentDetail | null>(null);
   const [reviewFor, setReviewFor] = useState<AppointmentDetail | null>(null);
   const [disputeFor, setDisputeFor] = useState<AppointmentDetail | null>(null);
   const [cancelFor, setCancelFor] = useState<AppointmentDetail | null>(null);
@@ -121,7 +124,9 @@ export default function PatientAppointmentsPage() {
       .then(([appts, revs, props]) => {
         setItems(appts);
         setMyReviews(revs);
-        setProposals(props);
+        // Only psychologist-initiated proposals are FOR the patient to decide;
+        // the patient's own GAP-03 requests are awaiting the psychologist.
+        setProposals(props.filter(p => p.initiator !== "PATIENT"));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -131,9 +136,10 @@ export default function PatientAppointmentsPage() {
 
   useEffect(() => {
     return subscribeNotifications((n) => {
-      if (typeof n.type === "string" && n.type.startsWith("APPOINTMENT_")) load();
+      if (typeof n.type === "string"
+        && (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_"))) load();
     });
-     
+
   }, []);
 
   /** Psychologist filter chips: every psy from any active appointment, sorted by upcoming count. */
@@ -232,6 +238,20 @@ export default function PatientAppointmentsPage() {
 
   const cancel = (a: AppointmentDetail) => setCancelFor(a);
 
+  /** GAP-03: ≥24h before a CONFIRMED/ASSIGNED session the patient gets the
+   *  no-penalty request flow (psychologist decides); otherwise the legacy
+   *  cancel+rebook modal. Mirrors app.reschedule.min-hours-before — the
+   *  backend enforces the configured value. */
+  const RESCHEDULE_REQUEST_MIN_HOURS = 24;
+  const openReschedule = (a: AppointmentDetail) => {
+    const canRequest = !!a.psychologistId
+      && (a.status === "CONFIRMED" || a.status === "ASSIGNED")
+      && !!a.startAt
+      && new Date(a.startAt).getTime() - now.getTime() >= RESCHEDULE_REQUEST_MIN_HOURS * 3_600_000;
+    if (canRequest) setReschedRequestFor(a);
+    else setReschedFor(a);
+  };
+
   const sessionCountFor = (psyId?: number | null) => {
     if (!psyId) return null;
     const completed = items.filter(a =>
@@ -327,7 +347,7 @@ export default function PatientAppointmentsPage() {
             busyId={busyId}
             onConfirm={(a) => action(a.id, () => patientApi.confirmSession(a.id))}
             onDispute={(a) => setDisputeFor(a)}
-            onReschedule={(a) => setReschedFor(a)}
+            onReschedule={(a) => openReschedule(a)}
             onCancel={(a) => cancel(a)}
           />
 
@@ -368,7 +388,7 @@ export default function PatientAppointmentsPage() {
                           isNext={next?.id === a.id}
                           now={now}
                           sessionNumber={a.psychologistId ? sessionCountFor(a.psychologistId) : null}
-                          onReschedule={() => setReschedFor(a)}
+                          onReschedule={() => openReschedule(a)}
                           onCancel={() => cancel(a)}
                         />
                       ))}
@@ -410,6 +430,13 @@ export default function PatientAppointmentsPage() {
           appointment={reschedFor}
           onClose={() => setReschedFor(null)}
           onDone={() => { setReschedFor(null); load(); }}
+        />
+      )}
+      {reschedRequestFor && (
+        <PatientRescheduleRequestModal
+          appointment={reschedRequestFor}
+          onClose={() => setReschedRequestFor(null)}
+          onDone={() => { setReschedRequestFor(null); load(); }}
         />
       )}
       {reviewFor && reviewFor.psychologistId && (

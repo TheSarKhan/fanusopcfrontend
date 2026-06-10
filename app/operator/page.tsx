@@ -183,11 +183,29 @@ export default function OperatorDashboard() {
             />
             <Kpi
               icon={<IconAlert />}
+              label="Gecikmiş"
+              value={stats?.slaOverdueCount ?? 0}
+              hint={`SLA: ${stats?.slaHours ?? 2} saat`}
+              tone={(stats?.slaOverdueCount ?? 0) > 0 ? "danger" : "good"}
+              href="/operator/appointments?filter=overdue"
+            />
+            <Kpi
+              icon={<IconAlert />}
               label="Mübahisəli"
               value={disputed.length}
-              hint={disputed.length > 0 ? "həll et" : "boşdur"}
-              tone={disputed.length > 0 ? "danger" : "good"}
+              hint={(stats?.staleDisputedCount ?? 0) > 0
+                ? `${stats!.staleDisputedCount} köhnə (${stats!.disputeTimeoutHours}s+)`
+                : disputed.length > 0 ? "həll et" : "boşdur"}
+              tone={(stats?.staleDisputedCount ?? 0) > 0 || disputed.length > 0 ? "danger" : "good"}
               href="/operator/appointments"
+            />
+            <Kpi
+              icon={<IconAlert />}
+              label="Böhran"
+              value={stats?.crisisUnackedCount ?? 0}
+              hint={(stats?.crisisUnackedCount ?? 0) > 0 ? "baxılmamış check-in" : "hamısına baxılıb"}
+              tone={(stats?.crisisUnackedCount ?? 0) > 0 ? "danger" : "good"}
+              href="/operator/analytics"
             />
             <Kpi
               icon={<IconRefresh />}

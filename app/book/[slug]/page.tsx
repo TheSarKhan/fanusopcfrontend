@@ -8,6 +8,7 @@ import {
   getPsychologistAvailability,
   getPsychologists,
   patientApi,
+  isSlotConflict,
   type AvailableSlot,
   type Psychologist,
 } from "@/lib/api";
@@ -226,6 +227,16 @@ export default function BookPsychologistPage() {
       setSuccess(true);
     } catch (err) {
       setError((err as Error).message || "Müraciət göndərilərkən xəta baş verdi");
+      // GAP-02: slot raced away — drop the stale pick and reload availability.
+      if (isSlotConflict(err) && psychologist) {
+        setPickedSlot(null);
+        const today = new Date();
+        const to = new Date();
+        to.setDate(to.getDate() + 21);
+        getPsychologistAvailability(psychologist.id, isoDateOnly(today), isoDateOnly(to))
+          .then(setSlots)
+          .catch(() => {});
+      }
     } finally {
       setSubmitting(false);
     }

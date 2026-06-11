@@ -7,6 +7,7 @@ import PanelShell, { type PanelNavItem } from "@/components/PanelShell";
 import { getStoredUser } from "@/lib/auth";
 import { patientApi, type PatientRiskLevel } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { FEATURE_GOALS } from "@/lib/features";
 
 function RiskBanner({ level }: { level: PatientRiskLevel | null }) {
   if (!level || (level !== "HIGH" && level !== "CRITICAL")) return null;
@@ -41,9 +42,10 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     { href: "/patient",                label: t("nav.dashboard"),     icon: "home" },
     { href: "/patient/psychologists",  label: t("nav.psychologists"), icon: "users" },
     { href: "/patient/appointments",   label: t("nav.appointments"),  icon: "calendar" },
-    { href: "/patient/series",         label: t("nav.series"),        icon: "clock" },
     { href: "/patient/homework",       label: t("nav.homework"),      icon: "check" },
-    { href: "/patient/goals",          label: "Hədəflərim",            icon: "check" },
+    ...(FEATURE_GOALS
+      ? [{ href: "/patient/goals", label: "Hədəflərim", icon: "check" } as PanelNavItem]
+      : []),
     { href: "/patient/favorites",      label: t("nav.favorites"),     icon: "heart" },
     { href: "/patient/profile",        label: t("nav.profile"),       icon: "user" },
   ];

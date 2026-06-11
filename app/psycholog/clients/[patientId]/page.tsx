@@ -18,6 +18,7 @@ import {
   type PatientTag,
   type PatientTagColor,
 } from "@/lib/api";
+import { FEATURE_GOALS } from "@/lib/features";
 
 const TAG_COLORS: { value: PatientTagColor; label: string; swatch: string }[] = [
   { value: "brand",   label: "Mavi",     swatch: "var(--brand)" },
@@ -190,7 +191,10 @@ export default function PatientDetailPage() {
       psychologistApi.patientTags(patientId).catch(() => [] as PatientTag[]),
       psychologistApi.templates().catch(() => [] as FollowupTemplate[]),
       psychologistApi.patientRisk(patientId).catch(() => null as PatientRisk | null),
-      psychologistApi.patientGoals(patientId).catch(() => [] as PatientGoal[]),
+      // Goals gizlidirsə sorğu ümumiyyətlə getməsin.
+      FEATURE_GOALS
+        ? psychologistApi.patientGoals(patientId).catch(() => [] as PatientGoal[])
+        : Promise.resolve([] as PatientGoal[]),
       psychologistApi.patientCrisisHistory(patientId).catch(() => [] as CrisisCheckIn[]),
     ]).then(([n, c, allAppts, t, tpls, r, gs, ch]) => {
       setNotes(n);
@@ -641,18 +645,20 @@ export default function PatientDetailPage() {
               onClick={() => setTab("notes")}>
               Klinik qeydlər <span>{notes.length}</span>
             </button>
-            <button role="tab" aria-selected={tab === "goals"}
-              className={`pcli-tab${tab === "goals" ? " is-active" : ""}`}
-              onClick={() => setTab("goals")}>
-              Hədəflər <span>{goals.length}</span>
-            </button>
+            {FEATURE_GOALS && (
+              <button role="tab" aria-selected={tab === "goals"}
+                className={`pcli-tab${tab === "goals" ? " is-active" : ""}`}
+                onClick={() => setTab("goals")}>
+                Hədəflər <span>{goals.length}</span>
+              </button>
+            )}
           </div>
 
           {tab === "history" && (
             <HistorySection items={sortedHistory} />
           )}
 
-          {tab === "goals" && (
+          {FEATURE_GOALS && tab === "goals" && (
             <GoalsSection
               goals={goals}
               onCreate={() => { setGoalModalGoal(null); setGoalModalOpen(true); }}
@@ -700,7 +706,7 @@ export default function PatientDetailPage() {
         />
       )}
 
-      {goalModalOpen && (
+      {FEATURE_GOALS && goalModalOpen && (
         <GoalModal
           patientId={patientId}
           goal={goalModalGoal}

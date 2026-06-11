@@ -864,6 +864,10 @@ export default function UsersPage() {
                 <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
                   <IconClock size={12} /> Qeydiyyat: {fmtDateTime(editUser.createdAt)}
                 </div>
+                {/* MODUL 3: tam kart səhifəsi (pasiyent/psixoloq/operator) */}
+                <a href={`/admin/users/${editUser.id}`} className="btn sm" style={{ marginTop: 10, display: "inline-flex", textDecoration: "none" }}>
+                  Tam kartı aç →
+                </a>
               </div>
               <button className="btn ghost icon-only" onClick={closeDrawer} style={{ margin: "-8px -8px 0 0" }}>✕</button>
             </div>

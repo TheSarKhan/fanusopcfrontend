@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   patientApi,
   type AppointmentDetail,
+  type BookingSeries,
   type MyReview,
   type RescheduleProposal,
   type SessionFeedback,
@@ -89,7 +91,9 @@ type StatusFilter = "all" | "confirmed" | "pending";
 
 export default function PatientAppointmentsPage() {
   const { t } = useT();
+  const router = useRouter();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
+  const [series, setSeries] = useState<BookingSeries[]>([]);
   const [myReviews, setMyReviews] = useState<MyReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -120,10 +124,12 @@ export default function PatientAppointmentsPage() {
       patientApi.myAppointments(),
       patientApi.myReviews().catch(() => [] as MyReview[]),
       patientApi.pendingRescheduleProposals().catch(() => [] as RescheduleProposal[]),
+      patientApi.myBookingSeries().catch(() => [] as BookingSeries[]),
     ])
-      .then(([appts, revs, props]) => {
+      .then(([appts, revs, props, srs]) => {
         setItems(appts);
         setMyReviews(revs);
+        setSeries(srs);
         // Only psychologist-initiated proposals are FOR the patient to decide;
         // the patient's own GAP-03 requests are awaiting the psychologist.
         setProposals(props.filter(p => p.initiator !== "PATIENT"));
@@ -141,6 +147,72 @@ export default function PatientAppointmentsPage() {
     });
 
   }, []);
+
+  /** B2-1: course cards — every live group with 2+ sessions, newest first.
+   *  LEGACY (wizard-era) series and BASKET groups render identically. */
+  const courses = useMemo(() => {
+    const out: { series: BookingSeries; members: AppointmentDetail[] }[] = [];
+    for (const s of series) {
+      if (s.cancelledAt) continue;
+      const members = items
+        .filter(a => a.seriesId === s.id)
+        .sort((a, b) => {
+          const ta = new Date(a.startAt ?? a.requestedStartAt ?? a.createdAt).getTime();
+          const tb = new Date(b.startAt ?? b.requestedStartAt ?? b.createdAt).getTime();
+          return ta - tb;
+        });
+      // Single appointments never get a course card (criterion B2-1.5);
+      // a 1-member legacy series degrades to a plain row the same way.
+      if (members.length < 2) continue;
+      out.push({ series: s, members });
+    }
+    return out.sort((a, b) => b.series.createdAt.localeCompare(a.series.createdAt));
+  }, [series, items]);
+
+  const courseMemberIds = useMemo(
+    () => new Set(courses.flatMap(c => c.members.map(m => m.id))),
+    [courses],
+  );
+
+  /** B2-2: "Uzat" — reopen the basket prefilled with the course's rhythm. */
+  const extendCourse = (c: { series: BookingSeries; members: AppointmentDetail[] }) => {
+    const psyId = c.series.requestedPsychologistId
+      ?? c.members.find(m => m.psychologistId)?.psychologistId;
+    if (!psyId) return;
+    const last = [...c.members].reverse()
+      .map(m => m.startAt ?? m.requestedStartAt)
+      .find(Boolean);
+    if (!last) return;
+    const step = c.series.frequency === "BIWEEKLY" ? 14 : 7;
+    router.push(`/patient/book/${psyId}?extend=${c.series.id}`
+      + `&anchor=${encodeURIComponent(last)}&step=${step}&weeks=4`);
+  };
+
+  /** "Kursu bitir" — unchanged series cancel-request flow (operator approves). */
+  const endCourse = async (s: BookingSeries) => {
+    if (!confirm(t("series.cancelRequestConfirm"))) return;
+    try {
+      await patientApi.cancelBookingSeries(s.id);
+      alert(t("series.cancelRequestSent"));
+      load();
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  };
+
+  // GAP-06 renewal link lands on /patient/appointments?extend={seriesId} —
+  // forward straight into the extend-basket flow once data is here.
+  const extendHandled = useRef(false);
+  useEffect(() => {
+    if (loading || extendHandled.current) return;
+    const sp = new URLSearchParams(window.location.search);
+    const id = Number(sp.get("extend"));
+    if (!Number.isFinite(id) || id <= 0) return;
+    extendHandled.current = true;
+    const course = courses.find(c => c.series.id === id);
+    if (course) extendCourse(course);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, courses]);
 
   /** Psychologist filter chips: every psy from any active appointment, sorted by upcoming count. */
   const psyChips = useMemo(() => {
@@ -188,9 +260,11 @@ export default function PatientAppointmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, psyFilter, statusFilter]);
 
-  /** All upcoming (today + future), filtered, grouped by AZ day key. */
+  /** All upcoming (today + future), filtered, grouped by AZ day key.
+   *  Course members live inside their "Kursum" card, not here (B2-1). */
   const agendaGroups = useMemo(() => {
     const list = items
+      .filter(a => !courseMemberIds.has(a.id))
       .filter(a => a.startAt && new Date(a.startAt).getTime() > now.getTime() - 30 * 60_000)
       .filter(a => ACTIVE_STATUSES.has(a.status))
       .filter(matchesFilters)
@@ -208,7 +282,7 @@ export default function PatientAppointmentsPage() {
     }
     return groups;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, now, psyFilter, statusFilter]);
+  }, [items, now, psyFilter, statusFilter, courseMemberIds]);
 
   const agendaTotal = useMemo(() => agendaGroups.reduce((n, g) => n + g.items.length, 0), [agendaGroups]);
 
@@ -350,6 +424,26 @@ export default function PatientAppointmentsPage() {
             onReschedule={(a) => openReschedule(a)}
             onCancel={(a) => cancel(a)}
           />
+
+          {/* B2-1: course cards — grouped sessions under one "Kursum" block */}
+          {courses.length > 0 && (
+            <Section title={t("course.sectionTitle")} count={courses.length} icon="🧭">
+              <div style={{ display: "grid", gap: 12 }}>
+                {courses.map(c => (
+                  <CourseCard
+                    key={c.series.id}
+                    series={c.series}
+                    members={c.members}
+                    now={now}
+                    onExtend={() => extendCourse(c)}
+                    onEnd={() => endCourse(c.series)}
+                    onReschedule={(a) => openReschedule(a)}
+                    onCancel={(a) => cancel(a)}
+                  />
+                ))}
+              </div>
+            </Section>
+          )}
 
           {/* Pending confirmation — appears prominently if any */}
           {awaitingConfirm.length > 0 && (
@@ -593,6 +687,130 @@ function NextSessionHero({
             </button>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Course card — grouped sessions (FAZA B2-1) ─────────────────────────── */
+
+type TimelineState = "done" | "next" | "future" | "cancelled";
+
+function CourseCard({
+  series, members, now, onExtend, onEnd, onReschedule, onCancel,
+}: {
+  series: BookingSeries;
+  members: AppointmentDetail[];
+  now: Date;
+  onExtend: () => void;
+  onEnd: () => void;
+  onReschedule: (a: AppointmentDetail) => void;
+  onCancel: (a: AppointmentDetail) => void;
+}) {
+  const { t } = useT();
+  const done = members.filter(a => a.status === "COMPLETED").length;
+  const total = members.length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const cancelPending = !!series.cancelRequestedAt;
+  const canExtend = !cancelPending
+    && (series.requestedPsychologistId != null || members.some(m => m.psychologistId != null));
+
+  // Timeline: first still-active session is "next", later active ones "future".
+  const firstActiveIdx = members.findIndex(
+    a => a.status !== "COMPLETED" && a.status !== "CANCELLED",
+  );
+  const states: TimelineState[] = members.map((a, i) => {
+    if (a.status === "COMPLETED") return "done";
+    if (a.status === "CANCELLED") return "cancelled";
+    return i === firstActiveIdx ? "next" : "future";
+  });
+
+  const STATE_TITLE: Record<TimelineState, string> = {
+    done: t("course.sessionDone"),
+    next: t("course.sessionNext"),
+    future: t("course.sessionFuture"),
+    cancelled: t("course.sessionCancelled"),
+  };
+
+  return (
+    <div className="crs-card">
+      <div className="crs-card__head">
+        <span className="crs-card__label">{t("course.cardLabel")}</span>
+        <span className="crs-card__psy">
+          {series.requestedPsychologistName
+            ?? members.find(m => m.psychologistName)?.psychologistName
+            ?? "Psixoloq"}
+        </span>
+        <div className="crs-card__head-actions">
+          {canExtend && (
+            <button type="button" className="crs-card__btn crs-card__btn--primary" onClick={onExtend}>
+              {t("course.extendCta")}
+            </button>
+          )}
+          {!cancelPending && (
+            <button type="button" className="crs-card__btn crs-card__btn--danger" onClick={onEnd}>
+              {t("course.endCta")}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="crs-card__progress">
+        <span className="crs-card__progress-label">{t("course.progress", { done, total })}</span>
+        <div className="crs-card__bar">
+          <div className="crs-card__bar-fill" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+
+      {cancelPending && (
+        <div className="crs-card__pending">{t("course.cancelPending")}</div>
+      )}
+
+      <div className="crs-timeline">
+        {members.map((a, i) => {
+          const state = states[i];
+          const at = a.startAt ?? a.requestedStartAt;
+          const status = STATUS[a.status] ?? STATUS.PENDING;
+          const isFutureActive = (state === "next" || state === "future")
+            && (!at || new Date(at).getTime() > now.getTime());
+          return (
+            <div key={a.id} className="crs-step">
+              <div className="crs-step__rail">
+                <span className="crs-step__dot" data-state={state} title={STATE_TITLE[state]}>
+                  {state === "done" ? "✓" : state === "cancelled" ? "✕" : state === "next" ? "●" : ""}
+                </span>
+                <span className="crs-step__line" />
+              </div>
+              <div className="crs-step__body">
+                <span className={`crs-step__when${state === "cancelled" || state === "done" ? " is-muted" : ""}`}>
+                  {at ? `${azFormatDate(at)} · ${azFormatTime(at)}` : "Vaxt operator təyinatındadır"}
+                </span>
+                <span className="crs-step__badge" style={{ color: status.color, background: status.bg }}>
+                  {status.label}
+                </span>
+                {state === "next" && (
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--brand-700)" }}>
+                    {t("course.nextLabel")}
+                  </span>
+                )}
+                {isFutureActive && a.status !== "CANCEL_REQUESTED" && (
+                  <span className="crs-step__actions">
+                    <button type="button" className="crs-step__icon-btn"
+                      title={t("staff.cardReschedule")}
+                      onClick={() => onReschedule(a)}>
+                      <IconClock />
+                    </button>
+                    <button type="button" className="crs-step__icon-btn crs-step__icon-btn--danger"
+                      title={t("staff.cardCancel")}
+                      onClick={() => onCancel(a)}>
+                      <IconX />
+                    </button>
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

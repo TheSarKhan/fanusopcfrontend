@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { adminApi, type DashboardMetrics, type ActivityEntry } from "@/lib/api";
+import Link from "next/link";
+import {
+  adminApi,
+  operatorApi,
+  type DashboardMetrics,
+  type ActivityEntry,
+  type CommandCenter,
+  type CommandCenterQueue,
+  type OperatorCrisisCheckIn,
+} from "@/lib/api";
 import {
   IconUsers,
   IconUser,
@@ -104,10 +113,127 @@ function BarChart({ flow }: { flow: { date: string; confirmed: number; pending: 
   );
 }
 
+/** Komanda mərkəzi: "ən köhnə" yaş etiketi — "3g 4s", "2s 15d", "indi". */
+function ageLabel(iso: string | null): string | null {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 0) return null;
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return "indi";
+  if (min < 60) return `${min} dəq`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs}s ${min % 60}d`;
+  const days = Math.floor(hrs / 24);
+  return `${days}g ${hrs % 24}s`;
+}
+
+type QueueTone = "ox" | "gold" | "rose" | "muted";
+
+function QueueCard({
+  title, queue, href, tone, sub, onClick,
+}: {
+  title: string;
+  queue: CommandCenterQueue;
+  href?: string;
+  tone: QueueTone;
+  sub?: string | null;
+  onClick?: () => void;
+}) {
+  const age = ageLabel(queue.oldestAt);
+  const body = (
+    <>
+      <div className="qcard-top">
+        <span className="qcard-title">{title}</span>
+        <span className={`qcard-count ${queue.count > 0 ? tone : "muted"}`}>{queue.count}</span>
+      </div>
+      <div className="qcard-meta">
+        {queue.count > 0 && age ? `ən köhnə: ${age}` : queue.count > 0 ? " " : "boşdur"}
+        {sub ? <span className="qcard-sub">{sub}</span> : null}
+      </div>
+    </>
+  );
+  if (href) {
+    return <Link href={href} className={`qcard${queue.count > 0 ? " has-items" : ""}`}>{body}</Link>;
+  }
+  return (
+    <button type="button" onClick={onClick} className={`qcard${queue.count > 0 ? " has-items" : ""}`}>
+      {body}
+    </button>
+  );
+}
+
+/** Böhran kartının açdığı sətiriçi panel — admin /operator səhifələrinə girə
+ *  bilmir, ona görə cavablanmamış check-in-lər burada göstərilir (operator
+ *  endpoint-ləri ADMIN roluna da açıqdır). */
+function CrisisPanel({ onAcked }: { onAcked: () => void }) {
+  const [items, setItems] = useState<OperatorCrisisCheckIn[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    operatorApi.crisisCheckIns().then(setItems).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  const acknowledge = async (id: number) => {
+    try {
+      const updated = await operatorApi.acknowledgeCrisisCheckIn(id);
+      setItems((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      onAcked();
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  };
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card-head">
+        <h3 className="card-title">Böhran check-in-ləri (son 7 gün)</h3>
+        <span className="pill rose"><span className="dot" />yüksək risk</span>
+      </div>
+      {loading ? (
+        <div style={{ padding: 16, color: "var(--muted)", fontSize: 12 }}>Yüklənir…</div>
+      ) : items.length === 0 ? (
+        <div style={{ padding: 16, color: "var(--muted)", fontSize: 12 }}>Check-in yoxdur</div>
+      ) : (
+        <div style={{ maxHeight: 320, overflow: "auto" }}>
+          {items.map((c) => (
+            <div className="list-item" key={c.id}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="li-title">
+                  {c.patientName} · əhval {c.moodScore}/5
+                  {c.acknowledgedAt && <span className="pill sage" style={{ marginLeft: 8 }}>baxılıb</span>}
+                </div>
+                <div className="li-meta">
+                  {ageLabel(c.createdAt) ?? ""} əvvəl
+                  {c.note ? ` · «${c.note.slice(0, 80)}»` : ""}
+                  {c.acknowledgedByName ? ` · baxdı: ${c.acknowledgedByName}` : ""}
+                </div>
+              </div>
+              <div className="row" style={{ gap: 6 }}>
+                {c.patientPhone && (
+                  <a className="btn ghost sm" href={`tel:${c.patientPhone}`}>Zəng et</a>
+                )}
+                {!c.acknowledgedAt && (
+                  <button className="btn sm" onClick={() => acknowledge(c.id)}>Baxıldı</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics>(FALLBACK);
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState<string>("");
+  const [cc, setCc] = useState<CommandCenter | null>(null);
+  const [crisisOpen, setCrisisOpen] = useState(false);
+
+  const loadCommandCenter = () => {
+    adminApi.getCommandCenter().then(setCc).catch(() => {});
+  };
 
   useEffect(() => {
     try {
@@ -123,6 +249,11 @@ export default function AdminDashboard() {
       .then((m) => setMetrics({ ...FALLBACK, ...m }))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    // MODUL 1: komanda mərkəzi — tək sorğu, 60 saniyədən bir yenilənir.
+    loadCommandCenter();
+    const timer = setInterval(loadCommandCenter, 60_000);
+    return () => clearInterval(timer);
   }, []);
 
   const dateString = useMemo(() => {
@@ -152,6 +283,35 @@ export default function AdminDashboard() {
           </button>
         </div>
       </div>
+
+      {/* ─── MODUL 1: Komanda mərkəzi — diqqət tələb edən növbələr ─────────── */}
+      {cc && (
+        <div className="queue-grid">
+          <QueueCard title="Psixoloq müraciətləri" queue={cc.applications} tone="gold" href="/admin/users" />
+          <QueueCard title="Rəy moderasiyası" queue={cc.reviews} tone="gold" href="/admin/reviews" />
+          <QueueCard
+            title="Ləğv istəkləri"
+            queue={cc.cancelRequests}
+            tone="gold"
+            href="/admin/appointments?filter=CANCEL_REQUESTED"
+            sub={cc.cancelRequestSeries > 0 ? `${cc.cancelRequestAppointments} randevu · ${cc.cancelRequestSeries} seriya` : null}
+          />
+          <QueueCard
+            title="Mübahisəli"
+            queue={cc.disputed}
+            tone={cc.disputed.escalatedCount > 0 ? "rose" : "gold"}
+            href="/admin/appointments?filter=DISPUTED"
+            sub={cc.disputed.escalatedCount > 0 ? `${cc.disputed.escalatedCount} ədəd 48s+` : null}
+          />
+          <QueueCard title="SLA gecikmiş" queue={cc.slaOverdue} tone="rose" href="/admin/appointments?filter=overdue" sub={`limit ${cc.slaHours}s`} />
+          <QueueCard title="Böhran" queue={cc.crisis} tone="rose" onClick={() => setCrisisOpen((o) => !o)} />
+          <QueueCard title="Yeni mesajlar" queue={cc.contactMessages} tone="ox" href="/admin/messages" />
+          <QueueCard title="Silinmə istəkləri" queue={cc.deletionRequests} tone="gold" href="/admin/deletion-requests" />
+          <QueueCard title="Email xətaları (24s)" queue={cc.emailFailures} tone="rose" onClick={() => {}} sub="Modul 4: /admin/system/emails" />
+        </div>
+      )}
+
+      {crisisOpen && <CrisisPanel onAcked={loadCommandCenter} />}
 
       <div className="stats-grid">
         <div className="stat">

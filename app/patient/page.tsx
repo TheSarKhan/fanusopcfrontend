@@ -6,13 +6,16 @@ import {
   getPsychologists,
   patientApi,
   type AppointmentDetail,
+  type BookingSeries,
   type Homework,
   type PatientGoalView,
   type Psychologist,
 } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 import { withSlugs } from "@/lib/slug";
 import { getStoredUser } from "@/lib/auth";
 import { azFormatTime } from "@/lib/datetime";
+import { FEATURE_GOALS } from "@/lib/features";
 
 const STATUS_LABEL: Record<string, { label: string; bg: string; fg: string }> = {
   PENDING:               { label: "Gözlənilir",    bg: "#FEF3C7", fg: "#92400E" },
@@ -64,12 +67,14 @@ function fmtRating(r: string | number | undefined | null): string {
 }
 
 export default function PatientDashboard() {
+  const { t } = useT();
   const user = getStoredUser();
   const [appts, setAppts] = useState<AppointmentDetail[]>([]);
   const [tasks, setTasks] = useState<Homework[]>([]);
   const [favorites, setFavorites] = useState<Psychologist[]>([]);
   const [allPsy, setAllPsy] = useState<Psychologist[]>([]);
   const [goals, setGoals] = useState<PatientGoalView[]>([]);
+  const [series, setSeries] = useState<BookingSeries[]>([]);
   const [loading, setLoading] = useState(true);
   const [now] = useState(() => Date.now());
 
@@ -79,16 +84,43 @@ export default function PatientDashboard() {
       patientApi.homework(),
       patientApi.favorites(),
       getPsychologists(),
-      patientApi.goals(),
+      // Goals gizlidirsə sorğu ümumiyyətlə getməsin.
+      FEATURE_GOALS ? patientApi.goals() : Promise.resolve<PatientGoalView[]>([]),
+      patientApi.myBookingSeries(),
     ]).then(res => {
       if (res[0].status === "fulfilled") setAppts(res[0].value);
       if (res[1].status === "fulfilled") setTasks(res[1].value);
       if (res[2].status === "fulfilled") setFavorites(res[2].value);
       if (res[3].status === "fulfilled") setAllPsy(res[3].value);
       if (res[4].status === "fulfilled") setGoals(res[4].value);
+      if (res[5].status === "fulfilled") setSeries(res[5].value);
       setLoading(false);
     });
   }, []);
+
+  // B2-1.4: active course widget — first live group with 2+ sessions.
+  // Plain computation: the React Compiler memoizes it automatically.
+  const findActiveCourse = () => {
+    for (const s of series) {
+      if (s.cancelledAt) continue;
+      const members = appts.filter(a => a.seriesId === s.id);
+      if (members.length < 2) continue;
+      const done = members.filter(a => a.status === "COMPLETED").length;
+      const upcoming = members
+        .filter(a => {
+          const at = a.startAt ?? a.requestedStartAt;
+          return at && new Date(at).getTime() > now
+            && a.status !== "CANCELLED" && a.status !== "COMPLETED";
+        })
+        .sort((a, b) =>
+          new Date(a.startAt ?? a.requestedStartAt!).getTime()
+          - new Date(b.startAt ?? b.requestedStartAt!).getTime())[0] ?? null;
+      if (done === members.length && !upcoming) continue; // finished course
+      return { series: s, total: members.length, done, upcoming };
+    }
+    return null;
+  };
+  const activeCourse = findActiveCourse();
 
   const activeGoals = useMemo(
     () => goals.filter(g => g.status === "OPEN" || g.status === "IN_PROGRESS").slice(0, 3),
@@ -231,7 +263,7 @@ export default function PatientDashboard() {
             </div>
 
             <div className="pdash-col">
-              {activeGoals.length > 0 && (
+              {FEATURE_GOALS && activeGoals.length > 0 && (
                 <Card>
                   <CardHead
                     title="Aktiv hədəflərim"
@@ -253,15 +285,43 @@ export default function PatientDashboard() {
                 </Card>
               )}
 
+              {activeCourse && (
+                <Card>
+                  <CardHead title={t("course.dashboardTitle")} />
+                  <div className="pdash-course">
+                    <div className="pdash-course__line">
+                      {activeCourse.upcoming
+                        ? t("course.dashboardLine", {
+                            done: activeCourse.done,
+                            total: activeCourse.total,
+                            next: `${fmtDay((activeCourse.upcoming.startAt ?? activeCourse.upcoming.requestedStartAt)!)} ${azFormatTime((activeCourse.upcoming.startAt ?? activeCourse.upcoming.requestedStartAt)!)}`,
+                          })
+                        : t("course.dashboardNoNext", {
+                            done: activeCourse.done,
+                            total: activeCourse.total,
+                          })}
+                    </div>
+                    <div className="pdash-course__bar">
+                      <div className="pdash-course__bar-fill"
+                        style={{ width: `${activeCourse.total > 0 ? Math.round((activeCourse.done / activeCourse.total) * 100) : 0}%` }} />
+                    </div>
+                    <Link href="/patient/appointments" className="pdash-course__cta">
+                      {t("course.dashboardCta")}
+                    </Link>
+                  </div>
+                </Card>
+              )}
+
               <Card>
                 <CardHead title="Sürətli giriş" />
                 <div className="pdash-quick">
                   <QuickLink href="/patient/psychologists" icon={<IconSearch />} label="Psixoloq tap" primary />
                   <QuickLink href="/patient/appointments"  icon={<IconCalendar />} label="Randevular" />
                   <QuickLink href="/patient/homework"      icon={<IconTarget />} label="Tapşırıqlar" badge={taskStats.pending || undefined} />
-                  <QuickLink href="/patient/goals"         icon={<IconAward />} label="Hədəflərim" badge={activeGoals.length || undefined} />
+                  {FEATURE_GOALS && (
+                    <QuickLink href="/patient/goals"         icon={<IconAward />} label="Hədəflərim" badge={activeGoals.length || undefined} />
+                  )}
                   <QuickLink href="/patient/favorites"     icon={<IconHeart />} label="Sevimlilərim" />
-                  <QuickLink href="/patient/series"        icon={<IconRepeat />} label="Seriyalar" />
                   <QuickLink href="/patient/profile"       icon={<IconUser />} label="Profil" />
                 </div>
               </Card>
@@ -533,9 +593,6 @@ function IconCalendar() {
 function IconHeart({ small }: { small?: boolean } = {}) {
   const s = small ? 12 : 18;
   return (<svg width={s} height={s} {...sw}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>);
-}
-function IconRepeat() {
-  return (<svg width="18" height="18" {...sw}><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>);
 }
 function IconUser() {
   return (<svg width="18" height="18" {...sw}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>);

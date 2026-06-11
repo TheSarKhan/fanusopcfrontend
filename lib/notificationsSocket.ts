@@ -8,12 +8,16 @@
  * Auto-reconnects with exponential backoff. No external dependencies.
  */
 
-import type { NotificationItem } from "./api";
+import type { ClaimEvent, NotificationItem } from "./api";
 import { getStoredUser } from "./auth";
 
 const NULL = "\0";
 
 type Listener = (n: NotificationItem) => void;
+type ClaimListener = (e: ClaimEvent) => void;
+
+const SUB_NOTIFICATIONS = "sub-notifications";
+const SUB_CLAIMS = "sub-claims";
 
 let socket: WebSocket | null = null;
 let connected = false;
@@ -21,6 +25,8 @@ let reconnectAttempt = 0;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let manuallyClosed = false;
 let listeners = new Set<Listener>();
+let claimListeners = new Set<ClaimListener>();
+let claimsSubscribed = false;
 
 function apiHost(): string {
   const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
@@ -105,15 +111,23 @@ function connect() {
     if (frame.command === "CONNECTED") {
       connected = true;
       reconnectAttempt = 0;
+      claimsSubscribed = false;
       // Subscribe to user-targeted notifications
       socket?.send(buildFrame("SUBSCRIBE", {
-        id: "sub-notifications",
+        id: SUB_NOTIFICATIONS,
         destination: "/user/queue/notifications",
       }));
+      // OP-2: live claim/release/steal events for the operator panel
+      if (claimListeners.size > 0) subscribeClaimsTopic();
     } else if (frame.command === "MESSAGE") {
       try {
-        const payload = JSON.parse(frame.body) as NotificationItem;
-        listeners.forEach(l => { try { l(payload); } catch { /* ignore */ } });
+        if (frame.headers.subscription === SUB_CLAIMS) {
+          const payload = JSON.parse(frame.body) as ClaimEvent;
+          claimListeners.forEach(l => { try { l(payload); } catch { /* ignore */ } });
+        } else {
+          const payload = JSON.parse(frame.body) as NotificationItem;
+          listeners.forEach(l => { try { l(payload); } catch { /* ignore */ } });
+        }
       } catch { /* malformed */ }
     } else if (frame.command === "ERROR") {
       // Auth failure or backend rejection — don't reconnect aggressively
@@ -132,11 +146,29 @@ function connect() {
   };
 }
 
+function subscribeClaimsTopic() {
+  if (claimsSubscribed || !connected) return;
+  socket?.send(buildFrame("SUBSCRIBE", {
+    id: SUB_CLAIMS,
+    destination: "/topic/operator/claims",
+  }));
+  claimsSubscribed = true;
+}
+
 export function subscribeNotifications(listener: Listener): () => void {
   manuallyClosed = false;
   listeners.add(listener);
   if (!connected) connect();
   return () => { listeners.delete(listener); };
+}
+
+/** OP-2: operator-panel claim events (list chips + open detail pages update live). */
+export function subscribeOperatorClaims(listener: ClaimListener): () => void {
+  manuallyClosed = false;
+  claimListeners.add(listener);
+  if (connected) subscribeClaimsTopic();
+  else connect();
+  return () => { claimListeners.delete(listener); };
 }
 
 export function disconnectNotifications() {
@@ -147,6 +179,8 @@ export function disconnectNotifications() {
   connected = false;
   reconnectAttempt = 0;
   listeners = new Set();
+  claimListeners = new Set();
+  claimsSubscribed = false;
 }
 
 if (typeof window !== "undefined") {

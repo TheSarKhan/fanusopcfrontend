@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import {
   patientApi,
   psychologistApi,
-  operatorApi,
   reasonsForRole,
   type AppointmentDetail,
   type CancellationRole,
@@ -20,7 +19,8 @@ function hoursUntil(iso?: string | null, now: Date = new Date()): number | null 
 
 interface Props {
   appointment: AppointmentDetail;
-  role: CancellationRole;
+  /** OP-1: operator ləğvi artıq detal səhifəsinin blokundadır — modal yalnız pasiyent/psixoloq üçündür. */
+  role: Exclude<CancellationRole, "OPERATOR">;
   /** Reject vs cancel: psychologists rejecting an ASSIGNED appointment use a different endpoint. */
   mode?: "cancel" | "reject";
   onClose: () => void;
@@ -53,14 +53,10 @@ export default function CancelModal({ appointment, role, mode = "cancel", onClos
       let updated: AppointmentDetail;
       if (role === "PATIENT") {
         updated = await patientApi.cancel(appointment.id, reasonCode, reasonText || undefined);
-      } else if (role === "PSYCHOLOGIST") {
-        if (mode === "reject") {
-          updated = await psychologistApi.reject(appointment.id, reasonCode, reasonText || undefined);
-        } else {
-          updated = await psychologistApi.cancel(appointment.id, reasonCode, reasonText || undefined);
-        }
+      } else if (mode === "reject") {
+        updated = await psychologistApi.reject(appointment.id, reasonCode, reasonText || undefined);
       } else {
-        updated = await operatorApi.cancel(appointment.id, reasonCode, reasonText || undefined);
+        updated = await psychologistApi.cancel(appointment.id, reasonCode, reasonText || undefined);
       }
       onDone(updated);
     } catch (e) {

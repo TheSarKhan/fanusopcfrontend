@@ -36,7 +36,6 @@ function fmtLocalIcs(d: Date): string {
     pad2(d.getSeconds())
   );
 }
-console.log("Salam");
 /** UTC datetime with Z — used for DTSTAMP only. */
 function fmtUtcIcs(d: Date): string {
   return (
@@ -59,13 +58,8 @@ function escapeIcs(text: string): string {
     .replace(/;/g, "\\;");
 }
 
-export function generateIcs(ev: CalendarEvent): string {
+function eventLines(ev: CalendarEvent): string[] {
   const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Fanus//Psychology Platform//AZ",
-    "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
     "BEGIN:VEVENT",
     `UID:fanus-appt-${ev.uid}@${APP_HOST.split(":")[0]}`,
     `DTSTAMP:${fmtUtcIcs(new Date())}`,
@@ -76,14 +70,37 @@ export function generateIcs(ev: CalendarEvent): string {
   if (ev.description) lines.push(`DESCRIPTION:${escapeIcs(ev.description)}`);
   if (ev.location)    lines.push(`LOCATION:${escapeIcs(ev.location)}`);
   if (ev.url)         lines.push(`URL:${escapeIcs(ev.url)}`);
-  lines.push("END:VEVENT", "END:VCALENDAR");
+  lines.push("END:VEVENT");
+  return lines;
+}
+
+export function generateIcs(ev: CalendarEvent): string {
+  return generateIcsMulti([ev]);
+}
+
+/** One VCALENDAR holding every event — basket bookings export as one file. */
+export function generateIcsMulti(events: CalendarEvent[]): string {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Fanus//Psychology Platform//AZ",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    ...events.flatMap(eventLines),
+    "END:VCALENDAR",
+  ];
   // RFC 5545 wants CRLF line endings.
   return lines.join("\r\n");
 }
 
 /** Trigger a download of the .ics file in the browser. */
 export function downloadIcs(ev: CalendarEvent, filename = "fanus-randevu.ics") {
-  const blob = new Blob([generateIcs(ev)], { type: "text/calendar;charset=utf-8" });
+  downloadIcsMulti([ev], filename);
+}
+
+/** Download every event in one .ics file. */
+export function downloadIcsMulti(events: CalendarEvent[], filename = "fanus-randevular.ics") {
+  const blob = new Blob([generateIcsMulti(events)], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

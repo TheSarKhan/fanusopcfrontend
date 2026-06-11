@@ -37,12 +37,15 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   const nav: PanelNavItem[] = [
-    { href: "/admin/users",          label: t("nav.users"),         icon: "users" },
-    { href: "/admin/psychologists",  label: t("nav.psychologists"), icon: "user" },
-    { href: "/admin/blog",           label: t("nav.blog"),          icon: "content" },
-    { href: "/admin/messages",       label: t("nav.messages"),      icon: "message", badge: messageBadge },
-    { href: "/admin/reviews",        label: t("nav.reviews"),       icon: "megaphone", badge: reviewBadge },
-    { href: "/admin/audit-logs",     label: t("nav.audit"),         icon: "clipboard" },
+    { href: "/admin/users",             label: t("nav.users"),         icon: "users" },
+    { href: "/admin/psychologists",     label: t("nav.psychologists"), icon: "user" },
+    { href: "/admin/appointments",      label: "Randevular",           icon: "calendar" },
+    { href: "/admin/operators",         label: "Operatorlar",          icon: "users" },
+    { href: "/admin/deletion-requests", label: "Silinmə istəkləri",    icon: "clipboard" },
+    { href: "/admin/blog",              label: t("nav.blog"),          icon: "content" },
+    { href: "/admin/messages",          label: t("nav.messages"),      icon: "message", badge: messageBadge },
+    { href: "/admin/reviews",           label: t("nav.reviews"),       icon: "megaphone", badge: reviewBadge },
+    { href: "/admin/audit-logs",        label: t("nav.audit"),         icon: "clipboard" },
   ];
 
   return (

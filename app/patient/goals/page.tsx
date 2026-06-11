@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { patientApi, type PatientGoalStatus, type PatientGoalView } from "@/lib/api";
+import { FEATURE_GOALS } from "@/lib/features";
 
 const STATUS_META: Record<PatientGoalStatus, { label: string; bg: string; fg: string; border: string }> = {
   OPEN:        { label: "Açıq",        bg: "var(--brand-50)", fg: "var(--brand-700)", border: "var(--brand-100)" },
@@ -24,6 +26,9 @@ function initials(name: string | null): string {
 }
 
 export default function PatientGoalsPage() {
+  // Goals MVP-dən gizlədilib — flag açıq deyilsə birbaşa URL ilə də açılmasın.
+  if (!FEATURE_GOALS) notFound();
+
   const [goals, setGoals] = useState<PatientGoalView[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);

@@ -419,12 +419,13 @@ export default function OperatorDashboard() {
               </div>
               <div className="op-dash-activity">
                 {recentActions.map(a => (
-                  <div key={a.id} className="op-dash-activity-row">
+                  // OP-1: drill-down birbaşa müraciətin detal səhifəsinə
+                  <Link key={a.id} href={`/operator/appointments/${a.id}`} className="op-dash-activity-row" style={{ textDecoration: "none", color: "inherit" }}>
                     <span className="op-dash-activity-time">{timeAgo(a.updatedAt ?? a.createdAt, now)} əvvəl</span>
                     <span className="op-dash-activity-action">{statusVerb(a.status)}</span>
                     <span className="op-dash-activity-name">{a.patientName ?? "—"}</span>
                     <span className="op-dash-activity-psy">→ {a.psychologistName ?? "—"}</span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -499,7 +500,8 @@ function QueueRow({
   severity?: "warn" | "warn-2" | "danger";
 }) {
   return (
-    <Link href="/operator/appointments" className="op-dash-queue-row" data-severity={severity}>
+    // OP-1: drill-down birbaşa müraciətin detal səhifəsinə
+    <Link href={`/operator/appointments/${a.id}`} className="op-dash-queue-row" data-severity={severity}>
       <div className="op-dash-queue-row-main">
         <div className="op-dash-queue-name">
           {a.patientName ?? "—"}

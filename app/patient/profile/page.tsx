@@ -13,6 +13,7 @@ import {
   type Psychologist,
 } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
+import { FEATURE_GOALS } from "@/lib/features";
 
 const RISK_LABEL: Record<PatientRiskLevel, { label: string; bg: string; fg: string }> = {
   LOW:      { label: "Aşağı risk",  bg: "#FEF3C7", fg: "#92400E" },
@@ -37,7 +38,8 @@ export default function PatientProfilePage() {
     Promise.allSettled([
       patientApi.myAppointments(),
       patientApi.homework(),
-      patientApi.goals(),
+      // Goals gizlidirsə sorğu ümumiyyətlə getməsin.
+      FEATURE_GOALS ? patientApi.goals() : Promise.resolve<PatientGoalView[]>([]),
       patientApi.favorites(),
       patientApi.crisisStatus(),
     ]).then(res => {
@@ -94,7 +96,9 @@ export default function PatientProfilePage() {
             </div>
             <div className="ppr-side-stats">
               <StatItem label="Tamamlanmış seans" value={stats.totalSessions} href="/patient/appointments" />
-              <StatItem label="Aktiv hədəf" value={stats.activeGoals} href="/patient/goals" />
+              {FEATURE_GOALS && (
+                <StatItem label="Aktiv hədəf" value={stats.activeGoals} href="/patient/goals" />
+              )}
               <StatItem label="Açıq tapşırıq" value={stats.pendingTasks} href="/patient/homework" />
               <StatItem label="Sevimli psixoloq" value={stats.favoriteCount} href="/patient/favorites" />
             </div>

@@ -583,8 +583,56 @@
 .admin-shell .tab:hover { color: var(--ink); }
 .admin-shell .tab.active { color: var(--ox-800); border-bottom-color: var(--ox-800); }
 
+/* ========== KOMANDA MƏRKƏZİ (MODUL 1) ========== */
+.admin-shell .queue-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+@media (min-width: 1100px) {
+  .admin-shell .queue-grid { grid-template-columns: repeat(5, 1fr); }
+}
+@media (max-width: 720px) {
+  .admin-shell .queue-grid { grid-template-columns: 1fr 1fr; }
+}
+.admin-shell .qcard {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  text-align: left;
+  text-decoration: none;
+  display: block;
+  cursor: pointer;
+  font-family: inherit;
+  width: 100%;
+  transition: box-shadow .12s, border-color .12s;
+}
+.admin-shell .qcard:hover { box-shadow: var(--shadow); border-color: var(--ox-200); }
+.admin-shell .qcard.has-items { border-color: var(--ox-100); }
+.admin-shell .qcard-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.admin-shell .qcard-title { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.admin-shell .qcard-count {
+  font-size: 18px; font-weight: 700; font-feature-settings: "tnum";
+  line-height: 1.1;
+}
+.admin-shell .qcard-count.ox    { color: var(--ox-800); }
+.admin-shell .qcard-count.gold  { color: #7d5b1e; }
+.admin-shell .qcard-count.rose  { color: #8b3d35; }
+.admin-shell .qcard-count.muted { color: var(--muted-2); }
+.admin-shell .qcard-meta { font-size: 10.5px; color: var(--muted-2); margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; }
+.admin-shell .qcard-sub { color: var(--muted); font-weight: 600; }
+
 /* ========== KANBAN ========== */
 .admin-shell .kanban { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.admin-shell .kanban.cols-6 { grid-template-columns: repeat(6, 1fr); }
+@media (max-width: 1280px) {
+  .admin-shell .kanban.cols-6 { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 720px) {
+  .admin-shell .kanban.cols-6 { grid-template-columns: 1fr; }
+}
 .admin-shell .col {
   background: var(--surface-2);
   border: 1px solid var(--line);

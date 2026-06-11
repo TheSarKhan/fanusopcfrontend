@@ -399,6 +399,11 @@ export interface AppointmentDetail {
   lastContactOutcome?: "ANSWERED" | "NO_ANSWER" | "BUSY" | "REFUSED" | "RESCHEDULED" | "OTHER" | null;
   // GAP-01: stamped by the SLA job once the request crosses the threshold
   slaNotifiedAt?: string | null;
+  // OP-2: soft-lock claim (null unless an ALIVE claim exists; staleness is
+  // resolved server-side against app.operator.claim-ttl-minutes)
+  claimedByUserId?: number | null;
+  claimedByName?: string | null;
+  claimedAt?: string | null;
 }
 
 // ─── Structured cancellation reasons ────────────────────────────────────
@@ -539,6 +544,27 @@ export const bookAppointment = (data: {
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(data),
 }).then(r => r.json());
+
+/** FAZA B1-2 "Təkrarla": probe whether a slot repeats freely across the next
+ *  N weeks. Public — same visibility as the availability endpoint. */
+export const repeatCheck = async (data: {
+  psychologistId: number;
+  slot: string;
+  weeks: number;
+  step: 7 | 14;
+}): Promise<RepeatCheckEntry[]> => {
+  const res = await fetch(`${BASE}/public/booking/repeat-check`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...localeHeaders() },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new ApiError((e as { error?: string }).error ?? `API error ${res.status}`, res.status);
+  }
+  return res.json();
+};
 
 export const submitContactMessage = async (data: ContactMessagePayload): Promise<ContactMessage> => {
   const res = await fetch(`${BASE}/contact`, {
@@ -788,6 +814,186 @@ export interface PagedAuditLogs {
   size: number;
 }
 
+// ─── ADMIN MODUL 1: komanda mərkəzi ──────────────────────────────────────────
+export interface CommandCenterQueue {
+  count: number;
+  oldestAt: string | null;
+}
+export interface CommandCenterDisputed extends CommandCenterQueue {
+  escalatedCount: number;
+}
+export interface CommandCenter {
+  asOf: string;
+  applications: CommandCenterQueue;
+  reviews: CommandCenterQueue;
+  cancelRequests: CommandCenterQueue;
+  cancelRequestAppointments: number;
+  cancelRequestSeries: number;
+  disputed: CommandCenterDisputed;
+  slaOverdue: CommandCenterQueue;
+  slaHours: number;
+  crisis: CommandCenterQueue;
+  contactMessages: CommandCenterQueue;
+  deletionRequests: CommandCenterQueue;
+  emailFailures: CommandCenterQueue;
+}
+
+// ─── ADMIN MODUL 2: randevu idarəetməsi ──────────────────────────────────────
+export interface AdminAppointmentRow {
+  detail: AppointmentDetail;
+  assignedByOperatorName: string | null;
+  patientFlag: string | null; // HIGH_NO_SHOW | HIGH_LATE_CANCEL | HIGH_REJECT
+}
+
+/** B4-2.1: 409 zamanı tutan randevunun zənginləşdirilmiş görünüşü (yalnız admin). */
+export interface ConflictInfo {
+  appointmentId: number;
+  status: string;
+  patientName: string | null;
+  patientPhone: string | null;
+  startAt: string | null;
+  endAt: string | null;
+  seriesId: number | null;
+  seriesIndex: number | null;
+  seriesTotal: number | null;
+  rescheduleCount: number;
+  hasPendingProposal: boolean;
+}
+
+export interface BulkCancelResult {
+  cancelled: number[];
+  failed: Record<string, string>;
+}
+
+// ─── ADMIN MODUL 3: istifadəçi kartları, GDPR, operator idarəetməsi ──────────
+export interface AdminTag {
+  id: number;
+  label: string;
+  color: string;
+  psychologistName: string | null;
+  createdAt: string;
+}
+export interface AdminNotificationEntry {
+  id: number;
+  type: string;
+  title: string;
+  body: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+export interface ClinicalGrant {
+  id: number;
+  adminEmail: string | null;
+  reason: string;
+  grantedAt: string;
+  expiresAt: string;
+}
+export interface ClinicalNote {
+  id: number;
+  psychologistName: string | null;
+  appointmentId: number | null;
+  title: string | null;
+  body: string | null;
+  moodScore: number | null;
+  createdAt: string;
+}
+export interface HomeworkAnswer {
+  id: number;
+  psychologistName: string | null;
+  title: string;
+  status: string;
+  completedAt: string | null;
+  completionNote: string | null;
+  createdAt: string;
+}
+export interface CheckInEntry {
+  id: number;
+  moodScore: number;
+  note: string | null;
+  createdAt: string;
+}
+export interface ClinicalData {
+  sessionNotes: ClinicalNote[];
+  homework: HomeworkAnswer[];
+  checkIns: CheckInEntry[];
+  /** Jurnal backend-də saxlanmır — UI bunu açıq deyir. */
+  journalAvailable: boolean;
+}
+export interface PatientCard {
+  userId: number;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  phone: string | null;
+  active: boolean;
+  blocked: boolean;
+  blockReason: string | null;
+  emailVerified: boolean;
+  lastLogin: string | null;
+  createdAt: string;
+  patientId: number | null;
+  noShowCount: number;
+  lateCancelCount: number;
+  rejectCount: number;
+  autoFlag: string | null;
+  autoFlagSetAt: string | null;
+  riskLevel: string | null;
+  tags: AdminTag[];
+  deletionRequestedAt: string | null;
+  appointments: AppointmentDetail[];
+  series: BookingSeries[];
+  notifications: AdminNotificationEntry[];
+  clinicalAccess: ClinicalGrant | null;
+}
+export interface DeletionRequest {
+  userId: number;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  role: string;
+  blocked: boolean;
+  requestedAt: string;
+  daysLeft: number;
+}
+export interface PsyPerformance {
+  monthSessionsCompleted: number;
+  monthSessionsTotal: number;
+  received30: number;
+  rejected30: number;
+  rejectionRatePct: number | null;
+  avgConfirmMinutes: number | null;
+  rating: number | null;
+  reviewCount: number;
+  activeSeriesCount: number;
+  next7Booked: number;
+  next7FreeSlots: number;
+  next7FullnessPct: number | null;
+}
+export interface PsychologistCard {
+  psychologistId: number;
+  userId: number | null;
+  name: string;
+  active: boolean;
+  suspendedAt: string | null;
+  suspendReason: string | null;
+  performance: PsyPerformance;
+  vacations: Vacation[];
+}
+export interface OperatorOverview {
+  userId: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  active: boolean;
+  lastLogin: string | null;
+  createdAt: string;
+  assignedToday: number;
+  assignedWeek: number;
+  assigned30: number;
+  avgResponseMinutes: number | null;
+  slaViolations30: number;
+}
+
 export const adminApi = {
   getDashboard: () => authedRequest<Record<string, number>>("GET", "/admin/dashboard"),
 
@@ -897,6 +1103,7 @@ export const adminApi = {
     const qs = params.toString();
     return authedBlobRequest("GET", `/admin/users/export${qs ? "?" + qs : ""}`);
   },
+  getUser: (id: number) => authedRequest<UserRecord>("GET", `/admin/users/${id}`),
   updateUser: (id: number, data: { firstName?: string; lastName?: string; phone?: string; role?: string; emailVerified?: boolean; active?: boolean }) =>
     authedRequest<UserRecord>("PUT", `/admin/users/${id}`, data),
   deleteUser: (id: number) => authedRequest<void>("DELETE", `/admin/users/${id}`),
@@ -944,6 +1151,98 @@ export const adminApi = {
   rejectReview: (id: number, moderationNote?: string) =>
     authedRequest<AdminReview>("POST", `/admin/reviews/${id}/reject`, { moderationNote }),
   deleteReview: (id: number) => authedRequest<void>("DELETE", `/admin/reviews/${id}`),
+
+  // ─── MODUL 1: komanda mərkəzi (bütün növbələr tək sorğuda) ───────────────
+  getCommandCenter: () => authedRequest<CommandCenter>("GET", "/admin/command-center"),
+
+  // ─── MODUL 2: randevu idarəetməsi (tam əməliyyat dəsti) ──────────────────
+  getAppointmentsDetailed: () =>
+    authedRequest<AdminAppointmentRow[]>("GET", "/admin/appointments/detailed"),
+  getAppointmentDetail: (id: number) =>
+    authedRequest<AppointmentDetail>("GET", `/admin/appointments/${id}`),
+  getAppointmentHistory: (id: number) =>
+    authedRequest<AuditLogEntry[]>("GET", `/admin/appointments/${id}/history`),
+  assignAppointment: (id: number, data: OperatorAssignPayload) =>
+    authedRequest<AppointmentDetail>("POST", `/admin/appointments/${id}/assign`, data),
+  updateAppointmentNote: (id: number, note: string) =>
+    authedRequest<AppointmentDetail>("PUT", `/admin/appointments/${id}/note`, { note }),
+  cancelAppointment: (id: number, reasonCode: string, note?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/admin/appointments/${id}/cancel`, { reasonCode, note }),
+  approveAppointmentCancelRequest: (id: number, note?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/admin/appointments/${id}/approve-cancel`, { note }),
+  rejectAppointmentCancelRequest: (id: number, note?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/admin/appointments/${id}/reject-cancel`, { note }),
+  resolveAppointmentDispute: (
+    id: number,
+    decision: "COMPLETE" | "CANCEL",
+    note?: string,
+    blameSide?: "PATIENT" | "PSYCHOLOGIST"
+  ) =>
+    authedRequest<AppointmentDetail>("POST", `/admin/appointments/${id}/resolve-dispute`, { decision, note, blameSide }),
+  bulkCancelAppointments: (appointmentIds: number[], reasonCode: string, note?: string) =>
+    authedRequest<BulkCancelResult>("POST", "/admin/appointments/bulk-cancel", { appointmentIds, reasonCode, note }),
+  getBookingSeries: (seriesId: number) =>
+    authedRequest<BookingSeries>("GET", `/admin/appointments/booking-series/${seriesId}`),
+  approveSeriesCancelRequest: (seriesId: number, note?: string) =>
+    authedRequest<BookingSeries>("POST", `/admin/appointments/booking-series/${seriesId}/approve-cancel`, { note }),
+  rejectSeriesCancelRequest: (seriesId: number, note?: string) =>
+    authedRequest<BookingSeries>("POST", `/admin/appointments/booking-series/${seriesId}/reject-cancel`, { note }),
+  /** B4-2: 409 sonrası tutan randevunun zənginləşdirilmiş görünüşü. */
+  getConflictInfo: (psychologistId: number, startAt: string, endAt: string) =>
+    authedRequest<ConflictInfo>(
+      "GET",
+      `/admin/appointments/conflict?psychologistId=${psychologistId}&startAt=${encodeURIComponent(startAt)}&endAt=${encodeURIComponent(endAt)}`),
+  /** Vasitəçili vaxt-dəyişmə təklifi: id = tutan randevu. */
+  mediateReschedule: (id: number, data: {
+    options: { startAt: string; endAt: string }[];
+    reason?: string | null;
+    swapTargetAppointmentId?: number | null;
+  }) =>
+    authedRequest<RescheduleProposal>("POST", `/admin/appointments/${id}/mediate-reschedule`, data),
+
+  // ─── MODUL 3A: pasiyent kartı + break-glass klinik giriş ─────────────────
+  getPatientCard: (userId: number) =>
+    authedRequest<PatientCard>("GET", `/admin/users/${userId}/patient-card`),
+  grantClinicalAccess: (userId: number, reason: string) =>
+    authedRequest<ClinicalGrant>("POST", `/admin/users/${userId}/clinical-access`, { reason }),
+  getClinicalData: (userId: number) =>
+    authedRequest<ClinicalData>("GET", `/admin/users/${userId}/clinical-data`),
+
+  // ─── MODUL 3B: silinmə istəkləri (GDPR) ──────────────────────────────────
+  getDeletionRequests: () =>
+    authedRequest<DeletionRequest[]>("GET", "/admin/deletion-requests"),
+  approveDeletionRequest: (userId: number) =>
+    authedRequest<void>("POST", `/admin/deletion-requests/${userId}/approve`),
+  rejectDeletionRequest: (userId: number, reason?: string) =>
+    authedRequest<void>("POST", `/admin/deletion-requests/${userId}/reject`, { reason }),
+
+  // ─── MODUL 3C: psixoloq kartı ────────────────────────────────────────────
+  getPsychologistCard: (psyId: number) =>
+    authedRequest<PsychologistCard>("GET", `/admin/psychologists/${psyId}/card`),
+  suspendPsychologist: (psyId: number, reason: string) =>
+    authedRequest<void>("POST", `/admin/psychologists/${psyId}/suspend`, { reason }),
+  unsuspendPsychologist: (psyId: number) =>
+    authedRequest<void>("POST", `/admin/psychologists/${psyId}/unsuspend`),
+  getPsyVacations: (psyId: number) =>
+    authedRequest<Vacation[]>("GET", `/admin/psychologists/${psyId}/vacations`),
+  createPsyVacation: (psyId: number, data: { startDate: string; endDate: string; reason?: string; notifyPatients?: boolean }) =>
+    authedRequest<VacationCreateResult>("POST", `/admin/psychologists/${psyId}/vacations`, data),
+  deletePsyVacation: (psyId: number, vacationId: number) =>
+    authedRequest<void>("DELETE", `/admin/psychologists/${psyId}/vacations/${vacationId}`),
+
+  // ─── MODUL 3D: operator idarəetməsi ──────────────────────────────────────
+  getOperatorsOverview: () =>
+    authedRequest<OperatorOverview[]>("GET", "/admin/operators-overview"),
+
+  // ─── MODUL 3E: dəstək alətləri (impersonation YOXDUR — PO qərarı) ────────
+  sendPasswordReset: (userId: number) =>
+    authedRequest<void>("POST", `/admin/users/${userId}/send-password-reset`),
+  resendVerification: (userId: number) =>
+    authedRequest<void>("POST", `/admin/users/${userId}/resend-verification`),
+  changeUserEmail: (userId: number, newEmail: string) =>
+    authedRequest<void>("POST", `/admin/users/${userId}/change-email`, { newEmail }),
+  terminateUserSessions: (userId: number) =>
+    authedRequest<void>("POST", `/admin/users/${userId}/terminate-sessions`),
 };
 
 export interface AdminReview {
@@ -1009,6 +1308,14 @@ export const patientApi = {
     authedRequest<SessionFeedback>("POST", `/patient/appointments/${appointmentId}/feedback`, data),
 
   // Recurring booking series
+  /** FAZA B1: basket booking — concrete slot list, partial success on races.
+   *  Pass seriesId to append the slots to an existing course ("Uzat"). */
+  createBookingBasket: (data: {
+    requestedPsychologistId: number;
+    slots: string[];
+    note?: string;
+    seriesId?: number;
+  }) => authedRequest<BasketResult>("POST", "/patient/booking-basket", data),
   createBookingSeries: (data: {
     firstBooking: PatientBookingPayload;
     frequency: "WEEKLY" | "BIWEEKLY";
@@ -1753,7 +2060,8 @@ export interface BookingSeries {
   patientId: number;
   requestedPsychologistId: number | null;
   requestedPsychologistName: string | null;
-  frequency: BookingFrequency;
+  /** null for basket-created groups (V56). */
+  frequency: BookingFrequency | null;
   totalCount: number;
   cancelledAt: string | null;
   cancelRequestedAt?: string | null;
@@ -1764,6 +2072,27 @@ export interface BookingSeries {
   skippedOccurrences: number;
   appointmentIds: number[];
   skippedDates: string[];
+}
+
+// ─── Basket booking (FAZA B1) ────────────────────────────────────────────────
+
+export interface BasketSlotConflict {
+  slot: string;
+  /** Up to 3 free slots within ±2 days, closest first. */
+  alternatives: string[];
+}
+
+export interface BasketResult {
+  seriesId: number | null;
+  createdAppointmentIds: number[];
+  createdSlots: string[];
+  conflicts: BasketSlotConflict[];
+}
+
+export interface RepeatCheckEntry {
+  date: string;
+  free: boolean;
+  alternatives: string[];
 }
 
 export interface SessionFeedback {
@@ -1839,6 +2168,10 @@ export interface PatientHistory {
   totalAppointments: number;
   rejectedCount: number;
   cancelledCount: number;
+  // OP-1: reputation counters from the user account
+  noShowCount: number;
+  lateCancelCount: number;
+  autoFlag?: "HIGH_NO_SHOW" | "HIGH_LATE_CANCEL" | "HIGH_REJECT" | null;
   registeredAt?: string | null;
   recent: { id: number; status: string; psychologistName?: string | null; startAt?: string | null; createdAt?: string | null; note?: string | null }[];
 }
@@ -1898,9 +2231,75 @@ export interface OperatorBreakdown {
   avgResponseMinutes: number | null;
 }
 
+// ─── OP-1/OP-2: operator ticket detail page + soft-lock claim ─────────────────
+
+/** One row of the unified activity feed (audit + contact logs + notes). */
+export interface OperatorActivityItem {
+  kind: "CREATED" | "AUDIT" | "NOTE" | "CONTACT";
+  action?: string | null;
+  channel?: ContactLog["channel"] | null;
+  outcome?: ContactLog["outcome"] | null;
+  text?: string | null;
+  actorName?: string | null;
+  createdAt: string;
+}
+
+export interface SeriesSibling {
+  id: number;
+  seriesIndex?: number | null;
+  status: string;
+  startAt?: string | null;
+}
+
+export interface ClaimState {
+  appointmentId: number;
+  claimedByUserId?: number | null;
+  claimedByName?: string | null;
+  claimedAt?: string | null;
+  mine: boolean;
+  ttlMinutes: number;
+}
+
+export interface ClaimEvent {
+  event: "CLAIMED" | "RELEASED" | "STOLEN";
+  appointmentId: number;
+  claimedByUserId?: number | null;
+  claimedByName?: string | null;
+  claimedAt?: string | null;
+}
+
+export interface OperatorAppointmentFull {
+  appointment: AppointmentDetail;
+  patientHistory?: PatientHistory | null;
+  activity: OperatorActivityItem[];
+  seriesSiblings: SeriesSibling[];
+  suggestions: PsychologistSuggestion[];
+  intake?: AppointmentIntake | null;
+  slaHours: number;
+  claim: ClaimState;
+}
+
+/** Absolute URL for navigator.sendBeacon on tab close (cookie auth rides along). */
+export function operatorClaimReleaseUrl(appointmentId: number): string {
+  return `${BASE}/operator/appointments/${appointmentId}/claim/release`;
+}
+
 export const operatorApi = {
   listAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/operator/appointments"),
   getAppointment: (id: number) => authedRequest<AppointmentDetail>("GET", `/operator/appointments/${id}`),
+  /** OP-1: everything the detail page needs in one request. */
+  fullAppointment: (id: number) =>
+    authedRequest<OperatorAppointmentFull>("GET", `/operator/appointments/${id}/full`),
+  /** OP-1: operator note → activity feed. */
+  addNote: (appointmentId: number, text: string) =>
+    authedRequest<OperatorActivityItem>("POST", `/operator/appointments/${appointmentId}/notes`, { text }),
+  // OP-2: soft-lock claim
+  claim: (id: number, force = false) =>
+    authedRequest<ClaimState>("POST", `/operator/appointments/${id}/claim`, force ? { force: true } : {}),
+  claimHeartbeat: (id: number) =>
+    authedRequest<ClaimState>("PUT", `/operator/appointments/${id}/claim/heartbeat`),
+  claimRelease: (id: number) =>
+    authedRequest<ClaimState>("POST", `/operator/appointments/${id}/claim/release`),
   assign: (id: number, data: OperatorAssignPayload) =>
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/assign`, data),
   cancel: (id: number, reasonCode: string, note?: string) =>

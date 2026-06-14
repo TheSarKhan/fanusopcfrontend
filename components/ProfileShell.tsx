@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { meApi, type AccountStatus, type MeProfile } from "@/lib/api";
+import { meApi, patientApi, type AccountStatus, type EmergencyContact, type MeProfile } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const ROLE_LABEL: Record<string, string> = {
   PATIENT: "Pasiyent",
@@ -88,6 +89,7 @@ export default function ProfileShell({ extras, sideExtras, title = "Profil", sub
       <div className="uprof-grid">
         <div className="uprof-main">
           <BasicInfoCard me={me} onUpdated={setMe} />
+          {me.role === "PATIENT" && <EmergencyContactCard />}
           <PasswordCard />
           {extras}
           <PrivacyCard email={me.email} status={status} onStatusChanged={refreshStatus} />
@@ -398,6 +400,90 @@ function BasicInfoCard({ me, onUpdated }: { me: MeProfile; onUpdated: (m: MeProf
           {savedAt && <span className="uprof-saved">✓ Yadda saxlanıldı</span>}
           <button type="submit" disabled={!dirty || saving} className="uprof-btn uprof-btn--primary">
             {saving ? "Saxlanılır…" : "Yadda saxla"}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+/* ─── Patient-only emergency contact (Modul G) ──────────────────────────────
+ * Role-gated upstream (rendered only when me.role === "PATIENT") so that
+ * patient-only fields never leak into psychologist/operator/admin profiles. */
+function EmergencyContactCard() {
+  const { t } = useT();
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [relation, setRelation] = useState("");
+  const [address, setAddress] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    patientApi.getEmergencyContact()
+      .then(data => {
+        if (cancelled) return;
+        setName(data.emergencyContactName ?? "");
+        setPhone(data.emergencyContactPhone ?? "");
+        setRelation(data.emergencyContactRelation ?? "");
+        setAddress(data.residentialAddress ?? "");
+      })
+      .catch(() => { /* non-fatal — empty form */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(null);
+    setSaving(true);
+    try {
+      const payload: EmergencyContact = {
+        emergencyContactName: name.trim() || null,
+        emergencyContactPhone: phone.trim() || null,
+        emergencyContactRelation: relation.trim() || null,
+        residentialAddress: address.trim() || null,
+      };
+      await patientApi.updateEmergencyContact(payload);
+      setSavedAt(Date.now());
+      setTimeout(() => setSavedAt(null), 2500);
+    } catch (e) { setErr((e as Error).message || "Yenilənmə uğursuz oldu"); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <form className="uprof-card" onSubmit={submit}>
+      <div className="uprof-card-head">
+        <h2>{t("emergency.sectionTitle")}</h2>
+        <p>{t("emergency.note")}</p>
+      </div>
+      <div className="uprof-form">
+        <div className="uprof-grid-2">
+          <div className="uprof-field">
+            <label>{t("emergency.contactName")}</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder={t("emergency.contactNamePh")} maxLength={100} />
+          </div>
+          <div className="uprof-field">
+            <label>{t("emergency.contactPhone")}</label>
+            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder={t("emergency.contactPhonePh")} maxLength={30} />
+          </div>
+        </div>
+        <div className="uprof-field">
+          <label>{t("emergency.contactRelation")}</label>
+          <input value={relation} onChange={e => setRelation(e.target.value)} placeholder={t("emergency.contactRelationPh")} maxLength={100} />
+        </div>
+        <div className="uprof-field">
+          <label>{t("emergency.address")}</label>
+          <input value={address} onChange={e => setAddress(e.target.value)} placeholder={t("emergency.addressPh")} maxLength={255} />
+        </div>
+
+        {err && <div className="uprof-error-inline">{err}</div>}
+
+        <div className="uprof-actions">
+          {savedAt && <span className="uprof-saved">✓ {t("emergency.saved")}</span>}
+          <button type="submit" disabled={saving} className="uprof-btn uprof-btn--primary">
+            {saving ? "Saxlanılır…" : t("emergency.save")}
           </button>
         </div>
       </div>

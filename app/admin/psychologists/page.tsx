@@ -1,7 +1,15 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { adminApi, type Psychologist, type UserRecord } from "@/lib/api";
+import {
+  adminApi,
+  type Psychologist,
+  type UserRecord,
+  type PackageDto,
+  type PackageReq,
+  type PriceChangeLogItem,
+} from "@/lib/api";
+import { formatAzn } from "@/lib/money";
 import { IconSearch, IconPlus, IconDownload, IconChevron } from "../_components/icons";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -198,7 +206,7 @@ export default function PsychologistsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
-  const [modal, setModal] = useState<{ item: Omit<Psychologist, "id">; id?: number } | null>(null);
+  const [modal, setModal] = useState<{ item: Omit<Psychologist, "id">; id?: number; psyType?: "FANUS" | "NORMAL" } | null>(null);
   const [specsInput, setSpecsInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -269,6 +277,7 @@ export default function PsychologistsPage() {
         displayOrder: p.displayOrder ?? 0, active: p.active ?? true,
       },
       id: p.id,
+      psyType: p.psychologistType ?? "NORMAL",
     });
   };
 
@@ -621,6 +630,13 @@ export default function PsychologistsPage() {
                 <ActiveToggle active={modal.item.active} onChange={() => setModal(m => m && { ...m, item: { ...m.item, active: !m.item.active } })} />
                 <span style={{ fontSize: 12, color: modal.item.active ? "#166534" : "#6B7280" }}>{modal.item.active ? "Aktiv" : "Passiv"}</span>
               </div>
+
+              {modal.id != null && (
+                <FanusPricingSection
+                  psyId={modal.id}
+                  initialType={modal.psyType ?? "NORMAL"}
+                />
+              )}
             </div>
             <div className="modal-foot">
               <button className="btn" onClick={() => setModal(null)}>Ləğv et</button>
@@ -688,6 +704,287 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
     <div>
       <div style={{ fontSize: 11.5, fontWeight: 600, color: "#52718F", marginBottom: 5 }}>{label}</div>
       {children}
+    </div>
+  );
+}
+
+// ─── Modul C — Fanus tip + qiymət/paket idarəsi (admin) ─────────────────────────
+
+type PkgDraft = { name: string; sessionCount: string; packagePrice: string; active: boolean };
+const EMPTY_PKG: PkgDraft = { name: "", sessionCount: "", packagePrice: "", active: true };
+
+function pkgDraftFrom(p: PackageDto): PkgDraft {
+  return { name: p.name, sessionCount: String(p.sessionCount), packagePrice: String(p.packagePrice), active: p.active };
+}
+function pkgReqFrom(d: PkgDraft): PackageReq {
+  return {
+    name: d.name.trim(),
+    sessionCount: Number(d.sessionCount),
+    packagePrice: Number(d.packagePrice),
+    active: d.active,
+  };
+}
+
+function FanusPricingSection({ psyId, initialType }: { psyId: number; initialType: "FANUS" | "NORMAL" }) {
+  const { t } = useT();
+  const [psyType, setPsyType] = useState<"FANUS" | "NORMAL">(initialType);
+  const [typeSaving, setTypeSaving] = useState(false);
+
+  const [individualPrice, setIndividualPrice] = useState("");
+  const [priceSaving, setPriceSaving] = useState(false);
+  const [priceSaved, setPriceSaved] = useState(false);
+
+  const [packages, setPackages] = useState<PackageDto[]>([]);
+  const [history, setHistory] = useState<PriceChangeLogItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [adding, setAdding] = useState(false);
+  const [newPkg, setNewPkg] = useState<PkgDraft>({ ...EMPTY_PKG });
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editPkg, setEditPkg] = useState<PkgDraft>({ ...EMPTY_PKG });
+  const [busyPkg, setBusyPkg] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    Promise.all([
+      adminApi.getPsyPackages(psyId).catch(() => [] as PackageDto[]),
+      adminApi.getPsyPriceHistory(psyId).catch(() => [] as PriceChangeLogItem[]),
+    ])
+      .then(([pkgs, hist]) => {
+        if (!alive) return;
+        setPackages(pkgs);
+        setHistory(hist);
+      })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [psyId]);
+
+  const reloadHistory = () => {
+    adminApi.getPsyPriceHistory(psyId).then(setHistory).catch(() => {});
+  };
+
+  const changeType = async (next: "FANUS" | "NORMAL") => {
+    const prev = psyType;
+    setPsyType(next);
+    setTypeSaving(true);
+    try {
+      await adminApi.setPsyType(psyId, next);
+    } catch (e) {
+      setPsyType(prev);
+      alert((e as Error).message);
+    } finally {
+      setTypeSaving(false);
+    }
+  };
+
+  const savePrice = async () => {
+    const val = Number(individualPrice);
+    if (!individualPrice.trim() || Number.isNaN(val)) return;
+    setPriceSaving(true);
+    setPriceSaved(false);
+    try {
+      await adminApi.setPsyPricing(psyId, val);
+      setPriceSaved(true);
+      reloadHistory();
+    } catch (e) { alert((e as Error).message); }
+    finally { setPriceSaving(false); }
+  };
+
+  const addPackage = async () => {
+    if (!newPkg.name.trim() || !newPkg.sessionCount.trim() || !newPkg.packagePrice.trim()) return;
+    setBusyPkg(true);
+    try {
+      const created = await adminApi.createPsyPackage(psyId, pkgReqFrom(newPkg));
+      setPackages(prev => [...prev, created]);
+      setNewPkg({ ...EMPTY_PKG });
+      setAdding(false);
+      reloadHistory();
+    } catch (e) { alert((e as Error).message); }
+    finally { setBusyPkg(false); }
+  };
+
+  const startEdit = (p: PackageDto) => { setEditId(p.id); setEditPkg(pkgDraftFrom(p)); };
+
+  const saveEdit = async () => {
+    if (editId == null) return;
+    if (!editPkg.name.trim() || !editPkg.sessionCount.trim() || !editPkg.packagePrice.trim()) return;
+    setBusyPkg(true);
+    try {
+      const updated = await adminApi.updatePsyPackage(psyId, editId, pkgReqFrom(editPkg));
+      setPackages(prev => prev.map(x => x.id === editId ? updated : x));
+      setEditId(null);
+      reloadHistory();
+    } catch (e) { alert((e as Error).message); }
+    finally { setBusyPkg(false); }
+  };
+
+  const deletePackage = async (id: number) => {
+    if (!confirm(t("pricing.deleteConfirm"))) return;
+    setBusyPkg(true);
+    try {
+      await adminApi.deletePsyPackage(psyId, id);
+      setPackages(prev => prev.filter(x => x.id !== id));
+    } catch (e) { alert((e as Error).message); }
+    finally { setBusyPkg(false); }
+  };
+
+  const labelStyle: React.CSSProperties = { fontSize: 11.5, fontWeight: 600, color: "#52718F", marginBottom: 5 };
+
+  return (
+    <div style={{ marginTop: 20, paddingTop: 18, borderTop: "1.5px solid #E4EDF6" }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: "#1A2535", marginBottom: 14 }}>{t("pricing.sectionTitle")}</div>
+
+      {/* Psixoloq tipi */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={labelStyle}>{t("pricing.fanusType")}</div>
+        <select
+          className="select"
+          value={psyType}
+          disabled={typeSaving}
+          onChange={e => changeType(e.target.value as "FANUS" | "NORMAL")}
+          style={{ width: "100%", boxSizing: "border-box" }}
+        >
+          <option value="FANUS">{t("pricing.fanus")}</option>
+          <option value="NORMAL">{t("pricing.normal")}</option>
+        </select>
+      </div>
+
+      {/* Tək seans qiyməti */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={labelStyle}>{t("pricing.individualPrice")}</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            className="input"
+            type="number"
+            min={0}
+            placeholder="120"
+            value={individualPrice}
+            onChange={e => { setIndividualPrice(e.target.value); setPriceSaved(false); }}
+            style={{ flex: 1, boxSizing: "border-box" }}
+          />
+          <button className="btn primary sm" onClick={savePrice} disabled={priceSaving || !individualPrice.trim()}>
+            {priceSaving ? "…" : t("pricing.save")}
+          </button>
+          {priceSaved && <span style={{ fontSize: 12, fontWeight: 600, color: "#166534" }}>{t("pricing.saved")}</span>}
+        </div>
+      </div>
+
+      {/* Paketlər */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: "#52718F", textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("pricing.packages")}</div>
+          {!adding && (
+            <button className="btn sm" onClick={() => { setNewPkg({ ...EMPTY_PKG }); setAdding(true); }} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <IconPlus size={12} /> {t("pricing.addPackage")}
+            </button>
+          )}
+        </div>
+
+        {loading ? (
+          <div style={{ fontSize: 12, color: "#8AAABF", padding: "8px 0" }}>Yüklənir…</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {packages.map(p => (
+              editId === p.id ? (
+                <div key={p.id} style={{ border: "1px solid #E4EDF6", borderRadius: 10, padding: 10, background: "#F8FAFC", display: "grid", gridTemplateColumns: "1.4fr 0.7fr 0.9fr", gap: 8 }}>
+                  <input className="input" placeholder={t("pricing.packageName")} value={editPkg.name}
+                    onChange={e => setEditPkg(d => ({ ...d, name: e.target.value }))} style={{ boxSizing: "border-box" }} />
+                  <input className="input" type="number" min={1} placeholder={t("pricing.sessionCount")} value={editPkg.sessionCount}
+                    onChange={e => setEditPkg(d => ({ ...d, sessionCount: e.target.value }))} style={{ boxSizing: "border-box" }} />
+                  <input className="input" type="number" min={0} placeholder={t("pricing.packagePrice")} value={editPkg.packagePrice}
+                    onChange={e => setEditPkg(d => ({ ...d, packagePrice: e.target.value }))} style={{ boxSizing: "border-box" }} />
+                  <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#52718F", cursor: "pointer" }}>
+                      <input type="checkbox" checked={editPkg.active} onChange={e => setEditPkg(d => ({ ...d, active: e.target.checked }))} />
+                      {t("pricing.active")}
+                    </label>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button className="btn sm" onClick={() => setEditId(null)} disabled={busyPkg}>Ləğv et</button>
+                      <button className="btn primary sm" onClick={saveEdit} disabled={busyPkg}>{t("pricing.save")}</button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid #E4EDF6", borderRadius: 10, padding: "9px 12px" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1A2535", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                      {!p.active && <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "#F1F5F9", color: "#6B7280" }}>Passiv</span>}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "#8AAABF", marginTop: 2 }}>
+                      {p.sessionCount} × · {formatAzn(p.perSessionPrice)}{t("pricing.perSession")}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#1A2535", whiteSpace: "nowrap" }}>{formatAzn(p.packagePrice)}</div>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    <button className="btn sm" onClick={() => startEdit(p)} disabled={busyPkg}>{t("pricing.edit")}</button>
+                    <button className="btn sm danger" onClick={() => deletePackage(p.id)} disabled={busyPkg}>{t("pricing.delete")}</button>
+                  </div>
+                </div>
+              )
+            ))}
+
+            {adding && (
+              <div style={{ border: "1px dashed #C0D2E6", borderRadius: 10, padding: 10, background: "#FAFBFF", display: "grid", gridTemplateColumns: "1.4fr 0.7fr 0.9fr", gap: 8 }}>
+                <input className="input" placeholder={t("pricing.packageName")} value={newPkg.name}
+                  onChange={e => setNewPkg(d => ({ ...d, name: e.target.value }))} style={{ boxSizing: "border-box" }} />
+                <input className="input" type="number" min={1} placeholder={t("pricing.sessionCount")} value={newPkg.sessionCount}
+                  onChange={e => setNewPkg(d => ({ ...d, sessionCount: e.target.value }))} style={{ boxSizing: "border-box" }} />
+                <input className="input" type="number" min={0} placeholder={t("pricing.packagePrice")} value={newPkg.packagePrice}
+                  onChange={e => setNewPkg(d => ({ ...d, packagePrice: e.target.value }))} style={{ boxSizing: "border-box" }} />
+                <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#52718F", cursor: "pointer" }}>
+                    <input type="checkbox" checked={newPkg.active} onChange={e => setNewPkg(d => ({ ...d, active: e.target.checked }))} />
+                    {t("pricing.active")}
+                  </label>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button className="btn sm" onClick={() => { setAdding(false); setNewPkg({ ...EMPTY_PKG }); }} disabled={busyPkg}>Ləğv et</button>
+                    <button className="btn primary sm" onClick={addPackage} disabled={busyPkg}>{t("pricing.addPackage")}</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!loading && packages.length === 0 && !adding && (
+              <div style={{ fontSize: 12, color: "#8AAABF", padding: "4px 0" }}>{t("pricing.noPrice")}</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Qiymət tarixçəsi */}
+      <div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: "#52718F", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>{t("pricing.priceHistory")}</div>
+        {loading ? (
+          <div style={{ fontSize: 12, color: "#8AAABF" }}>Yüklənir…</div>
+        ) : history.length === 0 ? (
+          <div style={{ fontSize: 12, color: "#8AAABF" }}>{t("pricing.historyEmpty")}</div>
+        ) : (
+          <div style={{ border: "1px solid #E4EDF6", borderRadius: 10, overflow: "hidden" }}>
+            {history.map((h, i) => (
+              <div key={h.id} style={{
+                display: "grid", gridTemplateColumns: "1fr 1.2fr 0.9fr 1fr", gap: 8, alignItems: "center",
+                padding: "8px 12px", fontSize: 12,
+                borderTop: i > 0 ? "1px solid #F1F5F9" : "none",
+              }}>
+                <span style={{ fontWeight: 600, color: "#1A2535" }}>
+                  {h.target === "INDIVIDUAL" ? t("pricing.targetIndividual") : t("pricing.targetPackage")}
+                </span>
+                <span style={{ color: "#52718F" }}>
+                  {formatAzn(h.oldPrice) || "—"} → <strong style={{ color: "#1A2535" }}>{formatAzn(h.newPrice)}</strong>
+                </span>
+                <span style={{ color: "#8AAABF" }}>
+                  {h.changedByRole === "ADMIN" ? t("pricing.roleAdmin") : t("pricing.rolePsychologist")}
+                </span>
+                <span style={{ color: "#8AAABF", textAlign: "right" }}>
+                  {new Date(h.createdAt).toLocaleDateString("az-AZ")}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

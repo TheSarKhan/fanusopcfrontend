@@ -33,8 +33,11 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
   const nav: PanelNavItem[] = [
     { href: "/operator",              label: t("nav.dashboard"),       icon: "home" },
     { href: "/operator/appointments", label: t("nav.appointments"),    icon: "calendar" },
+    { href: "/operator/payments",     label: t("pkg.paymentsTitle"),   icon: "clipboard" },
     { href: "/operator/feedback",     label: t("nav.feedbackTriage"),  icon: "star" },
     { href: "/operator/analytics",    label: t("nav.analytics"),       icon: "chart" },
+    { href: "/operator/customers",     label: "Müştərilər",            icon: "users" },
+    { href: "/operator/psychologists", label: "Psixoloq statistikası", icon: "badge" },
   ];
 
   return (

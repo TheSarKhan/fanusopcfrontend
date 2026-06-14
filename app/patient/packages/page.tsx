@@ -1,0 +1,179 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { patientApi, type PatientPackageItem } from "@/lib/api";
+import { azLocalToISO, azFormatDate } from "@/lib/datetime";
+import { formatAzn } from "@/lib/money";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
+
+/** Maps backend status → pkg.* label key. */
+const STATUS_LABEL: Record<string, MessageKey> = {
+  ACTIVE: "pkg.active",
+  EXHAUSTED: "pkg.exhausted",
+  EXPIRED: "pkg.expired",
+  CANCELLED: "pkg.cancelled",
+};
+
+const STATUS_TONE: Record<string, { color: string; bg: string }> = {
+  ACTIVE:    { color: "#065F46", bg: "#D1FAE5" },
+  EXHAUSTED: { color: "#374151", bg: "#F3F4F6" },
+  EXPIRED:   { color: "#92400E", bg: "#FEF3C7" },
+  CANCELLED: { color: "#991B1B", bg: "#FEE2E2" },
+};
+
+export default function PatientPackagesPage() {
+  const { t } = useT();
+  const [items, setItems] = useState<PatientPackageItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = () => {
+    setLoading(true);
+    patientApi.myPackages()
+      .then(setItems)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, []);
+
+  return (
+    <div className="psy-appt-page">
+      <header style={{ marginBottom: 18 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>
+          {t("pkg.myPackages")}
+        </h1>
+      </header>
+
+      {loading ? (
+        <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>
+          Yüklənir…
+        </div>
+      ) : items.length === 0 ? (
+        <div style={{
+          background: "#fff", borderRadius: 12, padding: 28,
+          textAlign: "center", color: "var(--oxford-60)", fontSize: 13,
+          border: "1px dashed var(--brand-100)",
+        }}>
+          {t("pkg.noPackages")}
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: 12 }}>
+          {items.map(p => (
+            <PackageCard key={p.id} pkg={p} onScheduled={load} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PackageCard({ pkg, onScheduled }: { pkg: PatientPackageItem; onScheduled: () => void }) {
+  const { t } = useT();
+  const [datetime, setDatetime] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [scheduled, setScheduled] = useState(false);
+
+  const tone = STATUS_TONE[pkg.status] ?? STATUS_TONE.ACTIVE;
+  const statusLabel = t(STATUS_LABEL[pkg.status] ?? "pkg.active");
+  const canSchedule = pkg.status === "ACTIVE" && pkg.remaining > 0;
+
+  const submit = async () => {
+    setErr(null);
+    if (!datetime) { setErr("Vaxt seçin"); return; }
+    setSaving(true);
+    try {
+      await patientApi.schedulePackageSession(pkg.id, { startAt: azLocalToISO(datetime) });
+      setScheduled(true);
+      setDatetime("");
+      onScheduled();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{
+      background: "#fff", borderRadius: 14, padding: 18,
+      boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+      borderLeft: `4px solid ${tone.color}`,
+    }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{pkg.packageName}</div>
+          <div style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 2 }}>{pkg.psychologistName}</div>
+        </div>
+        <span style={{
+          fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999,
+          color: tone.color, background: tone.bg, whiteSpace: "nowrap",
+        }}>
+          {statusLabel}
+        </span>
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 18, marginTop: 14 }}>
+        <Stat label={t("pkg.remaining")} value={`${pkg.remaining}/${pkg.total}`} />
+        <Stat label={t("pkg.pricePaid")} value={formatAzn(pkg.pricePaid)} />
+        <Stat label={t("pkg.purchasedAt")} value={azFormatDate(pkg.purchasedAt)} />
+      </div>
+
+      {canSchedule && (
+        <div style={{ marginTop: 16, borderTop: "1px solid var(--brand-100)", paddingTop: 14 }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
+            {t("pkg.scheduleSession")}
+          </label>
+          {pkg.schedulingMode === "SCHEDULE_LATER" && (
+            <p style={{ fontSize: 12, color: "var(--oxford-60)", margin: "0 0 8px" }}>
+              {t("pkg.scheduleLaterHint")}
+            </p>
+          )}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <input
+              type="datetime-local"
+              value={datetime}
+              onChange={e => { setDatetime(e.target.value); setScheduled(false); }}
+              style={{ flex: "1 1 220px", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13 }}
+            />
+            <button
+              type="button"
+              onClick={submit}
+              disabled={saving}
+              style={{
+                padding: "8px 18px", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600,
+                background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1,
+              }}>
+              {saving ? "Göndərilir…" : t("pkg.scheduleSession")}
+            </button>
+          </div>
+          {err && (
+            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>
+              {err}
+            </div>
+          )}
+          {scheduled && !err && (
+            <div style={{ background: "var(--brand-50)", color: "var(--brand-700)", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>
+              {t("pkg.pendingNote")}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  if (!value) return null;
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)", marginTop: 2 }}>
+        {value}
+      </div>
+    </div>
+  );
+}

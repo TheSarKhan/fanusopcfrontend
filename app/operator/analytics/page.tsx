@@ -9,9 +9,14 @@ import {
   type PsychologistConcern,
   type PatientFlagged,
   type OperatorBreakdown,
+  type AnalyticsTimePoint,
+  type AnalyticsPeriod,
+  type PsychologistRankItem,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { SessionsLineChart, RankingBarChart } from "@/components/AnalyticsCharts";
+import { formatAzn } from "@/lib/money";
 
 function fmtMin(min: number | null): string {
   if (min == null) return "—";
@@ -39,6 +44,13 @@ function fmtAgo(iso: string | null): string {
   return `${Math.floor(d / 30)} ay öncə`;
 }
 
+const PERIODS: { value: AnalyticsPeriod; label: string }[] = [
+  { value: "daily",   label: "Günlük" },
+  { value: "weekly",  label: "Həftəlik" },
+  { value: "monthly", label: "Aylıq" },
+  { value: "yearly",  label: "İllik" },
+];
+
 const REASON_LABEL: Record<string, { text: string; tone: "danger" | "warn" | "neutral" }> = {
   HIGH_NO_SHOW:     { text: "Yüksək no-show",     tone: "danger" },
   HIGH_LATE_CANCEL: { text: "Yüksək geç ləğv",     tone: "warn" },
@@ -52,19 +64,41 @@ export default function OperatorAnalyticsPage() {
   const { t } = useT();
   const [stats, setStats] = useState<OperatorStats | null>(null);
   const [crisis, setCrisis] = useState<OperatorCrisisCheckIn[]>([]);
+  const [ranking, setRanking] = useState<PsychologistRankItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [ackingId, setAckingId] = useState<number | null>(null);
 
+  // Modul H — dövr seçimi ilə idarə olunan seans seriyası
+  const [period, setPeriod] = useState<AnalyticsPeriod>("daily");
+  const [series, setSeries] = useState<AnalyticsTimePoint[]>([]);
+  const [seriesLoading, setSeriesLoading] = useState(true);
+
   const load = () => {
-    Promise.allSettled([operatorApi.stats(), operatorApi.crisisCheckIns()])
-      .then(([s, c]) => {
+    Promise.allSettled([
+      operatorApi.stats(),
+      operatorApi.crisisCheckIns(),
+      operatorApi.psychologistRanking(),
+    ])
+      .then(([s, c, r]) => {
         if (s.status === "fulfilled") setStats(s.value);
         if (c.status === "fulfilled") setCrisis(c.value);
+        if (r.status === "fulfilled") setRanking(r.value);
         setLoading(false);
       });
   };
 
   useEffect(load, []);
+
+  // Modul H — seçilmiş dövrə görə seans seriyası; dövr dəyişəndə yenidən yüklə
+  useEffect(() => {
+    let alive = true;
+    setSeriesLoading(true);
+    operatorApi.analyticsSessions(period)
+      .then(data => { if (alive) setSeries(data); })
+      .catch(() => { if (alive) setSeries([]); })
+      .finally(() => { if (alive) setSeriesLoading(false); });
+    return () => { alive = false; };
+  }, [period]);
 
   // GAP-07: a new crisis check-in must surface the moment it arrives.
   useEffect(() => {
@@ -198,6 +232,53 @@ export default function OperatorAnalyticsPage() {
           <Card title="Son 30 gün — gündəlik triage" subtitle="Gələn, təyin, rədd günlərə görə">
             <Legend />
             <DailyChart data={stats.last30Days} />
+          </Card>
+
+          {/* Modul H — dövr əsaslı seans dinamikası (recharts) */}
+          <Card title="Seans dinamikası"
+                subtitle="Seçilmiş dövrə görə tamamlanmış və ləğv edilmiş seanslar">
+            <div className="op-period">
+              {PERIODS.map(p => (
+                <button
+                  key={p.value}
+                  type="button"
+                  className="op-period__btn"
+                  data-active={period === p.value}
+                  aria-pressed={period === p.value}
+                  onClick={() => setPeriod(p.value)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            {seriesLoading ? (
+              <div className="op-loading">{t("common.loading")}</div>
+            ) : series.length === 0 ? (
+              <Empty msg="Bu dövr üçün məlumat yoxdur" />
+            ) : (
+              <>
+                <SessionsLineChart data={series} />
+                <RevenueSummary data={series} />
+              </>
+            )}
+          </Card>
+
+          {/* Modul H — psixoloq sıralaması (recharts) */}
+          <Card title="Psixoloq sıralaması"
+                subtitle="Tamamlanmış seanslara görə ən aktiv psixoloqlar"
+                count={ranking.length}>
+            {ranking.length === 0 ? (
+              <Empty msg="Sıralama üçün məlumat yoxdur" />
+            ) : (
+              <>
+                <RankingBarChart data={ranking} />
+                <div className="op-list">
+                  {ranking.slice(0, 5).map((r, i) => (
+                    <RankRow key={r.psychologistId} r={r} rank={i + 1} />
+                  ))}
+                </div>
+              </>
+            )}
           </Card>
         </>
       )}
@@ -371,6 +452,33 @@ function OperatorRow({ o, max }: { o: OperatorBreakdown; max: number }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function RevenueSummary({ data }: { data: AnalyticsTimePoint[] }) {
+  const hasRevenue = data.some(d => d.revenue != null);
+  if (!hasRevenue) return null;
+  const total = data.reduce((sum, d) => sum + (d.revenue ?? 0), 0);
+  return (
+    <div className="op-revenue">
+      <span className="op-revenue__label">Bu dövrün gəliri</span>
+      <span className="op-revenue__value">{formatAzn(total)}</span>
+    </div>
+  );
+}
+
+function RankRow({ r, rank }: { r: PsychologistRankItem; rank: number }) {
+  return (
+    <Link href={`/operator/psychologists/${r.psychologistId}`} className="op-row" title="Psixoloq kartına bax">
+      <div className="op-row__avatar" data-tone="brand">{rank}</div>
+      <div className="op-row__main">
+        <div className="op-row__name">{r.name}</div>
+        <div className="op-row__meta">
+          <span>{r.completedSessions} tamamlanmış seans</span>
+          {r.activePatients > 0 && <span>· {r.activePatients} aktiv müraciətçi</span>}
+        </div>
+      </div>
+    </Link>
   );
 }
 

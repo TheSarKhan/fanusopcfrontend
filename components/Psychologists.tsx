@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import type { Psychologist } from "@/lib/api";
+import type { Psychologist, PackageSummary } from "@/lib/api";
 import Deco from "@/components/Deco";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { formatAzn } from "@/lib/money";
 
 interface CardItem {
   id: number;
@@ -17,6 +18,11 @@ interface CardItem {
   lang: string;
   sessionMinutes: number;
   photoUrl?: string;
+  individualPrice?: number | null;
+  currency?: string;
+  packages?: PackageSummary[];
+  statsSource?: "FANUS_PLATFORM" | "PRIOR_EXPERIENCE";
+  displayedSessionCount?: number;
 }
 
 const FALLBACK: CardItem[] = [
@@ -47,6 +53,11 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
         lang: (p.languages || "AZ").split(",").map((l) => l.trim()).filter(Boolean).join(" · ") || "AZ",
         sessionMinutes: p.defaultSessionMinutes ?? 50,
         photoUrl: p.photoUrl?.trim() || undefined,
+        individualPrice: p.individualPrice ?? null,
+        currency: p.currency,
+        packages: p.packages || [],
+        statsSource: p.statsSource,
+        displayedSessionCount: p.displayedSessionCount,
       }))
     : FALLBACK;
 
@@ -146,6 +157,37 @@ function PsyCard({ p }: { p: CardItem }) {
         <li><ClockIcon /> {p.exp} {t("psyList.yearsExp")}</li>
         <li><HourIcon /> {t("psyList.minutes", { n: p.sessionMinutes })}</li>
       </ul>
+
+      {p.displayedSessionCount != null && p.displayedSessionCount > 0 && (
+        <div className="pp-card__stats">
+          <span className="pp-tag pp-tag--stats">
+            {p.statsSource === "FANUS_PLATFORM"
+              ? `${t("psyStats.fanusSessions")}: ${p.displayedSessionCount}`
+              : `${t("psyStats.priorSessions")}: ${p.displayedSessionCount}`}
+          </span>
+        </div>
+      )}
+
+      {(p.individualPrice != null || (p.packages && p.packages.length > 0)) && (
+        <div className="pp-card__pricing">
+          {p.individualPrice != null && (
+            <div className="pp-card__price">
+              <TagIcon />
+              <span className="pp-card__price-label">{t("pricing.individual")}</span>
+              <strong className="pp-card__price-val">{formatAzn(p.individualPrice)}</strong>
+            </div>
+          )}
+          {p.packages && p.packages.length > 0 && (
+            <div className="pp-card__packs">
+              {p.packages.map((pk) => (
+                <span key={pk.id} className="pp-pack">
+                  {pk.name} — {formatAzn(pk.packagePrice)}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="pp-card__foot">
         <Link href={`/psychologists/${p.slug}`} className="pp-btn pp-btn--ghost">
@@ -271,6 +313,38 @@ function PsyCard({ p }: { p: CardItem }) {
         }
         .pp-card__meta li :first-child { color: var(--fanus-primary); flex-shrink: 0; }
 
+        .pp-card__stats {
+          display: flex; flex-wrap: wrap; gap: 6px;
+          position: relative; z-index: 1;
+        }
+        .pp-tag--stats {
+          background: var(--fanus-bg);
+          color: var(--fanus-ink);
+          border: 1px solid var(--fanus-line);
+        }
+
+        .pp-card__pricing {
+          display: flex; flex-direction: column; gap: 8px;
+          position: relative; z-index: 1;
+        }
+        .pp-card__price {
+          display: inline-flex; align-items: center; gap: 6px;
+          font-size: 13px; color: var(--fanus-ink-3);
+        }
+        .pp-card__price :first-child { color: var(--fanus-primary); flex-shrink: 0; }
+        .pp-card__price-label { color: var(--fanus-ink-3); }
+        .pp-card__price-val { color: var(--fanus-ink); font-weight: 700; margin-left: auto; }
+        .pp-card__packs {
+          display: flex; flex-wrap: wrap; gap: 6px;
+        }
+        .pp-pack {
+          font-size: 11.5px; padding: 4px 10px; border-radius: 999px;
+          font-weight: 600; letter-spacing: .01em;
+          background: var(--fanus-bg);
+          color: var(--fanus-ink);
+          border: 1px solid var(--fanus-line);
+        }
+
         .pp-card__foot {
           margin-top: auto; display: grid;
           grid-template-columns: 1fr auto;
@@ -335,3 +409,4 @@ function ClockIcon() { return <svg width="13" height="13" fill="none" stroke="cu
 function HourIcon() { return <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 22h14M5 2h14M17 22v-4.18a2 2 0 00-.59-1.41L13 13l3.41-3.41A2 2 0 0017 8.18V4M7 22v-4.18a2 2 0 01.59-1.41L11 13 7.59 9.59A2 2 0 017 8.18V4" /></svg>; }
 function ShieldIcon({ size = 16 }: { size?: number }) { return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></svg>; }
 function CalIcon() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /></svg>; }
+function TagIcon() { return <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>; }

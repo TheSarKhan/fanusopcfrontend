@@ -1,0 +1,392 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import {
+  psychologistApi,
+  type ClientSummary,
+  type PsyTestSummary,
+  type TestAssignment,
+} from "@/lib/api";
+
+function fmt(iso?: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+}
+
+const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
+  ASSIGNED:    { label: "Təyin edilib", color: "var(--brand-700)", bg: "var(--brand-50)" },
+  PENDING:     { label: "Gözləyir",     color: "#92400E",          bg: "#FEF3C7" },
+  IN_PROGRESS: { label: "Davam edir",   color: "#92400E",          bg: "#FEF3C7" },
+  COMPLETED:   { label: "Tamamlandı",   color: "#065F46",          bg: "#D1FAE5" },
+  EXPIRED:     { label: "Vaxtı bitib",  color: "#991B1B",          bg: "#FEE2E2" },
+  CANCELLED:   { label: "Ləğv",         color: "#991B1B",          bg: "#FEE2E2" },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const b = STATUS_BADGE[status] ?? { label: status, color: "#374151", bg: "#F3F4F6" };
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, color: b.color, background: b.bg }}>
+      {b.label}
+    </span>
+  );
+}
+
+export default function PsychologTestsPage() {
+  const [tests, setTests] = useState<PsyTestSummary[]>([]);
+  const [assignments, setAssignments] = useState<TestAssignment[]>([]);
+  const [clients, setClients] = useState<ClientSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Assign modal state
+  const [assignTest, setAssignTest] = useState<PsyTestSummary | null>(null);
+
+  // Public link state (per test id -> generated link)
+  const [links, setLinks] = useState<Record<number, { url: string; token: string }>>({});
+  const [linkBusy, setLinkBusy] = useState<number | null>(null);
+  const [copied, setCopied] = useState<number | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    Promise.all([
+      psychologistApi.assignableTests().catch(() => [] as PsyTestSummary[]),
+      psychologistApi.testAssignments().catch(() => [] as TestAssignment[]),
+      psychologistApi.clients().catch(() => [] as ClientSummary[]),
+    ])
+      .then(([ts, as, cs]) => {
+        setTests(ts);
+        setAssignments(as);
+        setClients(cs);
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(load, []);
+
+  const sortedAssignments = useMemo(() => {
+    return [...assignments].sort(
+      (a, b) => new Date(b.assignedAt).getTime() - new Date(a.assignedAt).getTime()
+    );
+  }, [assignments]);
+
+  const createLink = async (test: PsyTestSummary) => {
+    setLinkBusy(test.id);
+    try {
+      const res = await psychologistApi.createTestLink({ testId: test.id });
+      setLinks(prev => ({ ...prev, [test.id]: { url: res.url, token: res.token } }));
+      // Refresh assignments so the new public link appears in the table.
+      psychologistApi.testAssignments().then(setAssignments).catch(() => {});
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setLinkBusy(null);
+    }
+  };
+
+  const copyLink = async (testId: number, url: string) => {
+    try {
+      const full = url.startsWith("http") ? url : `${window.location.origin}${url}`;
+      await navigator.clipboard.writeText(full);
+      setCopied(testId);
+      setTimeout(() => setCopied(c => (c === testId ? null : c)), 1800);
+    } catch {
+      alert("Kopyalamaq alınmadı");
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: 18 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535", margin: 0 }}>Psixoloji testlər</h1>
+        <p style={{ fontSize: 13, color: "#52718F", marginTop: 4 }}>
+          Testləri pasiyentlərə təyin edin və ya public link yaradın, nəticələri burada izləyin.
+        </p>
+      </div>
+
+      {/* ── Available tests ────────────────────────────────────────────────── */}
+      <section style={{ marginBottom: 28 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: "0 0 12px" }}>Mövcud testlər</h2>
+
+        {loading ? (
+          <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "#52718F" }}>
+            Yüklənir…
+          </div>
+        ) : tests.length === 0 ? (
+          <div style={{ background: "#fff", borderRadius: 14, padding: 48, textAlign: "center", color: "#52718F", border: "1px dashed #DDE6F0" }}>
+            Hələ təyin edilə bilən test yoxdur.
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
+            {tests.map(test => {
+              const link = links[test.id];
+              return (
+                <div key={test.id} style={{ background: "#fff", borderRadius: 14, padding: 18, border: "1px solid #EEF2F7", display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1A2535", margin: 0 }}>{test.title}</h3>
+                      {!test.published && (
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 999, color: "#92400E", background: "#FEF3C7" }}>
+                          Qaralama
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#52718F" }}>
+                      {test.questionCount} sual · {test.scaleCount} şkala
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
+                    <button
+                      type="button"
+                      onClick={() => setAssignTest(test)}
+                      style={{ flex: 1, padding: "8px 12px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: "pointer" }}
+                    >
+                      Pasiyentə təyin et
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => createLink(test)}
+                      disabled={linkBusy === test.id}
+                      style={{ flex: 1, padding: "8px 12px", border: "1px solid var(--brand-200)", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand-50)", color: "var(--brand)", cursor: linkBusy === test.id ? "wait" : "pointer" }}
+                    >
+                      {linkBusy === test.id ? "Yaradılır…" : "Public link yarat"}
+                    </button>
+                  </div>
+
+                  {link && (
+                    <div style={{ background: "#F8FAFC", border: "1px solid #EEF2F7", borderRadius: 8, padding: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#52718F", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+                        Public link
+                      </div>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <input
+                          readOnly
+                          value={link.url}
+                          onFocus={e => e.currentTarget.select()}
+                          style={{ flex: 1, minWidth: 0, padding: "6px 8px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 12, color: "#374151", background: "#fff" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => copyLink(test.id, link.url)}
+                          style={{ padding: "6px 12px", border: "1px solid var(--brand-200)", borderRadius: 6, fontSize: 12, fontWeight: 600, color: "var(--brand)", background: "#fff", cursor: "pointer", whiteSpace: "nowrap" }}
+                        >
+                          {copied === test.id ? "Kopyalandı" : "Kopyala"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ── Assignments table ──────────────────────────────────────────────── */}
+      <section>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: "0 0 12px" }}>Təyinatlar</h2>
+
+        {loading ? null : sortedAssignments.length === 0 ? (
+          <div style={{ background: "#fff", borderRadius: 14, padding: 48, textAlign: "center", color: "#52718F", border: "1px dashed #DDE6F0" }}>
+            Hələ təyinat yoxdur.
+          </div>
+        ) : (
+          <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #EEF2F7", overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "#F8FAFC", textAlign: "left" }}>
+                  <th style={thStyle}>Test</th>
+                  <th style={thStyle}>Pasiyent</th>
+                  <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Təyin edilib</th>
+                  <th style={thStyle}>Tamamlanıb</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Nəticə</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedAssignments.map(a => (
+                  <tr key={a.id} style={{ borderTop: "1px solid #EEF2F7" }}>
+                    <td style={tdStyle}>
+                      <span style={{ fontWeight: 600, color: "#1A2535" }}>{a.testTitle}</span>
+                    </td>
+                    <td style={tdStyle}>
+                      {a.patientName ? (
+                        <span style={{ color: "#374151" }}>{a.patientName}</span>
+                      ) : (
+                        <span style={{ color: "#52718F", fontStyle: "italic" }}>Public link</span>
+                      )}
+                    </td>
+                    <td style={tdStyle}><StatusBadge status={a.status} /></td>
+                    <td style={{ ...tdStyle, color: "#52718F" }}>{fmt(a.assignedAt)}</td>
+                    <td style={{ ...tdStyle, color: "#52718F" }}>{fmt(a.completedAt)}</td>
+                    <td style={{ ...tdStyle, textAlign: "right" }}>
+                      {a.hasResult ? (
+                        <Link
+                          href={`/psycholog/tests/${a.id}`}
+                          style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none" }}
+                        >
+                          Nəticə ›
+                        </Link>
+                      ) : (
+                        <span style={{ color: "#9AAFC4" }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {assignTest && (
+        <AssignModal
+          test={assignTest}
+          clients={clients}
+          onClose={() => setAssignTest(null)}
+          onAssigned={(created) => {
+            setAssignments(prev => [created, ...prev]);
+            setAssignTest(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+const thStyle: React.CSSProperties = {
+  padding: "11px 16px",
+  fontSize: 11,
+  fontWeight: 700,
+  color: "#52718F",
+  textTransform: "uppercase",
+  letterSpacing: 0.4,
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: "12px 16px",
+  verticalAlign: "middle",
+};
+
+/* ─── Assign modal ───────────────────────────────────────────────────────── */
+
+function AssignModal({
+  test, clients, onClose, onAssigned,
+}: {
+  test: PsyTestSummary;
+  clients: ClientSummary[];
+  onClose: () => void;
+  onAssigned: (a: TestAssignment) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [patientId, setPatientId] = useState<number | null>(null);
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return clients;
+    return clients.filter(c =>
+      (c.name + " " + (c.email ?? "") + " " + (c.phone ?? "")).toLowerCase().includes(q)
+    );
+  }, [clients, search]);
+
+  const submit = async () => {
+    if (patientId === null) { setErr("Pasiyent seçin"); return; }
+    setSaving(true); setErr(null);
+    try {
+      const created = await psychologistApi.assignTest({
+        testId: test.id,
+        patientId,
+        note: note.trim() || undefined,
+      });
+      onAssigned(created);
+    } catch (e) {
+      setErr((e as Error).message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(15,28,46,0.5)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, width: "min(560px, 100%)", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
+        <div style={{ padding: "16px 22px", borderBottom: "1px solid #EFF2F7" }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: 0 }}>Testi təyin et</h2>
+          <p style={{ fontSize: 12, color: "#52718F", marginTop: 4 }}>
+            «{test.title}» — pasiyent seçin, ona bildiriş gedəcək.
+          </p>
+        </div>
+
+        <div style={{ padding: 22, overflowY: "auto" }}>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Pasiyent axtar (ad, email, telefon)…"
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 12, boxSizing: "border-box" }}
+          />
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 280, overflowY: "auto", marginBottom: 14 }}>
+            {filtered.length === 0 ? (
+              <div style={{ fontSize: 13, color: "#52718F", padding: "16px 4px", textAlign: "center" }}>
+                Pasiyent tapılmadı.
+              </div>
+            ) : (
+              filtered.map(c => {
+                const active = patientId === c.patientId;
+                return (
+                  <button
+                    key={c.patientId}
+                    type="button"
+                    onClick={() => setPatientId(c.patientId)}
+                    style={{
+                      display: "flex", flexDirection: "column", alignItems: "flex-start",
+                      padding: "10px 12px", borderRadius: 10, cursor: "pointer", textAlign: "left",
+                      border: active ? "1.5px solid var(--brand)" : "1px solid #E5E7EB",
+                      background: active ? "var(--brand-50)" : "#fff",
+                    }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#1A2535" }}>{c.name}</span>
+                    <span style={{ fontSize: 12, color: "#52718F" }}>
+                      {c.email || c.phone || "—"}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
+            Qeyd (məcburi deyil)
+          </label>
+          <textarea
+            rows={3} value={note} maxLength={500}
+            onChange={e => setNote(e.target.value)}
+            placeholder="Pasiyentə göstərilən qısa təlimat…"
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
+          />
+
+          {err && (
+            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>
+              {err}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", padding: "14px 22px", borderTop: "1px solid #EFF2F7" }}>
+          <button onClick={onClose} disabled={saving}
+            style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: saving ? "wait" : "pointer" }}>
+            Bağla
+          </button>
+          <button onClick={submit} disabled={saving || patientId === null}
+            style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving || patientId === null ? 0.6 : 1 }}>
+            {saving ? "Təyin edilir…" : "Təyin et"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

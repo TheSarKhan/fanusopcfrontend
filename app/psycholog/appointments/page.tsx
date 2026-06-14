@@ -13,6 +13,7 @@ import {
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import CancelModal from "@/components/CancelModal";
 import RescheduleComposeModal from "@/components/RescheduleComposeModal";
+import JoinSessionButton from "@/components/JoinSessionButton";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"];
@@ -454,6 +455,7 @@ function NextSessionHero({
         <span className={`psy-hero__countdown${tu.expired ? " is-live" : tu.urgent ? " is-urgent" : ""}`}>
           ⏰ {tu.text}
         </span>
+        <JoinSessionButton appointment={appt} variant="compact" />
         {appt.status === "ASSIGNED" && (
           <>
             <button
@@ -639,6 +641,7 @@ function TodayCard({
         </div>
       </div>
       <div className="psy-card__actions">
+        <JoinSessionButton appointment={a} variant="compact" />
         {a.status === "ASSIGNED" && (
           <button
             disabled={busyId === a.id}

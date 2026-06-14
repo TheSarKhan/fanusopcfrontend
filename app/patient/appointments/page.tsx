@@ -18,6 +18,7 @@ import CancelModal from "@/components/CancelModal";
 import RescheduleProposalModal from "@/components/RescheduleProposalModal";
 import PatientRescheduleRequestModal from "@/components/PatientRescheduleRequestModal";
 import AddToCalendarMenu from "@/components/AddToCalendarMenu";
+import JoinSessionButton from "@/components/JoinSessionButton";
 import SessionFeedbackModal from "@/components/SessionFeedbackModal";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -674,6 +675,7 @@ function NextSessionHero({
         )}
         {!tu.expired && (
           <>
+            <JoinSessionButton appointment={appt} variant="compact" />
             <AddToCalendarMenu appointment={appt} variant="compact" />
             <button
               onClick={() => onReschedule(appt)}
@@ -906,6 +908,7 @@ function AgendaRow({
         </div>
       </div>
       <div className="agenda-row__actions">
+        <JoinSessionButton appointment={a} variant="compact" />
         {isToday && (
           <a href={`/patient/appointments/${a.id}/intake`}
             className="agenda-row__icon-btn"

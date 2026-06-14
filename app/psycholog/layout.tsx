@@ -22,6 +22,8 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
     { href: "/psycholog/articles",     label: t("nav.articles"),     icon: "book" },
     { href: "/psycholog/availability", label: t("nav.workHours"),    icon: "clock" },
     { href: "/psycholog/reviews",      label: t("nav.reviews"),      icon: "star" },
+    { href: "/psycholog/materials",    label: "Materiallar",         icon: "content" },
+    { href: "/psycholog/tests",        label: "Testlər",             icon: "clipboard" },
   ];
 
   return (

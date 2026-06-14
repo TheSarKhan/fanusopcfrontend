@@ -94,7 +94,8 @@ function ChipToggle({ options, selected, onChange }: { options: string[]; select
 
 /* ─── Patient form ─── */
 function PatientForm({ onBack }: { onBack: () => void }) {
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", password: "", confirmPassword: "" });
+  const { t } = useT();
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", emergencyContactName: "", emergencyContactPhone: "", emergencyContactRelation: "", residentialAddress: "", password: "", confirmPassword: "" });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -107,7 +108,7 @@ function PatientForm({ onBack }: { onBack: () => void }) {
     if (form.password !== form.confirmPassword) return setError("Şifrələr uyğun deyil");
     setLoading(true); setError("");
     try {
-      await registerPatient({ email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName, phone: form.phone || undefined });
+      await registerPatient({ email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName, phone: form.phone || undefined, emergencyContactName: form.emergencyContactName || undefined, emergencyContactPhone: form.emergencyContactPhone || undefined, emergencyContactRelation: form.emergencyContactRelation || undefined, residentialAddress: form.residentialAddress || undefined });
       setSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Qeydiyyat uğursuz oldu");
@@ -137,6 +138,26 @@ function PatientForm({ onBack }: { onBack: () => void }) {
       </div>
       <Field label="Email"><input type="email" className="auth-input" value={form.email} onChange={set("email")} required /></Field>
       <Field label="Telefon (opsional)"><input type="tel" className="auth-input" value={form.phone} onChange={set("phone")} /></Field>
+
+      <div style={{ background: "#F9FAFB", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div>
+          <strong style={{ fontSize: 13, color: "var(--oxford)" }}>{t("emergency.sectionTitle")}</strong>
+          <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>{t("emergency.note")}</div>
+        </div>
+        <Field label={t("emergency.contactName")}>
+          <input className="auth-input" value={form.emergencyContactName} onChange={set("emergencyContactName")} placeholder={t("emergency.contactNamePh")} />
+        </Field>
+        <Field label={t("emergency.contactPhone")}>
+          <input type="tel" className="auth-input" value={form.emergencyContactPhone} onChange={set("emergencyContactPhone")} placeholder={t("emergency.contactPhonePh")} />
+        </Field>
+        <Field label={t("emergency.contactRelation")}>
+          <input className="auth-input" value={form.emergencyContactRelation} onChange={set("emergencyContactRelation")} placeholder={t("emergency.contactRelationPh")} />
+        </Field>
+        <Field label={t("emergency.address")}>
+          <input className="auth-input" value={form.residentialAddress} onChange={set("residentialAddress")} placeholder={t("emergency.addressPh")} />
+        </Field>
+      </div>
+
       <Field label="Şifrə">
         <div className="auth-input-wrap">
           <input type={showPass ? "text" : "password"} className="auth-input" value={form.password} onChange={set("password")} required minLength={8} />
@@ -166,6 +187,7 @@ type EducationRow = { institution: string; degree: string; graduationYear: strin
 type CertificateRow = { title: string; issuer: string; year: string; type: "CERTIFICATE" | "SEMINAR" };
 
 function PsychologistForm({ onBack }: { onBack: () => void }) {
+  const { t } = useT();
   const [step, setStep] = useState(0);
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -188,7 +210,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
   const [diplomaFile, setDiplomaFile] = useState<File | null>(null);
 
   const [professional, setProfessional] = useState({
-    title: "", experienceYears: "",
+    title: "", experienceYears: "", priorSessions: "",
     languages: [] as string[],
     specializations: [] as string[],
     sessionTypes: [] as string[],
@@ -243,6 +265,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
   const validateStep2 = () => {
     if (!professional.title) return "İxtisas / vəzifə adı daxil edin";
     if (!professional.experienceYears) return "Təcrübəni seçin";
+    if (professional.priorSessions !== "" && (!Number.isFinite(Number(professional.priorSessions)) || Number(professional.priorSessions) < 0)) return "Seans sayı mənfi ola bilməz";
     if (professional.languages.length === 0) return "Ən azı bir dil seçin";
     if (professional.specializations.length === 0) return "Ən azı bir ixtisaslaşma seçin";
     const bioLen = professional.bio.trim().length;
@@ -282,6 +305,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
         finId: personal.finId,
         title: professional.title,
         experienceYears: professional.experienceYears,
+        priorSessions: professional.priorSessions ? Number(professional.priorSessions) : undefined,
         languages: professional.languages,
         specializations: professional.specializations,
         sessionTypes: professional.sessionTypes,
@@ -478,6 +502,12 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
               <option value="">Seçin</option>
               {EXP_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
+          </Field>
+
+          <Field label={t("psyStats.registerLabel")} hint={t("psyStats.registerHint")}>
+            <input type="number" min={0} className="auth-input" value={professional.priorSessions}
+              onChange={e => setProfessional(p => ({ ...p, priorSessions: e.target.value }))}
+              placeholder="0" />
           </Field>
 
           <Field label="Bildiyi dillər (bir neçə seçin)">

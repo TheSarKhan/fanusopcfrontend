@@ -10683,6 +10683,60 @@ a.contact-chip:hover {
 }
 .bk-day-tab__badge--picked { background: var(--brand-700); }
 
+/* ── Addım 0 — tək seans vs paket (Modul A) ─────────────────────── */
+.bk-mode-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.bk-mode-card {
+  position: relative; text-align: left; cursor: pointer;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 14px 13px; border-radius: 12px;
+  background: #fff; border: 1.5px solid var(--brand-100);
+  transition: all 0.15s ease;
+}
+.bk-mode-card:hover { border-color: var(--brand-300); }
+.bk-mode-card.is-active {
+  border-color: var(--brand); background: var(--brand-50);
+  box-shadow: 0 0 0 3px var(--brand-100);
+}
+.bk-mode-card__badge {
+  align-self: flex-start;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--brand-700); background: var(--brand-100);
+  padding: 2px 8px; border-radius: 999px; margin-bottom: 2px;
+}
+.bk-mode-card__name { font-size: 14px; font-weight: 700; color: var(--oxford); }
+.bk-mode-card__price { font-size: 16px; font-weight: 800; color: var(--brand-700); }
+.bk-mode-card__per { font-size: 12px; color: var(--oxford-60); font-weight: 600; }
+
+.bk-mode-when {
+  display: grid; gap: 10px; margin-top: 12px;
+  padding: 12px 14px; border-radius: 12px;
+  background: var(--brand-50); border: 1px solid var(--brand-100);
+}
+.bk-mode-when__opts { display: flex; gap: 8px; flex-wrap: wrap; }
+.bk-mode-when__opt {
+  flex: 1 1 auto; cursor: pointer;
+  padding: 9px 12px; border-radius: 10px;
+  background: #fff; border: 1.5px solid var(--brand-100);
+  color: var(--oxford); font-size: 13px; font-weight: 600;
+  transition: all 0.15s ease;
+}
+.bk-mode-when__opt:hover { border-color: var(--brand-300); }
+.bk-mode-when__opt.is-active {
+  background: var(--brand); border-color: var(--brand); color: #fff;
+}
+.bk-mode-when__counter {
+  font-size: 13px; font-weight: 700; color: var(--oxford-60);
+}
+.bk-mode-when__counter.is-ok { color: var(--brand-700); }
+.bk-mode-when__hint,
+.bk-mode-when__note {
+  font-size: 12.5px; color: var(--oxford-60); margin: 0; line-height: 1.5;
+}
+.bk-pill-brand.is-ok { background: var(--brand); color: #fff; }
+
 .bk-basket { background: var(--brand-50); border-radius: 12px; padding: 14px; }
 .bk-basket__empty { font-size: 13px; color: var(--oxford-60); margin: 0; line-height: 1.5; }
 .bk-basket__list { display: flex; flex-direction: column; gap: 8px; }
@@ -10854,3 +10908,38 @@ a.contact-chip:hover {
 .pdash-course__cta { font-size: 12.5px; font-weight: 700; color: var(--brand-700); text-decoration: none; }
 .pdash-course__cta:hover { text-decoration: underline; }
 
+
+/* ── Modul H: operator analitika — period selector, revenue, table ─────────── */
+.op-period { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.op-period__btn {
+  appearance: none; cursor: pointer;
+  background: #fff; color: var(--brand-700);
+  border: 1px solid var(--brand-200); border-radius: 999px;
+  padding: 6px 14px; font-size: 13px; font-weight: 600;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.op-period__btn:hover { background: var(--brand-50); }
+.op-period__btn[data-active="true"],
+.op-period__btn[aria-pressed="true"] {
+  background: var(--brand-600, #2563eb); color: #fff; border-color: var(--brand-600, #2563eb);
+}
+
+.op-revenue {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  margin-top: 10px; padding: 8px 14px;
+  background: var(--brand-50); border: 1px solid var(--brand-100); border-radius: 10px;
+}
+.op-revenue__label { font-size: 12.5px; color: var(--oxford-60, #475569); font-weight: 600; }
+.op-revenue__value { font-size: 16px; font-weight: 800; color: var(--brand-700); }
+
+.op-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.op-table th {
+  text-align: left; font-weight: 700; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.02em; color: var(--oxford-60, #475569);
+  padding: 8px 10px; border-bottom: 2px solid var(--brand-100); white-space: nowrap;
+}
+.op-table td { padding: 9px 10px; border-bottom: 1px solid var(--brand-100); color: var(--oxford, #0f172a); }
+.op-table tbody tr:hover { background: var(--brand-50); }
+.op-table a { color: var(--brand-700); font-weight: 600; text-decoration: none; }
+.op-table a:hover { text-decoration: underline; }
+.op-table th[role="button"], .op-table th.is-sortable { cursor: pointer; user-select: none; }

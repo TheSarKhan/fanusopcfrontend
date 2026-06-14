@@ -11,6 +11,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import BookingCta from "./BookingCta";
 import T from "@/components/T";
+import { formatAzn } from "@/lib/money";
 
 // Fanus brand palette — keep this page on-brand (#1051B7 və tonları)
 const BRAND      = "#1051B7";
@@ -268,13 +269,19 @@ export default async function PsychologistProfilePage(
                   <strong>{psychologist.rating}</strong>
                   <span className="prof-quick__sub"><T k="psyDetail.rating" /></span>
                 </div>
-                <div className="prof-quick__item">
-                  <span className="prof-quick__icon" style={{ background: BRAND_50, color: BRAND }}>
-                    <UsersIcon />
-                  </span>
-                  <strong>{psychologist.sessionsCount}</strong>
-                  <span className="prof-quick__sub"><T k="psyDetail.sessionsCompleted" /></span>
-                </div>
+                {psychologist.displayedSessionCount != null && psychologist.displayedSessionCount > 0 && (
+                  <div className="prof-quick__item">
+                    <span className="prof-quick__icon" style={{ background: BRAND_50, color: BRAND }}>
+                      <UsersIcon />
+                    </span>
+                    <strong>{psychologist.displayedSessionCount}</strong>
+                    <span className="prof-quick__sub">
+                      {psychologist.statsSource === "FANUS_PLATFORM"
+                        ? <T k="psyStats.fanusSessions" />
+                        : <T k="psyStats.priorSessions" />}
+                    </span>
+                  </div>
+                )}
                 <div className="prof-quick__item">
                   <span className="prof-quick__icon" style={{ background: BRAND_100, color: BRAND_700 }}>
                     <ClockIcon />
@@ -301,6 +308,26 @@ export default async function PsychologistProfilePage(
 
             {/* Sticky booking */}
             <aside className="prof-book">
+              {psychologist.individualPrice != null && (
+                <div className="prof-book__price">
+                  <span><T k="pricing.priceFrom" /></span>
+                  <strong>{formatAzn(psychologist.individualPrice)}</strong>
+                </div>
+              )}
+              {psychologist.packages && psychologist.packages.length > 0 && (
+                <ul className="prof-book__list">
+                  {psychologist.packages.map((pkg) => (
+                    <li key={pkg.id} style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+                      <span>{pkg.name}</span>
+                      <span style={{ textAlign: "right" }}>
+                        <strong style={{ color: BRAND }}>{formatAzn(pkg.packagePrice)}</strong>
+                        {" · "}
+                        {formatAzn(pkg.perSessionPrice)}<T k="pricing.perSession" />
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
               <div className="prof-book__price">
                 <span><T k="psyDetail.sessionDuration" /></span>
                 <strong><T k="psyDetail.minutes" vars={{ n: sessionMinutes }} /></strong>

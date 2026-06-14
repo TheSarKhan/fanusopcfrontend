@@ -13,7 +13,9 @@ import {
   type AvailableSlot,
   type BasketResult,
   type Psychologist,
+  type PackageSummary,
 } from "@/lib/api";
+import { formatAzn } from "@/lib/money";
 import { buildPanelUrl, getStoredUser } from "@/lib/auth";
 import { withSlugs } from "@/lib/slug";
 import { downloadIcsMulti } from "@/lib/calendar";
@@ -111,6 +113,12 @@ export default function BookPsychologistPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [appointmentsUrl, setAppointmentsUrl] = useState("/patient/appointments");
+  const [packagesUrl, setPackagesUrl] = useState("/patient/packages");
+
+  // Modul A — tək seans vs paket seçimi
+  const [mode, setMode] = useState<"SINGLE" | "PACKAGE">("SINGLE");
+  const [selectedPackage, setSelectedPackage] = useState<PackageSummary | null>(null);
+  const [chooseLater, setChooseLater] = useState(false);
 
   // Repeat accelerator (B1-2)
   const [repeatOpenFor, setRepeatOpenFor] = useState<string | null>(null);
@@ -128,6 +136,7 @@ export default function BookPsychologistPage() {
 
   useEffect(() => {
     setAppointmentsUrl(`${buildPanelUrl("PATIENT")}/appointments`);
+    setPackagesUrl(`${buildPanelUrl("PATIENT")}/packages`);
   }, []);
 
   // Parse extend-mode query params once (client-only page).
@@ -315,6 +324,33 @@ export default function BookPsychologistPage() {
     }
     if (conflictItems.length > 0) {
       setError(t("book.basketUnresolved"));
+      return;
+    }
+    // Modul A — paket alışı (tək seans branch-i aşağıda dəyişməz qalır)
+    if (mode === "PACKAGE" && selectedPackage) {
+      if (!chooseLater && okItems.length !== selectedPackage.sessionCount) {
+        setError(t("pkg.needN", { n: selectedPackage.sessionCount }));
+        return;
+      }
+      setSubmitting(true);
+      try {
+        await patientApi.purchasePackage({
+          psychologistId: psychologist.id,
+          packageId: selectedPackage.id,
+          schedulingMode: chooseLater ? "SCHEDULE_LATER" : "SCHEDULE_NOW",
+          slots: chooseLater ? undefined : okItems.map(b => b.startAt),
+          note: note.trim() || undefined,
+        });
+        router.replace(packagesUrl);
+      } catch (err) {
+        setError((err as Error).message || "Müraciət göndərilərkən xəta baş verdi");
+        if (isSlotConflict(err)) {
+          setBasket(prev => prev.filter(b => b.kind !== "ok"));
+          reloadAvailability();
+        }
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
     setSubmitting(true);
@@ -562,10 +598,91 @@ export default function BookPsychologistPage() {
                 </div>
               )}
 
+              {/* ── Addım 0 — tək seans vs paket (Modul A) ──────────────── */}
+              {!extendCtx && (
+                <section className="bk-section bk-mode">
+                  <div className="bk-section-head">
+                    <h3>{t("pkg.chooseType")}</h3>
+                  </div>
+                  <div className="bk-mode-grid">
+                    <button
+                      type="button"
+                      className={`bk-mode-card${mode === "SINGLE" ? " is-active" : ""}`}
+                      aria-pressed={mode === "SINGLE"}
+                      onClick={() => { setMode("SINGLE"); setSelectedPackage(null); setChooseLater(false); }}
+                    >
+                      <span className="bk-mode-card__name">{t("pkg.single")}</span>
+                      {psychologist.individualPrice != null && (
+                        <span className="bk-mode-card__price">{formatAzn(psychologist.individualPrice)}</span>
+                      )}
+                    </button>
+
+                    {psychologist.packages?.map(pkg => {
+                      const picked = mode === "PACKAGE" && selectedPackage?.id === pkg.id;
+                      return (
+                        <button
+                          type="button"
+                          key={pkg.id}
+                          className={`bk-mode-card${picked ? " is-active" : ""}`}
+                          aria-pressed={picked}
+                          onClick={() => { setMode("PACKAGE"); setSelectedPackage(pkg); }}
+                        >
+                          <span className="bk-mode-card__badge">{t("pkg.package")}</span>
+                          <span className="bk-mode-card__name">{pkg.name}</span>
+                          <span className="bk-mode-card__price">{formatAzn(pkg.packagePrice)}</span>
+                          <span className="bk-mode-card__per">
+                            {formatAzn(pkg.perSessionPrice)}{t("pricing.perSession")}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {mode === "PACKAGE" && selectedPackage && (
+                    <div className="bk-mode-when">
+                      <div className="bk-mode-when__opts">
+                        <button
+                          type="button"
+                          className={`bk-mode-when__opt${!chooseLater ? " is-active" : ""}`}
+                          aria-pressed={!chooseLater}
+                          onClick={() => setChooseLater(false)}
+                        >
+                          {t("pkg.pickNNow")}
+                        </button>
+                        <button
+                          type="button"
+                          className={`bk-mode-when__opt${chooseLater ? " is-active" : ""}`}
+                          aria-pressed={chooseLater}
+                          onClick={() => setChooseLater(true)}
+                        >
+                          {t("pkg.chooseLater")}
+                        </button>
+                      </div>
+                      {!chooseLater && (
+                        <div className={`bk-mode-when__counter${okItems.length === selectedPackage.sessionCount ? " is-ok" : ""}`}>
+                          {t("pkg.selectedOfN", { m: okItems.length, n: selectedPackage.sessionCount })}
+                        </div>
+                      )}
+                      {chooseLater && (
+                        <p className="bk-mode-when__hint">{t("pkg.scheduleLaterHint")}</p>
+                      )}
+                      <p className="bk-mode-when__note">{t("pkg.pendingNote")}</p>
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* Sonra-seç paketdə vaxt seçimi gizlədilir */}
+              {!(mode === "PACKAGE" && chooseLater) && (
+              <>
               <section className="bk-section">
                 <div className="bk-section-head">
                   <h3>{t("book.timeSection")}</h3>
-                  {okItems.length > 0 && (
+                  {mode === "PACKAGE" && selectedPackage ? (
+                    <span className={`bk-pill bk-pill-brand${okItems.length === selectedPackage.sessionCount ? " is-ok" : ""}`}>
+                      {t("pkg.selectedOfN", { m: okItems.length, n: selectedPackage.sessionCount })}
+                    </span>
+                  ) : okItems.length > 0 && (
                     <span className="bk-pill bk-pill-brand">
                       {t("book.basketCount", { n: okItems.length })}
                     </span>
@@ -745,6 +862,8 @@ export default function BookPsychologistPage() {
                   <p className="bk-basket__conflict-hint">{t("book.basketConflictHint")}</p>
                 )}
               </section>
+              </>
+              )}
 
               <section className="bk-section">
                 <div className="bk-section-head">
@@ -777,10 +896,13 @@ export default function BookPsychologistPage() {
               </section>
 
               {(() => {
+                const pkgNeedsSlots = mode === "PACKAGE" && !!selectedPackage && !chooseLater;
+                const pkgSlotsOk = !pkgNeedsSlots || okItems.length === selectedPackage!.sessionCount;
                 const blockers: string[] = [];
                 if (!noteOk) blockers.push("Mövzu üçün ən azı 5 simvol yazın");
                 if (conflictItems.length > 0) blockers.push(t("book.basketUnresolved"));
                 if (extendCtx && okItems.length === 0) blockers.push(t("book.basketEmpty"));
+                if (pkgNeedsSlots && !pkgSlotsOk) blockers.push(t("pkg.needN", { n: selectedPackage!.sessionCount }));
                 const ready = blockers.length === 0;
                 return (
                   <>
@@ -788,12 +910,19 @@ export default function BookPsychologistPage() {
                       <div className={`bk-check${psychologist ? " is-ok" : ""}`}>
                         <CheckIconSmall ok={!!psychologist} /> Psixoloq seçildi
                       </div>
-                      <div className={`bk-check${okItems.length > 0 ? " is-ok" : ""}`}>
-                        <CheckIconSmall ok={okItems.length > 0} />{" "}
-                        {okItems.length > 0
-                          ? t("book.basketCount", { n: okItems.length })
-                          : "Vaxt (istəyə bağlı)"}
-                      </div>
+                      {pkgNeedsSlots ? (
+                        <div className={`bk-check${pkgSlotsOk ? " is-ok" : ""}`}>
+                          <CheckIconSmall ok={pkgSlotsOk} />{" "}
+                          {t("pkg.selectedOfN", { m: okItems.length, n: selectedPackage!.sessionCount })}
+                        </div>
+                      ) : (
+                        <div className={`bk-check${okItems.length > 0 ? " is-ok" : ""}`}>
+                          <CheckIconSmall ok={okItems.length > 0} />{" "}
+                          {okItems.length > 0
+                            ? t("book.basketCount", { n: okItems.length })
+                            : "Vaxt (istəyə bağlı)"}
+                        </div>
+                      )}
                       <div className={`bk-check${noteOk ? " is-ok" : ""}`}>
                         <CheckIconSmall ok={noteOk} /> Mövzu yazıldı
                       </div>
@@ -811,9 +940,11 @@ export default function BookPsychologistPage() {
                         title={!ready ? blockers.join(" · ") : undefined}>
                         {submitting
                           ? t("common.sending")
-                          : okItems.length > 1
-                            ? t("book.basketSubmitN", { n: okItems.length })
-                            : t("book.submitCta")}
+                          : mode === "PACKAGE" && selectedPackage
+                            ? t("pkg.buyPackage")
+                            : okItems.length > 1
+                              ? t("book.basketSubmitN", { n: okItems.length })
+                              : t("book.submitCta")}
                       </button>
                     </div>
                   </>

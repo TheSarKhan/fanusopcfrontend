@@ -18,6 +18,7 @@ import {
   type AppointmentDetail,
   type AvailableSlot,
   type ClaimState,
+  type MeetingLinkLogItem,
   type OperatorActivityItem,
   type OperatorAppointmentFull,
   type Psychologist,
@@ -449,6 +450,16 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
               guardAction={guardAction}
               selectRef={assignFocusRef}
               onAssigned={(u) => onActionDone(u, a.status === "ASSIGNED" ? "Yenidən təyin olundu ✓" : "Təyin olundu ✓")}
+            />
+          )}
+
+          {!isFinal && (
+            <LinkBlock
+              key={`link-${a.id}`}
+              appointment={a}
+              cold={claimedByOther}
+              guardAction={guardAction}
+              onDone={(u, m) => onActionDone(u, m)}
             />
           )}
 
@@ -943,6 +954,151 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
         style={{ width: "100%", padding: "10px 18px", border: "none", background: "var(--brand)", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 700, cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
         {saving ? "Saxlanılır…" : appointment.status === "ASSIGNED" ? "Yenidən təyin et" : "Təyin et"}
       </button>
+    </div>
+  );
+}
+
+/* ─── Mərkəz: görüş linki bloku (link idarəsi + tarixçə) ───────────────────── */
+
+function LinkBlock({ appointment, cold, guardAction, onDone }: {
+  appointment: AppointmentDetail;
+  cold: boolean;
+  guardAction: (run: () => void) => void;
+  onDone: (a: AppointmentDetail, msg: string) => void;
+}) {
+  const { t } = useT();
+  const [value, setValue] = useState(appointment.meetingLink ?? "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [history, setHistory] = useState<MeetingLinkLogItem[] | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const hasLink = !!appointment.meetingLink;
+
+  const showError = (e: unknown) => {
+    if (e instanceof ApiError && /https/i.test(e.message)) {
+      setErr(t("meetingLink.httpsError"));
+    } else {
+      setErr((e as Error).message);
+    }
+  };
+
+  const doSave = async () => {
+    setErr(null); setSaving(true);
+    try {
+      const updated = await operatorApi.setMeetingLink(appointment.id, value.trim());
+      onDone(updated, t("meetingLink.saved"));
+    } catch (e) { showError(e); }
+    finally { setSaving(false); }
+  };
+
+  const doRemove = async () => {
+    setErr(null); setSaving(true);
+    try {
+      const updated = await operatorApi.revokeMeetingLink(appointment.id);
+      onDone(updated, t("meetingLink.removed"));
+    } catch (e) { showError(e); }
+    finally { setSaving(false); }
+  };
+
+  const doSend = async () => {
+    setErr(null); setSaving(true);
+    try {
+      const updated = await operatorApi.sendMeetingLink(appointment.id);
+      onDone(updated, t("meetingLink.sentOk"));
+    } catch (e) { showError(e); }
+    finally { setSaving(false); }
+  };
+
+  const toggleHistory = () => {
+    if (historyOpen) { setHistoryOpen(false); return; }
+    setHistoryOpen(true);
+    if (history === null && !loadingHistory) {
+      setLoadingHistory(true);
+      operatorApi.meetingLinkHistory(appointment.id)
+        .then(setHistory)
+        .catch(() => setHistory([]))
+        .finally(() => setLoadingHistory(false));
+    }
+  };
+
+  const actionLabel = (action: MeetingLinkLogItem["action"]): string => {
+    switch (action) {
+      case "SET": return t("meetingLink.actionSet");
+      case "UPDATED": return t("meetingLink.actionUpdated");
+      case "REVOKED": return t("meetingLink.actionRevoked");
+      case "SENT": return t("meetingLink.actionSent");
+      default: return action;
+    }
+  };
+
+  return (
+    <div className={cold ? "op-det-card op-det-card--cold" : "op-det-card"}>
+      <div className="op-det-card__title">{t("meetingLink.title")}</div>
+
+      <input type="text" value={value} onChange={e => setValue(e.target.value)}
+        placeholder={t("meetingLink.placeholder")}
+        style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 10, boxSizing: "border-box" }} />
+
+      <div style={{ fontSize: 12, color: "#52718F", marginBottom: 10 }}>
+        {appointment.meetingLinkSentAt
+          ? `${t("meetingLink.sent")} · ${azFormatDateTime(appointment.meetingLinkSentAt)}`
+          : t("meetingLink.notSent")}
+      </div>
+
+      {err && (
+        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>
+          {err}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button onClick={() => guardAction(doSave)} disabled={saving || !value.trim()}
+          style={{ flex: 1, minWidth: 120, padding: "9px 14px", border: "none", borderRadius: 10, fontSize: 12.5, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: saving || !value.trim() ? "not-allowed" : "pointer", opacity: saving || !value.trim() ? 0.6 : 1 }}>
+          {hasLink ? t("meetingLink.update") : t("meetingLink.save")}
+        </button>
+        {hasLink && (
+          <>
+            <button onClick={() => guardAction(doSend)} disabled={saving}
+              style={{ padding: "9px 14px", border: "1px solid #C7D2FE", borderRadius: 10, fontSize: 12.5, fontWeight: 700, background: "#fff", color: "var(--brand-700)", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {t("meetingLink.send")}
+            </button>
+            <button onClick={() => guardAction(doRemove)} disabled={saving}
+              style={{ padding: "9px 14px", border: "1px solid #FECACA", borderRadius: 10, fontSize: 12.5, fontWeight: 700, background: "#fff", color: "#991B1B", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {t("meetingLink.remove")}
+            </button>
+          </>
+        )}
+      </div>
+
+      <div style={{ marginTop: 10 }}>
+        <button onClick={toggleHistory}
+          style={{ border: "none", background: "transparent", padding: 0, fontSize: 12, fontWeight: 600, color: "#52718F", cursor: "pointer" }}>
+          {t("meetingLink.history")} {historyOpen ? "▴" : "▾"}
+        </button>
+        {historyOpen && (
+          <div style={{ marginTop: 8 }}>
+            {loadingHistory ? (
+              <div style={{ fontSize: 12, color: "#8AAABF" }}>Yüklənir…</div>
+            ) : !history || history.length === 0 ? (
+              <div style={{ fontSize: 12, color: "#8AAABF" }}>{t("meetingLink.none")}</div>
+            ) : (
+              <div style={{ display: "grid", gap: 6 }}>
+                {history.map((it, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, borderBottom: i < history.length - 1 ? "1px solid #F1F5F9" : "none", paddingBottom: 6 }}>
+                    <span style={{ color: "#1A2535", fontWeight: 600 }}>
+                      {actionLabel(it.action)}
+                      {it.actorName ? <span style={{ color: "#8AAABF", fontWeight: 400 }}> · {it.actorName}</span> : null}
+                    </span>
+                    <span style={{ color: "#8AAABF", whiteSpace: "nowrap" }}>{azFormatDateTime(it.createdAt)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

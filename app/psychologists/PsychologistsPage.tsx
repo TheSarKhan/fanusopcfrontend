@@ -35,6 +35,8 @@ interface Item {
   photoUrl?: string;
   accentColor: string;
   bgColor: string;
+  statsSource?: "FANUS_PLATFORM" | "PRIOR_EXPERIENCE";
+  displayedSessionCount?: number;
 }
 
 const FALLBACK_BASE: Omit<Item, "slug">[] = [
@@ -82,6 +84,8 @@ export default function PsychologistsPage({ psychologists }: { psychologists?: P
         photoUrl: p.photoUrl?.trim() || undefined,
         accentColor: p.accentColor || "#1051B7",
         bgColor: p.bgColor || "#F2F6FD",
+        statsSource: p.statsSource,
+        displayedSessionCount: p.displayedSessionCount,
       };
     });
     // Re-derive slugs from this list (handles collisions correctly within visible set)
@@ -319,6 +323,10 @@ function PsyCard({ p }: { p: Item }) {
   const ratingNum = parseFloat(p.rating);
   const filledStars = isFinite(ratingNum) ? Math.round(ratingNum) : 0;
   const hasSessions = p.sessions && p.sessions !== "0" && p.sessions !== "—";
+  const showStatsCount = p.displayedSessionCount != null && p.displayedSessionCount > 0;
+  const statsLabel = p.statsSource === "FANUS_PLATFORM"
+    ? t("psyStats.fanusSessions")
+    : t("psyStats.priorSessions");
 
   return (
     <article className="pp-card">
@@ -352,6 +360,12 @@ function PsyCard({ p }: { p: Item }) {
               <strong>{p.rating}</strong>
               {hasSessions && <span className="pp-card__rating-sep">·</span>}
               {hasSessions && <span className="pp-card__rating-sub">{t("psyList.sessionsCount", { count: p.sessions })}</span>}
+            </div>
+          )}
+          {showStatsCount && (
+            <div className="pp-card__stats">
+              <strong>{p.displayedSessionCount}</strong>
+              <span className="pp-card__stats-label">{statsLabel}</span>
             </div>
           )}
         </div>
@@ -477,6 +491,14 @@ function PsyCard({ p }: { p: Item }) {
         .pp-card__rating strong { color: var(--fanus-ink); font-weight: 700; }
         .pp-card__rating-sep { opacity: .5; }
         .pp-card__rating-sub { color: var(--fanus-ink-3); }
+
+        .pp-card__stats {
+          display: inline-flex; align-items: center; gap: 6px;
+          margin-top: 4px;
+          font-size: 12.5px; color: var(--fanus-ink-3);
+        }
+        .pp-card__stats strong { color: var(--fanus-ink); font-weight: 700; }
+        .pp-card__stats-label { color: var(--fanus-ink-3); }
 
         .pp-card__tags {
           display: flex; flex-wrap: wrap; gap: 6px;

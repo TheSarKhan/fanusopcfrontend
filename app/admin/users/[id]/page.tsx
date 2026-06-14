@@ -16,6 +16,7 @@ import {
   type Vacation,
 } from "@/lib/api";
 import { azFormatDate, azFormatDateTime } from "@/lib/datetime";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Gözləyir", NEW: "Yeni", REJECTED: "Yenidən təyin", IN_REVIEW: "Operatorda",
@@ -141,6 +142,7 @@ function SupportTools({ user }: { user: UserRecord }) {
 /* ─── 3A: Pasiyent kartı ──────────────────────────────────────────────────── */
 
 function PatientCardView({ userId }: { userId: number }) {
+  const { t } = useT();
   const [card, setCard] = useState<PatientCard | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -190,6 +192,49 @@ function PatientCardView({ userId }: { userId: number }) {
               </div>
             )}
           </div>
+
+          {/* Təcili əlaqə + ünvan (Modul G) */}
+          {(card.emergencyContactName || card.emergencyContactPhone || card.emergencyContactRelation || card.residentialAddress) && (
+            <div className="card">
+              <div className="card-head">
+                <h3 className="card-title">{t("emergency.sectionTitle")}</h3>
+              </div>
+              <div>
+                {card.emergencyContactName && (
+                  <div className="list-item">
+                    <div style={{ flex: 1 }}>
+                      <div className="li-meta">{t("emergency.contactName")}</div>
+                      <div className="li-title">{card.emergencyContactName}</div>
+                    </div>
+                  </div>
+                )}
+                {card.emergencyContactPhone && (
+                  <div className="list-item">
+                    <div style={{ flex: 1 }}>
+                      <div className="li-meta">{t("emergency.contactPhone")}</div>
+                      <div className="li-title">{card.emergencyContactPhone}</div>
+                    </div>
+                  </div>
+                )}
+                {card.emergencyContactRelation && (
+                  <div className="list-item">
+                    <div style={{ flex: 1 }}>
+                      <div className="li-meta">{t("emergency.contactRelation")}</div>
+                      <div className="li-title">{card.emergencyContactRelation}</div>
+                    </div>
+                  </div>
+                )}
+                {card.residentialAddress && (
+                  <div className="list-item">
+                    <div style={{ flex: 1 }}>
+                      <div className="li-meta">{t("emergency.address")}</div>
+                      <div className="li-title">{card.residentialAddress}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Randevu tarixçəsi */}
           <div className="card">

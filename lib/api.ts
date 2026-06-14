@@ -265,6 +265,56 @@ export interface Psychologist {
   userId?: number | null;
   /** Computed client-side from name + collision suffix; safe to use in URLs. */
   slug?: string;
+  // Modul A/C — Fanus/Adi tipi + public qiymət göstərimi
+  psychologistType?: "FANUS" | "NORMAL";
+  individualPrice?: number | null;
+  currency?: string;
+  packages?: PackageSummary[];
+  // Modul D — statistika mənbəyi + sıralama göstəriciləri
+  statsSource?: "FANUS_PLATFORM" | "PRIOR_EXPERIENCE";
+  fanusSessionCount?: number;
+  priorExperienceSessions?: number;
+  displayedSessionCount?: number;
+}
+
+// Modul A — public kartda göstərilən paket xülasəsi
+export interface PackageSummary {
+  id: number;
+  name: string;
+  sessionCount: number;
+  packagePrice: number;
+  perSessionPrice: number;
+}
+
+// Modul A — psixoloq/admin idarəetməsində tam paket
+export interface PackageDto {
+  id: number;
+  name: string;
+  sessionCount: number;
+  packagePrice: number;
+  perSessionPrice: number;
+  currency: string;
+  active: boolean;
+  displayOrder: number;
+  setBy: string;
+}
+export type PackageReq = {
+  name: string;
+  sessionCount: number;
+  packagePrice: number;
+  displayOrder?: number;
+  active?: boolean;
+};
+export interface PriceChangeLogItem {
+  id: number;
+  target: "INDIVIDUAL" | "PACKAGE";
+  packageId?: number | null;
+  oldPrice?: number | null;
+  newPrice: number;
+  currency: string;
+  changedByRole: "ADMIN" | "PSYCHOLOGIST";
+  reason?: string | null;
+  createdAt: string;
 }
 export interface Stat { id: number; statValue: number; suffix: string; label: string; subLabel: string; displayOrder: number; }
 export interface Announcement { id: number; category: string; categoryColor: string; categoryBg: string; title: string; excerpt: string; publishedDate: string; iconType: string; active: boolean; }
@@ -404,6 +454,21 @@ export interface AppointmentDetail {
   claimedByUserId?: number | null;
   claimedByName?: string | null;
   claimedAt?: string | null;
+  // Modul B: operator tərəfindən təyin edilən seans görüş linki
+  meetingLink?: string | null;
+  meetingLinkSetAt?: string | null;
+  meetingLinkSentAt?: string | null;
+  // Modul A — paket bağlantısı
+  patientPackageId?: number | null;
+  bookingType?: string;
+}
+
+// Modul B: operator panelində link tarixçəsinin bir sətri
+export interface MeetingLinkLogItem {
+  action: "SET" | "UPDATED" | "REVOKED" | "SENT";
+  meetingLink?: string | null;
+  actorName?: string | null;
+  createdAt: string;
 }
 
 // ─── Structured cancellation reasons ────────────────────────────────────
@@ -637,6 +702,11 @@ export const logout = async () => {
 // ─── Patient Auth ──────────────────────────────────────────────────────────────
 export const registerPatient = (data: {
   email: string; password: string; firstName: string; lastName: string; phone?: string;
+  // Modul G — opsional təcili əlaqə + yaşayış ünvanı
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelation?: string;
+  residentialAddress?: string;
 }) => fetch(`${BASE}/auth/register/patient`, {
   method: "POST",
   credentials: "include",
@@ -659,6 +729,8 @@ export interface PsychologistRegistrationData {
   // Professional
   title: string;
   experienceYears: string;
+  // Modul D — platformadan əvvəlki ümumi seans sayı (off-platform)
+  priorSessions?: number;
   languages: string[];
   specializations: string[];
   sessionTypes: string[];
@@ -691,6 +763,7 @@ export const registerPsychologist = (
   if (data.finId) form.append("finId", data.finId);
   if (data.title) form.append("title", data.title);
   if (data.experienceYears) form.append("experienceYears", data.experienceYears);
+  if (data.priorSessions != null) form.append("priorExperienceSessions", String(data.priorSessions));
   data.languages.forEach(l => form.append("languages", l));
   data.specializations.forEach(s => form.append("specializations", s));
   data.sessionTypes.forEach(s => form.append("sessionTypes", s));
@@ -944,6 +1017,11 @@ export interface PatientCard {
   series: BookingSeries[];
   notifications: AdminNotificationEntry[];
   clinicalAccess: ClinicalGrant | null;
+  // Modul G — təcili əlaqə + yaşayış ünvanı (decrypt olunmuş, yalnız admin)
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelation?: string | null;
+  residentialAddress?: string | null;
 }
 export interface DeletionRequest {
   userId: number;
@@ -994,6 +1072,45 @@ export interface OperatorOverview {
   slaViolations30: number;
 }
 
+// ─── Modul E: material kitabxanası ───────────────────────────────────────────
+export interface MaterialCategory { id: number; name: string; slug: string; color?: string | null; bg?: string | null; active: boolean; sortOrder: number }
+export interface Material { id: number; title: string; description?: string | null; categoryId: number; categoryName?: string | null; categorySlug?: string | null; active: boolean; sortOrder: number; versionCount: number; latestVersionId?: number | null; latestVersionNo?: number | null; latestFileUrl?: string | null; latestFileName?: string | null; latestFileType?: string | null; latestFileSize?: number | null; createdAt: string; updatedAt?: string | null }
+export interface MaterialVersion { id: number; versionNo: number; fileUrl: string; fileName: string; fileType: string; contentType?: string | null; fileSize?: number | null; uploadedById?: number | null; uploadedByName?: string | null; createdAt: string }
+export type MaterialCategoryReq = { name: string; slug: string; color?: string; bg?: string; active: boolean; sortOrder: number }
+export type MaterialReq = { title: string; description?: string; categoryId: number; active: boolean; sortOrder: number }
+
+// ─── Modul F: psixoloji testlər ──────────────────────────────────────────────
+export interface PsyTestSummary { id: number; title: string; published: boolean; questionCount: number; scaleCount: number }
+export interface PsyTestOption { id: number; label: string; points: number; displayOrder: number }
+export interface PsyTestQuestion { id: number; text: string; displayOrder: number; options: PsyTestOption[] }
+export interface PsyTestScale { id: number; label: string; minScore: number; maxScore: number; color?: string | null; description?: string | null; displayOrder: number }
+export interface PsyTest { id: number; title: string; description?: string | null; instructions?: string | null; scoreBasis: string; published: boolean; questionCount: number; questions: PsyTestQuestion[]; scales: PsyTestScale[] }
+export type PsyOptionReq = { label: string; points: number; displayOrder: number }
+export type PsyQuestionReq = { text: string; displayOrder: number; options: PsyOptionReq[] }
+export type PsyScaleReq = { label: string; minScore: number; maxScore: number; color?: string; description?: string; displayOrder: number }
+export type PsyTestReq = { title: string; description?: string; instructions?: string; scoreBasis: string; published: boolean; questions: PsyQuestionReq[]; scales: PsyScaleReq[] }
+export interface TakeOption { id: number; label: string }
+export interface TakeQuestion { id: number; text: string; options: TakeOption[] }
+export interface TakeTest { testId: number; assignmentId?: number | null; title: string; description?: string | null; instructions?: string | null; questions: TakeQuestion[] }
+export type SubmitAnswer = { questionId: number; selectedOptionId: number }
+export interface AnswerResult { questionId: number; questionText: string; selectedOptionId: number; selectedLabel: string; pointsAwarded: number; displayOrder: number }
+export interface TestResult { resultId: number; assignmentId: number; totalScore: number; maxScore: number; percentage: number; scaleId?: number | null; scaleLabel?: string | null; respondentName?: string | null; submittedAt: string; answers: AnswerResult[] }
+export interface TestAssignment { id: number; testId: number; testTitle: string; patientId?: number | null; patientName?: string | null; status: string; publicToken?: string | null; assignedAt: string; completedAt?: string | null; hasResult: boolean }
+
+// Modul F — public (auth YOXDUR): token vasitəsilə test götürmə + cavab göndərmə
+export const getPublicTest = (token: string) => get<TakeTest>(`/public/psych-tests/${token}`);
+export const submitPublicTest = (token: string, data: { answers: SubmitAnswer[]; respondentName?: string }) =>
+  fetch(`${BASE}/public/psych-tests/${token}/submit`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...localeHeaders() },
+    body: JSON.stringify(data),
+  }).then(async r => {
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.error ?? "Test göndərilmədi");
+    return body as TestResult;
+  });
+
 export const adminApi = {
   getDashboard: () => authedRequest<Record<string, number>>("GET", "/admin/dashboard"),
 
@@ -1022,6 +1139,17 @@ export const adminApi = {
   createPsychologist: (data: Omit<Psychologist, "id">) => authedRequest<Psychologist>("POST", "/admin/psychologists", data),
   updatePsychologist: (id: number, data: Omit<Psychologist, "id">) => authedRequest<Psychologist>("PUT", `/admin/psychologists/${id}`, data),
   deletePsychologist: (id: number) => authedRequest<void>("DELETE", `/admin/psychologists/${id}`),
+  // Modul C — Fanus/Adi tip + Fanus qiymət/paket idarəsi (ayrıca endpointlər;
+  // PsychologistRequest pozisional record-a toxunulmur)
+  setPsyType: (psyId: number, type: "FANUS" | "NORMAL") =>
+    authedRequest<void>("PUT", `/admin/psychologists/${psyId}/type`, { type }),
+  setPsyPricing: (psyId: number, individualPrice: number) =>
+    authedRequest<{ individualPrice: number | null; currency: string }>("PUT", `/admin/psychologists/${psyId}/pricing`, { individualPrice }),
+  getPsyPackages: (psyId: number) => authedRequest<PackageDto[]>("GET", `/admin/psychologists/${psyId}/packages`),
+  createPsyPackage: (psyId: number, data: PackageReq) => authedRequest<PackageDto>("POST", `/admin/psychologists/${psyId}/packages`, data),
+  updatePsyPackage: (psyId: number, id: number, data: PackageReq) => authedRequest<PackageDto>("PUT", `/admin/psychologists/${psyId}/packages/${id}`, data),
+  deletePsyPackage: (psyId: number, id: number) => authedRequest<void>("DELETE", `/admin/psychologists/${psyId}/packages/${id}`),
+  getPsyPriceHistory: (psyId: number) => authedRequest<PriceChangeLogItem[]>("GET", `/admin/psychologists/${psyId}/price-history`),
 
   // Stats
   getStats: () => authedRequest<Stat[]>("GET", "/admin/stats"),
@@ -1243,6 +1371,30 @@ export const adminApi = {
     authedRequest<void>("POST", `/admin/users/${userId}/change-email`, { newEmail }),
   terminateUserSessions: (userId: number) =>
     authedRequest<void>("POST", `/admin/users/${userId}/terminate-sessions`),
+
+  // ─── Modul E: material kitabxanası ───────────────────────────────────────
+  getMaterialCategories: () => authedRequest<MaterialCategory[]>("GET", "/admin/material-categories"),
+  createMaterialCategory: (data: MaterialCategoryReq) => authedRequest<MaterialCategory>("POST", "/admin/material-categories", data),
+  updateMaterialCategory: (id: number, data: MaterialCategoryReq) => authedRequest<MaterialCategory>("PUT", `/admin/material-categories/${id}`, data),
+  deleteMaterialCategory: (id: number) => authedRequest<void>("DELETE", `/admin/material-categories/${id}`),
+  getMaterials: () => authedRequest<Material[]>("GET", "/admin/materials"),
+  createMaterial: (data: MaterialReq) => authedRequest<Material>("POST", "/admin/materials", data),
+  updateMaterial: (id: number, data: MaterialReq) => authedRequest<Material>("PUT", `/admin/materials/${id}`, data),
+  deleteMaterial: (id: number) => authedRequest<void>("DELETE", `/admin/materials/${id}`),
+  setMaterialActive: (id: number, active: boolean) => authedRequest<Material>("PUT", `/admin/materials/${id}/active`, { active }),
+  uploadMaterialVersion: (id: number, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return authedMultipartRequest<MaterialVersion>("POST", `/admin/materials/${id}/versions`, form);
+  },
+  getMaterialVersions: (id: number) => authedRequest<MaterialVersion[]>("GET", `/admin/materials/${id}/versions`),
+
+  // ─── Modul F: psixoloji testlər ──────────────────────────────────────────
+  getPsychTests: () => authedRequest<PsyTestSummary[]>("GET", "/admin/psych-tests"),
+  getPsychTest: (id: number) => authedRequest<PsyTest>("GET", `/admin/psych-tests/${id}`),
+  createPsychTest: (data: PsyTestReq) => authedRequest<PsyTest>("POST", "/admin/psych-tests", data),
+  updatePsychTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("PUT", `/admin/psych-tests/${id}`, data),
+  deletePsychTest: (id: number) => authedRequest<void>("DELETE", `/admin/psych-tests/${id}`),
 };
 
 export interface AdminReview {
@@ -1270,12 +1422,68 @@ export interface PatientBookingPayload {
   requestedStartAt?: string | null; // ISO
 }
 
+// Modul G — pasiyentin təcili əlaqə + yaşayış ünvanı (decrypt olunmuş, sahib üçün)
+export interface EmergencyContact {
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelation?: string | null;
+  residentialAddress?: string | null;
+}
+
+// Modul A — alınmış paket (pasiyent balansı)
+export interface PatientPackageItem {
+  id: number;
+  psychologistName: string;
+  packageName: string;
+  total: number;
+  remaining: number;
+  status: string;
+  schedulingMode: "SCHEDULE_NOW" | "SCHEDULE_LATER";
+  pricePaid: number;
+  currency: string;
+  purchasedAt: string;
+}
+
+// Modul A — manual ödəniş qeydi (operator paneli)
+export interface PaymentItem {
+  id: number;
+  patientPackageId?: number | null;
+  appointmentId?: number | null;
+  patientName: string;
+  amount: number;
+  currency: string;
+  status: string;
+  method: string;
+  paidAt?: string | null;
+  createdAt: string;
+}
+
+export interface PackagePurchaseInput {
+  psychologistId: number;
+  packageId: number;
+  schedulingMode: "SCHEDULE_NOW" | "SCHEDULE_LATER";
+  slots?: string[];
+  note?: string;
+}
+
 export const patientApi = {
   myAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/patient/appointments"),
   book: (data: PatientBookingPayload) =>
     authedRequest<AppointmentDetail>("POST", "/patient/appointments", data),
   cancel: (id: number, reasonCode: string, reasonText?: string) =>
     authedRequest<AppointmentDetail>("POST", `/patient/appointments/${id}/cancel`, { reasonCode, reasonText }),
+  // Modul G — öz təcili əlaqə + ünvan məlumatı
+  getEmergencyContact: () =>
+    authedRequest<EmergencyContact>("GET", "/patient/profile/emergency-contact"),
+  updateEmergencyContact: (data: EmergencyContact) =>
+    authedRequest<void>("PUT", "/patient/profile/emergency-contact", data),
+
+  // Modul A — paket alışı + balans + sonradan planlama
+  purchasePackage: (data: PackagePurchaseInput) =>
+    authedRequest<{ patientPackageId: number; basketResult: BasketResult | null }>("POST", "/patient/packages/purchase", data),
+  myPackages: () => authedRequest<PatientPackageItem[]>("GET", "/patient/packages"),
+  schedulePackageSession: (id: number, data: { startAt: string; note?: string }) =>
+    authedRequest<AppointmentDetail>("POST", `/patient/packages/${id}/schedule`, data),
 
   favorites: () => authedRequest<Psychologist[]>("GET", "/patient/favorites"),
   favoriteIds: () => authedRequest<number[]>("GET", "/patient/favorites/ids"),
@@ -1388,6 +1596,13 @@ export const patientApi = {
     authedRequest<MyReview>("PUT", `/patient/reviews/${reviewId}`, data),
   deleteReview: (reviewId: number) =>
     authedRequest<void>("DELETE", `/patient/reviews/${reviewId}`),
+
+  // ─── Modul F: psixoloji testlər ──────────────────────────────────────────
+  myTestAssignments: () => authedRequest<TestAssignment[]>("GET", "/patient/psych-tests/assignments"),
+  takeTest: (assignmentId: number) => authedRequest<TakeTest>("GET", `/patient/psych-tests/assignments/${assignmentId}`),
+  submitTest: (assignmentId: number, data: { answers: SubmitAnswer[]; respondentName?: string }) =>
+    authedRequest<TestResult>("POST", `/patient/psych-tests/assignments/${assignmentId}/submit`, data),
+  patientTestResult: (assignmentId: number) => authedRequest<TestResult>("GET", `/patient/psych-tests/assignments/${assignmentId}/result`),
 };
 
 export interface ReviewPayload {
@@ -1560,6 +1775,19 @@ export const psychologistApi = {
   me: () => authedRequest<Psychologist>("GET", "/psychologist/me"),
   updateSessionMinutes: (minutes: number) =>
     authedRequest<Psychologist>("PUT", "/psychologist/me/session-minutes", { minutes }),
+  // Modul D — profil statistikası mənbəyi (FANUS_PLATFORM seçimi +10% görünürlük)
+  updateStatsSource: (statsSource: "FANUS_PLATFORM" | "PRIOR_EXPERIENCE") =>
+    authedRequest<Psychologist>("PUT", "/psychologist/me/stats-source", { statsSource }),
+
+  // Modul A/C — psixoloqun öz qiymət/paket idarəsi (FANUS isə redaktə 403)
+  myPricing: () =>
+    authedRequest<{ individualPrice: number | null; currency: string }>("GET", "/psychologist/me/pricing"),
+  updateMyPricing: (individualPrice: number) =>
+    authedRequest<{ individualPrice: number | null; currency: string }>("PUT", "/psychologist/me/pricing", { individualPrice }),
+  myPackages: () => authedRequest<PackageDto[]>("GET", "/psychologist/me/packages"),
+  createMyPackage: (data: PackageReq) => authedRequest<PackageDto>("POST", "/psychologist/me/packages", data),
+  updateMyPackage: (id: number, data: PackageReq) => authedRequest<PackageDto>("PUT", `/psychologist/me/packages/${id}`, data),
+  deleteMyPackage: (id: number) => authedRequest<void>("DELETE", `/psychologist/me/packages/${id}`),
 
   listSlots: () => authedRequest<TimeSlot[]>("GET", "/psychologist/time-slots"),
   createSlot: (data: { dayOfWeek: number; startTime: string; endTime: string; active?: boolean }) =>
@@ -1783,6 +2011,27 @@ export const psychologistApi = {
       "GET",
       `/psychologist/google/events?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`
     ),
+
+  // ─── Modul E: material kitabxanası (yalnız oxuma) ─────────────────────────
+  psyMaterialCategories: () => authedRequest<MaterialCategory[]>("GET", "/psychologist/material-categories"),
+  psyMaterials: (categoryId?: number, search?: string) => {
+    const p = new URLSearchParams();
+    if (categoryId != null) p.set("categoryId", String(categoryId));
+    if (search) p.set("search", search);
+    const qs = p.toString();
+    return authedRequest<Material[]>("GET", `/psychologist/materials${qs ? `?${qs}` : ""}`);
+  },
+  psyMaterialVersions: (id: number) => authedRequest<MaterialVersion[]>("GET", `/psychologist/materials/${id}/versions`),
+
+  // ─── Modul F: psixoloji testlər ──────────────────────────────────────────
+  assignableTests: () => authedRequest<PsyTestSummary[]>("GET", "/psychologist/psych-tests"),
+  assignTest: (data: { testId: number; patientId: number; note?: string }) =>
+    authedRequest<TestAssignment>("POST", "/psychologist/psych-tests/assignments", data),
+  createTestLink: (data: { testId: number; note?: string }) =>
+    authedRequest<{ token: string; url: string }>("POST", "/psychologist/psych-tests/public-links", data),
+  testAssignments: () => authedRequest<TestAssignment[]>("GET", "/psychologist/psych-tests/assignments"),
+  testResult: (assignmentId: number) =>
+    authedRequest<TestResult>("GET", `/psychologist/psych-tests/assignments/${assignmentId}/result`),
 };
 
 export interface GoogleExternalEvent {
@@ -2174,6 +2423,11 @@ export interface PatientHistory {
   autoFlag?: "HIGH_NO_SHOW" | "HIGH_LATE_CANCEL" | "HIGH_REJECT" | null;
   registeredAt?: string | null;
   recent: { id: number; status: string; psychologistName?: string | null; startAt?: string | null; createdAt?: string | null; note?: string | null }[];
+  // Modul G — təcili əlaqə + yaşayış ünvanı (decrypt olunmuş, operator/admin)
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  emergencyContactRelation?: string | null;
+  residentialAddress?: string | null;
 }
 
 export interface ContactLog {
@@ -2284,6 +2538,44 @@ export function operatorClaimReleaseUrl(appointmentId: number): string {
   return `${BASE}/operator/appointments/${appointmentId}/claim/release`;
 }
 
+// Modul H — operator müştəri profili + psixoloq statistikası + analitika
+export interface CustomerProfile {
+  history: PatientHistory;
+  lastLogin?: string | null;
+  activeCount: number;
+  completedCount: number;
+  cancelledCount: number;
+  appointments: PatientHistory["recent"];
+  payments: { id: number; amount: number; currency: string; status: string; method: string; paidAt?: string | null; createdAt?: string | null; patientPackageId?: number | null; appointmentId?: number | null; patientName?: string | null }[];
+  packages: { id: number; psychologistName?: string | null; packageName: string; total: number; remaining: number; status: string; pricePaid?: number | null; currency?: string | null; purchasedAt?: string | null }[];
+  testResults: { assignmentId: number; resultId?: number | null; testTitle: string; status: string; totalScore?: number | null; maxScore?: number | null; percentage?: number | null; scaleLabel?: string | null; submittedAt?: string | null }[];
+  reviewsGiven: { id: number; psychologistName?: string | null; rating: number; comment?: string | null; status: string; createdAt?: string | null }[];
+  activity: { type: "AUDIT" | "SUPPORT" | "APPOINTMENT" | "TEST"; action?: string | null; summary?: string | null; at: string }[];
+}
+export interface OperatorPsychologistStat {
+  psychologistId: number;
+  name: string;
+  totalSessions: number;
+  fanusSessions: number;
+  currentMonthSessions: number;
+  completedCount: number;
+  cancelledCount: number;
+  activePatients: number;
+  newPatientsThisMonth: number;
+  averageRating?: number | null;
+  totalReviews: number;
+  packagesSold: number;
+  revenue?: number | null;
+  joinedAt?: string | null;
+  rankingScore?: number | null;
+  psychologistType?: string | null;
+  statsSource?: string | null;
+  monthlyDynamics: { month: string; total: number; completed: number; cancelled: number }[];
+}
+export interface AnalyticsTimePoint { bucket: string; incoming: number; assigned: number; completed: number; cancelled: number; revenue?: number | null }
+export interface PsychologistRankItem { psychologistId: number; name: string; completedSessions: number; fanusSessions: number; activePatients: number; rankingScore?: number | null; psychologistType?: string | null }
+export type AnalyticsPeriod = "daily" | "weekly" | "monthly" | "yearly";
+
 export const operatorApi = {
   listAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/operator/appointments"),
   getAppointment: (id: number) => authedRequest<AppointmentDetail>("GET", `/operator/appointments/${id}`),
@@ -2302,6 +2594,20 @@ export const operatorApi = {
     authedRequest<ClaimState>("POST", `/operator/appointments/${id}/claim/release`),
   assign: (id: number, data: OperatorAssignPayload) =>
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/assign`, data),
+  // Modul B: seans görüş linki idarəetməsi
+  setMeetingLink: (id: number, meetingLink: string) =>
+    authedRequest<AppointmentDetail>("PUT", `/operator/appointments/${id}/meeting-link`, { meetingLink }),
+  revokeMeetingLink: (id: number) =>
+    authedRequest<AppointmentDetail>("DELETE", `/operator/appointments/${id}/meeting-link`),
+  sendMeetingLink: (id: number) =>
+    authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/meeting-link/send`),
+  meetingLinkHistory: (id: number) =>
+    authedRequest<MeetingLinkLogItem[]>("GET", `/operator/appointments/${id}/meeting-link/history`),
+  // Modul A — manual ödəniş idarəsi
+  listPendingPayments: (status = "PENDING") =>
+    authedRequest<PaymentItem[]>("GET", `/operator/payments?status=${status}`),
+  markPaymentPaid: (id: number) =>
+    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/mark-paid`),
   cancel: (id: number, reasonCode: string, note?: string) =>
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/cancel`, { reasonCode, note }),
   approveCancelRequest: (id: number, note?: string) =>
@@ -2375,6 +2681,17 @@ export const operatorApi = {
     authedRequest<PsychologistSuggestion[]>("GET", `/operator/appointments/${appointmentId}/suggest?limit=${limit}`),
   patientHistory: (patientId: number) =>
     authedRequest<PatientHistory>("GET", `/operator/patients/${patientId}/history`),
+  // Modul H — analitika
+  customerProfile: (patientId: number) =>
+    authedRequest<CustomerProfile>("GET", `/operator/customers/${patientId}`),
+  customerActivity: (patientId: number) =>
+    authedRequest<CustomerProfile["activity"]>("GET", `/operator/customers/${patientId}/activity`),
+  psychologistStats: (id: number) =>
+    authedRequest<OperatorPsychologistStat>("GET", `/operator/psychologists/${id}/stats`),
+  analyticsSessions: (period: AnalyticsPeriod = "daily") =>
+    authedRequest<AnalyticsTimePoint[]>("GET", `/operator/analytics/sessions?period=${period}`),
+  psychologistRanking: () =>
+    authedRequest<PsychologistRankItem[]>("GET", "/operator/analytics/psychologists/ranking"),
   contactLogs: (appointmentId: number) =>
     authedRequest<ContactLog[]>("GET", `/operator/appointments/${appointmentId}/contact-logs`),
   addContactLog: (appointmentId: number, data: { channel: string; outcome: string; note?: string }) =>

@@ -42,11 +42,13 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     { href: "/patient",                label: t("nav.dashboard"),     icon: "home" },
     { href: "/patient/psychologists",  label: t("nav.psychologists"), icon: "users" },
     { href: "/patient/appointments",   label: t("nav.appointments"),  icon: "calendar" },
+    { href: "/patient/packages",       label: t("pkg.myPackages"),    icon: "badge" },
     { href: "/patient/homework",       label: t("nav.homework"),      icon: "check" },
     ...(FEATURE_GOALS
       ? [{ href: "/patient/goals", label: "Hədəflərim", icon: "check" } as PanelNavItem]
       : []),
     { href: "/patient/favorites",      label: t("nav.favorites"),     icon: "heart" },
+    { href: "/patient/tests",          label: "Testlər",              icon: "clipboard" },
     { href: "/patient/profile",        label: t("nav.profile"),       icon: "user" },
   ];
 

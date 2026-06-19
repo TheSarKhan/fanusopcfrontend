@@ -25,6 +25,13 @@ const TYPE_META: Record<string, { icon: IconName; label: string; tone: "brand" |
   GOAL_PROGRESS_UPDATED:              { icon: "target",    label: "Hədəf",           tone: "brand" },
   CRISIS_CHECK_IN:                    { icon: "heart",     label: "Böhran",          tone: "danger" },
   PATIENT_RISK_FLAGGED:               { icon: "alert",     label: "Risk",            tone: "danger" },
+  PEER_NEW_ARTICLE:                   { icon: "bell",      label: "Yeni məqalə",     tone: "brand" },
+  PEER_NEW_RESOURCE:                  { icon: "target",    label: "Yeni resurs",     tone: "brand" },
+  REFERRAL_CONSENT_NEEDED:            { icon: "bell",      label: "Razılıq lazımdır", tone: "warn" },
+  REFERRAL_RECEIVED:                  { icon: "handshake", label: "Yönləndirmə",     tone: "brand" },
+  REFERRAL_ACCEPTED:                  { icon: "check2",    label: "Qəbul olundu",    tone: "good" },
+  REFERRAL_DECLINED:                  { icon: "x",         label: "Rədd",            tone: "danger" },
+  REFERRAL_CANCELLED:                 { icon: "x",         label: "Ləğv",            tone: "neutral" },
 };
 
 function timeAgo(iso: string, now: Date = new Date()): string {

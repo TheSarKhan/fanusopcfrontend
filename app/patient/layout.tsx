@@ -48,6 +48,7 @@ function PatientShell({ children }: { children: React.ReactNode }) {
       ? [{ href: "/patient/goals", label: "Hədəflərim", icon: "check" } as PanelNavItem]
       : []),
     { href: "/patient/favorites",      label: t("nav.favorites"),     icon: "heart" },
+    { href: "/patient/referrals",      label: "Yönləndirmələr",       icon: "shield" },
     { href: "/patient/tests",          label: "Testlər",              icon: "clipboard" },
     { href: "/patient/profile",        label: t("nav.profile"),       icon: "user" },
   ];

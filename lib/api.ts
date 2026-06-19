@@ -1603,7 +1603,57 @@ export const patientApi = {
   submitTest: (assignmentId: number, data: { answers: SubmitAnswer[]; respondentName?: string }) =>
     authedRequest<TestResult>("POST", `/patient/psych-tests/assignments/${assignmentId}/submit`, data),
   patientTestResult: (assignmentId: number) => authedRequest<TestResult>("GET", `/patient/psych-tests/assignments/${assignmentId}/result`),
+
+  // ─── Keys yönləndirmə razılığı (referral) ───────────────────────────────
+  myReferrals: () => authedRequest<PatientReferral[]>("GET", "/patient/referrals"),
+  consentReferral: (id: number) =>
+    authedRequest<PatientReferral>("POST", `/patient/referrals/${id}/consent`),
+  declineReferral: (id: number) =>
+    authedRequest<PatientReferral>("POST", `/patient/referrals/${id}/decline`),
 };
+
+// ─── Keys yönləndirmə (referral) tipləri ──────────────────────────────────────
+export type ReferralStatus =
+  | "PENDING_CONSENT" | "PENDING_REVIEW" | "ACCEPTED" | "DECLINED" | "CANCELLED";
+
+export interface Referral {
+  id: number;
+  direction: "SENT" | "RECEIVED";
+  fromPsychologistId: number;
+  fromPsychologistName: string;
+  toPsychologistId: number;
+  toPsychologistName: string;
+  patientId: number;
+  patientName?: string | null;
+  reason: string;
+  clinicalSummary?: string | null;
+  message?: string | null;
+  status: ReferralStatus;
+  patientConsent: boolean;
+  consentAt?: string | null;
+  createdAt?: string;
+  respondedAt?: string | null;
+}
+
+export interface PatientReferral {
+  id: number;
+  fromPsychologistName: string;
+  toPsychologistName: string;
+  toPsychologistTitle?: string | null;
+  toPsychologistPhotoUrl?: string | null;
+  reason: string;
+  status: ReferralStatus;
+  patientConsent: boolean;
+  createdAt?: string;
+}
+
+export interface CreateReferralReq {
+  toPsychologistId: number;
+  patientId: number;
+  reason: string;
+  clinicalSummary?: string;
+  message?: string;
+}
 
 export interface ReviewPayload {
   appointmentId?: number | null;
@@ -1768,6 +1818,44 @@ export interface AccountStatus {
   active: boolean;
   deletionRequestedAt: string | null;
   daysUntilPurge: number;
+}
+
+// ─── Peer follow (psixoloqlar arası izləmə) ───────────────────────────────────
+export interface FollowStatus {
+  following: boolean;
+  followerCount: number;
+  followingCount: number;
+}
+export interface FollowSummary {
+  id: number;
+  name: string;
+  title: string;
+  photoUrl?: string | null;
+}
+
+// ─── Bilik bazası (paylaşılan psixoloq resursları) ────────────────────────────
+export interface PsychResource {
+  id: number;
+  title: string;
+  description?: string | null;
+  content?: string | null;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  category: string;
+  authorId?: number | null;
+  authorName?: string | null;
+  authorPhotoUrl?: string | null;
+  mine: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+export interface PsychResourceReq {
+  title: string;
+  description?: string;
+  content?: string;
+  fileUrl?: string;
+  fileName?: string;
+  category: string;
 }
 
 // ─── Psychologist API ─────────────────────────────────────────────────────────
@@ -2032,6 +2120,39 @@ export const psychologistApi = {
   testAssignments: () => authedRequest<TestAssignment[]>("GET", "/psychologist/psych-tests/assignments"),
   testResult: (assignmentId: number) =>
     authedRequest<TestResult>("GET", `/psychologist/psych-tests/assignments/${assignmentId}/result`),
+
+  // ─── Peer follow (psixoloqlar arası izləmə) ──────────────────────────────
+  follow: (targetId: number) => authedRequest<void>("POST", `/psychologist/follow/${targetId}`),
+  unfollow: (targetId: number) => authedRequest<void>("DELETE", `/psychologist/follow/${targetId}`),
+  followStatus: (targetId: number) =>
+    authedRequest<FollowStatus>("GET", `/psychologist/follow/${targetId}/status`),
+  following: () => authedRequest<FollowSummary[]>("GET", "/psychologist/following"),
+  followers: () => authedRequest<FollowSummary[]>("GET", "/psychologist/followers"),
+  feed: () => authedRequest<BlogPost[]>("GET", "/psychologist/feed"),
+
+  // ─── Bilik bazası (paylaşılan resurslar) ─────────────────────────────────
+  listResources: (category?: string) => {
+    const qs = category ? `?category=${encodeURIComponent(category)}` : "";
+    return authedRequest<PsychResource[]>("GET", `/psychologist/resources${qs}`);
+  },
+  getResource: (id: number) => authedRequest<PsychResource>("GET", `/psychologist/resources/${id}`),
+  createResource: (data: PsychResourceReq) =>
+    authedRequest<PsychResource>("POST", "/psychologist/resources", data),
+  updateResource: (id: number, data: PsychResourceReq) =>
+    authedRequest<PsychResource>("PUT", `/psychologist/resources/${id}`, data),
+  deleteResource: (id: number) => authedRequest<void>("DELETE", `/psychologist/resources/${id}`),
+
+  // ─── Keys yönləndirmə (referral) ─────────────────────────────────────────
+  createReferral: (data: CreateReferralReq) =>
+    authedRequest<Referral>("POST", "/psychologist/referrals", data),
+  sentReferrals: () => authedRequest<Referral[]>("GET", "/psychologist/referrals/sent"),
+  receivedReferrals: () => authedRequest<Referral[]>("GET", "/psychologist/referrals/received"),
+  acceptReferral: (id: number) =>
+    authedRequest<Referral>("POST", `/psychologist/referrals/${id}/accept`),
+  declineReferral: (id: number) =>
+    authedRequest<Referral>("POST", `/psychologist/referrals/${id}/decline`),
+  cancelReferral: (id: number) =>
+    authedRequest<Referral>("POST", `/psychologist/referrals/${id}/cancel`),
 };
 
 export interface GoogleExternalEvent {

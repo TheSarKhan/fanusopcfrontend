@@ -27,7 +27,7 @@ const ROLE_COLORS: Record<string, string> = {
 };
 const ROLE_ICONS: Record<string, React.ReactNode> = {
   PATIENT: <IconUser size={14} />,
-  PSYCHOLOGIST: <span style={{ fontSize: 13 }}>🧠</span>,
+  PSYCHOLOGIST: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a4.5 4.5 0 0 0-4.5 4.5c0 .5.08.98.23 1.43A3.5 3.5 0 0 0 5 11.5a3.5 3.5 0 0 0 1.5 2.87V15a3 3 0 0 0 3 3h.5v3"/><path d="M12 2a4.5 4.5 0 0 1 4.5 4.5c0 .5-.08.98-.23 1.43A3.5 3.5 0 0 1 19 11.5a3.5 3.5 0 0 1-1.5 2.87V15a3 3 0 0 1-3 3H14v3"/></svg>,
   OPERATOR: <IconSettings size={14} />,
   ADMIN: <IconSettings size={14} />, // Changed to simple settings icon as fallback
 };
@@ -408,7 +408,7 @@ export default function UsersPage() {
           </div>
           <div className="stat card">
             <div className="stat-label">
-              <span style={{ fontSize: 14 }}>🧠</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a4.5 4.5 0 0 0-4.5 4.5c0 .5.08.98.23 1.43A3.5 3.5 0 0 0 5 11.5a3.5 3.5 0 0 0 1.5 2.87V15a3 3 0 0 0 3 3h.5v3"/><path d="M12 2a4.5 4.5 0 0 1 4.5 4.5c0 .5-.08.98-.23 1.43A3.5 3.5 0 0 1 19 11.5a3.5 3.5 0 0 1-1.5 2.87V15a3 3 0 0 1-3 3H14v3"/></svg>
               <span style={{ marginLeft: 6 }}>Psixoloqlar</span>
             </div>
             <div className="stat-value">{roleCounts.PSYCHOLOGIST ?? "—"}</div>
@@ -473,7 +473,7 @@ export default function UsersPage() {
             {!loading && (!data?.content || data.content.length === 0) && (
               <tr>
                 <td colSpan={7} style={{ padding: 60, textAlign: "center" }}>
-                  <div style={{ fontSize: 40, marginBottom: 16 }}>🔍</div>
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 16, color: "var(--muted)" }}><IconSearch size={40} /></div>
                   <div style={{ fontWeight: 600, fontSize: 16 }}>Nəticə tapılmadı</div>
                   <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>Axtarışa və ya filtrlərə uyğun istifadəçi yoxdur.</div>
                   <button className="btn mt-16" onClick={() => {setSearch(""); setRoleFilter("all");}}>Filtrləri təmizlə</button>
@@ -755,7 +755,7 @@ export default function UsersPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {detailApp.diplomaFileUrl && (
                       <a href={detailApp.diplomaFileUrl} target="_blank" rel="noreferrer" className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, textDecoration: "none", color: "inherit" }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--ox-50)", color: "var(--ox)", display: "flex", alignItems: "center", justifyContent: "center" }}>📄</div>
+                        <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--ox-50)", color: "var(--ox)", display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 600, fontSize: 13 }}>Diplom faylı</div>
                           <div style={{ fontSize: 11, color: "var(--muted)" }}>Baxmaq üçün klikləyin</div>
@@ -764,7 +764,7 @@ export default function UsersPage() {
                     )}
                     {detailApp.certificateFileUrls && detailApp.certificateFileUrls.split(",").map(s => s.trim()).filter(Boolean).map((url, i) => (
                       <a key={i} href={url} target="_blank" rel="noreferrer" className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, textDecoration: "none", color: "inherit" }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--sage-50)", color: "var(--sage)", display: "flex", alignItems: "center", justifyContent: "center" }}>📜</div>
+                        <div style={{ width: 40, height: 40, borderRadius: 8, background: "var(--sage-50)", color: "var(--sage)", display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 600, fontSize: 13 }}>Sertifikat skanı {i + 1}</div>
                           <div style={{ fontSize: 11, color: "var(--muted)" }}>Baxmaq üçün klikləyin</div>
@@ -1121,12 +1121,12 @@ export default function UsersPage() {
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                             {appData.diplomaFileUrl && (
                                 <a href={appData.diplomaFileUrl} target="_blank" rel="noreferrer" className="btn sm outline" style={{ gap: 8 }}>
-                                    📄 Diplom
+                                    Diplom
                                 </a>
                             )}
                             {appData.certificateFileUrls && appData.certificateFileUrls.split(",").map((url: string, i: number) => (
                                 <a key={i} href={url} target="_blank" rel="noreferrer" className="btn sm outline" style={{ gap: 8 }}>
-                                    📜 Sertifikat {i+1}
+                                    Sertifikat {i+1}
                                 </a>
                             ))}
                         </div>

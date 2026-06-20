@@ -325,7 +325,11 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   if (notFound) {
     return (
       <div style={{ background: "#fff", borderRadius: 16, padding: "4rem 2rem", textAlign: "center" }}>
-        <div style={{ fontSize: 42, marginBottom: 8 }}>🔍</div>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#8AAABF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </div>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1A2535", margin: 0 }}>{t("staff.opDetNotFound")}</h1>
         <p style={{ color: "#52718F", fontSize: 13, marginTop: 6 }}>{t("staff.opDetNotFoundSub")}</p>
         <Link href="/operator/appointments"
@@ -347,9 +351,12 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const claimedMin = claim?.claimedAt ? minutesSince(claim.claimedAt, nowMs) : 0;
 
   const isCancelReq = a.status === "CANCEL_REQUESTED";
-  const canAssign = !isCancelReq && !isFinal && ["PENDING", "NEW", "REJECTED", "ASSIGNED", "IN_REVIEW"].includes(a.status);
+  // CONFIRMED included so the assign block doubles as the reschedule / change-psychologist tool.
+  const canAssign = !isCancelReq && !isFinal && ["PENDING", "NEW", "REJECTED", "ASSIGNED", "IN_REVIEW", "CONFIRMED"].includes(a.status);
   const canCancel = !isCancelReq && !isFinal && a.status !== "DISPUTED";
   const canResolve = a.status === "DISPUTED";
+  // Option B: sessions auto-complete; operator retroactively marks a no-show.
+  const canMarkNoShow = a.status === "COMPLETED" || a.status === "AWAITING_CONFIRMATION";
   const phone = normalizePhone(a.patientPhone);
 
   const copyLink = () => {
@@ -377,7 +384,10 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
           {!isFinal && (
             <span title={`SLA: ${full.slaHours} saat`}
               style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: slaBg, color: slaColor }}>
-              ⏱ {t("staff.opDetWaiting", { time: ageLabel(a.createdAt, nowMs) })}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "-2px", marginRight: 4 }}>
+                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+              </svg>
+              {t("staff.opDetWaiting", { time: ageLabel(a.createdAt, nowMs) })}
             </span>
           )}
           {claim?.claimedByUserId && (
@@ -394,7 +404,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
           </label>
           <button onClick={copyLink}
             style={{ border: "1px solid #E5E7EB", background: "#fff", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#1A2535" }}>
-            {copied ? t("staff.opDetCopied") : `🔗 ${t("staff.opDetCopyLink")}`}
+            {copied ? t("staff.opDetCopied") : t("staff.opDetCopyLink")}
           </button>
           <button onClick={() => prevId && goTo(prevId)} disabled={!prevId} title={t("staff.opDetPrev")}
             style={{ border: "1px solid #E5E7EB", background: "#fff", borderRadius: 8, padding: "6px 12px", cursor: prevId ? "pointer" : "not-allowed", opacity: prevId ? 1 : 0.4, fontSize: 13 }}>
@@ -449,7 +459,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
               cold={claimedByOther}
               guardAction={guardAction}
               selectRef={assignFocusRef}
-              onAssigned={(u) => onActionDone(u, a.status === "ASSIGNED" ? "Yenidən təyin olundu ✓" : "Təyin olundu ✓")}
+              onAssigned={(u) => onActionDone(u, (a.status === "ASSIGNED" || a.status === "CONFIRMED") ? "Yenidən planlandı" : "Təyin olundu")}
             />
           )}
 
@@ -465,17 +475,22 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
 
           {canResolve && (
             <ResolveDisputeBlock appointment={a} cold={claimedByOther} guardAction={guardAction}
-              onDone={(u) => onActionDone(u, "Mübahisə həll olundu ✓")} />
+              onDone={(u) => onActionDone(u, "Mübahisə həll olundu")} />
           )}
 
           {isCancelReq && (
             <CancelRequestBlock appointment={a} cold={claimedByOther} guardAction={guardAction}
-              onDone={(u, approved) => onActionDone(u, approved ? "Ləğv təsdiqləndi ✓" : "Tələb rədd edildi ✓")} />
+              onDone={(u, approved) => onActionDone(u, approved ? "Ləğv təsdiqləndi" : "Tələb rədd edildi")} />
           )}
 
           {canCancel && (
             <CancelBlock appointment={a} cold={claimedByOther} guardAction={guardAction}
-              onDone={(u) => onActionDone(u, "Ləğv edildi ✓")} />
+              onDone={(u) => onActionDone(u, "Ləğv edildi")} />
+          )}
+
+          {canMarkNoShow && (
+            <NoShowBlock appointment={a} cold={claimedByOther} guardAction={guardAction}
+              onDone={(u) => onActionDone(u, "No-show işarələndi")} />
           )}
         </main>
 
@@ -497,7 +512,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
           style={{ position: "fixed", inset: 0, background: "rgba(10,22,51,0.5)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={e => e.stopPropagation()}
             style={{ background: "#fff", borderRadius: 16, width: "min(420px, 100%)", padding: 24, boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#1A2535" }}>⚠️ {t("staff.opClaimStealTitle")}</h3>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#1A2535" }}>{t("staff.opClaimStealTitle")}</h3>
             <p style={{ fontSize: 13, color: "#52718F", marginTop: 8 }}>
               {t("staff.opClaimStealBody", { name: claim.claimedByName })}
             </p>
@@ -564,19 +579,22 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
           </span>
           {h?.blocked && (
             <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: "#FEE2E2", color: "#991B1B" }}>
-              🚫 BLOKLU
+              BLOKLU
             </span>
           )}
         </div>
         {phone && (
           <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-            <a href={`tel:${phone}`} className="op-contact-btn op-contact-btn--call">📞 {a.patientPhone}</a>
+            <a href={`tel:${phone}`} className="op-contact-btn op-contact-btn--call">{a.patientPhone}</a>
             <a href={whatsappLink(phone)} target="_blank" rel="noopener noreferrer" className="op-contact-btn op-contact-btn--wa">WhatsApp</a>
           </div>
         )}
         {a.patientEmail && (
-          <a href={`mailto:${a.patientEmail}`} style={{ display: "block", fontSize: 12, color: "var(--brand-700)", marginTop: 6, wordBreak: "break-all" }}>
-            ✉ {a.patientEmail}
+          <a href={`mailto:${a.patientEmail}`} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--brand-700)", marginTop: 6, wordBreak: "break-all" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22,6 12,13 2,6" />
+            </svg>
+            {a.patientEmail}
           </a>
         )}
         {h?.userId && (
@@ -598,7 +616,7 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
           </div>
           {h.autoFlag && (
             <div style={{ marginTop: 8, padding: "6px 10px", background: "#FEE2E2", color: "#991B1B", borderRadius: 8, fontSize: 11, fontWeight: 700 }}>
-              ⚑ {FLAG_LABEL[h.autoFlag] ?? h.autoFlag}
+              {FLAG_LABEL[h.autoFlag] ?? h.autoFlag}
             </div>
           )}
           {h.blocked && h.blockReason && (
@@ -720,7 +738,7 @@ function RequestContent({ full, t }: { full: OperatorAppointmentFull; t: ReturnT
       {full.intake?.submittedAt && (
         <details style={{ marginTop: 12 }}>
           <summary style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-700)", cursor: "pointer" }}>
-            📋 Intake anketi ({azFormatDate(full.intake.submittedAt)})
+            Intake anketi ({azFormatDate(full.intake.submittedAt)})
           </summary>
           <div style={{ display: "grid", gap: 8, marginTop: 8, fontSize: 12.5 }}>
             {([
@@ -845,12 +863,12 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
 
   return (
     <div className={cold ? "op-det-card op-det-card--cold" : "op-det-card"}>
-      <div className="op-det-card__title">{t("staff.opDetAssignBlock")} <kbd className="op-det-kbd">A</kbd></div>
+      <div className="op-det-card__title">{(appointment.status === "CONFIRMED" || appointment.status === "ASSIGNED") ? "Yenidən planla / psixoloqu dəyiş" : t("staff.opDetAssignBlock")} <kbd className="op-det-kbd">A</kbd></div>
 
       {suggestions.length > 0 && (
         <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: 10, marginBottom: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#065F46", marginBottom: 6 }}>
-            🤖 {t("staff.opDetSuggestions")}
+            {t("staff.opDetSuggestions")}
           </div>
           <div style={{ display: "grid", gap: 5 }}>
             {suggestions.slice(0, 3).map(s => (
@@ -917,7 +935,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                               background: active ? "var(--brand-50)" : isRequested ? "#ECFDF5" : "#fff",
                               color: active ? "var(--brand)" : isRequested ? "#065F46" : "#1A2535",
                             }}>
-                            {azFormatTime(s.startAt)}{isRequested && !active ? " ★" : ""}
+                            {azFormatTime(s.startAt)}
                           </button>
                         );
                       })}
@@ -1139,7 +1157,7 @@ function ResolveDisputeBlock({ appointment, cold, guardAction, onDone }: {
             background: decision === "COMPLETE" ? "#D1FAE5" : "#fff",
             color: decision === "COMPLETE" ? "#065F46" : "#1A2535",
           }}>
-          <div style={{ fontWeight: 700 }}>✓ Tamamlanmış say</div>
+          <div style={{ fontWeight: 700 }}>Tamamlanmış say</div>
           <div style={{ fontSize: 10.5, opacity: 0.85, marginTop: 2 }}>Seans baş tutdu</div>
         </button>
         <button type="button" onClick={() => setDecision("CANCEL")}
@@ -1149,7 +1167,7 @@ function ResolveDisputeBlock({ appointment, cold, guardAction, onDone }: {
             background: decision === "CANCEL" ? "#FEE2E2" : "#fff",
             color: decision === "CANCEL" ? "#991B1B" : "#1A2535",
           }}>
-          <div style={{ fontWeight: 700 }}>✗ Ləğv et</div>
+          <div style={{ fontWeight: 700 }}>Ləğv et</div>
           <div style={{ fontSize: 10.5, opacity: 0.85, marginTop: 2 }}>Seans baş tutmadı</div>
         </button>
       </div>
@@ -1193,6 +1211,69 @@ function ResolveDisputeBlock({ appointment, cold, guardAction, onDone }: {
           cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1,
         }}>
         {saving ? "Göndərilir…" : decision === "COMPLETE" ? "Tamamlanmış say" : "Ləğv et"}
+      </button>
+    </div>
+  );
+}
+
+/* ─── Mərkəz: no-show işarələmə bloku (Option B) ────────────────────────────── */
+
+function NoShowBlock({ appointment, cold, guardAction, onDone }: {
+  appointment: AppointmentDetail;
+  cold: boolean;
+  guardAction: (run: () => void) => void;
+  onDone: (a: AppointmentDetail) => void;
+}) {
+  const [blameSide, setBlameSide] = useState<"PATIENT" | "PSYCHOLOGIST">("PATIENT");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const doSubmit = async () => {
+    setErr(null); setSaving(true);
+    try {
+      const updated = await operatorApi.markNoShow(appointment.id, blameSide, note.trim() || undefined);
+      onDone(updated);
+    } catch (e) { setErr((e as Error).message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className={cold ? "op-det-card op-det-card--cold" : "op-det-card"}>
+      <div className="op-det-card__title">Seans baş tutmadı — no-show işarələ</div>
+      <p style={{ fontSize: 12, color: "#52718F", margin: "0 0 10px" }}>
+        Seans avtomatik tamamlandı, amma əslində baş tutmayıbsa, buradan no-show kimi işarələyin —
+        seçilən tərəfin no-show sayğacı artacaq.
+      </p>
+      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
+        Kim gəlmədi?
+      </label>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 12 }}>
+        {([
+          { v: "PATIENT", label: "Pasient" },
+          { v: "PSYCHOLOGIST", label: "Psixoloq" },
+        ] as const).map(o => (
+          <button key={o.v} type="button" onClick={() => setBlameSide(o.v)}
+            style={{
+              padding: 10, borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: "pointer", textAlign: "left",
+              border: blameSide === o.v ? "2px solid var(--brand)" : "1px solid #E5E7EB",
+              background: blameSide === o.v ? "var(--brand-50)" : "#fff",
+              color: blameSide === o.v ? "var(--brand-700)" : "#1A2535",
+            }}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <textarea rows={2} value={note} onChange={e => setNote(e.target.value)}
+        placeholder="Qeyd (məcburi deyil)"
+        style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, fontFamily: "inherit", marginBottom: 10, boxSizing: "border-box" }} />
+      {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
+      <button onClick={() => guardAction(doSubmit)} disabled={saving}
+        style={{
+          width: "100%", padding: "10px 18px", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700,
+          background: "#DC2626", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1,
+        }}>
+        {saving ? "Göndərilir…" : "No-show işarələ"}
       </button>
     </div>
   );
@@ -1307,7 +1388,7 @@ function CancelBlock({ appointment, cold, guardAction, onDone }: {
 /* ─── Sağ zona: fəaliyyət lenti + composer ─────────────────────────────────── */
 
 const FEED_ICON: Record<OperatorActivityItem["kind"], string> = {
-  CREATED: "✦", AUDIT: "⚙", NOTE: "✎", CONTACT: "📞",
+  CREATED: "✦", AUDIT: "⚙", NOTE: "✎", CONTACT: "☏",
 };
 
 function ActivityFeed({ items, t, composerRef, onAdd, appointmentId }: {
@@ -1390,11 +1471,11 @@ function ActivityFeed({ items, t, composerRef, onAdd, appointmentId }: {
         <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
           <button onClick={() => setMode("note")}
             style={{ flex: 1, padding: "5px 8px", borderRadius: 8, fontSize: 11.5, fontWeight: 600, cursor: "pointer", border: mode === "note" ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: mode === "note" ? "var(--brand-50)" : "#fff", color: mode === "note" ? "var(--brand-700)" : "#52718F" }}>
-            ✎ {t("staff.opDetComposerNote")}
+            {t("staff.opDetComposerNote")}
           </button>
           <button onClick={() => setMode("contact")}
             style={{ flex: 1, padding: "5px 8px", borderRadius: 8, fontSize: 11.5, fontWeight: 600, cursor: "pointer", border: mode === "contact" ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: mode === "contact" ? "var(--brand-50)" : "#fff", color: mode === "contact" ? "var(--brand-700)" : "#52718F" }}>
-            📞 {t("staff.opDetComposerContact")}
+            {t("staff.opDetComposerContact")}
           </button>
         </div>
 

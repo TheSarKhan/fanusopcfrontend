@@ -225,7 +225,7 @@ export default function ContentPage() {
                         {status === "published" && <span className="pill sage"><span className="dot" />Dərc</span>}
                         {status === "draft" && <span className="pill gold"><span className="dot" />Draft</span>}
                         {status === "archived" && <span className="pill muted"><span className="dot" />Arxiv</span>}
-                        {p.featured && <span className="pill ox" style={{ marginLeft: 4 }}>★ öne</span>}
+                        {p.featured && <span className="pill ox" style={{ marginLeft: 4 }}>öne</span>}
                       </td>
                       <td><span className="pill ox">{p.category}</span></td>
                       <td className="num strong">{p.readTimeMinutes} dəq</td>
@@ -269,7 +269,9 @@ export default function ContentPage() {
           <div className="modal lg">
             <div className="modal-head">
               <div className="modal-title">{modal.id ? "Məqaləni redaktə et" : "Yeni məqalə yarat"}</div>
-              <button className="btn ghost icon-only sm" onClick={close}>✕</button>
+              <button className="btn ghost icon-only sm" onClick={close} aria-label="Bağla">
+                <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
             </div>
             <div className="modal-body">
               <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 16 }}>

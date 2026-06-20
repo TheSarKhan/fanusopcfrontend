@@ -399,7 +399,7 @@ export default function ArticleEditorPage({
           ) : (
             <span style={{ fontSize: 12, color: "#8AAABF" }}>
               {saveStatus === "saving" && "Saxlanır…"}
-              {saveStatus === "saved" && (form.status === "PUBLISHED" ? "✓ Yayımlandı" : "✓ Qaralama olaraq saxlanıldı")}
+              {saveStatus === "saved" && (form.status === "PUBLISHED" ? "Yayımlandı" : "Qaralama olaraq saxlanıldı")}
             </span>
           )}
         </div>

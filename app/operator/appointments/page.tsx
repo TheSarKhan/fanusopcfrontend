@@ -7,26 +7,29 @@
  * OP-2: claim çipləri ("● Aysel işləyir") + "Mənim üzərimdə" filtri, real-time.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   operatorApi,
   type AppointmentDetail,
   type Psychologist,
+  type OperatorSearchHit,
 } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
 import { subscribeNotifications, subscribeOperatorClaims } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azLocalToISO, azFormatDateTime } from "@/lib/datetime";
+import { statusMeta } from "@/lib/appointmentStatus";
+import { SkeletonGrid } from "@/components/Skeleton";
+import EmptyState, { CalendarGlyph } from "@/components/EmptyState";
 
 const QUEUE_KEY = "fanus.op.queue";
 
-type Tab = "PENDING" | "ASSIGNED" | "CONFIRMED" | "DISPUTED" | "COMPLETED" | "CANCELLED" | "CANCEL_REQUESTED";
+type Tab = "PENDING" | "CONFIRMED" | "DISPUTED" | "COMPLETED" | "CANCELLED" | "CANCEL_REQUESTED";
 
 const TAB_META: Record<Tab, { label: string; color: string }> = {
   PENDING:          { label: "Yeni müraciətlər",  color: "#92400E" },
   CANCEL_REQUESTED: { label: "Ləğv tələbləri",    color: "#92400E" },
-  ASSIGNED:         { label: "Təyin edilmiş",     color: "#082F6D" },
   CONFIRMED:        { label: "Təsdiqlənmiş",      color: "#065F46" },
   DISPUTED:         { label: "Mübahisəli",        color: "#991B1B" },
   COMPLETED:        { label: "Tamamlanmış",       color: "#374151" },
@@ -38,18 +41,6 @@ function fmtDateTime(iso?: string | null) {
   return azFormatDateTime(iso);
 }
 
-const STATUS_TONE: Record<string, { label: string; bg: string; fg: string }> = {
-  PENDING:               { label: "Gözlənilir",      bg: "#FEF3C7", fg: "#92400E" },
-  REJECTED:              { label: "Yenidən təyin",   bg: "#FEF3C7", fg: "#92400E" },
-  IN_REVIEW:             { label: "Operatorda",      bg: "#FEF3C7", fg: "#92400E" },
-  ASSIGNED:              { label: "Təyin edilib",    bg: "var(--brand-50)", fg: "var(--brand-700)" },
-  CONFIRMED:             { label: "Təsdiqlənib",     bg: "#D1FAE5", fg: "#065F46" },
-  AWAITING_CONFIRMATION: { label: "Təsdiq gözlənir", bg: "#FEF3C7", fg: "#92400E" },
-  DISPUTED:              { label: "Mübahisəli",      bg: "#FEE2E2", fg: "#991B1B" },
-  COMPLETED:             { label: "Tamamlanıb",      bg: "#F3F4F6", fg: "#374151" },
-  CANCELLED:             { label: "Ləğv edilib",     bg: "#FEE2E2", fg: "#991B1B" },
-  CANCEL_REQUESTED:      { label: "Ləğv gözlənir",   bg: "#FEF3C7", fg: "#92400E" },
-};
 
 const CHANNEL_LABEL: Record<string, string> = {
   CALL: "Zəng", WHATSAPP: "WhatsApp", SMS: "SMS", EMAIL: "Email", OTHER: "Digər",
@@ -171,8 +162,9 @@ export default function OperatorAppointmentsPage() {
         if (!isOverdue(a)) return false;
       } else if (!mineOnly) {
         if (tab === "PENDING" && !(a.status === "PENDING" || a.status === "REJECTED")) return false;
-        // CONFIRMED tab also covers AWAITING_CONFIRMATION (post-session, not yet final)
-        if (tab === "CONFIRMED" && !(a.status === "CONFIRMED" || a.status === "AWAITING_CONFIRMATION")) return false;
+        // CONFIRMED tab covers AWAITING_CONFIRMATION (post-session) and any
+        // legacy ASSIGNED rows (operator assignment now confirms directly).
+        if (tab === "CONFIRMED" && !(a.status === "CONFIRMED" || a.status === "AWAITING_CONFIRMATION" || a.status === "ASSIGNED")) return false;
         if (tab !== "PENDING" && tab !== "CONFIRMED" && a.status !== tab) return false;
       }
       if (!q) return true;
@@ -183,10 +175,10 @@ export default function OperatorAppointmentsPage() {
   }, [items, tab, search, overdueOnly, mineOnly, meId, slaHours]);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { PENDING: 0, ASSIGNED: 0, CONFIRMED: 0, DISPUTED: 0, COMPLETED: 0, CANCELLED: 0, CANCEL_REQUESTED: 0 };
+    const c: Record<string, number> = { PENDING: 0, CONFIRMED: 0, DISPUTED: 0, COMPLETED: 0, CANCELLED: 0, CANCEL_REQUESTED: 0 };
     for (const a of items) {
       if (a.status === "PENDING" || a.status === "REJECTED") c.PENDING++;
-      else if (a.status === "AWAITING_CONFIRMATION") c.CONFIRMED++;
+      else if (a.status === "AWAITING_CONFIRMATION" || a.status === "ASSIGNED") c.CONFIRMED++;
       else if (c[a.status] !== undefined) c[a.status]++;
     }
     return c;
@@ -224,14 +216,26 @@ export default function OperatorAppointmentsPage() {
     setBulkOpen(false); setSelectMode(false); setSelected(new Set());
   };
 
+  const [onBehalfOpen, setOnBehalfOpen] = useState(false);
+
   return (
     <div>
+      {onBehalfOpen && (
+        <OnBehalfBookingModal
+          onClose={() => setOnBehalfOpen(false)}
+          onDone={() => { setOnBehalfOpen(false); load(); }}
+        />
+      )}
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#1A2535]">{t("staff.opApptTitle")}</h1>
           <p className="text-[#52718F] text-sm mt-1">{t("staff.opDashSub")}</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setOnBehalfOpen(true)}
+            style={{ padding: "8px 16px", border: "none", borderRadius: 12, background: "var(--brand)", color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+            + Pasiyent adına randevu
+          </button>
           <button onClick={() => { setSelectMode(s => !s); setSelected(new Set()); }}
             className="px-4 py-2 text-sm rounded-xl border border-[#E5E7EB] bg-white text-[#1A2535]">
             {selectMode ? "Seçimi ləğv et" : "Çoxlu seçim"}
@@ -249,7 +253,7 @@ export default function OperatorAppointmentsPage() {
           </div>
           <button onClick={() => setBulkOpen(true)}
             style={{ padding: "8px 16px", border: "none", borderRadius: 8, background: "#fff", color: "#1A2535", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
-            Toplu təyin et →
+            Toplu təyin et
           </button>
         </div>
       )}
@@ -285,7 +289,7 @@ export default function OperatorAppointmentsPage() {
             cursor: "pointer",
           }}
         >
-          ⏰ Gecikmiş
+          Gecikmiş
           <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.7 }}>
             {items.filter(isOverdue).length}
           </span>
@@ -315,11 +319,10 @@ export default function OperatorAppointmentsPage() {
       </div>
 
       {loading ? (
-        <div style={{ background: "#fff", borderRadius: 16, padding: 40, textAlign: "center", color: "#52718F" }}>Yüklənir…</div>
+        <SkeletonGrid count={5} />
       ) : filtered.length === 0 ? (
-        <div style={{ background: "#fff", borderRadius: 16, padding: "3rem", textAlign: "center", color: "#52718F" }}>
-          Bu kateqoriyada müraciət yoxdur.
-        </div>
+        <EmptyState icon={<CalendarGlyph />} title="Bu kateqoriyada müraciət yoxdur"
+          sub="Filtri dəyişin və ya yeni müraciət gözləyin." />
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
           {filtered.map(a => (
@@ -346,6 +349,130 @@ export default function OperatorAppointmentsPage() {
   );
 }
 
+/* ─── On-behalf booking modal (operator creates patient + appointment) ────── */
+
+function OnBehalfBookingModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [mode, setMode] = useState<"search" | "new">("search");
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<OperatorSearchHit[]>([]);
+  const [patientId, setPatientId] = useState<number | null>(null);
+  const [patientLabel, setPatientLabel] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [psyId, setPsyId] = useState<number | null>(null);
+  const [psys, setPsys] = useState<{ id: number; name?: string | null }[]>([]);
+  const [startAt, setStartAt] = useState("");
+  const [endAt, setEndAt] = useState("");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => { operatorApi.listPsychologists().then(setPsys).catch(() => {}); }, []);
+  useEffect(() => {
+    if (mode !== "search") return;
+    const term = q.trim();
+    if (term.length < 2) { setHits([]); return; }
+    const h = setTimeout(() => {
+      operatorApi.search(term, 8).then(r => setHits(r.patients)).catch(() => setHits([]));
+    }, 250);
+    return () => clearTimeout(h);
+  }, [q, mode]);
+
+  const onStart = (v: string) => {
+    setStartAt(v);
+    if (v && !endAt) {
+      const d = new Date(v); d.setMinutes(d.getMinutes() + 50);
+      const p = (n: number) => String(n).padStart(2, "0");
+      setEndAt(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`);
+    }
+  };
+
+  const submit = async () => {
+    setErr(null);
+    if (!psyId) { setErr("Psixoloq seçin"); return; }
+    if (!startAt || !endAt) { setErr("Başlanğıc və bitiş vaxtını seçin"); return; }
+    setSaving(true);
+    try {
+      let pid = patientId;
+      if (mode === "new") {
+        if (!email.trim()) { setErr("Email tələb olunur"); setSaving(false); return; }
+        const r = await operatorApi.createPatient({ firstName, lastName, phone, email: email.trim() });
+        pid = r.patientId;
+      }
+      if (!pid) { setErr("Pasiyent seçin"); setSaving(false); return; }
+      await operatorApi.createOnBehalf({ patientId: pid, psychologistId: psyId, startAt, endAt, note: note.trim() || undefined });
+      onDone();
+    } catch (e) { setErr((e as Error).message); setSaving(false); }
+  };
+
+  const inp: CSSProperties = { width: "100%", padding: 9, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(10,22,51,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, maxWidth: 540, width: "100%", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+        <div style={{ padding: "18px 22px", borderBottom: "1px solid #EEF2F7" }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: 0 }}>Pasiyent adına randevu</h3>
+          <p style={{ fontSize: 12.5, color: "#52718F", margin: "4px 0 0" }}>Pasiyenti seçin və ya yeni yaradın, sonra vaxt təyin edin — randevu birbaşa təsdiqlənir.</p>
+        </div>
+        <div style={{ padding: 22, display: "grid", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <button type="button" onClick={() => setMode("search")} style={{ padding: 9, borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: mode === "search" ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: mode === "search" ? "var(--brand-50)" : "#fff", color: mode === "search" ? "var(--brand-700)" : "#1A2535" }}>Mövcud pasiyent</button>
+            <button type="button" onClick={() => { setMode("new"); setPatientId(null); }} style={{ padding: 9, borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: mode === "new" ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: mode === "new" ? "var(--brand-50)" : "#fff", color: mode === "new" ? "var(--brand-700)" : "#1A2535" }}>Yeni pasiyent</button>
+          </div>
+
+          {mode === "search" ? (
+            <div>
+              <input value={q} onChange={e => { setQ(e.target.value); setPatientId(null); }} placeholder="Ad / telefon / email ilə axtar…" style={inp} />
+              {patientId ? (
+                <div style={{ fontSize: 12.5, color: "#065F46", marginTop: 6 }}>Seçildi: <strong>{patientLabel}</strong></div>
+              ) : hits.length > 0 && (
+                <div style={{ display: "grid", gap: 4, marginTop: 6, maxHeight: 180, overflowY: "auto" }}>
+                  {hits.map(h => (
+                    <button key={h.id} type="button" onClick={() => { setPatientId(h.id); setPatientLabel(h.title); }} style={{ textAlign: "left", padding: "8px 10px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", cursor: "pointer" }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1A2535" }}>{h.title}</div>
+                      <div style={{ fontSize: 11, color: "#52718F" }}>{h.subtitle}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Ad" style={inp} />
+              <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Soyad" style={inp} />
+              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Telefon" style={inp} />
+              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email (claim üçün)" style={inp} />
+            </div>
+          )}
+
+          <select value={psyId ?? ""} onChange={e => setPsyId(e.target.value ? Number(e.target.value) : null)} style={{ ...inp, background: "#fff" }}>
+            <option value="">Psixoloq seçin…</option>
+            {psys.map(p => <option key={p.id} value={p.id}>{p.name ?? `Psixoloq #${p.id}`}</option>)}
+          </select>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "#52718F", display: "grid", gap: 4 }}>Başlanğıc
+              <input type="datetime-local" value={startAt} onChange={e => onStart(e.target.value)} style={inp} /></label>
+            <label style={{ fontSize: 11, fontWeight: 600, color: "#52718F", display: "grid", gap: 4 }}>Bitiş
+              <input type="datetime-local" value={endAt} onChange={e => setEndAt(e.target.value)} style={inp} /></label>
+          </div>
+
+          <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Qeyd (məcburi deyil)" style={{ ...inp, fontFamily: "inherit", resize: "vertical" }} />
+
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12 }}>{err}</div>}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>Bağla</button>
+            <button onClick={submit} disabled={saving} style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>{saving ? "Yaradılır…" : "Randevu yarat"}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AppointmentCard({
   a, meId, selectable, selected, onToggleSelect, onOpen,
 }: {
@@ -360,7 +487,7 @@ function AppointmentCard({
   const status = a.status;
   const isCancelReq = status === "CANCEL_REQUESTED";
   const phone = normalizePhone(a.patientPhone);
-  const statusMeta = STATUS_TONE[status] ?? { label: status, bg: "#EEF2F7", fg: "#374151" };
+  const meta = statusMeta(status);
   const lastOutcomeMeta = a.lastContactOutcome ? OUTCOME_LABEL[a.lastContactOutcome] : null;
   // OP-2: claim çipi — tək operatorlu rejimdə sadəcə görünmür
   const claimMine = a.claimedByUserId != null && a.claimedByUserId === meId;
@@ -387,8 +514,8 @@ function AppointmentCard({
         <div className="op-appt__head-main">
           <div className="op-appt__chips">
             <span className="op-appt__id">#FNS-{String(a.id).padStart(4, "0")}</span>
-            <span className="op-appt__status" style={{ background: statusMeta.bg, color: statusMeta.fg }}>
-              {statusMeta.label}
+            <span className="op-appt__status" style={{ background: meta.bg, color: meta.fg }}>
+              {meta.label}
             </span>
             {claimMine && (
               <span className="op-claim-chip op-claim-chip--mine">
@@ -511,7 +638,7 @@ function AppointmentCard({
 
         <div className="op-appt__actions">
           <button onClick={e => { e.stopPropagation(); onOpen(); }} className="op-appt__btn op-appt__btn--primary">
-            {t("staff.opOpenTicket")} →
+            {t("staff.opOpenTicket")}
           </button>
         </div>
       </div>

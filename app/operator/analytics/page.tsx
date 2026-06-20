@@ -367,7 +367,7 @@ function CrisisRow({ c, acking, onAck }: {
           <>
             <a href={`tel:${c.patientPhone}`} title={`Zəng et: ${c.patientPhone}`}
               style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 12, fontWeight: 600, color: "#1A2535", textDecoration: "none" }}>
-              📞 Zəng
+              Zəng
             </a>
             {waPhone && (
               <a href={`https://wa.me/${waPhone}`} target="_blank" rel="noopener noreferrer"

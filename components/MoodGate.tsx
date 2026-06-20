@@ -90,7 +90,7 @@ export default function MoodGate() {
         onClick={() => select("neutral")}
         style={{ background: "none", border: "none", color: "#AAC0D5", fontSize: "0.82rem", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 3 }}
       >
-        Keç →
+        Keç
       </button>
     </div>
   );

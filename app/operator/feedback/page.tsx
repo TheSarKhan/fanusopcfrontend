@@ -92,7 +92,7 @@ export default function OperatorFeedbackPage() {
         <div className="opf-row" style={{ justifyContent: "center", color: "var(--oxford-60)" }}>Yüklənir…</div>
       ) : !data || data.content.length === 0 ? (
         <div className="opf-row" style={{ justifyContent: "center", color: "var(--oxford-60)" }}>
-          Filtə uyğun rəy yoxdur 🌿
+          Filtə uyğun rəy yoxdur
         </div>
       ) : (
         <div className="opf-list">
@@ -110,16 +110,16 @@ export default function OperatorFeedbackPage() {
                   <div className="opf-row-line">
                     <span className="opf-row-name">{fb.patientName}</span>
                     {fb.psychologistName && (
-                      <span className="opf-row-psy">→ {fb.psychologistName}</span>
+                      <span className="opf-row-psy">{fb.psychologistName}</span>
                     )}
                     {fb.followUpNeeded && (
-                      <span className="opf-flag opf-flag--warn">📞 əlaqə tələb edir</span>
+                      <span className="opf-flag opf-flag--warn">əlaqə tələb edir</span>
                     )}
                     {fb.rating <= 2 && (
                       <span className="opf-flag opf-flag--danger">aşağı reytinq</span>
                     )}
                     {fb.operatorSeenAt && (
-                      <span className="opf-flag opf-flag--good">✓ baxılıb</span>
+                      <span className="opf-flag opf-flag--good">baxılıb</span>
                     )}
                   </div>
                   {fb.comment && <div className="opf-row-comment">«{fb.comment}»</div>}
@@ -146,9 +146,9 @@ export default function OperatorFeedbackPage() {
 
       {totalPages > 1 && (
         <div className="audit-pager">
-          <button disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))} className="audit-page-btn">← Geri</button>
+          <button disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))} className="audit-page-btn">Geri</button>
           <span className="audit-page-info">{page + 1} / {totalPages}</span>
-          <button disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)} className="audit-page-btn">İrəli →</button>
+          <button disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)} className="audit-page-btn">İrəli</button>
         </div>
       )}
     </div>

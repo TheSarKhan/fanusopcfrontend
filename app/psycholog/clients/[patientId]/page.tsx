@@ -13,12 +13,12 @@ import {
   type PatientGoal,
   type PatientGoalPayload,
   type PatientGoalStatus,
-  type PatientRisk,
-  type PatientRiskLevel,
   type PatientTag,
   type PatientTagColor,
 } from "@/lib/api";
 import { FEATURE_GOALS } from "@/lib/features";
+import { toast } from "@/components/Toast";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 const TAG_COLORS: { value: PatientTagColor; label: string; swatch: string }[] = [
   { value: "brand",   label: "Mavi",     swatch: "var(--brand)" },
@@ -125,12 +125,6 @@ const REASON_LABELS: Record<string, string> = {
 
 type Tab = "history" | "notes" | "goals";
 
-const RISK_META: Record<PatientRiskLevel, { label: string; tone: string; bg: string; fg: string; border: string }> = {
-  LOW:      { label: "Aşağı risk",    tone: "warn",   bg: "#FEF3C7", fg: "#92400E", border: "#FDE68A" },
-  MEDIUM:   { label: "Orta risk",     tone: "warn",   bg: "#FED7AA", fg: "#9A3412", border: "#FDBA74" },
-  HIGH:     { label: "Yüksək risk",   tone: "danger", bg: "#FEE2E2", fg: "#991B1B", border: "#FCA5A5" },
-  CRITICAL: { label: "Kritik risk",   tone: "danger", bg: "#FEE2E2", fg: "#7F1D1D", border: "#EF4444" },
-};
 
 const GOAL_STATUS_META: Record<PatientGoalStatus, { label: string; bg: string; fg: string; border: string }> = {
   OPEN:        { label: "Açıq",       bg: "var(--brand-50)", fg: "var(--brand-700)", border: "var(--brand-100)" },
@@ -147,13 +141,11 @@ export default function PatientDetailPage() {
   const [appointments, setAppointments] = useState<AppointmentDetail[]>([]);
   const [notes, setNotes] = useState<ClientNote[]>([]);
   const [tags, setTags] = useState<PatientTag[]>([]);
-  const [risk, setRisk] = useState<PatientRisk | null>(null);
   const [goals, setGoals] = useState<PatientGoal[]>([]);
   const [crisis, setCrisis] = useState<CrisisCheckIn[]>([]);
   const [loading, setLoading] = useState(true);
   const [now] = useState(() => Date.now());
   const [tab, setTab] = useState<Tab>("history");
-  const [riskModalOpen, setRiskModalOpen] = useState(false);
   const [goalModalGoal, setGoalModalGoal] = useState<PatientGoal | null>(null);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
 
@@ -190,19 +182,17 @@ export default function PatientDetailPage() {
       psychologistApi.myAppointments().catch(() => [] as AppointmentDetail[]),
       psychologistApi.patientTags(patientId).catch(() => [] as PatientTag[]),
       psychologistApi.templates().catch(() => [] as FollowupTemplate[]),
-      psychologistApi.patientRisk(patientId).catch(() => null as PatientRisk | null),
       // Goals gizlidirsə sorğu ümumiyyətlə getməsin.
       FEATURE_GOALS
         ? psychologistApi.patientGoals(patientId).catch(() => [] as PatientGoal[])
         : Promise.resolve([] as PatientGoal[]),
       psychologistApi.patientCrisisHistory(patientId).catch(() => [] as CrisisCheckIn[]),
-    ]).then(([n, c, allAppts, t, tpls, r, gs, ch]) => {
+    ]).then(([n, c, allAppts, t, tpls, gs, ch]) => {
       setNotes(n);
       setClient(c);
       setAppointments(allAppts.filter(a => a.patientId === patientId));
       setTags(t);
       setCustomTemplates(tpls);
-      setRisk(r);
       setGoals(gs);
       setCrisis(ch);
     }).finally(() => setLoading(false));
@@ -224,25 +214,12 @@ export default function PatientDetailPage() {
     }
   };
 
-  // GAP-06 (optional CTA): nudge the patient to continue their recurring series.
-  const [suggestingRenewal, setSuggestingRenewal] = useState(false);
-  const suggestRenewal = async () => {
-    setSuggestingRenewal(true);
-    try {
-      const r = await psychologistApi.suggestSeriesRenewal(patientId);
-      alert(r.nudged > 0
-        ? "Təklif göndərildi — pasiyent bildiriş alacaq."
-        : "Bu pasiyentin sizinlə aktiv seriyası yoxdur.");
-    } catch (e) { alert((e as Error).message); }
-    finally { setSuggestingRenewal(false); }
-  };
-
   const removeTag = async (tagId: number) => {
     try {
       await psychologistApi.deletePatientTag(tagId);
       setTags(prev => prev.filter(t => t.id !== tagId));
     } catch (e) {
-      alert((e as Error).message);
+      toast((e as Error).message, "error");
     }
   };
 
@@ -278,11 +255,11 @@ export default function PatientDetailPage() {
   };
 
   const remove = async (id: number) => {
-    if (!confirm("Bu qeydi silmək istəyirsiniz?")) return;
+    if (!(await confirmDialog({ title: "Qeydi sil", message: "Bu qeydi silmək istəyirsiniz?", confirmLabel: "Sil", danger: true }))) return;
     try {
       await psychologistApi.deleteNote(id);
       setNotes(prev => prev.filter(n => n.id !== id));
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
   };
 
   // ── Derived metrics ──────────────────────────────────────────────────
@@ -369,12 +346,12 @@ export default function PatientDetailPage() {
   };
 
   const deleteTemplate = async (id: number) => {
-    if (!confirm("Bu şablonu silmək istəyirsiniz?")) return;
+    if (!(await confirmDialog({ title: "Şablonu sil", message: "Bu şablonu silmək istəyirsiniz?", confirmLabel: "Sil", danger: true }))) return;
     try {
       await psychologistApi.deleteTemplate(id);
       setCustomTemplates(prev => prev.filter(t => t.id !== id));
     } catch (e) {
-      alert((e as Error).message);
+      toast((e as Error).message, "error");
     }
   };
 
@@ -398,32 +375,6 @@ export default function PatientDetailPage() {
         <div className="pcli-error">Müştəri tapılmadı.</div>
       ) : (
         <>
-          {/* ── Risk banner — sticky red callout for HIGH / CRITICAL ─────── */}
-          {risk?.riskLevel && (risk.riskLevel === "HIGH" || risk.riskLevel === "CRITICAL") && (
-            <div className="pcli-risk-banner" data-tone={risk.riskLevel}>
-              <div className="pcli-risk-banner__icon" aria-hidden>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                </svg>
-              </div>
-              <div className="pcli-risk-banner__body">
-                <div className="pcli-risk-banner__title">
-                  {RISK_META[risk.riskLevel].label}
-                  {risk.riskLevel === "CRITICAL" && " — intihar təhlükəsi"}
-                </div>
-                {risk.riskNote && <div className="pcli-risk-banner__note">«{risk.riskNote}»</div>}
-                <div className="pcli-risk-banner__meta">
-                  {risk.riskSetByName && <>İşarələyən: <strong>{risk.riskSetByName}</strong> · </>}
-                  {risk.riskSetAt && fmtDateTime(risk.riskSetAt)}
-                </div>
-              </div>
-              <button type="button" onClick={() => setRiskModalOpen(true)} className="pcli-btn pcli-btn--ghost">
-                Dəyişdir
-              </button>
-            </div>
-          )}
-
           {/* ── Header card ─────────────────────────────────────────────────── */}
           <div className="pcli-hero">
             <div className="pcli-hero-avatar">{initialsOf(client.name)}</div>
@@ -432,27 +383,13 @@ export default function PatientDetailPage() {
               <p className="pcli-hero-meta">
                 {client.email}{client.phone ? ` · ${client.phone}` : ""}
               </p>
+              <div className="pcli-hero-stats">
+                <span><b>{client.totalSessions}</b> seans</span>
+                <span><b>{client.completedSessions}</b> tamamlanan</span>
+                {client.lastAppointmentAt && <span>son seans: <b>{fmtShort(client.lastAppointmentAt)}</b></span>}
+                {moodFromNotes !== null && <span>əhval <b>{moodFromNotes}/10</b></span>}
+              </div>
               <div className="pcli-hero-pills">
-                <span className="pcli-pill pcli-pill--brand">{client.totalSessions} seans</span>
-                {completionPct !== null && (
-                  <span className={`pcli-pill ${completionPct >= 80 ? "pcli-pill--good" : "pcli-pill--neutral"}`}>
-                    %{completionPct} tamamlanma
-                  </span>
-                )}
-                {risk?.riskLevel && (
-                  <button
-                    type="button"
-                    onClick={() => setRiskModalOpen(true)}
-                    className="pcli-risk-pill"
-                    style={{
-                      background: RISK_META[risk.riskLevel].bg,
-                      color: RISK_META[risk.riskLevel].fg,
-                      borderColor: RISK_META[risk.riskLevel].border,
-                    }}
-                    title="Risk səviyyəsini dəyişdir">
-                    {RISK_META[risk.riskLevel].label}
-                  </button>
-                )}
                 {client.noShowCount > 0 && (
                   <span className="pcli-pill pcli-pill--warn">
                     {client.noShowCount} no-show
@@ -471,18 +408,6 @@ export default function PatientDetailPage() {
               </div>
             </div>
             <div className="pcli-hero-actions">
-              {!risk?.riskLevel && (
-                <button onClick={() => setRiskModalOpen(true)} className="pcli-btn pcli-btn--ghost">
-                  Risk işarələ
-                </button>
-              )}
-              <button
-                onClick={suggestRenewal}
-                disabled={suggestingRenewal}
-                className="pcli-btn pcli-btn--ghost"
-                title="Pasiyentə təkrarlanan seriyasını davam etdirmək təklifi göndər">
-                {suggestingRenewal ? "Göndərilir…" : "Seriyanı davam etdirməyi təklif et"}
-              </button>
               <button onClick={() => { reset(); setShowForm(true); setTab("notes"); }}
                 className="pcli-btn pcli-btn--primary">
                 + Qeyd əlavə et
@@ -568,72 +493,50 @@ export default function PatientDetailPage() {
             )}
           </div>
 
-          {/* ── Summary strip ──────────────────────────────────────────────── */}
-          <div className="pcli-summary">
-            <SummaryStat label="Cəmi seans"      value={String(client.totalSessions)} />
-            <SummaryStat label="Tamamlanan"      value={String(client.completedSessions)} accent="good" />
-            <SummaryStat label="Son seans"
-              value={client.lastAppointmentAt ? fmtShort(client.lastAppointmentAt) : "—"}
-              sub={client.lastAppointmentAt ? `${daysBetween(client.lastAppointmentAt)} gün öncə` : undefined} />
-            <SummaryStat label="Klinik qeyd"     value={String(client.noteCount)} />
-            <SummaryStat label="Orta əhval-ruhiyyə" value={moodFromNotes !== null ? `${moodFromNotes}/10` : "—"} accent="brand" />
-          </div>
-
-          {/* ── Upcoming session strip (if any) ────────────────────────────── */}
-          {upcoming && upcoming.startAt && (
-            <div className="pcli-upcoming">
-              <div className="pcli-upcoming-icon">📅</div>
-              <div className="pcli-upcoming-info">
-                <div className="pcli-upcoming-label">Növbəti seans</div>
-                <div className="pcli-upcoming-when">
-                  {fmtDateTime(upcoming.startAt)}
+          {/* ── Context cards: next + last session side by side ───────────── */}
+          {(upcoming?.startAt || lastCompleted) && (
+            <div className="pcli-context-grid">
+              {upcoming && upcoming.startAt && (
+                <div className="pcli-upcoming">
+                  <div className="pcli-upcoming-info">
+                    <div className="pcli-upcoming-label">Növbəti seans</div>
+                    <div className="pcli-upcoming-when">{fmtDateTime(upcoming.startAt)}</div>
+                  </div>
+                  <Link href="/psycholog/calendar" className="pcli-btn pcli-btn--ghost">Cədvələ keç</Link>
                 </div>
-              </div>
-              <Link href="/psycholog/calendar" className="pcli-btn pcli-btn--ghost">Cədvələ keç</Link>
+              )}
+              {lastCompleted && (
+                <div className="pcli-last-session">
+                  <div className="pcli-last-info">
+                    <div className="pcli-last-label">Son tamamlanmış seans</div>
+                    <div className="pcli-last-when">
+                      {fmtShort(lastCompleted.startAt ?? lastCompleted.endAt)}
+                      <span className="pcli-last-ago">· {daysBetween(lastCompleted.startAt ?? lastCompleted.endAt)} gün öncə</span>
+                      {latestNote?.moodScore && (
+                        <span className="pcli-last-mood">· əhval-ruhiyyə {latestNote.moodScore}/10</span>
+                      )}
+                    </div>
+                    {latestNote?.body && (
+                      <p className="pcli-last-note">«{latestNote.body.slice(0, 180)}{latestNote.body.length > 180 ? "…" : ""}»</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* ── Last session quick reference ─────────────────────────────── */}
-          {lastCompleted && (
-            <div className="pcli-last-session">
-              <div className="pcli-last-icon">📌</div>
-              <div className="pcli-last-info">
-                <div className="pcli-last-label">Son tamamlanmış seans</div>
-                <div className="pcli-last-when">
-                  {fmtShort(lastCompleted.startAt ?? lastCompleted.endAt)}
-                  <span className="pcli-last-ago">
-                    · {daysBetween(lastCompleted.startAt ?? lastCompleted.endAt)} gün öncə
-                  </span>
-                  {latestNote?.moodScore && (
-                    <span className="pcli-last-mood">· əhval-ruhiyyə {latestNote.moodScore}/10</span>
-                  )}
-                </div>
-                {latestNote?.body && (
-                  <p className="pcli-last-note">
-                    «{latestNote.body.slice(0, 180)}{latestNote.body.length > 180 ? "…" : ""}»
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── Crisis check-in history (last 30 days) ──────────────────── */}
           {crisis.length > 0 && <CrisisHistoryCard items={crisis} />}
 
-          {/* ── Mood trend chart (from notes) ───────────────────────────── */}
-          {moodPoints.length >= 2 && (
-            <MoodTrendChart points={moodPoints} />
-          )}
+          {moodPoints.length >= 2 && <MoodTrendChart points={moodPoints} />}
 
-          {/* ── Original booking note (first appointment's note) ───────────── */}
           {firstNote?.note && (
             <div className="pcli-context">
-              <span className="pcli-context-label">📋 İlk müraciət konteksti:</span>
+              <span className="pcli-context-label">İlk müraciət konteksti:</span>
               <span className="pcli-context-text">«{firstNote.note}»</span>
             </div>
           )}
 
-          {/* ── Tabs ────────────────────────────────────────────────────────── */}
+          {/* ── Tabs ──────────────────────────────────────────────────────── */}
           <div className="pcli-tabs" role="tablist">
             <button role="tab" aria-selected={tab === "history"}
               className={`pcli-tab${tab === "history" ? " is-active" : ""}`}
@@ -664,11 +567,11 @@ export default function PatientDetailPage() {
               onCreate={() => { setGoalModalGoal(null); setGoalModalOpen(true); }}
               onEdit={(g) => { setGoalModalGoal(g); setGoalModalOpen(true); }}
               onDelete={async (id) => {
-                if (!confirm("Bu hədəfi silmək istəyirsiniz?")) return;
+                if (!(await confirmDialog({ title: "Hədəfi sil", message: "Bu hədəfi silmək istəyirsiniz?", confirmLabel: "Sil", danger: true }))) return;
                 try {
                   await psychologistApi.deleteGoal(id);
                   setGoals(prev => prev.filter(g => g.id !== id));
-                } catch (e) { alert((e as Error).message); }
+                } catch (e) { toast((e as Error).message, "error"); }
               }}
             />
           )}
@@ -694,16 +597,6 @@ export default function PatientDetailPage() {
             />
           )}
         </>
-      )}
-
-      {riskModalOpen && client && (
-        <RiskModal
-          patientId={patientId}
-          patientName={client.name}
-          current={risk}
-          onClose={() => setRiskModalOpen(false)}
-          onSaved={(updated) => { setRisk(updated); setRiskModalOpen(false); }}
-        />
       )}
 
       {FEATURE_GOALS && goalModalOpen && (
@@ -746,103 +639,6 @@ export default function PatientDetailPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-/* ─── Risk modal ─────────────────────────────────────────────────────────── */
-
-function RiskModal({
-  patientId, patientName, current, onClose, onSaved,
-}: {
-  patientId: number;
-  patientName: string;
-  current: PatientRisk | null;
-  onClose: () => void;
-  onSaved: (r: PatientRisk) => void;
-}) {
-  const [level, setLevel] = useState<PatientRiskLevel | null>(current?.riskLevel ?? null);
-  const [note, setNote] = useState<string>(current?.riskNote ?? "");
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const save = async () => {
-    setSaving(true); setErr(null);
-    try {
-      const updated = await psychologistApi.setPatientRisk(patientId, {
-        riskLevel: level,
-        riskNote: note.trim() || null,
-      });
-      onSaved(updated);
-    } catch (e) {
-      setErr((e as Error).message);
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(10,22,51,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div onClick={e => e.stopPropagation()}
-        style={{ background: "#fff", borderRadius: 16, padding: 0, maxWidth: 520, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden" }}>
-        <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--brand-100)" }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Risk səviyyəsi</h3>
-          <p style={{ fontSize: 12, color: "var(--oxford-60)", margin: "4px 0 0" }}>
-            {patientName} — klinik təhlükə qiymətləndirməsi. Yüksək / Kritik səviyyələrdə operator komandasına avtomatik bildiriş gedir.
-          </p>
-        </div>
-        <div style={{ padding: 22, display: "grid", gap: 14 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
-            {(["LOW", "MEDIUM", "HIGH", "CRITICAL"] as PatientRiskLevel[]).map(lv => {
-              const meta = RISK_META[lv];
-              const active = level === lv;
-              return (
-                <button key={lv} type="button" onClick={() => setLevel(lv)}
-                  style={{
-                    padding: "12px 14px", borderRadius: 12,
-                    border: `1.5px solid ${active ? meta.border : "var(--oxford-10)"}`,
-                    background: active ? meta.bg : "#fff",
-                    color: active ? meta.fg : "var(--oxford)",
-                    cursor: "pointer", textAlign: "left",
-                    fontSize: 13, fontWeight: 700,
-                  }}>
-                  {meta.label}
-                  {lv === "CRITICAL" && <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2, opacity: 0.85 }}>intihar təhlükəsi</div>}
-                </button>
-              );
-            })}
-          </div>
-
-          {level !== null && (
-            <button type="button" onClick={() => setLevel(null)}
-              style={{ background: "transparent", border: "none", color: "var(--oxford-60)", cursor: "pointer", fontSize: 12.5, padding: "4px 0", textAlign: "left", fontWeight: 600 }}>
-              ↺ Risk işarəsini təmizlə
-            </button>
-          )}
-
-          <div>
-            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
-              Qeyd (məcburi deyil)
-            </label>
-            <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
-              placeholder="Müşahidə olunan əlamətlər, son insident, planlaşdırılan addımlar…"
-              style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />
-          </div>
-
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12 }}>{err}</div>}
-
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button onClick={onClose}
-              style={{ padding: "8px 14px", border: "1px solid var(--brand-100)", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>
-              Bağla
-            </button>
-            <button onClick={save} disabled={saving}
-              style={{ padding: "8px 20px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
-              {saving ? "Saxlanılır…" : "Saxla"}
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -961,7 +757,7 @@ function GoalList({
   return (
     <div className="pcli-goals__group">
       <div className="pcli-goals__group-title">{title} <span>{goals.length}</span></div>
-      <div style={{ display: "grid", gap: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 8 }}>
         {goals.map(g => <GoalCard key={g.id} g={g} onEdit={() => onEdit(g)} onDelete={() => onDelete(g.id)} />)}
       </div>
     </div>
@@ -1126,30 +922,13 @@ function GoalModal({
 
 /* ─── Summary stat ───────────────────────────────────────────────────────── */
 
-function SummaryStat({
-  label, value, sub, accent,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  accent?: "good" | "brand" | "warn";
-}) {
-  return (
-    <div className="pcli-stat">
-      <div className="pcli-stat-label">{label}</div>
-      <div className={`pcli-stat-value${accent ? ` is-${accent}` : ""}`}>{value}</div>
-      {sub && <div className="pcli-stat-sub">{sub}</div>}
-    </div>
-  );
-}
-
 /* ─── History section ────────────────────────────────────────────────────── */
 
 function HistorySection({ items }: { items: AppointmentDetail[] }) {
   if (items.length === 0) {
     return (
       <div className="pcli-empty">
-        <div className="pcli-empty-icon">🌿</div>
+        <div className="pcli-empty-icon"></div>
         <div className="pcli-empty-title">Hələ randevu yoxdur</div>
         <p className="pcli-empty-sub">İlk randevu təyin olunduğunda burada görünəcək.</p>
       </div>
@@ -1208,7 +987,7 @@ function HistoryRow({ a }: { a: AppointmentDetail }) {
         )}
         {a.status === "DISPUTED" && a.disputeReason && (
           <div className="pcli-row-cancel pcli-row-cancel--danger">
-            <strong>⚠ Mübahisə:</strong> «{a.disputeReason}»
+            <strong>Mübahisə:</strong> «{a.disputeReason}»
           </div>
         )}
         {a.operatorNote && (
@@ -1252,7 +1031,7 @@ function NotesSection(props: {
   return (
     <>
       <div className="pcli-encrypt">
-        🔒 Bütün qeydlər AES-256-GCM ilə şifrələnir. Yalnız siz oxuya bilərsiniz.
+        Bütün qeydlər AES-256-GCM ilə şifrələnir. Yalnız siz oxuya bilərsiniz.
       </div>
 
       {!showForm && (
@@ -1264,7 +1043,7 @@ function NotesSection(props: {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="🔍 Qeydləri axtar (başlıq və ya mətn)…"
+              placeholder="Qeydləri axtar (başlıq və ya mətn)…"
               className="pcli-notes-search"
             />
           )}
@@ -1292,7 +1071,7 @@ function NotesSection(props: {
                   <button type="button" onClick={() => onApplyTemplate(`custom:${tpl.id}`)}
                     className="pcli-template-chip"
                     style={{ background: "#EEF5FF", color: "#1E40AF", borderColor: "#BFDBFE" }}>
-                    ★ {tpl.name}
+                    {tpl.name}
                   </button>
                   <button type="button" onClick={() => onDeleteCustomTemplate(tpl.id)}
                     title="Şablonu sil"
@@ -1328,7 +1107,7 @@ function NotesSection(props: {
 
       {notes.length === 0 && !showForm ? (
         <div className="pcli-empty">
-          <div className="pcli-empty-icon">📝</div>
+          <div className="pcli-empty-icon"></div>
           <div className="pcli-empty-title">Hələ klinik qeyd yoxdur</div>
           <p className="pcli-empty-sub">Bu müştəri üçün ilk qeydinizi yazın.</p>
         </div>

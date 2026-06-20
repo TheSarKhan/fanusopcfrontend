@@ -107,7 +107,7 @@ function ProfileModal({ p, onClose, onEdit }: { p: Psychologist; onClose: () => 
             {[
               { label: "Təcrübə", value: fmt(p.experience) },
               { label: "Sessiya", value: fmt(p.sessionsCount) },
-              { label: "Reytinq", value: p.rating ? `⭐ ${p.rating}` : "—" },
+              { label: "Reytinq", value: p.rating ? `★ ${p.rating}` : "—" },
             ].map(s => (
               <div key={s.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "10px 14px", border: "1px solid #E4EDF6" }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{s.label}</div>
@@ -119,8 +119,8 @@ function ProfileModal({ p, onClose, onEdit }: { p: Psychologist; onClose: () => 
           {/* Contact */}
           {(p.phone || p.email) && (
             <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-              {p.phone && <a href={`tel:${p.phone}`} style={{ fontSize: 12, color: "#002147", fontWeight: 600, textDecoration: "none", background: "#EEF5FF", padding: "5px 12px", borderRadius: 20 }}>📞 {p.phone}</a>}
-              {p.email && <a href={`mailto:${p.email}`} style={{ fontSize: 12, color: "#002147", fontWeight: 600, textDecoration: "none", background: "#EEF5FF", padding: "5px 12px", borderRadius: 20 }}>✉️ {p.email}</a>}
+              {p.phone && <a href={`tel:${p.phone}`} style={{ fontSize: 12, color: "#002147", fontWeight: 600, textDecoration: "none", background: "#EEF5FF", padding: "5px 12px", borderRadius: 20 }}>{p.phone}</a>}
+              {p.email && <a href={`mailto:${p.email}`} style={{ fontSize: 12, color: "#002147", fontWeight: 600, textDecoration: "none", background: "#EEF5FF", padding: "5px 12px", borderRadius: 20 }}>{p.email}</a>}
             </div>
           )}
 
@@ -419,7 +419,7 @@ export default function PsychologistsPage() {
         <div style={{ textAlign: "center", color: "#8AAABF", padding: "80px 0", background: "#fff", borderRadius: 16, border: "1px solid #E4EDF6" }}>Yüklənir...</div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "80px 0", background: "#fff", borderRadius: 16, border: "1px solid #E4EDF6", color: "#8AAABF" }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>👤</div>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 10 }}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           <p style={{ fontSize: 15, fontWeight: 700, color: "#1A2535", margin: "0 0 6px" }}>Psixoloq tapılmadı</p>
           <p style={{ fontSize: 13, margin: 0 }}>Axtarış parametrlərini dəyişin</p>
         </div>
@@ -499,7 +499,7 @@ export default function PsychologistsPage() {
                   Profil
                 </a>
                 <a href={`/admin/psychologists/${p.id}/availability`} style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#FFF7E6", color: "#92400E", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none" }}>
-                  🕓 Vaxtlar
+                  Vaxtlar
                 </a>
                 <button onClick={() => openEdit(p)} style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#EEF5FF", color: "#002147", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Redaktə</button>
                 <button onClick={() => remove(p.id)} style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#FFF1F1", color: "#DC2626", fontSize: 12, cursor: "pointer" }}>✕</button>

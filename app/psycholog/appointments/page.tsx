@@ -84,6 +84,8 @@ export default function PsychologistAppointmentsPage() {
   const [rescheduleProposeFor, setRescheduleProposeFor] = useState<AppointmentDetail | null>(null);
   const [outcomeFor, setOutcomeFor] = useState<AppointmentDetail | null>(null);
   const [bulkCancelOpen, setBulkCancelOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<"ALL" | "TODAY" | "WEEK" | "ATTENTION" | "HISTORY">("ALL");
   // GAP-03: incoming patient-initiated reschedule requests awaiting my decision
   const [patientRequests, setPatientRequests] = useState<RescheduleProposal[]>([]);
 
@@ -166,6 +168,19 @@ export default function PsychologistAppointmentsPage() {
       });
   }, [items]);
 
+  // Single unified list driven by the active filter — no separate sections.
+  const visible = useMemo(() => {
+    if (view === "TODAY") return today;
+    if (view === "WEEK") return thisWeek;
+    if (view === "ATTENTION") return awaitingConfirm;
+    if (view === "HISTORY") return history;
+    const all = [...awaitingConfirm, ...today, ...thisWeek];
+    const seen = new Set<number>();
+    return all
+      .filter(a => { if (seen.has(a.id)) return false; seen.add(a.id); return true; })
+      .sort((a, b) => new Date(a.startAt ?? 0).getTime() - new Date(b.startAt ?? 0).getTime());
+  }, [view, today, thisWeek, awaitingConfirm, history]);
+
   // Lazy-fetch latest clinical note for today's appointments + the next session
   useEffect(() => {
     const ids = new Set<number>();
@@ -182,12 +197,13 @@ export default function PsychologistAppointmentsPage() {
   }, [today, next]);
 
   const action = async (id: number, fn: () => Promise<AppointmentDetail>) => {
+    setError(null);
     setBusyId(id);
     try {
       const updated = await fn();
       setItems(prev => prev.map(a => a.id === id ? updated : a));
     } catch (e) {
-      alert((e as Error).message);
+      setError((e as Error).message);
     } finally {
       setBusyId(null);
     }
@@ -225,93 +241,93 @@ export default function PsychologistAppointmentsPage() {
         </div>
       ) : (
         <>
-          <NextSessionHero
-            appt={next}
-            now={now}
-            client={clientFor(next?.patientId)}
-            note={noteFor(next?.patientId)}
-            busyId={busyId}
-            onAction={action}
-            onDispute={(a) => setDisputeFor(a)}
-            onReject={(a) => setRejectFor(a)}
-            onCancel={(a) => setCancelFor(a)}
-            onPropose={(a) => setRescheduleProposeFor(a)}
-            onAddOutcome={(a) => setOutcomeFor(a)}
-          />
-
-          {patientRequests.length > 0 && (
-            <Section title="Vaxt dəyişikliyi istəkləri" count={patientRequests.length} icon="🔁">
-              <div style={{ display: "grid", gap: 10 }}>
-                {patientRequests.map(p => (
-                  <PatientRescheduleRequestCard
-                    key={p.id}
-                    proposal={p}
-                    onDecided={(next) => {
-                      setPatientRequests(prev => prev.filter(x => x.id !== next.id));
-                      load();
-                    }}
-                  />
-                ))}
-              </div>
-            </Section>
+          {error && (
+            <div role="alert" style={{
+              fontSize: 12.5, fontWeight: 600, color: "#991B1B", background: "#FEE2E2",
+              border: "1px solid #FECACA", borderRadius: 10, padding: "10px 12px", marginBottom: 14,
+            }}>{error}</div>
           )}
 
-          {awaitingConfirm.length > 0 && (
-            <Section title="Təsdiq gözlənir" count={awaitingConfirm.length} icon="⏳">
-              <div style={{ display: "grid", gap: 10 }}>
-                {awaitingConfirm.map(a => (
-                  <AwaitingCard
-                    key={a.id}
-                    a={a}
-                    client={clientFor(a.patientId)}
-                    busyId={busyId}
-                    onConfirm={() => action(a.id, () => psychologistApi.confirmSession(a.id))}
-                    onDispute={() => setDisputeFor(a)}
-                    onAddOutcome={() => setOutcomeFor(a)}
-                  />
-                ))}
-              </div>
-            </Section>
-          )}
-
-          <Section title="Bu gün" count={today.length} icon="🟢">
-            {today.length === 0 ? (
-              <Empty msg="Bu gün başqa seans yoxdur 🌿" />
-            ) : (
-              <div style={{ display: "grid", gap: 10 }}>
-                {today.map(a => (
-                  <TodayCard
-                    key={a.id}
-                    a={a}
-                    client={clientFor(a.patientId)}
-                    note={noteFor(a.patientId)}
-                    isNext={next?.id === a.id}
-                    now={now}
-                    busyId={busyId}
-                    onAction={action}
-                    onDispute={() => setDisputeFor(a)}
-                  />
-                ))}
+          <div className="psy-summary">
+            <div className="psy-summary__tile">
+              <span className="psy-summary__num">{today.length}</span>
+              <span className="psy-summary__lbl">Bu gün</span>
+            </div>
+            <div className="psy-summary__tile">
+              <span className="psy-summary__num">{thisWeek.length}</span>
+              <span className="psy-summary__lbl">Bu həftə</span>
+            </div>
+            <div className="psy-summary__tile psy-summary__tile--accent">
+              <span className="psy-summary__num">
+                {next && next.startAt ? fmtTime(new Date(next.startAt)) : "—"}
+              </span>
+              <span className="psy-summary__lbl">
+                {next && next.startAt ? `${relativeDayLabel(new Date(next.startAt), now)} · növbəti` : "Növbəti seans yox"}
+              </span>
+            </div>
+            {(awaitingConfirm.length + patientRequests.length) > 0 && (
+              <div className="psy-summary__tile psy-summary__tile--warn">
+                <span className="psy-summary__num">{awaitingConfirm.length + patientRequests.length}</span>
+                <span className="psy-summary__lbl">Diqqət tələb edir</span>
               </div>
             )}
-          </Section>
+          </div>
 
-          <Section title="Bu həftə" count={thisWeek.length} icon="📅">
-            {thisWeek.length === 0 ? (
-              <Empty msg="Bu həftə daha randevu yoxdur" />
-            ) : (
-              <div style={{ display: "grid", gap: 6 }}>
-                {thisWeek.map(a => (
-                  <WeekRow
-                    key={a.id}
-                    a={a}
-                    client={clientFor(a.patientId)}
-                    now={now}
-                  />
-                ))}
-              </div>
-            )}
-          </Section>
+          <div className="psy-filter">
+            <FilterTab active={view === "ALL"} onClick={() => setView("ALL")}>Hamısı</FilterTab>
+            <FilterTab active={view === "TODAY"} count={today.length} onClick={() => setView("TODAY")}>Bu gün</FilterTab>
+            <FilterTab active={view === "WEEK"} count={thisWeek.length} onClick={() => setView("WEEK")}>Bu həftə</FilterTab>
+            <FilterTab active={view === "ATTENTION"} count={awaitingConfirm.length + patientRequests.length} warn onClick={() => setView("ATTENTION")}>Diqqət</FilterTab>
+            <FilterTab active={view === "HISTORY"} count={history.length} onClick={() => setView("HISTORY")}>Tarixçə</FilterTab>
+          </div>
+
+          <div className="psy-grid">
+            <div className="psy-grid__main">
+              {(view === "ALL" || view === "ATTENTION") && patientRequests.length > 0 && (
+                <div style={{ display: "grid", gap: 10, marginBottom: 14 }}>
+                  {patientRequests.map(p => (
+                    <PatientRescheduleRequestCard
+                      key={p.id}
+                      proposal={p}
+                      onDecided={(nextP) => {
+                        setPatientRequests(prev => prev.filter(x => x.id !== nextP.id));
+                        load();
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {visible.length === 0 ? (
+                <Empty msg="Bu kateqoriyada randevu yoxdur." />
+              ) : (
+                <div className="psy-agenda">
+                  {visible.map(a => (
+                    <AgendaRow
+                      key={a.id}
+                      a={a}
+                      client={clientFor(a.patientId)}
+                      note={noteFor(a.patientId)}
+                      isNext={next?.id === a.id}
+                      now={now}
+                      busyId={busyId}
+                      onAction={action}
+                      onDispute={() => setDisputeFor(a)}
+                      onReject={() => setRejectFor(a)}
+                      onCancel={() => setCancelFor(a)}
+                      onPropose={() => setRescheduleProposeFor(a)}
+                      onAddOutcome={() => setOutcomeFor(a)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <aside className="psy-grid__side">
+              <RailNext appt={next} now={now} />
+              <RailGlance todayCount={today.length} weekCount={thisWeek.length} doneCount={history.length} />
+            </aside>
+          </div>
 
           {disputeFor && (
             <DisputeModal
@@ -368,203 +384,75 @@ export default function PsychologistAppointmentsPage() {
               onDone={() => { setBulkCancelOpen(false); load(); }}
             />
           )}
-
-          <Section title="Tarixçə" count={history.length} icon="📂" defaultCollapsed>
-            {history.length === 0 ? (
-              <Empty msg="Hələ tamamlanmış seans yoxdur" />
-            ) : (
-              <div style={{ display: "grid", gap: 4 }}>
-                {history.slice(0, 20).map(a => <HistoryRow key={a.id} a={a} />)}
-                {history.length > 20 && (
-                  <div style={{ fontSize: 12, color: "var(--oxford-60)", textAlign: "center", marginTop: 8 }}>
-                    +{history.length - 20} daha
-                  </div>
-                )}
-              </div>
-            )}
-          </Section>
         </>
       )}
     </div>
   );
 }
 
-function NextSessionHero({
-  appt, now, client, note, busyId, onAction, onDispute, onReject, onCancel, onPropose, onAddOutcome,
+/* ─── Right rail: next-session card + at-a-glance, fills the side on wide screens ── */
+
+function RailNext({
+  appt, now,
 }: {
   appt: AppointmentDetail | null;
   now: Date;
-  client: ClientSummary | null;
-  note: ClientNote | null | undefined;
-  busyId: number | null;
-  onAction: (id: number, fn: () => Promise<AppointmentDetail>) => Promise<void>;
-  onDispute: (a: AppointmentDetail) => void;
-  onReject: (a: AppointmentDetail) => void;
-  onCancel: (a: AppointmentDetail) => void;
-  onPropose: (a: AppointmentDetail) => void;
-  onAddOutcome: (a: AppointmentDetail) => void;
 }) {
   if (!appt || !appt.startAt) {
     return (
-      <div className="psy-hero psy-hero--empty">
-        <div className="psy-hero__icon">🌿</div>
-        <div>
-          <div className="psy-hero__label">Növbəti randevu yoxdur</div>
-          <div className="psy-hero__sub">Operator yeni müraciət göndərdiyində burada görünəcək.</div>
+      <div className="psy-rail-card">
+        <div className="psy-rail-card__label">Növbəti seans</div>
+        <div className="psy-rail-empty">
+          <span>Yaxınlaşan seans yoxdur.</span>
+          <Link href="/psycholog/clients" className="psy-rail-link">Müştərilərə bax</Link>
         </div>
       </div>
     );
   }
-
   const start = new Date(appt.startAt);
   const tu = timeUntil(start, now);
-  const sessionNumber = client ? client.totalSessions + 1 : null;
-
   return (
-    <div className={`psy-hero${tu.urgent || tu.expired ? " psy-hero--urgent" : ""}`}>
-      <div className="psy-hero__bg" aria-hidden />
-      <div className="psy-hero__top">
-        <span className="psy-hero__pill">
-          <span className="psy-hero__dot" /> NÖVBƏTİ SEANS
-        </span>
-        <span className="psy-hero__time">
-          {relativeDayLabel(start, now)} · <strong>{fmtTime(start)}</strong>
-        </span>
-      </div>
-
-      <div className="psy-hero__main">
-        <div className="psy-hero__avatar">{initialsOf(appt.patientName)}</div>
-        <div className="psy-hero__info">
-          <div className="psy-hero__name">
-            <span>{appt.patientName ?? "Pasient"}</span>
-            {sessionNumber && <span className="psy-hero__nth">{sessionNumber}-ci seans</span>}
-          </div>
-          {note ? (
-            <div className="psy-hero__quote">
-              <span>📝 Son qeyd:</span> «{note.body.slice(0, 140)}{note.body.length > 140 ? "…" : ""}»
-            </div>
-          ) : appt.note ? (
-            <div className="psy-hero__quote">
-              <span>📋 Müraciət:</span> «{appt.note.slice(0, 140)}{appt.note.length > 140 ? "…" : ""}»
-            </div>
-          ) : null}
+    <div className={`psy-rail-card psy-rail-next${tu.urgent || tu.expired ? " psy-rail-next--urgent" : ""}`}>
+      <div className="psy-rail-card__label">Növbəti seans</div>
+      <div className="psy-rail-next__head">
+        <span className="psy-rail-next__avatar">{initialsOf(appt.patientName)}</span>
+        <div className="psy-rail-next__info">
+          <span className="psy-rail-next__name">{appt.patientName ?? "Pasient"}</span>
+          <span className="psy-rail-next__when">{relativeDayLabel(start, now)} · {fmtTime(start)}</span>
         </div>
       </div>
-
-      <div className="psy-hero__actions">
-        <span className={`psy-hero__countdown${tu.expired ? " is-live" : tu.urgent ? " is-urgent" : ""}`}>
-          ⏰ {tu.text}
-        </span>
+      <span className={`psy-rail-next__cd${tu.expired ? " is-live" : tu.urgent ? " is-urgent" : ""}`}>{tu.text}</span>
+      <div className="psy-rail-next__act">
         <JoinSessionButton appointment={appt} variant="compact" />
-        {appt.status === "ASSIGNED" && (
-          <>
-            <button
-              disabled={busyId === appt.id}
-              onClick={() => onAction(appt.id, () => psychologistApi.confirm(appt.id))}
-              className="psy-hero__btn psy-hero__btn--primary">
-              {busyId === appt.id ? "…" : "Təsdiqlə"}
-            </button>
-            <button
-              onClick={() => onReject(appt)}
-              className="psy-hero__btn psy-hero__btn--ghost">
-              Rədd et
-            </button>
-          </>
-        )}
-        {(appt.status === "CONFIRMED" || appt.status === "ASSIGNED") && !tu.expired && (
-          <>
-            <button
-              onClick={() => onPropose(appt)}
-              className="psy-hero__btn psy-hero__btn--ghost"
-              style={{ marginLeft: "auto" }}>
-              Yenidən planla
-            </button>
-            {appt.status === "CONFIRMED" && (
-              <button
-                onClick={() => onCancel(appt)}
-                className="psy-hero__btn psy-hero__btn--ghost">
-                Ləğv et
-              </button>
-            )}
-          </>
-        )}
-        {((appt.status === "CONFIRMED" && tu.expired) || appt.status === "AWAITING_CONFIRMATION") && !appt.psychologistConfirmedAt && (
-          <>
-            <button
-              disabled={busyId === appt.id}
-              onClick={() => onAction(appt.id, () => psychologistApi.confirmSession(appt.id))}
-              className="psy-hero__btn psy-hero__btn--primary">
-              {busyId === appt.id ? "…" : "✓ Təsdiqlə"}
-            </button>
-            <button
-              onClick={() => onAddOutcome(appt)}
-              className="psy-hero__btn psy-hero__btn--ghost">
-              📝 Seans qeydi
-            </button>
-            <button
-              onClick={() => onDispute(appt)}
-              className="psy-hero__btn psy-hero__btn--ghost">
-              Olmadı
-            </button>
-          </>
-        )}
-        {appt.psychologistConfirmedAt && appt.status === "AWAITING_CONFIRMATION" && (
-          <span className="psy-hero__btn psy-hero__btn--ghost" style={{ cursor: "default" }}>
-            ✓ Siz təsdiqlədiniz · pasientdən gözlənilir
-          </span>
-        )}
-        {appt.patientId && (
-          <Link href={`/psycholog/clients/${appt.patientId}`} className="psy-hero__btn psy-hero__btn--ghost">
-            Pasient profilinə bax
-          </Link>
-        )}
       </div>
     </div>
   );
 }
 
-function Section({
-  title, count, icon, children, defaultCollapsed = false,
+function RailGlance({
+  todayCount, weekCount, doneCount,
 }: {
-  title: string;
-  count: number;
-  icon: string;
-  children: React.ReactNode;
-  defaultCollapsed?: boolean;
+  todayCount: number;
+  weekCount: number;
+  doneCount: number;
 }) {
-  const [open, setOpen] = useState(!defaultCollapsed);
   return (
-    <section style={{ marginTop: 22 }}>
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: "100%",
-          display: "flex", alignItems: "center", gap: 10,
-          background: "transparent", border: "none", padding: "0 0 10px",
-          cursor: "pointer", textAlign: "left",
-        }}>
-        <span style={{ fontSize: 16 }}>{icon}</span>
-        <h2 style={{
-          fontSize: 13, fontWeight: 700, color: "var(--oxford)",
-          margin: 0, textTransform: "uppercase", letterSpacing: 0.4,
-        }}>
-          {title}
-        </h2>
-        <span style={{
-          fontSize: 11, padding: "2px 8px", borderRadius: 999,
-          background: "var(--brand-50)", color: "var(--brand-700)", fontWeight: 700,
-        }}>
-          {count}
-        </span>
-        <span style={{ marginLeft: "auto", fontSize: 13, color: "var(--oxford-60)" }}>
-          {open ? "▾" : "▸"}
-        </span>
-      </button>
-      {open && children}
-    </section>
+    <div className="psy-rail-card">
+      <div className="psy-rail-card__label">Bir baxışda</div>
+      <div className="psy-rail-stat"><span>Bu gün</span><strong>{todayCount}</strong></div>
+      <div className="psy-rail-stat"><span>Bu həftə</span><strong>{weekCount}</strong></div>
+      <div className="psy-rail-stat"><span>Tamamlanmış</span><strong>{doneCount}</strong></div>
+      <div className="psy-rail-links">
+        <Link href="/psycholog/clients" className="psy-rail-link">Müştərilər</Link>
+        <Link href="/psycholog/availability" className="psy-rail-link">İş vaxtları</Link>
+      </div>
+    </div>
   );
 }
+
+/* ─── Secondary row actions — rendered as inline buttons on each card ─────── */
+
+type MenuItem = { label: string; onClick?: () => void; href?: string; danger?: boolean };
 
 function Empty({ msg }: { msg: string }) {
   return (
@@ -578,8 +466,28 @@ function Empty({ msg }: { msg: string }) {
   );
 }
 
-function TodayCard({
-  a, client, note, isNext, now, busyId, onAction, onDispute,
+function FilterTab({
+  active, count, warn, onClick, children,
+}: {
+  active: boolean;
+  count?: number;
+  warn?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`psy-filter__tab${active ? " is-active" : ""}${warn && count ? " is-warn" : ""}`}>
+      {children}
+      {count != null && count > 0 && <span className="psy-filter__count">{count}</span>}
+    </button>
+  );
+}
+
+function AgendaRow({
+  a, client, note, isNext, now, busyId, onAction, onDispute, onReject, onCancel, onPropose, onAddOutcome,
 }: {
   a: AppointmentDetail;
   client: ClientSummary | null;
@@ -589,141 +497,122 @@ function TodayCard({
   busyId: number | null;
   onAction: (id: number, fn: () => Promise<AppointmentDetail>) => Promise<void>;
   onDispute: () => void;
+  onReject: () => void;
+  onCancel: () => void;
+  onPropose: () => void;
+  onAddOutcome: () => void;
 }) {
   const { t } = useT();
+  const [sheet, setSheet] = useState(false);
   if (!a.startAt) return null;
   const start = new Date(a.startAt);
   const status = STATUS[a.status] ?? STATUS.ASSIGNED;
   const sessionNumber = client ? client.totalSessions + 1 : null;
   const expired = !!a.endAt && new Date(a.endAt).getTime() < now.getTime();
-  const canConfirmSession = (a.status === "CONFIRMED" && expired) || a.status === "AWAITING_CONFIRMATION";
+  const ctxLine = [
+    client && client.noteCount > 0 ? `${client.noteCount} qeyd` : null,
+    note?.moodScore ? `Əhval ${note.moodScore}/10` : null,
+    a.note ? `«${a.note.slice(0, 80)}${a.note.length > 80 ? "…" : ""}»` : null,
+  ].filter(Boolean).join(" · ");
+
+  const badgeLabel = status.label;
+  const badgeColor = status.color;
+  const badgeBg = status.bg;
+  // Countdown only for an upcoming, active session.
+  const isUpcoming = a.status === "CONFIRMED" && start.getTime() > now.getTime();
+  const cd = isUpcoming ? timeUntil(start, now) : null;
+
+  // Secondary actions → overflow menu (status-aware). Primary action stays inline.
+  const menu: MenuItem[] = [];
+  if (a.status === "CONFIRMED" && !expired) {
+    menu.push({ label: "Yenidən planla", onClick: onPropose });
+    menu.push({ label: "Ləğv et", onClick: onCancel, danger: true });
+  }
+  // Clinical session note stays available once the session is over.
+  if (a.status === "COMPLETED" || (a.status === "CONFIRMED" && expired)) {
+    menu.push({ label: "Seans qeydi", onClick: onAddOutcome });
+  }
+  if (a.patientId) menu.push({ label: "Pasient profili", href: `/psycholog/clients/${a.patientId}` });
+  menu.push({ label: t("intake.psyTitle"), href: `/psycholog/appointments/${a.id}/intake` });
+
+  // Foot only carries the Join button for an active confirmed session — there is
+  // no post-session confirmation step anymore (sessions auto-complete).
+  const showFoot = a.status === "CONFIRMED";
 
   return (
-    <div
-      className={`psy-card psy-card--today${isNext ? " psy-card--next" : ""}`}
-      style={{ borderLeft: `4px solid ${status.accent}` }}
-    >
-      <div className="psy-card__top">
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span className="psy-card__time">{fmtTime(start)}</span>
-          <span className="psy-card__badge" style={{ color: status.color, background: status.bg }}>
-            {status.label}
-          </span>
-          {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
-            <span className="psy-card__chip" style={{ background: "var(--brand-50)", color: "var(--brand-700)", fontWeight: 600 }}>
-              {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
+    <div className={`psy-aptcard${isNext ? " psy-aptcard--next" : ""}`}>
+      <button type="button" className="psy-aptcard__face" onClick={() => setSheet(true)} aria-label={`${a.patientName ?? "Pasient"} — ətraflı`}>
+        <div className="psy-aptcard__top">
+          <span className="psy-aptcard__badge" style={{ color: badgeColor, background: badgeBg }}>{badgeLabel}</span>
+          <span className="psy-aptcard__when">{relativeDayLabel(start, now)} · {fmtTime(start)}</span>
+        </div>
+
+        <div className="psy-aptcard__body">
+          <span className="psy-aptcard__avatar">{initialsOf(a.patientName)}</span>
+          <div className="psy-aptcard__who">
+            <span className="psy-aptcard__name">{a.patientName ?? "Pasient"}</span>
+            <span className="psy-aptcard__nth">
+              {sessionNumber ? `${sessionNumber}-ci seans` : "Seans"}
+              {cd && <span className={`psy-aptcard__cd${cd.urgent ? " is-urgent" : ""}`}>{cd.text}</span>}
             </span>
-          )}
-          {isNext && <span className="psy-card__chip psy-card__chip--next">Növbəti</span>}
-        </div>
-      </div>
-      <div className="psy-card__body">
-        <div className="psy-card__avatar">{initialsOf(a.patientName)}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="psy-card__name">
-            {a.patientName ?? "Pasient"}
-            {sessionNumber && <span className="psy-card__nth"> · {sessionNumber}-ci seans</span>}
-          </div>
-          {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--brand-700)", marginTop: 2 }}>
-              {t("series.courseLine", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
-            </div>
-          )}
-          <div className="psy-card__ctx">
-            {client && client.noteCount > 0 && <span>📝 {client.noteCount} qeyd</span>}
-            {note?.moodScore && <span>💭 son əhval-ruhiyyə {note.moodScore}/10</span>}
-            {a.note && (
-              <span className="psy-card__ctx-quote">
-                «{a.note.slice(0, 80)}{a.note.length > 80 ? "…" : ""}»
-              </span>
-            )}
           </div>
         </div>
-      </div>
-      <div className="psy-card__actions">
-        <JoinSessionButton appointment={a} variant="compact" />
-        {a.status === "ASSIGNED" && (
-          <button
-            disabled={busyId === a.id}
-            onClick={() => onAction(a.id, () => psychologistApi.confirm(a.id))}
-            className="psy-card__btn psy-card__btn--primary">
-            {busyId === a.id ? "…" : "Təsdiqlə"}
-          </button>
-        )}
-        {canConfirmSession && !a.psychologistConfirmedAt && (
-          <>
-            <button
-              disabled={busyId === a.id}
-              onClick={() => onAction(a.id, () => psychologistApi.confirmSession(a.id))}
-              className="psy-card__btn psy-card__btn--primary">
-              {busyId === a.id ? "…" : "✓ Təsdiqlə"}
-            </button>
-            <button onClick={onDispute} className="psy-card__btn psy-card__btn--ghost">
-              Olmadı
-            </button>
-          </>
-        )}
-        {canConfirmSession && a.psychologistConfirmedAt && (
-          <span className="psy-card__btn psy-card__btn--ghost" style={{ cursor: "default", fontSize: 11.5 }}>
-            ✓ Siz təsdiqlədiniz · pasientdən gözlənilir
-          </span>
-        )}
-        {a.patientId && (
-          <Link href={`/psycholog/clients/${a.patientId}`} className="psy-card__btn psy-card__btn--ghost">
-            Pasient
-          </Link>
-        )}
-        <Link href={`/psycholog/appointments/${a.id}/intake`} className="psy-card__btn psy-card__btn--ghost">
-          {t("intake.psyTitle")}
-        </Link>
-      </div>
+
+        {ctxLine && <div className="psy-aptcard__ctx2">{ctxLine}</div>}
+      </button>
+
+      {showFoot && (
+        <div className="psy-aptcard__foot">
+          <JoinSessionButton appointment={a} variant="compact" />
+        </div>
+      )}
+
+      {sheet && (
+        <ActionSheet
+          patientName={a.patientName ?? "Pasient"}
+          subtitle={`${pad2(start.getDate())}.${pad2(start.getMonth() + 1)} · ${fmtTime(start)} · ${status.label}`}
+          contextLine={ctxLine || undefined}
+          items={menu}
+          onClose={() => setSheet(false)} />
+      )}
     </div>
   );
 }
 
-function WeekRow({
-  a, client, now,
+/* ─── Action sheet — opens on card tap; holds every secondary action ──────── */
+
+function ActionSheet({
+  patientName, subtitle, contextLine, items, onClose,
 }: {
-  a: AppointmentDetail;
-  client: ClientSummary | null;
-  now: Date;
+  patientName: string;
+  subtitle: string;
+  contextLine?: string;
+  items: MenuItem[];
+  onClose: () => void;
 }) {
-  if (!a.startAt) return null;
-  const start = new Date(a.startAt);
-  const status = STATUS[a.status] ?? STATUS.ASSIGNED;
-  const sessionNumber = client ? client.totalSessions + 1 : null;
   return (
-    <div className="psy-week-row" style={{ borderLeft: `3px solid ${status.accent}` }}>
-      <div className="psy-week-row__day">
-        <strong>{relativeDayLabel(start, now)}</strong>
-        <span>{fmtTime(start)}</span>
+    <div className="psy-sheet__overlay" onClick={onClose} role="presentation">
+      <div className="psy-sheet" onClick={e => e.stopPropagation()} role="dialog" aria-label={`${patientName} əməliyyatları`}>
+        <div className="psy-sheet__head">
+          <div style={{ minWidth: 0 }}>
+            <div className="psy-sheet__title">{patientName}</div>
+            <div className="psy-sheet__sub">{subtitle}</div>
+          </div>
+          <button type="button" className="psy-sheet__close" onClick={onClose} aria-label="Bağla">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
+          </button>
+        </div>
+        {contextLine && <div className="psy-sheet__ctx">{contextLine}</div>}
+        <div className="psy-sheet__list">
+          {items.map((it, i) => it.href ? (
+            <Link key={i} href={it.href} className={`psy-sheet__item${it.danger ? " is-danger" : ""}`} onClick={onClose}>{it.label}</Link>
+          ) : (
+            <button key={i} type="button" className={`psy-sheet__item${it.danger ? " is-danger" : ""}`} onClick={() => { onClose(); it.onClick?.(); }}>{it.label}</button>
+          ))}
+        </div>
       </div>
-      <div className="psy-week-row__name">
-        {a.patientName ?? "Pasient"}
-        {sessionNumber && <small> · {sessionNumber}-ci seans</small>}
-      </div>
-      {a.patientId ? (
-        <Link href={`/psycholog/clients/${a.patientId}`} className="psy-week-row__link" aria-label="Pasient profilinə git">›</Link>
-      ) : <span />}
-    </div>
-  );
-}
-
-function HistoryRow({ a }: { a: AppointmentDetail }) {
-  const ref = a.startAt ?? a.endAt;
-  if (!ref) return null;
-  const d = new Date(ref);
-  const status = STATUS[a.status] ?? STATUS.COMPLETED;
-  return (
-    <div className="psy-hist-row">
-      <span className="psy-hist-row__date">{pad2(d.getDate())}.{pad2(d.getMonth() + 1)}.{d.getFullYear()}</span>
-      <span className="psy-hist-row__name">{a.patientName ?? "Pasient"}</span>
-      <span className="psy-hist-row__badge" style={{ color: status.color, background: status.bg }}>
-        {status.label}
-      </span>
-      {a.patientId ? (
-        <Link href={`/psycholog/clients/${a.patientId}`} className="psy-hist-row__link">Notə bax</Link>
-      ) : <span />}
     </div>
   );
 }
@@ -799,7 +688,7 @@ function PatientRescheduleRequestCard({
             }}
           >
             <span>{opt.index + 1}. {fmtOpt(opt.startAt, opt.endAt)}</span>
-            <span style={{ color: "var(--brand)" }}>{busyOption === opt.index ? "…" : "Qəbul et →"}</span>
+            <span style={{ color: "var(--brand)" }}>{busyOption === opt.index ? "…" : "Qəbul et"}</span>
           </button>
         ))}
       </div>
@@ -818,78 +707,6 @@ function PatientRescheduleRequestCard({
           {rejecting ? "Göndərilir…" : "İmtina et"}
         </button>
       </div>
-    </div>
-  );
-}
-
-/* ─── Awaiting confirmation card ─────────────────────────────────────────── */
-
-function AwaitingCard({
-  a, client, busyId, onConfirm, onDispute, onAddOutcome,
-}: {
-  a: AppointmentDetail;
-  client: ClientSummary | null;
-  busyId: number | null;
-  onConfirm: () => void;
-  onDispute: () => void;
-  onAddOutcome: () => void;
-}) {
-  const { t } = useT();
-  const status = STATUS[a.status] ?? STATUS.AWAITING_CONFIRMATION;
-  const start = a.startAt ? new Date(a.startAt) : null;
-  const sessionNumber = client ? client.totalSessions + 1 : null;
-  const alreadyConfirmed = !!a.psychologistConfirmedAt;
-  const isDisputed = a.status === "DISPUTED";
-
-  return (
-    <div className="psy-card psy-card--today" style={{ borderLeft: `4px solid ${status.accent}` }}>
-      <div className="psy-card__top">
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span className="psy-card__time">{start ? `${pad2(start.getDate())}.${pad2(start.getMonth() + 1)} · ${fmtTime(start)}` : "—"}</span>
-          <span className="psy-card__badge" style={{ color: status.color, background: status.bg }}>
-            {status.label}
-          </span>
-          {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
-            <span className="psy-card__chip" style={{ background: "var(--brand-50)", color: "var(--brand-700)", fontWeight: 600 }}>
-              {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="psy-card__body">
-        <div className="psy-card__avatar">{initialsOf(a.patientName)}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="psy-card__name">
-            {a.patientName ?? "Pasient"}
-            {sessionNumber && <span className="psy-card__nth"> · {sessionNumber}-ci seans</span>}
-          </div>
-          <div className="psy-card__ctx">
-            {isDisputed ? (
-              <span className="psy-card__ctx-quote">⚠ Mübahisə açıldı — operator həll edəcək</span>
-            ) : alreadyConfirmed ? (
-              <span className="psy-card__ctx-quote">✓ Siz təsdiqlədiniz — pasientdən gözlənilir</span>
-            ) : (
-              <span className="psy-card__ctx-quote">Seans baş tutdumu? Qısa təsdiq lazımdır.</span>
-            )}
-          </div>
-        </div>
-      </div>
-      {!isDisputed && !alreadyConfirmed && (
-        <div className="psy-card__actions">
-          <button
-            disabled={busyId === a.id}
-            onClick={onConfirm}
-            className="psy-card__btn psy-card__btn--primary">
-            {busyId === a.id ? "…" : "✓ Təsdiqlə"}
-          </button>
-          <button onClick={onAddOutcome} className="psy-card__btn psy-card__btn--ghost">
-            📝 Seans qeydi
-          </button>
-          <button onClick={onDispute} className="psy-card__btn psy-card__btn--ghost">
-            Olmadı
-          </button>
-        </div>
-      )}
     </div>
   );
 }

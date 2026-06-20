@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import PsychResourceTabs from "@/components/PsychResourceTabs";
 import {
   psychologistApi,
   type ClientSummary,
@@ -97,6 +98,9 @@ export default function PsychologTestsPage() {
 
   return (
     <div>
+      <div style={{ marginBottom: 18 }}>
+        <PsychResourceTabs />
+      </div>
       <div style={{ marginBottom: 18 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535", margin: 0 }}>Psixoloji testlər</h1>
         <p style={{ fontSize: 13, color: "#52718F", marginTop: 4 }}>

@@ -146,7 +146,7 @@ function DeletionBanner({ status, onCancelled }: { status: AccountStatus; onCanc
       }}
     >
       <div style={{ flex: "1 1 320px" }}>
-        <strong>⚠ Hesabınız {purgeLabel} tarixində silinəcək</strong>
+        <strong>Hesabınız {purgeLabel} tarixində silinəcək</strong>
         <div style={{ fontSize: 13, marginTop: 4 }}>
           Silmə tələbi qüvvədədir ({status.daysUntilPurge} gün qalır). Bu müddət ərzində
           tələbi ləğv etsəniz, hesabınız tam aktiv olacaq.
@@ -236,7 +236,7 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
           <div className="uprof-hero-meta">
             <span className="uprof-pill">{ROLE_LABEL[me.role] ?? me.role}</span>
             {me.emailVerified ? (
-              <span className="uprof-pill uprof-pill--good">✓ Email təsdiqli</span>
+              <span className="uprof-pill uprof-pill--good">Email təsdiqli</span>
             ) : (
               <span className="uprof-pill uprof-pill--warn">Email təsdiqsiz</span>
             )}
@@ -298,7 +298,7 @@ function AccountStatusCard({ me }: { me: MeProfile }) {
         </div>
         <div>
           <dt>Email</dt>
-          <dd>{me.emailVerified ? <span className="uprof-status uprof-status--good">✓ Təsdiqli</span> : <span className="uprof-status uprof-status--warn">Təsdiq edilməyib</span>}</dd>
+          <dd>{me.emailVerified ? <span className="uprof-status uprof-status--good">Təsdiqli</span> : <span className="uprof-status uprof-status--warn">Təsdiq edilməyib</span>}</dd>
         </div>
         <div>
           <dt>Son giriş</dt>
@@ -324,7 +324,7 @@ function ActivityShortcutCard({ role }: { role: string }) {
         <h3>Aktivlik</h3>
       </div>
       <Link href={`${base}/notifications`} className="uprof-side-link">
-        <div className="uprof-side-link-icon">🔔</div>
+        <div className="uprof-side-link-icon"></div>
         <div className="uprof-side-link-text">
           <strong>Bildirişlər</strong>
           <small>Bütün bildirişlərinizə baxın</small>
@@ -397,7 +397,7 @@ function BasicInfoCard({ me, onUpdated }: { me: MeProfile; onUpdated: (m: MeProf
         {err && <div className="uprof-error-inline">{err}</div>}
 
         <div className="uprof-actions">
-          {savedAt && <span className="uprof-saved">✓ Yadda saxlanıldı</span>}
+          {savedAt && <span className="uprof-saved">Yadda saxlanıldı</span>}
           <button type="submit" disabled={!dirty || saving} className="uprof-btn uprof-btn--primary">
             {saving ? "Saxlanılır…" : "Yadda saxla"}
           </button>
@@ -481,7 +481,7 @@ function EmergencyContactCard() {
         {err && <div className="uprof-error-inline">{err}</div>}
 
         <div className="uprof-actions">
-          {savedAt && <span className="uprof-saved">✓ {t("emergency.saved")}</span>}
+          {savedAt && <span className="uprof-saved">{t("emergency.saved")}</span>}
           <button type="submit" disabled={saving} className="uprof-btn uprof-btn--primary">
             {saving ? "Saxlanılır…" : t("emergency.save")}
           </button>
@@ -540,7 +540,7 @@ function PasswordCard() {
         {err && <div className="uprof-error-inline">{err}</div>}
 
         <div className="uprof-actions">
-          {savedAt && <span className="uprof-saved">✓ Şifrə yeniləndi</span>}
+          {savedAt && <span className="uprof-saved">Şifrə yeniləndi</span>}
           <button type="submit" disabled={!current || !next || !confirm || saving} className="uprof-btn uprof-btn--primary">
             {saving ? "Yenilənir…" : "Şifrəni yenilə"}
           </button>
@@ -622,7 +622,7 @@ function PrivacyCard({
 
       <div className="uprof-priv-row">
         <div className="uprof-priv-info">
-          <strong>📦 Datalarımı yüklə</strong>
+          <strong>Datalarımı yüklə</strong>
           <small>Profil, randevu, rəy və bildirişlərinizin tam arxivini ZIP olaraq alın.</small>
         </div>
         <button onClick={onExport} disabled={exporting}
@@ -634,7 +634,7 @@ function PrivacyCard({
 
       <div className="uprof-priv-row uprof-priv-row--danger">
         <div className="uprof-priv-info">
-          <strong>🗑 Hesabımı sil</strong>
+          <strong>Hesabımı sil</strong>
           {status?.deletionRequestedAt ? (
             <small>
               Silmə tələbi qüvvədədir — {status.daysUntilPurge} gün qalır.

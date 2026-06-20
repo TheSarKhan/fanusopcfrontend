@@ -290,10 +290,10 @@ export default function AdminAppointmentsPage() {
         <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="filter" />
         <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="filter" />
         <button className={`filter${overdueOnly ? " active" : ""}`} onClick={() => setOverdueOnly((o) => !o)}>
-          ⏰ SLA gecikmiş{slaHours != null ? ` (${slaHours}s+)` : ""}
+          SLA gecikmiş{slaHours != null ? ` (${slaHours}s+)` : ""}
         </button>
         <button className={`filter${flaggedOnly ? " active" : ""}`} onClick={() => setFlaggedOnly((f) => !f)}>
-          🚩 Bayraqlı pasiyent
+          Bayraqlı pasiyent
         </button>
         {activeFilterCount > 0 && (
           <button className="filter" onClick={() => {
@@ -313,7 +313,7 @@ export default function AdminAppointmentsPage() {
           <span style={{ fontSize: 13, fontWeight: 600 }}>{selected.size} randevu seçilib</span>
           <button onClick={() => setBulkCancelOpen(true)}
             style={{ padding: "7px 14px", border: "none", borderRadius: 8, background: "#fff", color: "#8b3d35", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
-            Toplu ləğv et (səbəblə) →
+            Toplu ləğv et (səbəblə)
           </button>
         </div>
       )}
@@ -373,14 +373,16 @@ export default function AdminAppointmentsPage() {
                         </div>
                         <span>{a.patientName ?? "—"}</span>
                         {a.patientFlag && (
-                          <span className="pill gold" style={{ fontSize: 9, padding: "0 5px" }} title={FLAG_LABEL[a.patientFlag] ?? a.patientFlag}>🚩</span>
+                          <span className="pill gold" style={{ fontSize: 9, padding: "0 5px", display: "inline-flex", alignItems: "center" }} title={FLAG_LABEL[a.patientFlag] ?? a.patientFlag}>
+                            <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></svg>
+                          </span>
                         )}
                       </div>
-                      <span className="ticket-time">{a.startAt ? azFormatDate(a.startAt) : `⏱ ${relTime(a.createdAt)}`}</span>
+                      <span className="ticket-time">{a.startAt ? azFormatDate(a.startAt) : relTime(a.createdAt)}</span>
                     </div>
                     {a.psychologistName && (
                       <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
-                        → {a.psychologistName}
+                        {a.psychologistName}
                         {a.assignedByOperatorName && <span style={{ color: "var(--muted-2)" }}> · op: {a.assignedByOperatorName}</span>}
                       </div>
                     )}
@@ -854,7 +856,7 @@ function AssignModal({
               </div>
               {conflict.seriesId != null && (
                 <div style={{ marginTop: 6, fontSize: 12, color: "#9A3412", fontWeight: 600 }}>
-                  ⚠ Bu seans {conflict.seriesTotal ?? "?"} seanslıq kursun parçasıdır
+                  Bu seans {conflict.seriesTotal ?? "?"} seanslıq kursun parçasıdır
                   (Kurs {(conflict.seriesIndex ?? 0) + 1}/{conflict.seriesTotal ?? "?"}) — tərpətmək ritmi pozar.
                 </div>
               )}
@@ -1145,7 +1147,7 @@ function ResolveDisputeModal({
         <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--line)" }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)", margin: 0 }}>Mübahisəni həll et</h2>
           <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-            {appointment.patientName ?? "—"} ↔ {appointment.psychologistName ?? "—"}
+            {appointment.patientName ?? "—"} — {appointment.psychologistName ?? "—"}
           </p>
           {appointment.disputeReason && (
             <div style={{ fontSize: 12, color: "#991B1B", marginTop: 6, padding: "7px 10px", background: "#FEE2E2", borderRadius: 8 }}>
@@ -1162,7 +1164,7 @@ function ResolveDisputeModal({
                 background: decision === "COMPLETE" ? "#D1FAE5" : "#fff",
                 color: decision === "COMPLETE" ? "#065F46" : "var(--ink)",
               }}>
-              <div style={{ fontWeight: 700 }}>✓ Tamamlanmış say</div>
+              <div style={{ fontWeight: 700 }}>Tamamlanmış say</div>
               <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>Seans baş tutdu</div>
             </button>
             <button type="button" onClick={() => setDecision("CANCEL")}
@@ -1172,7 +1174,7 @@ function ResolveDisputeModal({
                 background: decision === "CANCEL" ? "#FEE2E2" : "#fff",
                 color: decision === "CANCEL" ? "#991B1B" : "var(--ink)",
               }}>
-              <div style={{ fontWeight: 700 }}>✗ Ləğv et</div>
+              <div style={{ fontWeight: 700 }}>Ləğv et</div>
               <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>Seans baş tutmadı</div>
             </button>
           </div>

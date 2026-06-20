@@ -14,9 +14,7 @@ import {
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { azFormatTime, azFormatDate, azLocalToISO } from "@/lib/datetime";
 import ReviewModal from "./ReviewModal";
-import CancelModal from "@/components/CancelModal";
 import RescheduleProposalModal from "@/components/RescheduleProposalModal";
-import PatientRescheduleRequestModal from "@/components/PatientRescheduleRequestModal";
 import AddToCalendarMenu from "@/components/AddToCalendarMenu";
 import JoinSessionButton from "@/components/JoinSessionButton";
 import SessionFeedbackModal from "@/components/SessionFeedbackModal";
@@ -99,7 +97,6 @@ export default function PatientAppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [now, setNow] = useState(new Date());
-  const [reschedFor, setReschedFor] = useState<AppointmentDetail | null>(null);
   // GAP-03: new no-penalty flow — patient proposes slots, psychologist decides
   const [reschedRequestFor, setReschedRequestFor] = useState<AppointmentDetail | null>(null);
   const [reviewFor, setReviewFor] = useState<AppointmentDetail | null>(null);
@@ -249,18 +246,6 @@ export default function PatientAppointmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, now, psyFilter, statusFilter]);
 
-  const awaitingConfirm = useMemo(() => {
-    return items
-      .filter(a => a.status === "AWAITING_CONFIRMATION" || a.status === "DISPUTED")
-      .filter(matchesFilters)
-      .sort((a, b) => {
-        const da = new Date(a.endAt ?? a.startAt ?? 0).getTime();
-        const db = new Date(b.endAt ?? b.startAt ?? 0).getTime();
-        return db - da;
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, psyFilter, statusFilter]);
-
   /** All upcoming (today + future), filtered, grouped by AZ day key.
    *  Course members live inside their "Kursum" card, not here (B2-1). */
   const agendaGroups = useMemo(() => {
@@ -313,19 +298,9 @@ export default function PatientAppointmentsPage() {
 
   const cancel = (a: AppointmentDetail) => setCancelFor(a);
 
-  /** GAP-03: ≥24h before a CONFIRMED/ASSIGNED session the patient gets the
-   *  no-penalty request flow (psychologist decides); otherwise the legacy
-   *  cancel+rebook modal. Mirrors app.reschedule.min-hours-before — the
-   *  backend enforces the configured value. */
-  const RESCHEDULE_REQUEST_MIN_HOURS = 24;
-  const openReschedule = (a: AppointmentDetail) => {
-    const canRequest = !!a.psychologistId
-      && (a.status === "CONFIRMED" || a.status === "ASSIGNED")
-      && !!a.startAt
-      && new Date(a.startAt).getTime() - now.getTime() >= RESCHEDULE_REQUEST_MIN_HOURS * 3_600_000;
-    if (canRequest) setReschedRequestFor(a);
-    else setReschedFor(a);
-  };
+  // Simplified reschedule: the patient only sends a "change my time" request —
+  // an operator reschedules directly. No slot picking, no penalty branching.
+  const openReschedule = (a: AppointmentDetail) => setReschedRequestFor(a);
 
   const sessionCountFor = (psyId?: number | null) => {
     if (!psyId) return null;
@@ -370,7 +345,7 @@ export default function PatientAppointmentsPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {proposals.map(p => (
             <div key={p.id} className="rsc-banner">
-              <div className="rsc-banner-icon">📅</div>
+              <div className="rsc-banner-icon"></div>
               <div className="rsc-banner-main">
                 <div className="rsc-banner-title">Saat təklifi gözləyir</div>
                 <p className="rsc-banner-text">
@@ -392,7 +367,6 @@ export default function PatientAppointmentsPage() {
         </div>
       ) : items.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 16, padding: "4rem 2rem", textAlign: "center", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-          <div style={{ fontSize: 40, marginBottom: 14 }}>📅</div>
           <h3 style={{ fontWeight: 700, color: "var(--oxford)", marginBottom: 6, fontSize: 17 }}>Hələ randevunuz yoxdur</h3>
           <p style={{ color: "var(--oxford-60)", fontSize: 13, marginBottom: 18 }}>
             Psixoloqlarımızdan biri ilə randevu alaraq başlayın
@@ -428,7 +402,7 @@ export default function PatientAppointmentsPage() {
 
           {/* B2-1: course cards — grouped sessions under one "Kursum" block */}
           {courses.length > 0 && (
-            <Section title={t("course.sectionTitle")} count={courses.length} icon="🧭">
+            <Section title={t("course.sectionTitle")} count={courses.length} icon="">
               <div style={{ display: "grid", gap: 12 }}>
                 {courses.map(c => (
                   <CourseCard
@@ -446,24 +420,7 @@ export default function PatientAppointmentsPage() {
             </Section>
           )}
 
-          {/* Pending confirmation — appears prominently if any */}
-          {awaitingConfirm.length > 0 && (
-            <Section title={t("appt.sectionAwaiting")} count={awaitingConfirm.length} icon="⏳">
-              <div style={{ display: "grid", gap: 10 }}>
-                {awaitingConfirm.map(a => (
-                  <AwaitingCard
-                    key={a.id}
-                    a={a}
-                    busyId={busyId}
-                    onConfirm={() => action(a.id, () => patientApi.confirmSession(a.id))}
-                    onDispute={() => setDisputeFor(a)}
-                  />
-                ))}
-              </div>
-            </Section>
-          )}
-
-          <Section title="Yaxınlaşan" count={agendaTotal} icon="📅">
+          <Section title="Yaxınlaşan" count={agendaTotal} icon="">
             {agendaGroups.length === 0 ? (
               <Empty msg={
                 psyFilter != null || statusFilter !== "all"
@@ -494,7 +451,7 @@ export default function PatientAppointmentsPage() {
             )}
           </Section>
 
-          <Section title={t("appt.sectionHistory")} count={history.length} icon="📂" defaultCollapsed>
+          <Section title={t("appt.sectionHistory")} count={history.length} icon="" defaultCollapsed>
             {history.length === 0 ? (
               <Empty msg="Hələ tamamlanmış seansınız yoxdur" />
             ) : (
@@ -520,15 +477,8 @@ export default function PatientAppointmentsPage() {
         </>
       )}
 
-      {reschedFor && (
-        <RescheduleModal
-          appointment={reschedFor}
-          onClose={() => setReschedFor(null)}
-          onDone={() => { setReschedFor(null); load(); }}
-        />
-      )}
       {reschedRequestFor && (
-        <PatientRescheduleRequestModal
+        <RescheduleRequestNoteModal
           appointment={reschedRequestFor}
           onClose={() => setReschedRequestFor(null)}
           onDone={() => { setReschedRequestFor(null); load(); }}
@@ -557,9 +507,8 @@ export default function PatientAppointmentsPage() {
         />
       )}
       {cancelFor && (
-        <CancelModal
+        <CancelRequestNoteModal
           appointment={cancelFor}
-          role="PATIENT"
           onClose={() => setCancelFor(null)}
           onDone={(updated) => {
             setItems(prev => prev.map(x => x.id === updated.id ? updated : x));
@@ -608,7 +557,7 @@ function NextSessionHero({
   if (!appt || !appt.startAt) {
     return (
       <div className="psy-hero psy-hero--empty">
-        <div className="psy-hero__icon">🌿</div>
+        <div className="psy-hero__icon"></div>
         <div>
           <div className="psy-hero__label">Yaxınlaşan randevu yoxdur</div>
           <div className="psy-hero__sub">Yeni randevu almaq üçün psixoloq seçin.</div>
@@ -619,7 +568,8 @@ function NextSessionHero({
 
   const start = new Date(appt.startAt);
   const tu = timeUntil(start, now);
-  const showConfirm = tu.expired && (appt.status === "CONFIRMED" || appt.status === "AWAITING_CONFIRMATION");
+  // Option B: sessions auto-complete — patient never confirms/disputes a session.
+  const showConfirm = false;
   const alreadyConfirmed = !!appt.patientConfirmedAt;
 
   return (
@@ -643,7 +593,7 @@ function NextSessionHero({
           </div>
           {appt.note && (
             <div className="psy-hero__quote">
-              <span>📋 Mövzunuz:</span> «{appt.note.slice(0, 140)}{appt.note.length > 140 ? "…" : ""}»
+              <span>Mövzunuz:</span> «{appt.note.slice(0, 140)}{appt.note.length > 140 ? "…" : ""}»
             </div>
           )}
         </div>
@@ -651,7 +601,7 @@ function NextSessionHero({
 
       <div className="psy-hero__actions">
         <span className={`psy-hero__countdown${tu.expired ? " is-live" : tu.urgent ? " is-urgent" : ""}`}>
-          ⏰ {tu.text}
+          {tu.text}
         </span>
         {showConfirm && !alreadyConfirmed && (
           <>
@@ -659,7 +609,7 @@ function NextSessionHero({
               disabled={busyId === appt.id}
               onClick={() => onConfirm(appt)}
               className="psy-hero__btn psy-hero__btn--primary">
-              {busyId === appt.id ? "…" : `✓ ${t("staff.cardConfirm")}`}
+              {busyId === appt.id ? "…" : t("staff.cardConfirm")}
             </button>
             <button
               onClick={() => onDispute(appt)}
@@ -779,7 +729,15 @@ function CourseCard({
             <div key={a.id} className="crs-step">
               <div className="crs-step__rail">
                 <span className="crs-step__dot" data-state={state} title={STATE_TITLE[state]}>
-                  {state === "done" ? "✓" : state === "cancelled" ? "✕" : state === "next" ? "●" : ""}
+                  {state === "done" ? (
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : state === "cancelled" ? (
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  ) : ""}
                 </span>
                 <span className="crs-step__line" />
               </div>
@@ -898,7 +856,7 @@ function AgendaRow({
             {status.label}
           </span>
           {isToday && !tu.expired && (
-            <span className="agenda-row__count">⏰ {tu.text}</span>
+            <span className="agenda-row__count">{tu.text}</span>
           )}
           {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
             <span className="agenda-row__series">
@@ -976,7 +934,7 @@ function Section({
           background: "transparent", border: "none", padding: "0 0 10px",
           cursor: "pointer", textAlign: "left",
         }}>
-        <span style={{ fontSize: 16 }}>{icon}</span>
+        {icon && <span style={{ fontSize: 16 }}>{icon}</span>}
         <h2 style={{
           fontSize: 13, fontWeight: 700, color: "var(--oxford)",
           margin: 0, textTransform: "uppercase", letterSpacing: 0.4,
@@ -1049,7 +1007,7 @@ function AwaitingCard({
             {isDisputed ? (
               <span className="psy-card__ctx-quote">Operator komandamız sizinlə əlaqə saxlayacaq.</span>
             ) : alreadyConfirmed ? (
-              <span className="psy-card__ctx-quote">✓ Siz təsdiqlədiniz — psixoloqdan gözlənilir</span>
+              <span className="psy-card__ctx-quote">Siz təsdiqlədiniz — psixoloqdan gözlənilir</span>
             ) : (
               <span className="psy-card__ctx-quote">Seans baş tutdumu? Qısa təsdiq lazımdır.</span>
             )}
@@ -1062,7 +1020,7 @@ function AwaitingCard({
             disabled={busyId === a.id}
             onClick={onConfirm}
             className="psy-card__btn psy-card__btn--primary">
-            {busyId === a.id ? "…" : `✓ ${t("staff.cardConfirm")}`}
+            {busyId === a.id ? "…" : t("staff.cardConfirm")}
           </button>
           <button
             onClick={onDispute}
@@ -1092,7 +1050,7 @@ function HistoryRow({
   const canReview = a.status === "COMPLETED" && a.psychologistId && !review;
   const canFeedback = a.status === "COMPLETED" || a.status === "AWAITING_CONFIRMATION";
   const reviewLabel = review
-    ? review.status === "PENDING" ? "Rəy gözləyir" : review.status === "APPROVED" ? "Rəyim ✓" : "Rəyim"
+    ? review.status === "PENDING" ? "Rəy gözləyir" : review.status === "APPROVED" ? "Rəyim" : "Rəyim"
     : null;
   return (
     <div className="psy-hist-row">
@@ -1103,7 +1061,7 @@ function HistoryRow({
       </span>
       {canFeedback && (
         feedbackGiven ? (
-          <span className="sf-given">⭐ rəy verildi</span>
+          <span className="sf-given">rəy verildi</span>
         ) : (
           <button onClick={onFeedback} className="sf-cta" type="button">
             Necə keçdi?
@@ -1121,6 +1079,106 @@ function HistoryRow({
           {reviewLabel}
         </span>
       ) : <span />}
+    </div>
+  );
+}
+
+/* ─── Simplified cancel request — patient signals, operator decides ───────── */
+
+function CancelRequestNoteModal({
+  appointment, onClose, onDone,
+}: {
+  appointment: AppointmentDetail;
+  onClose: () => void;
+  onDone: (updated: AppointmentDetail) => void;
+}) {
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    setSaving(true); setErr(null);
+    try {
+      const updated = await patientApi.cancel(appointment.id, "PATIENT_OTHER", note.trim() || undefined);
+      onDone(updated);
+    } catch (e) { setErr((e as Error).message); setSaving(false); }
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(10,22,51,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, maxWidth: 460, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden" }}>
+        <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--brand-100)" }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Randevunu ləğv et</h3>
+          <p style={{ fontSize: 12.5, color: "var(--oxford-60)", margin: "4px 0 0" }}>
+            Ləğv istəyiniz operatora gedəcək — qısaca səbəbi yaza bilərsiniz (məcburi deyil).
+          </p>
+        </div>
+        <div style={{ padding: 22 }}>
+          <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
+            placeholder="Səbəb (məcburi deyil)"
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, margin: "10px 0 0" }}>{err}</div>}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid var(--brand-100)", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>Geri</button>
+            <button onClick={submit} disabled={saving}
+              style={{ padding: "8px 20px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "#DC2626", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Göndərilir…" : "Ləğv istəyi göndər"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Simplified reschedule request — patient signals, operator reschedules ── */
+
+function RescheduleRequestNoteModal({
+  appointment, onClose, onDone,
+}: {
+  appointment: AppointmentDetail;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    setSaving(true); setErr(null);
+    try {
+      await patientApi.requestRescheduleNote(appointment.id, note.trim() || undefined);
+      onDone();
+    } catch (e) { setErr((e as Error).message); setSaving(false); }
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(10,22,51,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, maxWidth: 460, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden" }}>
+        <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--brand-100)" }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Vaxtı dəyişmək istəyirəm</h3>
+          <p style={{ fontSize: 12.5, color: "var(--oxford-60)", margin: "4px 0 0" }}>
+            İstəyinizi operatora göndərin — sizə uyğun yeni vaxtı operator təyin edəcək.
+          </p>
+        </div>
+        <div style={{ padding: 22 }}>
+          <textarea rows={4} value={note} onChange={e => setNote(e.target.value)}
+            placeholder="Hansı vaxt sizə daha uyğundur? (məs. həftə içi axşamlar, və ya konkret tarix)"
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, margin: "10px 0 0" }}>{err}</div>}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid var(--brand-100)", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>Bağla</button>
+            <button onClick={submit} disabled={saving}
+              style={{ padding: "8px 20px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Göndərilir…" : "İstək göndər"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

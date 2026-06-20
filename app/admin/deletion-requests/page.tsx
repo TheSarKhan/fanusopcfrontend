@@ -58,7 +58,7 @@ export default function DeletionRequestsPage() {
         <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Yüklənir…</div>
       ) : items.length === 0 ? (
         <div className="card" style={{ padding: 30, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
-          Gözləyən silinmə istəyi yoxdur 🎉
+          Gözləyən silinmə istəyi yoxdur
         </div>
       ) : (
         <div className="card">

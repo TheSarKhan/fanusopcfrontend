@@ -14,6 +14,9 @@ export interface PanelNavItem {
   label: string;
   icon: IconName;
   badge?: number;
+  /** Extra route prefixes that also mark this item active (e.g. sibling
+   *  routes grouped under one nav entry). Matched by exact path or prefix. */
+  match?: string[];
 }
 
 interface UserInfo {
@@ -103,7 +106,8 @@ export default function PanelShell({
             const active =
               pathname === item.href ||
               (item.href !== homeHref && pathname.startsWith(item.href + "/")) ||
-              (item.href !== homeHref && pathname === item.href);
+              (item.href !== homeHref && pathname === item.href) ||
+              (item.match?.some((p) => pathname === p || pathname.startsWith(p + "/")) ?? false);
             return (
               <Link
                 key={item.href}

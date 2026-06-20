@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { psychologistApi, type PsychResource, type PsychResourceReq } from "@/lib/api";
+import PsychResourceTabs from "@/components/PsychResourceTabs";
 
 /* ─── kateqoriyalar (sabit dəst) ──────────────────────────────────────────── */
 
@@ -84,6 +85,8 @@ export default function PsychologResourcesPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+      <PsychResourceTabs />
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>

@@ -22,11 +22,10 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
     { href: "/psycholog/homework",     label: t("nav.homework"),     icon: "check" },
     { href: "/psycholog/articles",     label: t("nav.articles"),     icon: "book" },
     { href: "/psycholog/community",    label: "İcma",                icon: "users" },
-    { href: "/psycholog/resources",    label: "Bilik bazası",        icon: "content" },
+    { href: "/psycholog/resources",    label: "Resurslar",           icon: "content",
+      match: ["/psycholog/materials", "/psycholog/tests"] },
     { href: "/psycholog/availability", label: t("nav.workHours"),    icon: "clock" },
     { href: "/psycholog/reviews",      label: t("nav.reviews"),      icon: "star" },
-    { href: "/psycholog/materials",    label: "Materiallar",         icon: "content" },
-    { href: "/psycholog/tests",        label: "Testlər",             icon: "clipboard" },
   ];
 
   return (

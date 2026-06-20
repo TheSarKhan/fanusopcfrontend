@@ -120,7 +120,6 @@ export default function PsychologReviewsPage() {
         </div>
       ) : visible.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 60, textAlign: "center", color: "#52718F", border: "1px dashed #DDE6F0" }}>
-          <div style={{ fontSize: 36, marginBottom: 8 }}>⭐</div>
           {filter === "APPROVED"
             ? "Hələ public rəy yoxdur — yeni rəylər moderasiyadan sonra burada görünəcək."
             : "Bu kateqoriyada rəy yoxdur."}
@@ -168,7 +167,7 @@ export default function PsychologReviewsPage() {
                   <div style={{ marginTop: 12 }}>
                     <button onClick={() => setReplyFor(r)}
                       style={{ padding: "7px 14px", fontSize: 13, fontWeight: 600, border: "1px solid var(--brand-200)", color: "var(--brand)", background: "var(--brand-50)", borderRadius: 8, cursor: "pointer" }}>
-                      💬 Cavab yaz
+                      Cavab yaz
                     </button>
                   </div>
                 )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { psychologistApi, type Material, type MaterialCategory, type MaterialVersion } from "@/lib/api";
+import PsychResourceTabs from "@/components/PsychResourceTabs";
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
 
@@ -82,6 +83,8 @@ export default function PsychologMaterialsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+      <PsychResourceTabs />
 
       {/* Header */}
       <div>

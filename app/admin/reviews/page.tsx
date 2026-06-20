@@ -137,7 +137,7 @@ export default function AdminReviewsPage() {
         </div>
       ) : items.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 60, textAlign: "center", color: "#52718F", border: "1px dashed #DDE6F0" }}>
-          <div style={{ fontSize: 36, marginBottom: 8 }}>✨</div>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 8 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           {filter === "PENDING" ? "Moderasiya gözləyən rəy yoxdur" : "Bu kateqoriyada rəy yoxdur"}
         </div>
       ) : (
@@ -183,18 +183,18 @@ export default function AdminReviewsPage() {
                       <button
                         onClick={() => moderate(r.id, "approve")}
                         disabled={busy}
-                        style={{ padding: "7px 12px", border: "none", color: "#fff", background: "#065F46", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: busy ? "wait" : "pointer" }}
+                        style={{ padding: "7px 12px", border: "none", color: "#fff", background: "#065F46", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: busy ? "wait" : "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                       >
-                        ✓ Təsdiqlə
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Təsdiqlə
                       </button>
                     )}
                     {r.status !== "REJECTED" && (
                       <button
                         onClick={() => setNoteFor({ review: r, action: "reject" })}
                         disabled={busy}
-                        style={{ padding: "7px 12px", border: "1px solid #FECACA", color: "#991B1B", background: "#FFF5F5", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: busy ? "wait" : "pointer" }}
+                        style={{ padding: "7px 12px", border: "1px solid #FECACA", color: "#991B1B", background: "#FFF5F5", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: busy ? "wait" : "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                       >
-                        ✕ Rədd et
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Rədd et
                       </button>
                     )}
                     <button

@@ -1493,6 +1493,10 @@ export const patientApi = {
   reschedule: (appointmentId: number, data: PatientBookingPayload) =>
     authedRequest<AppointmentDetail>("POST", `/patient/appointments/${appointmentId}/reschedule`, data),
 
+  /** Simplified reschedule: just signal an operator to change the time. */
+  requestRescheduleNote: (appointmentId: number, note?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/patient/appointments/${appointmentId}/reschedule-request-note`, { note }),
+
   // Reschedule proposals (psychologist → patient)
   /** GAP-03: patient proposes 1–3 alternative slots; psychologist decides. */
   requestReschedule: (appointmentId: number, data: {
@@ -1833,6 +1837,27 @@ export interface FollowSummary {
   photoUrl?: string | null;
 }
 
+// ─── İcma daxili interaktivlik (panel oxucu + şərh + bəyənmə) ──────────────────
+export interface ArticleComment {
+  id: number;
+  parentId: number | null;
+  authorId: number | null;
+  authorName: string | null;
+  authorPhotoUrl: string | null;
+  body: string | null;
+  deleted: boolean;
+  mine: boolean;
+  createdAt: string;
+  editedAt: string | null;
+  replies: ArticleComment[];
+}
+export interface ArticleReader {
+  post: BlogPost;
+  likeCount: number;
+  commentCount: number;
+  likedByMe: boolean;
+}
+
 // ─── Bilik bazası (paylaşılan psixoloq resursları) ────────────────────────────
 export interface PsychResource {
   id: number;
@@ -2129,6 +2154,22 @@ export const psychologistApi = {
   following: () => authedRequest<FollowSummary[]>("GET", "/psychologist/following"),
   followers: () => authedRequest<FollowSummary[]>("GET", "/psychologist/followers"),
   feed: () => authedRequest<BlogPost[]>("GET", "/psychologist/feed"),
+
+  // ─── İcma daxili interaktivlik (məqalə oxucu + şərh + bəyənmə) ────────────
+  communityPost: (id: number) =>
+    authedRequest<ArticleReader>("GET", `/psychologist/community/posts/${id}`),
+  communityComments: (id: number) =>
+    authedRequest<ArticleComment[]>("GET", `/psychologist/community/posts/${id}/comments`),
+  addComment: (id: number, body: string, parentId?: number | null) =>
+    authedRequest<ArticleComment>("POST", `/psychologist/community/posts/${id}/comments`, { body, parentId: parentId ?? null }),
+  editComment: (commentId: number, body: string) =>
+    authedRequest<ArticleComment>("PUT", `/psychologist/community/comments/${commentId}`, { body }),
+  deleteComment: (commentId: number) =>
+    authedRequest<void>("DELETE", `/psychologist/community/comments/${commentId}`),
+  likePost: (id: number) =>
+    authedRequest<ArticleReader>("POST", `/psychologist/community/posts/${id}/like`),
+  unlikePost: (id: number) =>
+    authedRequest<ArticleReader>("DELETE", `/psychologist/community/posts/${id}/like`),
 
   // ─── Bilik bazası (paylaşılan resurslar) ─────────────────────────────────
   listResources: (category?: string) => {
@@ -2747,6 +2788,15 @@ export const operatorApi = {
   ) =>
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/resolve-dispute`, { decision, note, blameSide }),
 
+  /** Retroactively mark a held/auto-completed session as a no-show (bumps the
+   *  no-show counter for the blamed side). Replaces the old dispute flow. */
+  markNoShow: (
+    id: number,
+    blameSide: "PATIENT" | "PSYCHOLOGIST",
+    note?: string
+  ) =>
+    authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/no-show`, { blameSide, note }),
+
   // Session feedback triage
   feedbackTriage: (params: {
     onlyFollowUp?: boolean; onlyUnseen?: boolean;
@@ -2831,6 +2881,14 @@ export const operatorApi = {
       "GET",
       `/operator/search?q=${encodeURIComponent(q)}&limit=${limit}`
     ),
+
+  /** On-behalf booking: create (or reuse) a patient by email, then book directly. */
+  createPatient: (data: { firstName?: string; lastName?: string; phone?: string; email: string }) =>
+    authedRequest<{ patientId: number }>("POST", "/operator/patients", data),
+  createOnBehalf: (data: {
+    patientId: number; psychologistId: number; startAt: string; endAt: string; note?: string;
+  }) =>
+    authedRequest<AppointmentDetail>("POST", "/operator/appointments/on-behalf", data),
 };
 
 export interface OperatorSearchHit {

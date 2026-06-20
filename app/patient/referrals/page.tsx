@@ -26,6 +26,7 @@ export default function PatientReferralsPage() {
   const [items, setItems] = useState<PatientReferral[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -35,13 +36,14 @@ export default function PatientReferralsPage() {
 
   const act = async (r: PatientReferral, action: "consent" | "decline") => {
     setBusyId(r.id);
+    setError(null);
     try {
       const updated = action === "consent"
         ? await patientApi.consentReferral(r.id)
         : await patientApi.declineReferral(r.id);
       setItems(prev => prev.map(x => x.id === r.id ? updated : x));
     } catch (e) {
-      alert("Əməliyyat alınmadı: " + (e as Error).message);
+      setError("Əməliyyat alınmadı: " + (e as Error).message);
     } finally {
       setBusyId(null);
     }
@@ -55,6 +57,13 @@ export default function PatientReferralsPage() {
           Psixoloqunuz sizi başqa mütəxəssisə yönləndirmək istəyəndə razılığınız burada soruşulur.
         </p>
       </div>
+
+      {error && (
+        <div role="alert" style={{
+          fontSize: 12.5, fontWeight: 600, color: "#991B1B", background: "#FEE2E2",
+          border: "1px solid #FECACA", borderRadius: 10, padding: "10px 12px",
+        }}>{error}</div>
+      )}
 
       {loading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

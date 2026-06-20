@@ -6,6 +6,8 @@ import SiteChrome from "@/components/SiteChrome";
 import { BookingProvider } from "@/context/BookingContext";
 import { MoodProvider } from "@/context/MoodContext";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
+import { ToastHost } from "@/components/Toast";
+import { ConfirmHost } from "@/components/ConfirmDialog";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -61,6 +63,8 @@ export default async function RootLayout({
               </BookingProvider>
             </MoodProvider>
           )}
+          <ToastHost />
+          <ConfirmHost />
         </LocaleProvider>
       </body>
     </html>

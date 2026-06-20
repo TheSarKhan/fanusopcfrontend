@@ -178,8 +178,9 @@ function PatientCardView({ userId }: { userId: number }) {
               <Stat label="Risk" valueStr={card.riskLevel ?? "—"} danger={card.riskLevel === "HIGH" || card.riskLevel === "CRITICAL"} />
             </div>
             {card.blocked && (
-              <div className="card-pad" style={{ paddingTop: 0, fontSize: 12, color: "#991B1B" }}>
-                🚫 Bloklanıb{card.blockReason ? ` — ${card.blockReason}` : ""}
+              <div className="card-pad" style={{ paddingTop: 0, fontSize: 12, color: "#991B1B", display: "flex", alignItems: "center", gap: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                Bloklanıb{card.blockReason ? ` — ${card.blockReason}` : ""}
               </div>
             )}
             {card.tags.length > 0 && (
@@ -365,7 +366,7 @@ function ClinicalSection({ userId, grant, onGranted }: {
   return (
     <div className="card">
       <div className="card-head">
-        <h3 className="card-title">🔒 Klinik data</h3>
+        <h3 className="card-title" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Klinik data</h3>
         {active
           ? <span className="pill sage">açıqdır · bitmə {fmtDT(grant!.expiresAt)}</span>
           : <span className="pill muted">bağlıdır</span>}

@@ -433,12 +433,10 @@ export default function ArticlesPage() {
       {/* ── Table ── */}
       {loading ? (
         <div style={{ textAlign: "center", color: "#8AAABF", padding: "80px 0", background: "#fff", borderRadius: 16, border: "1px solid #E4EDF6" }}>
-          <div style={{ fontSize: 28, marginBottom: 8 }}>⏳</div>
           Yüklənir...
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "80px 0", background: "#fff", borderRadius: 16, border: "1px solid #E4EDF6" }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>📭</div>
           <p style={{ fontSize: 15, fontWeight: 700, color: "#1A2535", margin: "0 0 6px" }}>
             {hasActiveFilters ? "Filter nəticəsi tapılmadı" : "Hələ məqalə yoxdur"}
           </p>

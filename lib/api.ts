@@ -798,6 +798,33 @@ export const verifyEmail = (token: string) =>
       return body;
     });
 
+// Hesab sahiblənmə (operator-yaradılan pasiyent) — nömrəli OTP
+export const requestClaimOtp = (email: string) =>
+  fetch(`${BASE}/auth/claim/request-otp`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...localeHeaders() },
+    body: JSON.stringify({ email }),
+  }).then(async r => {
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.error ?? "Kod göndərilmədi");
+    return body;
+  });
+
+export const verifyClaimOtp = (data: {
+  email: string; code: string; password: string;
+  firstName?: string; lastName?: string; phone?: string;
+}) => fetch(`${BASE}/auth/claim/verify-otp`, {
+  method: "POST",
+  credentials: "include",
+  headers: { "Content-Type": "application/json", ...localeHeaders() },
+  body: JSON.stringify(data),
+}).then(async r => {
+  const body = await r.json();
+  if (!r.ok) throw new Error(body.error ?? "Aktivləşdirmə uğursuz oldu");
+  return body;
+});
+
 export const forgotPassword = (email: string) =>
   fetch(`${BASE}/auth/forgot-password`, {
     method: "POST",
@@ -2559,6 +2586,12 @@ export interface OperatorAssignPayload {
   operatorNote?: string | null;
 }
 
+export interface SlotAllowance {
+  maxSlots: number;            // neçə slot seçilə bilər (paket yoxdursa 1)
+  packageName: string | null;  // paket adı (varsa)
+  remainingSessions: number | null;
+}
+
 export interface PsychologistSuggestion {
   psychologistId: number;
   name: string;
@@ -2740,7 +2773,6 @@ export type AnalyticsPeriod = "daily" | "weekly" | "monthly" | "yearly";
 
 export const operatorApi = {
   listAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/operator/appointments"),
-  getAppointment: (id: number) => authedRequest<AppointmentDetail>("GET", `/operator/appointments/${id}`),
   /** OP-1: everything the detail page needs in one request. */
   fullAppointment: (id: number) =>
     authedRequest<OperatorAppointmentFull>("GET", `/operator/appointments/${id}/full`),
@@ -2754,9 +2786,14 @@ export const operatorApi = {
     authedRequest<ClaimState>("PUT", `/operator/appointments/${id}/claim/heartbeat`),
   claimRelease: (id: number) =>
     authedRequest<ClaimState>("POST", `/operator/appointments/${id}/claim/release`),
-  assign: (id: number, data: OperatorAssignPayload) =>
-    authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/assign`, data),
+  // Çoxlu vaxt (paket / seriya) təyini + paket balansı
+  slotAllowance: (id: number, psychologistId: number) =>
+    authedRequest<SlotAllowance>("GET", `/operator/appointments/${id}/slot-allowance?psychologistId=${psychologistId}`),
+  assignSlots: (id: number, data: { psychologistId: number; slots: { startAt: string; endAt: string }[]; operatorNote?: string | null }) =>
+    authedRequest<AppointmentDetail[]>("POST", `/operator/appointments/${id}/assign-slots`, data),
   // Modul B: seans görüş linki idarəetməsi
+  pendingMeetingLinks: () =>
+    authedRequest<AppointmentDetail[]>("GET", "/operator/meeting-links/pending"),
   setMeetingLink: (id: number, meetingLink: string) =>
     authedRequest<AppointmentDetail>("PUT", `/operator/appointments/${id}/meeting-link`, { meetingLink }),
   revokeMeetingLink: (id: number) =>
@@ -2770,6 +2807,17 @@ export const operatorApi = {
     authedRequest<PaymentItem[]>("GET", `/operator/payments?status=${status}`),
   markPaymentPaid: (id: number) =>
     authedRequest<PaymentItem>("POST", `/operator/payments/${id}/mark-paid`),
+  // Operator paket satışı (kataloq + xüsusi) → PENDING ödəniş
+  psychologistPackages: (psychologistId: number) =>
+    authedRequest<PackageDto[]>("GET", `/operator/psychologists/${psychologistId}/packages`),
+  sellPackage: (patientId: number, data: {
+    sessionPackageId?: number | null;
+    psychologistId?: number | null;
+    packageName?: string | null;
+    sessionCount?: number | null;
+    price?: number | null;
+    currency?: string | null;
+  }) => authedRequest<PatientPackageItem>("POST", `/operator/patients/${patientId}/packages`, data),
   cancel: (id: number, reasonCode: string, note?: string) =>
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/cancel`, { reasonCode, note }),
   approveCancelRequest: (id: number, note?: string) =>
@@ -2780,6 +2828,11 @@ export const operatorApi = {
     authedRequest<BookingSeries>("POST", `/operator/booking-series/${id}/approve-cancel`, { note }),
   rejectSeriesCancelRequest: (id: number, note?: string) =>
     authedRequest<BookingSeries>("POST", `/operator/booking-series/${id}/reject-cancel`, { note }),
+  // Operator seriyanı bütöv idarə edir
+  cancelSeries: (id: number, note?: string) =>
+    authedRequest<BookingSeries>("POST", `/operator/booking-series/${id}/cancel`, { note }),
+  rescheduleSeries: (id: number, newFirstStartAt: string) =>
+    authedRequest<BookingSeries>("POST", `/operator/booking-series/${id}/reschedule`, { newFirstStartAt }),
   resolveDispute: (
     id: number,
     decision: "COMPLETE" | "CANCEL",
@@ -2887,6 +2940,7 @@ export const operatorApi = {
     authedRequest<{ patientId: number }>("POST", "/operator/patients", data),
   createOnBehalf: (data: {
     patientId: number; psychologistId: number; startAt: string; endAt: string; note?: string;
+    patientPackageId?: number | null;
   }) =>
     authedRequest<AppointmentDetail>("POST", "/operator/appointments/on-behalf", data),
 };

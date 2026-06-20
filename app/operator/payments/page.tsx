@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { operatorApi, type PaymentItem } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { toast as uiToast } from "@/components/Toast";
+import { SkeletonGrid } from "@/components/Skeleton";
+import EmptyState from "@/components/EmptyState";
 
 function pad2(n: number) { return String(n).padStart(2, "0"); }
 function fmtDt(iso: string) {
@@ -36,7 +39,7 @@ export default function OperatorPaymentsPage() {
       setToast(`${p.patientName} · ${t("pkg.paid")}`);
       window.setTimeout(() => setToast(null), 3000);
     } catch (e) {
-      alert((e as Error).message);
+      uiToast((e as Error).message, "error");
     } finally {
       setBusyId(null);
     }
@@ -61,13 +64,9 @@ export default function OperatorPaymentsPage() {
       )}
 
       {loading ? (
-        <div className="opf-row" style={{ justifyContent: "center", color: "var(--oxford-60)" }}>
-          {t("common.loading")}
-        </div>
+        <SkeletonGrid count={4} />
       ) : items.length === 0 ? (
-        <div className="opf-row" style={{ justifyContent: "center", color: "var(--oxford-60)" }}>
-          {t("pkg.noPayments")}
-        </div>
+        <EmptyState title={t("pkg.noPayments")} sub="Yeni ödəniş gözləyin və ya filtri dəyişin." />
       ) : (
         <div className="opf-list">
           {items.map(p => {

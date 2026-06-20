@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { toast as uiToast } from "@/components/Toast";
 import { SessionsLineChart, RankingBarChart } from "@/components/AnalyticsCharts";
 import { formatAzn } from "@/lib/money";
 
@@ -116,7 +117,7 @@ export default function OperatorAnalyticsPage() {
       setStats(prev => prev
         ? { ...prev, crisisUnackedCount: Math.max(0, prev.crisisUnackedCount - 1) }
         : prev);
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { uiToast((e as Error).message, "error"); }
     finally { setAckingId(null); }
   };
 

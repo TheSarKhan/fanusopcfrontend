@@ -7,14 +7,14 @@
  * OP-2: claim çipləri ("● Aysel işləyir") + "Mənim üzərimdə" filtri, real-time.
  */
 
-import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   operatorApi,
   type AppointmentDetail,
   type Psychologist,
-  type OperatorSearchHit,
 } from "@/lib/api";
+import OnBehalfBookingModal from "@/components/OnBehalfBookingModal";
 import { getStoredUser } from "@/lib/auth";
 import { subscribeNotifications, subscribeOperatorClaims } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -324,7 +324,7 @@ export default function OperatorAppointmentsPage() {
         <EmptyState icon={<CalendarGlyph />} title="Bu kateqoriyada müraciət yoxdur"
           sub="Filtri dəyişin və ya yeni müraciət gözləyin." />
       ) : (
-        <div style={{ display: "grid", gap: 12 }}>
+        <div className="op-appt-grid">
           {filtered.map(a => (
             <AppointmentCard
               key={a.id}
@@ -345,130 +345,6 @@ export default function OperatorAppointmentsPage() {
           onDone={onBulkDone}
         />
       )}
-    </div>
-  );
-}
-
-/* ─── On-behalf booking modal (operator creates patient + appointment) ────── */
-
-function OnBehalfBookingModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
-  const [mode, setMode] = useState<"search" | "new">("search");
-  const [q, setQ] = useState("");
-  const [hits, setHits] = useState<OperatorSearchHit[]>([]);
-  const [patientId, setPatientId] = useState<number | null>(null);
-  const [patientLabel, setPatientLabel] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [psyId, setPsyId] = useState<number | null>(null);
-  const [psys, setPsys] = useState<{ id: number; name?: string | null }[]>([]);
-  const [startAt, setStartAt] = useState("");
-  const [endAt, setEndAt] = useState("");
-  const [note, setNote] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  useEffect(() => { operatorApi.listPsychologists().then(setPsys).catch(() => {}); }, []);
-  useEffect(() => {
-    if (mode !== "search") return;
-    const term = q.trim();
-    if (term.length < 2) { setHits([]); return; }
-    const h = setTimeout(() => {
-      operatorApi.search(term, 8).then(r => setHits(r.patients)).catch(() => setHits([]));
-    }, 250);
-    return () => clearTimeout(h);
-  }, [q, mode]);
-
-  const onStart = (v: string) => {
-    setStartAt(v);
-    if (v && !endAt) {
-      const d = new Date(v); d.setMinutes(d.getMinutes() + 50);
-      const p = (n: number) => String(n).padStart(2, "0");
-      setEndAt(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`);
-    }
-  };
-
-  const submit = async () => {
-    setErr(null);
-    if (!psyId) { setErr("Psixoloq seçin"); return; }
-    if (!startAt || !endAt) { setErr("Başlanğıc və bitiş vaxtını seçin"); return; }
-    setSaving(true);
-    try {
-      let pid = patientId;
-      if (mode === "new") {
-        if (!email.trim()) { setErr("Email tələb olunur"); setSaving(false); return; }
-        const r = await operatorApi.createPatient({ firstName, lastName, phone, email: email.trim() });
-        pid = r.patientId;
-      }
-      if (!pid) { setErr("Pasiyent seçin"); setSaving(false); return; }
-      await operatorApi.createOnBehalf({ patientId: pid, psychologistId: psyId, startAt, endAt, note: note.trim() || undefined });
-      onDone();
-    } catch (e) { setErr((e as Error).message); setSaving(false); }
-  };
-
-  const inp: CSSProperties = { width: "100%", padding: 9, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
-
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(10,22,51,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, maxWidth: 540, width: "100%", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-        <div style={{ padding: "18px 22px", borderBottom: "1px solid #EEF2F7" }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: 0 }}>Pasiyent adına randevu</h3>
-          <p style={{ fontSize: 12.5, color: "#52718F", margin: "4px 0 0" }}>Pasiyenti seçin və ya yeni yaradın, sonra vaxt təyin edin — randevu birbaşa təsdiqlənir.</p>
-        </div>
-        <div style={{ padding: 22, display: "grid", gap: 14 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <button type="button" onClick={() => setMode("search")} style={{ padding: 9, borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: mode === "search" ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: mode === "search" ? "var(--brand-50)" : "#fff", color: mode === "search" ? "var(--brand-700)" : "#1A2535" }}>Mövcud pasiyent</button>
-            <button type="button" onClick={() => { setMode("new"); setPatientId(null); }} style={{ padding: 9, borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: mode === "new" ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: mode === "new" ? "var(--brand-50)" : "#fff", color: mode === "new" ? "var(--brand-700)" : "#1A2535" }}>Yeni pasiyent</button>
-          </div>
-
-          {mode === "search" ? (
-            <div>
-              <input value={q} onChange={e => { setQ(e.target.value); setPatientId(null); }} placeholder="Ad / telefon / email ilə axtar…" style={inp} />
-              {patientId ? (
-                <div style={{ fontSize: 12.5, color: "#065F46", marginTop: 6 }}>Seçildi: <strong>{patientLabel}</strong></div>
-              ) : hits.length > 0 && (
-                <div style={{ display: "grid", gap: 4, marginTop: 6, maxHeight: 180, overflowY: "auto" }}>
-                  {hits.map(h => (
-                    <button key={h.id} type="button" onClick={() => { setPatientId(h.id); setPatientLabel(h.title); }} style={{ textAlign: "left", padding: "8px 10px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", cursor: "pointer" }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1A2535" }}>{h.title}</div>
-                      <div style={{ fontSize: 11, color: "#52718F" }}>{h.subtitle}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Ad" style={inp} />
-              <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Soyad" style={inp} />
-              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Telefon" style={inp} />
-              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email (claim üçün)" style={inp} />
-            </div>
-          )}
-
-          <select value={psyId ?? ""} onChange={e => setPsyId(e.target.value ? Number(e.target.value) : null)} style={{ ...inp, background: "#fff" }}>
-            <option value="">Psixoloq seçin…</option>
-            {psys.map(p => <option key={p.id} value={p.id}>{p.name ?? `Psixoloq #${p.id}`}</option>)}
-          </select>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "#52718F", display: "grid", gap: 4 }}>Başlanğıc
-              <input type="datetime-local" value={startAt} onChange={e => onStart(e.target.value)} style={inp} /></label>
-            <label style={{ fontSize: 11, fontWeight: 600, color: "#52718F", display: "grid", gap: 4 }}>Bitiş
-              <input type="datetime-local" value={endAt} onChange={e => setEndAt(e.target.value)} style={inp} /></label>
-          </div>
-
-          <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Qeyd (məcburi deyil)" style={{ ...inp, fontFamily: "inherit", resize: "vertical" }} />
-
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12 }}>{err}</div>}
-
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>Bağla</button>
-            <button onClick={submit} disabled={saving} style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>{saving ? "Yaradılır…" : "Randevu yarat"}</button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -505,142 +381,138 @@ function AppointmentCard({
       tabIndex={0}
       onKeyDown={e => { if (e.key === "Enter") handleCardClick(); }}
       style={{ cursor: "pointer" }}>
-      <div className="op-appt__head">
+
+      <div className="op-appt__chips">
         {selectable && (
           <input type="checkbox" checked={!!selected} onChange={onToggleSelect}
             onClick={e => e.stopPropagation()}
-            style={{ width: 18, height: 18, marginTop: 4, cursor: "pointer", flexShrink: 0 }} />
+            className="op-appt__check" />
         )}
-        <div className="op-appt__head-main">
-          <div className="op-appt__chips">
-            <span className="op-appt__id">#FNS-{String(a.id).padStart(4, "0")}</span>
-            <span className="op-appt__status" style={{ background: meta.bg, color: meta.fg }}>
-              {meta.label}
-            </span>
-            {claimMine && (
-              <span className="op-claim-chip op-claim-chip--mine">
-                <span className="op-claim-dot" />{t("staff.opClaimMine")}
-              </span>
-            )}
-            {claimOther && a.claimedByName && (
-              <span className="op-claim-chip">
-                <span className="op-claim-dot" />{t("staff.opClaimWorking", { name: a.claimedByName })}
-              </span>
-            )}
-            {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
-              <span className="op-appt__series">
-                {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
-              </span>
-            )}
-            <span className="op-appt__time">{fmtDateTime(a.createdAt)} yaradılıb</span>
-          </div>
+        <span className="op-appt__id">#FNS-{String(a.id).padStart(4, "0")}</span>
+        <span className="op-appt__status" style={{ background: meta.bg, color: meta.fg }}>
+          {meta.label}
+        </span>
+        {claimMine && (
+          <span className="op-claim-chip op-claim-chip--mine">
+            <span className="op-claim-dot" />{t("staff.opClaimMine")}
+          </span>
+        )}
+        {claimOther && a.claimedByName && (
+          <span className="op-claim-chip">
+            <span className="op-claim-dot" />{t("staff.opClaimWorking", { name: a.claimedByName })}
+          </span>
+        )}
+        {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
+          <span className="op-appt__series">
+            {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
+          </span>
+        )}
+      </div>
 
-          <div className="op-appt__name">{a.patientName ?? "—"}</div>
+      <div className="op-appt__name">{a.patientName ?? "—"}</div>
+      <div className="op-appt__time">{timeAgo(a.createdAt) || `${fmtDateTime(a.createdAt)} yaradılıb`}</div>
 
-          {(phone || a.patientEmail) && (
-            <div className="op-appt__contact" onClick={e => e.stopPropagation()}>
-              {phone && (
-                <>
-                  <a href={`tel:${phone}`} className="op-contact-btn op-contact-btn--call" title={`Zəng et: ${phone}`}>
-                    <IconPhone /> Zəng et
-                  </a>
-                  <a href={whatsappLink(phone)} target="_blank" rel="noopener noreferrer"
-                    className="op-contact-btn op-contact-btn--wa" title={`WhatsApp: ${phone}`}>
-                    <IconWhatsApp /> WhatsApp
-                  </a>
-                  <span className="op-contact-phone">{a.patientPhone}</span>
-                </>
-              )}
-              {a.patientEmail && (
-                <a href={`mailto:${a.patientEmail}`} className="op-contact-btn op-contact-btn--mail" title={a.patientEmail}>
-                  <IconMail /> Email
-                </a>
-              )}
-            </div>
+      {(phone || a.patientEmail) && (
+        <div className="op-appt__contact" onClick={e => e.stopPropagation()}>
+          {phone && (
+            <>
+              <a href={`tel:${phone}`} className="op-contact-btn op-contact-btn--call" title={`Zəng et: ${a.patientPhone}`}>
+                <IconPhone /> Zəng
+              </a>
+              <a href={whatsappLink(phone)} target="_blank" rel="noopener noreferrer"
+                className="op-contact-btn op-contact-btn--wa" title={`WhatsApp: ${a.patientPhone}`}>
+                <IconWhatsApp /> WhatsApp
+              </a>
+            </>
           )}
-
-          {a.note && (
-            <div className="op-appt__topic">
-              <div className="op-appt__topic-label">Mövzu</div>
-              <div className="op-appt__topic-text">«{a.note}»</div>
-            </div>
-          )}
-
-          <div className="op-appt__assign">
-            {a.psychologistName ? (
-              <>
-                <strong>Təyin olundu:</strong> {a.psychologistName} · {fmtDateTime(a.startAt)}
-              </>
-            ) : a.requestedPsychologistName ? (
-              <>
-                <strong>Tövsiyə olunan:</strong> <em>{a.requestedPsychologistName}</em>
-                {a.requestedStartAt && ` · ${fmtDateTime(a.requestedStartAt)}`}
-              </>
-            ) : (
-              <em>Psixoloq seçilməyib — operator təyin edəcək</em>
-            )}
-          </div>
-
-          {a.operatorNote && (
-            <div className="op-appt__op-note">
-              <strong>Operator qeydi:</strong> {a.operatorNote}
-            </div>
-          )}
-
-          <div className="op-appt__followup">
-            <div className="op-appt__followup-info">
-              <span className="op-appt__followup-label">Son izləmə:</span>
-              {a.lastContactAt ? (
-                <>
-                  <strong>{timeAgo(a.lastContactAt)}</strong>
-                  {a.lastContactChannel && (
-                    <span className="op-appt__followup-chan">
-                      · {CHANNEL_LABEL[a.lastContactChannel] ?? a.lastContactChannel}
-                    </span>
-                  )}
-                  {lastOutcomeMeta && (
-                    <span className="op-appt__followup-outcome" data-tone={lastOutcomeMeta.tone}>
-                      {lastOutcomeMeta.label}
-                    </span>
-                  )}
-                </>
-              ) : (
-                <span className="op-appt__followup-empty">qeyd yoxdur</span>
-              )}
-            </div>
-          </div>
-
-          {status === "DISPUTED" && (
-            <div className="op-appt__alert op-appt__alert--danger">
-              <strong>Mübahisə:</strong>{" "}
-              {a.patientDisputed && a.psychologistDisputed ? "İkisi də 'olmadı' dedi"
-                : a.patientDisputed ? "Pasient 'olmadı' dedi"
-                : a.psychologistDisputed ? "Psixoloq 'olmadı' dedi"
-                : "Mübahisə açıldı"}
-              {a.disputeReason && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.disputeReason}»</div>}
-            </div>
-          )}
-          {status === "AWAITING_CONFIRMATION" && (
-            <div className="op-appt__alert op-appt__alert--warn">
-              Təsdiq gözlənir
-              {a.patientConfirmedAt && <span> · pasient təsdiqlədi</span>}
-              {a.psychologistConfirmedAt && <span> · psixoloq təsdiqlədi</span>}
-            </div>
-          )}
-          {isCancelReq && (
-            <div className="op-appt__alert op-appt__alert--warn">
-              <strong>Pasient ləğv tələb edib.</strong>
-              {a.cancelRequestReasonCode && <> · kod: <code>{a.cancelRequestReasonCode}</code></>}
-              {a.cancelRequestReasonText && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.cancelRequestReasonText}»</div>}
-            </div>
+          {a.patientEmail && (
+            <a href={`mailto:${a.patientEmail}`} className="op-contact-btn op-contact-btn--mail" title={a.patientEmail}>
+              <IconMail /> Email
+            </a>
           )}
         </div>
+      )}
 
-        <div className="op-appt__actions">
-          <button onClick={e => { e.stopPropagation(); onOpen(); }} className="op-appt__btn op-appt__btn--primary">
-            {t("staff.opOpenTicket")}
-          </button>
+      {a.note && (
+        <div className="op-appt__topic">
+          <div className="op-appt__topic-label">Mövzu</div>
+          <div className="op-appt__topic-text">«{a.note}»</div>
         </div>
+      )}
+
+      <div className="op-appt__assign">
+        {a.psychologistName ? (
+          <>
+            <strong>Təyin olundu:</strong> {a.psychologistName} · {fmtDateTime(a.startAt)}
+          </>
+        ) : a.requestedPsychologistName ? (
+          <>
+            <strong>Tövsiyə olunan:</strong> <em>{a.requestedPsychologistName}</em>
+            {a.requestedStartAt && ` · ${fmtDateTime(a.requestedStartAt)}`}
+          </>
+        ) : (
+          <em>Psixoloq seçilməyib — operator təyin edəcək</em>
+        )}
+      </div>
+
+      {a.operatorNote && (
+        <div className="op-appt__op-note">
+          <strong>Operator qeydi:</strong> {a.operatorNote}
+        </div>
+      )}
+
+      <div className="op-appt__followup">
+        <div className="op-appt__followup-info">
+          <span className="op-appt__followup-label">Son izləmə:</span>
+          {a.lastContactAt ? (
+            <>
+              <strong>{timeAgo(a.lastContactAt)}</strong>
+              {a.lastContactChannel && (
+                <span className="op-appt__followup-chan">
+                  · {CHANNEL_LABEL[a.lastContactChannel] ?? a.lastContactChannel}
+                </span>
+              )}
+              {lastOutcomeMeta && (
+                <span className="op-appt__followup-outcome" data-tone={lastOutcomeMeta.tone}>
+                  {lastOutcomeMeta.label}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="op-appt__followup-empty">qeyd yoxdur</span>
+          )}
+        </div>
+      </div>
+
+      {status === "DISPUTED" && (
+        <div className="op-appt__alert op-appt__alert--danger">
+          <strong>Mübahisə:</strong>{" "}
+          {a.patientDisputed && a.psychologistDisputed ? "İkisi də 'olmadı' dedi"
+            : a.patientDisputed ? "Pasient 'olmadı' dedi"
+            : a.psychologistDisputed ? "Psixoloq 'olmadı' dedi"
+            : "Mübahisə açıldı"}
+          {a.disputeReason && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.disputeReason}»</div>}
+        </div>
+      )}
+      {status === "AWAITING_CONFIRMATION" && (
+        <div className="op-appt__alert op-appt__alert--warn">
+          Təsdiq gözlənir
+          {a.patientConfirmedAt && <span> · pasient təsdiqlədi</span>}
+          {a.psychologistConfirmedAt && <span> · psixoloq təsdiqlədi</span>}
+        </div>
+      )}
+      {isCancelReq && (
+        <div className="op-appt__alert op-appt__alert--warn">
+          <strong>Pasient ləğv tələb edib.</strong>
+          {a.cancelRequestReasonCode && <> · kod: <code>{a.cancelRequestReasonCode}</code></>}
+          {a.cancelRequestReasonText && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.cancelRequestReasonText}»</div>}
+        </div>
+      )}
+
+      <div className="op-appt__actions">
+        <button onClick={e => { e.stopPropagation(); onOpen(); }} className="op-appt__btn op-appt__btn--primary">
+          {t("staff.opOpenTicket")}
+        </button>
       </div>
     </div>
   );

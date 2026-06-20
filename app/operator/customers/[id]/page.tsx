@@ -4,11 +4,14 @@
 // Pasiyentin qeydiyyatı, seans bölgüsü, ödənişlər, paketlər, test nəticələri,
 // rəylər və fəaliyyət lenti bir səhifədə. Modul G məxfi sahələri açıq işarələnir.
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { operatorApi, type CustomerProfile } from "@/lib/api";
+import { operatorApi, type CustomerProfile, type Psychologist, type PackageDto } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { toast } from "@/components/Toast";
+import { confirmDialog } from "@/components/ConfirmDialog";
+import OnBehalfBookingModal from "@/components/OnBehalfBookingModal";
 
 function pad2(n: number) { return String(n).padStart(2, "0"); }
 function fmtDate(iso?: string | null) {
@@ -68,6 +71,10 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [sellOpen, setSellOpen] = useState(false);
+  const [bookOpen, setBookOpen] = useState(false);
+  const [blocking, setBlocking] = useState(false);
 
   useEffect(() => {
     if (!Number.isFinite(patientId)) { setError(true); setLoading(false); return; }
@@ -79,7 +86,27 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
       .catch(() => { if (alive) setError(true); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [patientId]);
+  }, [patientId, reloadKey]);
+
+  const toggleBlock = async () => {
+    const h = profile?.history;
+    if (!h?.userId || blocking) return;
+    if (h.blocked) {
+      if (!(await confirmDialog({ title: "Bloku aç", message: "Bu istifadəçinin blokunu açmaq istəyirsiniz?", confirmLabel: "Aç" }))) return;
+    } else {
+      if (!(await confirmDialog({ title: "İstifadəçini blokla", message: "Bu pasiyenti bloklamaq istəyirsiniz?", confirmLabel: "Blokla", danger: true }))) return;
+    }
+    setBlocking(true);
+    try {
+      if (h.blocked) { await operatorApi.unblockUser(h.userId); toast("Blok açıldı", "success"); }
+      else { await operatorApi.blockUser(h.userId, ""); toast("İstifadəçi bloklandı", "success"); }
+      setReloadKey(k => k + 1);
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setBlocking(false);
+    }
+  };
 
   if (loading) {
     return <div className="op-loading">{t("common.loading")}</div>;
@@ -100,14 +127,39 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
 
   return (
     <div className="op-analytics">
+      {sellOpen && (
+        <SellPackageModal
+          patientId={patientId}
+          onClose={() => setSellOpen(false)}
+          onDone={(name) => { setSellOpen(false); setReloadKey(k => k + 1); toast(`Paket satıldı: ${name} · ödəniş PENDING`, "success"); }}
+        />
+      )}
+      {bookOpen && (
+        <OnBehalfBookingModal
+          presetPatientId={patientId}
+          presetPatientLabel={h.name}
+          onClose={() => setBookOpen(false)}
+          onDone={() => { setBookOpen(false); setReloadKey(k => k + 1); toast("Randevu yaradıldı", "success"); }}
+        />
+      )}
       <header className="op-analytics__head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1>{h.name}</h1>
           <p>Müştəri profili · #{patientId}</p>
         </div>
-        <Link href="/operator/customers" className="op-kpi" style={{ flex: "0 0 auto", padding: "8px 14px", textDecoration: "none", fontSize: 13, fontWeight: 600, color: "var(--oxford)" }}>
-          ← Axtarış
-        </Link>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={() => setBookOpen(true)}
+            style={{ padding: "8px 14px", border: "none", borderRadius: 10, background: "var(--brand)", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+            + Randevu yarat
+          </button>
+          <button onClick={toggleBlock} disabled={blocking}
+            style={{ padding: "8px 14px", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", border: h.blocked ? "1px solid #A7F3D0" : "1px solid #FECACA", background: "#fff", color: h.blocked ? "#065F46" : "#991B1B" }}>
+            {h.blocked ? "Bloku aç" : "Blokla"}
+          </button>
+          <Link href="/operator/customers" className="op-kpi" style={{ flex: "0 0 auto", padding: "8px 14px", textDecoration: "none", fontSize: 13, fontWeight: 600, color: "var(--oxford)" }}>
+            ← Axtarış
+          </Link>
+        </div>
       </header>
 
       {/* (a) Şəxsi / qeydiyyat kartı */}
@@ -208,7 +260,13 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
       <div className="op-card">
         <div className="op-card__head">
           <div><h2>Paketlər</h2><p>Alınmış seans paketləri</p></div>
-          <span className="op-card__count">{profile.packages.length}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button onClick={() => setSellOpen(true)}
+              style={{ padding: "7px 14px", border: "none", borderRadius: 10, background: "var(--brand)", color: "#fff", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+              + Paket sat
+            </button>
+            <span className="op-card__count">{profile.packages.length}</span>
+          </div>
         </div>
         <div className="op-card__body">
           {profile.packages.length === 0 ? (
@@ -385,6 +443,125 @@ function Td({ children }: { children: React.ReactNode }) {
     <td style={{ padding: "9px 10px", color: "var(--oxford)", borderBottom: "1px solid #F4F6FA", verticalAlign: "middle" }}>
       {children}
     </td>
+  );
+}
+
+/* ─── Paket satışı modalı (operator) ─────────────────────────────────────── */
+
+function SellPackageModal({ patientId, onClose, onDone }: {
+  patientId: number;
+  onClose: () => void;
+  onDone: (packageName: string) => void;
+}) {
+  const [psys, setPsys] = useState<Psychologist[]>([]);
+  const [psyId, setPsyId] = useState<number | null>(null);
+  const [mode, setMode] = useState<"catalog" | "custom">("catalog");
+  const [catalog, setCatalog] = useState<PackageDto[]>([]);
+  const [catalogId, setCatalogId] = useState<number | null>(null);
+  const [loadingCat, setLoadingCat] = useState(false);
+  // xüsusi
+  const [name, setName] = useState("");
+  const [sessions, setSessions] = useState("");
+  const [price, setPrice] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => { operatorApi.listPsychologists().then(setPsys).catch(() => {}); }, []);
+
+  useEffect(() => {
+    setCatalog([]); setCatalogId(null);
+    if (!psyId) return;
+    setLoadingCat(true);
+    operatorApi.psychologistPackages(psyId)
+      .then(list => setCatalog(list.filter(p => p.active !== false)))
+      .catch(() => setCatalog([]))
+      .finally(() => setLoadingCat(false));
+  }, [psyId]);
+
+  const submit = async () => {
+    setErr(null);
+    if (!psyId) { setErr("Psixoloq seçin"); return; }
+    let payload: Parameters<typeof operatorApi.sellPackage>[1];
+    let displayName: string;
+    if (mode === "catalog") {
+      if (!catalogId) { setErr("Kataloqdan paket seçin"); return; }
+      payload = { sessionPackageId: catalogId };
+      displayName = catalog.find(c => c.id === catalogId)?.name ?? "Paket";
+    } else {
+      const s = Number(sessions), p = Number(price);
+      if (!Number.isFinite(s) || s < 1) { setErr("Seans sayı düzgün deyil"); return; }
+      if (!Number.isFinite(p) || p < 0) { setErr("Qiymət düzgün deyil"); return; }
+      payload = { psychologistId: psyId, packageName: name.trim() || undefined, sessionCount: s, price: p };
+      displayName = name.trim() || `${s} seanslıq paket`;
+    }
+    setSaving(true);
+    try {
+      await operatorApi.sellPackage(patientId, payload);
+      onDone(displayName);
+    } catch (e) {
+      setErr((e as Error).message);
+      setSaving(false);
+    }
+  };
+
+  const inp: CSSProperties = { width: "100%", padding: 9, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(10,22,51,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, maxWidth: 520, width: "100%", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+        <div style={{ padding: "18px 22px", borderBottom: "1px solid #EEF2F7" }}>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: 0 }}>Paket sat</h3>
+          <p style={{ fontSize: 12.5, color: "#52718F", margin: "4px 0 0" }}>Psixoloq + paket seçin. Ödəniş PENDING yaranır — pul gələndə «Ödənişlər»də təsdiqləyin.</p>
+        </div>
+        <div style={{ padding: 22, display: "grid", gap: 14 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: "#52718F", display: "grid", gap: 4 }}>Psixoloq
+            <select value={psyId ?? ""} onChange={e => setPsyId(e.target.value ? Number(e.target.value) : null)} style={{ ...inp, background: "#fff" }}>
+              <option value="">Seçin…</option>
+              {psys.map(p => <option key={p.id} value={p.id}>{p.name}{p.title ? ` · ${p.title}` : ""}</option>)}
+            </select>
+          </label>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <button type="button" onClick={() => setMode("catalog")} style={{ padding: 9, borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: mode === "catalog" ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: mode === "catalog" ? "var(--brand-50)" : "#fff", color: mode === "catalog" ? "var(--brand-700)" : "#1A2535" }}>Kataloq paketi</button>
+            <button type="button" onClick={() => setMode("custom")} style={{ padding: 9, borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: mode === "custom" ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: mode === "custom" ? "var(--brand-50)" : "#fff", color: mode === "custom" ? "var(--brand-700)" : "#1A2535" }}>Xüsusi paket</button>
+          </div>
+
+          {mode === "catalog" ? (
+            !psyId ? (
+              <div style={{ fontSize: 12.5, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 10px" }}>Əvvəlcə psixoloq seçin.</div>
+            ) : loadingCat ? (
+              <div style={{ fontSize: 12.5, color: "#52718F" }}>Yüklənir…</div>
+            ) : catalog.length === 0 ? (
+              <div style={{ fontSize: 12.5, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 10px" }}>Bu psixoloqun kataloq paketi yoxdur — «Xüsusi paket» seçin.</div>
+            ) : (
+              <div style={{ display: "grid", gap: 6 }}>
+                {catalog.map(c => (
+                  <button key={c.id} type="button" onClick={() => setCatalogId(c.id)} style={{ textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer", border: catalogId === c.id ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: catalogId === c.id ? "var(--brand-50)" : "#fff" }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "#1A2535" }}>{c.name}</div>
+                    <div style={{ fontSize: 12, color: "#52718F" }}>{c.sessionCount} seans · {formatAzn(c.packagePrice)} · {formatAzn(c.perSessionPrice)}/seans</div>
+                  </button>
+                ))}
+              </div>
+            )
+          ) : (
+            <div style={{ display: "grid", gap: 8 }}>
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Paket adı (opsional)" style={inp} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <input value={sessions} onChange={e => setSessions(e.target.value)} placeholder="Seans sayı" type="number" min={1} style={inp} />
+                <input value={price} onChange={e => setPrice(e.target.value)} placeholder="Qiymət (AZN)" type="number" min={0} step="0.01" style={inp} />
+              </div>
+            </div>
+          )}
+
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12 }}>{err}</div>}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>Bağla</button>
+            <button onClick={submit} disabled={saving} style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>{saving ? "Satılır…" : "Paket sat"}</button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

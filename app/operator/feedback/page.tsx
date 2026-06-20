@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { operatorApi, type FeedbackTriageResponse, type SessionFeedback } from "@/lib/api";
+import { toast as uiToast } from "@/components/Toast";
+import { SkeletonGrid } from "@/components/Skeleton";
+import EmptyState from "@/components/EmptyState";
 
 const PAGE_SIZE = 30;
 
@@ -53,7 +56,7 @@ export default function OperatorFeedbackPage() {
     try {
       const updated = await operatorApi.feedbackMarkSeen(fb.id);
       setData(d => d ? { ...d, content: d.content.map(x => x.id === fb.id ? updated : x) } : d);
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { uiToast((e as Error).message, "error"); }
   };
 
   const totalPages = data?.totalPages ?? 0;
@@ -89,11 +92,9 @@ export default function OperatorFeedbackPage() {
       </div>
 
       {loading ? (
-        <div className="opf-row" style={{ justifyContent: "center", color: "var(--oxford-60)" }}>Yüklənir…</div>
+        <SkeletonGrid count={4} />
       ) : !data || data.content.length === 0 ? (
-        <div className="opf-row" style={{ justifyContent: "center", color: "var(--oxford-60)" }}>
-          Filtə uyğun rəy yoxdur
-        </div>
+        <EmptyState title="Filtrə uyğun rəy yoxdur" sub="Filtri dəyişin və ya yeni rəy gözləyin." />
       ) : (
         <div className="opf-list">
           {data.content.map(fb => {

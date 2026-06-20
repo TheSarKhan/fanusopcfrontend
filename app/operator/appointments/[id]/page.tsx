@@ -22,8 +22,11 @@ import {
   type OperatorActivityItem,
   type OperatorAppointmentFull,
   type Psychologist,
+  type SlotAllowance,
 } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
+import { toast as globalToast } from "@/components/Toast";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { subscribeNotifications, subscribeOperatorClaims } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azLocalToISO, isoToAzLocal, azFormatDate, azFormatTime, azFormatDateTime } from "@/lib/datetime";
@@ -417,6 +420,12 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
             style={{ border: "1px solid #E5E7EB", background: "#fff", borderRadius: 8, padding: "6px 12px", cursor: nextId ? "pointer" : "not-allowed", opacity: nextId ? 1 : 0.4, fontSize: 13 }}>
             →
           </button>
+          <span title="Klaviatura qısayolları" style={{ fontSize: 10.5, color: "#8AAABF", display: "flex", gap: 6, alignItems: "center", marginLeft: 4 }}>
+            <kbd className="op-det-kbd">J</kbd>/<kbd className="op-det-kbd">K</kbd> növbə
+            <kbd className="op-det-kbd">A</kbd> təyin
+            <kbd className="op-det-kbd">N</kbd> qeyd
+            <kbd className="op-det-kbd">Esc</kbd> siyahı
+          </span>
         </div>
       </div>
 
@@ -459,7 +468,11 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
               cold={claimedByOther}
               guardAction={guardAction}
               selectRef={assignFocusRef}
-              onAssigned={(u) => onActionDone(u, (a.status === "ASSIGNED" || a.status === "CONFIRMED") ? "Yenidən planlandı" : "Təyin olundu")}
+              onAssigned={(u) => {
+                // Təyinatdan sonra detal səhifəsində gözlətmə — randevular siyahısına qayıt.
+                globalToast((u.status === "ASSIGNED" || u.status === "CONFIRMED") ? "Təyin olundu" : "Yeniləndi", "success");
+                backToList();
+              }}
             />
           )}
 
@@ -553,18 +566,48 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
   const h = full.patientHistory;
   const suffix = qs ? `?${qs}` : "";
 
+  const [seriesStart, setSeriesStart] = useState("");
+  const [seriesRescheduleOpen, setSeriesRescheduleOpen] = useState(false);
+  const [seriesBusy, setSeriesBusy] = useState(false);
+
+  const doRescheduleSeries = async () => {
+    if (!a.seriesId || !seriesStart || seriesBusy) return;
+    setSeriesBusy(true);
+    try {
+      await operatorApi.rescheduleSeries(a.seriesId, azLocalToISO(seriesStart));
+      globalToast("Seriya yenidən planlandı", "success");
+      setSeriesRescheduleOpen(false); setSeriesStart("");
+      onHistoryChanged();
+    } catch (e) { globalToast((e as Error).message, "error"); }
+    finally { setSeriesBusy(false); }
+  };
+
+  const doCancelSeries = async () => {
+    if (!a.seriesId || seriesBusy) return;
+    if (!(await confirmDialog({ title: "Seriyanı ləğv et", message: "Seriyanın bütün gələcək seansları ləğv olunacaq. Davam edək?", confirmLabel: "Ləğv et", danger: true }))) return;
+    setSeriesBusy(true);
+    try {
+      await operatorApi.cancelSeries(a.seriesId);
+      globalToast("Seriya ləğv edildi", "success");
+      onHistoryChanged();
+    } catch (e) { globalToast((e as Error).message, "error"); }
+    finally { setSeriesBusy(false); }
+  };
+
   const blockOrUnblock = async () => {
     if (!h?.userId) return;
     try {
       if (h.blocked) {
-        if (!confirm("Bu istifadəçinin blokunu açmaq istəyirsiniz?")) return;
+        if (!(await confirmDialog({ title: "Bloku aç", message: "Bu istifadəçinin blokunu açmaq istəyirsiniz?", confirmLabel: "Aç" }))) return;
         await operatorApi.unblockUser(h.userId);
+        globalToast("Blok açıldı", "success");
       } else {
-        const reason = prompt("Bloklama səbəbi (məcburi deyil):") ?? "";
-        await operatorApi.blockUser(h.userId, reason);
+        if (!(await confirmDialog({ title: "İstifadəçini blokla", message: "Bu pasiyenti bloklamaq istəyirsiniz? Səbəbi sonra qeyd kimi əlavə edə bilərsiniz.", confirmLabel: "Blokla", danger: true }))) return;
+        await operatorApi.blockUser(h.userId, "");
+        globalToast("İstifadəçi bloklandı", "success");
       }
       onHistoryChanged();
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { globalToast((e as Error).message, "error"); }
   };
 
   return (
@@ -639,6 +682,34 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
                 <span style={{ color: "#8AAABF" }}>{s.startAt ? azFormatDate(s.startAt) : "—"} · {STATUS_TONE[s.status]?.label ?? s.status}</span>
               </Link>
             ))}
+          </div>
+
+          {/* Seriyanı bütöv idarə (operator) */}
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #EFF2F7", display: "grid", gap: 8 }}>
+            {seriesRescheduleOpen ? (
+              <div style={{ display: "grid", gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#52718F" }}>Növbəti seansın yeni başlanğıcı (qalanlar eyni qədər sürüşəcək)</label>
+                <input type="datetime-local" step={60} value={seriesStart} onChange={e => setSeriesStart(e.target.value)}
+                  style={{ padding: 8, borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 12 }} />
+                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                  <button onClick={() => { setSeriesRescheduleOpen(false); setSeriesStart(""); }} disabled={seriesBusy}
+                    style={{ padding: "6px 12px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#fff", cursor: "pointer" }}>Ləğv</button>
+                  <button onClick={doRescheduleSeries} disabled={seriesBusy || !seriesStart}
+                    style={{ padding: "6px 12px", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: seriesBusy ? "wait" : "pointer", opacity: seriesBusy || !seriesStart ? 0.6 : 1 }}>{seriesBusy ? "…" : "Köçür"}</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button onClick={() => setSeriesRescheduleOpen(true)}
+                  style={{ padding: "6px 12px", border: "1px solid var(--brand-200)", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "#fff", color: "var(--brand-700)", cursor: "pointer" }}>
+                  Seriyanı köçür
+                </button>
+                <button onClick={doCancelSeries} disabled={seriesBusy}
+                  style={{ padding: "6px 12px", border: "1px solid #FECACA", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "#fff", color: "#991B1B", cursor: "pointer" }}>
+                  Seriyanı ləğv et
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -778,7 +849,8 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   const [psyId, setPsyId] = useState<number | null>(appointment.requestedPsychologistId ?? appointment.psychologistId ?? null);
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [pickedSlot, setPickedSlot] = useState<string | null>(null);
+  const [pickedSlots, setPickedSlots] = useState<string[]>([]);
+  const [allowance, setAllowance] = useState<SlotAllowance | null>(null);
   const [manualStart, setManualStart] = useState("");
   const [manualEnd, setManualEnd] = useState("");
   const [note, setNote] = useState(appointment.operatorNote ?? "");
@@ -804,19 +876,46 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     loadSlots(psyId);
   }, [psyId, loadSlots]);
 
+  // Paket balansı → neçə slot seçilə bilər (paket yoxdursa 1)
+  useEffect(() => {
+    if (!psyId) { setAllowance(null); return; }
+    operatorApi.slotAllowance(appointment.id, psyId)
+      .then(setAllowance)
+      .catch(() => setAllowance(null));
+  }, [psyId, appointment.id]);
+
+  const maxSlots = allowance?.maxSlots ?? 1;
+
   // Müştərinin istədiyi vaxtı avtomatik seç (slot varsa slotu, yoxdursa manual)
   useEffect(() => {
     const requested = appointment.requestedStartAt;
     if (!requested || !psyId || loadingSlots) return;
-    if (pickedSlot || manualStart) return;
+    if (pickedSlots.length > 0 || manualStart) return;
     const reqMs = new Date(requested).getTime();
     const match = slots.find(s => new Date(s.startAt).getTime() === reqMs);
-    if (match) { setPickedSlot(match.startAt); return; }
+    if (match) { setPickedSlots([match.startAt]); return; }
     const psy = psychologists.find(p => p.id === psyId);
     const minutes = psy?.defaultSessionMinutes && psy.defaultSessionMinutes > 0 ? psy.defaultSessionMinutes : 50;
     setManualStart(isoToAzLocal(requested));
     setManualEnd(isoToAzLocal(new Date(reqMs + minutes * 60_000).toISOString()));
-  }, [slots, loadingSlots, psyId, psychologists, appointment.requestedStartAt, pickedSlot, manualStart]);
+  }, [slots, loadingSlots, psyId, psychologists, appointment.requestedStartAt, pickedSlots.length, manualStart]);
+
+  // Slot seç/çıxar — paket icazəsinə görə tavanla məhdudlaşır.
+  const toggleSlot = (startAt: string) => {
+    setManualStart(""); setManualEnd("");
+    setPickedSlots(prev => {
+      if (prev.includes(startAt)) return prev.filter(s => s !== startAt);
+      if (maxSlots <= 1) return [startAt]; // tək seçim → əvəzlə
+      if (prev.length >= maxSlots) {
+        setError(allowance?.packageName
+          ? `Paketdə ${maxSlots} seans qalıb — daha çox seçilə bilməz`
+          : "Paket yoxdur — yalnız 1 vaxt seçilə bilər");
+        return prev;
+      }
+      setError(null);
+      return [...prev, startAt];
+    });
+  };
 
   const groupedSlots = useMemo(() => {
     const map = new Map<string, AvailableSlot[]>();
@@ -831,29 +930,41 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   const doSubmit = async () => {
     setError(null);
     if (!psyId) { setError("Psixoloq seçin"); return; }
-    let startAt: string | null = pickedSlot;
-    let endAt: string | null = null;
-    if (startAt) {
-      const slot = slots.find(s => s.startAt === startAt);
-      if (slot) endAt = slot.endAt;
+
+    // Seçilmiş slotları (vaxt sırası ilə) payload-a çevir; slot yoxdursa əl ilə.
+    let payloadSlots: { startAt: string; endAt: string }[] = [];
+    if (pickedSlots.length > 0) {
+      payloadSlots = pickedSlots
+        .map(st => slots.find(s => s.startAt === st))
+        .filter((s): s is AvailableSlot => !!s)
+        .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+        .map(s => ({ startAt: s.startAt, endAt: s.endAt }));
     } else if (manualStart && manualEnd) {
-      startAt = azLocalToISO(manualStart);
-      endAt = azLocalToISO(manualEnd);
+      const startAt = azLocalToISO(manualStart);
+      const endAt = azLocalToISO(manualEnd);
+      if (new Date(startAt) >= new Date(endAt)) { setError("Başlama vaxtı bitiş vaxtından əvvəl olmalıdır"); return; }
+      payloadSlots = [{ startAt, endAt }];
     }
-    if (!startAt || !endAt) { setError("Vaxt seçin və ya əl ilə daxil edin"); return; }
-    if (new Date(startAt) >= new Date(endAt)) { setError("Başlama vaxtı bitiş vaxtından əvvəl olmalıdır"); return; }
+    if (payloadSlots.length === 0) { setError("Vaxt seçin və ya əl ilə daxil edin"); return; }
+    if (payloadSlots.length > maxSlots) {
+      setError(allowance?.packageName
+        ? `Paketdə ${maxSlots} seans qalıb — daha çox vaxt seçilə bilməz`
+        : "Paket yoxdur — yalnız 1 vaxt seçilə bilər");
+      return;
+    }
 
     setSaving(true);
     try {
-      const updated = await operatorApi.assign(appointment.id, {
-        psychologistId: psyId, startAt, endAt, operatorNote: note || null,
+      const updated = await operatorApi.assignSlots(appointment.id, {
+        psychologistId: psyId, slots: payloadSlots, operatorNote: note || null,
       });
-      onAssigned(updated);
+      const primary = updated.find(u => u.id === appointment.id) ?? updated[0];
+      if (primary) onAssigned(primary);
     } catch (e) {
       setError((e as Error).message);
       // GAP-02 / B4-2: konflikt konsolu — slot qaçdı, köhnə seçimi at, yenilə
       if (isSlotConflict(e) && psyId) {
-        setPickedSlot(null);
+        setPickedSlots([]);
         loadSlots(psyId);
       }
     } finally {
@@ -873,7 +984,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
           <div style={{ display: "grid", gap: 5 }}>
             {suggestions.slice(0, 3).map(s => (
               <button key={s.psychologistId} type="button"
-                onClick={() => { setPsyId(s.psychologistId); setPickedSlot(null); setManualStart(""); setManualEnd(""); }}
+                onClick={() => { setPsyId(s.psychologistId); setPickedSlots([]); setManualStart(""); setManualEnd(""); }}
                 style={{
                   textAlign: "left", padding: "7px 10px", borderRadius: 8,
                   border: psyId === s.psychologistId ? "2px solid #10B981" : "1px solid #BBF7D0",
@@ -891,7 +1002,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
       )}
 
       <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>Psixoloq</label>
-      <select ref={selectRef} value={psyId ?? ""} onChange={e => { setPsyId(Number(e.target.value) || null); setPickedSlot(null); setManualStart(""); setManualEnd(""); }}
+      <select ref={selectRef} value={psyId ?? ""} onChange={e => { setPsyId(Number(e.target.value) || null); setPickedSlots([]); setManualStart(""); setManualEnd(""); }}
         style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 12 }}>
         <option value="">— Seç —</option>
         {psychologists.map(p => <option key={p.id} value={p.id}>{p.name} · {p.title}</option>)}
@@ -901,6 +1012,19 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
         <div style={{ background: "#EEF2FF", border: "1px solid #C7D2FE", borderRadius: 8, padding: "6px 10px", fontSize: 12, color: "var(--brand-700)", marginBottom: 10 }}>
           <strong>İstənilən vaxt:</strong> {fmtDateTime(appointment.requestedStartAt)} — uyğun slot avtomatik seçilir.
         </div>
+      )}
+
+      {psyId && allowance && (
+        allowance.packageName ? (
+          <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 8, padding: "6px 10px", fontSize: 12, color: "#065F46", marginBottom: 10 }}>
+            <strong>Paket: {allowance.packageName}</strong> · {allowance.remainingSessions} seans qalıb — {maxSlots} vaxta qədər seçə bilərsiniz
+            {pickedSlots.length > 0 && ` (${pickedSlots.length} seçilib)`}
+          </div>
+        ) : (
+          <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "6px 10px", fontSize: 12, color: "#92400E", marginBottom: 10 }}>
+            Paket yoxdur — yalnız <strong>1 vaxt</strong> seçilə bilər. Çoxlu seans üçün pasiyent paket almalıdır.
+          </div>
+        )
       )}
 
       {psyId && (
@@ -916,25 +1040,28 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
             <div style={{ display: "grid", gap: 8, marginBottom: 12, maxHeight: 200, overflow: "auto" }}>
               {groupedSlots.map(([day, daySlots]) => {
                 const requestedMs = appointment.requestedStartAt ? new Date(appointment.requestedStartAt).getTime() : null;
-                const pickedMs = pickedSlot ? new Date(pickedSlot).getTime() : null;
                 return (
                   <div key={day}>
                     <div style={{ fontSize: 10.5, fontWeight: 600, color: "#52718F", textTransform: "uppercase", marginBottom: 4 }}>{day}</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                       {daySlots.map(s => {
                         const slotMs = new Date(s.startAt).getTime();
-                        const active = pickedMs !== null && slotMs === pickedMs;
+                        const active = pickedSlots.includes(s.startAt);
+                        const order = active ? pickedSlots.indexOf(s.startAt) + 1 : 0;
                         const isRequested = requestedMs !== null && slotMs === requestedMs;
                         return (
                           <button key={s.startAt} type="button"
                             title={isRequested ? "Müştərinin istədiyi vaxt" : undefined}
-                            onClick={() => { setPickedSlot(active ? null : s.startAt); setManualStart(""); setManualEnd(""); }}
+                            onClick={() => toggleSlot(s.startAt)}
                             style={{
                               padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
                               border: active ? "2px solid var(--brand)" : isRequested ? "2px solid #10B981" : "1px solid #E5E7EB",
                               background: active ? "var(--brand-50)" : isRequested ? "#ECFDF5" : "#fff",
                               color: active ? "var(--brand)" : isRequested ? "#065F46" : "#1A2535",
                             }}>
+                            {maxSlots > 1 && active && (
+                              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 15, height: 15, borderRadius: "50%", background: "var(--brand)", color: "#fff", fontSize: 9, marginRight: 5 }}>{order}</span>
+                            )}
                             {azFormatTime(s.startAt)}
                           </button>
                         );
@@ -949,9 +1076,9 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
           <details style={{ marginBottom: 12 }} open={!!manualStart}>
             <summary style={{ fontSize: 12, color: "#52718F", cursor: "pointer" }}>Əl ilə vaxt daxil et</summary>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-              <input type="datetime-local" value={manualStart} onChange={e => { setManualStart(e.target.value); setPickedSlot(null); }}
+              <input type="datetime-local" step={60} value={manualStart} onChange={e => { setManualStart(e.target.value); setPickedSlots([]); }}
                 style={{ padding: 8, borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 12 }} />
-              <input type="datetime-local" value={manualEnd} onChange={e => { setManualEnd(e.target.value); setPickedSlot(null); }}
+              <input type="datetime-local" step={60} value={manualEnd} onChange={e => { setManualEnd(e.target.value); setPickedSlots([]); }}
                 style={{ padding: 8, borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 12 }} />
             </div>
           </details>
@@ -970,7 +1097,9 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
 
       <button onClick={() => guardAction(doSubmit)} disabled={saving}
         style={{ width: "100%", padding: "10px 18px", border: "none", background: "var(--brand)", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 700, cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
-        {saving ? "Saxlanılır…" : appointment.status === "ASSIGNED" ? "Yenidən təyin et" : "Təyin et"}
+        {saving ? "Saxlanılır…"
+          : pickedSlots.length > 1 ? `${pickedSlots.length} seans təyin et`
+          : appointment.status === "ASSIGNED" ? "Yenidən təyin et" : "Təyin et"}
       </button>
     </div>
   );
@@ -978,56 +1107,18 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
 
 /* ─── Mərkəz: görüş linki bloku (link idarəsi + tarixçə) ───────────────────── */
 
-function LinkBlock({ appointment, cold, guardAction, onDone }: {
+function LinkBlock({ appointment, cold }: {
   appointment: AppointmentDetail;
   cold: boolean;
   guardAction: (run: () => void) => void;
   onDone: (a: AppointmentDetail, msg: string) => void;
 }) {
   const { t } = useT();
-  const [value, setValue] = useState(appointment.meetingLink ?? "");
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [history, setHistory] = useState<MeetingLinkLogItem[] | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   const hasLink = !!appointment.meetingLink;
-
-  const showError = (e: unknown) => {
-    if (e instanceof ApiError && /https/i.test(e.message)) {
-      setErr(t("meetingLink.httpsError"));
-    } else {
-      setErr((e as Error).message);
-    }
-  };
-
-  const doSave = async () => {
-    setErr(null); setSaving(true);
-    try {
-      const updated = await operatorApi.setMeetingLink(appointment.id, value.trim());
-      onDone(updated, t("meetingLink.saved"));
-    } catch (e) { showError(e); }
-    finally { setSaving(false); }
-  };
-
-  const doRemove = async () => {
-    setErr(null); setSaving(true);
-    try {
-      const updated = await operatorApi.revokeMeetingLink(appointment.id);
-      onDone(updated, t("meetingLink.removed"));
-    } catch (e) { showError(e); }
-    finally { setSaving(false); }
-  };
-
-  const doSend = async () => {
-    setErr(null); setSaving(true);
-    try {
-      const updated = await operatorApi.sendMeetingLink(appointment.id);
-      onDone(updated, t("meetingLink.sentOk"));
-    } catch (e) { showError(e); }
-    finally { setSaving(false); }
-  };
 
   const toggleHistory = () => {
     if (historyOpen) { setHistoryOpen(false); return; }
@@ -1055,9 +1146,16 @@ function LinkBlock({ appointment, cold, guardAction, onDone }: {
     <div className={cold ? "op-det-card op-det-card--cold" : "op-det-card"}>
       <div className="op-det-card__title">{t("meetingLink.title")}</div>
 
-      <input type="text" value={value} onChange={e => setValue(e.target.value)}
-        placeholder={t("meetingLink.placeholder")}
-        style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 10, boxSizing: "border-box" }} />
+      {hasLink ? (
+        <a href={appointment.meetingLink!} target="_blank" rel="noopener noreferrer"
+          style={{ display: "block", fontSize: 12.5, color: "var(--brand-700)", fontWeight: 600, wordBreak: "break-all", marginBottom: 8 }}>
+          {appointment.meetingLink}
+        </a>
+      ) : (
+        <div style={{ fontSize: 12.5, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 10px", marginBottom: 8 }}>
+          Görüş linki hələ əlavə edilməyib.
+        </div>
+      )}
 
       <div style={{ fontSize: 12, color: "#52718F", marginBottom: 10 }}>
         {appointment.meetingLinkSentAt
@@ -1065,30 +1163,10 @@ function LinkBlock({ appointment, cold, guardAction, onDone }: {
           : t("meetingLink.notSent")}
       </div>
 
-      {err && (
-        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>
-          {err}
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button onClick={() => guardAction(doSave)} disabled={saving || !value.trim()}
-          style={{ flex: 1, minWidth: 120, padding: "9px 14px", border: "none", borderRadius: 10, fontSize: 12.5, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: saving || !value.trim() ? "not-allowed" : "pointer", opacity: saving || !value.trim() ? 0.6 : 1 }}>
-          {hasLink ? t("meetingLink.update") : t("meetingLink.save")}
-        </button>
-        {hasLink && (
-          <>
-            <button onClick={() => guardAction(doSend)} disabled={saving}
-              style={{ padding: "9px 14px", border: "1px solid #C7D2FE", borderRadius: 10, fontSize: 12.5, fontWeight: 700, background: "#fff", color: "var(--brand-700)", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
-              {t("meetingLink.send")}
-            </button>
-            <button onClick={() => guardAction(doRemove)} disabled={saving}
-              style={{ padding: "9px 14px", border: "1px solid #FECACA", borderRadius: 10, fontSize: 12.5, fontWeight: 700, background: "#fff", color: "#991B1B", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
-              {t("meetingLink.remove")}
-            </button>
-          </>
-        )}
-      </div>
+      <Link href="/operator/meeting-links"
+        style={{ display: "inline-block", padding: "8px 14px", border: "1px solid #C7D2FE", borderRadius: 10, fontSize: 12.5, fontWeight: 700, background: "#fff", color: "var(--brand-700)", textDecoration: "none" }}>
+        Görüş linklərini idarə et →
+      </Link>
 
       <div style={{ marginTop: 10 }}>
         <button onClick={toggleHistory}
@@ -1423,7 +1501,7 @@ function ActivityFeed({ items, t, composerRef, onAdd, appointmentId }: {
         onAdd({ kind: "CONTACT", channel: log.channel, outcome: log.outcome, text: log.note, actorName: log.operatorName, createdAt: log.createdAt });
       }
       setText("");
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { globalToast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 

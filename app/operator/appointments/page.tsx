@@ -54,6 +54,12 @@ const OUTCOME_LABEL: Record<string, { label: string; tone: "good" | "warn" | "da
   OTHER:       { label: "Digər",          tone: "neutral" },
 };
 
+/** Pool yalnız YENİ müraciətləri tutur — emal olunmuşlar (təyin/təsdiq/ləğv/tamam) düşmür. */
+const POOL_STATUSES = new Set(["PENDING", "NEW", "REJECTED"]);
+function isPoolEligible(status: string): boolean {
+  return POOL_STATUSES.has(status);
+}
+
 function normalizePhone(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const digits = raw.replace(/[^\d+]/g, "");
@@ -160,7 +166,7 @@ export default function OperatorAppointmentsPage() {
     const q = search.trim().toLowerCase();
     return items.filter(a => {
       if (mineOnly && a.claimedByUserId !== meId) return false;
-      if (poolOnly && a.claimedByUserId != null) return false;
+      if (poolOnly && (a.claimedByUserId != null || !isPoolEligible(a.status))) return false;
       if (overdueOnly) {
         if (!isOverdue(a)) return false;
       } else if (!mineOnly && !poolOnly) {
@@ -192,7 +198,7 @@ export default function OperatorAppointmentsPage() {
     [items, meId]);
 
   const poolCount = useMemo(
-    () => items.filter(a => a.claimedByUserId == null).length,
+    () => items.filter(a => a.claimedByUserId == null && isPoolEligible(a.status)).length,
     [items]);
 
   // Pooldan götür → müraciət daimi olaraq bu operatora aid olur.
@@ -545,7 +551,7 @@ function AppointmentCard({
       )}
 
       <div className="op-appt__actions">
-        {a.claimedByUserId == null && onTake && (
+        {a.claimedByUserId == null && isPoolEligible(a.status) && onTake && (
           <button onClick={e => { e.stopPropagation(); onTake(); }}
             className="op-appt__btn"
             style={{ background: "#047857", color: "#fff", border: "none" }}>

@@ -69,7 +69,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
 
 export default function OperatorLayout({ children }: { children: React.ReactNode }) {
   return (
-    <PanelAuthGuard requiredRole="OPERATOR">
+    <PanelAuthGuard requiredRole={["OPERATOR", "ADMIN"]}>
       <OperatorShell>{children}</OperatorShell>
     </PanelAuthGuard>
   );

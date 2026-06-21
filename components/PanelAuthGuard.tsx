@@ -33,9 +33,12 @@ export default function PanelAuthGuard({
   requiredRole,
   children,
 }: {
-  requiredRole: string;
+  /** One role, or several allowed roles (e.g. operator panel allows OPERATOR + ADMIN,
+   *  mirroring the backend's hasAnyRole('OPERATOR','ADMIN')). */
+  requiredRole: string | string[];
   children: ReactNode;
 }) {
+  const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
   const [ready, setReady] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -73,7 +76,7 @@ export default function PanelAuthGuard({
         lastName: me.lastName ?? undefined,
       });
 
-      if (me.role !== requiredRole) {
+      if (!allowedRoles.includes(me.role)) {
         window.location.href = `${getMainSiteUrl()}/403`;
         return;
       }
@@ -83,7 +86,9 @@ export default function PanelAuthGuard({
 
     check();
     return () => { cancelled = true; };
-  }, [requiredRole, mounted]);
+    // allowedRoles is derived from props each render; join() gives a stable dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowedRoles.join(","), mounted]);
 
   // Proactive silent refresh — keep the access cookie fresh without waiting
   // for a 401. Runs in the background while the panel is mounted.

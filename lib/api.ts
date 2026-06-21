@@ -1483,6 +1483,10 @@ export interface PaymentItem {
   method: string;
   paidAt?: string | null;
   createdAt: string;
+  // Pool sahibliyi (paket müraciəti)
+  claimedByOperatorId?: number | null;
+  claimedByName?: string | null;
+  claimedAt?: string | null;
 }
 
 export interface PackagePurchaseInput {
@@ -1634,53 +1638,55 @@ export const patientApi = {
   submitTest: (assignmentId: number, data: { answers: SubmitAnswer[]; respondentName?: string }) =>
     authedRequest<TestResult>("POST", `/patient/psych-tests/assignments/${assignmentId}/submit`, data),
   patientTestResult: (assignmentId: number) => authedRequest<TestResult>("GET", `/patient/psych-tests/assignments/${assignmentId}/result`),
-
-  // ─── Keys yönləndirmə razılığı (referral) ───────────────────────────────
-  myReferrals: () => authedRequest<PatientReferral[]>("GET", "/patient/referrals"),
-  consentReferral: (id: number) =>
-    authedRequest<PatientReferral>("POST", `/patient/referrals/${id}/consent`),
-  declineReferral: (id: number) =>
-    authedRequest<PatientReferral>("POST", `/patient/referrals/${id}/decline`),
 };
 
 // ─── Keys yönləndirmə (referral) tipləri ──────────────────────────────────────
 export type ReferralStatus =
-  | "PENDING_CONSENT" | "PENDING_REVIEW" | "ACCEPTED" | "DECLINED" | "CANCELLED";
+  | "PENDING_OPERATOR" | "PENDING_REVIEW" | "ACCEPTED" | "DECLINED" | "CANCELLED";
+
+export type ReferralSubjectType = "APPOINTMENT" | "PACKAGE";
 
 export interface Referral {
   id: number;
-  direction: "SENT" | "RECEIVED";
+  direction: "SENT" | "RECEIVED" | "OPERATOR";
   fromPsychologistId: number;
   fromPsychologistName: string;
   toPsychologistId: number;
   toPsychologistName: string;
   patientId: number;
   patientName?: string | null;
+  subjectType: ReferralSubjectType;
+  appointmentId?: number | null;
+  patientPackageId?: number | null;
+  subjectLabel?: string | null;
   reason: string;
   clinicalSummary?: string | null;
   message?: string | null;
   status: ReferralStatus;
-  patientConsent: boolean;
-  consentAt?: string | null;
+  operatorNote?: string | null;
+  operatorApprovedAt?: string | null;
   createdAt?: string;
   respondedAt?: string | null;
 }
 
-export interface PatientReferral {
+export interface ReferableSubject {
+  type: ReferralSubjectType;
   id: number;
-  fromPsychologistName: string;
-  toPsychologistName: string;
-  toPsychologistTitle?: string | null;
-  toPsychologistPhotoUrl?: string | null;
-  reason: string;
-  status: ReferralStatus;
-  patientConsent: boolean;
-  createdAt?: string;
+  label: string;
+  patientName?: string | null;
+  when?: string | null;
+}
+
+export interface ReferableOptions {
+  appointments: ReferableSubject[];
+  packages: ReferableSubject[];
 }
 
 export interface CreateReferralReq {
   toPsychologistId: number;
-  patientId: number;
+  subjectType: ReferralSubjectType;
+  appointmentId?: number;
+  patientPackageId?: number;
   reason: string;
   clinicalSummary?: string;
   message?: string;
@@ -2211,6 +2217,7 @@ export const psychologistApi = {
   deleteResource: (id: number) => authedRequest<void>("DELETE", `/psychologist/resources/${id}`),
 
   // ─── Keys yönləndirmə (referral) ─────────────────────────────────────────
+  referralOptions: () => authedRequest<ReferableOptions>("GET", "/psychologist/referrals/options"),
   createReferral: (data: CreateReferralReq) =>
     authedRequest<Referral>("POST", "/psychologist/referrals", data),
   sentReferrals: () => authedRequest<Referral[]>("GET", "/psychologist/referrals/sent"),
@@ -2728,11 +2735,6 @@ export interface OperatorAppointmentFull {
   claim: ClaimState;
 }
 
-/** Absolute URL for navigator.sendBeacon on tab close (cookie auth rides along). */
-export function operatorClaimReleaseUrl(appointmentId: number): string {
-  return `${BASE}/operator/appointments/${appointmentId}/claim/release`;
-}
-
 // Modul H — operator müştəri profili + psixoloq statistikası + analitika
 export interface CustomerProfile {
   history: PatientHistory;
@@ -2773,19 +2775,28 @@ export type AnalyticsPeriod = "daily" | "weekly" | "monthly" | "yearly";
 
 export const operatorApi = {
   listAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/operator/appointments"),
+  // ─── Psixoloqlar arası yönləndirmə təsdiqi ───────────────────────────────
+  pendingReferrals: () => authedRequest<Referral[]>("GET", "/operator/referrals"),
+  approveReferral: (id: number) =>
+    authedRequest<Referral>("POST", `/operator/referrals/${id}/approve`),
+  rejectReferral: (id: number, note?: string) =>
+    authedRequest<Referral>("POST", `/operator/referrals/${id}/reject`, { note }),
   /** OP-1: everything the detail page needs in one request. */
   fullAppointment: (id: number) =>
     authedRequest<OperatorAppointmentFull>("GET", `/operator/appointments/${id}/full`),
   /** OP-1: operator note → activity feed. */
   addNote: (appointmentId: number, text: string) =>
     authedRequest<OperatorActivityItem>("POST", `/operator/appointments/${appointmentId}/notes`, { text }),
-  // OP-2: soft-lock claim
-  claim: (id: number, force = false) =>
-    authedRequest<ClaimState>("POST", `/operator/appointments/${id}/claim`, force ? { force: true } : {}),
-  claimHeartbeat: (id: number) =>
-    authedRequest<ClaimState>("PUT", `/operator/appointments/${id}/claim/heartbeat`),
+  // Pool sahibliyi: pooldan götür / pool-a burax / (admin) başqasına keçir
+  claim: (id: number) =>
+    authedRequest<ClaimState>("POST", `/operator/appointments/${id}/claim`),
   claimRelease: (id: number) =>
     authedRequest<ClaimState>("POST", `/operator/appointments/${id}/claim/release`),
+  reassignAppointment: (id: number, operatorId: number) =>
+    authedRequest<ClaimState>("POST", `/operator/appointments/${id}/reassign`, { operatorId }),
+  /** Admin reassign dropdown üçün operator siyahısı. */
+  listOperators: () =>
+    authedRequest<{ id: number; name: string }[]>("GET", "/operator/operators"),
   // Çoxlu vaxt (paket / seriya) təyini + paket balansı
   slotAllowance: (id: number, psychologistId: number) =>
     authedRequest<SlotAllowance>("GET", `/operator/appointments/${id}/slot-allowance?psychologistId=${psychologistId}`),
@@ -2802,11 +2813,17 @@ export const operatorApi = {
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/meeting-link/send`),
   meetingLinkHistory: (id: number) =>
     authedRequest<MeetingLinkLogItem[]>("GET", `/operator/appointments/${id}/meeting-link/history`),
-  // Modul A — manual ödəniş idarəsi
-  listPendingPayments: (status = "PENDING") =>
-    authedRequest<PaymentItem[]>("GET", `/operator/payments?status=${status}`),
+  // Modul A — manual ödəniş idarəsi + pool sahibliyi
+  listPendingPayments: (status = "PENDING", mine = false) =>
+    authedRequest<PaymentItem[]>("GET", `/operator/payments?status=${status}${mine ? "&mine=true" : ""}`),
   markPaymentPaid: (id: number) =>
     authedRequest<PaymentItem>("POST", `/operator/payments/${id}/mark-paid`),
+  claimPayment: (id: number) =>
+    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/claim`),
+  releasePayment: (id: number) =>
+    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/claim/release`),
+  reassignPayment: (id: number, operatorId: number) =>
+    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/reassign`, { operatorId }),
   // Operator paket satışı (kataloq + xüsusi) → PENDING ödəniş
   psychologistPackages: (psychologistId: number) =>
     authedRequest<PackageDto[]>("GET", `/operator/psychologists/${psychologistId}/packages`),

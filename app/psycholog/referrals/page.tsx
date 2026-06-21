@@ -6,17 +6,23 @@ import {
   getPsychologists,
   type Referral,
   type ReferralStatus,
+  type ReferralSubjectType,
   type CreateReferralReq,
-  type ClientSummary,
+  type ReferableSubject,
   type Psychologist,
 } from "@/lib/api";
 
 const STATUS_META: Record<ReferralStatus, { label: string; color: string; bg: string }> = {
-  PENDING_CONSENT: { label: "Klient razılığı gözlənilir", color: "#92400E", bg: "#FEF3C7" },
-  PENDING_REVIEW:  { label: "Cavab gözlənilir",           color: "#1E40AF", bg: "#DBEAFE" },
-  ACCEPTED:        { label: "Qəbul olundu",               color: "#065F46", bg: "#D1FAE5" },
-  DECLINED:        { label: "Rədd olundu",                color: "#991B1B", bg: "#FEE2E2" },
-  CANCELLED:       { label: "Ləğv olundu",                color: "#475569", bg: "#F1F5F9" },
+  PENDING_OPERATOR: { label: "Operator təsdiqi gözlənilir", color: "#92400E", bg: "#FEF3C7" },
+  PENDING_REVIEW:   { label: "Cavab gözlənilir",            color: "#1E40AF", bg: "#DBEAFE" },
+  ACCEPTED:         { label: "Qəbul olundu",                color: "#065F46", bg: "#D1FAE5" },
+  DECLINED:         { label: "Rədd olundu",                 color: "#991B1B", bg: "#FEE2E2" },
+  CANCELLED:        { label: "Ləğv olundu",                 color: "#475569", bg: "#F1F5F9" },
+};
+
+const SUBJECT_META: Record<"APPOINTMENT" | "PACKAGE", { label: string; color: string; bg: string }> = {
+  APPOINTMENT: { label: "Randevu", color: "#1E40AF", bg: "#EFF6FF" },
+  PACKAGE:     { label: "Paket",   color: "#5B21B6", bg: "#F5F3FF" },
 };
 
 function fmtDate(d?: string | null) {
@@ -81,7 +87,7 @@ export default function PsychologReferralsPage() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--oxford)", margin: 0 }}>Yönləndirmələr</h1>
           <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4, marginBottom: 0 }}>
-            Klientləri həmkarlarınıza yönləndirin — klient razılığı ilə.
+            Randevu və ya paketi həmkarınıza yönləndirin — operator təsdiqi ilə.
           </p>
         </div>
         <button onClick={() => setCreating(true)} style={primaryBtn}>
@@ -112,7 +118,7 @@ export default function PsychologReferralsPage() {
         </div>
       ) : tab === "RECEIVED" ? (
         received.length === 0 ? (
-          <Empty title="Aldığınız yönləndirmə yoxdur" body="Həmkarlarınız sizə klient yönləndirəndə burada görünəcək." />
+          <Empty title="Aldığınız yönləndirmə yoxdur" body="Həmkarınız sizə randevu və ya paket yönləndirəndə (operator təsdiqindən sonra) burada görünəcək." />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {received.map(r => (
@@ -147,17 +153,23 @@ function ReceivedCard({ r, busy, onRespond }: {
   r: Referral; busy: boolean; onRespond: (r: Referral, a: "accept" | "decline") => void;
 }) {
   const sm = STATUS_META[r.status];
+  const subj = SUBJECT_META[r.subjectType];
   const pending = r.status === "PENDING_REVIEW";
   return (
     <div style={cardStyle}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
-          {r.patientName || "Klient"}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={badge(subj)}>{subj.label}</span>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
+            {r.subjectLabel || r.patientName || "Subyekt"}
+          </div>
         </div>
         <span style={badge(sm)}>{sm.label}</span>
       </div>
       <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>
-        Yönləndirən: <b style={{ color: "var(--oxford)" }}>{r.fromPsychologistName}</b> · {fmtDate(r.createdAt)}
+        Yönləndirən: <b style={{ color: "var(--oxford)" }}>{r.fromPsychologistName}</b>
+        {r.patientName ? <> · Klient: <b style={{ color: "var(--oxford)" }}>{r.patientName}</b></> : null}
+        {" · "}{fmtDate(r.createdAt)}
       </div>
       <InfoBlock label="Səbəb" text={r.reason} />
       {r.clinicalSummary && <InfoBlock label="Klinik məlumat" text={r.clinicalSummary} />}
@@ -178,19 +190,25 @@ function ReceivedCard({ r, busy, onRespond }: {
 
 function SentCard({ r, busy, onCancel }: { r: Referral; busy: boolean; onCancel: (r: Referral) => void }) {
   const sm = STATUS_META[r.status];
-  const open = r.status === "PENDING_CONSENT" || r.status === "PENDING_REVIEW";
+  const subj = SUBJECT_META[r.subjectType];
+  const open = r.status === "PENDING_OPERATOR" || r.status === "PENDING_REVIEW";
   return (
     <div style={cardStyle}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
-          {r.toPsychologistName}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={badge(subj)}>{subj.label}</span>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
+            {r.toPsychologistName}
+          </div>
         </div>
         <span style={badge(sm)}>{sm.label}</span>
       </div>
       <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>
+        {r.subjectLabel ? <>{r.subjectLabel} · </> : null}
         Klient: <b style={{ color: "var(--oxford)" }}>{r.patientName || "Klient"}</b> · {fmtDate(r.createdAt)}
       </div>
       <InfoBlock label="Səbəb" text={r.reason} />
+      {r.status === "DECLINED" && r.operatorNote ? <InfoBlock label="Operator qeydi" text={r.operatorNote} /> : null}
       {open && (
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button onClick={() => onCancel(r)} disabled={busy} style={dangerGhostBtn}>
@@ -205,11 +223,12 @@ function SentCard({ r, busy, onCancel }: { r: Referral; busy: boolean; onCancel:
 /* ─── Create modal ────────────────────────────────────────────────────────── */
 
 function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (r: Referral) => void }) {
-  const [clients, setClients] = useState<ClientSummary[]>([]);
   const [colleagues, setColleagues] = useState<Psychologist[]>([]);
   const [meId, setMeId] = useState<number | null>(null);
+  const [options, setOptions] = useState<{ appointments: ReferableSubject[]; packages: ReferableSubject[] }>({ appointments: [], packages: [] });
 
-  const [patientId, setPatientId] = useState<number | "">("");
+  const [subjectType, setSubjectType] = useState<ReferralSubjectType>("APPOINTMENT");
+  const [subjectId, setSubjectId] = useState<number | "">("");
   const [toId, setToId] = useState<number | "">("");
   const [reason, setReason] = useState("");
   const [clinicalSummary, setClinicalSummary] = useState("");
@@ -219,7 +238,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
 
   useEffect(() => {
     psychologistApi.me().then(p => setMeId(p.id)).catch(() => {});
-    psychologistApi.clients().then(setClients).catch(() => setClients([]));
+    psychologistApi.referralOptions().then(setOptions).catch(() => setOptions({ appointments: [], packages: [] }));
     getPsychologists().then(setColleagues).catch(() => setColleagues([]));
   }, []);
 
@@ -227,14 +246,21 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
     () => colleagues.filter(p => p.active && p.id !== meId),
     [colleagues, meId]);
 
+  const subjects = subjectType === "APPOINTMENT" ? options.appointments : options.packages;
+
+  // Subyekt növü dəyişəndə seçimi sıfırla.
+  useEffect(() => { setSubjectId(""); }, [subjectType]);
+
   const save = async () => {
-    if (patientId === "" || toId === "") { setError("Klient və psixoloq seçin."); return; }
+    if (subjectId === "" || toId === "") { setError("Subyekt və psixoloq seçin."); return; }
     if (!reason.trim()) { setError("Səbəb mütləqdir."); return; }
     setSaving(true);
     setError(null);
     const payload: CreateReferralReq = {
       toPsychologistId: Number(toId),
-      patientId: Number(patientId),
+      subjectType,
+      appointmentId: subjectType === "APPOINTMENT" ? Number(subjectId) : undefined,
+      patientPackageId: subjectType === "PACKAGE" ? Number(subjectId) : undefined,
       reason: reason.trim(),
       clinicalSummary: clinicalSummary.trim() || undefined,
       message: message.trim() || undefined,
@@ -248,15 +274,35 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
     }
   };
 
+  const tabBtn = (active: boolean): React.CSSProperties => ({
+    flex: 1, padding: "9px 12px", borderRadius: 10, border: "1px solid var(--oxford-10)",
+    background: active ? "var(--brand)" : "#fff", color: active ? "#fff" : "var(--oxford)",
+    fontSize: 13, fontWeight: 700, cursor: "pointer",
+  });
+
   return (
     <Modal onClose={onClose}>
       <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--oxford)", margin: "0 0 16px" }}>Yeni yönləndirmə</h3>
 
-      <Field label="Klient">
-        <select value={patientId} onChange={e => setPatientId(e.target.value === "" ? "" : Number(e.target.value))} style={inputStyle}>
+      <Field label="Nəyi yönləndirirsiniz?">
+        <div style={{ display: "flex", gap: 8 }}>
+          <button type="button" onClick={() => setSubjectType("APPOINTMENT")} style={tabBtn(subjectType === "APPOINTMENT")}>Randevu</button>
+          <button type="button" onClick={() => setSubjectType("PACKAGE")} style={tabBtn(subjectType === "PACKAGE")}>Paket</button>
+        </div>
+      </Field>
+
+      <Field label={subjectType === "APPOINTMENT" ? "Randevu" : "Paket"}>
+        <select value={subjectId} onChange={e => setSubjectId(e.target.value === "" ? "" : Number(e.target.value))} style={inputStyle}>
           <option value="">Seçin…</option>
-          {clients.map(c => <option key={c.patientId} value={c.patientId}>{c.name}</option>)}
+          {subjects.map(s => (
+            <option key={s.id} value={s.id}>{s.label}{s.patientName ? ` · ${s.patientName}` : ""}</option>
+          ))}
         </select>
+        {subjects.length === 0 && (
+          <p style={{ fontSize: 11.5, color: "var(--oxford-60)", margin: "6px 0 0" }}>
+            {subjectType === "APPOINTMENT" ? "Yönləndiriləcək aktiv randevu yoxdur." : "Balansı qalan aktiv paket yoxdur."}
+          </p>
+        )}
       </Field>
 
       <Field label="Hansı psixoloqa">
@@ -273,7 +319,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
 
       <Field label="Klinik məlumat (istəyə bağlı)">
         <textarea value={clinicalSummary} onChange={e => setClinicalSummary(e.target.value)} rows={4}
-          placeholder="Qarşı psixoloqa ötürüləcək qısa kontekst (klient razılığından sonra görünür)…"
+          placeholder="Qarşı psixoloqa ötürüləcək qısa kontekst…"
           style={{ ...inputStyle, resize: "vertical" }} />
       </Field>
 
@@ -283,7 +329,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
       </Field>
 
       <p style={{ fontSize: 11.5, color: "var(--oxford-60)", margin: "2px 0 0", lineHeight: 1.5 }}>
-        Yönləndirmə əvvəlcə klientin razılığına göndərilir. Razılıqdan sonra qarşı psixoloq onu görür.
+        Yönləndirmə əvvəlcə operator təsdiqinə gedir. Təsdiqdən sonra qarşı psixoloq onu görür; qəbul edəndə sahiblik ona keçir.
       </p>
 
       {error && <p style={{ color: "#DC2626", fontSize: 12.5, margin: "8px 0 0" }}>{error}</p>}

@@ -3,7 +3,9 @@
 /**
  * OP-1: Müraciət detal səhifəsi — modal yığını əvəzinə "ticket" iş səhifəsi.
  * 3 zona (kontekst / əməliyyat / fəaliyyət lenti) + sticky header.
- * OP-2: yumşaq kilid (claim) — açılanda avtomatik claim, heartbeat, steal axını.
+ * Pool sahibliyi: səhifəni açmaq sahibliyi GÖTÜRMÜR — operator açıq "Götür"
+ * düyməsi (və ya ilk əməliyyat) ilə müraciəti daimi öz üzərinə götürür; sahib
+ * "Pool-a burax", admin isə başqa operatora keçirə bilər.
  */
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -12,7 +14,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ApiError,
   operatorApi,
-  operatorClaimReleaseUrl,
   isSlotConflict,
   CANCEL_REASONS,
   type AppointmentDetail,
@@ -62,7 +63,7 @@ const AUDIT_LABEL: Record<string, string> = {
   APPT_CANCEL_REQ_APPROVE: "Ləğv tələbi təsdiqi",
   APPT_CANCEL_REQ_REJECT: "Ləğv tələbi rəddi",
   APPT_HANDOFF: "Psixoloq operatora ötürdü",
-  APPT_CLAIM_STEAL: "Claim təhvili",
+  APPT_CLAIM_REASSIGN: "Müraciət təhvili",
 };
 const DURATION_LABEL: Record<string, string> = {
   LT_1M: "1 aydan az", M_1_3: "1–3 ay", M_3_6: "3–6 ay", GT_6M: "6 aydan çox",
@@ -115,16 +116,14 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const [copied, setCopied] = useState(false);
   const [queueIds, setQueueIds] = useState<number[]>([]);
   const [autoAdvance, setAutoAdvance] = useState(true);
-  const [stealOpen, setStealOpen] = useState(false);
+  const [reassignOpen, setReassignOpen] = useState(false);
   const [zone, setZone] = useState<"work" | "context" | "feed">("work"); // <900px tablar
-  const pendingActionRef = useRef<(() => void) | null>(null);
   const assignFocusRef = useRef<HTMLSelectElement | null>(null);
   const composerFocusRef = useRef<HTMLTextAreaElement | null>(null);
-  const claimMineRef = useRef(false);
 
   const a = full?.appointment ?? null;
   const claimedByOther = !!claim?.claimedByUserId && !claim.mine;
-  useEffect(() => { claimMineRef.current = !!claim?.mine; }, [claim?.mine]);
+  const unowned = !claim?.claimedByUserId;
 
   // ── localStorage: auto-advance toggle ─────────────────────────────────────
   useEffect(() => {
@@ -148,42 +147,11 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
 
   useEffect(() => { load(); }, [load]);
 
-  // ── OP-2: avtomatik claim cəhdi + heartbeat + tab bağlananda release ──────
-  useEffect(() => {
-    if (!full || notFound) return;
-    let stopped = false;
-    operatorApi.claim(id).then(c => { if (!stopped) setClaim(c); }).catch(() => {});
+  // Qeyd: səhifəni açmaq sahibliyi GÖTÜRMÜR (köhnə efemer auto-claim/heartbeat
+  // silindi). Operator açıq "Götür" düyməsi və ya ilk əməliyyat (guardAction)
+  // ilə müraciəti öz üzərinə götürür.
 
-    const hb = setInterval(() => {
-      if (!claimMineRef.current) return;
-      operatorApi.claimHeartbeat(id).then(c => {
-        if (stopped) return;
-        setClaim(prev => {
-          if (prev?.mine && !c.mine && c.claimedByName) {
-            setToast(t("staff.opClaimLost", { name: c.claimedByName }));
-          }
-          return c;
-        });
-      }).catch(() => {});
-    }, 60_000);
-
-    const onPageHide = () => {
-      if (claimMineRef.current) {
-        try { navigator.sendBeacon(operatorClaimReleaseUrl(id)); } catch { /* ignore */ }
-      }
-    };
-    window.addEventListener("pagehide", onPageHide);
-
-    return () => {
-      stopped = true;
-      clearInterval(hb);
-      window.removeEventListener("pagehide", onPageHide);
-      onPageHide(); // səhifədən çıxanda da release
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, !!full, notFound]);
-
-  // ── Real-time: claim hadisələri + müraciət dəyişiklikləri ─────────────────
+  // ── Real-time: sahiblik hadisələri + müraciət dəyişiklikləri ──────────────
   useEffect(() => {
     const offClaims = subscribeOperatorClaims(ev => {
       if (ev.appointmentId !== id) return;
@@ -198,7 +166,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
           claimedByName: ev.claimedByName ?? null,
           claimedAt: ev.claimedAt ?? null,
           mine,
-          ttlMinutes: prev?.ttlMinutes ?? 15,
+          ttlMinutes: prev?.ttlMinutes ?? 0,
         };
       });
     });
@@ -278,11 +246,11 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
       else if (k === "k" && prevId) { e.preventDefault(); goTo(prevId); }
       else if (k === "a") { e.preventDefault(); assignFocusRef.current?.focus(); }
       else if (k === "n") { e.preventDefault(); composerFocusRef.current?.focus(); }
-      else if (e.key === "Escape" && !stealOpen) { e.preventDefault(); backToList(); }
+      else if (e.key === "Escape" && !reassignOpen) { e.preventDefault(); backToList(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [nextId, prevId, goTo, backToList, stealOpen]);
+  }, [nextId, prevId, goTo, backToList, reassignOpen]);
 
   // ── Toast ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -291,32 +259,35 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     return () => clearTimeout(tm);
   }, [toast]);
 
-  // ── OP-2: soyuq rejim qoruması — başqasının claim-i varsa təsdiq istə ─────
+  // ── Pooldan götür / pool-a burax ──────────────────────────────────────────
+  const takeOwnership = useCallback(() => {
+    operatorApi.claim(id).then(setClaim).catch(e => setToast((e as Error).message));
+  }, [id]);
+
+  const releaseOwnership = useCallback(() => {
+    operatorApi.claimRelease(id).then(setClaim).catch(e => setToast((e as Error).message));
+  }, [id]);
+
+  // ── Əməliyyat qoruması: sahibsizsə avtomatik götür, başqasınınkındadırsa blokla ─
   const guardAction = useCallback((run: () => void) => {
-    if (!claimedByOther) { run(); return; }
-    if (isAdmin) {
-      // Admin override: təsdiq modalsız (səlahiyyət fərqi), yenə də audit-loqlanır
-      operatorApi.claim(id, true).then(c => { setClaim(c); run(); }).catch(() => run());
+    if (claim?.mine) { run(); return; }
+    if (claimedByOther) {
+      if (isAdmin) {
+        // Admin override: müraciəti öz üzərinə keçirir (audit-loqlanır), sonra icra edir.
+        operatorApi.reassignAppointment(id, meId as number).then(c => { setClaim(c); run(); }).catch(() => run());
+      } else {
+        setToast(t("staff.opClaimBlocked", { name: claim?.claimedByName ?? "?" }));
+      }
       return;
     }
-    pendingActionRef.current = run;
-    setStealOpen(true);
-  }, [claimedByOther, isAdmin, id]);
-
-  const confirmSteal = () => {
-    setStealOpen(false);
-    operatorApi.claim(id, true).then(c => {
-      setClaim(c);
-      const run = pendingActionRef.current;
-      pendingActionRef.current = null;
-      run?.();
-    }).catch(e => setToast((e as Error).message));
-  };
+    // Sahibsiz → əvvəlcə götür, sonra icra et.
+    operatorApi.claim(id).then(c => { setClaim(c); run(); }).catch(() => run());
+  }, [claim?.mine, claim?.claimedByName, claimedByOther, isAdmin, id, meId, t]);
 
   // ── Yekun əməliyyat: toast + auto-advance ─────────────────────────────────
+  // Sahiblik QALIR (pool modeli) — yekun əməliyyat claim-i sıfırlamır.
   const onActionDone = useCallback((updated: AppointmentDetail, msg: string) => {
     setFull(prev => prev ? { ...prev, appointment: updated } : prev);
-    setClaim(prev => prev ? { ...prev, claimedByUserId: null, claimedByName: null, claimedAt: null, mine: false } : prev);
     setToast(msg);
     load(true); // lenti yenilə (audit qeydi gəlib)
     if (autoAdvance && nextId) {
@@ -401,6 +372,24 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {unowned && (
+            <button onClick={takeOwnership}
+              style={{ border: "none", background: "#047857", color: "#fff", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
+              {t("staff.opTake")}
+            </button>
+          )}
+          {claim?.mine && (
+            <button onClick={releaseOwnership}
+              style={{ border: "1px solid #C7D2FE", background: "#fff", color: "var(--brand-700)", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+              {t("staff.opReleaseToPool")}
+            </button>
+          )}
+          {isAdmin && !unowned && (
+            <button onClick={() => setReassignOpen(true)}
+              style={{ border: "1px solid #E5E7EB", background: "#fff", color: "#1A2535", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+              {t("staff.opReassign")}
+            </button>
+          )}
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#52718F", cursor: "pointer" }}>
             <input type="checkbox" checked={autoAdvance} onChange={toggleAutoAdvance} style={{ accentColor: "var(--brand)" }} />
             {t("staff.opDetAutoAdvance")}
@@ -519,28 +508,15 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
         </aside>
       </div>
 
-      {/* ── OP-2: steal təsdiq modalı ──────────────────────────────────────── */}
-      {stealOpen && claim?.claimedByName && (
-        <div onClick={() => setStealOpen(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(10,22,51,0.5)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div onClick={e => e.stopPropagation()}
-            style={{ background: "#fff", borderRadius: 16, width: "min(420px, 100%)", padding: 24, boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#1A2535" }}>{t("staff.opClaimStealTitle")}</h3>
-            <p style={{ fontSize: 13, color: "#52718F", marginTop: 8 }}>
-              {t("staff.opClaimStealBody", { name: claim.claimedByName })}
-            </p>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-              <button onClick={() => { setStealOpen(false); pendingActionRef.current = null; }}
-                style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>
-                {t("staff.opClaimStealCancel")}
-              </button>
-              <button onClick={confirmSteal}
-                style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "#D97706", color: "#fff", cursor: "pointer" }}>
-                {t("staff.opClaimStealConfirm")}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ── Admin: başqa operatora keçir (reassign) modalı ─────────────────── */}
+      {reassignOpen && (
+        <ReassignModal
+          id={id}
+          currentHolderId={claim?.claimedByUserId ?? null}
+          t={t}
+          onClose={() => setReassignOpen(false)}
+          onDone={(c) => { setClaim(c); setReassignOpen(false); setToast(t("staff.opReassignDone")); }}
+        />
       )}
 
       {/* ── Toast ──────────────────────────────────────────────────────────── */}
@@ -549,6 +525,62 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
           {toast}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─── Admin reassign modalı (operator dropdown + qeyd-şərtsiz keçir) ──────── */
+
+function ReassignModal({ id, currentHolderId, t, onClose, onDone }: {
+  id: number;
+  currentHolderId: number | null;
+  t: ReturnType<typeof useT>["t"];
+  onClose: () => void;
+  onDone: (c: ClaimState) => void;
+}) {
+  const [operators, setOperators] = useState<{ id: number; name: string }[]>([]);
+  const [opId, setOpId] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    operatorApi.listOperators().then(setOperators).catch(() => {});
+  }, []);
+
+  const submit = () => {
+    if (!opId) { setErr(t("staff.opReassignPick")); return; }
+    setBusy(true); setErr(null);
+    operatorApi.reassignAppointment(id, opId)
+      .then(onDone)
+      .catch(e => { setErr((e as Error).message); setBusy(false); });
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(10,22,51,0.5)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, width: "min(420px, 100%)", padding: 24, boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#1A2535" }}>{t("staff.opReassignTitle")}</h3>
+        <p style={{ fontSize: 13, color: "#52718F", marginTop: 8 }}>{t("staff.opReassignBody")}</p>
+        <select value={opId ?? ""} onChange={e => setOpId(Number(e.target.value) || null)}
+          style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginTop: 12 }}>
+          <option value="">— {t("staff.opReassignPick")} —</option>
+          {operators.filter(o => o.id !== currentHolderId).map(o => (
+            <option key={o.id} value={o.id}>{o.name}</option>
+          ))}
+        </select>
+        {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 12 }}>{err}</div>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose}
+            style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>
+            {t("staff.opReassignCancel")}
+          </button>
+          <button onClick={submit} disabled={busy}
+            style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>
+            {busy ? "…" : t("staff.opReassignConfirm")}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

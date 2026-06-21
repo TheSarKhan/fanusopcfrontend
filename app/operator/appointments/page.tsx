@@ -93,8 +93,10 @@ export default function OperatorAppointmentsPage() {
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   // GAP-01: dashboard "Gecikmiş" badge deep-links here with ?filter=overdue
   const [overdueOnly, setOverdueOnly] = useState(() => searchParams.get("filter") === "overdue");
-  // OP-2: "Mənim üzərimdə" filtri
+  // "Mənim üzərimdə" filtri (daimi sahiblik)
   const [mineOnly, setMineOnly] = useState(false);
+  // Pool filtri — hələ heç kim götürməyib (sahibsiz)
+  const [poolOnly, setPoolOnly] = useState(false);
   const [slaHours, setSlaHours] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
 
@@ -158,9 +160,10 @@ export default function OperatorAppointmentsPage() {
     const q = search.trim().toLowerCase();
     return items.filter(a => {
       if (mineOnly && a.claimedByUserId !== meId) return false;
+      if (poolOnly && a.claimedByUserId != null) return false;
       if (overdueOnly) {
         if (!isOverdue(a)) return false;
-      } else if (!mineOnly) {
+      } else if (!mineOnly && !poolOnly) {
         if (tab === "PENDING" && !(a.status === "PENDING" || a.status === "REJECTED")) return false;
         // CONFIRMED tab covers AWAITING_CONFIRMATION (post-session) and any
         // legacy ASSIGNED rows (operator assignment now confirms directly).
@@ -172,7 +175,7 @@ export default function OperatorAppointmentsPage() {
       return hay.includes(q);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, tab, search, overdueOnly, mineOnly, meId, slaHours]);
+  }, [items, tab, search, overdueOnly, mineOnly, poolOnly, meId, slaHours]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { PENDING: 0, CONFIRMED: 0, DISPUTED: 0, COMPLETED: 0, CANCELLED: 0, CANCEL_REQUESTED: 0 };
@@ -187,6 +190,22 @@ export default function OperatorAppointmentsPage() {
   const mineCount = useMemo(
     () => items.filter(a => a.claimedByUserId != null && a.claimedByUserId === meId).length,
     [items, meId]);
+
+  const poolCount = useMemo(
+    () => items.filter(a => a.claimedByUserId == null).length,
+    [items]);
+
+  // Pooldan götür → müraciət daimi olaraq bu operatora aid olur.
+  const takeOwnership = useCallback((id: number) => {
+    operatorApi.claim(id).then(c => {
+      setItems(prev => prev.map(a => a.id === id ? {
+        ...a,
+        claimedByUserId: c.claimedByUserId ?? null,
+        claimedByName: c.claimedByName ?? null,
+        claimedAt: c.claimedAt ?? null,
+      } : a));
+    }).catch(() => {});
+  }, []);
 
   // OP-1: sətirə klik → detal səhifəsi. Filtrlənmiş növbə sessionStorage ilə
   // daşınır ki, detal səhifəsindəki J/K naviqasiyası filtr kontekstinə hörmət etsin.
@@ -261,11 +280,11 @@ export default function OperatorAppointmentsPage() {
       <div className="op-tab-row flex gap-2 mb-4 flex-wrap">
         {(Object.keys(TAB_META) as Tab[]).map(tk => {
           const meta = TAB_META[tk];
-          const active = !overdueOnly && !mineOnly && tab === tk;
+          const active = !overdueOnly && !mineOnly && !poolOnly && tab === tk;
           return (
             <button
               key={tk}
-              onClick={() => { setOverdueOnly(false); setMineOnly(false); setTab(tk); }}
+              onClick={() => { setOverdueOnly(false); setMineOnly(false); setPoolOnly(false); setTab(tk); }}
               style={{
                 padding: "8px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600,
                 border: active ? `2px solid ${meta.color}` : "1px solid #E5E7EB",
@@ -280,7 +299,7 @@ export default function OperatorAppointmentsPage() {
           );
         })}
         <button
-          onClick={() => { setMineOnly(false); setOverdueOnly(o => !o); }}
+          onClick={() => { setMineOnly(false); setPoolOnly(false); setOverdueOnly(o => !o); }}
           style={{
             padding: "8px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600,
             border: overdueOnly ? "2px solid #DC2626" : "1px solid #FECACA",
@@ -294,9 +313,23 @@ export default function OperatorAppointmentsPage() {
             {items.filter(isOverdue).length}
           </span>
         </button>
-        {/* OP-2: yalnız mənim claim etdiklərim */}
+        {/* Pool — sahibsiz müraciətlər (götürülməyi gözləyir) */}
         <button
-          onClick={() => { setOverdueOnly(false); setMineOnly(m => !m); }}
+          onClick={() => { setOverdueOnly(false); setMineOnly(false); setPoolOnly(p => !p); }}
+          style={{
+            padding: "8px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+            border: poolOnly ? "2px solid #047857" : "1px solid #A7F3D0",
+            background: poolOnly ? "#fff" : "rgba(236,253,245,0.8)",
+            color: "#047857",
+            cursor: "pointer",
+          }}
+        >
+          {t("staff.opPoolFilter")}
+          <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.7 }}>{poolCount}</span>
+        </button>
+        {/* Yalnız mənim üzərimdə olanlar (daimi sahiblik) */}
+        <button
+          onClick={() => { setOverdueOnly(false); setPoolOnly(false); setMineOnly(m => !m); }}
           style={{
             padding: "8px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600,
             border: mineOnly ? "2px solid var(--brand)" : "1px solid #C7D2FE",
@@ -333,6 +366,7 @@ export default function OperatorAppointmentsPage() {
               selectable={selectMode}
               selected={selected.has(a.id)}
               onToggleSelect={() => toggleSelected(a.id)}
+              onTake={() => takeOwnership(a.id)}
               onOpen={() => openDetail(a)} />
           ))}
         </div>
@@ -350,13 +384,14 @@ export default function OperatorAppointmentsPage() {
 }
 
 function AppointmentCard({
-  a, meId, selectable, selected, onToggleSelect, onOpen,
+  a, meId, selectable, selected, onToggleSelect, onTake, onOpen,
 }: {
   a: AppointmentDetail;
   meId: number | null;
   selectable?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
+  onTake?: () => void;
   onOpen: () => void;
 }) {
   const { t } = useT();
@@ -510,6 +545,13 @@ function AppointmentCard({
       )}
 
       <div className="op-appt__actions">
+        {a.claimedByUserId == null && onTake && (
+          <button onClick={e => { e.stopPropagation(); onTake(); }}
+            className="op-appt__btn"
+            style={{ background: "#047857", color: "#fff", border: "none" }}>
+            {t("staff.opTake")}
+          </button>
+        )}
         <button onClick={e => { e.stopPropagation(); onOpen(); }} className="op-appt__btn op-appt__btn--primary">
           {t("staff.opOpenTicket")}
         </button>

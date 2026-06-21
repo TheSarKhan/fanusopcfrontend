@@ -36,6 +36,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
     { href: "/operator/meeting-links", label: "Görüş linkləri",        icon: "video" },
     { href: "/operator/payments",     label: t("pkg.paymentsTitle"),   icon: "clipboard" },
     { href: "/operator/feedback",     label: t("nav.feedbackTriage"),  icon: "star" },
+    { href: "/operator/referrals",    label: "Yönləndirmələr",         icon: "shield" },
     { href: "/operator/analytics",    label: t("nav.analytics"),       icon: "chart" },
     { href: "/operator/customers",     label: "Müştərilər",            icon: "users" },
     { href: "/operator/psychologists", label: "Psixoloq statistikası", icon: "badge" },

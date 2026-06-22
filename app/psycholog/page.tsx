@@ -7,8 +7,10 @@ import {
   type PsychologistStats,
   type AppointmentDetail,
   type Homework,
+  type PackageDto,
 } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
+import { formatAzn } from "@/lib/money";
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   PENDING:   { label: "Yeni",        color: "#92400E", bg: "#FEF3C7" },
@@ -62,6 +64,8 @@ export default function PsychologDashboard() {
   const [stats, setStats] = useState<PsychologistStats | null>(null);
   const [appointments, setAppointments] = useState<AppointmentDetail[]>([]);
   const [homework, setHomework] = useState<Homework[]>([]);
+  const [pricing, setPricing] = useState<{ individualPrice: number | null; currency: string } | null>(null);
+  const [packages, setPackages] = useState<PackageDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [now] = useState(() => Date.now());
 
@@ -71,11 +75,15 @@ export default function PsychologDashboard() {
       psychologistApi.stats(),
       psychologistApi.myAppointments(),
       psychologistApi.homework(),
+      psychologistApi.myPricing(),
+      psychologistApi.myPackages(),
     ]).then((results) => {
       if (!active) return;
       if (results[0].status === "fulfilled") setStats(results[0].value);
       if (results[1].status === "fulfilled") setAppointments(results[1].value);
       if (results[2].status === "fulfilled") setHomework(results[2].value);
+      if (results[3].status === "fulfilled") setPricing(results[3].value);
+      if (results[4].status === "fulfilled") setPackages(results[4].value);
       setLoading(false);
     });
     return () => { active = false; };
@@ -270,6 +278,8 @@ export default function PsychologDashboard() {
                   </div>
                 )}
               </Card>
+
+              <PricingSummaryCard pricing={pricing} packages={packages} />
             </div>
           </div>
 
@@ -595,6 +605,56 @@ function QuickAction({ href, icon, label, badge }:
         }}>{badge}</span>
       )}
     </Link>
+  );
+}
+
+/** Qiymət və paketlərin yığcam xülasəsi — redaktə Profil-də. */
+function PricingSummaryCard({ pricing, packages }: {
+  pricing: { individualPrice: number | null; currency: string } | null;
+  packages: PackageDto[];
+}) {
+  const active = packages.filter(p => p.active);
+  return (
+    <Card>
+      <CardHeader
+        title="Qiymət və paketlər"
+        subtitle="Cari təklifləriniz"
+        right={<Link href="/psycholog/profile" style={linkBtn}>Düzəlt →</Link>}
+      />
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+        padding: "10px 12px", borderRadius: 10,
+        background: "var(--brand-50)", border: "1px solid var(--brand-100)",
+        marginBottom: active.length ? 12 : 0,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ width: 32, height: 32, borderRadius: 9, background: "#fff", color: "var(--brand-700)", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--brand-100)" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+          </span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford)" }}>Fərdi seans</span>
+        </div>
+        <span style={{ fontSize: 14.5, fontWeight: 800, color: "var(--oxford)" }}>
+          {pricing?.individualPrice != null ? formatAzn(pricing.individualPrice) : "—"}
+        </span>
+      </div>
+      {active.length === 0 ? (
+        <div style={{ fontSize: 12, color: "var(--oxford-60)", textAlign: "center", padding: "4px 0" }}>Paket təyin edilməyib</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {active.slice(0, 4).map(p => (
+            <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}>
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--oxford)", fontWeight: 600 }}>
+                {p.name} <span style={{ color: "var(--oxford-60)", fontWeight: 500 }}>· {p.sessionCount} seans</span>
+              </span>
+              <span style={{ fontWeight: 700, color: "var(--brand-700)", flex: "none" }}>{formatAzn(p.packagePrice)}</span>
+            </div>
+          ))}
+          {active.length > 4 && (
+            <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>+{active.length - 4} paket daha</div>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }
 

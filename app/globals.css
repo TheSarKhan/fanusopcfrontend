@@ -2381,37 +2381,37 @@ img { max-width: 100%; display: block; }
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  background: var(--panel-bg, #F4F7FB);
-  padding: 10px 0;
-  border-bottom: 1px solid #E5E7EB;
+  background: rgba(240, 244, 250, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 11px 0;
+  border-bottom: 1px solid #E1E9F5;
 }
 .op-det__grid {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) 320px;
-  gap: 16px;
+  grid-template-columns: 296px minmax(0, 1fr) 322px;
+  gap: 18px;
   align-items: start;
-  margin-top: 14px;
+  margin-top: 16px;
 }
-.op-det__zone { display: grid; gap: 12px; align-content: start; min-width: 0; }
-.op-det__tabs { display: none; gap: 6px; margin-top: 12px; }
+.op-det__zone { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.op-det__tabs { display: none; gap: 6px; margin-top: 12px; background: #fff; border: 1px solid #EDF1F8; border-radius: 11px; padding: 5px; }
 .op-det__tab {
   flex: 1;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid #E5E7EB;
-  background: rgba(255, 255, 255, 0.6);
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #52718F;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #5C6B85;
   cursor: pointer;
 }
 .op-det__tab--active {
-  border: 2px solid var(--brand);
-  background: #fff;
-  color: var(--brand-700, #1d4ed8);
+  background: var(--brand);
+  color: #fff;
 }
-/* <900px: zonalar tablara yığılır — operator telefonla zəng edərkən istifadə edə bilsin */
-@media (max-width: 900px) {
+/* <1080px: zonalar tablara yığılır — operator telefonla zəng edərkən istifadə edə bilsin */
+@media (max-width: 1080px) {
   .op-det__tabs { display: flex; }
   .op-det__grid { grid-template-columns: 1fr; }
   .op-det__zone { display: none; }
@@ -2420,16 +2420,17 @@ img { max-width: 100%; display: block; }
 .op-det-card {
   background: #fff;
   border-radius: 14px;
-  border: 1px solid #EFF2F7;
-  padding: 16px;
+  border: 1px solid #EDF1F8;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  padding: 18px;
 }
 .op-det-card__title {
   font-size: 11px;
   font-weight: 700;
-  color: #52718F;
+  color: #5C6B85;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: 10px;
+  letter-spacing: 0.1em;
+  margin-bottom: 13px;
 }
 /* OP-2: başqasının claim-i — əməliyyat blokları soyuq vəziyyətdə */
 .op-det-card--cold { opacity: 0.65; }

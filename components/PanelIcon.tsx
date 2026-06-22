@@ -11,7 +11,9 @@ export type IconName =
   | "chat"
   | "message"
   | "video"
+  | "package"
   | "badge"
+  | "inbox"
   | "shield"
   | "star"
   | "sparkle"
@@ -82,8 +84,12 @@ export default function PanelIcon({
       return <svg {...props}><path d="M4 4h16v12H6.5L4 19V4z" /><path d="M8 9h8M8 12h5" /></svg>;
     case "video":
       return <svg {...props}><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" /></svg>;
+    case "package":
+      return <svg {...props}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" /></svg>;
     case "badge":
       return <svg {...props}><path d="M12 3l2.5 2.2 3.3-.4.9 3.2 2.8 1.7-1.4 3 1.4 3-2.8 1.7-.9 3.2-3.3-.4L12 21l-2.5-2.2-3.3.4-.9-3.2L2.5 14l1.4-3-1.4-3 2.8-1.7.9-3.2 3.3.4L12 3z" /></svg>;
+    case "inbox":
+      return <svg {...props}><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg>;
     case "shield":
       return <svg {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></svg>;
     case "star":

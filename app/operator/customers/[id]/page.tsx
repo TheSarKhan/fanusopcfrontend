@@ -4,10 +4,11 @@
 // Pasiyentin qeydiyyatı, seans bölgüsü, ödənişlər, paketlər, test nəticələri,
 // rəylər və fəaliyyət lenti bir səhifədə. Modul G məxfi sahələri açıq işarələnir.
 
-import { use, useEffect, useState, type CSSProperties } from "react";
+import { use, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { operatorApi, type CustomerProfile, type Psychologist, type PackageDto } from "@/lib/api";
+import { operatorApi, type CustomerProfile, type Psychologist, type PackageDto, type AvailableSlot } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
+import { isoToAzLocal, azFormatDate, azFormatTime } from "@/lib/datetime";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -26,6 +27,14 @@ function fmtDateTime(iso?: string | null) {
   if (Number.isNaN(d.getTime())) return "—";
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
+/** datetime-local stringinə dəqiqə əlavə edir, yenə datetime-local formatı qaytarır. */
+function addMinutes(local: string, mins: number): string {
+  const d = new Date(local);
+  if (Number.isNaN(d.getTime())) return local;
+  d.setMinutes(d.getMinutes() + mins);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+function dateOnly(d: Date): string { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Gözlənilir",
@@ -40,6 +49,8 @@ const STATUS_LABEL: Record<string, string> = {
   CANCELLED: "Ləğv edilib",
   CANCEL_REQUESTED: "Ləğv gözlənir",
   PAID: "Ödənilib",
+  PARTIALLY_REFUNDED: "Qismi qaytarılıb",
+  REFUNDED: "Geri qaytarılıb",
   ACTIVE: "Aktiv",
   EXPIRED: "Bitib",
   PUBLISHED: "Dərc edilib",
@@ -73,6 +84,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [sellOpen, setSellOpen] = useState(false);
+  const [sellMode, setSellMode] = useState<"catalog" | "custom" | "single">("catalog");
   const [bookOpen, setBookOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
 
@@ -130,8 +142,9 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
       {sellOpen && (
         <SellPackageModal
           patientId={patientId}
+          initialMode={sellMode}
           onClose={() => setSellOpen(false)}
-          onDone={(name) => { setSellOpen(false); setReloadKey(k => k + 1); toast(`Paket satıldı: ${name} · ödəniş PENDING`, "success"); }}
+          onDone={(name, isSingle) => { setSellOpen(false); setReloadKey(k => k + 1); toast(isSingle ? "Tək seans satıldı · ödəniş PENDING" : `Paket satıldı: ${name} · ödəniş PENDING`, "success"); }}
         />
       )}
       {bookOpen && (
@@ -222,7 +235,13 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
       <div className="op-card">
         <div className="op-card__head">
           <div><h2>Ödəniş tarixçəsi</h2><p>Bütün ödənişlər</p></div>
-          <span className="op-card__count">{profile.payments.length}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button onClick={() => { setSellMode("single"); setSellOpen(true); }}
+              style={{ padding: "7px 14px", border: "none", borderRadius: 10, background: "var(--brand)", color: "#fff", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+              + Tək seans sat
+            </button>
+            <span className="op-card__count">{profile.payments.length}</span>
+          </div>
         </div>
         <div className="op-card__body">
           {profile.payments.length === 0 ? (
@@ -240,15 +259,24 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
                   </tr>
                 </thead>
                 <tbody>
-                  {profile.payments.map(p => (
-                    <tr key={p.id}>
-                      <Td><strong style={{ color: "var(--oxford)" }}>{formatAzn(p.amount)}</strong></Td>
-                      <Td><StatusPill status={p.status} /></Td>
-                      <Td>{p.method || "—"}</Td>
-                      <Td>{p.patientPackageId != null ? "Paket" : "Tək seans"}</Td>
-                      <Td>{fmtDateTime(p.paidAt ?? p.createdAt)}</Td>
-                    </tr>
-                  ))}
+                  {profile.payments.map(p => {
+                    const refunded = p.refundedAmount ?? 0;
+                    return (
+                      <tr key={p.id}>
+                        <Td>
+                          <strong style={{ color: "var(--oxford)" }}>{formatAzn(p.amount)}</strong>
+                          {refunded > 0 && <div style={{ fontSize: 11, color: "#9A3412", fontWeight: 600 }}>−{formatAzn(refunded)} qaytarıldı</div>}
+                        </Td>
+                        <Td>
+                          <StatusPill status={p.status} />
+                          {p.statusNote && <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 2, fontStyle: "italic", maxWidth: 220 }}>«{p.statusNote}»</div>}
+                        </Td>
+                        <Td>{p.method || "—"}</Td>
+                        <Td>{p.patientPackageId != null ? "Paket" : "Tək seans"}</Td>
+                        <Td>{fmtDateTime(p.paidAt ?? p.createdAt)}</Td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -261,7 +289,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
         <div className="op-card__head">
           <div><h2>Paketlər</h2><p>Alınmış seans paketləri</p></div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={() => setSellOpen(true)}
+            <button onClick={() => { setSellMode("catalog"); setSellOpen(true); }}
               style={{ padding: "7px 14px", border: "none", borderRadius: 10, background: "var(--brand)", color: "#fff", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
               + Paket sat
             </button>
@@ -272,25 +300,37 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
           {profile.packages.length === 0 ? (
             <div className="op-empty">Paket yoxdur</div>
           ) : (
-            <div className="op-list">
-              {profile.packages.map(pkg => (
-                <div key={pkg.id} className="op-row">
-                  <div className="op-row__main">
-                    <div className="op-row__name">
-                      {pkg.packageName}
-                      <span className="op-row__badge" data-tone="brand" style={{ marginLeft: 6 }}>
-                        {statusLabel(pkg.status)}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {profile.packages.map(pkg => {
+                const st = PKG_STATUS[pkg.status] ?? PKG_STATUS.ACTIVE;
+                const pay = profile.payments.find(pm => pm.patientPackageId === pkg.id);
+                const paid = pay?.status === "PAID";
+                const used = Math.max(0, pkg.total - pkg.remaining);
+                const pct = pkg.total > 0 ? Math.round((used / pkg.total) * 100) : 0;
+                const done = pkg.status === "EXHAUSTED";
+                return (
+                  <div key={pkg.id} style={{ border: "1px solid #EDF1F8", borderRadius: 12, padding: 15 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 9 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{pkg.packageName}</span>
+                        <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>{st.label}</span>
+                      </div>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: paid ? "#D1FAE5" : "#FEF3C7", color: paid ? "#065F46" : "#92400E", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>
+                        {paid
+                          ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 6L9 17l-5-5" /></svg>
+                          : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>}
+                        {paid ? "Ödənildi" : "Ödəniş gözlənir"}
                       </span>
                     </div>
-                    <div className="op-row__meta">
-                      <span>{pkg.remaining} / {pkg.total} qalıb</span>
-                      {pkg.psychologistName && <span>· {pkg.psychologistName}</span>}
-                      {pkg.pricePaid != null && <span>· {formatAzn(pkg.pricePaid)}</span>}
-                      {pkg.purchasedAt && <span>· {fmtDate(pkg.purchasedAt)}</span>}
+                    <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 11 }}>
+                      {pkg.remaining}/{pkg.total} qalıb{pkg.psychologistName ? ` · ${pkg.psychologistName}` : ""}{pkg.pricePaid != null ? ` · ${formatAzn(pkg.pricePaid)}` : ""}{pkg.purchasedAt ? ` · alınıb ${fmtDate(pkg.purchasedAt)}` : ""}
+                    </div>
+                    <div style={{ height: 8, background: done ? "#D1FAE5" : "#E4ECFA", borderRadius: 999, overflow: "hidden" }}>
+                      <div style={{ width: `${pct}%`, height: "100%", background: done ? "#10B981" : "linear-gradient(90deg,#1051B7,#3A74D6)", borderRadius: 999 }} />
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -446,16 +486,39 @@ function Td({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* ─── Paket status + avatar köməkçiləri ──────────────────────────────────── */
+const PKG_STATUS: Record<string, { label: string; bg: string; color: string }> = {
+  ACTIVE:    { label: "Aktiv",       bg: "#D1FAE5", color: "#065F46" },
+  EXHAUSTED: { label: "Tamamlanıb",  bg: "#F3F4F6", color: "#374151" },
+  EXPIRED:   { label: "Vaxtı keçib", bg: "#FEF3C7", color: "#92400E" },
+  CANCELLED: { label: "Ləğv",        bg: "#FEE2E2", color: "#991B1B" },
+};
+const SELL_TINTS = [
+  { bg: "#E0EBFA", fg: "#1E3A8A" }, { bg: "#D1FAE5", fg: "#065F46" },
+  { bg: "#FEF3C7", fg: "#92400E" }, { bg: "#FCE7F3", fg: "#9D174D" },
+  { bg: "#EDE9FE", fg: "#5B21B6" }, { bg: "#CCFBF1", fg: "#115E59" },
+];
+function sellTint(name?: string | null) {
+  const s = name ?? "?"; let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return SELL_TINTS[h % SELL_TINTS.length];
+}
+function sellInitials(name?: string | null) {
+  if (!name) return "?";
+  return name.split(" ").filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
+}
+
 /* ─── Paket satışı modalı (operator) ─────────────────────────────────────── */
 
-function SellPackageModal({ patientId, onClose, onDone }: {
+function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone }: {
   patientId: number;
+  initialMode?: "catalog" | "custom" | "single";
   onClose: () => void;
-  onDone: (packageName: string) => void;
+  onDone: (displayName: string, isSingle: boolean) => void;
 }) {
   const [psys, setPsys] = useState<Psychologist[]>([]);
   const [psyId, setPsyId] = useState<number | null>(null);
-  const [mode, setMode] = useState<"catalog" | "custom">("catalog");
+  const [mode, setMode] = useState<"catalog" | "custom" | "single">(initialMode);
   const [catalog, setCatalog] = useState<PackageDto[]>([]);
   const [catalogId, setCatalogId] = useState<number | null>(null);
   const [loadingCat, setLoadingCat] = useState(false);
@@ -463,10 +526,48 @@ function SellPackageModal({ patientId, onClose, onDone }: {
   const [name, setName] = useState("");
   const [sessions, setSessions] = useState("");
   const [price, setPrice] = useState("");
+  // tək seans
+  const [singleName, setSingleName] = useState("");
+  const [singlePrice, setSinglePrice] = useState("");
+  const [singleStart, setSingleStart] = useState("");
+  const [singleEnd, setSingleEnd] = useState("");
+  const [slots, setSlots] = useState<AvailableSlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => { operatorApi.listPsychologists().then(setPsys).catch(() => {}); }, []);
+
+  // Tək seans rejimi: seçilmiş psixoloqun fərdi seans qiymətini avtomatik doldur (redaktə oluna bilir).
+  useEffect(() => {
+    if (mode !== "single" || psyId == null) return;
+    const p = psys.find(x => x.id === psyId);
+    if (p && p.individualPrice != null) setSinglePrice(String(p.individualPrice));
+  }, [psyId, mode, psys]);
+
+  // Tək seans rejimi: psixoloqun boş saatlarını (yaxın 3 həftə) yüklə.
+  useEffect(() => {
+    if (mode !== "single" || psyId == null) { setSlots([]); return; }
+    setSlotsLoading(true);
+    const today = new Date();
+    const to = new Date(); to.setDate(to.getDate() + 21);
+    operatorApi.availability(psyId, dateOnly(today), dateOnly(to))
+      .then(setSlots).catch(() => setSlots([])).finally(() => setSlotsLoading(false));
+  }, [mode, psyId]);
+
+  // Psixoloq dəyişəndə vaxt seçimini sıfırla.
+  useEffect(() => { setSingleStart(""); setSingleEnd(""); }, [psyId]);
+
+  const groupedSlots = useMemo(() => {
+    const map = new Map<string, AvailableSlot[]>();
+    for (const s of slots) {
+      const k = azFormatDate(s.startAt);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(s);
+    }
+    return Array.from(map.entries());
+  }, [slots]);
 
   useEffect(() => {
     setCatalog([]); setCatalogId(null);
@@ -481,6 +582,26 @@ function SellPackageModal({ patientId, onClose, onDone }: {
   const submit = async () => {
     setErr(null);
     if (!psyId) { setErr("Psixoloq seçin"); return; }
+
+    // Tək seans — paketsiz, birbaşa PENDING ödəniş.
+    if (mode === "single") {
+      const p = Number(singlePrice);
+      if (!Number.isFinite(p) || p < 0) { setErr("Qiymət düzgün deyil"); return; }
+      if (!singleStart) { setErr("Seans vaxtını seçin"); return; }
+      setSaving(true);
+      try {
+        await operatorApi.sellSingleSession(patientId, {
+          psychologistId: psyId, price: p, startAt: singleStart, endAt: singleEnd || addMinutes(singleStart, 50),
+        });
+        onDone(singleName.trim() || "Tək seans", true);
+      } catch (e) {
+        setErr((e as Error).message);
+        setSaving(false);
+      }
+      return;
+    }
+
+    // Paket — kataloq və ya xüsusi.
     let payload: Parameters<typeof operatorApi.sellPackage>[1];
     let displayName: string;
     if (mode === "catalog") {
@@ -497,68 +618,203 @@ function SellPackageModal({ patientId, onClose, onDone }: {
     setSaving(true);
     try {
       await operatorApi.sellPackage(patientId, payload);
-      onDone(displayName);
+      onDone(displayName, false);
     } catch (e) {
       setErr((e as Error).message);
       setSaving(false);
     }
   };
 
-  const inp: CSSProperties = { width: "100%", padding: 9, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
+  // Seçim xülasəsi
+  const selCat = catalog.find(c => c.id === catalogId) ?? null;
+  let summaryName = "—", summaryMeta = "";
+  let hasSelection = false;
+  if (mode === "single") {
+    hasSelection = psyId != null;
+    summaryName = singleName.trim() || "Tək seans";
+    summaryMeta = `1 seans · ${formatAzn(Number(singlePrice) || 0)} · ${singleStart ? fmtDateTime(singleStart) : "tarix seçilməyib"}`;
+  } else if (mode === "custom") {
+    const s = Number(sessions) || 0, pr = Number(price) || 0;
+    hasSelection = s > 0 || pr > 0 || !!name.trim();
+    if (hasSelection) {
+      summaryName = name.trim() || "Xüsusi paket";
+      summaryMeta = `${s} seans · ${formatAzn(pr)} · seans başına ≈ ${s ? formatAzn(Math.round(pr / s)) : "—"}`;
+    }
+  } else if (selCat) {
+    hasSelection = true;
+    summaryName = selCat.name;
+    summaryMeta = `${selCat.sessionCount} seans · ${formatAzn(selCat.packagePrice)} · seans başına ≈ ${formatAzn(selCat.perSessionPrice)}`;
+  }
+  const emptyHint = mode === "single" ? "Psixoloq və seans tarixini seçin"
+    : mode === "custom" ? "Seans sayı və qiyməti daxil edin"
+    : "Psixoloq və paket seçin";
+
+  const seg = (on: boolean): CSSProperties => ({ flex: 1, border: "none", borderRadius: 8, padding: 9, fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", background: on ? "#fff" : "transparent", color: on ? "#082F6D" : "var(--oxford-60)", boxShadow: on ? "0 1px 3px rgba(8,47,109,.12)" : "none" });
+  const field: CSSProperties = { width: "100%", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 13px", fontSize: 14, fontWeight: 600, color: "var(--oxford)", fontFamily: "inherit", boxSizing: "border-box" };
+  const fLab: CSSProperties = { display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 6 };
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(10,22,51,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, maxWidth: 520, width: "100%", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-        <div style={{ padding: "18px 22px", borderBottom: "1px solid #EEF2F7" }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: 0 }}>Paket sat</h3>
-          <p style={{ fontSize: 12.5, color: "#52718F", margin: "4px 0 0" }}>Psixoloq + paket seçin. Ödəniş PENDING yaranır — pul gələndə «Ödənişlər»də təsdiqləyin.</p>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(10,26,51,.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "28px 20px", overflowY: "auto" }}>
+      <style>{`@keyframes opSheet{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, background: "#fff", borderRadius: 16, boxShadow: "0 24px 70px rgba(8,47,109,.3)", overflow: "hidden", margin: "auto", animation: "opSheet .22s ease" }}>
+        {/* header */}
+        <div style={{ padding: "18px 22px", borderBottom: "1px solid #F0F4FA", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)" }}>Satış</div>
+            <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3, lineHeight: 1.45 }}>Psixoloq + paket və ya tək seans seçin. Ödəniş PENDING yaranır — pul gələndə «Ödənişlər»də təsdiqləyin.</div>
+          </div>
+          <button onClick={onClose} aria-label="Bağla" style={{ width: 30, height: 30, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA", border: "none", borderRadius: 8, cursor: "pointer", flex: "none" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
         </div>
-        <div style={{ padding: 22, display: "grid", gap: 14 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: "#52718F", display: "grid", gap: 4 }}>Psixoloq
-            <select value={psyId ?? ""} onChange={e => setPsyId(e.target.value ? Number(e.target.value) : null)} style={{ ...inp, background: "#fff" }}>
-              <option value="">Seçin…</option>
-              {psys.map(p => <option key={p.id} value={p.id}>{p.name}{p.title ? ` · ${p.title}` : ""}</option>)}
-            </select>
-          </label>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <button type="button" onClick={() => setMode("catalog")} style={{ padding: 9, borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: mode === "catalog" ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: mode === "catalog" ? "var(--brand-50)" : "#fff", color: mode === "catalog" ? "var(--brand-700)" : "#1A2535" }}>Kataloq paketi</button>
-            <button type="button" onClick={() => setMode("custom")} style={{ padding: 9, borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: mode === "custom" ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: mode === "custom" ? "var(--brand-50)" : "#fff", color: mode === "custom" ? "var(--brand-700)" : "#1A2535" }}>Xüsusi paket</button>
+        {/* body */}
+        <div style={{ padding: "18px 22px", maxHeight: "62vh", overflowY: "auto" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 9 }}>Psixoloq</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18, maxHeight: 232, overflowY: "auto" }}>
+            {psys.length === 0 && <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Psixoloq siyahısı yüklənir…</div>}
+            {psys.map(p => {
+              const a = psyId === p.id;
+              const tint = sellTint(p.name);
+              return (
+                <button key={p.id} type="button" onClick={() => setPsyId(p.id)}
+                  style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", textAlign: "left", background: a ? "#F2F6FD" : "#fff", border: `1.5px solid ${a ? "var(--brand)" : "#D6E2F7"}`, borderRadius: 11, padding: "10px 12px", cursor: "pointer", fontFamily: "inherit" }}>
+                  <span style={{ width: 34, height: 34, borderRadius: "50%", background: tint.bg, color: tint.fg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flex: "none" }}>{sellInitials(p.name)}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{p.name}</div>
+                    <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>{p.title || "Psixoloq"}</div>
+                  </div>
+                  <span style={{ width: 20, height: 20, borderRadius: "50%", border: `2px solid ${a ? "var(--brand)" : "#CBD5E6"}`, background: a ? "var(--brand)" : "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: a ? 1 : 0 }} aria-hidden><path d="M20 6L9 17l-5-5" /></svg>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* rejim tabs */}
+          <div style={{ display: "flex", gap: 4, background: "#F0F4FA", borderRadius: 10, padding: 3, marginBottom: 16 }}>
+            <button type="button" onClick={() => setMode("catalog")} style={seg(mode === "catalog")}>Kataloq paketi</button>
+            <button type="button" onClick={() => setMode("custom")} style={seg(mode === "custom")}>Xüsusi paket</button>
+            <button type="button" onClick={() => setMode("single")} style={seg(mode === "single")}>Tək seans</button>
           </div>
 
           {mode === "catalog" ? (
             !psyId ? (
-              <div style={{ fontSize: 12.5, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 10px" }}>Əvvəlcə psixoloq seçin.</div>
+              <div style={{ fontSize: 12.5, color: "var(--oxford-60)", background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>Əvvəlcə psixoloq seçin.</div>
             ) : loadingCat ? (
-              <div style={{ fontSize: 12.5, color: "#52718F" }}>Yüklənir…</div>
+              <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Yüklənir…</div>
             ) : catalog.length === 0 ? (
-              <div style={{ fontSize: 12.5, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 10px" }}>Bu psixoloqun kataloq paketi yoxdur — «Xüsusi paket» seçin.</div>
+              <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 11, padding: "12px 14px", fontSize: 12.5, color: "#92400E", fontWeight: 600, lineHeight: 1.45 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }} aria-hidden><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+                Bu psixoloqun kataloq paketi yoxdur — «Xüsusi paket» seçin.
+              </div>
             ) : (
-              <div style={{ display: "grid", gap: 6 }}>
-                {catalog.map(c => (
-                  <button key={c.id} type="button" onClick={() => setCatalogId(c.id)} style={{ textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer", border: catalogId === c.id ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: catalogId === c.id ? "var(--brand-50)" : "#fff" }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "#1A2535" }}>{c.name}</div>
-                    <div style={{ fontSize: 12, color: "#52718F" }}>{c.sessionCount} seans · {formatAzn(c.packagePrice)} · {formatAzn(c.perSessionPrice)}/seans</div>
-                  </button>
-                ))}
+              <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                {catalog.map(c => {
+                  const a = catalogId === c.id;
+                  return (
+                    <button key={c.id} type="button" onClick={() => setCatalogId(c.id)}
+                      style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: a ? "#F2F6FD" : "#fff", border: `1.5px solid ${a ? "var(--brand)" : "#D6E2F7"}`, borderRadius: 12, padding: "13px 15px", cursor: "pointer", fontFamily: "inherit" }}>
+                      <span style={{ width: 20, height: 20, borderRadius: "50%", border: `2px solid ${a ? "var(--brand)" : "#CBD5E6"}`, background: a ? "var(--brand)" : "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: a ? 1 : 0 }} aria-hidden><path d="M20 6L9 17l-5-5" /></svg>
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{c.name}</div>
+                        <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginTop: 1 }}>{c.sessionCount} seans · seans başına ≈ {formatAzn(c.perSessionPrice)}</div>
+                      </div>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: "#082F6D", flex: "none" }}>{formatAzn(c.packagePrice)}</span>
+                    </button>
+                  );
+                })}
               </div>
             )
-          ) : (
-            <div style={{ display: "grid", gap: 8 }}>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Paket adı (opsional)" style={inp} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <input value={sessions} onChange={e => setSessions(e.target.value)} placeholder="Seans sayı" type="number" min={1} style={inp} />
-                <input value={price} onChange={e => setPrice(e.target.value)} placeholder="Qiymət (AZN)" type="number" min={0} step="0.01" style={inp} />
+          ) : mode === "single" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {/* Boş saatlar — pasiyent kimi seçim */}
+              <div>
+                <div style={fLab}>Seans vaxtı — boş saatlardan seçin *</div>
+                {!psyId ? (
+                  <div style={{ fontSize: 12.5, color: "var(--oxford-60)", background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>Əvvəlcə psixoloq seçin.</div>
+                ) : slotsLoading ? (
+                  <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Boş saatlar yüklənir…</div>
+                ) : slots.length === 0 ? (
+                  <div style={{ fontSize: 12.5, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 12px" }}>Yaxın 3 həftədə boş saat yoxdur — aşağıdan əl ilə daxil edin.</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 240, overflowY: "auto", paddingRight: 2 }}>
+                    {groupedSlots.map(([day, daySlots]) => (
+                      <div key={day}>
+                        <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 6 }}>{day}</div>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {daySlots.map(s => {
+                            const sel = singleStart === isoToAzLocal(s.startAt);
+                            return (
+                              <button key={s.startAt} type="button"
+                                onClick={() => { setManualOpen(false); setSingleStart(isoToAzLocal(s.startAt)); setSingleEnd(isoToAzLocal(s.endAt)); }}
+                                style={{ border: `1.5px solid ${sel ? "var(--brand)" : "#D6E2F7"}`, background: sel ? "var(--brand)" : "#fff", color: sel ? "#fff" : "var(--oxford)", borderRadius: 9, padding: "7px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                                {azFormatTime(s.startAt)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {psyId && (
+                  <button type="button" onClick={() => setManualOpen(o => !o)}
+                    style={{ marginTop: 8, background: "none", border: "none", color: "var(--brand-700)", fontSize: 12.5, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+                    {manualOpen ? "Əl ilə daxiletməni gizlət" : "Və ya əl ilə daxil et"}
+                  </button>
+                )}
+                {manualOpen && (
+                  <label style={{ display: "block", marginTop: 8 }}><span style={fLab}>Tarix və saat (əl ilə)</span>
+                    <input type="datetime-local" value={singleStart} onChange={e => { setSingleStart(e.target.value); setSingleEnd(addMinutes(e.target.value, 50)); }} style={field} />
+                  </label>
+                )}
+                {singleStart && <div style={{ fontSize: 12, color: "#065F46", fontWeight: 600, marginTop: 8 }}>Seçilmiş vaxt: {fmtDateTime(singleStart)} · ~50 dəq</div>}
               </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <label><span style={fLab}>Ad (opsional)</span><input value={singleName} onChange={e => setSingleName(e.target.value)} placeholder="Tək seans" style={field} /></label>
+                <label><span style={fLab}>Qiymət (₼)</span><input value={singlePrice} onChange={e => setSinglePrice(e.target.value)} type="number" min={0} step="0.01" placeholder="60" style={field} /></label>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <label style={{ gridColumn: "1 / -1" }}><span style={fLab}>Ad (opsional)</span><input value={name} onChange={e => setName(e.target.value)} placeholder="Məs. Fərdi proqram" style={field} /></label>
+              <label><span style={fLab}>Seans sayı</span><input value={sessions} onChange={e => setSessions(e.target.value)} type="number" min={1} placeholder="10" style={field} /></label>
+              <label><span style={fLab}>Qiymət (₼)</span><input value={price} onChange={e => setPrice(e.target.value)} type="number" min={0} step="0.01" placeholder="450" style={field} /></label>
             </div>
           )}
 
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12 }}>{err}</div>}
-
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>Bağla</button>
-            <button onClick={submit} disabled={saving} style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>{saving ? "Satılır…" : "Paket sat"}</button>
+          {/* xülasə */}
+          <div style={{ marginTop: 18, background: "#F2F6FD", border: "1px solid #D6E2F7", borderRadius: 12, padding: "14px 16px" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 9 }}>Seçim xülasəsi</div>
+            {hasSelection ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{summaryName}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 2 }}>{summaryMeta}</div>
+                </div>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#FEF3C7", color: "#92400E", fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>Ödəniş: PENDING
+                </span>
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 500 }}>{emptyHint}</div>
+            )}
           </div>
+
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 14 }}>{err}</div>}
+        </div>
+
+        {/* footer */}
+        <div style={{ display: "flex", gap: 10, padding: "16px 22px", borderTop: "1px solid #F0F4FA" }}>
+          <button onClick={onClose} style={{ flex: "none", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "12px 20px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
+          <button onClick={submit} disabled={saving} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: 12, fontSize: 14.5, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1, boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 12h14M13 6l6 6-6 6" /></svg>{saving ? "Satılır…" : (mode === "single" ? "Tək seans sat" : "Paket sat")}
+          </button>
         </div>
       </div>
     </div>
@@ -567,7 +823,7 @@ function SellPackageModal({ patientId, onClose, onDone }: {
 
 function StatusPill({ status }: { status: string }) {
   const ok = status === "PAID" || status === "COMPLETED" || status === "CONFIRMED" || status === "ACTIVE";
-  const bad = status === "CANCELLED" || status === "FAILED" || status === "REJECTED" || status === "EXPIRED";
+  const bad = status === "CANCELLED" || status === "FAILED" || status === "REJECTED" || status === "EXPIRED" || status === "REFUNDED";
   const bg = ok ? "#D1FAE5" : bad ? "#FEE2E2" : "#FEF3C7";
   const fg = ok ? "#065F46" : bad ? "#991B1B" : "#92400E";
   return (

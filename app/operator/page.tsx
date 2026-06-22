@@ -1,336 +1,194 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   operatorApi,
   type AppointmentDetail,
   type OperatorStats,
+  type PaymentSummary,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { getStoredUser } from "@/lib/auth";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { formatAzn } from "@/lib/money";
 
-const MONTHS_AZ = ["Yanvar","Fevral","Mart","Aprel","May","İyun","İyul","Avqust","Sentyabr","Oktyabr","Noyabr","Dekabr"];
-const DAYS_AZ = ["Bazar","Bazar ertəsi","Çərşənbə axşamı","Çərşənbə","Cümə axşamı","Cümə","Şənbə"];
-
-function pad2(n: number) { return String(n).padStart(2, "0"); }
-function fmtTime(iso?: string | null) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
-function fmtDateTime(iso?: string | null) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)} · ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
-function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-function todayLabel() {
-  const d = new Date();
-  return `${DAYS_AZ[d.getDay()]}, ${d.getDate()} ${MONTHS_AZ[d.getMonth()]} ${d.getFullYear()}`;
-}
+const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
+const DAYS_AZ = ["Bazar", "Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə"];
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const fmtTime = (iso?: string | null) => { if (!iso) return "—"; const d = new Date(iso); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+const isSameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+const todayLabel = () => { const d = new Date(); return `${DAYS_AZ[d.getDay()]}, ${d.getDate()} ${MONTHS_AZ[d.getMonth()]} ${d.getFullYear()}`; };
 function timeAgo(iso?: string | null, now: Date = new Date()): string {
   if (!iso) return "—";
   const ms = now.getTime() - new Date(iso).getTime();
   if (ms < 0) return "indi";
-  const m = Math.floor(ms / 60_000);
+  const m = Math.floor(ms / 60000);
   if (m < 1) return "indi";
   if (m < 60) return `${m} dəq`;
   const h = Math.floor(m / 60);
   if (h < 24) return `${h} saat`;
-  const d = Math.floor(h / 24);
-  return `${d} gün`;
+  return `${Math.floor(h / 24)} gün`;
 }
 function fmtMin(n: number | null) {
   if (n == null) return "—";
   if (n < 60) return `${Math.round(n)} dəq`;
-  const h = Math.floor(n / 60);
-  const m = Math.round(n - h * 60);
+  const h = Math.floor(n / 60); const m = Math.round(n - h * 60);
   return `${h} s ${m > 0 ? m + " dəq" : ""}`.trim();
 }
+
+type Tone = "neutral" | "good" | "warn" | "danger";
+const TONE: Record<Tone, { accent: string; num: string; hint: string }> = {
+  danger:  { accent: "#DC2626", num: "#991B1B", hint: "#991B1B" },
+  warn:    { accent: "#F59E0B", num: "#0A1A33", hint: "#92400E" },
+  good:    { accent: "#047857", num: "#047857", hint: "#9DB0CC" },
+  neutral: { accent: "#9CA3AF", num: "#374151", hint: "#9DB0CC" },
+};
 
 export default function OperatorDashboard() {
   const { t } = useT();
   const user = getStoredUser();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [stats, setStats] = useState<OperatorStats | null>(null);
+  const [summary, setSummary] = useState<PaymentSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(new Date());
-  const [activityScope, setActivityScope] = useState<"all" | "mine">("all");
+  const [scope, setScope] = useState<"all" | "mine">("all");
 
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(id);
-  }, []);
+  useEffect(() => { const id = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(id); }, []);
 
   const load = () => {
     setLoading(true);
     Promise.all([
       operatorApi.listAppointments(),
       operatorApi.stats().catch(() => null),
-    ])
-      .then(([list, s]) => { setItems(list); setStats(s); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      operatorApi.paymentsSummary().catch(() => null),
+    ]).then(([list, s, sm]) => { setItems(list); setStats(s); setSummary(sm); }).catch(() => {}).finally(() => setLoading(false));
   };
-
   useEffect(load, []);
+  useEffect(() => subscribeNotifications(n => { if (typeof n.type === "string" && n.type.startsWith("APPOINTMENT_")) load(); }), []);
 
-  useEffect(() => {
-    return subscribeNotifications((n) => {
-      if (typeof n.type === "string" && n.type.startsWith("APPOINTMENT_")) load();
-    });
-     
-  }, []);
-
-  // ─── Derived buckets ───────────────────────────────────────────────────
-  const disputed = useMemo(
-    () => items.filter(a => a.status === "DISPUTED")
-      .sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()),
-    [items]
-  );
-
-  const rejected = useMemo(
-    () => items.filter(a => a.status === "REJECTED")
-      .sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()),
-    [items]
-  );
-
-  const pending = useMemo(
-    () => items.filter(a => a.status === "PENDING")
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
-    [items]
-  );
-
-  const todayActive = useMemo(() => {
-    return items
-      .filter(a => a.startAt && isSameDay(new Date(a.startAt), now))
-      .filter(a => ["ASSIGNED", "CONFIRMED", "AWAITING_CONFIRMATION"].includes(a.status))
-      .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
-  }, [items, now]);
-
-  const awaitingConfirm = useMemo(
-    () => items.filter(a => a.status === "AWAITING_CONFIRMATION"),
-    [items]
-  );
-
-  const stalePending = useMemo(() => {
-    const cutoff = now.getTime() - 4 * 60 * 60_000; // 4h
-    return pending.filter(a => new Date(a.createdAt).getTime() < cutoff);
-  }, [pending, now]);
-
-  /** Severity tiers: undefined < 4h · "warn" 4-24h · "warn-2" 24-48h · "danger" 48h+ */
+  const disputed = useMemo(() => items.filter(a => a.status === "DISPUTED").sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()), [items]);
+  const rejected = useMemo(() => items.filter(a => a.status === "REJECTED").sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()), [items]);
+  const pending = useMemo(() => items.filter(a => a.status === "PENDING").sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()), [items]);
+  const todayActive = useMemo(() => items.filter(a => a.startAt && isSameDay(new Date(a.startAt), now)).filter(a => ["ASSIGNED", "CONFIRMED", "AWAITING_CONFIRMATION"].includes(a.status)).sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime()), [items, now]);
+  const awaitingConfirm = useMemo(() => items.filter(a => a.status === "AWAITING_CONFIRMATION"), [items]);
+  const stalePending = useMemo(() => { const cutoff = now.getTime() - 4 * 3600000; return pending.filter(a => new Date(a.createdAt).getTime() < cutoff); }, [pending, now]);
   const staleSeverity = (a: AppointmentDetail): "warn" | "warn-2" | "danger" | undefined => {
     const ms = now.getTime() - new Date(a.createdAt).getTime();
-    if (ms >= 48 * 60 * 60_000) return "danger";
-    if (ms >= 24 * 60 * 60_000) return "warn-2";
-    if (ms >= 4 * 60 * 60_000)  return "warn";
+    if (ms >= 48 * 3600000) return "danger";
+    if (ms >= 24 * 3600000) return "warn-2";
+    if (ms >= 4 * 3600000) return "warn";
     return undefined;
   };
-
   const recentActions = useMemo(() => {
     let list = items.filter(a => a.assignedByOperatorId);
-    if (activityScope === "mine" && user?.userId) {
-      list = list.filter(a => a.assignedByOperatorId === user.userId);
-    }
-    return list
-      .sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime())
-      .slice(0, 6);
-  }, [items, activityScope, user?.userId]);
+    if (scope === "mine" && user?.userId) list = list.filter(a => a.assignedByOperatorId === user.userId);
+    return list.sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()).slice(0, 6);
+  }, [items, scope, user?.userId]);
+  const mineCount = useMemo(() => user?.userId ? items.filter(a => a.assignedByOperatorId === user.userId).length : 0, [items, user?.userId]);
 
-  const mineCount = useMemo(
-    () => user?.userId ? items.filter(a => a.assignedByOperatorId === user.userId).length : 0,
-    [items, user?.userId]
-  );
+  const kpis: { label: string; value: ReactNode; hint: string; tone: Tone; href?: string; icon: ReactNode }[] = [
+    { label: "Növbədə", value: pending.length, hint: stalePending.length > 0 ? `${stalePending.length} > 4 saat` : "yeni müraciətlər", tone: stalePending.length > 0 ? "warn" : "neutral", href: "/operator/appointments", icon: <Ico d={I_CLOCK} /> },
+    { label: "Gecikmiş", value: stats?.slaOverdueCount ?? 0, hint: `SLA: ${stats?.slaHours ?? 2} saat`, tone: (stats?.slaOverdueCount ?? 0) > 0 ? "danger" : "good", href: "/operator/appointments?filter=overdue", icon: <Ico d={I_ALERT} /> },
+    { label: "Mübahisəli", value: disputed.length, hint: (stats?.staleDisputedCount ?? 0) > 0 ? `${stats!.staleDisputedCount} köhnə (${stats!.disputeTimeoutHours}s+)` : disputed.length > 0 ? "həll et" : "boşdur", tone: ((stats?.staleDisputedCount ?? 0) > 0 || disputed.length > 0) ? "danger" : "good", href: "/operator/appointments", icon: <Ico d={I_CHAT} /> },
+    { label: "Böhran", value: stats?.crisisUnackedCount ?? 0, hint: (stats?.crisisUnackedCount ?? 0) > 0 ? "baxılmamış check-in" : "hamısına baxılıb", tone: (stats?.crisisUnackedCount ?? 0) > 0 ? "danger" : "good", href: "/operator/analytics", icon: <Ico d={I_PULSE} /> },
+    { label: "Yenidən təyin", value: rejected.length, hint: "psixoloq rədd etdi", tone: rejected.length > 0 ? "warn" : "neutral", href: "/operator/appointments", icon: <Ico d={I_REFRESH} /> },
+    { label: "Bu gün təyin", value: stats?.assignedToday ?? 0, hint: "müraciət", tone: "good", icon: <Ico d={I_CHECK} /> },
+    { label: "Orta cavab", value: fmtMin(stats?.avgResponseMinutes ?? null), hint: "bu ay", tone: "neutral", icon: <Ico d={I_WATCH} /> },
+  ];
+
+  const queueEmpty = disputed.length === 0 && rejected.length === 0 && pending.length === 0;
 
   return (
-    <div>
-      {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="op-dash-header">
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <style>{CSS}</style>
+
+      {/* HEADER */}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
         <div>
-          <p className="op-dash-eyebrow">{todayLabel()}</p>
-          <h1 className="op-dash-title">{t("staff.opDashTitle")}{user?.firstName ? ` · ${user.firstName}` : ""}</h1>
-          <p className="op-dash-sub">{t("staff.opDashSub")}</p>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--brand)", marginBottom: 7 }}>{todayLabel()}</div>
+          <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, letterSpacing: "-.01em", color: "var(--oxford)" }}>İdarə paneli{user?.firstName ? ` · ${user.firstName}` : ""}</h1>
+          <p style={{ margin: 0, fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>{t("staff.opDashSub")}</p>
         </div>
-        <div className="op-dash-actions">
-          <Link href="/operator/appointments" className="op-dash-btn op-dash-btn--ghost">
-            {t("staff.opViewAll")}
-          </Link>
-          <Link href="/operator/analytics" className="op-dash-btn op-dash-btn--ghost">
-            <IconChart /> {t("nav.analytics")}
-          </Link>
+        <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
+          <GhostLink href="/operator/appointments" icon={<Ico d={I_CAL} w={15} />}>Bütün müraciətlər</GhostLink>
+          <GhostLink href="/operator/analytics" icon={<Ico d={I_CHART} w={15} />}>Analitika</GhostLink>
         </div>
       </div>
 
       {loading ? (
-        <div style={{ background: "#fff", borderRadius: 14, padding: 60, textAlign: "center", color: "var(--oxford-60)" }}>
-          {t("common.loading")}
-        </div>
+        <div style={{ ...CARD, padding: 60, textAlign: "center", color: "var(--oxford-60)" }}>{t("common.loading")}</div>
       ) : (
         <>
-          {/* ── KPI strip ─────────────────────────────────────────────────── */}
-          <div className="op-dash-kpis">
-            <Kpi
-              icon={<IconClipboard />}
-              label="Növbədə"
-              value={pending.length}
-              hint={stalePending.length > 0 ? `${stalePending.length} > 4 saat` : "yeni müraciətlər"}
-              tone={stalePending.length > 0 ? "warn" : "neutral"}
-              href="/operator/appointments"
-            />
-            <Kpi
-              icon={<IconAlert />}
-              label="Gecikmiş"
-              value={stats?.slaOverdueCount ?? 0}
-              hint={`SLA: ${stats?.slaHours ?? 2} saat`}
-              tone={(stats?.slaOverdueCount ?? 0) > 0 ? "danger" : "good"}
-              href="/operator/appointments?filter=overdue"
-            />
-            <Kpi
-              icon={<IconAlert />}
-              label="Mübahisəli"
-              value={disputed.length}
-              hint={(stats?.staleDisputedCount ?? 0) > 0
-                ? `${stats!.staleDisputedCount} köhnə (${stats!.disputeTimeoutHours}s+)`
-                : disputed.length > 0 ? "həll et" : "boşdur"}
-              tone={(stats?.staleDisputedCount ?? 0) > 0 || disputed.length > 0 ? "danger" : "good"}
-              href="/operator/appointments"
-            />
-            <Kpi
-              icon={<IconAlert />}
-              label="Böhran"
-              value={stats?.crisisUnackedCount ?? 0}
-              hint={(stats?.crisisUnackedCount ?? 0) > 0 ? "baxılmamış check-in" : "hamısına baxılıb"}
-              tone={(stats?.crisisUnackedCount ?? 0) > 0 ? "danger" : "good"}
-              href="/operator/analytics"
-            />
-            <Kpi
-              icon={<IconRefresh />}
-              label="Yenidən təyin"
-              value={rejected.length}
-              hint="psixoloq rədd etdi"
-              tone={rejected.length > 0 ? "warn" : "neutral"}
-              href="/operator/appointments"
-            />
-            <Kpi
-              icon={<IconCheck />}
-              label="Bu gün təyin"
-              value={stats?.assignedToday ?? 0}
-              hint="müraciət"
-              tone="good"
-            />
-            <Kpi
-              icon={<IconStopwatch />}
-              label="Orta cavab"
-              value={fmtMin(stats?.avgResponseMinutes ?? null)}
-              hint="bu ay"
-              tone="neutral"
-            />
+          {/* KPI STRIP */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 22 }}>
+            {kpis.map(k => {
+              const c = TONE[k.tone];
+              const inner = <>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 9, color: c.accent }}>{k.icon}<span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)" }}>{k.label}</span></div>
+                <div className="db-num" style={{ fontSize: 23, fontWeight: 800, color: c.num, lineHeight: 1 }}>{k.value}</div>
+                <div style={{ fontSize: 11, color: c.hint, fontWeight: 600, marginTop: 4 }}>{k.hint}</div>
+              </>;
+              const st: React.CSSProperties = { ...CARD, borderLeft: `3px solid ${c.accent}`, padding: "14px 15px", textDecoration: "none", display: "block" };
+              return k.href ? <Link key={k.label} href={k.href} className="db-kpi" style={st}>{inner}</Link> : <div key={k.label} style={st}>{inner}</div>;
+            })}
           </div>
 
-          {/* ── Main grid ─────────────────────────────────────────────────── */}
-          <div className="op-dash-grid">
-
-            {/* Triage queue */}
-            <div className="op-dash-col">
-              {disputed.length === 0 && rejected.length === 0 && pending.length === 0 ? (
-                <div className="op-dash-card op-dash-empty">
-                  <div className="op-dash-empty-icon"><IconLeaf /></div>
-                  <div className="op-dash-empty-title">Növbə boşdur</div>
-                  <p className="op-dash-empty-sub">
-                    Bütün müraciətlər həll edilib. Yeni müraciət gəldikdə burada görünəcək.
-                  </p>
+          {/* MAIN GRID */}
+          <div className="db-main" style={{ marginBottom: 18 }}>
+            {/* LEFT — TRİYAJ */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {queueEmpty ? (
+                <div style={{ ...CARD, padding: "44px 24px", textAlign: "center" }}>
+                  <div style={{ color: "#86B89E", marginBottom: 10 }}><Ico d={I_LEAF} w={36} sw={1.4} /></div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)", marginBottom: 5 }}>Növbə boşdur</div>
+                  <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 500 }}>Bütün müraciətlər həll edilib. Yeni müraciət gəldikdə burada görünəcək.</div>
                 </div>
-              ) : (
-                <>
-                  {disputed.length > 0 && (
-                    <QueueBlock
-                      title="Acil həll et"
-                      icon={<IconAlert />}
-                      tone="danger"
-                      count={disputed.length}
-                      ctaText="Həll panelinə keç →"
-                      ctaHref="/operator/appointments"
-                    >
-                      {disputed.slice(0, 4).map(a => (
-                        <QueueRow key={a.id} a={a} now={now} kind="disputed" />
-                      ))}
-                      {disputed.length > 4 && <Overflow n={disputed.length - 4} />}
-                    </QueueBlock>
-                  )}
-
-                  {rejected.length > 0 && (
-                    <QueueBlock
-                      title="Yenidən təyin lazımdır"
-                      icon={<IconRefresh />}
-                      tone="warn"
-                      count={rejected.length}
-                      ctaText="Hamısı →"
-                      ctaHref="/operator/appointments"
-                    >
-                      {rejected.slice(0, 4).map(a => (
-                        <QueueRow key={a.id} a={a} now={now} kind="rejected" />
-                      ))}
-                      {rejected.length > 4 && <Overflow n={rejected.length - 4} />}
-                    </QueueBlock>
-                  )}
-
-                  {pending.length > 0 && (
-                    <QueueBlock
-                      title="Yeni müraciətlər"
-                      icon={<IconClipboard />}
-                      tone={stalePending.length > 0 ? "warn" : "brand"}
-                      count={pending.length}
-                      ctaText="Hamısı →"
-                      ctaHref="/operator/appointments"
-                    >
-                      {pending.slice(0, 6).map(a => (
-                        <QueueRow
-                          key={a.id}
-                          a={a}
-                          now={now}
-                          kind="pending"
-                          severity={staleSeverity(a)}
-                        />
-                      ))}
-                      {pending.length > 6 && <Overflow n={pending.length - 6} />}
-                    </QueueBlock>
-                  )}
-                </>
-              )}
+              ) : <>
+                {disputed.length > 0 && (
+                  <QueueBlock title="Acil həll et" tone="danger" count={disputed.length} icon={<Ico d={I_ALERT} />}>
+                    {disputed.slice(0, 4).map(a => <QueueRow key={a.id} a={a} now={now} kind="disputed" />)}
+                    {disputed.length > 4 && <Overflow n={disputed.length - 4} />}
+                  </QueueBlock>
+                )}
+                {rejected.length > 0 && (
+                  <QueueBlock title="Yenidən təyin lazımdır" tone="warn" count={rejected.length} icon={<Ico d={I_REFRESH} />}>
+                    {rejected.slice(0, 4).map(a => <QueueRow key={a.id} a={a} now={now} kind="rejected" />)}
+                    {rejected.length > 4 && <Overflow n={rejected.length - 4} />}
+                  </QueueBlock>
+                )}
+                {pending.length > 0 && (
+                  <QueueBlock title="Yeni müraciətlər" tone="brand" count={pending.length} icon={<Ico d={I_PLUS} />}>
+                    {pending.slice(0, 6).map(a => <QueueRow key={a.id} a={a} now={now} kind="pending" severity={staleSeverity(a)} />)}
+                    {pending.length > 6 && <Overflow n={pending.length - 6} />}
+                  </QueueBlock>
+                )}
+              </>}
             </div>
 
-            {/* Right column */}
-            <div className="op-dash-side">
-
-              {/* Today */}
-              <div className="op-dash-card">
-                <div className="op-dash-card-head">
-                  <h3>Bu gün</h3>
-                  <span className="op-dash-card-meta">{todayActive.length} aktiv</span>
+            {/* RIGHT */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Bu gün */}
+              <div style={{ ...CARD, padding: 18 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>Bu gün</span>
+                  <span style={{ background: "#E4ECFA", color: "#082F6D", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>{todayActive.length} aktiv</span>
                 </div>
                 {todayActive.length === 0 ? (
-                  <div className="op-dash-empty-mini">
-                    Bu gün üçün təyin edilmiş seans yoxdur
-                  </div>
+                  <div style={{ fontSize: 12.5, color: "var(--oxford-60)", padding: "8px 0" }}>Bu gün üçün təyin edilmiş seans yoxdur</div>
                 ) : (
-                  <div className="op-dash-today-list">
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     {todayActive.slice(0, 5).map(a => {
-                      const start = a.startAt ? new Date(a.startAt) : null;
-                      const isAwaiting = a.status === "AWAITING_CONFIRMATION";
+                      const aw = a.status === "AWAITING_CONFIRMATION";
                       return (
-                        <div key={a.id} className={`op-dash-today-row${isAwaiting ? " is-awaiting" : ""}`}>
-                          <div className="op-dash-today-time">{start ? fmtTime(start.toISOString()) : "—"}</div>
-                          <div className="op-dash-today-main">
-                            <div className="op-dash-today-name">{a.patientName ?? "—"}</div>
-                            <div className="op-dash-today-meta">
-                              {a.psychologistName ?? "—"}
-                              {isAwaiting && <span className="op-dash-pill op-dash-pill--warn">təsdiq</span>}
-                            </div>
+                        <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 11, padding: "8px 10px", borderRadius: 9, ...(aw ? { background: "#FFFBEB", border: "1px solid #FDECC8" } : {}) }}>
+                          <span className="db-num" style={{ fontSize: 14, fontWeight: 800, minWidth: 44, color: "var(--oxford)" }}>{a.startAt ? fmtTime(a.startAt) : "—"}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>{a.patientName ?? "—"}</div>
+                            <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>{a.psychologistName ?? "—"}</div>
                           </div>
+                          {aw && <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 999 }}>təsdiq</span>}
                         </div>
                       );
                     })}
@@ -338,95 +196,83 @@ export default function OperatorDashboard() {
                   </div>
                 )}
                 {awaitingConfirm.length > 0 && (
-                  <div className="op-dash-today-foot">
-                    <span><IconHourglass /> {awaitingConfirm.length} təsdiq gözləyir</span>
-                    <Link href="/operator/appointments">izlə →</Link>
-                  </div>
+                  <Link href="/operator/appointments" style={{ display: "block", marginTop: 11, paddingTop: 11, borderTop: "1px solid #F4F7FB", fontSize: 12.5, fontWeight: 600, color: "#92400E", textDecoration: "none" }}>{awaitingConfirm.length} təsdiq gözləyir · izlə →</Link>
                 )}
               </div>
 
-              {/* Quick actions */}
-              <div className="op-dash-card">
-                <div className="op-dash-card-head">
-                  <h3>Sürətli əməliyyatlar</h3>
+              {/* Maliyyə */}
+              {summary && (
+                <div style={{ ...CARD, padding: 18 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "var(--oxford)" }}>Maliyyə</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                    <Link href="/operator/payments" style={{ ...FIN, background: "#FFFBEB", border: "1px solid #FDECC8", textDecoration: "none" }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: "#92400E" }}>Gözləyən ödəniş <span style={{ opacity: 0.7 }}>({summary.pendingCount})</span></span>
+                      <span className="db-num" style={{ fontSize: 14, fontWeight: 800, color: "#92400E" }}>{formatAzn(summary.pendingSum)}</span>
+                    </Link>
+                    <div style={{ ...FIN, background: "#ECFDF5", border: "1px solid #A7F3D0" }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: "#065F46" }}>Bu ay net gəlir</span>
+                      <span className="db-num" style={{ fontSize: 14, fontWeight: 800, color: "#065F46" }}>{formatAzn(summary.paidMonthSum)}</span>
+                    </div>
+                    <div style={{ ...FIN, background: "#FEF2F2", border: "1px solid #FBD5D5" }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: "#991B1B" }}>Bu ay geri qaytarılıb</span>
+                      <span className="db-num" style={{ fontSize: 14, fontWeight: 800, color: "#991B1B" }}>{formatAzn(summary.refundedMonthSum)}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="op-dash-quick">
-                  <Link href="/operator/appointments" className="op-dash-quick-btn">
-                    <span><IconClipboard /></span>
-                    <div>
-                      <strong>Triage paneli</strong>
-                      <small>Müraciətləri təyin et</small>
-                    </div>
-                  </Link>
-                  <Link href="/operator/analytics" className="op-dash-quick-btn">
-                    <span><IconChart /></span>
-                    <div>
-                      <strong>Analitika</strong>
-                      <small>Performans və trend</small>
-                    </div>
-                  </Link>
+              )}
+
+              {/* Sürətli əməliyyatlar */}
+              <div style={{ ...CARD, padding: 18 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 13, color: "var(--oxford)" }}>Sürətli əməliyyatlar</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+                  <Quick href="/operator/pool" title="Müraciət sırası" sub="sahibsiz müraciətlər" icon={<Ico d={I_INBOX} w={18} />} />
+                  <Quick href="/operator/customers" title="Müştərilər" sub="pasiyent axtar" icon={<Ico d={I_USERS} w={18} />} />
+                  <Quick href="/operator/payments" title="Ödənişlər" sub="təsdiq / qaytarma" icon={<Ico d={I_CARD} w={18} />} />
+                  <Quick href="/operator/analytics" title="Analitika" sub="gəlir & performans" icon={<Ico d={I_CHART} w={18} />} />
                 </div>
               </div>
 
-              {/* Stats summary */}
+              {/* Bu ay */}
               {stats && (
-                <div className="op-dash-card">
-                  <div className="op-dash-card-head">
-                    <h3>Bu ay</h3>
-                  </div>
-                  <div className="op-dash-month">
-                    <div>
-                      <span>Cəmi randevu</span>
-                      <strong>{stats.totalThisMonth}</strong>
-                    </div>
-                    <div>
-                      <span>Tamamlandı</span>
-                      <strong style={{ color: "#065F46" }}>{stats.completedThisMonth}</strong>
-                    </div>
-                    <div>
-                      <span>Rədd faizi</span>
-                      <strong style={{ color: stats.rejectionRatePct && stats.rejectionRatePct > 15 ? "#DC2626" : "var(--oxford-80)" }}>
-                        {stats.rejectionRatePct != null ? `${stats.rejectionRatePct}%` : "—"}
-                      </strong>
-                    </div>
+                <div style={{ ...CARD, padding: 18 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "var(--oxford)" }}>Bu ay</div>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    <MonthStat value={stats.totalThisMonth} label="Cəmi randevu" color="var(--oxford)" />
+                    <MonthStat value={stats.completedThisMonth} label="Tamamlandı" color="#047857" />
+                    <MonthStat value={stats.rejectionRatePct != null ? `${stats.rejectionRatePct}%` : "—"} label="Rədd faizi" color={stats.rejectionRatePct != null && stats.rejectionRatePct > 15 ? "#DC2626" : "#374151"} />
                   </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* ── Recent activity ────────────────────────────────────────────── */}
+          {/* SON FƏALİYYƏT */}
           {recentActions.length > 0 && (
-            <div className="op-dash-card" style={{ marginTop: 22 }}>
-              <div className="op-dash-card-head">
-                <h3>Son fəaliyyət</h3>
-                <div className="op-dash-activity-tools">
-                  <div className="op-dash-activity-scope" role="tablist">
-                    <button type="button"
-                      className={`op-dash-activity-scope-btn${activityScope === "all" ? " is-active" : ""}`}
-                      onClick={() => setActivityScope("all")}>
-                      Bütün operatorlar
-                    </button>
-                    <button type="button"
-                      className={`op-dash-activity-scope-btn${activityScope === "mine" ? " is-active" : ""}`}
-                      onClick={() => setActivityScope("mine")}
-                      disabled={!user?.userId || mineCount === 0}>
-                      Mənim ({mineCount})
-                    </button>
+            <div style={{ ...CARD, padding: "18px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>Son fəaliyyət</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ display: "inline-flex", background: "#F0F4FA", borderRadius: 8, padding: 3, gap: 2 }}>
+                    {(["all", "mine"] as const).map(s => {
+                      const on = scope === s;
+                      const disabled = s === "mine" && (!user?.userId || mineCount === 0);
+                      return <button key={s} type="button" disabled={disabled} onClick={() => setScope(s)} style={{ border: "none", borderRadius: 6, padding: "6px 11px", fontSize: 12, fontWeight: 700, fontFamily: "inherit", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1, background: on ? "#fff" : "transparent", color: on ? "#082F6D" : "var(--oxford-60)", boxShadow: on ? "0 1px 3px rgba(8,47,109,.12)" : "none" }}>{s === "all" ? "Bütün operatorlar" : `Mənim (${mineCount})`}</button>;
+                    })}
                   </div>
-                  <Link href="/operator/appointments" className="op-dash-card-link">Hamısı →</Link>
+                  <Link href="/operator/appointments" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--brand)", textDecoration: "none" }}>Hamısı →</Link>
                 </div>
               </div>
-              <div className="op-dash-activity">
-                {recentActions.map(a => (
-                  // OP-1: drill-down birbaşa müraciətin detal səhifəsinə
-                  <Link key={a.id} href={`/operator/appointments/${a.id}`} className="op-dash-activity-row" style={{ textDecoration: "none", color: "inherit" }}>
-                    <span className="op-dash-activity-time">{timeAgo(a.updatedAt ?? a.createdAt, now)} əvvəl</span>
-                    <span className="op-dash-activity-action">{statusVerb(a.status)}</span>
-                    <span className="op-dash-activity-name">{a.patientName ?? "—"}</span>
-                    <span className="op-dash-activity-psy">→ {a.psychologistName ?? "—"}</span>
-                  </Link>
-                ))}
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {recentActions.map(a => {
+                  const vt = verbTone(a.status);
+                  return (
+                    <Link key={a.id} href={`/operator/appointments/${a.id}`} className="db-row" style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 8px", borderTop: "1px solid #F4F7FB", textDecoration: "none", color: "inherit", flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 12, color: "#9DB0CC", fontWeight: 600, minWidth: 90 }}>{timeAgo(a.updatedAt ?? a.createdAt, now)} əvvəl</span>
+                      <span style={{ background: vt.bg, color: vt.fg, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>{statusVerb(a.status)}</span>
+                      <span style={{ flex: 1, minWidth: 150, fontSize: 13.5, fontWeight: 600, color: "var(--oxford)" }}>{a.patientName ?? "—"} <span style={{ color: "var(--oxford-60)", fontWeight: 500 }}>→ {a.psychologistName ?? "—"}</span></span>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -436,167 +282,130 @@ export default function OperatorDashboard() {
   );
 }
 
-/* ─── Sub-components ─────────────────────────────────────────────────────── */
+/* ─── Komponentlər ───────────────────────────────────────────────────────── */
 
-function Kpi({
-  icon, label, value, hint, tone, href,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number | string;
-  hint?: string;
-  tone: "neutral" | "good" | "warn" | "danger";
-  href?: string;
-}) {
-  const inner = (
-    <>
-      <div className="op-dash-kpi-top">
-        <span className="op-dash-kpi-icon" data-tone={tone}>{icon}</span>
-        <span className="op-dash-kpi-label">{label}</span>
-      </div>
-      <div className="op-dash-kpi-value" data-tone={tone}>{value}</div>
-      {hint && <div className="op-dash-kpi-hint">{hint}</div>}
-    </>
-  );
-  return href ? (
-    <Link href={href} className="op-dash-kpi" data-tone={tone}>{inner}</Link>
-  ) : (
-    <div className="op-dash-kpi" data-tone={tone}>{inner}</div>
+const CARD: React.CSSProperties = { background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8" };
+const FIN: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, borderRadius: 10, padding: "11px 13px" };
+
+function GhostLink({ href, icon, children }: { href: string; icon: ReactNode; children: ReactNode }) {
+  return <Link href={href} className="db-ghost" style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "#082F6D", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 15px", fontSize: 13.5, fontWeight: 600, textDecoration: "none" }}>{icon}{children}</Link>;
+}
+function MonthStat({ value, label, color }: { value: ReactNode; label: string; color: string }) {
+  return <div style={{ flex: 1, minWidth: 90 }}><div className="db-num" style={{ fontSize: 22, fontWeight: 800, color }}>{value}</div><div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 2 }}>{label}</div></div>;
+}
+function Quick({ href, title, sub, icon }: { href: string; title: string; sub: string; icon: ReactNode }) {
+  return (
+    <Link href={href} className="db-row" style={{ display: "flex", flexDirection: "column", gap: 6, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 11, padding: 12, textDecoration: "none", color: "inherit" }}>
+      <span style={{ color: "var(--brand)" }}>{icon}</span>
+      <div><div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>{title}</div><div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600 }}>{sub}</div></div>
+    </Link>
   );
 }
 
-function QueueBlock({
-  title, icon, tone, count, ctaText, ctaHref, children,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  tone: "danger" | "warn" | "brand";
-  count: number;
-  ctaText: string;
-  ctaHref: string;
-  children: React.ReactNode;
-}) {
+const QUEUE_TONE = {
+  danger: { border: "#DC2626", headBg: "#FFF5F5", headBorder: "#FBE2E2", fg: "#991B1B", chipBg: "#FEE2E2" },
+  warn:   { border: "#F59E0B", headBg: "#FFFBEB", headBorder: "#FDECC8", fg: "#92400E", chipBg: "#FEF3C7" },
+  brand:  { border: "#1051B7", headBg: "#F2F6FD", headBorder: "#E1E9F5", fg: "#082F6D", chipBg: "#E4ECFA" },
+} as const;
+
+function QueueBlock({ title, tone, count, icon, children }: { title: string; tone: keyof typeof QUEUE_TONE; count: number; icon: ReactNode; children: ReactNode }) {
+  const c = QUEUE_TONE[tone];
   return (
-    <div className="op-dash-card op-dash-queue" data-tone={tone}>
-      <div className="op-dash-card-head">
-        <div className="op-dash-queue-title">
-          <span className="op-dash-queue-icon" data-tone={tone}>{icon}</span>
-          <h3>{title}</h3>
-          <span className="op-dash-queue-count" data-tone={tone}>{count}</span>
-        </div>
-        <Link href={ctaHref} className="op-dash-card-link">{ctaText}</Link>
+    <div style={{ ...CARD, borderLeft: `3px solid ${c.border}`, overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "15px 18px", background: c.headBg, borderBottom: `1px solid ${c.headBorder}` }}>
+        <span style={{ color: c.fg, display: "inline-flex" }}>{icon}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: c.fg }}>{title}</span>
+        <span style={{ background: c.chipBg, color: c.fg, fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{count}</span>
+        <span style={{ flex: 1 }} />
+        <Link href="/operator/appointments" style={{ fontSize: 12, fontWeight: 600, color: c.fg, textDecoration: "none" }}>Hamısı →</Link>
       </div>
-      <div className="op-dash-queue-list">{children}</div>
+      <div>{children}</div>
     </div>
   );
 }
 
-function QueueRow({
-  a, now, kind, severity,
-}: {
-  a: AppointmentDetail;
-  now: Date;
-  kind: "disputed" | "rejected" | "pending";
-  severity?: "warn" | "warn-2" | "danger";
-}) {
+function QueueRow({ a, now, kind, severity }: { a: AppointmentDetail; now: Date; kind: "disputed" | "rejected" | "pending"; severity?: "warn" | "warn-2" | "danger" }) {
+  const timeColor = severity === "danger" ? "#991B1B" : severity === "warn-2" ? "#92400E" : kind === "disputed" ? "#991B1B" : kind === "rejected" ? "#92400E" : "#52718F";
+  const timeText = kind === "pending" ? `${timeAgo(a.createdAt, now)} gözləyir` : `${timeAgo(a.updatedAt ?? a.createdAt, now)} əvvəl`;
   return (
-    // OP-1: drill-down birbaşa müraciətin detal səhifəsinə
-    <Link href={`/operator/appointments/${a.id}`} className="op-dash-queue-row" data-severity={severity}>
-      <div className="op-dash-queue-row-main">
-        <div className="op-dash-queue-name">
-          {a.patientName ?? "—"}
-          <span className="op-dash-queue-id">#FNS-{String(a.id).padStart(4, "0")}</span>
-          {severity === "danger" && (
-            <span className="op-dash-queue-sev" data-severity="danger">48h+ gözləyir</span>
-          )}
-          {severity === "warn-2" && (
-            <span className="op-dash-queue-sev" data-severity="warn-2">24h+ gözləyir</span>
-          )}
+    <Link href={`/operator/appointments/${a.id}`} className="db-row" style={{ display: "flex", alignItems: "center", gap: 11, padding: "13px 18px", textDecoration: "none", color: "inherit", borderTop: "1px solid #F4F7FB", flexWrap: "wrap" }}>
+      <div style={{ flex: 1, minWidth: 160 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{a.patientName ?? "—"}</span>
+          <span className="db-mono" style={{ fontSize: 11.5, fontWeight: 700, color: "#52718F" }}>#FNS-{String(a.id).padStart(4, "0")}</span>
+          {kind === "disputed" && <Pill bg="#FEE2E2" fg="#991B1B">Mübahisə</Pill>}
+          {kind === "rejected" && <Pill bg="#FEF3C7" fg="#92400E">Rədd</Pill>}
+          {severity === "warn-2" && <Pill bg="#FEF3C7" fg="#92400E">24h+ gözləyir</Pill>}
+          {severity === "danger" && <Pill bg="#FEE2E2" fg="#991B1B">48h+ gözləyir</Pill>}
         </div>
-        <div className="op-dash-queue-meta">
-          {kind === "disputed" && (
-            <>
-              <span className="op-dash-pill op-dash-pill--danger">Mübahisə</span>
-              {a.disputeReason && (
-                <span className="op-dash-queue-quote">«{a.disputeReason.slice(0, 60)}{a.disputeReason.length > 60 ? "…" : ""}»</span>
-              )}
-            </>
-          )}
-          {kind === "rejected" && (
-            <>
-              <span className="op-dash-pill op-dash-pill--warn">Rədd</span>
-              {a.requestedPsychologistName && <span>İstənilən: {a.requestedPsychologistName}</span>}
-              {a.note && <span className="op-dash-queue-quote">«{a.note.slice(0, 50)}…»</span>}
-            </>
-          )}
-          {kind === "pending" && (
-            <>
-              {a.requestedPsychologistName ? (
-                <span>İstənilən: <strong>{a.requestedPsychologistName}</strong></span>
-              ) : (
-                <span>Psixoloq seçilməyib</span>
-              )}
-              {a.note && <span className="op-dash-queue-quote">«{a.note.slice(0, 50)}…»</span>}
-            </>
-          )}
+        <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>
+          {kind === "disputed" && a.disputeReason && <span style={{ fontStyle: "italic" }}>«{a.disputeReason.slice(0, 60)}{a.disputeReason.length > 60 ? "…" : ""}»</span>}
+          {kind === "rejected" && <>{a.requestedPsychologistName && <>İstənilən: {a.requestedPsychologistName}</>}{a.note && <> · <span style={{ fontStyle: "italic" }}>«{a.note.slice(0, 40)}…»</span></>}</>}
+          {kind === "pending" && <>{a.requestedPsychologistName ? <>İstənilən: <strong>{a.requestedPsychologistName}</strong></> : "Psixoloq seçilməyib"}{a.note && <> · <span style={{ fontStyle: "italic" }}>«{a.note.slice(0, 40)}…»</span></>}</>}
         </div>
       </div>
-      <div className="op-dash-queue-time">
-        {kind === "disputed"
-          ? <span>{timeAgo(a.updatedAt ?? a.createdAt, now)} əvvəl</span>
-          : kind === "rejected"
-          ? <span>{timeAgo(a.updatedAt ?? a.createdAt, now)} əvvəl</span>
-          : <span data-severity={severity}>{timeAgo(a.createdAt, now)} gözləyir</span>}
-      </div>
+      <span style={{ fontSize: 12, fontWeight: severity === "warn-2" || severity === "danger" ? 700 : 600, color: timeColor, flex: "none" }}>{timeText}</span>
     </Link>
   );
 }
 
+function Pill({ bg, fg, children }: { bg: string; fg: string; children: ReactNode }) {
+  return <span style={{ background: bg, color: fg, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{children}</span>;
+}
 function Overflow({ n }: { n: number }) {
-  return (
-    <Link href="/operator/appointments" className="op-dash-overflow">
-      +{n} daha →
-    </Link>
-  );
+  return <Link href="/operator/appointments" style={{ display: "block", textAlign: "center", padding: 11, fontSize: 12.5, fontWeight: 600, color: "var(--brand)", textDecoration: "none", borderTop: "1px solid #F4F7FB" }}>+{n} daha →</Link>;
 }
 
-function statusVerb(status: string): string {
-  switch (status) {
-    case "ASSIGNED":              return "Təyin";
-    case "CONFIRMED":             return "Təsdiqləndi";
+function statusVerb(s: string): string {
+  switch (s) {
+    case "ASSIGNED": return "Təyin";
+    case "CONFIRMED": return "Təsdiqləndi";
     case "AWAITING_CONFIRMATION": return "Təsdiq gözlənir";
-    case "DISPUTED":              return "Mübahisə";
-    case "COMPLETED":             return "Tamamlandı";
-    case "CANCELLED":             return "Ləğv";
-    case "REJECTED":              return "Rədd";
-    case "PENDING":               return "Yeni müraciət";
-    default:                       return status;
+    case "DISPUTED": return "Mübahisə";
+    case "COMPLETED": return "Tamamlandı";
+    case "CANCELLED": return "Ləğv";
+    case "REJECTED": return "Rədd";
+    case "PENDING": return "Yeni müraciət";
+    default: return s;
+  }
+}
+function verbTone(s: string): { bg: string; fg: string } {
+  switch (s) {
+    case "ASSIGNED": return { bg: "#E4ECFA", fg: "#082F6D" };
+    case "CONFIRMED": return { bg: "#D1FAE5", fg: "#065F46" };
+    case "REJECTED": case "AWAITING_CONFIRMATION": return { bg: "#FEF3C7", fg: "#92400E" };
+    case "DISPUTED": case "CANCELLED": return { bg: "#FEE2E2", fg: "#991B1B" };
+    default: return { bg: "#F3F4F6", fg: "#374151" };
   }
 }
 
-/* ─── Inline SVG icons (no emojis) ────────────────────────────────────── */
-const SW = { fill: "none" as const, stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, viewBox: "0 0 24 24" };
-function IconClipboard() {
-  return (<svg width="16" height="16" {...SW}><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /></svg>);
+function Ico({ d, w = 16, sw = 1.9 }: { d: string | string[]; w?: number; sw?: number }) {
+  const paths = Array.isArray(d) ? d : [d];
+  return <svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">{paths.map((p, i) => <path key={i} d={p} />)}</svg>;
 }
-function IconAlert() {
-  return (<svg width="16" height="16" {...SW} strokeWidth={2.2}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>);
-}
-function IconRefresh() {
-  return (<svg width="16" height="16" {...SW}><polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></svg>);
-}
-function IconCheck() {
-  return (<svg width="16" height="16" {...SW} strokeWidth={2.4}><polyline points="20 6 9 17 4 12" /></svg>);
-}
-function IconStopwatch() {
-  return (<svg width="16" height="16" {...SW}><circle cx="12" cy="13" r="8" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="9" y1="2" x2="15" y2="2" /></svg>);
-}
-function IconChart() {
-  return (<svg width="14" height="14" {...SW}><path d="M3 3v18h18" /><path d="M7 14l4-4 4 4 5-7" /></svg>);
-}
-function IconHourglass() {
-  return (<svg width="14" height="14" {...SW}><path d="M5 2h14" /><path d="M5 22h14" /><path d="M7 2v3a5 5 0 0 0 10 0V2" /><path d="M7 22v-3a5 5 0 0 1 10 0v3" /></svg>);
-}
-function IconLeaf() {
-  return (<svg width="36" height="36" {...SW} strokeWidth={1.4}><path d="M11 20A7 7 0 0 1 4 13c0-4 3-9 11-12 0 0 5 6 5 12a7 7 0 0 1-7 7c-2 0-4-1-5-3" /><path d="M2 22c4-1 7-4 9-8" /></svg>);
-}
+const I_CLOCK = "M12 7v5l3 2 M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20z";
+const I_ALERT = ["M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z", "M12 9v4M12 17h.01"];
+const I_CHAT = "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z";
+const I_PULSE = "M22 12h-4l-3 9L9 3l-3 9H2";
+const I_REFRESH = ["M3 12a9 9 0 1 0 3-6.7L3 8", "M3 3v5h5"];
+const I_CHECK = ["M9 11l3 3L22 4", "M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"];
+const I_WATCH = ["M12 14v-3", "M12 22a8 8 0 1 1 0-16 8 8 0 0 1 0 16z", "M9 2h6"];
+const I_LEAF = ["M11 20A7 7 0 0 1 4 13c0-4 3-9 11-12 0 0 5 6 5 12a7 7 0 0 1-7 7c-2 0-4-1-5-3", "M2 22c4-1 7-4 9-8"];
+const I_PLUS = "M12 5v14M5 12h14";
+const I_CAL = ["M3 4h18v18H3z", "M16 2v4M8 2v4M3 10h18"];
+const I_CHART = ["M3 3v18h18", "M18 9l-5 5-3-3-4 4"];
+const I_INBOX = ["M22 12h-6l-2 3h-4l-2-3H2", "M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"];
+const I_USERS = ["M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2", "M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z", "M23 21v-2a4 4 0 0 0-3-3.87"];
+const I_CARD = ["M2 5h20v14H2z", "M2 10h20"];
+
+const CSS = `
+.db-num{font-variant-numeric:tabular-nums}
+.db-mono{font-family:'JetBrains Mono','Roboto Mono',ui-monospace,monospace}
+.db-main{display:grid;grid-template-columns:1.6fr 1fr;gap:18px}
+@media(max-width:840px){.db-main{grid-template-columns:1fr}}
+.db-kpi{transition:box-shadow .15s}
+.db-kpi:hover{box-shadow:0 6px 18px rgba(8,47,109,.1)}
+.db-row{transition:background .14s}
+.db-row:hover{background:#F8FAFD}
+.db-ghost:hover{border-color:#1051B7;color:#1051B7}
+`;

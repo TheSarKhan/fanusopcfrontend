@@ -2,12 +2,36 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import PanelAuthGuard from "@/components/PanelAuthGuard";
 import PanelShell, { type PanelNavItem } from "@/components/PanelShell";
 import { getStoredUser } from "@/lib/auth";
 import { patientApi, type PatientRiskLevel } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { FEATURE_GOALS } from "@/lib/features";
+import {
+  PATIENT_MODULES,
+  isPatientPathLocked,
+  type PatientModuleKey,
+} from "./modules";
+
+type ModuleNavItem = PanelNavItem & { key: PatientModuleKey };
+
+/** Kilidli modul route-una birbaşa URL ilə girişi tutub Dashboard-a yönləndirir.
+ *  Sidebar onsuz da kilidli modulları gizlədir — bu, yalnız birbaşa URL halını
+ *  qoruyur. Profil, dəstək (support), bildiriş route-ları həmişə açıq qalır. */
+function ModuleLock({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const locked = isPatientPathLocked(pathname);
+
+  useEffect(() => {
+    if (locked) router.replace("/patient");
+  }, [locked, router]);
+
+  if (locked) return null;
+  return <>{children}</>;
+}
 
 function RiskBanner({ level }: { level: PatientRiskLevel | null }) {
   if (!level || (level !== "HIGH" && level !== "CRITICAL")) return null;
@@ -38,19 +62,22 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     patientApi.crisisStatus().then(s => setRisk(s.riskLevel)).catch(() => {});
   }, []);
 
-  const nav: PanelNavItem[] = [
-    { href: "/patient",                label: t("nav.dashboard"),     icon: "home" },
-    { href: "/patient/psychologists",  label: t("nav.psychologists"), icon: "users" },
-    { href: "/patient/appointments",   label: t("nav.appointments"),  icon: "calendar" },
-    { href: "/patient/packages",       label: t("pkg.myPackages"),    icon: "badge" },
-    { href: "/patient/homework",       label: t("nav.homework"),      icon: "check" },
+  // Bütün modullar. Kilidlilər (./modules.ts) sidebar-dan çıxarılır.
+  const allNav: ModuleNavItem[] = [
+    { key: "dashboard",     href: "/patient",               label: t("nav.dashboard"),     icon: "home" },
+    { key: "psychologists", href: "/patient/psychologists", label: t("nav.psychologists"), icon: "users" },
+    { key: "appointments",  href: "/patient/appointments",  label: t("nav.appointments"),  icon: "calendar" },
+    { key: "packages",      href: "/patient/packages",      label: t("pkg.myPackages"),    icon: "badge" },
+    { key: "homework",      href: "/patient/homework",      label: t("nav.homework"),      icon: "check" },
     ...(FEATURE_GOALS
-      ? [{ href: "/patient/goals", label: "Hədəflərim", icon: "check" } as PanelNavItem]
+      ? [{ key: "goals", href: "/patient/goals", label: "Hədəflərim", icon: "check" } as ModuleNavItem]
       : []),
-    { href: "/patient/favorites",      label: t("nav.favorites"),     icon: "heart" },
-    { href: "/patient/tests",          label: "Testlər",              icon: "clipboard" },
-    { href: "/patient/profile",        label: t("nav.profile"),       icon: "user" },
+    { key: "favorites",     href: "/patient/favorites",     label: t("nav.favorites"),     icon: "heart" },
+    { key: "tests",         href: "/patient/tests",         label: "Testlər",              icon: "clipboard" },
+    { key: "profile",       href: "/patient/profile",       label: t("nav.profile"),       icon: "user" },
   ];
+
+  const nav: PanelNavItem[] = allNav.filter((item) => PATIENT_MODULES[item.key]);
 
   return (
     <PanelShell
@@ -61,7 +88,7 @@ function PatientShell({ children }: { children: React.ReactNode }) {
       searchPlaceholder={t("common.search")}
     >
       <RiskBanner level={risk} />
-      {children}
+      <ModuleLock>{children}</ModuleLock>
     </PanelShell>
   );
 }

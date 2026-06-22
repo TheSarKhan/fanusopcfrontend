@@ -9,12 +9,10 @@ export default function BookingCta({
   psychologistId,
   psychologistSlug,
   name,
-  accentColor,
 }: {
   psychologistId: number;
   psychologistSlug?: string;
   name: string;
-  accentColor: string;
 }) {
   const router = useRouter();
   const [authOpen, setAuthOpen] = useState(false);
@@ -29,20 +27,22 @@ export default function BookingCta({
   return (
     <>
       <AuthRequiredModal open={authOpen} onClose={() => setAuthOpen(false)} next={target} />
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button
-          className="psy-profile-cta-btn"
-          style={{ background: accentColor, color: "white" }}
-          onClick={onClick}
-          aria-label={`${name} ilə randevu al`}
-        >
-          Randevu al
-          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2"
-               viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={`${name} ilə randevu al`}
+        style={{
+          display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+          width: "100%", background: "var(--brand)", color: "#fff", border: "none",
+          borderRadius: 11, padding: 14, fontSize: 15, fontWeight: 700, fontFamily: "inherit",
+          cursor: "pointer", boxShadow: "0 4px 14px rgba(16,81,183,.28)",
+        }}
+      >
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" />
+        </svg>
+        Randevu al
+      </button>
     </>
   );
 }

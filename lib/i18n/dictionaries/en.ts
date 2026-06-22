@@ -647,6 +647,13 @@ export const en: typeof az = {
     opReassignCancel: "Cancel",
     opReassignConfirm: "Reassign",
     opReassignDone: "Request reassigned",
+    // Pool — dedicated intake page
+    opPoolTitle: "Request Pool",
+    opPoolSub: "Pick up new requests — what you take stays permanently assigned to you.",
+    opPoolApptSection: "Session requests",
+    opPoolPaySection: "Payment requests",
+    opPoolEmpty: "The pool is empty — no new requests",
+    opPoolTaken: "Taken — it's now yours",
 
     // OP-1: operator ticket detail page
     opDetWaiting: "waiting {time}",

@@ -26,3 +26,13 @@ const META: Record<string, StatusMeta> = {
 export function statusMeta(status?: string | null): StatusMeta {
   return (status && META[status]) || { label: status ?? "—", bg: "#EEF2F7", fg: "#374151" };
 }
+
+/**
+ * Pool yalnız YENİ (emal olunmamış) seans müraciətlərini tutur — təyin/təsdiq/
+ * ləğv/tamam olanlar pool-a düşmür. Operator pool səhifəsi, nav badge sayğacı və
+ * randevu siyahısındakı inline "Götür" bu eyni mənbədən istifadə edir.
+ */
+export const POOL_STATUSES = new Set(["PENDING", "NEW", "REJECTED"]);
+export function isPoolEligible(status?: string | null): boolean {
+  return status != null && POOL_STATUSES.has(status);
+}

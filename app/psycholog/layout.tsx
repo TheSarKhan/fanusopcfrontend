@@ -1,9 +1,34 @@
 "use client";
 
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import PanelAuthGuard from "@/components/PanelAuthGuard";
 import PanelShell, { type PanelNavItem } from "@/components/PanelShell";
 import { getStoredUser } from "@/lib/auth";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import {
+  PSYCHOLOG_MODULES,
+  isPsychologPathLocked,
+  type PsychologModuleKey,
+} from "./modules";
+
+type ModuleNavItem = PanelNavItem & { key: PsychologModuleKey };
+
+/** Kilidli modul route-una birbaşa URL ilə girişi tutub Dashboard-a yönləndirir.
+ *  Sidebar onsuz da kilidli modulları gizlədir — bu, yalnız birbaşa URL halını
+ *  qoruyur, ona görə kilidli səhifə heç vaxt render olunmur (API çağırışı da yox). */
+function ModuleLock({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const locked = isPsychologPathLocked(pathname);
+
+  useEffect(() => {
+    if (locked) router.replace("/psycholog");
+  }, [locked, router]);
+
+  if (locked) return null;
+  return <>{children}</>;
+}
 
 function PsychologShell({ children }: { children: React.ReactNode }) {
   const { t } = useT();
@@ -13,20 +38,24 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
   const name = (first + " " + last).trim() || u?.email || t("nav.psychologists");
   const initials = ((first[0] ?? "") + (last[0] ?? "")).toUpperCase() || "P";
 
-  const nav: PanelNavItem[] = [
-    { href: "/psycholog",              label: t("nav.dashboard"),    icon: "home" },
-    { href: "/psycholog/calendar",     label: t("nav.calendar"),     icon: "calendar" },
-    { href: "/psycholog/appointments", label: t("nav.appointments"), icon: "video" },
-    { href: "/psycholog/clients",      label: t("nav.clients"),      icon: "users" },
-    { href: "/psycholog/referrals",    label: "Yönləndirmələr",      icon: "badge" },
-    { href: "/psycholog/homework",     label: t("nav.homework"),     icon: "check" },
-    { href: "/psycholog/articles",     label: t("nav.articles"),     icon: "book" },
-    { href: "/psycholog/community",    label: "İcma",                icon: "users" },
-    { href: "/psycholog/resources",    label: "Resurslar",           icon: "content",
+  // Bütün modullar. Kilidlilər (./modules.ts) sidebar-dan çıxarılır.
+  const allNav: ModuleNavItem[] = [
+    { key: "dashboard",    href: "/psycholog",              label: t("nav.dashboard"),    icon: "home" },
+    { key: "calendar",     href: "/psycholog/calendar",     label: t("nav.calendar"),     icon: "calendar" },
+    { key: "appointments", href: "/psycholog/appointments", label: t("nav.appointments"), icon: "video" },
+    { key: "packages",     href: "/psycholog/packages",     label: "Paketlərim",          icon: "package" },
+    { key: "clients",      href: "/psycholog/clients",      label: t("nav.clients"),      icon: "users" },
+    { key: "referrals",    href: "/psycholog/referrals",    label: "Yönləndirmələr",      icon: "badge" },
+    { key: "homework",     href: "/psycholog/homework",     label: t("nav.homework"),     icon: "check" },
+    { key: "articles",     href: "/psycholog/articles",     label: t("nav.articles"),     icon: "book" },
+    { key: "community",    href: "/psycholog/community",    label: "İcma",                icon: "users" },
+    { key: "resources",    href: "/psycholog/resources",    label: "Resurslar",           icon: "content",
       match: ["/psycholog/materials", "/psycholog/tests"] },
-    { href: "/psycholog/availability", label: t("nav.workHours"),    icon: "clock" },
-    { href: "/psycholog/reviews",      label: t("nav.reviews"),      icon: "star" },
+    { key: "availability", href: "/psycholog/availability", label: t("nav.workHours"),    icon: "clock" },
+    { key: "reviews",      href: "/psycholog/reviews",      label: t("nav.reviews"),      icon: "star" },
   ];
+
+  const nav: PanelNavItem[] = allNav.filter((item) => PSYCHOLOG_MODULES[item.key]);
 
   return (
     <PanelShell
@@ -36,7 +65,7 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
       user={{ name, initials, role: t("nav.psychologists") }}
       searchPlaceholder={t("common.search")}
     >
-      {children}
+      <ModuleLock>{children}</ModuleLock>
     </PanelShell>
   );
 }

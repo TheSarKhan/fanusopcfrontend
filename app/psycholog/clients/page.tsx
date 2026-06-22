@@ -54,6 +54,26 @@ function lastSessionPill(days: number | null): { text: string; tone: string } {
   return { text: `Passiv: ${days} gün`, tone: "danger" };
 }
 
+const LAST_TONES: Record<string, { bg: string; color: string }> = {
+  good:    { bg: "#ECFDF5", color: "#047857" },
+  neutral: { bg: "#F3F4F6", color: "#374151" },
+  warn:    { bg: "#FEF3C7", color: "#92400E" },
+  danger:  { bg: "#FEE2E2", color: "#991B1B" },
+  muted:   { bg: "#F3F4F6", color: "#9DB0CC" },
+};
+const tagChipStyle: React.CSSProperties = { background: "#F2F6FD", color: "#082F6D", border: "1px solid #E4ECFA", fontSize: 11.5, fontWeight: 600, padding: "3px 9px", borderRadius: 7 };
+const tagChipStyleSm: React.CSSProperties = { background: "#F2F6FD", color: "#082F6D", border: "1px solid #E4ECFA", fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 6 };
+
+function TagChip({ active, label, count, onClick }: { active: boolean; label: string; count?: number; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      style={{ flex: "none", display: "inline-flex", alignItems: "center", gap: 8, border: `1px solid ${active ? "var(--brand)" : "#D6E2F7"}`, background: active ? "var(--brand)" : "#fff", color: active ? "#fff" : "var(--oxford)", borderRadius: 999, padding: "8px 14px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}>
+      {label}
+      {count != null && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, padding: "0 5px", background: active ? "rgba(255,255,255,.22)" : "#F2F6FD", color: active ? "#fff" : "#082F6D", fontSize: 10.5, fontWeight: 700, borderRadius: 999 }}>{count}</span>}
+    </button>
+  );
+}
+
 function csvEscape(v: string | number | null | undefined): string {
   if (v === null || v === undefined) return "";
   const s = String(v);
@@ -200,68 +220,53 @@ export default function PsychologClientsPage() {
   const hasFilters = filter !== "ALL" || tagFilter !== null || search.trim().length > 0;
 
   return (
-    <div className="cli-page">
+    <div>
+      <style>{`
+@keyframes clxShimmer{0%{background-position:-340px 0}100%{background-position:340px 0}}
+.clx-skel{background:linear-gradient(90deg,#EEF2F9 25%,#E2E9F4 37%,#EEF2F9 63%);background-size:680px 100%;animation:clxShimmer 1.4s infinite linear}
+.clx-chips::-webkit-scrollbar,.clx-att::-webkit-scrollbar{height:0}
+.clx-clickrow{transition:box-shadow .15s,border-color .15s}
+.clx-clickrow:hover{border-color:#C7DBF6 !important;box-shadow:0 4px 16px rgba(8,47,109,.08) !important}
+.clx-listrow{transition:background .12s}
+.clx-listrow:hover{background:#F8FAFD !important}
+.clx-primary:hover{background:var(--brand-700) !important}
+.clx-csv:hover{border-color:#1051B7 !important;color:#1051B7 !important}
+.clx-link:hover{text-decoration:underline}
+      `}</style>
+
       {/* Header */}
-      <div className="cli-head">
-        <div className="cli-head-titles">
-          <h1>{t("staff.psyClientsTitle")}</h1>
-          <p>{t("staff.psyClientsSub")}</p>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 22 }}>
+        <div>
+          <h1 style={{ margin: "0 0 6px", fontSize: 27, fontWeight: 800, letterSpacing: "-.02em", color: "var(--oxford)" }}>{t("staff.psyClientsTitle")}</h1>
+          <p style={{ margin: 0, fontSize: 15, color: "var(--oxford-60)", fontWeight: 500 }}>{t("staff.psyClientsSub")}</p>
         </div>
-        <div className="cli-head-actions">
-          <div className="cli-search-wrap">
-            <svg className="cli-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              ref={searchRef}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder={t("common.search")}
-              className="cli-search-input"
-            />
-            <span className="cli-search-kbd">/</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ position: "relative", minWidth: 230 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} aria-hidden><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+            <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)} placeholder={t("common.search")}
+              style={{ width: "100%", border: "1px solid #D6E2F7", background: "#fff", borderRadius: 10, padding: "10px 38px", fontSize: 14, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", boxSizing: "border-box" }} />
+            <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "#F0F4FA", border: "1px solid #E1E9F5", borderRadius: 6, padding: "1px 7px", fontSize: 12, fontWeight: 700, color: "#9DB0CC" }}>/</span>
           </div>
-          <div className="cli-view-toggle" role="tablist" aria-label="Görünüş">
-            <button
-              type="button"
-              className={`cli-view-btn${view === "grid" ? " is-active" : ""}`}
-              onClick={() => setView("grid")}
-              aria-pressed={view === "grid"}
-              title="Şəbəkə görünüşü"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
-              </svg>
+          <div style={{ display: "inline-flex", background: "#fff", border: "1px solid #D6E2F7", borderRadius: 10, padding: 3, gap: 3 }} role="tablist" aria-label="Görünüş">
+            <button type="button" onClick={() => setView("grid")} aria-pressed={view === "grid"} title="Şəbəkə görünüşü"
+              style={{ width: 34, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 7, cursor: "pointer", background: view === "grid" ? "var(--brand)" : "transparent", color: view === "grid" ? "#fff" : "var(--oxford-60)" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
             </button>
-            <button
-              type="button"
-              className={`cli-view-btn${view === "list" ? " is-active" : ""}`}
-              onClick={() => setView("list")}
-              aria-pressed={view === "list"}
-              title="Siyahı görünüşü"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-              </svg>
+            <button type="button" onClick={() => setView("list")} aria-pressed={view === "list"} title="Siyahı görünüşü"
+              style={{ width: 34, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 7, cursor: "pointer", background: view === "list" ? "var(--brand)" : "transparent", color: view === "list" ? "#fff" : "var(--oxford-60)" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => exportClientsCsv(visible, tagsByPatient)}
-            disabled={visible.length === 0}
-            title="Filterlənmiş siyahını CSV faylı olaraq endir"
-            className="cli-csv-btn"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            CSV
+          <button type="button" onClick={() => exportClientsCsv(visible, tagsByPatient)} disabled={visible.length === 0}
+            title="Filterlənmiş siyahını CSV faylı olaraq endir" className="clx-csv"
+            style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 14px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: visible.length === 0 ? "not-allowed" : "pointer", opacity: visible.length === 0 ? 0.5 : 1 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5M12 15V3" /></svg>CSV
           </button>
         </div>
       </div>
 
       {/* Stat strip */}
-      <div className="cli-stats">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 13, marginBottom: 18 }}>
         <StatCard label={t("staff.psyClientsFilterAll")}   value={counters.all}     tone="brand"
                   active={filter === "ALL"}     onClick={() => setFilter("ALL")} />
         <StatCard label={`${t("staff.psyClientsFilterActive")} (${ACTIVE_DAYS}d)`} value={counters.active}    tone="good"
@@ -274,55 +279,40 @@ export default function PsychologClientsPage() {
 
       {/* Tag chips */}
       {allTagLabels.length > 0 && (
-        <div className="cli-tag-strip">
-          <button
-            className={`cli-tag-chip${tagFilter === null ? " is-active" : ""}`}
-            onClick={() => setTagFilter(null)}
-          >
-            Bütün etiketlər
-          </button>
+        <div className="clx-chips" style={{ display: "flex", gap: 9, overflowX: "auto", paddingBottom: 4, marginBottom: 20 }}>
+          <TagChip active={tagFilter === null} label="Bütün etiketlər" onClick={() => setTagFilter(null)} />
           {allTagLabels.map(([label, count]) => (
-            <button
-              key={label}
-              className={`cli-tag-chip${tagFilter === label ? " is-active" : ""}`}
-              onClick={() => setTagFilter(tagFilter === label ? null : label)}
-            >
-              {label}
-              <span className="cli-tag-chip-count">{count}</span>
-            </button>
+            <TagChip key={label} active={tagFilter === label} label={label} count={count} onClick={() => setTagFilter(tagFilter === label ? null : label)} />
           ))}
         </div>
       )}
 
       {/* Needs attention */}
       {!loading && filter === "ALL" && !tagFilter && attention.length > 0 && (
-        <div className="cli-attention">
-          <div className="cli-attention-head">
-            <div className="cli-attention-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-              </svg>
-              Diqqət tələb edənlər
+        <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #FCE7A8", borderLeft: "3px solid #B45309", padding: 17, marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>Diqqət tələb edənlər</span>
             </div>
-            <button className="cli-attention-link" onClick={() => setFilter("FLAGGED")}>
-              Hamısını gör ({counters.flagged}) ›
+            <button onClick={() => setFilter("FLAGGED")} className="clx-link"
+              style={{ fontSize: 12.5, fontWeight: 600, color: "var(--brand)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 4 }}>
+              Hamısını gör ({counters.flagged})<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 6l6 6-6 6" /></svg>
             </button>
           </div>
-          <div className="cli-attention-row">
+          <div className="clx-att" style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 2 }}>
             {attention.map(c => {
               const days = daysSince(c.lastAppointmentAt);
               const flag = c.autoFlag ? FLAG_META[c.autoFlag] : null;
               const av = avatarColor(c.name);
               return (
-                <Link key={c.patientId} href={`/psycholog/clients/${c.patientId}`} className="cli-attention-card">
-                  <div className="cli-attention-avatar" style={{ background: av.bg, color: av.fg }}>{initials(c.name)}</div>
-                  <div className="cli-attention-body">
-                    <div className="cli-attention-name">{c.name}</div>
-                    {flag && <div className="cli-attention-flag" data-tone={flag.tone}>{flag.label}</div>}
-                    <div className="cli-attention-meta">
-                      {c.totalSessions} seans
-                      {days !== null && ` · son ${days} gün`}
-                    </div>
+                <Link key={c.patientId} href={`/psycholog/clients/${c.patientId}`} className="clx-clickrow"
+                  style={{ flex: "none", width: 248, textAlign: "left", display: "flex", alignItems: "center", gap: 11, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 11, padding: 12, cursor: "pointer", textDecoration: "none" }}>
+                  <span style={{ width: 38, height: 38, borderRadius: 11, background: av.bg, color: av.fg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flex: "none" }}>{initials(c.name)}</span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{c.name}</div>
+                    {flag && <span style={{ display: "inline-block", background: flag.tone === "danger" ? "#FEE2E2" : "#FEF3C7", color: flag.tone === "danger" ? "#991B1B" : "#92400E", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999, margin: "3px 0 2px" }}>{flag.label}</span>}
+                    <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>{c.totalSessions} seans{days !== null && ` · son ${days} gün`}</div>
                   </div>
                 </Link>
               );
@@ -331,42 +321,60 @@ export default function PsychologClientsPage() {
         </div>
       )}
 
-      {/* Sort row */}
-      <div className="cli-toolbar">
-        <div className="cli-active-filter">
-          {!hasFilters && <span style={{ color: "var(--oxford-60)" }}>{visible.length} müştəri</span>}
+      {/* Toolbar */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+          {!hasFilters && <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{visible.length} müştəri</span>}
           {filter === "ACTIVE"  && <FilterChip label={`Aktiv son ${ACTIVE_DAYS} gün`} onClear={() => setFilter("ALL")} />}
           {filter === "DORMANT" && <FilterChip label={`${DORMANT_DAYS}+ gün passiv`} onClear={() => setFilter("ALL")} />}
           {filter === "FLAGGED" && <FilterChip label="İşarələnmiş" onClear={() => setFilter("ALL")} />}
           {tagFilter && <FilterChip label={`#${tagFilter}`} onClear={() => setTagFilter(null)} />}
           {search.trim() && <FilterChip label={`"${search.trim()}"`} onClear={() => setSearch("")} />}
-          {hasFilters && (
-            <span className="cli-result-count">{visible.length} nəticə</span>
-          )}
+          {hasFilters && <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)" }}>{visible.length} nəticə</span>}
         </div>
-        <div className="cli-sort">
-          <label>Sıralama</label>
-          <select value={sort} onChange={e => setSort(e.target.value as SortKey)}>
-            <option value="LAST">Son seans</option>
-            <option value="TOTAL">Cəmi seans</option>
-            <option value="NAME">Əlifba</option>
-            <option value="NOTES">Qeyd sayı</option>
-          </select>
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>Sıralama:</span>
+          <div style={{ position: "relative" }}>
+            <select value={sort} onChange={e => setSort(e.target.value as SortKey)}
+              style={{ appearance: "none", WebkitAppearance: "none", background: "#fff", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 36px 9px 13px", fontSize: 13.5, fontWeight: 600, color: "var(--oxford)", fontFamily: "inherit", cursor: "pointer" }}>
+              <option value="LAST">Son seans</option>
+              <option value="TOTAL">Cəmi seans</option>
+              <option value="NAME">Əlifba</option>
+              <option value="NOTES">Qeyd sayı</option>
+            </select>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} aria-hidden><path d="M6 9l6 6 6-6" /></svg>
+          </div>
         </div>
       </div>
 
       {loading ? (
-        <div className="cli-skeleton">
-          {Array.from({ length: 6 }).map((_, i) => <div key={i} className="cli-skel-card" />)}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 18 }}>
+              <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
+                <div className="clx-skel" style={{ width: 46, height: 46, borderRadius: 13, flex: "none" }} />
+                <div style={{ flex: 1, paddingTop: 4 }}>
+                  <div className="clx-skel" style={{ width: "65%", height: 14, borderRadius: 6, marginBottom: 8 }} />
+                  <div className="clx-skel" style={{ width: "45%", height: 11, borderRadius: 6 }} />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6, marginBottom: 15 }}>
+                <div className="clx-skel" style={{ width: 70, height: 22, borderRadius: 7 }} />
+                <div className="clx-skel" style={{ width: 56, height: 22, borderRadius: 7 }} />
+              </div>
+              <div className="clx-skel" style={{ width: "100%", height: 48, borderRadius: 8, marginBottom: 13 }} />
+              <div className="clx-skel" style={{ width: "50%", height: 24, borderRadius: 999 }} />
+            </div>
+          ))}
         </div>
       ) : visible.length === 0 ? (
         <EmptyState hasFilters={hasFilters} emptyText={t("staff.psyClientsEmpty")} onClear={() => { setFilter("ALL"); setTagFilter(null); setSearch(""); }} />
       ) : view === "grid" ? (
-        <div className="cli-grid">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
           {visible.map(c => <ClientGridCard key={c.patientId} c={c} tags={tagsByPatient[c.patientId] ?? []} />)}
         </div>
       ) : (
-        <div className="cli-list">
+        <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", overflow: "hidden" }}>
           {visible.map(c => <ClientCard key={c.patientId} c={c} tags={tagsByPatient[c.patientId] ?? []} />)}
         </div>
       )}
@@ -382,36 +390,47 @@ function StatCard({
   active: boolean;
   onClick: () => void;
 }) {
+  const tones: Record<string, { border: string; bg: string; num: string; ring: string }> = {
+    brand:  { border: "var(--brand)", bg: "#F2F6FD", num: "#082F6D", ring: "rgba(16,81,183,.18)" },
+    good:   { border: "#047857",      bg: "#ECFDF5", num: "#047857", ring: "rgba(4,120,87,.18)" },
+    warn:   { border: "#B45309",      bg: "#FFFBEB", num: "#92400E", ring: "rgba(180,83,9,.18)" },
+    danger: { border: "#991B1B",      bg: "#FEF2F2", num: "#991B1B", ring: "rgba(153,27,27,.18)" },
+  };
+  const tn = tones[tone];
   return (
-    <button type="button" onClick={onClick} className={`cli-stat${active ? " is-active" : ""}`} data-tone={tone}>
-      <span className="cli-stat-label">{label}</span>
-      <span className="cli-stat-value" data-tone={tone}>{value}</span>
+    <button type="button" onClick={onClick}
+      style={{ textAlign: "left", background: active ? tn.bg : "#fff", border: `1.5px solid ${active ? tn.border : "#EDF1F8"}`, borderRadius: 13, padding: "15px 17px", cursor: "pointer", fontFamily: "inherit", boxShadow: active ? `0 0 0 3px ${tn.ring}` : "0 2px 12px rgba(0,0,0,.06)" }}>
+      <div style={{ fontSize: 26, fontWeight: 800, color: tn.num, lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford-60)", marginTop: 4 }}>{label}</div>
     </button>
   );
 }
 
 function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <span className="cli-filter-chip">
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#E4ECFA", color: "#082F6D", fontSize: 12.5, fontWeight: 600, padding: "5px 8px 5px 12px", borderRadius: 999 }}>
       {label}
-      <button onClick={onClear} aria-label="Təmizlə" className="cli-filter-chip-x">×</button>
+      <button onClick={onClear} aria-label="Təmizlə" style={{ width: 18, height: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(8,47,109,.12)", border: "none", borderRadius: "50%", cursor: "pointer", color: "#082F6D" }}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
+      </button>
     </span>
   );
 }
 
 function EmptyState({ hasFilters, onClear, emptyText }: { hasFilters: boolean; onClear: () => void; emptyText: string }) {
   return (
-    <div className="cli-empty">
-      <div className="cli-empty-icon">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
-        </svg>
+    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "56px 24px", textAlign: "center" }}>
+      <div style={{ width: 58, height: 58, borderRadius: 16, background: "#F2F6FD", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: "#9DB0CC" }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
       </div>
-      <div className="cli-empty-title">
+      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)", marginBottom: 18 }}>
         {hasFilters ? "Bu filtrlərə uyğun müştəri tapılmadı" : emptyText}
       </div>
       {hasFilters && (
-        <button className="cli-empty-clear" onClick={onClear}>Filtrləri təmizlə</button>
+        <button onClick={onClear} className="clx-primary"
+          style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 18px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>Filtrləri təmizlə
+        </button>
       )}
     </div>
   );
@@ -420,49 +439,47 @@ function EmptyState({ hasFilters, onClear, emptyText }: { hasFilters: boolean; o
 function ClientCard({ c, tags }: { c: ClientSummary; tags: PatientTag[] }) {
   const days = daysSince(c.lastAppointmentAt);
   const lastPill = lastSessionPill(days);
+  const lt = LAST_TONES[lastPill.tone] ?? LAST_TONES.neutral;
   const flag = c.autoFlag ? FLAG_META[c.autoFlag] : null;
   const av = avatarColor(c.name);
+  const shown = tags.slice(0, 3);
+  const more = tags.length - 3;
 
   return (
-    <Link href={`/psycholog/clients/${c.patientId}`} className="psy-client-card cli-card">
-      <div className="cli-card-avatar" style={{ background: av.bg, color: av.fg, borderColor: "transparent" }}>{initials(c.name)}</div>
-      <div className="cli-card-main">
-        <div className="cli-card-name">
-          {c.name}
+    <Link href={`/psycholog/clients/${c.patientId}`} className="clx-listrow"
+      style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left", borderTop: "1px solid #F0F4FA", padding: "14px 18px", cursor: "pointer", flexWrap: "wrap", textDecoration: "none" }}>
+      <span style={{ width: 42, height: 42, borderRadius: 12, background: av.bg, color: av.fg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none" }}>{initials(c.name)}</span>
+      <div style={{ flex: 1, minWidth: 150 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 14.5, fontWeight: 700, color: "var(--oxford)" }}>{c.name}</span>
           {flag && (
-            <span className="cli-flag" data-tone={flag.tone}>{flag.label}</span>
-          )}
-        </div>
-        <div className="cli-card-meta">
-          {c.email}{c.phone ? ` · ${c.phone}` : ""}
-        </div>
-        {tags.length > 0 && (
-          <div className="cli-card-tags">
-            {tags.slice(0, 5).map(tg => (
-              <span key={tg.id} className="cli-card-tag" data-color={tg.color}>{tg.label}</span>
-            ))}
-            {tags.length > 5 && (
-              <span className="cli-card-tag" data-color="neutral">+{tags.length - 5}</span>
-            )}
-          </div>
-        )}
-        <div className="cli-card-pills">
-          <span className="cli-pill cli-pill--brand">{c.totalSessions} seans</span>
-          {c.completedSessions > 0 && c.totalSessions > 0 && (
-            <span className="cli-pill cli-pill--good">
-              {c.completedSessions}/{c.totalSessions} tamamlanıb
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: flag.tone === "danger" ? "#FEE2E2" : "#FEF3C7", color: flag.tone === "danger" ? "#991B1B" : "#92400E", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>{flag.label}
             </span>
           )}
-          {c.noteCount > 0 && (
-            <span className="cli-pill cli-pill--neutral">{c.noteCount} qeyd</span>
-          )}
-          <span className="cli-pill cli-pill--time" data-tone={lastPill.tone}>{lastPill.text}</span>
-          {c.noShowCount > 0 && (
-            <span className="cli-pill cli-pill--warn">{c.noShowCount} no-show</span>
-          )}
         </div>
+        <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1 }}>{c.email}{c.phone ? ` · ${c.phone}` : ""}</div>
       </div>
-      <div className="cli-card-arrow">›</div>
+      {tags.length > 0 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: "none", maxWidth: 230 }}>
+          {shown.map(tg => <span key={tg.id} style={tagChipStyleSm}>{tg.label}</span>)}
+          {more > 0 && <span style={{ ...tagChipStyleSm, background: "#fff", fontWeight: 700, color: "var(--oxford-60)" }}>+{more}</span>}
+        </div>
+      )}
+      <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", flex: "none" }}>
+        <span style={{ background: "#E4ECFA", color: "#082F6D", fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>{c.totalSessions} seans</span>
+        {c.completedSessions > 0 && c.totalSessions > 0 && (
+          <span style={{ background: "#ECFDF5", color: "#047857", fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>{c.completedSessions}/{c.totalSessions} tamamlanıb</span>
+        )}
+        {c.noteCount > 0 && (
+          <span style={{ background: "#F3F4F6", color: "#374151", fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>{c.noteCount} qeyd</span>
+        )}
+        <span style={{ background: lt.bg, color: lt.color, fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>{lastPill.text}</span>
+        {c.noShowCount > 0 && (
+          <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>{c.noShowCount} no-show</span>
+        )}
+      </div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C7D3E6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }} aria-hidden><path d="M9 6l6 6-6 6" /></svg>
     </Link>
   );
 }
@@ -470,59 +487,57 @@ function ClientCard({ c, tags }: { c: ClientSummary; tags: PatientTag[] }) {
 function ClientGridCard({ c, tags }: { c: ClientSummary; tags: PatientTag[] }) {
   const days = daysSince(c.lastAppointmentAt);
   const lastPill = lastSessionPill(days);
+  const lt = LAST_TONES[lastPill.tone] ?? LAST_TONES.neutral;
   const flag = c.autoFlag ? FLAG_META[c.autoFlag] : null;
   const av = avatarColor(c.name);
   const completionPct = c.totalSessions > 0
     ? Math.round((c.completedSessions / c.totalSessions) * 100)
     : 0;
+  const shown = tags.slice(0, 4);
+  const more = tags.length - 4;
 
   return (
-    <Link href={`/psycholog/clients/${c.patientId}`} className="cli-gcard">
-      <div className="cli-gcard-top">
-        <div className="cli-gcard-avatar" style={{ background: av.bg, color: av.fg }}>{initials(c.name)}</div>
-        <div className="cli-gcard-id">
-          <div className="cli-gcard-name">{c.name}</div>
-          <div className="cli-gcard-meta">{c.email || c.phone || "—"}</div>
-        </div>
-        {flag && (
-          <span className="cli-gcard-flag" data-tone={flag.tone} title={flag.label}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-          </span>
-        )}
-      </div>
-
-      {tags.length > 0 && (
-        <div className="cli-gcard-tags">
-          {tags.slice(0, 4).map(tg => (
-            <span key={tg.id} className="cli-card-tag" data-color={tg.color}>{tg.label}</span>
-          ))}
-          {tags.length > 4 && (
-            <span className="cli-card-tag" data-color="neutral">+{tags.length - 4}</span>
-          )}
-        </div>
+    <Link href={`/psycholog/clients/${c.patientId}`} className="clx-clickrow"
+      style={{ position: "relative", textAlign: "left", background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 18, cursor: "pointer", display: "flex", flexDirection: "column", textDecoration: "none" }}>
+      {flag && (
+        <span title={flag.label} style={{ position: "absolute", top: 15, right: 15, color: flag.tone === "danger" ? "#991B1B" : "#92400E" }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+        </span>
       )}
-
-      <div className="cli-gcard-stats">
-        <div className="cli-gcard-stat">
-          <div className="cli-gcard-stat-value">{c.totalSessions}</div>
-          <div className="cli-gcard-stat-label">Seans</div>
-        </div>
-        <div className="cli-gcard-stat">
-          <div className="cli-gcard-stat-value">{completionPct}%</div>
-          <div className="cli-gcard-stat-label">Tamamlanma</div>
-        </div>
-        <div className="cli-gcard-stat">
-          <div className="cli-gcard-stat-value">{c.noteCount}</div>
-          <div className="cli-gcard-stat-label">Qeyd</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, paddingRight: 22 }}>
+        <span style={{ width: 46, height: 46, borderRadius: 13, background: av.bg, color: av.fg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, flex: "none" }}>{initials(c.name)}</span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 15.5, fontWeight: 700, color: "var(--oxford)" }}>{c.name}</div>
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>{c.email || c.phone || "—"}</div>
         </div>
       </div>
 
-      <div className="cli-gcard-foot">
-        <span className="cli-pill cli-pill--time" data-tone={lastPill.tone}>{lastPill.text}</span>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 15, minHeight: 24 }}>
+        {shown.map(tg => <span key={tg.id} style={tagChipStyle}>{tg.label}</span>)}
+        {more > 0 && <span style={{ ...tagChipStyle, background: "#fff", fontWeight: 700, color: "var(--oxford-60)" }}>+{more}</span>}
+      </div>
+
+      <div style={{ display: "flex", borderTop: "1px solid #F0F4FA", borderBottom: "1px solid #F0F4FA", padding: "12px 0", marginBottom: 13 }}>
+        <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #F0F4FA" }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "var(--oxford)" }}>{c.totalSessions}</div>
+          <div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600 }}>Seans</div>
+        </div>
+        <div style={{ flex: 1, textAlign: "center", borderRight: "1px solid #F0F4FA" }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "var(--oxford)" }}>{completionPct}%</div>
+          <div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600 }}>Tamamlanma</div>
+        </div>
+        <div style={{ flex: 1, textAlign: "center" }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "var(--oxford)" }}>{c.noteCount}</div>
+          <div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600 }}>Qeyd</div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: "auto" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: lt.bg, color: lt.color, fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>{lastPill.text}
+        </span>
         {c.noShowCount > 0 && (
-          <span className="cli-pill cli-pill--warn">{c.noShowCount} no-show</span>
+          <span style={{ background: "#FEE2E2", color: "#991B1B", fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>{c.noShowCount} no-show</span>
         )}
       </div>
     </Link>

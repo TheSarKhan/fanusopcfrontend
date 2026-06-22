@@ -16,6 +16,7 @@ import {
   operatorApi,
   isSlotConflict,
   CANCEL_REASONS,
+  reasonLabel,
   type AppointmentDetail,
   type AvailableSlot,
   type ClaimState,
@@ -64,6 +65,10 @@ const AUDIT_LABEL: Record<string, string> = {
   APPT_CANCEL_REQ_REJECT: "Ləğv tələbi rəddi",
   APPT_HANDOFF: "Psixoloq operatora ötürdü",
   APPT_CLAIM_REASSIGN: "Müraciət təhvili",
+  APPT_MEETING_LINK_SET: "Görüş linki əlavə edildi",
+  APPT_MEETING_LINK_UPDATED: "Görüş linki yeniləndi",
+  APPT_MEETING_LINK_REVOKED: "Görüş linki ləğv edildi",
+  APPT_MEETING_LINK_SENT: "Görüş linki göndərildi",
 };
 const DURATION_LABEL: Record<string, string> = {
   LT_1M: "1 aydan az", M_1_3: "1–3 ay", M_3_6: "3–6 ay", GT_6M: "6 aydan çox",
@@ -118,7 +123,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const [autoAdvance, setAutoAdvance] = useState(true);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [zone, setZone] = useState<"work" | "context" | "feed">("work"); // <900px tablar
-  const assignFocusRef = useRef<HTMLSelectElement | null>(null);
+  const assignFocusRef = useRef<HTMLButtonElement | null>(null);
   const composerFocusRef = useRef<HTMLTextAreaElement | null>(null);
 
   const a = full?.appointment ?? null;
@@ -241,6 +246,8 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
       const el = e.target as HTMLElement | null;
       const tag = el?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select" || el?.isContentEditable) return;
+      // Modal (psixoloq/vaxt/əməliyyat) açıqdırsa qısayolları söndür.
+      if (typeof document !== "undefined" && document.querySelector("[data-op-modal]")) return;
       const k = e.key.toLowerCase();
       if (k === "j" && nextId) { e.preventDefault(); goTo(nextId); }
       else if (k === "k" && prevId) { e.preventDefault(); goTo(prevId); }
@@ -348,25 +355,23 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
       <div className="op-det__header">
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
           <button onClick={backToList} title={t("staff.opDetBackToList")}
-            style={{ border: "1px solid #E5E7EB", background: "#fff", borderRadius: 8, padding: "6px 10px", cursor: "pointer", fontSize: 13, color: "#52718F" }}>
-            ←
+            style={{ width: 34, height: 34, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid #D6E2F7", background: "#fff", borderRadius: 9, cursor: "pointer", flex: "none", color: "var(--oxford)" }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
           </button>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#52718F" }}>#FNS-{String(id).padStart(4, "0")}</span>
-          <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: statusMeta.bg, color: statusMeta.fg }}>
+          <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>#FNS-{String(id).padStart(4, "0")}</span>
+          <span style={{ padding: "4px 11px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, background: statusMeta.bg, color: statusMeta.fg }}>
             {statusMeta.label}
           </span>
           {!isFinal && (
             <span title={`SLA: ${full.slaHours} saat`}
-              style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: slaBg, color: slaColor }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "-2px", marginRight: 4 }}>
-                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-              </svg>
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 11px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, background: slaBg, color: slaColor }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
               {t("staff.opDetWaiting", { time: ageLabel(a.createdAt, nowMs) })}
             </span>
           )}
           {claim?.claimedByUserId && (
-            <span className={claim.mine ? "op-claim-chip op-claim-chip--mine" : "op-claim-chip"}>
-              <span className="op-claim-dot" />
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 11px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, background: claim.mine ? "#ECFDF5" : "#FEF3C7", color: claim.mine ? "#047857" : "#92400E" }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: claim.mine ? "#047857" : "#D97706" }} />
               {claim.mine ? t("staff.opClaimMine") : t("staff.opClaimWorking", { name: claim.claimedByName ?? "?" })}
             </span>
           )}
@@ -374,46 +379,49 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           {unowned && (
             <button onClick={takeOwnership}
-              style={{ border: "none", background: "#047857", color: "#fff", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "#047857", color: "#fff", borderRadius: 9, padding: "8px 14px", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit" }}>
               {t("staff.opTake")}
             </button>
           )}
           {claim?.mine && (
             <button onClick={releaseOwnership}
-              style={{ border: "1px solid #C7D2FE", background: "#fff", color: "var(--brand-700)", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+              style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "8px 13px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
               {t("staff.opReleaseToPool")}
             </button>
           )}
           {isAdmin && !unowned && (
             <button onClick={() => setReassignOpen(true)}
-              style={{ border: "1px solid #E5E7EB", background: "#fff", color: "#1A2535", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+              style={{ background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "8px 13px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
               {t("staff.opReassign")}
             </button>
           )}
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#52718F", cursor: "pointer" }}>
-            <input type="checkbox" checked={autoAdvance} onChange={toggleAutoAdvance} style={{ accentColor: "var(--brand)" }} />
+          <button onClick={toggleAutoAdvance}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #D6E2F7", borderRadius: 9, padding: "7px 12px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", color: "var(--oxford)" }}>
+            <span style={{ width: 34, height: 19, borderRadius: 999, background: autoAdvance ? "#047857" : "#CBD5E6", position: "relative", flex: "none", transition: "background .2s" }}>
+              <span style={{ position: "absolute", top: 2, left: 2, width: 15, height: 15, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.3)", transform: autoAdvance ? "translateX(15px)" : "translateX(0)", transition: "transform .2s" }} />
+            </span>
             {t("staff.opDetAutoAdvance")}
-          </label>
+          </button>
           <button onClick={copyLink}
-            style={{ border: "1px solid #E5E7EB", background: "#fff", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#1A2535" }}>
+            style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "8px 13px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
             {copied ? t("staff.opDetCopied") : t("staff.opDetCopyLink")}
           </button>
-          <button onClick={() => prevId && goTo(prevId)} disabled={!prevId} title={t("staff.opDetPrev")}
-            style={{ border: "1px solid #E5E7EB", background: "#fff", borderRadius: 8, padding: "6px 12px", cursor: prevId ? "pointer" : "not-allowed", opacity: prevId ? 1 : 0.4, fontSize: 13 }}>
-            ←
-          </button>
-          <span style={{ fontSize: 11, color: "#8AAABF" }}>
-            {queuePos >= 0 ? `${queuePos + 1}/${queueIds.length}` : ""}
-          </span>
-          <button onClick={() => nextId && goTo(nextId)} disabled={!nextId} title={t("staff.opDetNext")}
-            style={{ border: "1px solid #E5E7EB", background: "#fff", borderRadius: 8, padding: "6px 12px", cursor: nextId ? "pointer" : "not-allowed", opacity: nextId ? 1 : 0.4, fontSize: 13 }}>
-            →
-          </button>
-          <span title="Klaviatura qısayolları" style={{ fontSize: 10.5, color: "#8AAABF", display: "flex", gap: 6, alignItems: "center", marginLeft: 4 }}>
-            <kbd className="op-det-kbd">J</kbd>/<kbd className="op-det-kbd">K</kbd> növbə
-            <kbd className="op-det-kbd">A</kbd> təyin
-            <kbd className="op-det-kbd">N</kbd> qeyd
-            <kbd className="op-det-kbd">Esc</kbd> siyahı
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#fff", border: "1px solid #D6E2F7", borderRadius: 9, padding: 3 }}>
+            <button onClick={() => prevId && goTo(prevId)} disabled={!prevId} title={t("staff.opDetPrev")}
+              style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: 7, cursor: prevId ? "pointer" : "not-allowed", opacity: prevId ? 1 : 0.35, color: "var(--oxford)" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            </button>
+            <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12.5, fontWeight: 700, color: "var(--oxford-60)", padding: "0 4px" }}>
+              {queuePos >= 0 ? `${queuePos + 1}/${queueIds.length}` : "—"}
+            </span>
+            <button onClick={() => nextId && goTo(nextId)} disabled={!nextId} title={t("staff.opDetNext")}
+              style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: 7, cursor: nextId ? "pointer" : "not-allowed", opacity: nextId ? 1 : 0.35, color: "var(--oxford)" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+            </button>
+          </div>
+          <span title="Klaviatura qısayolları" style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, fontWeight: 600, color: "#8AAABF" }}>
+            J/K növbə · A təyin · N qeyd · Esc siyahı
           </span>
         </div>
       </div>
@@ -449,6 +457,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
         <main className={`op-det__zone op-det__zone--work${zone === "work" ? " op-det__zone--visible" : ""}`}>
           <RequestContent full={full} t={t} />
 
+          {/* PRIMARY — Təyinat (yalnız təyinat edilə bilən statuslarda) */}
           {canAssign && (
             <AssignBlock
               key={`assign-${a.id}-${a.status}`}
@@ -465,35 +474,25 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
             />
           )}
 
+          {/* Görüş linki — öz kartı */}
           {!isFinal && (
-            <LinkBlock
-              key={`link-${a.id}`}
-              appointment={a}
-              cold={claimedByOther}
-              guardAction={guardAction}
-              onDone={(u, m) => onActionDone(u, m)}
-            />
+            <LinkBlock key={`link-${a.id}`} appointment={a} cold={claimedByOther}
+              guardAction={guardAction} onDone={(u, m) => onActionDone(u, m)} />
           )}
 
-          {canResolve && (
-            <ResolveDisputeBlock appointment={a} cold={claimedByOther} guardAction={guardAction}
-              onDone={(u) => onActionDone(u, "Mübahisə həll olundu")} />
-          )}
-
-          {isCancelReq && (
-            <CancelRequestBlock appointment={a} cold={claimedByOther} guardAction={guardAction}
-              onDone={(u, approved) => onActionDone(u, approved ? "Ləğv təsdiqləndi" : "Tələb rədd edildi")} />
-          )}
-
-          {canCancel && (
-            <CancelBlock appointment={a} cold={claimedByOther} guardAction={guardAction}
-              onDone={(u) => onActionDone(u, "Ləğv edildi")} />
-          )}
-
-          {canMarkNoShow && (
-            <NoShowBlock appointment={a} cold={claimedByOther} guardAction={guardAction}
-              onDone={(u) => onActionDone(u, "No-show işarələndi")} />
-          )}
+          {/* Digər əməliyyatlar — kart şəbəkəsi + fokuslu modal */}
+          <OtherActions
+            appointment={a}
+            guardAction={guardAction}
+            showResolve={canResolve}
+            showCancelReq={isCancelReq}
+            showNoShow={canMarkNoShow}
+            showCancel={canCancel}
+            onResolveDone={(u) => onActionDone(u, "Mübahisə həll olundu")}
+            onCancelReqDone={(u, approved) => onActionDone(u, approved ? "Ləğv təsdiqləndi" : "Tələb rədd edildi")}
+            onNoShowDone={(u) => onActionDone(u, "No-show işarələndi")}
+            onCancelDone={(u) => onActionDone(u, "Ləğv edildi")}
+          />
         </main>
 
         {/* ── Sağ zona: Fəaliyyət lenti ──────────────────────────────────────── */}
@@ -647,25 +646,39 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
       {/* Pasiyent kartı */}
       <div className="op-det-card">
         <div className="op-det-card__title">{t("staff.opDetPatientCard")}</div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#1A2535" }}>{a.patientName ?? "—"}</div>
-        <div style={{ marginTop: 4 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: a.patientId ? "#D1FAE5" : "#F3F4F6", color: a.patientId ? "#065F46" : "#52718F" }}>
-            {a.patientId ? t("staff.opDetRegistered") : t("staff.opDetAnonymous")}
+        <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 13 }}>
+          <span style={{ width: 42, height: 42, borderRadius: 12, background: "var(--brand-700)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none" }}>
+            {(a.patientName ?? "—").split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "—"}
           </span>
-          {h?.blocked && (
-            <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: "#FEE2E2", color: "#991B1B" }}>
-              BLOKLU
-            </span>
-          )}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{a.patientName ?? "—"}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 3 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: a.patientId ? "#D1FAE5" : "#F3F4F6", color: a.patientId ? "#065F46" : "var(--oxford-60)", fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 999 }}>
+                {a.patientId && (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+                )}
+                {a.patientId ? t("staff.opDetRegistered") : t("staff.opDetAnonymous")}
+              </span>
+              {h?.blocked && (
+                <span style={{ background: "#FEE2E2", color: "#991B1B", fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 999 }}>BLOKLU</span>
+              )}
+            </div>
+          </div>
         </div>
         {phone && (
-          <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-            <a href={`tel:${phone}`} className="op-contact-btn op-contact-btn--call">{a.patientPhone}</a>
-            <a href={whatsappLink(phone)} target="_blank" rel="noopener noreferrer" className="op-contact-btn op-contact-btn--wa">WhatsApp</a>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 11 }}>
+            <a href={`tel:${phone}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#F8FAFD", color: "var(--brand-700)", border: "1px solid #EDF1F8", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+              {a.patientPhone}
+            </a>
+            <a href={whatsappLink(phone)} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#F8FAFD", color: "var(--brand-700)", border: "1px solid #EDF1F8", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
+              WhatsApp
+            </a>
           </div>
         )}
         {a.patientEmail && (
-          <a href={`mailto:${a.patientEmail}`} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--brand-700)", marginTop: 6, wordBreak: "break-all" }}>
+          <a href={`mailto:${a.patientEmail}`} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--brand)", marginBottom: 12, wordBreak: "break-all" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
               <rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22,6 12,13 2,6" />
             </svg>
@@ -674,7 +687,8 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
         )}
         {h?.userId && (
           <button onClick={blockOrUnblock}
-            style={{ marginTop: 10, width: "100%", padding: "6px 10px", border: h.blocked ? "1px solid #C7D2FE" : "1px solid #FECACA", background: "#fff", color: h.blocked ? "var(--brand-700)" : "#991B1B", borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, width: "100%", background: "#fff", color: h.blocked ? "var(--brand-700)" : "#991B1B", border: h.blocked ? "1px solid #C7D2FE" : "1px solid #F3D6D6", borderRadius: 9, padding: 8, fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M4.9 4.9l14.2 14.2" /></svg>
             {h.blocked ? "Bloku aç" : "Blokla / spam"}
           </button>
         )}
@@ -769,9 +783,9 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
 
 function RepCell({ label, value, warn }: { label: string; value: number; warn: boolean }) {
   return (
-    <div style={{ background: warn ? "#FEF2F2" : "#F8FAFC", border: warn ? "1px solid #FECACA" : "1px solid #EFF2F7", borderRadius: 8, padding: "6px 4px", textAlign: "center" }}>
-      <div style={{ fontSize: 9, color: "#52718F", fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 700, color: warn ? "#DC2626" : "#1A2535" }}>{value}</div>
+    <div style={{ background: warn ? "#FEE2E2" : "#F8FAFD", border: warn ? "1px solid #F3D6D6" : "1px solid #EDF1F8", borderRadius: 10, padding: "11px 8px", textAlign: "center" }}>
+      <div style={{ fontSize: 20, fontWeight: 800, color: warn ? "#DC2626" : "var(--oxford)" }}>{value}</div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: warn ? "#991B1B" : "var(--oxford-60)", marginTop: 2 }}>{label}</div>
     </div>
   );
 }
@@ -784,33 +798,25 @@ function RequestContent({ full, t }: { full: OperatorAppointmentFull; t: ReturnT
     <div className="op-det-card">
       <div className="op-det-card__title">{t("staff.opDetRequest")}</div>
       {a.note ? (
-        <div style={{ fontSize: 14, color: "#1A2535", lineHeight: 1.55, background: "#F8FAFC", borderRadius: 10, padding: "10px 14px" }}>
-          «{a.note}»
+        <div style={{ display: "flex", gap: 10, background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 11, padding: "13px 15px" }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+          <span style={{ fontSize: 14.5, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, lineHeight: 1.5 }}>«{a.note}»</span>
         </div>
       ) : (
-        <div style={{ fontSize: 12, color: "#8AAABF" }}>Problem təsviri yazılmayıb</div>
+        <div style={{ fontSize: 12.5, color: "#8AAABF" }}>Problem təsviri yazılmayıb</div>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12, fontSize: 12.5 }}>
-        <div>
-          <div style={{ color: "#52718F", fontWeight: 600, fontSize: 11, textTransform: "uppercase" }}>{t("staff.opDetRequestedTime")}</div>
-          <div style={{ color: "#1A2535", fontWeight: 600, marginTop: 2 }}>{fmtDateTime(a.requestedStartAt)}</div>
-        </div>
-        <div>
-          <div style={{ color: "#52718F", fontWeight: 600, fontSize: 11, textTransform: "uppercase" }}>{t("staff.opDetRequestedPsy")}</div>
-          <div style={{ color: "#1A2535", fontWeight: 600, marginTop: 2 }}>
-            {a.psychologistName ?? a.requestedPsychologistName ?? "Seçilməyib"}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginTop: 14 }}>
+        {([
+          [t("staff.opDetRequestedTime"), fmtDateTime(a.requestedStartAt)],
+          [t("staff.opDetRequestedPsy"), a.psychologistName ?? a.requestedPsychologistName ?? "Seçilməyib"],
+          ...(a.startAt ? [["Təyin edilmiş vaxt", fmtDateTime(a.startAt)] as [string, string]] : []),
+          ["Yaradılıb", fmtDateTime(a.createdAt)],
+        ] as [string, string][]).map(([label, value]) => (
+          <div key={label} style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>
+            <div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 2 }}>{label}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{value}</div>
           </div>
-        </div>
-        {a.startAt && (
-          <div>
-            <div style={{ color: "#52718F", fontWeight: 600, fontSize: 11, textTransform: "uppercase" }}>Təyin edilmiş vaxt</div>
-            <div style={{ color: "#1A2535", fontWeight: 600, marginTop: 2 }}>{fmtDateTime(a.startAt)}</div>
-          </div>
-        )}
-        <div>
-          <div style={{ color: "#52718F", fontWeight: 600, fontSize: 11, textTransform: "uppercase" }}>Yaradılıb</div>
-          <div style={{ color: "#1A2535", fontWeight: 600, marginTop: 2 }}>{fmtDateTime(a.createdAt)}</div>
-        </div>
+        ))}
       </div>
 
       {a.operatorNote && (
@@ -832,8 +838,21 @@ function RequestContent({ full, t }: { full: OperatorAppointmentFull; t: ReturnT
       {a.status === "CANCEL_REQUESTED" && (
         <div style={{ marginTop: 10, fontSize: 12.5, background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 8, padding: "8px 12px", color: "#92400E" }}>
           <strong>Pasient ləğv tələb edib.</strong>
-          {a.cancelRequestReasonCode && <> · kod: <code>{a.cancelRequestReasonCode}</code></>}
+          {a.cancelRequestReasonCode && <> · {reasonLabel(a.cancelRequestReasonCode)}</>}
           {a.cancelRequestReasonText && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.cancelRequestReasonText}»</div>}
+        </div>
+      )}
+
+      {a.status === "CANCELLED" && (
+        <div style={{ marginTop: 10, fontSize: 12.5, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "8px 12px", color: "#991B1B" }}>
+          <strong>Ləğv edildi.</strong>{" "}
+          {a.cancelledBy === "PATIENT" ? "Pasient ləğv etdi"
+            : a.cancelledBy === "PSYCHOLOGIST" ? "Psixoloq ləğv etdi"
+            : a.cancelledBy === "OPERATOR" ? "Operator ləğv etdi" : "—"}
+          {a.cancelReasonCode && <> · {reasonLabel(a.cancelReasonCode)}</>}
+          {a.lateCancel && <> · <span style={{ fontWeight: 700 }}>Gec ləğv</span></>}
+          {a.cancelledAt && <> · {fmtDateTime(a.cancelledAt)}</>}
+          {a.cancelReasonText && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.cancelReasonText}»</div>}
         </div>
       )}
 
@@ -868,12 +887,52 @@ function RequestContent({ full, t }: { full: OperatorAppointmentFull; t: ReturnT
 
 /* ─── Mərkəz: təyinat bloku (köhnə AssignModal-ın səhifə bloku) ────────────── */
 
+/* ─── Fokuslu modal qabığı (Bilet new) ─────────────────────────────────────── */
+
+function ModalShell({ title, sub, badge, onClose, footer, maxWidth = 480, children }: {
+  title: string;
+  sub?: string;
+  badge?: { label: string; bg: string; color: string };
+  onClose: () => void;
+  footer?: React.ReactNode;
+  maxWidth?: number;
+  children: React.ReactNode;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div data-op-modal="" onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(10,26,51,.42)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ width: "100%", maxWidth, background: "#fff", borderRadius: 16, boxShadow: "0 24px 70px rgba(8,47,109,.3)", overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "86vh" }}>
+        <div style={{ padding: "17px 20px", borderBottom: "1px solid #F0F4FA", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{title}</span>
+              {badge && <span style={{ background: badge.bg, color: badge.color, fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>{badge.label}</span>}
+            </div>
+            {sub && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3 }}>{sub}</div>}
+          </div>
+          <button onClick={onClose} aria-label="Bağla" style={{ width: 30, height: 30, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA", border: "none", borderRadius: 8, cursor: "pointer", flex: "none" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div style={{ padding: "18px 20px", overflowY: "auto", flex: 1 }}>{children}</div>
+        {footer && <div style={{ padding: "14px 20px", borderTop: "1px solid #F0F4FA" }}>{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
 function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, onAssigned }: {
   appointment: AppointmentDetail;
   suggestions: OperatorAppointmentFull["suggestions"];
   cold: boolean;
   guardAction: (run: () => void) => void;
-  selectRef: React.RefObject<HTMLSelectElement | null>;
+  selectRef: React.RefObject<HTMLButtonElement | null>;
   onAssigned: (a: AppointmentDetail) => void;
 }) {
   const { t } = useT();
@@ -888,6 +947,9 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   const [note, setNote] = useState(appointment.operatorNote ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [psychModalOpen, setPsychModalOpen] = useState(false);
+  const [timeModalOpen, setTimeModalOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
 
   useEffect(() => {
     operatorApi.listPsychologists().then(setPsychologists).catch(() => {});
@@ -918,19 +980,22 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
 
   const maxSlots = allowance?.maxSlots ?? 1;
 
-  // Müştərinin istədiyi vaxtı avtomatik seç (slot varsa slotu, yoxdursa manual)
+  // Mövcud təyin olunmuş vaxtı (startAt) — varsa — və ya müştərinin istədiyi vaxtı avtomatik göstər.
+  // Təyin edilmiş randevuda startAt artıq booked-dur → açıq slotlarda görünmür → manual sahə ilə əks olunur,
+  // ona görə yenidən girişdə "Vaxt" özəti boş (seçilməmiş kimi) qalmasın.
   useEffect(() => {
-    const requested = appointment.requestedStartAt;
-    if (!requested || !psyId || loadingSlots) return;
+    const seedStart = appointment.startAt ?? appointment.requestedStartAt;
+    if (!seedStart || !psyId || loadingSlots) return;
     if (pickedSlots.length > 0 || manualStart) return;
-    const reqMs = new Date(requested).getTime();
+    const reqMs = new Date(seedStart).getTime();
     const match = slots.find(s => new Date(s.startAt).getTime() === reqMs);
     if (match) { setPickedSlots([match.startAt]); return; }
     const psy = psychologists.find(p => p.id === psyId);
     const minutes = psy?.defaultSessionMinutes && psy.defaultSessionMinutes > 0 ? psy.defaultSessionMinutes : 50;
-    setManualStart(isoToAzLocal(requested));
-    setManualEnd(isoToAzLocal(new Date(reqMs + minutes * 60_000).toISOString()));
-  }, [slots, loadingSlots, psyId, psychologists, appointment.requestedStartAt, pickedSlots.length, manualStart]);
+    const seedEnd = (appointment.startAt && appointment.endAt) ? appointment.endAt : new Date(reqMs + minutes * 60_000).toISOString();
+    setManualStart(isoToAzLocal(seedStart));
+    setManualEnd(isoToAzLocal(seedEnd));
+  }, [slots, loadingSlots, psyId, psychologists, appointment.startAt, appointment.endAt, appointment.requestedStartAt, pickedSlots.length, manualStart]);
 
   // Slot seç/çıxar — paket icazəsinə görə tavanla məhdudlaşır.
   const toggleSlot = (startAt: string) => {
@@ -1004,135 +1069,263 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     }
   };
 
+  const requestedMs = appointment.requestedStartAt ? new Date(appointment.requestedStartAt).getTime() : null;
+  const chosenSlots = pickedSlots.length > 0
+    ? pickedSlots.map(st => {
+        const slot = slots.find(x => x.startAt === st);
+        return { key: st, label: slot ? `${azFormatDate(slot.startAt)} · ${azFormatTime(slot.startAt)}` : st, onRemove: () => toggleSlot(st) };
+      })
+    : (manualStart && manualEnd
+        ? [{ key: "manual", label: manualStart.replace("T", " · "), onRemove: () => { setManualStart(""); setManualEnd(""); } }]
+        : []);
+
+  const selectedPsy = psychologists.find(p => p.id === psyId) ?? null;
+  const sugMatch = suggestions.find(s => s.psychologistId === psyId) ?? null;
+  const psychName = selectedPsy ? selectedPsy.name : (psyId ? "Seçilmiş psixoloq" : "Təyin edilməyib");
+  const psychScore = sugMatch ? `Skor ${sugMatch.score}` : "";
+  const timeN = chosenSlots.length;
+  const timeSummary = timeN === 0 ? "Təyin edilməyib" : (timeN === 1 ? chosenSlots[0].label : `${timeN} vaxt seçilib`);
+  const ready = !!psyId && timeN > 0;
+  // Slot tavanı: paket yoxdursa 1, varsa paketin qalan seans sayı.
+  const atCap = maxSlots > 1 && pickedSlots.length >= maxSlots;
+  const slotComplete = maxSlots === 1 ? timeN === 1 : timeN === maxSlots;
+
+  const summaryRow: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 12, padding: "13px 14px" };
+  const summaryIcon: React.CSSProperties = { width: 38, height: 38, borderRadius: 11, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" };
+  const summaryLabel: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "#8AAABF", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 2 };
+  const summaryBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 5, background: "#fff", color: "#082F6D", border: "1px solid #C7DAF5", borderRadius: 9, padding: "8px 14px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", flex: "none" };
+  const modalPrimary: React.CSSProperties = { width: "100%", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 11, padding: 13, fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" };
+
   return (
-    <div className={cold ? "op-det-card op-det-card--cold" : "op-det-card"}>
-      <div className="op-det-card__title">{(appointment.status === "CONFIRMED" || appointment.status === "ASSIGNED") ? "Yenidən planla / psixoloqu dəyiş" : t("staff.opDetAssignBlock")} <kbd className="op-det-kbd">A</kbd></div>
+    <div className={cold ? "op-det-card op-det-card--cold" : "op-det-card"} style={{ borderTop: "3px solid var(--brand)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 15, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--brand-700)" }}>
+          {(appointment.status === "CONFIRMED" || appointment.status === "ASSIGNED") ? "Yenidən planla / psixoloqu dəyiş" : t("staff.opDetAssignBlock")}
+        </span>
+        {ready
+          ? <span style={{ background: "#D1FAE5", color: "#065F46", fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>Təyinata hazır</span>
+          : <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>Tamamlanmamış</span>}
+        <kbd className="op-det-kbd" style={{ marginLeft: "auto" }}>A</kbd>
+      </div>
 
-      {suggestions.length > 0 && (
-        <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: 10, marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#065F46", marginBottom: 6 }}>
-            {t("staff.opDetSuggestions")}
+      {/* özət sətirlər */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 13 }}>
+        <div style={summaryRow}>
+          <span style={{ ...summaryIcon, background: psyId ? "var(--brand-100)" : "#F0F4FA", color: psyId ? "var(--brand)" : "#9DB0CC" }}>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={summaryLabel}>Psixoloq</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 14.5, fontWeight: 700, color: psyId ? "var(--oxford)" : "#9DB0CC" }}>{psychName}</span>
+              {psychScore && <span style={{ background: "#ECFDF5", color: "#047857", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{psychScore}</span>}
+            </div>
           </div>
-          <div style={{ display: "grid", gap: 5 }}>
-            {suggestions.slice(0, 3).map(s => (
-              <button key={s.psychologistId} type="button"
-                onClick={() => { setPsyId(s.psychologistId); setPickedSlots([]); setManualStart(""); setManualEnd(""); }}
-                style={{
-                  textAlign: "left", padding: "7px 10px", borderRadius: 8,
-                  border: psyId === s.psychologistId ? "2px solid #10B981" : "1px solid #BBF7D0",
-                  background: psyId === s.psychologistId ? "#fff" : "#FAFEFC", cursor: "pointer",
-                }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#1A2535" }}>{s.name}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#065F46" }}>skor {s.score}</span>
-                </div>
-                <div style={{ fontSize: 11, color: "#52718F", marginTop: 2 }}>{s.reasons.join(" · ")}</div>
-              </button>
-            ))}
+          <button ref={selectRef} type="button" onClick={() => setPsychModalOpen(true)} style={summaryBtn}>
+            {psyId ? "Dəyiş" : "Seç"}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+          </button>
+        </div>
+        <div style={summaryRow}>
+          <span style={{ ...summaryIcon, background: timeN ? "var(--brand-100)" : "#F0F4FA", color: timeN ? "var(--brand)" : "#9DB0CC" }}>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={summaryLabel}>Vaxt</div>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: timeN ? "var(--oxford)" : "#9DB0CC" }}>{timeSummary}</div>
           </div>
+          <button type="button" onClick={() => { if (!psyId) { setPsychModalOpen(true); return; } setTimeModalOpen(true); }} style={summaryBtn}>
+            {timeN ? "Dəyiş" : "Seç"}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+          </button>
+        </div>
+      </div>
+
+      {!ready && appointment.requestedStartAt && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 10, padding: "9px 13px", marginBottom: 15, fontSize: 12, fontWeight: 600, color: "var(--brand-700)" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z" /></svg>
+          Pasiyentin istəyi: {appointment.requestedPsychologistName ?? appointment.psychologistName ?? "—"} · {fmtDateTime(appointment.requestedStartAt)}
         </div>
       )}
 
-      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>Psixoloq</label>
-      <select ref={selectRef} value={psyId ?? ""} onChange={e => { setPsyId(Number(e.target.value) || null); setPickedSlots([]); setManualStart(""); setManualEnd(""); }}
-        style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 12 }}>
-        <option value="">— Seç —</option>
-        {psychologists.map(p => <option key={p.id} value={p.id}>{p.name} · {p.title}</option>)}
-      </select>
-
-      {appointment.requestedStartAt && (
-        <div style={{ background: "#EEF2FF", border: "1px solid #C7D2FE", borderRadius: 8, padding: "6px 10px", fontSize: 12, color: "var(--brand-700)", marginBottom: 10 }}>
-          <strong>İstənilən vaxt:</strong> {fmtDateTime(appointment.requestedStartAt)} — uyğun slot avtomatik seçilir.
-        </div>
-      )}
-
-      {psyId && allowance && (
-        allowance.packageName ? (
-          <div style={{ background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 8, padding: "6px 10px", fontSize: 12, color: "#065F46", marginBottom: 10 }}>
-            <strong>Paket: {allowance.packageName}</strong> · {allowance.remainingSessions} seans qalıb — {maxSlots} vaxta qədər seçə bilərsiniz
-            {pickedSlots.length > 0 && ` (${pickedSlots.length} seçilib)`}
-          </div>
-        ) : (
-          <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "6px 10px", fontSize: 12, color: "#92400E", marginBottom: 10 }}>
-            Paket yoxdur — yalnız <strong>1 vaxt</strong> seçilə bilər. Çoxlu seans üçün pasiyent paket almalıdır.
-          </div>
-        )
-      )}
-
-      {psyId && (
-        <>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>Açıq vaxtlar</label>
-          {loadingSlots ? (
-            <div style={{ fontSize: 12, color: "#52718F", marginBottom: 12 }}>Yüklənir…</div>
-          ) : groupedSlots.length === 0 ? (
-            <div style={{ background: "#FFFBEB", border: "1px solid #FEF3C7", borderRadius: 8, padding: 10, fontSize: 12, color: "#92400E", marginBottom: 12 }}>
-              Açıq slot yoxdur. Aşağıda əl ilə vaxt yazın.
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: 8, marginBottom: 12, maxHeight: 200, overflow: "auto" }}>
-              {groupedSlots.map(([day, daySlots]) => {
-                const requestedMs = appointment.requestedStartAt ? new Date(appointment.requestedStartAt).getTime() : null;
-                return (
-                  <div key={day}>
-                    <div style={{ fontSize: 10.5, fontWeight: 600, color: "#52718F", textTransform: "uppercase", marginBottom: 4 }}>{day}</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                      {daySlots.map(s => {
-                        const slotMs = new Date(s.startAt).getTime();
-                        const active = pickedSlots.includes(s.startAt);
-                        const order = active ? pickedSlots.indexOf(s.startAt) + 1 : 0;
-                        const isRequested = requestedMs !== null && slotMs === requestedMs;
-                        return (
-                          <button key={s.startAt} type="button"
-                            title={isRequested ? "Müştərinin istədiyi vaxt" : undefined}
-                            onClick={() => toggleSlot(s.startAt)}
-                            style={{
-                              padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
-                              border: active ? "2px solid var(--brand)" : isRequested ? "2px solid #10B981" : "1px solid #E5E7EB",
-                              background: active ? "var(--brand-50)" : isRequested ? "#ECFDF5" : "#fff",
-                              color: active ? "var(--brand)" : isRequested ? "#065F46" : "#1A2535",
-                            }}>
-                            {maxSlots > 1 && active && (
-                              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 15, height: 15, borderRadius: "50%", background: "var(--brand)", color: "#fff", fontSize: 9, marginRight: 5 }}>{order}</span>
-                            )}
-                            {azFormatTime(s.startAt)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          <details style={{ marginBottom: 12 }} open={!!manualStart}>
-            <summary style={{ fontSize: 12, color: "#52718F", cursor: "pointer" }}>Əl ilə vaxt daxil et</summary>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-              <input type="datetime-local" step={60} value={manualStart} onChange={e => { setManualStart(e.target.value); setPickedSlots([]); }}
-                style={{ padding: 8, borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 12 }} />
-              <input type="datetime-local" step={60} value={manualEnd} onChange={e => { setManualEnd(e.target.value); setPickedSlots([]); }}
-                style={{ padding: 8, borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 12 }} />
-            </div>
-          </details>
-        </>
-      )}
-
-      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>Operator qeydi (məcburi deyil)</label>
-      <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
-        style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, marginBottom: 10, fontFamily: "inherit", boxSizing: "border-box" }} />
+      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", margin: "6px 0 6px" }}>Operator qeydi</div>
+      <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Təyinat haqqında daxili qeyd…"
+        style={{ width: "100%", border: "1px solid #D6E2F7", background: "#fff", borderRadius: 10, padding: 11, fontSize: 13.5, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", resize: "vertical", lineHeight: 1.5, marginBottom: 15, boxSizing: "border-box" }} />
 
       {error && (
-        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12.5, marginBottom: 10 }}>
+        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12.5, marginBottom: 12 }}>
           {error}
         </div>
       )}
 
-      <button onClick={() => guardAction(doSubmit)} disabled={saving}
-        style={{ width: "100%", padding: "10px 18px", border: "none", background: "var(--brand)", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 700, cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+      <button onClick={() => guardAction(doSubmit)} disabled={saving || !ready}
+        style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: (saving || !ready) ? "#A9BEE2" : "var(--brand)", color: "#fff", border: "none", borderRadius: 11, padding: 14, fontSize: 15, fontWeight: 700, fontFamily: "inherit", cursor: (saving || !ready) ? "not-allowed" : "pointer" }}>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
         {saving ? "Saxlanılır…"
           : pickedSlots.length > 1 ? `${pickedSlots.length} seans təyin et`
           : appointment.status === "ASSIGNED" ? "Yenidən təyin et" : "Təyin et"}
       </button>
+
+      {/* PSİXOLOQ MODALI */}
+      {psychModalOpen && (
+        <ModalShell title="Psixoloq seç" sub="Tövsiyədən seçin və ya siyahıdan tapın." onClose={() => setPsychModalOpen(false)}
+          footer={<button onClick={() => setPsychModalOpen(false)} style={modalPrimary}>{psyId ? "Hazırdır" : "Bağla"}</button>}>
+          {suggestions.length > 0 && (
+            <div style={{ background: "#F3FBF6", border: "1px solid #C9EFD9", borderRadius: 12, padding: 13, marginBottom: 15 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#047857", marginBottom: 11 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z" /></svg>
+                {t("staff.opDetSuggestions")}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                {suggestions.slice(0, 3).map(s => {
+                  const sel = psyId === s.psychologistId;
+                  return (
+                    <button key={s.psychologistId} type="button"
+                      onClick={() => { setPsyId(s.psychologistId); setPickedSlots([]); setManualStart(""); setManualEnd(""); }}
+                      style={{ display: "flex", alignItems: "center", gap: 11, textAlign: "left", background: sel ? "#fff" : "#FAFFFD", border: `1.5px solid ${sel ? "#047857" : "#C9EFD9"}`, borderRadius: 10, padding: "11px 13px", cursor: "pointer", fontFamily: "inherit" }}>
+                      <span style={{ width: 20, height: 20, borderRadius: "50%", border: `2px solid ${sel ? "#047857" : "#A7D8BC"}`, background: sel ? "#047857" : "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: sel ? 1 : 0 }}><path d="M20 6L9 17l-5-5" /></svg>
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{s.name}</div>
+                        <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1 }}>{s.reasons.join(" · ")}</div>
+                      </div>
+                      <span style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "none" }}>
+                        <span style={{ fontSize: 17, fontWeight: 800, color: "#047857", lineHeight: 1 }}>{s.score}</span>
+                        <span style={{ fontSize: 9.5, fontWeight: 700, color: "#8AAABF", letterSpacing: ".04em" }}>SKOR</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 6 }}>Psixoloq</div>
+          <div style={{ position: "relative" }}>
+            <select value={psyId ?? ""} onChange={e => { setPsyId(Number(e.target.value) || null); setPickedSlots([]); setManualStart(""); setManualEnd(""); }}
+              style={{ width: "100%", appearance: "none", WebkitAppearance: "none", background: "#fff", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 38px 11px 13px", fontSize: 14, fontWeight: 600, color: "var(--oxford)", fontFamily: "inherit", cursor: "pointer" }}>
+              <option value="">Psixoloq seçin…</option>
+              {psychologists.map(p => <option key={p.id} value={p.id}>{p.name} · {p.title}</option>)}
+            </select>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}><path d="M6 9l6 6 6-6" /></svg>
+          </div>
+        </ModalShell>
+      )}
+
+      {/* VAXT MODALI */}
+      {timeModalOpen && (
+        <ModalShell title="Vaxt seç" sub="Açıq slotlardan seçin və ya əl ilə daxil edin." maxWidth={500} onClose={() => setTimeModalOpen(false)}
+          footer={<button onClick={() => setTimeModalOpen(false)} style={modalPrimary}>{slotComplete ? "Hazırdır" : "Bağla"}</button>}>
+          {!psyId ? (
+            <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 500 }}>Əvvəlcə psixoloq seçin.</div>
+          ) : (
+            <>
+              {appointment.requestedStartAt && (
+                <div style={{ display: "flex", gap: 9, alignItems: "center", background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 10, padding: "10px 13px", marginBottom: 11 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--brand-700)" }}>İstənilən vaxt: {fmtDateTime(appointment.requestedStartAt)} — uyğun slot avtomatik seçilir</span>
+                </div>
+              )}
+
+              {allowance && (
+                allowance.packageName ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#ECFDF5", border: "1px solid #A7D8BC", borderRadius: 10, padding: "10px 13px", marginBottom: 13, fontSize: 12.5, fontWeight: 700, color: "#047857" }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.27 6.96L12 12.01l8.73-5.05" /></svg>
+                    <span>Paket: {allowance.packageName} · {allowance.remainingSessions} qalıb — {maxSlots} vaxta qədər seçə bilərsiniz</span>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#FEF3C7", border: "1px solid #FCE7A8", borderRadius: 10, padding: "10px 13px", marginBottom: 13, fontSize: 12.5, fontWeight: 700, color: "#92400E" }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.27 6.96L12 12.01l8.73-5.05" /></svg>
+                    <span>Paket yoxdur — yalnız 1 vaxt seçilə bilər.</span>
+                  </div>
+                )
+              )}
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: slotComplete ? "#D1FAE5" : "#F0F4FA", color: slotComplete ? "#065F46" : "#5C6B85", borderRadius: 10, padding: "9px 13px", marginBottom: 13, fontSize: 12.5, fontWeight: 700 }}>
+                {slotComplete
+                  ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><path d="M20 6L9 17l-5-5" /></svg>
+                  : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" /></svg>}
+                {maxSlots === 1 ? "Tək seans — yalnız 1 vaxt seçin" : `${timeN}/${maxSlots} seçildi`}
+              </div>
+
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#8AAABF", marginBottom: 11 }}>Açıq vaxtlar</div>
+              {loadingSlots ? (
+                <div style={{ fontSize: 12, color: "var(--oxford-60)", marginBottom: 12 }}>Yüklənir…</div>
+              ) : groupedSlots.length === 0 ? (
+                <div style={{ background: "#FEF3C7", border: "1px solid #FCE7A8", borderRadius: 10, padding: 11, fontSize: 12, color: "#92400E", marginBottom: 12 }}>
+                  Açıq slot yoxdur. Aşağıda əl ilə vaxt yazın.
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: 13, marginBottom: 13 }}>
+                  {groupedSlots.map(([day, daySlots]) => (
+                    <div key={day}>
+                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", color: "#8AAABF", marginBottom: 8, textTransform: "uppercase" }}>{day}</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {daySlots.map(s => {
+                          const slotMs = new Date(s.startAt).getTime();
+                          const active = pickedSlots.includes(s.startAt);
+                          const order = active ? pickedSlots.indexOf(s.startAt) + 1 : 0;
+                          const isRequested = requestedMs !== null && slotMs === requestedMs;
+                          const disabled = atCap && !active;
+                          return (
+                            <button key={s.startAt} type="button"
+                              title={isRequested ? "Müştərinin istədiyi vaxt" : disabled ? "Tavan dolub" : undefined}
+                              disabled={disabled}
+                              onClick={disabled ? undefined : () => toggleSlot(s.startAt)}
+                              style={{ position: "relative", padding: "9px 15px", borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.55 : 1, fontFamily: "inherit",
+                                border: active ? "1.5px solid var(--brand)" : disabled ? "1.5px solid #E5E7EB" : isRequested ? "1.5px solid #047857" : "1.5px solid #D6E2F7",
+                                background: active ? "#E4ECFA" : disabled ? "#F3F4F6" : isRequested ? "#ECFDF5" : "#fff",
+                                color: active ? "#082F6D" : disabled ? "#C0C9D6" : isRequested ? "#047857" : "var(--oxford)" }}>
+                              {azFormatTime(s.startAt)}
+                              {maxSlots > 1 && active && (
+                                <span style={{ position: "absolute", top: -7, right: -7, width: 18, height: 18, background: "var(--brand)", color: "#fff", border: "2px solid #fff", borderRadius: "50%", fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{order}</span>
+                              )}
+                              {isRequested && !active && (
+                                <span style={{ position: "absolute", top: -5, right: -5, width: 9, height: 9, background: "#047857", border: "2px solid #fff", borderRadius: "50%" }} />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button type="button" onClick={() => setManualOpen(o => !o)} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "none", border: "none", fontSize: 12.5, fontWeight: 600, color: "var(--brand)", cursor: "pointer", fontFamily: "inherit", padding: "2px 0", marginBottom: 6 }}>
+                Əl ilə vaxt daxil et
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: (manualOpen || !!manualStart) ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .2s" }}><path d="M6 9l6 6 6-6" /></svg>
+              </button>
+              {(manualOpen || !!manualStart) && (
+                <div style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 11, padding: 13, marginBottom: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <input type="datetime-local" step={60} value={manualStart} onChange={e => { setManualStart(e.target.value); setPickedSlots([]); }}
+                      style={{ padding: "10px 12px", borderRadius: 9, border: "1px solid #D6E2F7", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }} />
+                    <input type="datetime-local" step={60} value={manualEnd} onChange={e => { setManualEnd(e.target.value); setPickedSlots([]); }}
+                      style={{ padding: "10px 12px", borderRadius: 9, border: "1px solid #D6E2F7", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }} />
+                  </div>
+                </div>
+              )}
+
+              {chosenSlots.length === 0 ? (
+                <div style={{ fontSize: 12.5, color: "#9DB0CC", fontWeight: 500, background: "#F8FAFD", border: "1px dashed #D6E2F7", borderRadius: 10, padding: "11px 13px" }}>
+                  Vaxt seçilməyib — yuxarıdan slot seçin və ya əl ilə tarix daxil edin.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {chosenSlots.map((c, i) => (
+                    <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 10, background: "#E4ECFA", border: "1px solid #C7DBF6", borderRadius: 10, padding: "9px 12px" }}>
+                      <span style={{ width: 22, height: 22, borderRadius: 6, background: "var(--brand)", color: "#fff", fontSize: 12, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{i + 1}</span>
+                      <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: "var(--brand-700)" }}>{c.label}</span>
+                      <button type="button" onClick={c.onRemove} title="Sil" style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "#991B1B", border: "1px solid #F3D6D6", borderRadius: 8, cursor: "pointer", flex: "none" }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </ModalShell>
+      )}
     </div>
   );
 }
@@ -1184,8 +1377,9 @@ function LinkBlock({ appointment, cold }: {
           {appointment.meetingLink}
         </a>
       ) : (
-        <div style={{ fontSize: 12.5, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 10px", marginBottom: 8 }}>
-          Görüş linki hələ əlavə edilməyib.
+        <div style={{ display: "flex", gap: 10, alignItems: "center", background: "#FEF3C7", border: "1px solid #FCE7A8", borderRadius: 11, padding: "12px 14px", marginBottom: 10 }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: "#92400E" }}>Görüş linki hələ əlavə edilməyib</span>
         </div>
       )}
 
@@ -1233,13 +1427,11 @@ function LinkBlock({ appointment, cold }: {
 
 /* ─── Mərkəz: mübahisə həlli bloku ─────────────────────────────────────────── */
 
-function ResolveDisputeBlock({ appointment, cold, guardAction, onDone }: {
+function ResolveDisputeBlock({ appointment, guardAction, onDone }: {
   appointment: AppointmentDetail;
-  cold: boolean;
   guardAction: (run: () => void) => void;
   onDone: (a: AppointmentDetail) => void;
 }) {
-  const { t } = useT();
   const [decision, setDecision] = useState<"COMPLETE" | "CANCEL">("COMPLETE");
   const [blameSide, setBlameSide] = useState<"PATIENT" | "PSYCHOLOGIST" | "NONE">("NONE");
   const [note, setNote] = useState("");
@@ -1257,8 +1449,7 @@ function ResolveDisputeBlock({ appointment, cold, guardAction, onDone }: {
   };
 
   return (
-    <div className={cold ? "op-det-card op-det-card--cold" : "op-det-card"}>
-      <div className="op-det-card__title">{t("staff.opDetStatusActions")} — Mübahisəni həll et</div>
+    <>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
         <button type="button" onClick={() => setDecision("COMPLETE")}
           style={{
@@ -1316,21 +1507,22 @@ function ResolveDisputeBlock({ appointment, cold, guardAction, onDone }: {
 
       <button onClick={() => guardAction(doSubmit)} disabled={saving}
         style={{
-          width: "100%", padding: "10px 18px", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700,
-          background: decision === "COMPLETE" ? "#10B981" : "#DC2626", color: "#fff",
+          width: "100%", padding: 12, borderRadius: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit",
+          background: decision === "COMPLETE" ? "#ECFDF5" : "#FEE2E2",
+          color: decision === "COMPLETE" ? "#047857" : "#991B1B",
+          border: decision === "COMPLETE" ? "1.5px solid #A7D8BC" : "1.5px solid #F3D6D6",
           cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1,
         }}>
         {saving ? "Göndərilir…" : decision === "COMPLETE" ? "Tamamlanmış say" : "Ləğv et"}
       </button>
-    </div>
+    </>
   );
 }
 
-/* ─── Mərkəz: no-show işarələmə bloku (Option B) ────────────────────────────── */
+/* ─── No-show işarələmə bloku (Option B) — modal formu ──────────────────────── */
 
-function NoShowBlock({ appointment, cold, guardAction, onDone }: {
+function NoShowBlock({ appointment, guardAction, onDone }: {
   appointment: AppointmentDetail;
-  cold: boolean;
   guardAction: (run: () => void) => void;
   onDone: (a: AppointmentDetail) => void;
 }) {
@@ -1349,8 +1541,7 @@ function NoShowBlock({ appointment, cold, guardAction, onDone }: {
   };
 
   return (
-    <div className={cold ? "op-det-card op-det-card--cold" : "op-det-card"}>
-      <div className="op-det-card__title">Seans baş tutmadı — no-show işarələ</div>
+    <>
       <p style={{ fontSize: 12, color: "#52718F", margin: "0 0 10px" }}>
         Seans avtomatik tamamlandı, amma əslində baş tutmayıbsa, buradan no-show kimi işarələyin —
         seçilən tərəfin no-show sayğacı artacaq.
@@ -1380,24 +1571,22 @@ function NoShowBlock({ appointment, cold, guardAction, onDone }: {
       {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
       <button onClick={() => guardAction(doSubmit)} disabled={saving}
         style={{
-          width: "100%", padding: "10px 18px", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700,
-          background: "#DC2626", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1,
+          width: "100%", padding: 12, borderRadius: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit",
+          background: "#FEE2E2", color: "#991B1B", border: "1.5px solid #F3D6D6", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1,
         }}>
         {saving ? "Göndərilir…" : "No-show işarələ"}
       </button>
-    </div>
+    </>
   );
 }
 
-/* ─── Mərkəz: ləğv tələbi bloku (approve/reject) ───────────────────────────── */
+/* ─── Ləğv tələbi bloku (approve/reject) — modal formu ──────────────────────── */
 
-function CancelRequestBlock({ appointment, cold, guardAction, onDone }: {
+function CancelRequestBlock({ appointment, guardAction, onDone }: {
   appointment: AppointmentDetail;
-  cold: boolean;
   guardAction: (run: () => void) => void;
   onDone: (a: AppointmentDetail, approved: boolean) => void;
 }) {
-  const { t } = useT();
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -1414,35 +1603,120 @@ function CancelRequestBlock({ appointment, cold, guardAction, onDone }: {
   };
 
   return (
-    <div className={cold ? "op-det-card op-det-card--cold" : "op-det-card"}>
-      <div className="op-det-card__title">{t("staff.opDetStatusActions")} — Ləğv tələbi</div>
-      <textarea rows={2} value={note} onChange={e => setNote(e.target.value)}
+    <>
+      <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
         placeholder="Pasiyentə qeyd (təsdiqdə məcburi deyil, rəddə tövsiyə olunur)"
-        style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, fontFamily: "inherit", marginBottom: 10, boxSizing: "border-box" }} />
+        style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box" }} />
       {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <button onClick={() => guardAction(run(true))} disabled={saving}
-          style={{ padding: "10px 14px", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, background: "#DC2626", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+          style={{ padding: 12, border: "1.5px solid #F3D6D6", borderRadius: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit", background: "#FEE2E2", color: "#991B1B", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
           Ləğvi təsdiqlə
         </button>
         <button onClick={() => guardAction(run(false))} disabled={saving}
-          style={{ padding: "10px 14px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 13, fontWeight: 700, background: "#fff", color: "#1A2535", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+          style={{ padding: 12, border: "1px solid #D6E2F7", borderRadius: 11, fontSize: 14, fontWeight: 600, fontFamily: "inherit", background: "#fff", color: "var(--oxford)", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
           Tələbi rədd et
         </button>
       </div>
-    </div>
+    </>
+  );
+}
+
+/* ─── Mərkəz: digər əməliyyatlar (kart şəbəkəsi + fokuslu modal) ──────────── */
+
+type ActionKey = "dispute" | "cancelreq" | "noshow" | "cancel";
+
+function OtherActions({ appointment, guardAction, showResolve, showCancelReq, showNoShow, showCancel, onResolveDone, onCancelReqDone, onNoShowDone, onCancelDone }: {
+  appointment: AppointmentDetail;
+  guardAction: (run: () => void) => void;
+  showResolve: boolean;
+  showCancelReq: boolean;
+  showNoShow: boolean;
+  showCancel: boolean;
+  onResolveDone: (a: AppointmentDetail) => void;
+  onCancelReqDone: (a: AppointmentDetail, approved: boolean) => void;
+  onNoShowDone: (a: AppointmentDetail) => void;
+  onCancelDone: (a: AppointmentDetail) => void;
+}) {
+  const [open, setOpen] = useState<ActionKey | null>(null);
+
+  const META: Record<ActionKey, {
+    cardTitle: string; cardSub: string; tileBg: string; tileColor: string; hoverBorder: string; hoverBg: string; icon: React.ReactNode;
+    title: string; sub: string; badge: { label: string; bg: string; color: string };
+  }> = {
+    dispute: {
+      cardTitle: "Mübahisəni həll et", cardSub: "Tamamlandı / Ləğv", tileBg: "#FEE2E2", tileColor: "#991B1B", hoverBorder: "#991B1B", hoverBg: "#FFF8F8",
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.5 12h9M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" /></svg>,
+      title: "Mübahisəni həll et", sub: "Seans baş tutdumu? Nəticəni qeyd edin.", badge: { label: "Mübahisəli", bg: "#FEE2E2", color: "#991B1B" },
+    },
+    cancelreq: {
+      cardTitle: "Ləğv tələbi", cardSub: "Təsdiqlə / Rədd et", tileBg: "#FEF3C7", tileColor: "#92400E", hoverBorder: "#B45309", hoverBg: "#FFFBEB",
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.7 9.7 0 0 0-6.3 2.6L3 8" /><path d="M3 3v5h5" /></svg>,
+      title: "Ləğv tələbi", sub: "Pasiyentin ləğv tələbini emal edin.", badge: { label: "Gözlənilir", bg: "#FEF3C7", color: "#92400E" },
+    },
+    noshow: {
+      cardTitle: "No-show işarələ", cardSub: "Pasient / Psixoloq", tileBg: "#FEE2E2", tileColor: "#991B1B", hoverBorder: "#991B1B", hoverBg: "#FFF8F8",
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /><circle cx="10" cy="7" r="4" /><path d="M23 9l-4 4M19 9l4 4" /></svg>,
+      title: "No-show işarələ", sub: "Seansa kim gəlmədi?", badge: { label: "No-show", bg: "#FEE2E2", color: "#991B1B" },
+    },
+    cancel: {
+      cardTitle: "Müraciəti ləğv et", cardSub: "Səbəb + qeyd", tileBg: "#FEE2E2", tileColor: "#991B1B", hoverBorder: "#991B1B", hoverBg: "#FFF8F8",
+      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M15 9l-6 6M9 9l6 6" /></svg>,
+      title: "Müraciəti ləğv et", sub: "Bu müraciəti bağlayın.", badge: { label: "Ləğv", bg: "#FEE2E2", color: "#991B1B" },
+    },
+  };
+
+  const keys: ActionKey[] = [];
+  if (showResolve) keys.push("dispute");
+  if (showCancelReq) keys.push("cancelreq");
+  if (showNoShow) keys.push("noshow");
+  if (showCancel) keys.push("cancel");
+  if (keys.length === 0) return null;
+
+  return (
+    <>
+      <div className="op-det-card">
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 5 }}>Digər əməliyyatlar</div>
+        <div style={{ fontSize: 12, color: "#8AAABF", fontWeight: 500, marginBottom: 14 }}>Statusa uyğun əməliyyatı seçin — fokuslu pəncərədə açılacaq.</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+          {keys.map(k => {
+            const m = META[k];
+            return (
+              <button key={k} type="button" onClick={() => setOpen(k)}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = m.hoverBorder; e.currentTarget.style.background = m.hoverBg; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "#EDF1F8"; e.currentTarget.style.background = "#fff"; }}
+                style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", background: "#fff", border: "1px solid #EDF1F8", borderRadius: 11, padding: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                <span style={{ width: 32, height: 32, borderRadius: 9, background: m.tileBg, color: m.tileColor, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{m.icon}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>{m.cardTitle}</div>
+                  <div style={{ fontSize: 11, color: "#8AAABF", fontWeight: 600 }}>{m.cardSub}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {open && (
+        <ModalShell title={META[open].title} sub={META[open].sub} badge={META[open].badge} onClose={() => setOpen(null)}>
+          {open === "dispute" && <ResolveDisputeBlock appointment={appointment} guardAction={guardAction} onDone={(u) => { setOpen(null); onResolveDone(u); }} />}
+          {open === "cancelreq" && <CancelRequestBlock appointment={appointment} guardAction={guardAction} onDone={(u, a) => { setOpen(null); onCancelReqDone(u, a); }} />}
+          {open === "noshow" && <NoShowBlock appointment={appointment} guardAction={guardAction} onDone={(u) => { setOpen(null); onNoShowDone(u); }} />}
+          {open === "cancel" && <CancelBlock appointment={appointment} guardAction={guardAction} onClose={() => setOpen(null)} onDone={(u) => { setOpen(null); onCancelDone(u); }} />}
+        </ModalShell>
+      )}
+    </>
   );
 }
 
 /* ─── Mərkəz: operator ləğvi bloku (köhnə CancelModal axını) ───────────────── */
 
-function CancelBlock({ appointment, cold, guardAction, onDone }: {
+function CancelBlock({ appointment, guardAction, onClose, onDone }: {
   appointment: AppointmentDetail;
-  cold: boolean;
   guardAction: (run: () => void) => void;
+  onClose: () => void;
   onDone: (a: AppointmentDetail) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const reasons = useMemo(() => CANCEL_REASONS.filter(r => r.role === "OPERATOR"), []);
   const [reasonCode, setReasonCode] = useState(reasons[0]?.code ?? "OPERATOR_OTHER");
   const [note, setNote] = useState("");
@@ -1458,20 +1732,8 @@ function CancelBlock({ appointment, cold, guardAction, onDone }: {
     finally { setSaving(false); }
   };
 
-  if (!open) {
-    return (
-      <div className={cold ? "op-det-card op-det-card--cold" : "op-det-card"} style={{ padding: 12 }}>
-        <button onClick={() => setOpen(true)}
-          style={{ width: "100%", padding: "8px 14px", border: "1px solid #FECACA", borderRadius: 10, fontSize: 12.5, fontWeight: 600, background: "#fff", color: "#991B1B", cursor: "pointer" }}>
-          Müraciəti ləğv et…
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className={cold ? "op-det-card op-det-card--cold" : "op-det-card"}>
-      <div className="op-det-card__title" style={{ color: "#991B1B" }}>Müraciəti ləğv et</div>
+    <>
       <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>Səbəb</label>
       <select value={reasonCode} onChange={e => setReasonCode(e.target.value)}
         style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, marginBottom: 10 }}>
@@ -1482,24 +1744,35 @@ function CancelBlock({ appointment, cold, guardAction, onDone }: {
         style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, fontFamily: "inherit", marginBottom: 10, boxSizing: "border-box" }} />
       {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
       <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={() => setOpen(false)}
+        <button onClick={onClose}
           style={{ flex: 1, padding: "9px 14px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 12.5, fontWeight: 600, background: "#fff", cursor: "pointer" }}>
           Bağla
         </button>
         <button onClick={() => guardAction(doSubmit)} disabled={saving}
-          style={{ flex: 1, padding: "9px 14px", border: "none", borderRadius: 10, fontSize: 12.5, fontWeight: 700, background: "#DC2626", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+          style={{ flex: 1, padding: 11, border: "1.5px solid #F3D6D6", borderRadius: 10, fontSize: 13, fontWeight: 700, fontFamily: "inherit", background: "#FEE2E2", color: "#991B1B", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
           {saving ? "Göndərilir…" : "Ləğv et"}
         </button>
       </div>
-    </div>
+    </>
   );
 }
 
 /* ─── Sağ zona: fəaliyyət lenti + composer ─────────────────────────────────── */
 
-const FEED_ICON: Record<OperatorActivityItem["kind"], string> = {
-  CREATED: "✦", AUDIT: "⚙", NOTE: "✎", CONTACT: "☏",
-};
+function FeedIcon({ kind }: { kind: OperatorActivityItem["kind"] }) {
+  const map: Record<OperatorActivityItem["kind"], { bg: string; color: string; path: React.ReactNode }> = {
+    CREATED: { bg: "#E4ECFA", color: "#1051B7", path: <><circle cx="12" cy="12" r="10" /><path d="M12 8v8M8 12h8" /></> },
+    CONTACT: { bg: "#ECFDF5", color: "#047857", path: <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /> },
+    NOTE: { bg: "#F0F4FA", color: "#5C6B85", path: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /> },
+    AUDIT: { bg: "#D1FAE5", color: "#065F46", path: <path d="M20 6L9 17l-5-5" /> },
+  };
+  const m = map[kind] ?? map.NOTE;
+  return (
+    <span style={{ width: 28, height: 28, borderRadius: "50%", background: m.bg, color: m.color, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none", zIndex: 1 }}>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{m.path}</svg>
+    </span>
+  );
+}
 
 function ActivityFeed({ items, t, composerRef, onAdd, appointmentId }: {
   items: OperatorActivityItem[];
@@ -1538,36 +1811,27 @@ function ActivityFeed({ items, t, composerRef, onAdd, appointmentId }: {
   };
 
   return (
-    <div className="op-det-card" style={{ display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 180px)", position: "sticky", top: 76 }}>
-      <div className="op-det-card__title">{t("staff.opDetZoneFeed")}</div>
+    <div className="op-det-card" style={{ display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 110px)", position: "sticky", top: 76, padding: 0, minWidth: 0 }}>
+      <div className="op-det-card__title" style={{ padding: "17px 17px 4px", margin: 0 }}>{t("staff.opDetZoneFeed")}</div>
 
-      <div style={{ flex: 1, overflow: "auto", display: "grid", gap: 0, alignContent: "start" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "14px 17px" }}>
         {items.length === 0 ? (
-          <div style={{ fontSize: 12, color: "#8AAABF" }}>{t("staff.opDetFeedEmpty")}</div>
+          <div style={{ fontSize: 12.5, color: "#8AAABF" }}>{t("staff.opDetFeedEmpty")}</div>
         ) : items.map((it, i) => (
-          <div key={i} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: i < items.length - 1 ? "1px solid #F1F5F9" : "none" }}>
-            <div style={{ width: 26, height: 26, borderRadius: 999, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, background: it.kind === "CONTACT" ? "#EEF2FF" : it.kind === "NOTE" ? "#FEF9C3" : "#F1F5F9" }}>
-              {FEED_ICON[it.kind] ?? "•"}
-            </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontSize: 12.5, color: "#1A2535", lineHeight: 1.45 }}>
-                {it.kind === "CREATED" && <strong>{t("staff.opDetCreatedEvent")}</strong>}
-                {it.kind === "CONTACT" && (
-                  <>
-                    <strong>{CHANNEL_LABEL[it.channel ?? ""] ?? it.channel}</strong>
-                    {" · "}{OUTCOME_LABEL[it.outcome ?? ""] ?? it.outcome}
-                    {it.text && <div style={{ color: "#52718F", marginTop: 2 }}>{it.text}</div>}
-                  </>
-                )}
-                {it.kind === "NOTE" && <div style={{ whiteSpace: "pre-wrap" }}>{it.text}</div>}
-                {it.kind === "AUDIT" && (
-                  <>
-                    <strong>{AUDIT_LABEL[it.action ?? ""] ?? it.action}</strong>
-                    {it.text && <div style={{ color: "#52718F", marginTop: 2 }}>{it.text}</div>}
-                  </>
-                )}
+          <div key={i} style={{ display: "flex", gap: 11, paddingBottom: 16, position: "relative" }}>
+            {i < items.length - 1 && <span style={{ position: "absolute", left: 13, top: 28, bottom: 0, width: 2, background: "#F0F4FA" }} />}
+            <FeedIcon kind={it.kind} />
+            <div style={{ flex: 1, minWidth: 0, paddingTop: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)", lineHeight: 1.4 }}>
+                {it.kind === "CREATED" && t("staff.opDetCreatedEvent")}
+                {it.kind === "CONTACT" && <>{CHANNEL_LABEL[it.channel ?? ""] ?? it.channel} · {OUTCOME_LABEL[it.outcome ?? ""] ?? it.outcome}</>}
+                {it.kind === "NOTE" && "Qeyd"}
+                {it.kind === "AUDIT" && (AUDIT_LABEL[it.action ?? ""] ?? it.action)}
               </div>
-              <div style={{ fontSize: 10.5, color: "#8AAABF", marginTop: 2 }}>
+              {it.text && (
+                <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 8, padding: "7px 10px", marginTop: 5, lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word" }}>{it.text}</div>
+              )}
+              <div style={{ fontSize: 11.5, color: "#9DB0CC", fontWeight: 600, marginTop: 4 }}>
                 {it.actorName ? `${it.actorName} · ` : ""}{fmtDateTime(it.createdAt)}
               </div>
             </div>
@@ -1577,40 +1841,50 @@ function ActivityFeed({ items, t, composerRef, onAdd, appointmentId }: {
       </div>
 
       {/* Composer */}
-      <div style={{ borderTop: "1px solid #EFF2F7", paddingTop: 10, marginTop: 10 }}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+      <div style={{ borderTop: "1px solid #F0F4FA", padding: "14px 17px" }}>
+        <div style={{ display: "flex", gap: 6, background: "#F0F4FA", borderRadius: 9, padding: 3, marginBottom: 11 }}>
           <button onClick={() => setMode("note")}
-            style={{ flex: 1, padding: "5px 8px", borderRadius: 8, fontSize: 11.5, fontWeight: 600, cursor: "pointer", border: mode === "note" ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: mode === "note" ? "var(--brand-50)" : "#fff", color: mode === "note" ? "var(--brand-700)" : "#52718F" }}>
+            style={{ flex: 1, border: "none", borderRadius: 7, padding: 7, fontSize: 12.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", background: mode === "note" ? "#fff" : "transparent", color: mode === "note" ? "var(--brand-700)" : "var(--oxford-60)", boxShadow: mode === "note" ? "0 1px 3px rgba(8,47,109,.12)" : "none" }}>
             {t("staff.opDetComposerNote")}
           </button>
           <button onClick={() => setMode("contact")}
-            style={{ flex: 1, padding: "5px 8px", borderRadius: 8, fontSize: 11.5, fontWeight: 600, cursor: "pointer", border: mode === "contact" ? "2px solid var(--brand)" : "1px solid #E5E7EB", background: mode === "contact" ? "var(--brand-50)" : "#fff", color: mode === "contact" ? "var(--brand-700)" : "#52718F" }}>
+            style={{ flex: 1, border: "none", borderRadius: 7, padding: 7, fontSize: 12.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", background: mode === "contact" ? "#fff" : "transparent", color: mode === "contact" ? "var(--brand-700)" : "var(--oxford-60)", boxShadow: mode === "contact" ? "0 1px 3px rgba(8,47,109,.12)" : "none" }}>
             {t("staff.opDetComposerContact")}
           </button>
         </div>
 
         {mode === "contact" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
-            <select value={channel} onChange={e => setChannel(e.target.value as typeof channel)}
-              style={{ padding: 6, fontSize: 11.5, borderRadius: 8, border: "1px solid #E5E7EB" }}>
-              {(["CALL", "WHATSAPP", "SMS", "EMAIL", "OTHER"] as const).map(c => <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>)}
-            </select>
-            <select value={outcome} onChange={e => setOutcome(e.target.value as typeof outcome)}
-              style={{ padding: 6, fontSize: 11.5, borderRadius: 8, border: "1px solid #E5E7EB" }}>
-              {(["ANSWERED", "NO_ANSWER", "BUSY", "REFUSED", "RESCHEDULED", "OTHER"] as const).map(o => <option key={o} value={o}>{OUTCOME_LABEL[o]}</option>)}
-            </select>
+          <div style={{ display: "flex", gap: 8, marginBottom: 9 }}>
+            <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
+              <select value={channel} onChange={e => setChannel(e.target.value as typeof channel)}
+                style={{ width: "100%", appearance: "none", WebkitAppearance: "none", background: "#fff", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 28px 9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--oxford)", fontFamily: "inherit", cursor: "pointer" }}>
+                {(["CALL", "WHATSAPP", "SMS", "EMAIL", "OTHER"] as const).map(c => <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>)}
+              </select>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}><path d="M6 9l6 6 6-6" /></svg>
+            </div>
+            <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
+              <select value={outcome} onChange={e => setOutcome(e.target.value as typeof outcome)}
+                style={{ width: "100%", appearance: "none", WebkitAppearance: "none", background: "#fff", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 28px 9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--oxford)", fontFamily: "inherit", cursor: "pointer" }}>
+                {(["ANSWERED", "NO_ANSWER", "BUSY", "REFUSED", "RESCHEDULED", "OTHER"] as const).map(o => <option key={o} value={o}>{OUTCOME_LABEL[o]}</option>)}
+              </select>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}><path d="M6 9l6 6 6-6" /></svg>
+            </div>
           </div>
         )}
 
         <textarea ref={composerRef} rows={2} value={text} onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
-          placeholder={mode === "note" ? "Qeyd yaz… (N)" : "Söhbətin nəticəsi (opsional)"}
-          style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, fontFamily: "inherit", marginBottom: 8, boxSizing: "border-box", resize: "vertical" }} />
+          placeholder={mode === "note" ? "Qeyd yazın…" : "Əlaqə nəticəsi haqqında qeyd…"}
+          style={{ width: "100%", border: "1px solid #D6E2F7", background: "#fff", borderRadius: 9, padding: 10, fontSize: 13, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", resize: "vertical", lineHeight: 1.5, marginBottom: 9, boxSizing: "border-box" }} />
 
-        <button onClick={submit} disabled={saving || (mode === "note" && !text.trim())}
-          style={{ width: "100%", padding: "8px 12px", border: "none", borderRadius: 10, fontSize: 12.5, fontWeight: 700, background: "#1A2535", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving || (mode === "note" && !text.trim()) ? 0.6 : 1 }}>
-          {saving ? "Əlavə edilir…" : t("staff.opDetComposerSend")}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, fontWeight: 600, color: "#8AAABF" }}>⌘+Enter</span>
+          <button onClick={submit} disabled={saving || (mode === "note" && !text.trim())}
+            style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--brand-700)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 16px", fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "wait" : "pointer", opacity: saving || (mode === "note" && !text.trim()) ? 0.6 : 1 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            {saving ? "Əlavə edilir…" : t("staff.opDetComposerSend")}
+          </button>
+        </div>
       </div>
     </div>
   );

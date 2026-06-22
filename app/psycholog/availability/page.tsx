@@ -186,10 +186,10 @@ export default function PsychologistAvailabilityPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Header */}
       <div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--oxford)", margin: 0 }}>
+        <h1 style={{ fontSize: 27, fontWeight: 800, letterSpacing: "-.02em", color: "var(--oxford)", margin: "0 0 6px" }}>
           {t("staff.psyAvailTitle")}
         </h1>
-        <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4, marginBottom: 0 }}>
+        <p style={{ fontSize: 15, color: "var(--oxford-60)", fontWeight: 500, margin: 0 }}>
           Həftəlik iş vaxtları, tarix istisnaları və məzuniyyət — bir səhifədə.
         </p>
       </div>
@@ -202,7 +202,7 @@ export default function PsychologistAvailabilityPage() {
       )}
 
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 13 }}>
         <StatCell label="Aktiv günlər"      value={`${stats.activeDays}/7`}              tone="brand" />
         <StatCell label="Həftəlik iş saatı" value={fmtHours(stats.totalMinutes)}         tone="good"  />
         <StatCell label="Seans müddəti"     value={`${savedMinutes} dəq`}                tone="muted" />
@@ -233,7 +233,7 @@ export default function PsychologistAvailabilityPage() {
         </div>
 
         <div className="psy-week-grid" style={{
-          display: "grid", gridTemplateColumns: "repeat(7, minmax(120px, 1fr))", gap: 8,
+          display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 11,
         }}>
           {WEEKDAYS_AZ.map(d => (
             <DayColumn key={d.iso}
@@ -248,7 +248,7 @@ export default function PsychologistAvailabilityPage() {
       </section>
 
       {/* Overrides + Vacation side-by-side */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }} className="psy-avail-bottom">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }} className="psy-avail-bottom">
         <OverridesCard
           overrides={overrides}
           onAdd={() => setOverrideModal(true)}
@@ -284,8 +284,8 @@ export default function PsychologistAvailabilityPage() {
       )}
 
       <style>{`
-        @media (max-width: 900px) {
-          .psy-week-grid { grid-template-columns: repeat(2, minmax(140px, 1fr)) !important; }
+        @media (max-width: 860px) {
+          .psy-week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           .psy-avail-bottom { grid-template-columns: 1fr !important; }
         }
       `}</style>
@@ -302,43 +302,48 @@ function SessionMinutesCard({ sessionMinutes, savedMinutes, savingMinutes, setSe
   const dirty = sessionMinutes !== savedMinutes;
   return (
     <section style={cardStyle}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-        <div style={{ minWidth: 260, flex: 1 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+        <div style={{ minWidth: 240, flex: 1 }}>
           <h2 style={cardTitleStyle}>Bir seansın müddəti</h2>
-          <p style={cardSubStyle}>
+          <p style={{ ...cardSubStyle, maxWidth: 430 }}>
             Açıq aralıqlar bu müddətə görə slotlara bölünür. Məsələn 09:00–12:00 + 50 dəq → 09:00, 09:50, 10:40 slotları.
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", gap: 4 }}>
-            {[30, 45, 50, 60, 90].map(m => (
-              <button key={m} type="button" onClick={() => setSessionMinutes(m)}
-                style={{
-                  padding: "7px 12px", fontSize: 12.5, fontWeight: 700, borderRadius: 8,
-                  border: sessionMinutes === m ? "1.5px solid var(--brand)" : "1px solid var(--oxford-10)",
-                  background: sessionMinutes === m ? "var(--brand-50)" : "#fff",
-                  color: sessionMinutes === m ? "var(--brand-700)" : "var(--oxford-60)",
-                  cursor: "pointer", transition: "all 0.12s",
-                }}>{m}</button>
-            ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 7 }}>
+            {[30, 45, 50, 60, 90].map(m => {
+              const on = sessionMinutes === m;
+              return (
+                <button key={m} type="button" onClick={() => setSessionMinutes(m)}
+                  style={{
+                    padding: "9px 13px", fontSize: 14, fontWeight: 700, borderRadius: 10,
+                    border: `1.5px solid ${on ? "var(--brand)" : "#D6E2F7"}`,
+                    background: on ? "var(--brand-50)" : "#fff",
+                    color: on ? "var(--brand-700)" : "var(--oxford)",
+                    boxShadow: on ? "0 0 0 3px rgba(16,81,183,.14)" : "none",
+                    cursor: "pointer", fontFamily: "inherit",
+                  }}>{m}</button>
+              );
+            })}
           </div>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 4,
-            border: "1px solid var(--oxford-10)", borderRadius: 8, padding: "2px 8px",
+            border: "1px solid #D6E2F7", borderRadius: 10, padding: "6px 10px",
           }}>
             <input type="number" min={15} max={240} step={5} value={sessionMinutes}
               onChange={e => setSessionMinutes(Number(e.target.value) || 0)}
-              style={{ width: 50, padding: 6, border: "none", outline: "none", fontSize: 13, textAlign: "center" }} />
-            <span style={{ fontSize: 11, color: "var(--oxford-60)" }}>dəq</span>
+              style={{ width: 46, padding: 0, border: "none", outline: "none", fontSize: 14, fontWeight: 700, textAlign: "right", color: "var(--oxford)", fontFamily: "inherit" }} />
+            <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>dəq</span>
           </div>
           <button onClick={save} disabled={savingMinutes || !dirty}
             style={{
-              padding: "8px 14px", borderRadius: 8, border: "none",
-              background: dirty ? "var(--brand)" : "var(--oxford-10)",
-              color: dirty ? "#fff" : "var(--oxford-60)",
-              fontSize: 12.5, fontWeight: 700,
+              padding: "10px 16px", borderRadius: 10,
+              border: dirty ? "none" : "1px solid #E5E7EB",
+              background: dirty ? "var(--brand)" : "#F3F4F6",
+              color: dirty ? "#fff" : "#9CA3AF",
+              fontSize: 14, fontWeight: 600,
               cursor: savingMinutes || !dirty ? "default" : "pointer",
-              transition: "background 0.15s",
+              fontFamily: "inherit",
             }}>
             {savingMinutes ? "Saxlanılır…" : dirty ? "Saxla" : "Saxlanılıb"}
           </button>
@@ -357,51 +362,40 @@ function DayColumn({ day, slots, onAdd, onDelete, onToggle }: {
   onDelete: (id: number) => void;
   onToggle: (s: TimeSlot) => void;
 }) {
-  const activeCount = slots.filter(s => s.active).length;
   const minutes = slots
     .filter(s => s.active)
     .reduce((sum, s) => sum + diffMinutes(trimSeconds(s.startTime), trimSeconds(s.endTime)), 0);
   const isWeekend = day.iso === 6 || day.iso === 7;
+  const empty = slots.length === 0;
 
   return (
     <div style={{
-      background: activeCount > 0 ? "#fff" : "var(--brand-50)",
-      border: `1px solid ${activeCount > 0 ? "var(--brand-100)" : "var(--oxford-10)"}`,
-      borderRadius: 12,
+      background: empty ? "#F7FAFE" : "#fff",
+      border: `1px solid ${empty ? "#E8EFF9" : "#EDF1F8"}`,
+      borderRadius: 12, padding: 12,
       display: "flex", flexDirection: "column",
-      minHeight: 180,
+      minHeight: 150,
     }}>
-      <div style={{
-        padding: "10px 10px 8px",
-        borderBottom: `1px solid ${activeCount > 0 ? "var(--brand-100)" : "var(--oxford-10)"}`,
-        display: "flex", flexDirection: "column", gap: 4,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 11 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: isWeekend ? "#A9B8CC" : "var(--oxford)" }}>{day.short}</span>
+        {/* Show the count only when 2+ slots — a single pill below already conveys "1". */}
+        {slots.length >= 2 && (
           <span style={{
-            fontSize: 12, fontWeight: 700,
-            color: isWeekend ? "var(--oxford-60)" : "var(--oxford)",
-          }}>{day.label}</span>
-          {/* Only show the count when it's interesting (2+ slots) — a "1"
-              badge is redundant when the single pill below already shows it. */}
-          {activeCount > 1 && (
-            <span style={{
-              padding: "1px 7px", borderRadius: 999,
-              background: "var(--brand)", color: "#fff",
-              fontSize: 10, fontWeight: 700,
-            }}>{activeCount}</span>
-          )}
-        </div>
-        <span style={{ fontSize: 10.5, color: "var(--oxford-60)" }}>
-          {activeCount === 0 ? "Boş" : fmtHours(minutes)}
-        </span>
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            minWidth: 18, height: 18, padding: "0 5px", borderRadius: 999,
+            background: "var(--brand-100)", color: "var(--brand-700)",
+            fontSize: 10.5, fontWeight: 700,
+          }}>{slots.length}</span>
+        )}
       </div>
 
-      <div style={{ flex: 1, padding: 8, display: "flex", flexDirection: "column", gap: 5 }}>
-        {slots.length === 0 ? (
-          <div style={{
-            flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 10.5, color: "var(--oxford-60)", padding: 8, textAlign: "center",
-          }}>
+      <div style={{ fontSize: 10.5, fontWeight: 600, color: minutes > 0 ? "var(--oxford-60)" : "#A9B8CC", marginBottom: 10 }}>
+        {minutes > 0 ? fmtHours(minutes) : "Boş"}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 7, flex: 1 }}>
+        {empty ? (
+          <div style={{ fontSize: 11, color: "#A9B8CC", fontWeight: 500, textAlign: "center", padding: "14px 0" }}>
             Vaxt aralığı yoxdur
           </div>
         ) : (
@@ -413,15 +407,14 @@ function DayColumn({ day, slots, onAdd, onDelete, onToggle }: {
 
       <button onClick={onAdd}
         style={{
-          margin: 8, marginTop: 0,
-          padding: "7px 10px", borderRadius: 8,
-          border: "1px dashed var(--brand-200)", background: "transparent",
-          color: "var(--brand-700)", fontSize: 11, fontWeight: 600, cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-          transition: "background 0.1s",
+          marginTop: 9, padding: 7, borderRadius: 8,
+          border: "1.5px dashed #C7D3E6", background: "none",
+          color: "var(--oxford-60)", fontSize: 12, fontWeight: 600, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+          width: "100%", fontFamily: "inherit",
         }}
-        onMouseEnter={e => (e.currentTarget.style.background = "var(--brand-50)")}
-        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+        onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--brand)"; e.currentTarget.style.color = "var(--brand)"; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = "#C7D3E6"; e.currentTarget.style.color = "var(--oxford-60)"; }}>
         <IconPlus /> Vaxt
       </button>
     </div>
@@ -432,31 +425,28 @@ function SlotPill({ slot, onDelete, onToggle }: { slot: TimeSlot; onDelete: () =
   const start = trimSeconds(slot.startTime);
   const end = trimSeconds(slot.endTime);
   const minutes = diffMinutes(start, end);
+  const active = slot.active;
   return (
     <div style={{
-      padding: "6px 8px", borderRadius: 6,
-      background: slot.active ? "var(--brand-50)" : "var(--oxford-10)",
-      border: `1px solid ${slot.active ? "var(--brand-200)" : "var(--oxford-10)"}`,
-      opacity: slot.active ? 1 : 0.6,
-      display: "flex", flexDirection: "column", gap: 3,
+      padding: "8px 9px", borderRadius: 9,
+      background: active ? "var(--brand-50)" : "#F3F4F6",
+      border: `1px solid ${active ? "#D9E6FA" : "#E5E7EB"}`,
+      opacity: active ? 1 : 0.6,
     }}>
-      <div style={{
-        fontSize: 11.5, fontWeight: 700,
-        color: slot.active ? "var(--brand-700)" : "var(--oxford-60)",
-      }}>{start}–{end}</div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 10, color: "var(--oxford-60)" }}>{fmtHours(minutes)}</span>
-        <div style={{ display: "flex", gap: 2 }}>
-          <button onClick={onToggle} title={slot.active ? "Deaktiv et" : "Aktivləşdir"}
-            style={pillBtn(slot.active ? "var(--oxford-60)" : "var(--brand-700)")}>
-            {slot.active ? <IconEye /> : <IconEyeOff />}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, marginBottom: 3 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: active ? "var(--brand-700)" : "#9CA3AF" }}>{start}–{end}</span>
+        <div style={{ display: "flex", gap: 3, flex: "none" }}>
+          <button onClick={onToggle} title={active ? "Deaktiv et" : "Aktivləşdir"}
+            style={pillBtn(active ? "var(--brand)" : "#9CA3AF")}>
+            {active ? <IconEye /> : <IconEyeOff />}
           </button>
           <button onClick={onDelete} title="Sil"
-            style={pillBtn("#991B1B")}>
+            style={pillBtn("#C08A8A")}>
             <IconTrash />
           </button>
         </div>
       </div>
+      <span style={{ fontSize: 10.5, fontWeight: 600, color: active ? "var(--brand)" : "#9CA3AF" }}>{fmtHours(minutes)}</span>
     </div>
   );
 }
@@ -487,36 +477,36 @@ function OverridesCard({ overrides, onAdd, onDelete }: {
           body="Bayram günü, dəyişdirilmiş cədvəl və ya birdəfəlik əlavə saat üçün istisna əlavə edə bilərsiniz."
         />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
           {overrides.map(o => {
             const block = o.overrideType === "BLOCK";
             return (
               <div key={o.id} style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "10px 12px", borderRadius: 10,
+                display: "flex", alignItems: "flex-start", gap: 12,
+                padding: 13, borderRadius: 11,
                 background: block ? "#FEF2F2" : "#ECFDF5",
                 border: `1px solid ${block ? "#FECACA" : "#A7F3D0"}`,
-                borderLeft: `3px solid ${block ? "#DC2626" : "#10B981"}`,
+                borderLeft: `3px solid ${block ? "#991B1B" : "#065F46"}`,
               }}>
-                <span style={{
-                  padding: "2px 8px", borderRadius: 999, fontSize: 10.5, fontWeight: 700,
-                  background: block ? "#FEE2E2" : "#D1FAE5",
-                  color: block ? "#991B1B" : "#065F46",
-                  textTransform: "uppercase", letterSpacing: 0.3,
-                }}>
-                  {block ? "Bağlı" : "Əlavə vaxt"}
-                </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>
+                  <span style={{
+                    display: "inline-block", padding: "3px 8px", borderRadius: 999,
+                    fontSize: 10, fontWeight: 800, letterSpacing: ".06em", marginBottom: 7,
+                    background: block ? "#FEE2E2" : "#D1FAE5",
+                    color: block ? "#991B1B" : "#065F46",
+                  }}>
+                    {block ? "BAĞLI" : "ƏLAVƏ VAXT"}
+                  </span>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>
                     {fmtDate(o.overrideDate)}
                     {o.startTime && o.endTime && (
-                      <span style={{ fontWeight: 500, color: "var(--oxford-60)" }}>
+                      <span style={{ fontWeight: 600, color: "var(--oxford-60)" }}>
                         {` · ${trimSeconds(o.startTime)}–${trimSeconds(o.endTime)}`}
                       </span>
                     )}
                   </div>
                   {o.note && (
-                    <div style={{ fontSize: 11.5, color: "var(--oxford-60)", marginTop: 2 }}>{o.note}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 2 }}>{o.note}</div>
                   )}
                 </div>
                 <button onClick={() => onDelete(o.id)} style={smallDangerBtn}>Sil</button>
@@ -558,44 +548,41 @@ function VacationsCard({ vacations, onAdd, onCancel }: {
           body="İstirahət, konfrans və ya sağlamlıq səbəbi ilə bu modulu istifadə edə bilərsiniz."
         />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
           {vacations.map(v => {
             const isUpcoming = v.startDate > today;
             const isOngoing = v.startDate <= today && v.endDate >= today;
             const tone = isOngoing ? "ongoing" : isUpcoming ? "upcoming" : "past";
-            const toneStyle: Record<string, { bg: string; border: string; accent: string }> = {
-              ongoing:  { bg: "var(--brand-50)",  border: "var(--brand-200)", accent: "var(--brand-700)" },
-              upcoming: { bg: "#FFFBEB",          border: "#FDE68A",          accent: "#92400E" },
-              past:     { bg: "var(--oxford-10)", border: "var(--oxford-10)", accent: "var(--oxford-60)" },
+            const tints: Record<string, { bg: string; border: string; tileBg: string; tileFg: string }> = {
+              ongoing:  { bg: "#F2F6FD", border: "#D9E6FA", tileBg: "var(--brand-100)", tileFg: "var(--brand)" },
+              upcoming: { bg: "#FFFBEB", border: "#FDE68A", tileBg: "#FEF3C7",          tileFg: "#92400E" },
+              past:     { bg: "#F7FAFE", border: "#E8EFF9", tileBg: "#F3F4F6",          tileFg: "#9CA3AF" },
             };
-            const ts = toneStyle[tone];
+            const ts = tints[tone];
             return (
               <div key={v.id} style={{
-                padding: "12px 14px", borderRadius: 10,
-                background: ts.bg, border: `1px solid ${ts.border}`,
-                borderLeft: `3px solid ${ts.accent}`,
+                background: ts.bg, border: `1px solid ${ts.border}`, borderRadius: 11, padding: 14,
                 display: "flex", alignItems: "flex-start", gap: 12,
               }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-                  background: "#fff", border: `1px solid ${ts.border}`,
-                  color: ts.accent,
-                  display: "flex", alignItems: "center", justifyContent: "center",
+                <span style={{
+                  width: 38, height: 38, borderRadius: 11, flex: "none",
+                  background: ts.tileBg, color: ts.tileFg,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
                 }}>
                   <IconPalm />
-                </div>
+                </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
-                    {isOngoing && <Pill bg="var(--brand)" fg="#fff">Davam edir</Pill>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
+                    {isOngoing && <Pill bg="var(--brand-100)" fg="var(--brand-700)">Davam edir</Pill>}
                     {isUpcoming && <Pill bg="#FEF3C7" fg="#92400E">Yaxınlaşan</Pill>}
-                  </div>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>
-                    {fmtDate(v.startDate)} → {fmtDate(v.endDate)}
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>
+                      {fmtDate(v.startDate)} → {fmtDate(v.endDate)}
+                    </span>
                   </div>
                   {v.reason && (
-                    <div style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 3 }}>{v.reason}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>{v.reason}</div>
                   )}
-                  <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 7, marginTop: 9, flexWrap: "wrap" }}>
                     {v.affectedAppointments > 0 ? (
                       <Pill bg="#FEE2E2" fg="#991B1B">
                         {v.affectedAppointments} randevu təsirlənib
@@ -604,7 +591,7 @@ function VacationsCard({ vacations, onAdd, onCancel }: {
                       <Pill bg="#D1FAE5" fg="#065F46">münaqişə yoxdur</Pill>
                     )}
                     {v.notifyPatients && (
-                      <Pill bg="var(--brand-50)" fg="var(--brand-700)">pasiyentlərə bildiriş</Pill>
+                      <Pill bg="var(--brand-100)" fg="var(--brand-700)">pasiyentlərə bildiriş</Pill>
                     )}
                   </div>
                 </div>
@@ -671,10 +658,11 @@ function AddSlotModal({ initialDay, onClose, onCreated }: {
             return (
               <button key={d.iso} onClick={() => toggleDay(d.iso)}
                 style={{
-                  padding: "10px 4px", borderRadius: 8,
-                  border: active ? "1.5px solid var(--brand)" : "1px solid var(--oxford-10)",
+                  padding: "10px 4px", borderRadius: 9,
+                  border: active ? "1.5px solid var(--brand)" : "1px solid #D6E2F7",
                   background: active ? "var(--brand-50)" : "#fff",
                   color: active ? "var(--brand-700)" : "var(--oxford-60)",
+                  boxShadow: active ? "0 0 0 3px rgba(16,81,183,.14)" : "none",
                   fontSize: 11, fontWeight: 700, cursor: "pointer",
                   display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
                 }}>
@@ -1101,21 +1089,22 @@ function StatCell({ label, value, tone }: {
   value: number | string;
   tone: "brand" | "good" | "warn" | "muted";
 }) {
-  const palette: Record<typeof tone, { color: string }> = {
-    brand: { color: "var(--brand-700)" },
-    good:  { color: "#065F46" },
-    warn:  { color: "#92400E" },
-    muted: { color: "var(--oxford-60)" },
+  const palette: Record<typeof tone, { accent: string; bg: string; border: string; label: string; num: string }> = {
+    brand: { accent: "var(--brand)", bg: "#fff",     border: "#EDF1F8", label: "var(--oxford-60)", num: "var(--oxford)" },
+    good:  { accent: "#065F46",      bg: "#fff",     border: "#EDF1F8", label: "var(--oxford-60)", num: "var(--oxford)" },
+    warn:  { accent: "#B45309",      bg: "#FFFBEB",  border: "#FDE68A", label: "#92400E",          num: "#92400E" },
+    muted: { accent: "#9CA3AF",      bg: "#fff",     border: "#EDF1F8", label: "var(--oxford-60)", num: "var(--oxford)" },
   };
   const p = palette[tone];
   return (
     <div style={{
-      background: "#fff", borderRadius: 10, padding: "12px 16px",
-      border: "1px solid var(--oxford-10)",
-      borderLeft: `3px solid ${p.color}`,
+      background: p.bg, borderRadius: 14, padding: "15px 17px",
+      boxShadow: "0 2px 12px rgba(0,0,0,.06)",
+      border: `1px solid ${p.border}`,
+      borderLeft: `3px solid ${p.accent}`,
     }}>
-      <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 800, color: "var(--oxford)", marginTop: 2 }}>{value}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: p.label, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 5 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: p.num }}>{value}</div>
     </div>
   );
 }
@@ -1133,33 +1122,34 @@ function Pill({ children, bg, fg }: { children: React.ReactNode; bg: string; fg:
 /* ─── Styles + icons ──────────────────────────────────────────────────────── */
 
 const cardStyle: React.CSSProperties = {
-  background: "#fff", borderRadius: 14, padding: 18,
-  boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
-  border: "1px solid var(--oxford-10)",
+  background: "#fff", borderRadius: 14, padding: 20,
+  boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+  border: "1px solid #EDF1F8",
 };
 const cardHeadStyle: React.CSSProperties = {
   display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-  gap: 12, marginBottom: 14, flexWrap: "wrap",
+  gap: 12, marginBottom: 15, flexWrap: "wrap",
 };
 const cardTitleStyle: React.CSSProperties = {
-  fontSize: 15, fontWeight: 700, color: "var(--oxford)", margin: 0,
+  fontSize: 15.5, fontWeight: 700, color: "var(--oxford)", margin: 0,
 };
 const cardSubStyle: React.CSSProperties = {
-  fontSize: 12, color: "var(--oxford-60)", marginTop: 3, marginBottom: 0, lineHeight: 1.55,
+  fontSize: 13, color: "var(--oxford-60)", marginTop: 4, marginBottom: 0, lineHeight: 1.5, fontWeight: 500,
 };
 
 const primaryBtn: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: 6,
-  padding: "8px 14px", borderRadius: 10,
+  display: "inline-flex", alignItems: "center", gap: 8,
+  padding: "11px 16px", borderRadius: 10,
   border: "none", background: "var(--brand)", color: "#fff",
-  fontSize: 12.5, fontWeight: 700, cursor: "pointer",
+  fontSize: 14, fontWeight: 600, cursor: "pointer",
+  boxShadow: "0 4px 12px rgba(16,81,183,.24)",
 };
 
 const ghostBtn: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6,
-  padding: "7px 12px", borderRadius: 8,
-  border: "1px solid var(--brand-200)", background: "#fff",
-  color: "var(--brand-700)", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+  padding: "8px 13px", borderRadius: 9,
+  border: "1px solid #D6E2F7", background: "#fff",
+  color: "#082F6D", fontSize: 13, fontWeight: 600, cursor: "pointer",
 };
 
 const miniBtn: React.CSSProperties = {
@@ -1169,9 +1159,9 @@ const miniBtn: React.CSSProperties = {
 };
 
 const smallDangerBtn: React.CSSProperties = {
-  padding: "5px 10px", borderRadius: 6,
-  border: "1px solid #FECACA", background: "#fff",
-  color: "#991B1B", fontSize: 11, fontWeight: 600, cursor: "pointer",
+  padding: "7px 11px", borderRadius: 8,
+  border: "1px solid #F3D6D6", background: "#fff",
+  color: "#991B1B", fontSize: 12.5, fontWeight: 600, cursor: "pointer", flexShrink: 0,
 };
 
 const timeInputStyle: React.CSSProperties = {
@@ -1182,7 +1172,7 @@ const timeInputStyle: React.CSSProperties = {
 
 function pillBtn(color: string): React.CSSProperties {
   return {
-    width: 20, height: 20, borderRadius: 4,
+    width: 22, height: 22, borderRadius: 6,
     border: "none", background: "transparent",
     color, cursor: "pointer", padding: 0,
     display: "flex", alignItems: "center", justifyContent: "center",

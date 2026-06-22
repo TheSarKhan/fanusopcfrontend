@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getPsychologists, patientApi, type Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { formatAzn } from "@/lib/money";
 
 type SortMode = "recommended" | "rating" | "experience" | "newest";
 
@@ -118,67 +119,82 @@ export default function PatientPsychologistsPage() {
   const hasFilters = q.trim() !== "" || spec !== null || onlyFavs;
 
   return (
-    <div className="pcat">
-      <header className="pcat__head">
+    <div style={{ width: "100%" }}>
+      <style>{`
+        @keyframes psyShimmer { 0% { background-position: -340px 0 } 100% { background-position: 340px 0 } }
+        .psy-skel { background: linear-gradient(90deg,#EEF2F9 25%,#E2E9F4 37%,#EEF2F9 63%); background-size: 680px 100%; animation: psyShimmer 1.4s infinite linear; }
+        .psy-chips::-webkit-scrollbar { height: 0 }
+      `}</style>
+
+      {/* 1. HEADER + SEARCH */}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, flexWrap: "wrap", marginBottom: 24 }}>
         <div>
-          <h1>{t("patPsy.pageTitle")}</h1>
-          <p>{t("patPsy.pageSub")}</p>
+          <h1 style={{ margin: "0 0 6px", fontSize: 28, fontWeight: 800, letterSpacing: "-.02em", color: "var(--oxford)" }}>{t("patPsy.pageTitle")}</h1>
+          <p style={{ margin: 0, fontSize: 15, color: "var(--oxford-60)", fontWeight: 500 }}>{t("patPsy.pageSub")}</p>
         </div>
-        <div className="pcat__search-wrap">
-          <svg className="pcat__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        <div style={{ position: "relative", minWidth: 280, flex: 1, maxWidth: 360 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+            <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
           </svg>
           <input
             type="search"
-            placeholder={t("patPsy.searchPh")}
             value={q}
             onChange={e => setQ(e.target.value)}
-            className="pcat__search"
+            placeholder={t("patPsy.searchPh")}
+            aria-label={t("patPsy.searchPh")}
+            style={{ width: "100%", border: "1px solid #D6E2F7", background: "#fff", borderRadius: 11, padding: "12px 14px 12px 42px", fontSize: 14, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", boxShadow: "0 2px 12px rgba(0,0,0,.04)" }}
           />
         </div>
-      </header>
+      </div>
 
+      {/* 2. SPECIALIZATION CHIPS */}
       {specChips.length > 0 && (
-        <div className="pcat__chips">
-          <button
-            className={`pcat__chip${spec === null ? " is-active" : ""}`}
-            onClick={() => setSpec(null)}>
-            Hamısı
-            <span className="pcat__chip-n">{itemsWithSlug.length}</span>
-          </button>
+        <div className="psy-chips" style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, marginBottom: 18 }}>
+          <ChipButton label="Hamısı" count={itemsWithSlug.length} active={spec === null} onClick={() => setSpec(null)} />
           {specChips.slice(0, 12).map(([label, count]) => (
-            <button key={label}
-              className={`pcat__chip${spec === label ? " is-active" : ""}`}
-              onClick={() => setSpec(spec === label ? null : label)}>
-              {label}
-              <span className="pcat__chip-n">{count}</span>
-            </button>
+            <ChipButton key={label} label={label} count={count} active={spec === label} onClick={() => setSpec(spec === label ? null : label)} />
           ))}
         </div>
       )}
 
-      <div className="pcat__toolbar">
-        <div className="pcat__toolbar-left">
-          <label className={`pcat__toggle${onlyFavs ? " is-active" : ""}`}>
-            <input type="checkbox" checked={onlyFavs} onChange={e => setOnlyFavs(e.target.checked)} />
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      {/* 3. TOOLBAR */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 22 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => setOnlyFavs(v => !v)}
+            style={{ display: "inline-flex", alignItems: "center", gap: 9, background: onlyFavs ? "var(--brand-100)" : "#fff", color: onlyFavs ? "var(--brand-700)" : "var(--oxford-60)", border: `1px solid ${onlyFavs ? "var(--brand-100)" : "#D6E2F7"}`, borderRadius: 10, padding: "10px 15px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill={onlyFavs ? "var(--brand-700)" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
             </svg>
             Yalnız sevimlilər
-            {favIds.size > 0 && <span className="pcat__toggle-n">{favIds.size}</span>}
-          </label>
+            {favIds.size > 0 && (
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 20, height: 20, padding: "0 6px", background: onlyFavs ? "#fff" : "var(--brand-50)", color: "var(--brand-700)", fontSize: 11, fontWeight: 700, borderRadius: 999 }}>{favIds.size}</span>
+            )}
+          </button>
           {hasFilters && (
-            <button className="pcat__clear" onClick={clearAll}>× filterləri təmizlə</button>
+            <button type="button" onClick={clearAll} style={{ background: "none", border: "none", color: "var(--oxford-60)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              × Filtrləri təmizlə
+            </button>
           )}
         </div>
-        <div className="pcat__sort">
-          <label>Sıralama:</label>
-          <select value={sort} onChange={e => setSort(e.target.value as SortMode)}>
-            <option value="recommended">Tövsiyə</option>
-            <option value="rating">Reytinq</option>
-            <option value="experience">Təcrübə</option>
-            <option value="newest">Yeni qoşulan</option>
-          </select>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford-60)" }}>Sıralama:</span>
+          <div style={{ position: "relative" }}>
+            <select
+              value={sort}
+              onChange={e => setSort(e.target.value as SortMode)}
+              aria-label="Sıralama"
+              style={{ appearance: "none", WebkitAppearance: "none", background: "#fff", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 38px 10px 14px", fontSize: 14, fontWeight: 600, color: "var(--oxford)", fontFamily: "inherit", cursor: "pointer" }}>
+              <option value="recommended">Tövsiyə</option>
+              <option value="rating">Reytinq</option>
+              <option value="experience">Təcrübə</option>
+              <option value="newest">Yeni qoşulan</option>
+            </select>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
         </div>
       </div>
 
@@ -188,26 +204,15 @@ export default function PatientPsychologistsPage() {
         </div>
       )}
 
+      {/* 4. CARDS / STATES */}
       {loading ? (
-        <div className="pcat__skel">
-          {Array.from({ length: 6 }).map((_, i) => <div key={i} className="pcat__skel-card" />)}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20 }}>
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="pcat__empty">
-          <div className="pcat__empty-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-          </div>
-          <div className="pcat__empty-title">
-            {hasFilters ? "Bu filtrlərə uyğun nəticə yoxdur" : t("patPsy.empty")}
-          </div>
-          {hasFilters && (
-            <button onClick={clearAll} className="pcat__empty-cta">Filterləri təmizlə</button>
-          )}
-        </div>
+        <EmptyState hasFilters={hasFilters} onClear={clearAll} emptyMsg={t("patPsy.empty")} />
       ) : (
-        <div className="pcat__grid">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20 }}>
           {filtered.map(p => (
             <PsyCard
               key={p.id}
@@ -215,9 +220,6 @@ export default function PatientPsychologistsPage() {
               favorite={favIds.has(p.id)}
               busy={busyFav === p.id}
               onToggleFav={() => toggleFav(p.id)}
-              minLabel={t("patPsy.min")}
-              viewLabel={t("patPsy.viewProfile")}
-              bookLabel={t("patPsy.book")}
             />
           ))}
         </div>
@@ -226,99 +228,220 @@ export default function PatientPsychologistsPage() {
   );
 }
 
+/* ─── Specialization chip ────────────────────────────────────────────────── */
+
+function ChipButton({
+  label, count, active, onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ flex: "none", display: "inline-flex", alignItems: "center", gap: 8, border: `1px solid ${active ? "var(--brand)" : "#D6E2F7"}`, background: active ? "var(--brand)" : "#fff", color: active ? "#fff" : "var(--oxford)", borderRadius: 999, padding: "9px 14px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}>
+      {label}
+      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 20, height: 20, padding: "0 6px", background: active ? "rgba(255,255,255,.22)" : "var(--brand-50)", color: active ? "#fff" : "var(--brand-700)", fontSize: 11, fontWeight: 700, borderRadius: 999 }}>{count}</span>
+    </button>
+  );
+}
+
+/* ─── Psychologist card ──────────────────────────────────────────────────── */
+
 function PsyCard({
-  p, favorite, busy, onToggleFav, minLabel, viewLabel, bookLabel,
+  p, favorite, busy, onToggleFav,
 }: {
   p: Psychologist & { slug?: string };
   favorite: boolean;
   busy: boolean;
   onToggleFav: () => void;
-  minLabel: string;
-  viewLabel: string;
-  bookLabel: string;
 }) {
+  const { t } = useT();
+  const verified = p.psychologistType === "FANUS";
+  const specs = p.specializations ?? [];
+  const shown = specs.slice(0, 3);
+  const more = specs.length - shown.length;
+  const rating = ratingNum(p.rating);
+  const years = experienceNum(p.experience);
+  const sessions = p.displayedSessionCount ?? sessionsNum(p.sessionsCount);
+  const price = p.individualPrice != null ? formatAzn(p.individualPrice) : null;
+  const hasPackages = (p.packages?.length ?? 0) > 0;
+  const profileHref = p.slug ? `/patient/psychologists/${p.slug}` : "/patient/psychologists";
+  const bookHref = p.slug ? `/patient/book/${p.slug}` : "/patient/psychologists";
+
   return (
-    <article className="pcat-card">
+    <div style={{ position: "relative", background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 22, display: "flex", flexDirection: "column" }}>
       <button
         type="button"
         onClick={onToggleFav}
         disabled={busy}
-        className={`pcat-card__fav${favorite ? " is-active" : ""}`}
+        title={favorite ? "Sevimlilərdən sil" : "Sevimliyə əlavə et"}
         aria-label={favorite ? "Sevimlilərdən sil" : "Sevimliyə əlavə et"}
-        title={favorite ? "Sevimlilərdən sil" : "Sevimliyə əlavə et"}>
-        <svg width="16" height="16" viewBox="0 0 24 24"
-          fill={favorite ? "currentColor" : "none"}
-          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        style={{ position: "absolute", top: 16, right: 16, width: 38, height: 38, display: "inline-flex", alignItems: "center", justifyContent: "center", background: favorite ? "var(--brand-100)" : "#fff", border: `1px solid ${favorite ? "var(--brand-100)" : "#E1E9F5"}`, borderRadius: 11, cursor: busy ? "wait" : "pointer" }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill={favorite ? "var(--brand)" : "none"} stroke={favorite ? "var(--brand)" : "#9DB0CC"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
         </svg>
       </button>
 
-      <div className="pcat-card__top">
-        <div className="pcat-card__avatar">
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 16, paddingRight: 44 }}>
+        <span style={{ width: 56, height: 56, borderRadius: 16, background: p.accentColor || "var(--brand-700)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, flex: "none", overflow: "hidden" }}>
           {p.photoUrl ? (
-             
-            <img src={p.photoUrl} alt={p.name} />
-          ) : (
-            <span>{initialsOf(p.name)}</span>
-          )}
-        </div>
-        <div className="pcat-card__head-info">
-          <div className="pcat-card__name">{p.name}</div>
-          <div className="pcat-card__title">{p.title}</div>
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : initialsOf(p.name)}
+        </span>
+        <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginBottom: 3 }}>
+            <span style={{ fontSize: 16.5, fontWeight: 700, color: "var(--oxford)", lineHeight: 1.2 }}>{p.name}</span>
+            {verified && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--brand-100)", color: "var(--brand-700)", fontSize: 10, fontWeight: 800, letterSpacing: ".06em", padding: "3px 8px", borderRadius: 999 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2l7 3v6c0 4.5-3 8.3-7 9.5C8 19.3 5 15.5 5 11V5z" /><path d="M9 12l2 2 4-4" />
+                </svg>
+                FANUS
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 600 }}>{p.title}</div>
         </div>
       </div>
 
-      {p.specializations && p.specializations.length > 0 && (
-        <div className="pcat-card__specs">
-          {p.specializations.slice(0, 3).map(s => (
-            <span key={s} className="pcat-card__spec">{s}</span>
+      {specs.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
+          {shown.map(s => (
+            <span key={s} style={{ background: "var(--brand-50)", color: "var(--brand-700)", border: "1px solid var(--brand-100)", fontSize: 12, fontWeight: 600, padding: "5px 11px", borderRadius: 8 }}>{s}</span>
           ))}
-          {p.specializations.length > 3 && (
-            <span className="pcat-card__spec pcat-card__spec--more">+{p.specializations.length - 3}</span>
+          {more > 0 && (
+            <span style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid var(--brand-100)", fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 8 }}>+{more}</span>
           )}
         </div>
       )}
 
-      <div className="pcat-card__stats">
-        {ratingNum(p.rating) > 0 && (
-          <div className="pcat-card__stat">
-            <div className="pcat-card__stat-val">★ {ratingNum(p.rating).toFixed(1)}</div>
-            <div className="pcat-card__stat-label">Reytinq</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "13px 0", borderTop: "1px solid #F0F4FA", borderBottom: "1px solid #F0F4FA", marginBottom: 14, flexWrap: "wrap" }}>
+        {rating > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1.5" strokeLinejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
+            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--oxford)" }}>{rating.toFixed(1)}</span>
+            <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>Reytinq</span>
           </div>
         )}
-        {experienceNum(p.experience) > 0 && (
-          <div className="pcat-card__stat">
-            <div className="pcat-card__stat-val">{experienceNum(p.experience)} il</div>
-            <div className="pcat-card__stat-label">Təcrübə</div>
+        {years > 0 && (
+          <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--oxford)" }}>{years}</span>
+            <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>il təcrübə</span>
           </div>
         )}
-        {sessionsNum(p.sessionsCount) > 0 && (
-          <div className="pcat-card__stat">
-            <div className="pcat-card__stat-val">{sessionsNum(p.sessionsCount)}</div>
-            <div className="pcat-card__stat-label">Seans</div>
+        {sessions > 0 && (
+          <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--oxford)" }}>{sessions}</span>
+            <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>seans</span>
           </div>
         )}
       </div>
 
       {(p.languages || p.defaultSessionMinutes) && (
-        <div className="pcat-card__meta">
-          {p.languages && <span>{p.languages}</span>}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 16, flexWrap: "wrap" }}>
+          {p.languages && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></svg>
+              {p.languages}
+            </span>
+          )}
+          {p.languages && p.defaultSessionMinutes && <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#CBD5E6" }} />}
           {p.defaultSessionMinutes && (
-            <span>· {p.defaultSessionMinutes} {minLabel} seans</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+              {p.defaultSessionMinutes} dəq seans
+            </span>
           )}
         </div>
       )}
 
-      <div className="pcat-card__actions">
-        <Link href={p.slug ? `/patient/psychologists/${p.slug}` : "/patient/psychologists"}
-          className="pcat-card__btn pcat-card__btn--ghost">
-          {viewLabel}
+      {(price || hasPackages) && (
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10, marginBottom: 18 }}>
+          {price ? (
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+              <span style={{ fontSize: 22, fontWeight: 800, color: "var(--brand-700)", letterSpacing: "-.01em" }}>{price}</span>
+              <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>/ seans</span>
+            </div>
+          ) : <span />}
+          {hasPackages && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#D1FAE5", color: "#065F46", fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.27 6.96L12 12.01l8.73-5.05" /></svg>
+              Paketlər var
+            </span>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
+        <Link href={profileHref} style={{ flex: 1, textAlign: "center", background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 0", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+          {t("patPsy.viewProfile")}
         </Link>
-        <Link href={p.slug ? `/patient/book/${p.slug}` : "/patient/psychologists"}
-          className="pcat-card__btn pcat-card__btn--primary">
-          {bookLabel}
+        <Link href={bookHref} style={{ flex: 1, textAlign: "center", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 0", fontSize: 14, fontWeight: 600, textDecoration: "none", boxShadow: "0 4px 12px rgba(16,81,183,.24)" }}>
+          {t("patPsy.book")}
         </Link>
       </div>
-    </article>
+    </div>
+  );
+}
+
+/* ─── Loading skeleton card ──────────────────────────────────────────────── */
+
+function SkeletonCard() {
+  return (
+    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 22 }}>
+      <div style={{ display: "flex", gap: 14, marginBottom: 18 }}>
+        <div className="psy-skel" style={{ width: 56, height: 56, borderRadius: 16, flex: "none" }} />
+        <div style={{ flex: 1, paddingTop: 4 }}>
+          <div className="psy-skel" style={{ width: "70%", height: 15, borderRadius: 6, marginBottom: 9 }} />
+          <div className="psy-skel" style={{ width: "45%", height: 12, borderRadius: 6 }} />
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 7, marginBottom: 18 }}>
+        <div className="psy-skel" style={{ width: 72, height: 26, borderRadius: 8 }} />
+        <div className="psy-skel" style={{ width: 88, height: 26, borderRadius: 8 }} />
+        <div className="psy-skel" style={{ width: 60, height: 26, borderRadius: 8 }} />
+      </div>
+      <div className="psy-skel" style={{ width: "100%", height: 44, borderRadius: 8, marginBottom: 16 }} />
+      <div className="psy-skel" style={{ width: "55%", height: 22, borderRadius: 6, marginBottom: 18 }} />
+      <div style={{ display: "flex", gap: 10 }}>
+        <div className="psy-skel" style={{ flex: 1, height: 42, borderRadius: 10 }} />
+        <div className="psy-skel" style={{ flex: 1, height: 42, borderRadius: 10 }} />
+      </div>
+    </div>
+  );
+}
+
+/* ─── Empty state ────────────────────────────────────────────────────────── */
+
+function EmptyState({
+  hasFilters, onClear, emptyMsg,
+}: {
+  hasFilters: boolean;
+  onClear: () => void;
+  emptyMsg: string;
+}) {
+  return (
+    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "56px 24px", textAlign: "center" }}>
+      <div style={{ width: 60, height: 60, borderRadius: 17, background: "var(--brand-50)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 18, color: "#9DB0CC" }}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+      </div>
+      <div style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", marginBottom: 7 }}>
+        {hasFilters ? "Bu filtrlərə uyğun nəticə yoxdur" : emptyMsg}
+      </div>
+      <div style={{ fontSize: 14, color: "var(--oxford-60)", fontWeight: 500, marginBottom: 22 }}>
+        Axtarışı dəyişin və ya filtrləri sıfırlayın.
+      </div>
+      {hasFilters && (
+        <button type="button" onClick={onClear} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 18px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
+          Filterləri təmizlə
+        </button>
+      )}
+    </div>
   );
 }

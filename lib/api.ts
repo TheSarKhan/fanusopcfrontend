@@ -298,6 +298,27 @@ export interface PackageDto {
   displayOrder: number;
   setBy: string;
 }
+
+/** "Paketlərim" — paketi alan pasiyentin gedişatı. */
+export interface PackagePatient {
+  patientName: string;
+  completed: number;
+  total: number;
+  status: string; // ACTIVE | EXHAUSTED | EXPIRED | CANCELLED
+}
+
+/** "Paketlərim" — hər kataloq paketi üzrə satış/istifadə statistikası. */
+export interface PackageStats {
+  packageId: number;
+  sold: number;
+  active: number;
+  completed: number;
+  cancelled: number;
+  expired: number;
+  revenue: number;
+  completionPct: number;
+  patients: PackagePatient[];
+}
 export type PackageReq = {
   name: string;
   sessionCount: number;
@@ -461,6 +482,9 @@ export interface AppointmentDetail {
   // Modul A — paket bağlantısı
   patientPackageId?: number | null;
   bookingType?: string;
+  // Paket meta (yalnız patientPackageId varsa backend doldurur)
+  packageName?: string | null;
+  packageTotal?: number | null;
 }
 
 // Modul B: operator panelində link tarixçəsinin bir sətri
@@ -505,6 +529,15 @@ export const CANCEL_REASONS: CancellationReasonOption[] = [
 
 export function reasonsForRole(role: CancellationRole): CancellationReasonOption[] {
   return CANCEL_REASONS.filter(r => r.role === role);
+}
+
+const REASON_LABEL_BY_CODE: Record<string, string> =
+  Object.fromEntries(CANCEL_REASONS.map(r => [r.code, r.label]));
+
+/** Ləğv səbəb kodunu oxunaqlı etiketə çevirir (tapılmasa kodun özünü qaytarır). */
+export function reasonLabel(code?: string | null): string {
+  if (!code) return "";
+  return REASON_LABEL_BY_CODE[code] ?? code;
 }
 
 export interface TimeSlot {
@@ -1460,6 +1493,7 @@ export interface EmergencyContact {
 // Modul A — alınmış paket (pasiyent balansı)
 export interface PatientPackageItem {
   id: number;
+  psychologistId: number;
   psychologistName: string;
   packageName: string;
   total: number;
@@ -1487,6 +1521,18 @@ export interface PaymentItem {
   claimedByOperatorId?: number | null;
   claimedByName?: string | null;
   claimedAt?: string | null;
+  // Geri qaytarma / ləğv
+  refundedAmount?: number | null;
+  statusNote?: string | null;
+}
+
+export interface PaymentSummary {
+  pendingCount: number;
+  pendingSum: number;
+  paidMonthCount: number;
+  paidMonthSum: number;
+  refundedMonthSum: number;
+  mineCount: number;
 }
 
 export interface PackagePurchaseInput {
@@ -1931,6 +1977,7 @@ export const psychologistApi = {
   updateMyPricing: (individualPrice: number) =>
     authedRequest<{ individualPrice: number | null; currency: string }>("PUT", "/psychologist/me/pricing", { individualPrice }),
   myPackages: () => authedRequest<PackageDto[]>("GET", "/psychologist/me/packages"),
+  myPackageStats: () => authedRequest<PackageStats[]>("GET", "/psychologist/me/packages/stats"),
   createMyPackage: (data: PackageReq) => authedRequest<PackageDto>("POST", "/psychologist/me/packages", data),
   updateMyPackage: (id: number, data: PackageReq) => authedRequest<PackageDto>("PUT", `/psychologist/me/packages/${id}`, data),
   deleteMyPackage: (id: number) => authedRequest<void>("DELETE", `/psychologist/me/packages/${id}`),
@@ -2743,7 +2790,7 @@ export interface CustomerProfile {
   completedCount: number;
   cancelledCount: number;
   appointments: PatientHistory["recent"];
-  payments: { id: number; amount: number; currency: string; status: string; method: string; paidAt?: string | null; createdAt?: string | null; patientPackageId?: number | null; appointmentId?: number | null; patientName?: string | null }[];
+  payments: { id: number; amount: number; currency: string; status: string; method: string; paidAt?: string | null; createdAt?: string | null; patientPackageId?: number | null; appointmentId?: number | null; patientName?: string | null; refundedAmount?: number | null; statusNote?: string | null }[];
   packages: { id: number; psychologistName?: string | null; packageName: string; total: number; remaining: number; status: string; pricePaid?: number | null; currency?: string | null; purchasedAt?: string | null }[];
   testResults: { assignmentId: number; resultId?: number | null; testTitle: string; status: string; totalScore?: number | null; maxScore?: number | null; percentage?: number | null; scaleLabel?: string | null; submittedAt?: string | null }[];
   reviewsGiven: { id: number; psychologistName?: string | null; rating: number; comment?: string | null; status: string; createdAt?: string | null }[];
@@ -2770,6 +2817,11 @@ export interface OperatorPsychologistStat {
   monthlyDynamics: { month: string; total: number; completed: number; cancelled: number }[];
 }
 export interface AnalyticsTimePoint { bucket: string; incoming: number; assigned: number; completed: number; cancelled: number; revenue?: number | null }
+export interface RevenueBreakdown {
+  packageRevenue: number;
+  singleRevenue: number;
+  byPsychologist: { psychologistId: number; name: string; revenue: number }[];
+}
 export interface PsychologistRankItem { psychologistId: number; name: string; completedSessions: number; fanusSessions: number; activePatients: number; rankingScore?: number | null; psychologistType?: string | null }
 export type AnalyticsPeriod = "daily" | "weekly" | "monthly" | "yearly";
 
@@ -2818,6 +2870,12 @@ export const operatorApi = {
     authedRequest<PaymentItem[]>("GET", `/operator/payments?status=${status}${mine ? "&mine=true" : ""}`),
   markPaymentPaid: (id: number) =>
     authedRequest<PaymentItem>("POST", `/operator/payments/${id}/mark-paid`),
+  paymentsSummary: () =>
+    authedRequest<PaymentSummary>("GET", "/operator/payments/summary"),
+  cancelPayment: (id: number, reason: string) =>
+    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/cancel`, { reason }),
+  refundPayment: (id: number, amount: number, reason: string) =>
+    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/refund`, { amount, reason }),
   claimPayment: (id: number) =>
     authedRequest<PaymentItem>("POST", `/operator/payments/${id}/claim`),
   releasePayment: (id: number) =>
@@ -2835,6 +2893,16 @@ export const operatorApi = {
     price?: number | null;
     currency?: string | null;
   }) => authedRequest<PatientPackageItem>("POST", `/operator/patients/${patientId}/packages`, data),
+  // Operator tək seans satışı (paketsiz) → seans bron + PENDING ödəniş (seansa bağlı)
+  sellSingleSession: (patientId: number, data: {
+    psychologistId: number;
+    price: number;
+    startAt: string;
+    endAt: string;
+    currency?: string | null;
+    note?: string | null;
+  }) => authedRequest<{ paymentId: number; amount: number; currency: string; status: string }>(
+    "POST", `/operator/patients/${patientId}/single-session`, data),
   cancel: (id: number, reasonCode: string, note?: string) =>
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/cancel`, { reasonCode, note }),
   approveCancelRequest: (id: number, note?: string) =>
@@ -2933,6 +3001,8 @@ export const operatorApi = {
     authedRequest<AnalyticsTimePoint[]>("GET", `/operator/analytics/sessions?period=${period}`),
   psychologistRanking: () =>
     authedRequest<PsychologistRankItem[]>("GET", "/operator/analytics/psychologists/ranking"),
+  analyticsRevenue: () =>
+    authedRequest<RevenueBreakdown>("GET", "/operator/analytics/revenue"),
   contactLogs: (appointmentId: number) =>
     authedRequest<ContactLog[]>("GET", `/operator/appointments/${appointmentId}/contact-logs`),
   addContactLog: (appointmentId: number, data: { channel: string; outcome: string; note?: string }) =>

@@ -33,7 +33,7 @@ export const OPERATOR_MODULES: Record<OperatorModuleKey, boolean> = {
   appointments:  true,  // AÇIQ — randevu detalı (bilet) + siyahı
   meetingLinks:  true,  // AÇIQ — Görüş linkləri (link göndərmə iş siyahısı)
   payments:      true,  // AÇIQ — Ödənişlər (təsdiq · ləğv · geri qaytarma tam/qismi)
-  feedback:      false,
+  feedback:      true,   // AÇIQ — Seans rəyləri (psixoloq → pasient → rəylər)
   referrals:     false,
   analytics:     true,  // AÇIQ — Analitika (gəlir/refund + əməliyyat göstəriciləri)
   customers:     true,  // AÇIQ — Müştərilər (360° profil + paket satışı)

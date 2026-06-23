@@ -14,7 +14,7 @@ import {
   type SessionFeedback,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
-import { azFormatTime, azFormatDate, azLocalToISO } from "@/lib/datetime";
+import { azFormatTime, azFormatDate, azLocalToISO, hoursSince } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
 import ReviewModal from "./ReviewModal";
 import RescheduleProposalModal from "@/components/RescheduleProposalModal";
@@ -1230,7 +1230,11 @@ function HistoryRow({
   if (!ref) return null;
   const status = STATUS[a.status] ?? STATUS.COMPLETED;
   const canReview = a.status === "COMPLETED" && a.psychologistId && !review;
-  const canFeedback = a.status === "COMPLETED" || a.status === "AWAITING_CONFIRMATION";
+  // Rəy yalnız seansdan sonrakı 24 saat ərzində yazıla bilər. Vaxt keçəndə
+  // "Necə keçdi?" düyməsi yox olur (anchor: seansın bitmə vaxtı, yoxdursa başlama).
+  const fbAnchor = a.endAt ?? a.startAt;
+  const fbStatusOk = a.status === "COMPLETED" || a.status === "AWAITING_CONFIRMATION";
+  const fbWindowOpen = fbStatusOk && fbAnchor != null && hoursSince(fbAnchor) <= 24;
   // "Rəyim" badge-i göstərilmir (lazım deyil) — yalnız moderasiya gözləyən rəy üçün işarə qalır.
   const reviewLabel = review && review.status === "PENDING" ? "Rəy gözləyir" : null;
   const isCancelled = a.status === "CANCELLED";
@@ -1246,15 +1250,13 @@ function HistoryRow({
         <span style={{ flex: 1, minWidth: 150, fontSize: 14, color: "var(--oxford-60)", fontWeight: 500 }}>{a.psychologistName ?? "Psixoloq"}</span>
         <span style={{ background: status.bg, color: status.color, fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>{status.label}</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {canFeedback && (
-          feedbackGiven ? (
+          {feedbackGiven ? (
             <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>rəy verildi</span>
-          ) : (
+          ) : fbWindowOpen ? (
             <button onClick={onFeedback} type="button" style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
               Necə keçdi?
             </button>
-          )
-        )}
+          ) : null}
         {canReview ? (
           <button onClick={onWriteReview} type="button" style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#fff", color: "#082F6D", border: "1px solid #C7DAF5", borderRadius: 8, padding: "6px 11px", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z" /></svg>

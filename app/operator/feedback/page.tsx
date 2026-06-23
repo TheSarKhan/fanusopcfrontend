@@ -1,18 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { operatorApi, type FeedbackTriageResponse, type SessionFeedback } from "@/lib/api";
+import { useEffect, useMemo, useState } from "react";
+import { operatorApi, type PsychologistFeedbackSummary, type SessionFeedback } from "@/lib/api";
 import { toast as uiToast } from "@/components/Toast";
 import { SkeletonGrid } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
+import { azFormatDate, azFormatDateTime } from "@/lib/datetime";
 
-const PAGE_SIZE = 30;
+// ── Dizayn sistemi yardımçıları (operator/psychologists ilə eyni dil) ───────
+const initials = (n: string) =>
+  n.replace(/^Dr\.\s*/i, "").split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
+const fmtRating = (n?: number | null) => (n == null ? "—" : (Math.round(n * 10) / 10).toFixed(1));
+const AVS = [
+  { bg: "#E0EBFA", color: "#1E3A8A" }, { bg: "#D1FAE5", color: "#065F46" },
+  { bg: "#FEF3C7", color: "#92400E" }, { bg: "#EDE9FE", color: "#5B21B6" },
+  { bg: "#FCE7F3", color: "#9D174D" }, { bg: "#CCFBF1", color: "#115E59" },
+];
+const avatarOf = (i: number) => AVS[Math.abs(i) % AVS.length];
+const CARD: React.CSSProperties = { background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8" };
 
-function pad2(n: number) { return String(n).padStart(2, "0"); }
-function fmtDt(iso: string) {
-  const d = new Date(iso);
-  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
 function timeAgo(iso: string) {
   const ms = Date.now() - new Date(iso).getTime();
   const m = Math.floor(ms / 60000);
@@ -24,68 +30,212 @@ function timeAgo(iso: string) {
   return `${d} gün öncə`;
 }
 
-function flagFor(fb: SessionFeedback): "followup" | "low" | "seen" | "ok" {
-  if (fb.operatorSeenAt) return "seen";
-  if (fb.followUpNeeded) return "followup";
-  if (fb.rating <= 2)    return "low";
-  return "ok";
-}
+type Filter = "ALL" | "UNSEEN" | "FOLLOWUP" | "LOW";
 
 export default function OperatorFeedbackPage() {
-  const [data, setData] = useState<FeedbackTriageResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [filter, setFilter] = useState<"ALL" | "FOLLOWUP" | "LOW" | "UNSEEN">("UNSEEN");
+  const [summaries, setSummaries] = useState<PsychologistFeedbackSummary[] | null>(null);
+  const [loadingList, setLoadingList] = useState(true);
+  const [selected, setSelected] = useState<{ id: number; name: string } | null>(null);
 
-  const load = () => {
-    setLoading(true);
-    operatorApi.feedbackTriage({
-      page, size: PAGE_SIZE,
-      onlyFollowUp: filter === "FOLLOWUP",
-      onlyUnseen: filter === "UNSEEN" || filter === "FOLLOWUP",
-      maxRating: filter === "LOW" ? 2 : undefined,
-    })
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
+  const loadList = () => {
+    setLoadingList(true);
+    operatorApi.feedbackByPsychologist()
+      .then(setSummaries)
+      .catch(() => setSummaries([]))
+      .finally(() => setLoadingList(false));
   };
+  useEffect(loadList, []);
 
-  useEffect(load, [page, filter]);
+  // markSeen-dən sonra səviyyə 1 kartı da yenilənsin deyə summary-ləri optimistik azaldırıq.
+  const decUnseen = (psyId: number) =>
+    setSummaries(s => s?.map(x => x.psychologistId === psyId
+      ? { ...x, unseenFollowUpCount: Math.max(0, x.unseenFollowUpCount - 1) } : x) ?? s);
 
-  const markSeen = async (fb: SessionFeedback) => {
-    try {
-      const updated = await operatorApi.feedbackMarkSeen(fb.id);
-      setData(d => d ? { ...d, content: d.content.map(x => x.id === fb.id ? updated : x) } : d);
-    } catch (e) { uiToast((e as Error).message, "error"); }
-  };
+  const totals = useMemo(() => ({
+    count: (summaries ?? []).reduce((a, x) => a + x.totalCount, 0),
+    unseen: (summaries ?? []).reduce((a, x) => a + x.unseenFollowUpCount, 0),
+    low: (summaries ?? []).reduce((a, x) => a + x.lowRatingCount, 0),
+  }), [summaries]);
 
-  const totalPages = data?.totalPages ?? 0;
+  if (selected) {
+    return (
+      <PsychologistDetail
+        psy={selected}
+        onBack={() => setSelected(null)}
+        onSeen={() => decUnseen(selected.id)}
+      />
+    );
+  }
 
   return (
     <div className="opf-page">
       <header style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Seans rəyləri</h1>
         <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>
-          Pasientlərin seansdan sonrakı 1-klik rəyləri. Operator zəng tələb edənlər və aşağı reytinqlər ön plana düşür.
+          Psixoloqlara görə qruplaşmış pasiyent rəyləri. Karta klikləyib həmin psixoloqun pasiyent rəylərinə baxın.
         </p>
       </header>
 
       <div className="opf-stats">
-        <Stat label="Görülməmiş əlaqə tələbi" value={data?.unseenFollowUpCount ?? 0} tone="warn" />
-        <Stat label="Aşağı reytinq (≤2)" value={data?.lowRatingCount ?? 0} tone="danger" />
-        <Stat label="Cəmi rəy" value={data?.totalElements ?? 0} />
+        <Stat label="Cəmi rəy" value={totals.count} />
+        <Stat label="Görülməmiş əlaqə tələbi" value={totals.unseen} tone="warn" />
+        <Stat label="Aşağı reytinq (≤2)" value={totals.low} tone="danger" />
+      </div>
+
+      {loadingList ? (
+        <SkeletonGrid count={6} />
+      ) : !summaries || summaries.length === 0 ? (
+        <EmptyState title="Hələ rəy yoxdur" sub="Pasiyentlər seansdan sonra rəy verdikcə burada görünəcək." />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 14 }}>
+          {summaries.map((p, i) => (
+            <PsyCard key={p.psychologistId} p={p} idx={i}
+              onOpen={() => setSelected({ id: p.psychologistId, name: p.psychologistName })} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Səviyyə 1 — psixoloq kartı ──────────────────────────────────────────────
+function PsyCard({ p, idx, onOpen }: { p: PsychologistFeedbackSummary; idx: number; onOpen: () => void }) {
+  const av = avatarOf(idx);
+  // Kənar flag prioriteti: aşağı reytinq > görülməmiş əlaqə.
+  const edge = p.lowRatingCount > 0 ? "#EF4444" : p.unseenFollowUpCount > 0 ? "#F59E0B" : null;
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      role="button" tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      style={{
+        ...CARD,
+        borderLeft: edge ? `4px solid ${edge}` : CARD.border as string,
+        padding: 16, cursor: "pointer", display: "flex", flexDirection: "column", gap: 12,
+        transform: hover ? "translateY(-2px)" : "none",
+        boxShadow: hover ? "0 8px 24px rgba(8,47,109,.12)" : CARD.boxShadow as string,
+        transition: "transform .15s, box-shadow .15s",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ width: 40, height: 40, borderRadius: "50%", background: av.bg, color: av.color, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none" }}>
+          {initials(p.psychologistName)}
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {p.psychologistName}
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 1 }}>
+            <span style={{ color: "#F59E0B" }}>★</span> {fmtRating(p.avgRating)} · {p.totalCount} rəy
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <Mini label="Cəmi rəy" value={p.totalCount} />
+        <Mini label="Orta ★" value={fmtRating(p.avgRating)} />
+        <Mini label="Görülməmiş əlaqə" value={p.unseenFollowUpCount} tone={p.unseenFollowUpCount > 0 ? "warn" : undefined} />
+        <Mini label="Aşağı reytinq" value={p.lowRatingCount} tone={p.lowRatingCount > 0 ? "danger" : undefined} />
+      </div>
+
+      <div style={{ fontSize: 12, color: "var(--oxford-60)" }}>
+        Son rəy: {p.lastFeedbackAt ? azFormatDate(p.lastFeedbackAt) : "—"}
+      </div>
+    </div>
+  );
+}
+
+function Mini({ label, value, tone }: { label: string; value: number | string; tone?: "warn" | "danger" }) {
+  const color = tone === "warn" ? "#92400E" : tone === "danger" ? "#991B1B" : "var(--oxford)";
+  const bg = tone === "warn" ? "#FEF7E8" : tone === "danger" ? "#FEF2F2" : "#F7F9FC";
+  return (
+    <div style={{ background: bg, borderRadius: 9, padding: "7px 10px" }}>
+      <div style={{ fontSize: 10.5, color: "var(--oxford-60)", fontWeight: 600, textTransform: "uppercase", letterSpacing: .2 }}>{label}</div>
+      <div style={{ fontSize: 17, fontWeight: 700, color, marginTop: 1 }}>{value}</div>
+    </div>
+  );
+}
+
+// ── Səviyyə 2 — psixoloq detalı (pasiyentə görə qruplaşmış rəylər) ───────────
+function PsychologistDetail({ psy, onBack, onSeen }: {
+  psy: { id: number; name: string };
+  onBack: () => void;
+  onSeen: () => void;
+}) {
+  const [rows, setRows] = useState<SessionFeedback[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<Filter>("ALL");
+
+  useEffect(() => {
+    setLoading(true);
+    operatorApi.feedbackForPsychologist(psy.id)
+      .then(setRows)
+      .catch(() => setRows([]))
+      .finally(() => setLoading(false));
+  }, [psy.id]);
+
+  const markSeen = async (fb: SessionFeedback) => {
+    try {
+      const updated = await operatorApi.feedbackMarkSeen(fb.id);
+      setRows(r => r?.map(x => x.id === fb.id ? updated : x) ?? r);
+      if (fb.followUpNeeded && !fb.operatorSeenAt) onSeen();
+    } catch (e) { uiToast((e as Error).message, "error"); }
+  };
+
+  const avg = useMemo(() => {
+    if (!rows || rows.length === 0) return null;
+    return rows.reduce((a, x) => a + x.rating, 0) / rows.length;
+  }, [rows]);
+
+  // Pasiyentə görə qruplaşdırma (rows createdAt desc gəlir → daxili sıra qorunur).
+  const groups = useMemo(() => {
+    const matches = (fb: SessionFeedback) =>
+      filter === "ALL" ? true
+        : filter === "UNSEEN" ? (fb.followUpNeeded && !fb.operatorSeenAt)
+        : filter === "FOLLOWUP" ? fb.followUpNeeded
+        : /* LOW */ fb.rating <= 2;
+    const filtered = (rows ?? []).filter(matches);
+    const map = new Map<number, { name: string; items: SessionFeedback[] }>();
+    for (const fb of filtered) {
+      const key = fb.patientId;
+      if (!map.has(key)) map.set(key, { name: fb.patientName, items: [] });
+      map.get(key)!.items.push(fb);
+    }
+    return [...map.values()];
+  }, [rows, filter]);
+
+  return (
+    <div className="opf-page">
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <button onClick={onBack} type="button"
+          style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "transparent", border: "none", color: "var(--brand)", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          Geri
+        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+          <span style={{ width: 36, height: 36, borderRadius: "50%", background: "#E0EBFA", color: "#1E3A8A", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flex: "none" }}>
+            {initials(psy.name)}
+          </span>
+          <h1 style={{ fontSize: 19, fontWeight: 700, color: "var(--oxford)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{psy.name}</h1>
+        </div>
+        {rows && rows.length > 0 && (
+          <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, flex: "none" }}>
+            <span style={{ color: "#F59E0B" }}>★</span> {fmtRating(avg)} · {rows.length} rəy
+          </span>
+        )}
       </div>
 
       <div className="opf-toolbar">
         {([
+          ["ALL",      "Hamısı"],
           ["UNSEEN",   "Görülməmiş əlaqə"],
           ["FOLLOWUP", "Operator zəngi tələb edən"],
           ["LOW",      "Aşağı reytinq"],
-          ["ALL",      "Hamısı"],
         ] as const).map(([key, label]) => (
           <label key={key}>
-            <input type="radio" checked={filter === key}
-              onChange={() => { setFilter(key); setPage(0); }} />
+            <input type="radio" checked={filter === key} onChange={() => setFilter(key)} />
             {label}
           </label>
         ))}
@@ -93,63 +243,58 @@ export default function OperatorFeedbackPage() {
 
       {loading ? (
         <SkeletonGrid count={4} />
-      ) : !data || data.content.length === 0 ? (
-        <EmptyState title="Filtrə uyğun rəy yoxdur" sub="Filtri dəyişin və ya yeni rəy gözləyin." />
+      ) : groups.length === 0 ? (
+        <EmptyState title="Filtrə uyğun rəy yoxdur" sub="Filtri dəyişin və ya bütün rəylərə baxın." />
       ) : (
-        <div className="opf-list">
-          {data.content.map(fb => {
-            const flag = flagFor(fb);
-            return (
-              <div key={fb.id} className="opf-row" data-flag={flag}>
-                <div className="opf-row-rating">
-                  <div className="opf-row-rating-stars" aria-label={`${fb.rating} ulduz`}>
-                    {"★".repeat(fb.rating)}{"☆".repeat(5 - fb.rating)}
-                  </div>
-                  <div className="opf-row-rating-num">{fb.rating}/5</div>
-                </div>
-                <div className="opf-row-main">
-                  <div className="opf-row-line">
-                    <span className="opf-row-name">{fb.patientName}</span>
-                    {fb.psychologistName && (
-                      <span className="opf-row-psy">{fb.psychologistName}</span>
-                    )}
-                    {fb.followUpNeeded && (
-                      <span className="opf-flag opf-flag--warn">əlaqə tələb edir</span>
-                    )}
-                    {fb.rating <= 2 && (
-                      <span className="opf-flag opf-flag--danger">aşağı reytinq</span>
-                    )}
-                    {fb.operatorSeenAt && (
-                      <span className="opf-flag opf-flag--good">baxılıb</span>
-                    )}
-                  </div>
-                  {fb.comment && <div className="opf-row-comment">«{fb.comment}»</div>}
-                  <div className="opf-row-meta">
-                    {timeAgo(fb.createdAt)} · {fmtDt(fb.createdAt)}
-                    {fb.appointmentStartAt && (
-                      <> · seans: {fmtDt(fb.appointmentStartAt)}</>
-                    )}
-                  </div>
-                </div>
-                {!fb.operatorSeenAt && (
-                  <div className="opf-row-actions">
-                    <button onClick={() => markSeen(fb)} className="rsc-btn"
-                      style={{ background: "var(--brand)", color: "#fff", padding: "6px 12px" }}>
-                      Baxıldı
-                    </button>
-                  </div>
-                )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          {groups.map(g => (
+            <div key={g.name + g.items[0].id} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{g.name}</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--oxford-60)", background: "#EEF2F8", borderRadius: 999, padding: "2px 9px" }}>
+                  {g.items.length} rəy
+                </span>
               </div>
-            );
-          })}
+              <div className="opf-list">
+                {g.items.map(fb => <FeedbackRow key={fb.id} fb={fb} onSeen={() => markSeen(fb)} />)}
+              </div>
+            </div>
+          ))}
         </div>
       )}
+    </div>
+  );
+}
 
-      {totalPages > 1 && (
-        <div className="audit-pager">
-          <button disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))} className="audit-page-btn">Geri</button>
-          <span className="audit-page-info">{page + 1} / {totalPages}</span>
-          <button disabled={page + 1 >= totalPages} onClick={() => setPage(p => p + 1)} className="audit-page-btn">İrəli</button>
+function FeedbackRow({ fb, onSeen }: { fb: SessionFeedback; onSeen: () => void }) {
+  const flag = fb.operatorSeenAt ? "seen" : fb.followUpNeeded ? "followup" : fb.rating <= 2 ? "low" : "ok";
+  return (
+    <div className="opf-row" data-flag={flag}>
+      <div className="opf-row-rating">
+        <div className="opf-row-rating-stars" aria-label={`${fb.rating} ulduz`}>
+          {"★".repeat(fb.rating)}{"☆".repeat(5 - fb.rating)}
+        </div>
+        <div className="opf-row-rating-num">{fb.rating}/5</div>
+      </div>
+      <div className="opf-row-main">
+        <div className="opf-row-line">
+          <span className="opf-row-name">{fb.patientName}</span>
+          {fb.followUpNeeded && <span className="opf-flag opf-flag--warn">əlaqə tələb edir</span>}
+          {fb.rating <= 2 && <span className="opf-flag opf-flag--danger">aşağı reytinq</span>}
+          {fb.operatorSeenAt && <span className="opf-flag opf-flag--good">baxılıb</span>}
+        </div>
+        {fb.comment && <div className="opf-row-comment">«{fb.comment}»</div>}
+        <div className="opf-row-meta">
+          {timeAgo(fb.createdAt)} · {azFormatDateTime(fb.createdAt)}
+          {fb.appointmentStartAt && <> · seans: {azFormatDate(fb.appointmentStartAt)}</>}
+        </div>
+      </div>
+      {!fb.operatorSeenAt && (
+        <div className="opf-row-actions">
+          <button onClick={onSeen} className="rsc-btn"
+            style={{ background: "var(--brand)", color: "#fff", padding: "6px 12px" }}>
+            Baxıldı
+          </button>
         </div>
       )}
     </div>

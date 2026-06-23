@@ -90,6 +90,17 @@ export function azFormatWeekday(input: string | Date) {
 }
 
 /**
+ * Verilən vaxtdan (seans başlama/bitmə) indiyə qədər keçən REAL saat sayını
+ * qaytarır. Naive Asia/Baku stringi `toInstant` ilə həqiqi instant-a çevrilir,
+ * sonra `Date.now()` ilə müqayisə olunur — brauzer timezone-undan asılı deyil.
+ * Mənfi nəticə vaxtın hələ gələcəkdə olduğunu bildirir. Rəy 24-saat
+ * pəncərəsini hesablamaq üçün istifadə olunur.
+ */
+export function hoursSince(input: string | Date): number {
+  return (Date.now() - toInstant(input).getTime()) / 3_600_000;
+}
+
+/**
  * "now" in Asia/Baku, returned as a Date whose UTC fields equal AZ wall-clock.
  * Useful for `min`/`max` attrs on datetime-local inputs.
  */

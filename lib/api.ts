@@ -2616,6 +2616,16 @@ export interface FeedbackTriageResponse {
   lowRatingCount: number;
 }
 
+export interface PsychologistFeedbackSummary {
+  psychologistId: number;
+  psychologistName: string;
+  totalCount: number;
+  avgRating: number;
+  unseenFollowUpCount: number;
+  lowRatingCount: number;
+  lastFeedbackAt: string | null;
+}
+
 export interface RescheduleProposal {
   id: number;
   appointmentId: number;
@@ -2960,6 +2970,10 @@ export const operatorApi = {
   },
   feedbackMarkSeen: (id: number) =>
     authedRequest<SessionFeedback>("POST", `/operator/feedback/${id}/seen`),
+  feedbackByPsychologist: () =>
+    authedRequest<PsychologistFeedbackSummary[]>("GET", "/operator/feedback/by-psychologist"),
+  feedbackForPsychologist: (psychologistId: number) =>
+    authedRequest<SessionFeedback[]>("GET", `/operator/feedback/psychologist/${psychologistId}`),
 
   listPsychologists: () => authedRequest<Psychologist[]>("GET", "/operator/psychologists"),
   availability: (psychologistId: number, from?: string, to?: string) => {

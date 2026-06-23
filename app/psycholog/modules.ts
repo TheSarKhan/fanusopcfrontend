@@ -31,7 +31,7 @@ export type PsychologModuleKey =
 /** Hər modulun açıq (true) / kilidli (false) vəziyyəti. */
 export const PSYCHOLOG_MODULES: Record<PsychologModuleKey, boolean> = {
   dashboard:    true,  // həmişə açıq — panelin girişi
-  calendar:     false,
+  calendar:     true,  // AÇIQ — Cədvəl (təqvim görünüşü)
   appointments: true,  // AÇIQ — Görüşlər (seanslar) yenidən dizayn edildi
   packages:     true,  // AÇIQ — Paketlərim (satış/istifadə statistikası)
   clients:      true,  // AÇIQ — Müştərilər (siyahı + 360° profil) yenidən dizayn edildi

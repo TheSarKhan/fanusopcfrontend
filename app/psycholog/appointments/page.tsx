@@ -680,8 +680,9 @@ function PackageCard({ pkg, now, busyId, ...h }: {
   const name = sessions[0]?.packageName || `${total} seanslıq proqram`;
   const completed = sessions.filter(s => s.status === "COMPLETED").length;
   const pct = total ? Math.round((completed / total) * 100) : 0;
+  // "Qalan" = balans (planlanmamış seans) — pasiyent/operator panelləri ilə eyni
+  // metrika. (Əvvəl total−completed idi → planlanmış amma keçməmiş seans fərq yaradırdı.)
   const remaining = Math.max(0, total - sessions.length);
-  const qalan = Math.max(0, total - completed);
   const fmtDM = (iso?: string | null) => { if (!iso) return "—"; const d = new Date(iso); return `${d.getDate()} ${MONTHS_AZ[d.getMonth()]}`; };
   const dated = sessions.filter(s => s.startAt);
   const range = dated.length
@@ -714,7 +715,7 @@ function PackageCard({ pkg, now, busyId, ...h }: {
       </div>
       <div style={{ display: "flex", gap: 18, flexWrap: "wrap", padding: "11px 0", borderTop: "1px solid #EDF1F8", borderBottom: "1px solid #EDF1F8", marginBottom: 6 }}>
         <div><div style={pkgStatLab}>Aralıq</div><div style={pkgStatVal}>{range}</div></div>
-        <div><div style={pkgStatLab}>Qalan</div><div style={pkgStatVal}>{qalan}</div></div>
+        <div><div style={pkgStatLab}>Qalan</div><div style={pkgStatVal}>{remaining}</div></div>
       </div>
       <button type="button" onClick={() => setOpen(o => !o)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", background: "none", border: "none", padding: "11px 0 0", cursor: "pointer", fontFamily: "inherit", flexWrap: "wrap" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, color: "var(--oxford-60)", flexWrap: "wrap" }}>

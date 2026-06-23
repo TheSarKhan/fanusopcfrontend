@@ -405,16 +405,21 @@ export default function PsychologCalendarPage() {
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535" }}>{t("staff.psyCalendarTitle")}</h1>
-          <p style={{ fontSize: 11, color: "#8AAABF", marginTop: 2 }}>
-            İpucu: gələcək təsdiqli/təyin edilmiş seansları sürükləyib başqa saata buraxaraq yenidən təklif edə bilərsiniz (15 dəq-lik addımlarla)
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>{t("staff.psyCalendarTitle")}</h1>
+          <p style={{ fontSize: 12.5, color: "var(--oxford-60)", margin: "3px 0 0", maxWidth: 580 }}>
+            Gələcək təsdiqli/təyin edilmiş seansı sürükləyib başqa saata buraxaraq yenidən təklif edə bilərsiniz (15 dəq addımlarla).
           </p>
         </div>
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          <button onClick={() => setRefreshNonce(x => x + 1)} style={btnStyle()} title="Yenilə">↻</button>
-          <button onClick={() => setWeekStart(addDays(weekStart, -7))} style={btnStyle()}>‹ Əvvəlki</button>
-          <button onClick={() => setWeekStart(startOfWeek(new Date()))} style={btnStyle()}>Bu həftə</button>
-          <button onClick={() => setWeekStart(addDays(weekStart, 7))} style={btnStyle()}>Növbəti ›</button>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>
+            {fmtDay(weekDays[0])} – {fmtDay(weekDays[6])}.{weekDays[6].getFullYear()}
+          </span>
+          <div style={{ display: "inline-flex", alignItems: "center", border: "1px solid var(--oxford-10)", borderRadius: 10, background: "#fff", overflow: "hidden" }}>
+            <button onClick={() => setWeekStart(addDays(weekStart, -7))} style={navBtnStyle(true)} title="Əvvəlki həftə" aria-label="Əvvəlki həftə"><ChevronLeft /></button>
+            <button onClick={() => setWeekStart(startOfWeek(new Date()))} style={{ ...navBtnStyle(true), width: "auto", padding: "0 12px", height: 34, fontSize: 12.5, fontWeight: 600, color: "var(--oxford)", borderLeft: "1px solid var(--oxford-10)", borderRight: "1px solid var(--oxford-10)" }}>Bu həftə</button>
+            <button onClick={() => setWeekStart(addDays(weekStart, 7))} style={navBtnStyle(true)} title="Növbəti həftə" aria-label="Növbəti həftə"><ChevronRight /></button>
+          </div>
+          <button onClick={() => setRefreshNonce(x => x + 1)} style={navBtnStyle(false)} title="Yenilə" aria-label="Yenilə"><RefreshIcon /></button>
         </div>
       </div>
 
@@ -435,9 +440,9 @@ export default function PsychologCalendarPage() {
       )}
 
       {loading ? (
-        <div style={{ background: "#fff", borderRadius: 12, padding: 40, textAlign: "center", color: "#52718F" }}>Yüklənir…</div>
+        <CalendarSkeleton />
       ) : (
-        <div style={{ background: "#fff", borderRadius: 14, padding: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.05)" }}>
+        <div style={{ background: "#fff", borderRadius: 14, padding: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1px solid #EDF1F8" }}>
           <div style={{ minWidth: 760 }}>
             {/* Day header row */}
             <div style={{
@@ -452,9 +457,15 @@ export default function PsychologCalendarPage() {
               {weekDays.map((d, i) => {
                 const isToday = isoDay(d) === isoDay(new Date());
                 return (
-                  <div key={i} style={{ textAlign: "center", fontSize: 12, color: "#52718F" }}>
-                    <div style={{ fontWeight: 700, color: isToday ? "var(--brand)" : "#1A2535" }}>{DAYS_AZ[i]}</div>
-                    <div style={{ color: isToday ? "var(--brand)" : "#52718F" }}>{fmtDay(d)}</div>
+                  <div key={i} style={{ textAlign: "center", fontSize: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                    <div style={{ fontWeight: 700, color: isToday ? "var(--brand)" : "var(--oxford)" }}>{DAYS_AZ[i]}</div>
+                    <div style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      minWidth: 34, height: 22, padding: "0 8px", borderRadius: 999,
+                      background: isToday ? "var(--brand)" : "transparent",
+                      color: isToday ? "#fff" : "var(--oxford-60)",
+                      fontWeight: isToday ? 700 : 500, fontSize: 11.5,
+                    }}>{fmtDay(d)}</div>
                   </div>
                 );
               })}
@@ -522,6 +533,20 @@ export default function PsychologCalendarPage() {
                           pointerEvents: "none",
                         }} />
                       ))}
+
+                      {/* Cari vaxt xətti — yalnız bugünkü sütunda */}
+                      {isToday && (() => {
+                        const now = new Date();
+                        const nowMin = now.getHours() * 60 + now.getMinutes();
+                        if (nowMin < hourMin * 60 || nowMin > hourMax * 60) return null;
+                        const top = (nowMin - hourMin * 60) * PX_PER_MIN;
+                        return (
+                          <div style={{ position: "absolute", left: 0, right: 0, top, zIndex: 4, pointerEvents: "none" }}>
+                            <div style={{ position: "absolute", left: -3, top: -4, width: 8, height: 8, borderRadius: "50%", background: "#EF4444" }} />
+                            <div style={{ borderTop: "2px solid #EF4444" }} />
+                          </div>
+                        );
+                      })()}
 
                       {/* Google external events (background layer) */}
                       {SHOW_GOOGLE_INTEGRATION && gShown && gStatus?.connected && (externalByDay.get(dayKey) ?? []).map((ex, idx) => {
@@ -644,7 +669,7 @@ export default function PsychologCalendarPage() {
                                   fontWeight: 600,
                                 }}>
                                   <span>{fmtHM(ev.start)} {a.patientName ?? "—"}</span>
-                                  {draggable && <span style={{ opacity: 0.6 }}>⠿</span>}
+                                  {draggable && <span style={{ opacity: 0.55, display: "inline-flex", alignItems: "center" }}><GripIcon /></span>}
                                 </div>
                               ) : (
                                 <>
@@ -653,7 +678,7 @@ export default function PsychologCalendarPage() {
                                     fontSize: 10, opacity: 0.9, fontWeight: 700,
                                   }}>
                                     <span>{fmtHM(ev.start)}–{fmtHM(ev.end)}</span>
-                                    {draggable && <span style={{ opacity: 0.6 }}>⠿</span>}
+                                    {draggable && <span style={{ opacity: 0.55, display: "inline-flex", alignItems: "center" }}><GripIcon /></span>}
                                   </div>
                                   <div style={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                     {a.patientName ?? "—"}
@@ -677,7 +702,7 @@ export default function PsychologCalendarPage() {
             </div>
 
             {/* Legend */}
-            <div style={{ display: "flex", gap: 12, marginTop: 12, fontSize: 11, color: "#52718F", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 14, marginTop: 14, paddingTop: 12, borderTop: "1px solid #EFF2F7", fontSize: 11.5, color: "var(--oxford-60)", flexWrap: "wrap" }}>
               <Legend label="Gözləmədə" bg="#FEF3C7" fg="#92400E" dashed />
               <Legend label="Təyin edilib" bg="#DBEAFE" fg="#1E40AF" />
               <Legend label="Təsdiqlənib" bg="#D1FAE5" fg="#065F46" />
@@ -916,8 +941,47 @@ function Legend({ label, bg, fg, dashed }: { label: string; bg: string; fg: stri
   );
 }
 
-function btnStyle(): React.CSSProperties {
-  return { padding: "6px 12px", fontSize: 12, fontWeight: 600, border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", color: "#1A2535", cursor: "pointer" };
+/** İkon naviqasiya düyməsi. `inGroup` — segment qrupunun içindədirsə (sərhədsiz). */
+function navBtnStyle(inGroup: boolean): React.CSSProperties {
+  return {
+    width: 36, height: 34, display: "inline-flex", alignItems: "center", justifyContent: "center",
+    border: inGroup ? "none" : "1px solid var(--oxford-10)",
+    borderRadius: inGroup ? 0 : 10,
+    background: "#fff", color: "var(--oxford-60)", cursor: "pointer", fontFamily: "inherit", padding: 0,
+    transition: "background .15s, color .15s",
+  };
+}
+
+function ChevronLeft() {
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 18l-6-6 6-6" /></svg>;
+}
+function ChevronRight() {
+  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 18l6-6-6-6" /></svg>;
+}
+function RefreshIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" /></svg>;
+}
+/** Sürüklənə bilən seans üçün tutacaq ikonu (köhnə ⠿ simvolu əvəzinə). */
+function GripIcon() {
+  return <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden><circle cx="9" cy="5" r="1.7" /><circle cx="15" cy="5" r="1.7" /><circle cx="9" cy="12" r="1.7" /><circle cx="15" cy="12" r="1.7" /><circle cx="9" cy="19" r="1.7" /><circle cx="15" cy="19" r="1.7" /></svg>;
+}
+
+/** Yüklənmə skeleti — cədvəl strukturunu təqlid edir. */
+function CalendarSkeleton() {
+  return (
+    <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1px solid #EDF1F8" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "60px repeat(7, 1fr)", gap: 8, marginBottom: 14 }}>
+        <div />
+        {Array.from({ length: 7 }).map((_, i) => <div key={i} style={{ height: 30, borderRadius: 8, background: "#F1F5F9" }} />)}
+      </div>
+      {Array.from({ length: 7 }).map((_, r) => (
+        <div key={r} style={{ display: "grid", gridTemplateColumns: "60px repeat(7, 1fr)", gap: 8, marginBottom: 10 }}>
+          <div style={{ height: 42, borderRadius: 8, background: "#F8FAFC" }} />
+          {Array.from({ length: 7 }).map((_, i) => <div key={i} style={{ height: 42, borderRadius: 8, background: "#F4F7FB" }} />)}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 /* ─── Drag-to-reschedule proposal modal ──────────────────────────────────── */

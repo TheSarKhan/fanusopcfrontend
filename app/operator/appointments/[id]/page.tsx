@@ -944,6 +944,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   const [allowance, setAllowance] = useState<SlotAllowance | null>(null);
   const [manualStart, setManualStart] = useState("");
   const [manualEnd, setManualEnd] = useState("");
+  const [singlePrice, setSinglePrice] = useState("");  // yalnız tək (paketsiz) seans ödənişi üçün opsional
   const [note, setNote] = useState(appointment.operatorNote ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -1054,6 +1055,8 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     try {
       const updated = await operatorApi.assignSlots(appointment.id, {
         psychologistId: psyId, slots: payloadSlots, operatorNote: note || null,
+        // Tək (paketsiz) seans üçün opsional qiymət override-i; paketdə göndərilmir.
+        sessionPrice: (!allowance?.packageName && singlePrice.trim()) ? Number(singlePrice) : null,
       });
       const primary = updated.find(u => u.id === appointment.id) ?? updated[0];
       if (primary) onAssigned(primary);
@@ -1076,7 +1079,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
         return { key: st, label: slot ? `${azFormatDate(slot.startAt)} · ${azFormatTime(slot.startAt)}` : st, onRemove: () => toggleSlot(st) };
       })
     : (manualStart && manualEnd
-        ? [{ key: "manual", label: manualStart.replace("T", " · "), onRemove: () => { setManualStart(""); setManualEnd(""); } }]
+        ? [{ key: "manual", label: `${azFormatDate(azLocalToISO(manualStart))} · ${azFormatTime(azLocalToISO(manualStart))} – ${azFormatTime(azLocalToISO(manualEnd))}`, onRemove: () => { setManualStart(""); setManualEnd(""); } }]
         : []);
 
   const selectedPsy = psychologists.find(p => p.id === psyId) ?? null;
@@ -1297,10 +1300,16 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
               {(manualOpen || !!manualStart) && (
                 <div style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 11, padding: 13, marginBottom: 14 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <input type="datetime-local" step={60} value={manualStart} onChange={e => { setManualStart(e.target.value); setPickedSlots([]); }}
-                      style={{ padding: "10px 12px", borderRadius: 9, border: "1px solid #D6E2F7", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }} />
-                    <input type="datetime-local" step={60} value={manualEnd} onChange={e => { setManualEnd(e.target.value); setPickedSlots([]); }}
-                      style={{ padding: "10px 12px", borderRadius: 9, border: "1px solid #D6E2F7", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }} />
+                    <label style={{ display: "block" }}>
+                      <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 5 }}>Başlama vaxtı</span>
+                      <input type="datetime-local" step={60} value={manualStart} onChange={e => { setManualStart(e.target.value); setPickedSlots([]); }}
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 9, border: "1px solid #D6E2F7", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }} />
+                    </label>
+                    <label style={{ display: "block" }}>
+                      <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 5 }}>Bitmə vaxtı</span>
+                      <input type="datetime-local" step={60} value={manualEnd} onChange={e => { setManualEnd(e.target.value); setPickedSlots([]); }}
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 9, border: "1px solid #D6E2F7", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }} />
+                    </label>
                   </div>
                 </div>
               )}
@@ -1320,6 +1329,21 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                       </button>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Tək (paketsiz) seans → opsional qiymət; ödəniş "Ödənişlər → Gözləyir"də yaranır. */}
+              {!allowance?.packageName && (
+                <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #EDF1F8" }}>
+                  <label style={{ display: "block" }}>
+                    <span style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#8AAABF", marginBottom: 8 }}>Seans qiyməti (₼)</span>
+                    <input type="number" min={0} step="0.01" value={singlePrice} onChange={e => setSinglePrice(e.target.value)}
+                      placeholder="Psixoloqun standart qiyməti"
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 9, border: "1px solid #D6E2F7", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }} />
+                  </label>
+                  <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 6, lineHeight: 1.5 }}>
+                    Boş buraxsan psixoloqun standart tək seans qiyməti tətbiq olunur. PENDING ödəniş «Ödənişlər → Gözləyir»də yaranır.
+                  </div>
                 </div>
               )}
             </>

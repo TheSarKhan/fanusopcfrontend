@@ -238,7 +238,9 @@ export default function PatientAppointmentsPage() {
     const list = items
       .filter(a => a.patientPackageId == null) // paket seansları paket kartında idarə olunur
       .filter(a => a.startAt && new Date(a.startAt).getTime() > now.getTime() - 30 * 60_000)
-      .filter(a => ACTIVE_STATUSES.has(a.status))
+      // Yalnız operator tərəfindən təyin/təsdiq olunmuş seanslar; gözləyən
+      // müraciətlər (PENDING/REJECTED) aşağıdakı ayrıca bölmədə göstərilir.
+      .filter(a => a.status === "ASSIGNED" || a.status === "CONFIRMED" || a.status === "CANCEL_REQUESTED")
       .filter(matchesFilters)
       .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
     const groups: { key: string; label: string; items: AppointmentDetail[] }[] = [];
@@ -257,6 +259,22 @@ export default function PatientAppointmentsPage() {
   }, [items, now, psyFilter, statusFilter]);
 
   const agendaTotal = useMemo(() => agendaGroups.reduce((n, g) => n + g.items.length, 0), [agendaGroups]);
+
+  /** Operatorun təsdiq/təyin etməsini gözləyən müraciətlər (PENDING/REJECTED).
+   *  Paket seansları paket kartında göstərilir, ona görə buradan çıxarılır.
+   *  Bunlar əvvəllər heç yerdə görünmürdü (Yaxınlaşan bölməsi startAt tələb edirdi). */
+  const awaitingOperator = useMemo(() => {
+    return items
+      .filter(a => a.patientPackageId == null)
+      .filter(a => a.status === "PENDING" || a.status === "REJECTED")
+      .filter(matchesFilters)
+      .sort((a, b) => {
+        const da = new Date(a.requestedStartAt ?? a.startAt ?? a.createdAt).getTime();
+        const db = new Date(b.requestedStartAt ?? b.startAt ?? b.createdAt).getTime();
+        return da - db;
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, psyFilter, statusFilter]);
 
   const history = useMemo(() => {
     return items
@@ -390,6 +408,18 @@ export default function PatientAppointmentsPage() {
             onReschedule={(a) => openReschedule(a)}
             onCancel={(a) => cancel(a)}
           />
+
+          {/* Operator təsdiqi gözləyən müraciətlər — pasiyent öz sorğusunun
+              statusunu görsün (əvvəllər heç yerdə görünmürdü). */}
+          {awaitingOperator.length > 0 && (
+            <Section title="Operator təsdiqi gözləyir" count={awaitingOperator.length} icon="" collapsible={false}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {awaitingOperator.map(a => (
+                  <AwaitingOperatorCard key={a.id} a={a} />
+                ))}
+              </div>
+            </Section>
+          )}
 
           {/* "Proqramlarım" — yalnız alınmış paketlər (booking_series anlayışı yoxdur). */}
           {activePackages.length > 0 && (
@@ -1008,6 +1038,40 @@ function AgendaRow({
           <button onClick={onCancel} title={t("staff.cardCancel")} style={rowIconBtnDanger}><IconX /></button>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─── Operator təsdiqi gözləyən müraciət sətri ───────────────────────────── */
+
+function AwaitingOperatorCard({ a }: { a: AppointmentDetail }) {
+  const status = STATUS[a.status] ?? STATUS.PENDING;
+  const when = a.startAt ?? a.requestedStartAt;
+  const psyName = a.psychologistName ?? a.requestedPsychologistName ?? null;
+  const hint = a.status === "REJECTED"
+    ? "Operator sizə yeni psixoloq təyin edəcək"
+    : "Operatorumuz müraciətinizi nəzərdən keçirir";
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 14, background: "#fff", border: "1px solid #EDF1F8", borderLeft: `3px solid ${status.accent}`, borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: "13px 15px", flexWrap: "wrap" }}>
+      <span style={{ width: 38, height: 38, borderRadius: 11, background: "#FEF3C7", color: "#92400E", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+      </span>
+      <div style={{ flex: 1, minWidth: 170 }}>
+        <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--oxford)" }}>{psyName ?? "Operator psixoloq təyin edəcək"}</div>
+        <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 2 }}>
+          {when ? `İstədiyiniz vaxt: ${azFormatDate(when)} · ${azFormatTime(when)}` : "Vaxt operator tərəfindən təyin olunacaq"}
+        </div>
+        {a.note && (
+          <div style={{ fontSize: 12.5, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 8, padding: "6px 9px", marginTop: 6, maxWidth: 440 }}>
+            «{a.note.slice(0, 100)}{a.note.length > 100 ? "…" : ""}»
+          </div>
+        )}
+      </div>
+      <span style={{ background: status.bg, color: status.color, fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: 999, flex: "none" }}>{status.label}</span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, flex: "none" }}>
+        <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
+        {hint}
+      </span>
     </div>
   );
 }

@@ -120,11 +120,14 @@ export default function OperatorPoolPage() {
     operatorApi.claimPayment(p.id)
       .then(() => {
         setPayments(prev => prev.filter(x => x.id !== p.id));
-        uiToast(t("staff.opPoolTaken"), "success");
+        // Ödəniş götürüldükdən sonra "Ödənişlər → Gözləyir"də yaşayır; operatoru
+        // birbaşa ora aparırıq ki, "itdi" hissi yaranmasın (mark-paid orada olur).
+        uiToast("Ödəniş götürüldü — Ödənişlər → Gözləyir", "success");
+        router.push("/operator/payments");
       })
       .catch((e) => uiToast((e as Error).message, "error"))
       .finally(() => setBusyId(null));
-  }, [t]);
+  }, [router]);
 
   return (
     <div style={{ width: "100%" }}>

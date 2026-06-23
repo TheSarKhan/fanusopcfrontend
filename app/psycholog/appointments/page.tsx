@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   psychologistApi,
   isSlotConflict,
@@ -9,11 +10,13 @@ import {
   type ClientNote,
   type ClientSummary,
   type RescheduleProposal,
+  type Referral,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import CancelModal from "@/components/CancelModal";
 import RescheduleComposeModal from "@/components/RescheduleComposeModal";
 import JoinSessionButton from "@/components/JoinSessionButton";
+import PsyReferralsView from "@/components/PsyReferralsView";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"];
@@ -95,6 +98,7 @@ function avatarColor(seed: string | number | null | undefined) {
 
 export default function PsychologistAppointmentsPage() {
   const { t } = useT();
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [clients, setClients] = useState<ClientSummary[]>([]);
   const [notesByPatient, setNotesByPatient] = useState<Record<number, ClientNote | null>>({});
@@ -108,7 +112,10 @@ export default function PsychologistAppointmentsPage() {
   const [outcomeFor, setOutcomeFor] = useState<AppointmentDetail | null>(null);
   const [bulkCancelOpen, setBulkCancelOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<"ALL" | "TODAY" | "WEEK" | "ATTENTION" | "HISTORY">("ALL");
+  // "Yönləndirmələr" — bildiriş deep-link-i (?view=referrals) həmin tabı açır.
+  const [view, setView] = useState<"ALL" | "TODAY" | "WEEK" | "ATTENTION" | "HISTORY" | "REFERRALS">(
+    () => (searchParams.get("view") === "referrals" ? "REFERRALS" : "ALL"));
+  const [referralPending, setReferralPending] = useState(0);
   const [selectedPkg, setSelectedPkg] = useState<number | null>(null);
   // GAP-03: incoming patient-initiated reschedule requests awaiting my decision
   const [patientRequests, setPatientRequests] = useState<RescheduleProposal[]>([]);
@@ -125,11 +132,13 @@ export default function PsychologistAppointmentsPage() {
       psychologistApi.myAppointments(),
       psychologistApi.clients().catch(() => [] as ClientSummary[]),
       psychologistApi.myRescheduleProposals().catch(() => [] as RescheduleProposal[]),
+      psychologistApi.receivedReferrals().catch(() => [] as Referral[]),
     ])
-      .then(([appts, cs, props]) => {
+      .then(([appts, cs, props, refs]) => {
         setItems(appts);
         setClients(cs);
         setPatientRequests(props.filter(p => p.initiator === "PATIENT" && p.status === "PENDING"));
+        setReferralPending(refs.filter(r => r.status === "PENDING_REVIEW").length);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -140,7 +149,7 @@ export default function PsychologistAppointmentsPage() {
   useEffect(() => {
     return subscribeNotifications((n) => {
       if (typeof n.type === "string"
-        && (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_"))) load();
+        && (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_") || n.type.startsWith("REFERRAL_"))) load();
     });
 
   }, []);
@@ -337,7 +346,13 @@ export default function PsychologistAppointmentsPage() {
             <FilterTab active={view === "WEEK"} count={thisWeek.length} onClick={() => setView("WEEK")}>Bu həftə</FilterTab>
             <FilterTab active={view === "ATTENTION"} count={awaitingConfirm.length + patientRequests.length} warn onClick={() => setView("ATTENTION")}>Diqqət</FilterTab>
             <FilterTab active={view === "HISTORY"} count={history.length} onClick={() => setView("HISTORY")}>Tarixçə</FilterTab>
+            <span aria-hidden style={{ width: 1, alignSelf: "stretch", background: "#E1E9F5", margin: "6px 4px" }} />
+            <FilterTab active={view === "REFERRALS"} count={referralPending} warn={referralPending > 0} onClick={() => setView("REFERRALS")}>Yönləndirmələr</FilterTab>
           </div>
+
+          {view === "REFERRALS" && (
+            <PsyReferralsView onPendingCount={setReferralPending} />
+          )}
 
           {(view === "ALL" || view === "ATTENTION") && patientRequests.length > 0 && (
             <div style={{ display: "grid", gap: 12, marginBottom: 22 }}>
@@ -377,7 +392,7 @@ export default function PsychologistAppointmentsPage() {
 
           {view === "ALL" && <SectionLabel text="Tək seanslar" count={singlesVisible.length} />}
 
-          {(() => {
+          {view !== "REFERRALS" && (() => {
             const list = view === "ALL" ? singlesVisible : visible;
             if (list.length === 0) {
               return <Empty msg={view === "ALL" ? "Tək seans yoxdur." : "Bu kateqoriyada randevu yoxdur."} />;

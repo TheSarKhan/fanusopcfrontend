@@ -18,6 +18,7 @@ import {
   type Psychologist,
 } from "@/lib/api";
 import OnBehalfBookingModal from "@/components/OnBehalfBookingModal";
+import OperatorReferralsView from "@/components/OperatorReferralsView";
 import { getStoredUser } from "@/lib/auth";
 import { subscribeNotifications, subscribeOperatorClaims } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -133,6 +134,10 @@ export default function OperatorAppointmentsPage() {
   // Qeyd: Pool artıq ayrıca səhifədir (/operator/pool), siyahıda filtr deyil.
   const [slaHours, setSlaHours] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
+  // "Yönləndirmələr" görünüşü — randevu chip-lərindən ayrı entity; bildiriş
+  // deep-link-i (?view=referrals) bu görünüşü açır.
+  const [showReferrals, setShowReferrals] = useState(() => searchParams.get("view") === "referrals");
+  const [refCount, setRefCount] = useState(0);
 
   // React to topbar search updates
   useEffect(() => {
@@ -143,6 +148,7 @@ export default function OperatorAppointmentsPage() {
 
   useEffect(() => {
     operatorApi.stats().then(s => setSlaHours(s.slaHours)).catch(() => {});
+    operatorApi.pendingReferrals().then(r => setRefCount(r.length)).catch(() => {});
   }, []);
 
   const [selectMode, setSelectMode] = useState(false);
@@ -162,7 +168,9 @@ export default function OperatorAppointmentsPage() {
   // Live refresh on any appointment-related notification (new, assigned, etc.)
   useEffect(() => {
     return subscribeNotifications((n) => {
-      if (typeof n.type === "string" && n.type.startsWith("APPOINTMENT_")) load();
+      if (typeof n.type !== "string") return;
+      if (n.type.startsWith("APPOINTMENT_")) load();
+      if (n.type.startsWith("REFERRAL_")) operatorApi.pendingReferrals().then(r => setRefCount(r.length)).catch(() => {});
     });
   }, []);
 
@@ -258,8 +266,8 @@ export default function OperatorAppointmentsPage() {
   const [onBehalfOpen, setOnBehalfOpen] = useState(false);
 
   // ─── Filtr çipləri ─────────────────────────────────────────────────────────
-  const pickStatus = (tk: Tab) => { setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setTab(tk); };
-  const statusActive = (tk: Tab) => !allOnly && !overdueOnly && !mineOnly && tab === tk;
+  const pickStatus = (tk: Tab) => { setShowReferrals(false); setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setTab(tk); };
+  const statusActive = (tk: Tab) => !showReferrals && !allOnly && !overdueOnly && !mineOnly && tab === tk;
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -276,15 +284,19 @@ export default function OperatorAppointmentsPage() {
           <p style={{ margin: 0, fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>{t("staff.opDashSub")}</p>
         </div>
         <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
-          <button type="button" onClick={() => setOnBehalfOpen(true)} className="or-btn-primary"
-            style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 15px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
-            <Svg w={15} d={<path d="M12 5v14M5 12h14" />} /> Pasiyent adına randevu
-          </button>
-          <button type="button" onClick={() => { setSelectMode(s => !s); setSelected(new Set()); }}
-            style={{ display: "inline-flex", alignItems: "center", gap: 7, background: selectMode ? "var(--brand)" : "#fff", color: selectMode ? "#fff" : "#082F6D", border: `1px solid ${selectMode ? "var(--brand)" : "#E5E7EB"}`, borderRadius: 10, padding: "10px 15px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
-            <Svg w={15} d={<><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>} />
-            {selectMode ? "Seçimi ləğv et" : "Çoxlu seçim"}
-          </button>
+          {!showReferrals && (
+            <button type="button" onClick={() => setOnBehalfOpen(true)} className="or-btn-primary"
+              style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 15px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
+              <Svg w={15} d={<path d="M12 5v14M5 12h14" />} /> Pasiyent adına randevu
+            </button>
+          )}
+          {!showReferrals && (
+            <button type="button" onClick={() => { setSelectMode(s => !s); setSelected(new Set()); }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 7, background: selectMode ? "var(--brand)" : "#fff", color: selectMode ? "#fff" : "#082F6D", border: `1px solid ${selectMode ? "var(--brand)" : "#E5E7EB"}`, borderRadius: 10, padding: "10px 15px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+              <Svg w={15} d={<><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>} />
+              {selectMode ? "Seçimi ləğv et" : "Çoxlu seçim"}
+            </button>
+          )}
           <button type="button" onClick={load} className="or-btn-ghost"
             style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "#082F6D", border: "1px solid #E5E7EB", borderRadius: 10, padding: "10px 15px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
             <Svg w={15} d={<><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></>} /> Yenilə
@@ -305,15 +317,18 @@ export default function OperatorAppointmentsPage() {
 
       {/* FILTER TABS */}
       <div className="or-tabs" style={{ display: "flex", alignItems: "center", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 20 }}>
-        <Chip label="Hamısı" count={items.length} active={allOnly} tone="var(--brand)"
-          onClick={() => { setAllOnly(true); setOverdueOnly(false); setMineOnly(false); }} />
+        <Chip label="Hamısı" count={items.length} active={!showReferrals && allOnly} tone="var(--brand)"
+          onClick={() => { setShowReferrals(false); setAllOnly(true); setOverdueOnly(false); setMineOnly(false); }} />
         {(Object.keys(TAB_META) as Tab[]).map(tk => (
           <Chip key={tk} label={TAB_META[tk].label} count={counts[tk] ?? 0} active={statusActive(tk)} tone={TAB_META[tk].color} onClick={() => pickStatus(tk)} />
         ))}
-        <Chip label="Gecikmiş" count={overdueCount} active={overdueOnly} tone="#DC2626" dot="#EF4444"
-          onClick={() => { setAllOnly(false); setMineOnly(false); setOverdueOnly(o => !o); }} />
-        <Chip label={t("staff.opMineFilter")} count={mineCount} active={mineOnly} tone="var(--brand)" dot="#1051B7"
-          onClick={() => { setAllOnly(false); setOverdueOnly(false); setMineOnly(m => !m); }} />
+        <Chip label="Gecikmiş" count={overdueCount} active={!showReferrals && overdueOnly} tone="#DC2626" dot="#EF4444"
+          onClick={() => { setShowReferrals(false); setAllOnly(false); setMineOnly(false); setOverdueOnly(o => !o); }} />
+        <Chip label={t("staff.opMineFilter")} count={mineCount} active={!showReferrals && mineOnly} tone="var(--brand)" dot="#1051B7"
+          onClick={() => { setShowReferrals(false); setAllOnly(false); setOverdueOnly(false); setMineOnly(m => !m); }} />
+        <span aria-hidden style={{ width: 1, alignSelf: "stretch", background: "#E1E9F5", margin: "4px 2px", flex: "none" }} />
+        <Chip label="Yönləndirmələr" count={refCount} active={showReferrals} tone="#5B21B6" dot="#7C3AED"
+          onClick={() => { setShowReferrals(true); setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setSelectMode(false); setSelected(new Set()); }} />
         <div style={{ position: "relative", flex: "none", minWidth: 220, marginLeft: 4 }}>
           <Svg w={15} stroke="#9DB0CC" style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} d={<><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>} />
           <input type="text" placeholder="Axtar (ad, psixoloq, qeyd…)" value={search} onChange={e => setSearch(e.target.value)}
@@ -322,7 +337,9 @@ export default function OperatorAppointmentsPage() {
       </div>
 
       {/* RESULTS */}
-      {loading ? (
+      {showReferrals ? (
+        <OperatorReferralsView onPendingCount={setRefCount} />
+      ) : loading ? (
         <SkeletonCards />
       ) : filtered.length === 0 ? (
         <EmptyCard />

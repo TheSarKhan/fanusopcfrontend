@@ -1705,6 +1705,8 @@ export interface Referral {
   appointmentId?: number | null;
   patientPackageId?: number | null;
   subjectLabel?: string | null;
+  referredAmount?: number | null;
+  currency?: string | null;
   reason: string;
   clinicalSummary?: string | null;
   message?: string | null;
@@ -1721,6 +1723,8 @@ export interface ReferableSubject {
   label: string;
   patientName?: string | null;
   when?: string | null;
+  amount?: number | null;
+  currency?: string | null;
 }
 
 export interface ReferableOptions {
@@ -2791,7 +2795,7 @@ export interface CustomerProfile {
   cancelledCount: number;
   appointments: PatientHistory["recent"];
   payments: { id: number; amount: number; currency: string; status: string; method: string; paidAt?: string | null; createdAt?: string | null; patientPackageId?: number | null; appointmentId?: number | null; patientName?: string | null; refundedAmount?: number | null; statusNote?: string | null }[];
-  packages: { id: number; psychologistName?: string | null; packageName: string; total: number; remaining: number; status: string; pricePaid?: number | null; currency?: string | null; purchasedAt?: string | null }[];
+  packages: { id: number; psychologistId?: number | null; psychologistName?: string | null; packageName: string; total: number; remaining: number; status: string; pricePaid?: number | null; currency?: string | null; purchasedAt?: string | null }[];
   testResults: { assignmentId: number; resultId?: number | null; testTitle: string; status: string; totalScore?: number | null; maxScore?: number | null; percentage?: number | null; scaleLabel?: string | null; submittedAt?: string | null }[];
   reviewsGiven: { id: number; psychologistName?: string | null; rating: number; comment?: string | null; status: string; createdAt?: string | null }[];
   activity: { type: "AUDIT" | "SUPPORT" | "APPOINTMENT" | "TEST"; action?: string | null; summary?: string | null; at: string }[];
@@ -2852,7 +2856,7 @@ export const operatorApi = {
   // Çoxlu vaxt (paket / seriya) təyini + paket balansı
   slotAllowance: (id: number, psychologistId: number) =>
     authedRequest<SlotAllowance>("GET", `/operator/appointments/${id}/slot-allowance?psychologistId=${psychologistId}`),
-  assignSlots: (id: number, data: { psychologistId: number; slots: { startAt: string; endAt: string }[]; operatorNote?: string | null }) =>
+  assignSlots: (id: number, data: { psychologistId: number; slots: { startAt: string; endAt: string }[]; operatorNote?: string | null; sessionPrice?: number | null }) =>
     authedRequest<AppointmentDetail[]>("POST", `/operator/appointments/${id}/assign-slots`, data),
   // Modul B: seans görüş linki idarəetməsi
   pendingMeetingLinks: () =>
@@ -2903,6 +2907,9 @@ export const operatorApi = {
     note?: string | null;
   }) => authedRequest<{ paymentId: number; amount: number; currency: string; status: string }>(
     "POST", `/operator/patients/${patientId}/single-session`, data),
+  // Operator paket seansını pasiyent adına planlayır (balansdan sərf → CONFIRMED seans)
+  schedulePackageSession: (patientId: number, packageId: number, data: { startAt: string; endAt?: string | null; note?: string | null }) =>
+    authedRequest<AppointmentDetail>("POST", `/operator/patients/${patientId}/packages/${packageId}/schedule`, data),
   cancel: (id: number, reasonCode: string, note?: string) =>
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/cancel`, { reasonCode, note }),
   approveCancelRequest: (id: number, note?: string) =>

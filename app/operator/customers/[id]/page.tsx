@@ -8,7 +8,7 @@ import { use, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { operatorApi, type CustomerProfile, type Psychologist, type PackageDto, type AvailableSlot } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
-import { isoToAzLocal, azFormatDate, azFormatTime } from "@/lib/datetime";
+import { isoToAzLocal, azFormatDate, azFormatTime, azLocalToISO } from "@/lib/datetime";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -87,6 +87,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
   const [sellMode, setSellMode] = useState<"catalog" | "custom" | "single">("catalog");
   const [bookOpen, setBookOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [schedulePkg, setSchedulePkg] = useState<CustomerProfile["packages"][number] | null>(null);
 
   useEffect(() => {
     if (!Number.isFinite(patientId)) { setError(true); setLoading(false); return; }
@@ -145,6 +146,14 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
           initialMode={sellMode}
           onClose={() => setSellOpen(false)}
           onDone={(name, isSingle) => { setSellOpen(false); setReloadKey(k => k + 1); toast(isSingle ? "Tək seans satıldı · ödəniş PENDING" : `Paket satıldı: ${name} · ödəniş PENDING`, "success"); }}
+        />
+      )}
+      {schedulePkg && (
+        <SchedulePackageSessionModal
+          patientId={patientId}
+          pkg={schedulePkg}
+          onClose={() => setSchedulePkg(null)}
+          onDone={() => { setSchedulePkg(null); setReloadKey(k => k + 1); toast("Seans planlandı · təsdiqləndi", "success"); }}
         />
       )}
       {bookOpen && (
@@ -328,6 +337,15 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
                     <div style={{ height: 8, background: done ? "#D1FAE5" : "#E4ECFA", borderRadius: 999, overflow: "hidden" }}>
                       <div style={{ width: `${pct}%`, height: "100%", background: done ? "#10B981" : "linear-gradient(90deg,#1051B7,#3A74D6)", borderRadius: 999 }} />
                     </div>
+                    {pkg.status === "ACTIVE" && pkg.remaining > 0 && pkg.psychologistId != null && (
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 11 }}>
+                        <button type="button" onClick={() => setSchedulePkg(pkg)}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", border: "1px solid var(--brand)", borderRadius: 9, background: "#fff", color: "var(--brand-700)", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" /></svg>
+                          Seans planla
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -814,6 +832,135 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
           <button onClick={onClose} style={{ flex: "none", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "12px 20px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
           <button onClick={submit} disabled={saving} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: 12, fontSize: 14.5, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1, boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 12h14M13 6l6 6-6 6" /></svg>{saving ? "Satılır…" : (mode === "single" ? "Tək seans sat" : "Paket sat")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Operator paket seansı planlama modalı ──────────────────────────────── */
+
+function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
+  patientId: number;
+  pkg: CustomerProfile["packages"][number];
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const psyId = pkg.psychologistId as number;
+  const [slots, setSlots] = useState<AvailableSlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(true);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSlotsLoading(true);
+    const today = new Date();
+    const to = new Date(); to.setDate(to.getDate() + 21);
+    operatorApi.availability(psyId, dateOnly(today), dateOnly(to))
+      .then(setSlots).catch(() => setSlots([])).finally(() => setSlotsLoading(false));
+  }, [psyId]);
+
+  const groupedSlots = useMemo(() => {
+    const map = new Map<string, AvailableSlot[]>();
+    for (const s of slots) {
+      const k = azFormatDate(s.startAt);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(s);
+    }
+    return Array.from(map.entries());
+  }, [slots]);
+
+  const submit = async () => {
+    setErr(null);
+    if (!start || !end) { setErr("Vaxt seçin və ya əl ilə daxil edin"); return; }
+    const startAt = azLocalToISO(start);
+    const endAt = azLocalToISO(end);
+    if (new Date(startAt) >= new Date(endAt)) { setErr("Başlama vaxtı bitiş vaxtından əvvəl olmalıdır"); return; }
+    setSaving(true);
+    try {
+      await operatorApi.schedulePackageSession(patientId, pkg.id, { startAt, endAt });
+      onDone();
+    } catch (e) { setErr((e as Error).message); setSaving(false); }
+  };
+
+  const fieldS: CSSProperties = { width: "100%", padding: "10px 12px", borderRadius: 9, border: "1px solid #D6E2F7", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" };
+  const labS: CSSProperties = { display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 5 };
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(10,26,51,.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, background: "#fff", borderRadius: 16, boxShadow: "0 24px 70px rgba(8,47,109,.3)", display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
+        <div style={{ padding: "18px 22px", borderBottom: "1px solid #F0F4FA" }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)" }}>Paket seansı planla</div>
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3 }}>
+            {pkg.packageName} · {pkg.remaining} seans qalıb{pkg.psychologistName ? ` · ${pkg.psychologistName}` : ""}
+          </div>
+        </div>
+        <div style={{ padding: "18px 22px", overflowY: "auto" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#8AAABF", marginBottom: 10 }}>Boş saatlar</div>
+          {slotsLoading ? (
+            <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Boş saatlar yüklənir…</div>
+          ) : slots.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 12px" }}>Yaxın 3 həftədə boş saat yoxdur — aşağıdan əl ilə daxil edin.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 220, overflowY: "auto", paddingRight: 2 }}>
+              {groupedSlots.map(([day, daySlots]) => (
+                <div key={day}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 6 }}>{day}</div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {daySlots.map(s => {
+                      const sel = start === isoToAzLocal(s.startAt);
+                      return (
+                        <button key={s.startAt} type="button"
+                          onClick={() => { setManualOpen(false); setStart(isoToAzLocal(s.startAt)); setEnd(isoToAzLocal(s.endAt)); }}
+                          style={{ border: `1.5px solid ${sel ? "var(--brand)" : "#D6E2F7"}`, background: sel ? "var(--brand)" : "#fff", color: sel ? "#fff" : "var(--oxford)", borderRadius: 9, padding: "7px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                          {azFormatTime(s.startAt)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button type="button" onClick={() => setManualOpen(o => !o)}
+            style={{ marginTop: 10, background: "none", border: "none", color: "var(--brand-700)", fontSize: 12.5, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+            {manualOpen ? "Əl ilə daxiletməni gizlət" : "Və ya əl ilə daxil et"}
+          </button>
+          {manualOpen && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
+              <label style={{ display: "block" }}>
+                <span style={labS}>Başlama vaxtı</span>
+                <input type="datetime-local" value={start} onChange={e => { setStart(e.target.value); if (!end) setEnd(addMinutes(e.target.value, 50)); }} style={fieldS} />
+              </label>
+              <label style={{ display: "block" }}>
+                <span style={labS}>Bitmə vaxtı</span>
+                <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} style={fieldS} />
+              </label>
+            </div>
+          )}
+
+          {start && end && (
+            <div style={{ fontSize: 12.5, color: "#065F46", fontWeight: 600, marginTop: 12, background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 9, padding: "9px 12px" }}>
+              Seçilmiş vaxt: {azFormatDate(azLocalToISO(start))} · {azFormatTime(azLocalToISO(start))} – {azFormatTime(azLocalToISO(end))}
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "#F2F6FD", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 12px", marginTop: 12, fontSize: 12, color: "var(--oxford-60)", fontWeight: 500, lineHeight: 1.45 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }} aria-hidden><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /></svg>
+            Paket balansından 1 seans sərf olunacaq və seans təsdiqlənmiş (CONFIRMED) yaranacaq.
+          </div>
+
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 12 }}>{err}</div>}
+        </div>
+        <div style={{ display: "flex", gap: 10, padding: "16px 22px", borderTop: "1px solid #F0F4FA" }}>
+          <button onClick={onClose} style={{ flex: "none", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "12px 20px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
+          <button onClick={submit} disabled={saving} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: 12, fontSize: 14.5, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+            {saving ? "Planlanır…" : "Seansı planla"}
           </button>
         </div>
       </div>

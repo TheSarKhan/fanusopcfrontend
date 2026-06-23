@@ -820,10 +820,16 @@ function AssignModal({
               <details style={{ marginBottom: 12 }} open={!!manualStart}>
                 <summary style={{ fontSize: 12, color: "var(--muted)", cursor: "pointer" }}>Əl ilə vaxt daxil et</summary>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
-                  <input type="datetime-local" value={manualStart} onChange={(e) => { setManualStart(e.target.value); setPickedSlot(null); }}
-                    style={{ padding: 9, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }} />
-                  <input type="datetime-local" value={manualEnd} onChange={(e) => { setManualEnd(e.target.value); setPickedSlot(null); }}
-                    style={{ padding: 9, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }} />
+                  <label style={{ display: "block" }}>
+                    <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>Başlama vaxtı</span>
+                    <input type="datetime-local" value={manualStart} onChange={(e) => { setManualStart(e.target.value); setPickedSlot(null); }}
+                      style={{ width: "100%", padding: 9, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13, boxSizing: "border-box" }} />
+                  </label>
+                  <label style={{ display: "block" }}>
+                    <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>Bitmə vaxtı</span>
+                    <input type="datetime-local" value={manualEnd} onChange={(e) => { setManualEnd(e.target.value); setPickedSlot(null); }}
+                      style={{ width: "100%", padding: 9, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13, boxSizing: "border-box" }} />
+                  </label>
                 </div>
               </details>
             </>

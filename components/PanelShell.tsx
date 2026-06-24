@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
-import { logout } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { logout, meApi } from "@/lib/api";
 import { getMainSiteUrl } from "@/lib/auth";
 import PanelIcon, { type IconName } from "./PanelIcon";
 import NotificationBell from "./NotificationBell";
@@ -23,6 +24,8 @@ interface UserInfo {
   name: string;
   initials: string;
   role: string;
+  /** Optional avatar URL. When omitted, PanelShell fetches it from /me. */
+  photoUrl?: string | null;
 }
 
 interface PanelShellProps {
@@ -63,6 +66,15 @@ export default function PanelShell({
   const [loggingOut, setLoggingOut] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+
+  // The stored auth record carries no avatar, so pull the current photo from /me
+  // once on mount. Keeps the sidebar avatar in sync for every panel role.
+  const [photoUrl, setPhotoUrl] = useState<string | null>(user.photoUrl ?? null);
+  useEffect(() => {
+    meApi.get()
+      .then(m => setPhotoUrl(m.photoUrl ?? null))
+      .catch(() => { /* non-fatal — fall back to initials */ });
+  }, []);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -132,7 +144,20 @@ export default function PanelShell({
             onClick={() => setMobileOpen(false)}
             aria-label="Profilə bax"
           >
-            <div className="ps-side__avatar">{user.initials}</div>
+            <div className="ps-side__avatar">
+              {photoUrl ? (
+                <Image
+                  src={photoUrl}
+                  alt={user.name}
+                  width={36}
+                  height={36}
+                  unoptimized
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : (
+                user.initials
+              )}
+            </div>
             <div className="ps-side__user-text">
               <div className="ps-side__uname">{user.name}</div>
               <div className="ps-side__umeta">{user.role}</div>

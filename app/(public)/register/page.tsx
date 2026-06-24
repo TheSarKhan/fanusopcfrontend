@@ -97,6 +97,7 @@ function PatientForm({ onBack }: { onBack: () => void }) {
   const { t } = useT();
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", emergencyContactName: "", emergencyContactPhone: "", emergencyContactRelation: "", residentialAddress: "", password: "", confirmPassword: "" });
   const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -165,7 +166,10 @@ function PatientForm({ onBack }: { onBack: () => void }) {
         </div>
       </Field>
       <Field label="Şifrəni təsdiqlə">
-        <input type="password" className="auth-input" value={form.confirmPassword} onChange={set("confirmPassword")} required />
+        <div className="auth-input-wrap">
+          <input type={showConfirm ? "text" : "password"} className="auth-input" value={form.confirmPassword} onChange={set("confirmPassword")} required />
+          <button type="button" className="auth-eye" onClick={() => setShowConfirm(v => !v)}><EyeIcon open={showConfirm} /></button>
+        </div>
       </Field>
       {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>{error}</div>}
       <div style={{ display: "flex", gap: 10 }}>
@@ -190,6 +194,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
   const { t } = useT();
   const [step, setStep] = useState(0);
   const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -411,7 +416,10 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
             </div>
           </Field>
           <Field label="Şifrəni təsdiqlə">
-            <input type="password" className="auth-input" value={personal.confirmPassword} onChange={setP("confirmPassword")} required />
+            <div className="auth-input-wrap">
+              <input type={showConfirm ? "text" : "password"} className="auth-input" value={personal.confirmPassword} onChange={setP("confirmPassword")} required />
+              <button type="button" className="auth-eye" onClick={() => setShowConfirm(v => !v)}><EyeIcon open={showConfirm} /></button>
+            </div>
           </Field>
 
           {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>{error}</div>}

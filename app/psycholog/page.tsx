@@ -16,7 +16,10 @@ const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }>
   PENDING:   { label: "Yeni",        color: "#92400E", bg: "#FEF3C7" },
   ASSIGNED:  { label: "Sizə təyin",  color: "var(--brand-700)", bg: "var(--brand-100)" },
   CONFIRMED: { label: "Təsdiqli",    color: "#0F766E", bg: "#CCFBF1" },
-  COMPLETED: { label: "Bitdi",       color: "var(--oxford-60)", bg: "var(--oxford-10)" },
+  // Keçmiş seans avtomatik tamamlanır — bütün panellərlə eyni etiket ("Tamamlandı").
+  // Bu, seansın uğurla baş tutduğunu yox, vaxtının keçdiyini bildirir.
+  COMPLETED: { label: "Tamamlandı",  color: "var(--oxford-60)", bg: "var(--oxford-10)" },
+  DISPUTED:  { label: "Mübahisəli",  color: "#991B1B", bg: "#FEE2E2" },
   CANCELLED: { label: "Ləğv",        color: "#991B1B", bg: "#FEE2E2" },
   REJECTED:  { label: "Rədd",        color: "#92400E", bg: "#FEF3C7" },
 };

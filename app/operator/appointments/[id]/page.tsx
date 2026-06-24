@@ -70,9 +70,6 @@ const AUDIT_LABEL: Record<string, string> = {
   APPT_MEETING_LINK_REVOKED: "Görüş linki ləğv edildi",
   APPT_MEETING_LINK_SENT: "Görüş linki göndərildi",
 };
-const DURATION_LABEL: Record<string, string> = {
-  LT_1M: "1 aydan az", M_1_3: "1–3 ay", M_3_6: "3–6 ay", GT_6M: "6 aydan çox",
-};
 const FLAG_LABEL: Record<string, string> = {
   HIGH_NO_SHOW: "Yüksək no-show", HIGH_LATE_CANCEL: "Yüksək gec ləğv", HIGH_REJECT: "Yüksək rədd",
 };
@@ -819,6 +816,13 @@ function RequestContent({ full, t }: { full: OperatorAppointmentFull; t: ReturnT
         ))}
       </div>
 
+      {a.rescheduleRequestedAt && (a.status === "CONFIRMED" || a.status === "ASSIGNED") && (
+        <div style={{ marginTop: 10, fontSize: 12.5, background: "#EFF4FE", border: "1px solid #C7DAF5", borderRadius: 8, padding: "10px 12px", color: "#082F6D" }}>
+          <strong>Pasient vaxt dəyişikliyi tələb edib.</strong> Yeni vaxt seçmək üçün aşağıdakı «Vaxtı dəyiş / yenidən təyin» alətindən istifadə edin.
+          {a.rescheduleRequestNote && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.rescheduleRequestNote}»</div>}
+        </div>
+      )}
+
       {a.operatorNote && (
         <div style={{ marginTop: 10, fontSize: 12, color: "#52718F", background: "#FFFBEB", border: "1px solid #FEF3C7", borderRadius: 8, padding: "8px 12px", whiteSpace: "pre-wrap" }}>
           <strong>Operator qeydi:</strong> {a.operatorNote}
@@ -856,31 +860,6 @@ function RequestContent({ full, t }: { full: OperatorAppointmentFull; t: ReturnT
         </div>
       )}
 
-      {/* Intake cavabları (V36) */}
-      {full.intake?.submittedAt && (
-        <details style={{ marginTop: 12 }}>
-          <summary style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-700)", cursor: "pointer" }}>
-            Intake anketi ({azFormatDate(full.intake.submittedAt)})
-          </summary>
-          <div style={{ display: "grid", gap: 8, marginTop: 8, fontSize: 12.5 }}>
-            {([
-              ["Əsas narahatlıq", full.intake.mainConcern],
-              ["Gözləntilər", full.intake.expectations],
-              ["Simptomlar", full.intake.symptoms],
-              ["Müddət", full.intake.duration ? DURATION_LABEL[full.intake.duration] : null],
-              ["Əvvəlki terapiya", full.intake.priorTherapy ? (full.intake.priorTherapyDetails || "Bəli") : "Xeyr"],
-              ["Dərmanlar", full.intake.medications],
-              ["Tibbi vəziyyət", full.intake.medicalConditions],
-              ["Təcili əlaqə", full.intake.emergencyContact],
-            ] as const).filter(([, v]) => v).map(([k, v]) => (
-              <div key={k}>
-                <div style={{ color: "#52718F", fontWeight: 600, fontSize: 11 }}>{k}</div>
-                <div style={{ color: "#1A2535" }}>{v}</div>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
     </div>
   );
 }

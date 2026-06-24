@@ -306,13 +306,19 @@ export default function PatientAppointmentsPage() {
   // an operator reschedules directly. No slot picking, no penalty branching.
   const openReschedule = (a: AppointmentDetail) => setReschedRequestFor(a);
 
-  const sessionCountFor = (psyId?: number | null) => {
-    if (!psyId) return null;
-    const completed = items.filter(a =>
-      a.psychologistId === psyId &&
-      ["COMPLETED", "CONFIRMED", "AWAITING_CONFIRMATION"].includes(a.status)
-    ).length;
-    return completed > 0 ? completed + 1 : 1;
+  // Bu randevunun pasiyentin həmin psixoloqla keçirdiyi seanslar arasındakı
+  // xronoloji sıra nömrəsi (1-dən). Yalnız pasiyentin ÖZ randevuları (myAppointments)
+  // üzərindən hesablanır — psixoloqun digər müştərilərlə seansları daxil deyil.
+  // Ləğv/rədd olunmuş və hələ təyin olunmamış (PENDING) müraciətlər seans sayılmır.
+  const SESSION_RANK_EXCLUDE = new Set(["CANCELLED", "REJECTED", "PENDING"]);
+  const sessionOrdinalFor = (appt: AppointmentDetail): number | null => {
+    if (!appt.psychologistId) return null;
+    const ordered = items
+      .filter(a => a.psychologistId === appt.psychologistId)
+      .filter(a => a.startAt && !SESSION_RANK_EXCLUDE.has(a.status))
+      .sort((x, y) => new Date(x.startAt!).getTime() - new Date(y.startAt!).getTime());
+    const idx = ordered.findIndex(a => a.id === appt.id);
+    return idx >= 0 ? idx + 1 : null;
   };
 
   const reviewedFor = (psyId?: number | null) =>
@@ -401,7 +407,7 @@ export default function PatientAppointmentsPage() {
           <NextSessionHero
             appt={next}
             now={now}
-            sessionNumber={next?.psychologistId ? sessionCountFor(next.psychologistId) : null}
+            sessionNumber={next ? sessionOrdinalFor(next) : null}
             busyId={busyId}
             onConfirm={(a) => action(a.id, () => patientApi.confirmSession(a.id))}
             onDispute={(a) => setDisputeFor(a)}
@@ -464,7 +470,7 @@ export default function PatientAppointmentsPage() {
                           a={a}
                           isNext={next?.id === a.id}
                           now={now}
-                          sessionNumber={a.psychologistId ? sessionCountFor(a.psychologistId) : null}
+                          sessionNumber={sessionOrdinalFor(a)}
                           onReschedule={() => openReschedule(a)}
                           onCancel={() => cancel(a)}
                         />

@@ -73,6 +73,11 @@ const STATUS: Record<string, { label: string; color: string; bg: string; accent:
 
 const ACTIVE_STATUSES = new Set(["ASSIGNED", "CONFIRMED"]);
 
+// Option B-də keçmiş seans avtomatik "Tamamlandı" olur. Seans əslində baş tutmadısa,
+// psixoloq onu bu pəncərə ərzində "baş tutmadı" kimi bildirə bilər (köhnə tarixçəni
+// yenidən açmamaq üçün məhdudlaşdırılıb). Bildiriş operator həllinə yönləndirilir.
+const NO_SHOW_REPORT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
 /* ─── Inline line icons (no emojis) ──────────────────────────────────────── */
 type IcoProps = { s?: number; c?: string };
 function IClock({ s = 14, c = "#5C6B85" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>; }
@@ -84,7 +89,6 @@ function IAlert({ s = 20, c = "currentColor" }: IcoProps) { return <svg width={s
 function IRefresh({ s = 18, c = "var(--brand)" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>; }
 function ICheck({ s = 13, c = "currentColor" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 6L9 17l-5-5" /></svg>; }
 function IUser({ s = 18, c = "var(--brand)" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>; }
-function IClipboard({ s = 18, c = "var(--brand)" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>; }
 function IX({ s = 18, c = "currentColor" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>; }
 
 /* Stable per-patient avatar tint from a small brand-friendly palette. */
@@ -606,17 +610,26 @@ function RowMenu({ items, size = 36 }: { items: MenuItem[]; size?: number }) {
 
 function buildMenu(a: AppointmentDetail, h: Handlers, now: Date): MenuItem[] {
   const m: MenuItem[] = [];
-  const expired = !!a.endAt && new Date(a.endAt).getTime() < now.getTime();
+  const endMs = a.endAt ? new Date(a.endAt).getTime() : null;
+  const expired = endMs != null && endMs < now.getTime();
+  const reportableNoShow = endMs != null && expired && now.getTime() - endMs < NO_SHOW_REPORT_WINDOW_MS;
+  const noShowItem: MenuItem = { label: "Baş tutmadı", onClick: () => h.onDispute(a), icon: <IAlert s={15} c="#5C6B85" /> };
   if (a.status === "ASSIGNED") {
     m.push({ label: "Vaxt təklif et", onClick: () => h.onPropose(a), icon: <IClock /> });
     m.push({ label: "Rədd et", onClick: () => h.onReject(a), danger: true, icon: <IX /> });
   } else if (a.status === "CONFIRMED") {
     m.push({ label: "Vaxt təklif et", onClick: () => h.onPropose(a), icon: <IClock /> });
     if (!expired) m.push({ label: "Ləğv et", onClick: () => h.onCancel(a), danger: true, icon: <IX /> });
-    else m.push({ label: "Seans qeydi", onClick: () => h.onAddOutcome(a), icon: <IMsg c="var(--brand)" /> });
+    else {
+      m.push(noShowItem);
+      m.push({ label: "Seans qeydi", onClick: () => h.onAddOutcome(a), icon: <IMsg c="var(--brand)" /> });
+    }
   } else if (a.status === "AWAITING_CONFIRMATION") {
-    m.push({ label: "Mübahisə et", onClick: () => h.onDispute(a), icon: <IAlert s={15} c="#5C6B85" /> });
+    m.push(noShowItem);
     m.push({ label: "Nəticə əlavə et", onClick: () => h.onAddOutcome(a), icon: <IMsg c="var(--brand)" /> });
+  } else if (a.status === "COMPLETED" && reportableNoShow) {
+    // Avtomatik tamamlanmış, lakin əslində baş tutmamış seansı operatora bildir.
+    m.push(noShowItem);
   }
   if (a.patientId) m.push({ label: "Müştəri 360°", href: `/psycholog/clients/${a.patientId}`, icon: <IUser /> });
   return m;
@@ -922,7 +935,6 @@ function AgendaRow({
     menu.push({ label: "Seans qeydi", onClick: onAddOutcome, icon: <IMsg c="var(--brand)" /> });
   }
   if (a.patientId) menu.push({ label: "Pasient profili", href: `/psycholog/clients/${a.patientId}`, icon: <IUser /> });
-  menu.push({ label: t("intake.psyTitle"), href: `/psycholog/appointments/${a.id}/intake`, icon: <IClipboard /> });
 
   // Foot only carries the Join button for an active confirmed session — there is
   // no post-session confirmation step anymore (sessions auto-complete).

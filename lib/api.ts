@@ -464,6 +464,9 @@ export interface AppointmentDetail {
   cancelRequestReasonCode?: string | null;
   cancelRequestReasonText?: string | null;
   statusBeforeCancelRequest?: string | null;
+  // Reschedule request (patient → operator; operator reschedules, no status change)
+  rescheduleRequestedAt?: string | null;
+  rescheduleRequestNote?: string | null;
   // Operator follow-up trail (populated only on operator endpoints)
   lastContactAt?: string | null;
   lastContactChannel?: "CALL" | "SMS" | "EMAIL" | "WHATSAPP" | "OTHER" | null;
@@ -1616,12 +1619,6 @@ export const patientApi = {
   extendBookingSeries: (id: number, count: number) =>
     authedRequest<BookingSeries>("POST", `/patient/booking-series/${id}/extend?count=${count}`),
 
-  // Pre-session intake form
-  getIntake: (appointmentId: number) =>
-    authedRequest<AppointmentIntake | null>("GET", `/patient/appointments/${appointmentId}/intake`),
-  submitIntake: (appointmentId: number, data: AppointmentIntakeRequest) =>
-    authedRequest<AppointmentIntake>("POST", `/patient/appointments/${appointmentId}/intake`, data),
-
   confirmSession: (id: number) =>
     authedRequest<AppointmentDetail>("POST", `/patient/appointments/${id}/confirm-session`),
   disputeSession: (id: number, reason?: string) =>
@@ -2003,8 +2000,6 @@ export const psychologistApi = {
     authedRequest<void>(`DELETE`, `/psychologist/time-slot-overrides/${id}`),
 
   myAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/psychologist/appointments"),
-  getAppointmentIntake: (appointmentId: number) =>
-    authedRequest<AppointmentIntake | null>("GET", `/psychologist/appointments/${appointmentId}/intake`),
   confirm: (id: number) =>
     authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/confirm`),
   reject: (id: number, reasonCode: string, reasonText?: string) =>
@@ -2518,37 +2513,6 @@ export interface RescheduleProposalOption {
   endAt: string;
 }
 
-export type IntakeDuration = "LT_1M" | "M_1_3" | "M_3_6" | "GT_6M";
-
-export interface AppointmentIntakeRequest {
-  mainConcern?: string;
-  expectations?: string;
-  symptoms?: string;
-  duration?: IntakeDuration | "";
-  priorTherapy: boolean;
-  priorTherapyDetails?: string;
-  medications?: string;
-  medicalConditions?: string;
-  emergencyContact?: string;
-}
-
-export interface AppointmentIntake {
-  id: number;
-  appointmentId: number;
-  patientId: number;
-  mainConcern: string | null;
-  expectations: string | null;
-  symptoms: string | null;
-  duration: IntakeDuration | null;
-  priorTherapy: boolean;
-  priorTherapyDetails: string | null;
-  medications: string | null;
-  medicalConditions: string | null;
-  emergencyContact: string | null;
-  submittedAt: string | null;
-  updatedAt: string;
-}
-
 export type BookingFrequency = "WEEKLY" | "BIWEEKLY";
 
 export interface BookingSeries {
@@ -2791,7 +2755,6 @@ export interface OperatorAppointmentFull {
   activity: OperatorActivityItem[];
   seriesSiblings: SeriesSibling[];
   suggestions: PsychologistSuggestion[];
-  intake?: AppointmentIntake | null;
   slaHours: number;
   claim: ClaimState;
 }

@@ -66,11 +66,15 @@ export default function OperatorDashboard() {
     ]).then(([list, s, sm]) => { setItems(list); setStats(s); setSummary(sm); }).catch(() => {}).finally(() => setLoading(false));
   };
   useEffect(load, []);
-  useEffect(() => subscribeNotifications(n => { if (typeof n.type === "string" && n.type.startsWith("APPOINTMENT_")) load(); }), []);
+  useEffect(() => subscribeNotifications(n => { if (typeof n.type === "string" && (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_"))) load(); }), []);
 
   const disputed = useMemo(() => items.filter(a => a.status === "DISPUTED").sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()), [items]);
   const rejected = useMemo(() => items.filter(a => a.status === "REJECTED").sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()), [items]);
   const pending = useMemo(() => items.filter(a => a.status === "PENDING").sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()), [items]);
+  // Patient-initiated reschedule requests still live on active appointments (no
+  // status change) — surfaced here as their own queue group so operators don't
+  // miss them when the transient notification scrolls away.
+  const rescheduleReqs = useMemo(() => items.filter(a => a.rescheduleRequestedAt && (a.status === "CONFIRMED" || a.status === "ASSIGNED")).sort((a, b) => new Date(b.rescheduleRequestedAt!).getTime() - new Date(a.rescheduleRequestedAt!).getTime()), [items]);
   const todayActive = useMemo(() => items.filter(a => a.startAt && isSameDay(new Date(a.startAt), now)).filter(a => ["ASSIGNED", "CONFIRMED", "AWAITING_CONFIRMATION"].includes(a.status)).sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime()), [items, now]);
   const awaitingConfirm = useMemo(() => items.filter(a => a.status === "AWAITING_CONFIRMATION"), [items]);
   const stalePending = useMemo(() => { const cutoff = now.getTime() - 4 * 3600000; return pending.filter(a => new Date(a.createdAt).getTime() < cutoff); }, [pending, now]);
@@ -98,7 +102,7 @@ export default function OperatorDashboard() {
     { label: "Orta cavab", value: fmtMin(stats?.avgResponseMinutes ?? null), hint: "bu ay", tone: "neutral", icon: <Ico d={I_WATCH} /> },
   ];
 
-  const queueEmpty = disputed.length === 0 && rejected.length === 0 && pending.length === 0;
+  const queueEmpty = disputed.length === 0 && rejected.length === 0 && pending.length === 0 && rescheduleReqs.length === 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -156,6 +160,12 @@ export default function OperatorDashboard() {
                   <QueueBlock title="Yenidən təyin lazımdır" tone="warn" count={rejected.length} icon={<Ico d={I_REFRESH} />}>
                     {rejected.slice(0, 4).map(a => <QueueRow key={a.id} a={a} now={now} kind="rejected" />)}
                     {rejected.length > 4 && <Overflow n={rejected.length - 4} />}
+                  </QueueBlock>
+                )}
+                {rescheduleReqs.length > 0 && (
+                  <QueueBlock title="Vaxt dəyişikliyi tələbləri" tone="warn" count={rescheduleReqs.length} icon={<Ico d={I_CLOCK} />}>
+                    {rescheduleReqs.slice(0, 4).map(a => <QueueRow key={a.id} a={a} now={now} kind="reschedule" />)}
+                    {rescheduleReqs.length > 4 && <Overflow n={rescheduleReqs.length - 4} />}
                   </QueueBlock>
                 )}
                 {pending.length > 0 && (
@@ -324,9 +334,11 @@ function QueueBlock({ title, tone, count, icon, children }: { title: string; ton
   );
 }
 
-function QueueRow({ a, now, kind, severity }: { a: AppointmentDetail; now: Date; kind: "disputed" | "rejected" | "pending"; severity?: "warn" | "warn-2" | "danger" }) {
+function QueueRow({ a, now, kind, severity }: { a: AppointmentDetail; now: Date; kind: "disputed" | "rejected" | "pending" | "reschedule"; severity?: "warn" | "warn-2" | "danger" }) {
   const timeColor = severity === "danger" ? "#991B1B" : severity === "warn-2" ? "#92400E" : kind === "disputed" ? "#991B1B" : kind === "rejected" ? "#92400E" : "#52718F";
-  const timeText = kind === "pending" ? `${timeAgo(a.createdAt, now)} gözləyir` : `${timeAgo(a.updatedAt ?? a.createdAt, now)} əvvəl`;
+  const timeText = kind === "pending" ? `${timeAgo(a.createdAt, now)} gözləyir`
+    : kind === "reschedule" ? `${timeAgo(a.rescheduleRequestedAt ?? a.updatedAt ?? a.createdAt, now)} əvvəl`
+    : `${timeAgo(a.updatedAt ?? a.createdAt, now)} əvvəl`;
   return (
     <Link href={`/operator/appointments/${a.id}`} className="db-row" style={{ display: "flex", alignItems: "center", gap: 11, padding: "13px 18px", textDecoration: "none", color: "inherit", borderTop: "1px solid #F4F7FB", flexWrap: "wrap" }}>
       <div style={{ flex: 1, minWidth: 160 }}>
@@ -335,12 +347,14 @@ function QueueRow({ a, now, kind, severity }: { a: AppointmentDetail; now: Date;
           <span className="db-mono" style={{ fontSize: 11.5, fontWeight: 700, color: "#52718F" }}>#FNS-{String(a.id).padStart(4, "0")}</span>
           {kind === "disputed" && <Pill bg="#FEE2E2" fg="#991B1B">Mübahisə</Pill>}
           {kind === "rejected" && <Pill bg="#FEF3C7" fg="#92400E">Rədd</Pill>}
+          {kind === "reschedule" && <Pill bg="#E4ECFA" fg="#082F6D">Vaxt dəyişikliyi</Pill>}
           {severity === "warn-2" && <Pill bg="#FEF3C7" fg="#92400E">24h+ gözləyir</Pill>}
           {severity === "danger" && <Pill bg="#FEE2E2" fg="#991B1B">48h+ gözləyir</Pill>}
         </div>
         <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>
           {kind === "disputed" && a.disputeReason && <span style={{ fontStyle: "italic" }}>«{a.disputeReason.slice(0, 60)}{a.disputeReason.length > 60 ? "…" : ""}»</span>}
           {kind === "rejected" && <>{a.requestedPsychologistName && <>İstənilən: {a.requestedPsychologistName}</>}{a.note && <> · <span style={{ fontStyle: "italic" }}>«{a.note.slice(0, 40)}…»</span></>}</>}
+          {kind === "reschedule" && <>{a.psychologistName && <>{a.psychologistName} · </>}{a.rescheduleRequestNote ? <span style={{ fontStyle: "italic" }}>«{a.rescheduleRequestNote.slice(0, 50)}{a.rescheduleRequestNote.length > 50 ? "…" : ""}»</span> : "pasient vaxtı dəyişmək istəyir"}</>}
           {kind === "pending" && <>{a.requestedPsychologistName ? <>İstənilən: <strong>{a.requestedPsychologistName}</strong></> : "Psixoloq seçilməyib"}{a.note && <> · <span style={{ fontStyle: "italic" }}>«{a.note.slice(0, 40)}…»</span></>}</>}
         </div>
       </div>

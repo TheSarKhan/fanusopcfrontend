@@ -19,6 +19,8 @@ const TYPE_META: Record<string, { icon: IconName; label: string; tone: "brand" |
   APPOINTMENT_COMPLETED:              { icon: "check2",    label: "Tamamlandı",      tone: "good" },
   APPOINTMENT_DISPUTED:               { icon: "alert",     label: "Mübahisə",        tone: "danger" },
   APPOINTMENT_DISPUTE_RESOLVED:       { icon: "handshake", label: "Mübahisə həll",   tone: "good" },
+  APPOINTMENT_CANCEL_REQUESTED:       { icon: "x",         label: "Ləğv tələbi",     tone: "warn" },
+  RESCHEDULE_REQUESTED:               { icon: "clock",     label: "Vaxt dəyişikliyi", tone: "warn" },
   REVIEW_PENDING:                     { icon: "star",      label: "Rəy",             tone: "warn" },
   REVIEW_APPROVED:                    { icon: "star",      label: "Rəy",             tone: "good" },
   HOMEWORK_ASSIGNED:                  { icon: "target",    label: "Tapşırıq",        tone: "brand" },

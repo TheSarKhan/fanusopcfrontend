@@ -39,16 +39,6 @@ const CONTACT_ITEMS = [
     ),
   },
   {
-    label: "Ünvan",
-    value: "Nizami küçəsi 28, Bakı",
-    href: undefined,
-    icon: (
-      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" />
-      </svg>
-    ),
-  },
-  {
     label: "İş saatları",
     value: "B.e–Şənbə: 09:00–18:00",
     href: undefined,

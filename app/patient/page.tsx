@@ -405,9 +405,6 @@ function PatientHero({ userName, next }: { userName: string; next: AppointmentDe
             <Link href="/patient/appointments" className="pdash-hero__btn pdash-hero__btn--primary">
               Detalları aç
             </Link>
-            <Link href={`/patient/appointments/${next.id}/intake`} className="pdash-hero__btn pdash-hero__btn--ghost">
-              Hazırlıq forması
-            </Link>
           </div>
         </div>
       )}

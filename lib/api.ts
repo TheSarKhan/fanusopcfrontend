@@ -1160,6 +1160,20 @@ export interface AnswerResult { questionId: number; questionText: string; select
 export interface TestResult { resultId: number; assignmentId: number; totalScore: number; maxScore: number; percentage: number; scaleId?: number | null; scaleLabel?: string | null; respondentName?: string | null; submittedAt: string; answers: AnswerResult[] }
 export interface TestAssignment { id: number; testId: number; testTitle: string; patientId?: number | null; patientName?: string | null; status: string; publicToken?: string | null; assignedAt: string; completedAt?: string | null; hasResult: boolean }
 
+// Psixoloq müraciət statusu — public (auth YOXDUR): e-poçtdakı token ilə baxılır.
+export interface ApplicationStatusResult {
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  firstName?: string | null;
+  adminNote?: string | null;
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+}
+export const getApplicationStatus = (token: string) =>
+  get<ApplicationStatusResult>(
+    `/public/application-status?token=${encodeURIComponent(token)}`,
+    { next: { revalidate: 0 } },
+  );
+
 // Modul F — public (auth YOXDUR): token vasitəsilə test götürmə + cavab göndərmə
 export const getPublicTest = (token: string) => get<TakeTest>(`/public/psych-tests/${token}`);
 export const submitPublicTest = (token: string, data: { answers: SubmitAnswer[]; respondentName?: string }) =>

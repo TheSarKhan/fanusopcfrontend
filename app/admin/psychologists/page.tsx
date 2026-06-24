@@ -428,7 +428,7 @@ export default function PsychologistsPage() {
           <div style={{ overflowX: "auto" }}>
 
           {/* Head */}
-          <div style={{ display: "grid", gridTemplateColumns: "46px minmax(170px,1fr) 170px 130px 64px 80px 100px 160px", minWidth: 920, alignItems: "center", padding: "10px 16px", borderBottom: "1.5px solid #E4EDF6", background: "#F8FAFC" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "46px minmax(170px,1fr) 170px 130px 64px 80px 100px 280px", minWidth: 1040, alignItems: "center", padding: "10px 16px", borderBottom: "1.5px solid #E4EDF6", background: "#F8FAFC" }}>
             {["Sıra", "Psixoloq", "İxtisas", "Vəzifə", "Sessiya", "Reytinq", "Status", ""].map((h, i) => (
               <div key={i} style={{ fontSize: 11, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i >= 4 && i <= 5 ? "center" : "left" }}>{h}</div>
             ))}
@@ -439,8 +439,8 @@ export default function PsychologistsPage() {
             <div
               key={p.id}
               style={{
-                display: "grid", gridTemplateColumns: "46px minmax(170px,1fr) 170px 130px 64px 80px 100px 160px",
-                minWidth: 920, alignItems: "center", padding: "11px 16px",
+                display: "grid", gridTemplateColumns: "46px minmax(170px,1fr) 170px 130px 64px 80px 100px 280px",
+                minWidth: 1040, alignItems: "center", padding: "11px 16px",
                 borderBottom: idx < filtered.length - 1 ? "1px solid #F1F5F9" : "none",
                 transition: "background 0.1s",
               }}

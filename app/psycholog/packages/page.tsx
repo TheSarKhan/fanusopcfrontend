@@ -45,23 +45,41 @@ export default function PsychologPackagesPage() {
   const [newOpen, setNewOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const [indivPrice, setIndivPrice] = useState<number | null>(null);
+  const [priceEditing, setPriceEditing] = useState(false);
+  const [priceBusy, setPriceBusy] = useState(false);
+
   const load = () => {
     setLoading(true);
-    Promise.allSettled([psychologistApi.myPackages(), psychologistApi.myPackageStats()])
-      .then(([c, s]) => {
-        if (c.status === "fulfilled") setCatalog(c.value);
-        if (s.status === "fulfilled") {
-          const map: Record<number, PackageStats> = {};
-          for (const st of s.value) map[st.packageId] = st;
-          setStatsById(map);
-          setStatsReady(true);
-        } else {
-          setStatsReady(false);
-        }
-      })
-      .finally(() => setLoading(false));
+    Promise.allSettled([
+      psychologistApi.myPackages(),
+      psychologistApi.myPackageStats(),
+      psychologistApi.myPricing(),
+    ]).then(([c, s, p]) => {
+      if (c.status === "fulfilled") setCatalog(c.value);
+      if (s.status === "fulfilled") {
+        const map: Record<number, PackageStats> = {};
+        for (const st of s.value) map[st.packageId] = st;
+        setStatsById(map);
+        setStatsReady(true);
+      } else {
+        setStatsReady(false);
+      }
+      if (p.status === "fulfilled") setIndivPrice(p.value.individualPrice ?? null);
+    }).finally(() => setLoading(false));
   };
   useEffect(load, []);
+
+  const saveIndivPrice = async (price: number) => {
+    setPriceBusy(true);
+    try {
+      const res = await psychologistApi.updateMyPricing(price);
+      setIndivPrice(res.individualPrice ?? null);
+      setPriceEditing(false);
+      toast("Tək seans qiyməti yeniləndi", "success");
+    } catch (e) { toast((e as Error).message, "error"); }
+    finally { setPriceBusy(false); }
+  };
 
   const all = Object.values(statsById);
   const sold = all.reduce((n, s) => n + s.sold, 0);
@@ -106,6 +124,36 @@ export default function PsychologPackagesPage() {
           style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 17px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
           <IPlus />Yeni paket
         </button>
+      </div>
+
+      {/* Tək seans qiymət kartı */}
+      <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "16px 20px", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
+            <span style={{ width: 38, height: 38, borderRadius: 11, background: "#E4ECFA", color: "#1051B7", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+              <IDollar s={19} c="#1051B7" />
+            </span>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 3 }}>Tək seans qiyməti</div>
+              <div style={{ fontSize: 21, fontWeight: 800, color: "var(--oxford)", lineHeight: 1 }}>
+                {indivPrice != null
+                  ? formatAzn(indivPrice)
+                  : <span style={{ fontSize: 14, fontWeight: 600, color: "#9DB0CC" }}>Təyin edilməyib</span>}
+              </div>
+            </div>
+          </div>
+          {!priceEditing && (
+            <button onClick={() => setPriceEditing(true)} title="Redaktə" className="pk-icobtn"
+              style={{ width: 34, height: 34, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, cursor: "pointer", flex: "none" }}>
+              <IEdit />
+            </button>
+          )}
+        </div>
+        {priceEditing && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #EDF1F8", animation: "pkFade .2s ease" }}>
+            <IndivPriceForm current={indivPrice} busy={priceBusy} onSave={saveIndivPrice} onCancel={() => setPriceEditing(false)} />
+          </div>
+        )}
       </div>
 
       {/* Summary stat strip */}
@@ -308,6 +356,45 @@ function PatientRow({ p }: { p: PackagePatient }) {
         </div>
       </div>
       <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>{st.label}</span>
+    </div>
+  );
+}
+
+/* ─── Individual price inline form ───────────────────────────────────────── */
+function IndivPriceForm({ current, busy, onSave, onCancel }: {
+  current: number | null;
+  busy: boolean;
+  onSave: (price: number) => void;
+  onCancel: () => void;
+}) {
+  const [val, setVal] = useState(current != null ? String(current) : "");
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = () => {
+    const n = Number(val);
+    if (!val.trim() || !Number.isFinite(n) || n < 0) { setErr("Düzgün qiymət daxil edin (0 və ya daha böyük)"); return; }
+    onSave(n);
+  };
+
+  const field: React.CSSProperties = {
+    border: "1px solid #D6E2F7", background: "#fff", borderRadius: 9,
+    padding: "10px 12px", fontSize: 13.5, fontWeight: 600,
+    color: "var(--oxford)", fontFamily: "inherit", boxSizing: "border-box", width: "100%",
+  };
+
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+      <div style={{ flex: "0 0 180px" }}>
+        <label>
+          <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 5 }}>Yeni qiymət (₼)</span>
+          <input type="number" min={0} step="0.01" value={val} onChange={e => { setVal(e.target.value); setErr(null); }} placeholder="Məs. 80" style={field} />
+        </label>
+        {err && <div style={{ fontSize: 11.5, color: "#991B1B", marginTop: 5 }}>{err}</div>}
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-end", paddingBottom: 0, marginTop: 22 }}>
+        <button onClick={submit} disabled={busy} style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer" }}>Saxla</button>
+        <button onClick={onCancel} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
+      </div>
     </div>
   );
 }

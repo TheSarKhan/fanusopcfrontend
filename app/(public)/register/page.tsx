@@ -75,19 +75,56 @@ function StepIndicator({ steps, current }: { steps: string[]; current: number })
   );
 }
 
-function ChipToggle({ options, selected, onChange }: { options: string[]; selected: string[]; onChange: (v: string[]) => void }) {
+function ChipToggle({ options, selected, onChange, allowCustom = false, customPlaceholder = "Başqa..." }: { options: string[]; selected: string[]; onChange: (v: string[]) => void; allowCustom?: boolean; customPlaceholder?: string }) {
+  const [custom, setCustom] = useState("");
+
+  const toggle = (o: string) =>
+    onChange(selected.includes(o) ? selected.filter(s => s !== o) : [...selected, o]);
+
+  // Selected values the preset list doesn't contain — user-added customs.
+  // Render them as chips too so they stay visible and removable.
+  const extras = selected.filter(s => !options.includes(s));
+
+  const addCustom = () => {
+    // Storage joins values with commas, so strip any to avoid a split later.
+    const v = custom.replace(/,/g, " ").trim().replace(/\s+/g, " ");
+    if (!v) { setCustom(""); return; }
+    // Case-insensitive dedupe against presets + already-selected values.
+    const exists = [...options, ...selected].some(x => x.toLowerCase() === v.toLowerCase());
+    if (!exists) onChange([...selected, v]);
+    setCustom("");
+  };
+
   return (
-    <div className="auth-cert-grid">
-      {options.map(o => (
-        <button key={o} type="button"
-          className={`auth-cert-chip${selected.includes(o) ? " selected" : ""}`}
-          onClick={() => onChange(selected.includes(o) ? selected.filter(s => s !== o) : [...selected, o])}>
-          {selected.includes(o) && (
-            <svg width="11" height="11" fill="none" stroke="var(--oxford)" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-          )}
-          {o}
-        </button>
-      ))}
+    <div>
+      <div className="auth-cert-grid">
+        {[...options, ...extras].map(o => (
+          <button key={o} type="button"
+            className={`auth-cert-chip${selected.includes(o) ? " selected" : ""}`}
+            onClick={() => toggle(o)}>
+            {selected.includes(o) && (
+              <svg width="11" height="11" fill="none" stroke="var(--oxford)" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+            )}
+            {o}
+          </button>
+        ))}
+      </div>
+      {allowCustom && (
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <input
+            className="auth-input"
+            value={custom}
+            onChange={e => setCustom(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
+            placeholder={customPlaceholder}
+            maxLength={40}
+          />
+          <button type="button" className="btn btn-ghost" onClick={addCustom}
+            style={{ height: 48, borderRadius: 10, paddingLeft: 18, paddingRight: 18, whiteSpace: "nowrap" }}>
+            Əlavə et
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -518,9 +555,10 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
               placeholder="0" />
           </Field>
 
-          <Field label="Bildiyi dillər (bir neçə seçin)">
+          <Field label="Bildiyi dillər (bir neçə seçin)" hint="Siyahıda yoxdursa, dili yazıb əlavə edin">
             <ChipToggle options={LANGUAGE_OPTIONS} selected={professional.languages}
-              onChange={v => setProfessional(p => ({ ...p, languages: v }))} />
+              onChange={v => setProfessional(p => ({ ...p, languages: v }))}
+              allowCustom customPlaceholder="Başqa dil əlavə et..." />
           </Field>
 
           <Field label="İxtisaslaşma sahələri (bir neçə seçin)" hint="Müştərilər filter üçün bunu görəcək">

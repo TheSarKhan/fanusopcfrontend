@@ -20,7 +20,6 @@ export type PsychologModuleKey =
   | "appointments"
   | "packages"
   | "clients"
-  | "referrals"
   | "homework"
   | "articles"
   | "community"
@@ -35,11 +34,10 @@ export const PSYCHOLOG_MODULES: Record<PsychologModuleKey, boolean> = {
   appointments: true,  // AÇIQ — Görüşlər (seanslar) yenidən dizayn edildi
   packages:     true,  // AÇIQ — Paketlərim (satış/istifadə statistikası)
   clients:      true,  // AÇIQ — Müştərilər (siyahı + 360° profil) yenidən dizayn edildi
-  referrals:    false,
-  homework:     false,
-  articles:     false,
+  homework:     true,   // AÇIQ — Ev tapşırıqları
+  articles:     true,   // AÇIQ — Məqalələrim (bloq yazıları)
   community:    false,
-  resources:    false,
+  resources:    true,   // AÇIQ — Resurslar (bilik bazası + material kitabxanası + testlər)
   availability: true,  // AÇIQ — İş vaxtları (cədvəl/istisna/məzuniyyət) yenidən dizayn edildi
   reviews:      false,
 };
@@ -51,7 +49,6 @@ const MODULE_PATHS: Record<PsychologModuleKey, string[]> = {
   appointments: ["/psycholog/appointments"],
   packages:     ["/psycholog/packages"],
   clients:      ["/psycholog/clients"],
-  referrals:    ["/psycholog/referrals"],
   homework:     ["/psycholog/homework"],
   articles:     ["/psycholog/articles"],
   community:    ["/psycholog/community"],

@@ -421,14 +421,14 @@ export default function HomeworkDetailModal({
               <span style={{
                 display: "inline-flex", padding: "4px 10px", borderRadius: 999,
                 fontSize: 12, fontWeight: 700,
-                background: homework.status === "COMPLETED" ? "#D1FAE5" : homework.status === "SKIPPED" ? "var(--oxford-10)" : "#FEF3C7",
-                color: homework.status === "COMPLETED" ? "#065F46" : homework.status === "SKIPPED" ? "var(--oxford-60)" : "#92400E",
+                background: homework.status === "COMPLETED" ? "#D1FAE5" : homework.status === "IN_PROGRESS" ? "#DBEAFE" : "#FEF3C7",
+                color: homework.status === "COMPLETED" ? "#065F46" : homework.status === "IN_PROGRESS" ? "#1E40AF" : "#92400E",
               }}>
-                {homework.status === "COMPLETED" ? "Tamamlandı" : homework.status === "SKIPPED" ? "Atlandı" : "Gözləyir"}
+                {homework.status === "COMPLETED" ? "Tamamlandı" : homework.status === "IN_PROGRESS" ? "Davam edir" : "Gözləyir"}
               </span>
-              {role === "PATIENT" && homework.status === "PENDING" && (
+              {role === "PATIENT" && homework.status !== "COMPLETED" && (
                 <div style={{ marginTop: 8, fontSize: 11, color: "var(--oxford-60)" }}>
-                  Pasiyent panelindən tamamlandı/atlandı düyməsini istifadə edə bilərsiniz
+                  Pasiyent panelində kartı sütunlar arası (Gözləyir → Davam edir → Tamamlandı) sürükləyərək statusu dəyişə bilərsiniz
                 </div>
               )}
             </MetaBlock>

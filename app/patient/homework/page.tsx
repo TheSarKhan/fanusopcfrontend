@@ -7,9 +7,9 @@ import HomeworkLabelChip from "@/components/HomeworkLabelChip";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 const COLUMNS: { status: HomeworkStatus; label: string; tone: string; hint: string }[] = [
-  { status: "PENDING",   label: "Gözləyir",   tone: "#F59E0B", hint: "Yeni və davam edən tapşırıqlar" },
-  { status: "COMPLETED", label: "Tamamlandı", tone: "#10B981", hint: "Bitirdiklərin" },
-  { status: "SKIPPED",   label: "Atlandı",    tone: "#6B7280", hint: "Hələ etmədiklərin" },
+  { status: "PENDING",     label: "Gözləyir",   tone: "#F59E0B", hint: "Hələ başlamadıqların" },
+  { status: "IN_PROGRESS", label: "Davam edir", tone: "#3B82F6", hint: "Üzərində işlədiklərin" },
+  { status: "COMPLETED",   label: "Tamamlandı", tone: "#10B981", hint: "Bitirdiklərin" },
 ];
 
 const PRIORITY_COLOR: Record<HomeworkPriority, string> = {
@@ -22,7 +22,7 @@ const PRIORITY_LABEL: Record<HomeworkPriority, string> = {
 const DRAG_MIME = "application/x-fanus-homework";
 
 function isOverdue(h: Homework): boolean {
-  if (h.status !== "PENDING" || !h.dueDate) return false;
+  if (h.status === "COMPLETED" || !h.dueDate) return false;
   return new Date(h.dueDate + "T23:59:59").getTime() < Date.now();
 }
 
@@ -43,7 +43,7 @@ export default function PatientHomeworkPage() {
   const updateOne = (h: Homework) => setItems(prev => prev.map(x => x.id === h.id ? h : x));
 
   const byStatus = useMemo(() => {
-    const map: Record<HomeworkStatus, Homework[]> = { PENDING: [], COMPLETED: [], SKIPPED: [] };
+    const map: Record<HomeworkStatus, Homework[]> = { PENDING: [], IN_PROGRESS: [], COMPLETED: [] };
     for (const h of items) {
       if (!map[h.status]) continue;
       map[h.status].push(h);

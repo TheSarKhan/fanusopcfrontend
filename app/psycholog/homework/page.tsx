@@ -18,13 +18,13 @@ const PRIORITY_LABEL: Record<HomeworkPriority, string> = {
   LOW: "Aşağı", MEDIUM: "Orta", HIGH: "Yüksək",
 };
 const STATUS_TONE: Record<HomeworkStatus, { label: string; color: string; bg: string }> = {
-  PENDING:   { label: "Gözləyir",   color: "#92400E", bg: "#FEF3C7" },
-  COMPLETED: { label: "Tamamlandı", color: "#065F46", bg: "#D1FAE5" },
-  SKIPPED:   { label: "Atlandı",    color: "var(--oxford-60)", bg: "var(--oxford-10)" },
+  PENDING:     { label: "Gözləyir",   color: "#92400E", bg: "#FEF3C7" },
+  IN_PROGRESS: { label: "Davam edir", color: "#1E40AF", bg: "#DBEAFE" },
+  COMPLETED:   { label: "Tamamlandı", color: "#065F46", bg: "#D1FAE5" },
 };
 
 function isOverdue(h: Homework): boolean {
-  if (h.status !== "PENDING" || !h.dueDate) return false;
+  if (h.status === "COMPLETED" || !h.dueDate) return false;
   return new Date(h.dueDate + "T23:59:59").getTime() < Date.now();
 }
 function initials(name: string): string {
@@ -51,7 +51,7 @@ interface PatientBucket {
   total: number;
   completed: number;
   pending: number;
-  skipped: number;
+  inProgress: number;
   overdue: number;
   completionRate: number;
   lastActivityAt: number | null;        // ms
@@ -65,7 +65,7 @@ function bucketByPatient(items: Homework[]): Map<number, PatientBucket> {
     if (!b) {
       b = {
         patientId: h.patientId, patientName: h.patientName,
-        homeworks: [], total: 0, completed: 0, pending: 0, skipped: 0, overdue: 0,
+        homeworks: [], total: 0, completed: 0, pending: 0, inProgress: 0, overdue: 0,
         completionRate: 0, lastActivityAt: null, daysSinceActivity: null,
       };
       map.set(h.patientId, b);
@@ -74,7 +74,7 @@ function bucketByPatient(items: Homework[]): Map<number, PatientBucket> {
     b.total += 1;
     if (h.status === "COMPLETED") b.completed += 1;
     if (h.status === "PENDING") b.pending += 1;
-    if (h.status === "SKIPPED") b.skipped += 1;
+    if (h.status === "IN_PROGRESS") b.inProgress += 1;
     if (isOverdue(h)) b.overdue += 1;
     const at = new Date(h.completedAt ?? h.createdAt).getTime();
     if (b.lastActivityAt == null || at > b.lastActivityAt) b.lastActivityAt = at;
@@ -93,7 +93,7 @@ function bucketByPatient(items: Homework[]): Map<number, PatientBucket> {
   return map;
 }
 
-type SubTab = "pending" | "completed" | "skipped" | "all";
+type SubTab = "pending" | "inprogress" | "completed" | "all";
 
 export default function PsychologHomeworkPage() {
   const { t } = useT();
@@ -130,7 +130,7 @@ export default function PsychologHomeworkPage() {
       if (!all.has(c.patientId)) {
         all.set(c.patientId, {
           patientId: c.patientId, patientName: c.name,
-          homeworks: [], total: 0, completed: 0, pending: 0, skipped: 0, overdue: 0,
+          homeworks: [], total: 0, completed: 0, pending: 0, inProgress: 0, overdue: 0,
           completionRate: 0, lastActivityAt: null, daysSinceActivity: null,
         });
       }
@@ -161,8 +161,8 @@ export default function PsychologHomeworkPage() {
   const counts = useMemo(() => ({
     total: items.length,
     pending: items.filter(h => h.status === "PENDING").length,
+    inProgress: items.filter(h => h.status === "IN_PROGRESS").length,
     completed: items.filter(h => h.status === "COMPLETED").length,
-    skipped: items.filter(h => h.status === "SKIPPED").length,
     overdue: items.filter(isOverdue).length,
     activePatients: buckets.size,
     avgCompletion: buckets.size > 0
@@ -172,14 +172,14 @@ export default function PsychologHomeworkPage() {
 
   // Recent activity across all homework — derived from item state changes.
   const recentEvents = useMemo(() => {
-    type Ev = { id: string; ts: number; patientName: string; title: string; kind: "completed" | "skipped" | "created" };
+    type Ev = { id: string; ts: number; patientName: string; title: string; kind: "completed" | "created" };
     const evs: Ev[] = [];
     for (const h of items) {
       if (h.completedAt) {
         evs.push({
           id: `c-${h.id}`, ts: new Date(h.completedAt).getTime(),
           patientName: h.patientName, title: h.title,
-          kind: h.status === "COMPLETED" ? "completed" : "skipped",
+          kind: "completed",
         });
       } else {
         evs.push({
@@ -244,8 +244,8 @@ export default function PsychologHomeworkPage() {
         <StatCell label="Aktiv pasiyent" value={counts.activePatients} tone="brand" />
         <StatCell label="Cəmi tapşırıq"   value={counts.total}          tone="brand" />
         <StatCell label="Gözləyir"        value={counts.pending}        tone="warn" />
+        <StatCell label="Davam edir"      value={counts.inProgress}     tone="info" />
         <StatCell label="Tamamlandı"      value={counts.completed}      tone="good" />
-        <StatCell label="Atlandı"         value={counts.skipped}        tone="muted" />
         <StatCell label="Gecikən"         value={counts.overdue}        tone="danger" highlight={counts.overdue > 0} />
         <StatCell label="Orta tamamlama"  value={counts.avgCompletion}  tone="muted" suffix="%" />
       </div>
@@ -436,8 +436,8 @@ function PatientWorkspace({
   const ring = makeRing(bucket.completionRate);
   const visible = bucket.homeworks.filter(h => {
     if (subTab === "pending") return h.status === "PENDING";
+    if (subTab === "inprogress") return h.status === "IN_PROGRESS";
     if (subTab === "completed") return h.status === "COMPLETED";
-    if (subTab === "skipped") return h.status === "SKIPPED";
     return true;
   });
 
@@ -467,8 +467,8 @@ function PatientWorkspace({
           <div style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 4, display: "flex", gap: 12, flexWrap: "wrap" }}>
             <span><b style={{ color: "var(--oxford)" }}>{bucket.total}</b> cəmi</span>
             <span><b style={{ color: "#92400E" }}>{bucket.pending}</b> gözləyir</span>
+            {bucket.inProgress > 0 && <span><b style={{ color: "#1E40AF" }}>{bucket.inProgress}</b> davam edir</span>}
             <span><b style={{ color: "#065F46" }}>{bucket.completed}</b> bitib</span>
-            {bucket.skipped > 0 && <span><b style={{ color: "#6B7280" }}>{bucket.skipped}</b> atlandı</span>}
             {bucket.overdue > 0 && <span><b style={{ color: "#991B1B" }}>{bucket.overdue}</b> gecikən</span>}
             {bucket.lastActivityAt && <span>Son aktivlik: {formatTimeAgo(new Date(bucket.lastActivityAt).toISOString())}</span>}
           </div>
@@ -481,9 +481,9 @@ function PatientWorkspace({
         display: "flex", gap: 6, background: "#fff", padding: 6,
         borderRadius: 10, border: "1px solid var(--oxford-10)", width: "fit-content",
       }}>
-        <TabBtn label={`Aktiv (${bucket.pending})`} active={subTab === "pending"} onClick={() => onSubTab("pending")} />
-        <TabBtn label={`Bitib (${bucket.completed})`} active={subTab === "completed"} onClick={() => onSubTab("completed")} />
-        <TabBtn label={`Atlandı (${bucket.skipped})`} active={subTab === "skipped"} onClick={() => onSubTab("skipped")} />
+        <TabBtn label={`Gözləyir (${bucket.pending})`} active={subTab === "pending"} onClick={() => onSubTab("pending")} />
+        <TabBtn label={`Davam edir (${bucket.inProgress})`} active={subTab === "inprogress"} onClick={() => onSubTab("inprogress")} />
+        <TabBtn label={`Tamamlandı (${bucket.completed})`} active={subTab === "completed"} onClick={() => onSubTab("completed")} />
         <TabBtn label={`Bütün (${bucket.total})`} active={subTab === "all"} onClick={() => onSubTab("all")} />
       </div>
 
@@ -537,7 +537,7 @@ function OverviewPanel({
   counts, recentEvents, needsAttention, onPick,
 }: {
   counts: { activePatients: number; pending: number; overdue: number; avgCompletion: number };
-  recentEvents: { id: string; ts: number; patientName: string; title: string; kind: "completed" | "skipped" | "created" }[];
+  recentEvents: { id: string; ts: number; patientName: string; title: string; kind: "completed" | "created" }[];
   needsAttention: PatientBucket[];
   onPick: (id: number) => void;
 }) {
@@ -595,14 +595,14 @@ function OverviewPanel({
               }}>
                 <span style={{
                   width: 8, height: 8, borderRadius: "50%", marginTop: 6,
-                  background: ev.kind === "completed" ? "#10B981" : ev.kind === "skipped" ? "#6B7280" : "var(--brand)",
+                  background: ev.kind === "completed" ? "#10B981" : "var(--brand)",
                   flexShrink: 0,
                 }} />
                 <div style={{ flex: 1 }}>
                   <b>{ev.patientName}</b>
                   {" "}
                   <span style={{ color: "var(--oxford-60)" }}>
-                    {ev.kind === "completed" ? "tamamladı" : ev.kind === "skipped" ? "atladı" : "yeni tapşırıq aldı"}
+                    {ev.kind === "completed" ? "tamamladı" : "yeni tapşırıq aldı"}
                   </span>
                   <span style={{ color: "var(--oxford)" }}>{` — ${ev.title}`}</span>
                   <div style={{ fontSize: 10.5, color: "var(--oxford-60)", marginTop: 2 }}>
@@ -715,12 +715,13 @@ function PsyHomeworkRow({ h, onOpen, onDelete }: {
 
 function StatCell({ label, value, tone, highlight, suffix }: {
   label: string; value: number;
-  tone: "brand" | "warn" | "good" | "muted" | "danger";
+  tone: "brand" | "warn" | "info" | "good" | "muted" | "danger";
   highlight?: boolean; suffix?: string;
 }) {
   const palette: Record<typeof tone, { color: string }> = {
     brand:  { color: "var(--brand-700)" },
     warn:   { color: "#92400E" },
+    info:   { color: "#1E40AF" },
     good:   { color: "#065F46" },
     muted:  { color: "var(--oxford-60)" },
     danger: { color: "#991B1B" },

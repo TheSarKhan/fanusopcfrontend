@@ -152,9 +152,9 @@ export default function PatientDashboard() {
   const taskStats = useMemo(() => {
     const pending = tasks.filter(t => t.status === "PENDING").length;
     const completed = tasks.filter(t => t.status === "COMPLETED").length;
-    const total = pending + completed + tasks.filter(t => t.status === "SKIPPED").length;
+    const total = tasks.length;
     const overdue = tasks.filter(t => {
-      if (t.status !== "PENDING" || !t.dueDate) return false;
+      if (t.status === "COMPLETED" || !t.dueDate) return false;
       return new Date(t.dueDate + "T23:59:59").getTime() < now;
     }).length;
     return { pending, completed, total, overdue };
@@ -511,8 +511,8 @@ function ApptActivityRow({ a }: { a: AppointmentDetail }) {
 
 function TaskActivityRow({ t }: { t: Homework }) {
   const status = t.status === "COMPLETED" ? { label: "Bitdi", bg: "#D1FAE5", fg: "#065F46" }
-    : t.status === "SKIPPED" ? { label: "Atlandı", bg: "#F3F4F6", fg: "#374151" }
-    : { label: "Aktiv", bg: "#FEF3C7", fg: "#92400E" };
+    : t.status === "IN_PROGRESS" ? { label: "Davam edir", bg: "#DBEAFE", fg: "#1E40AF" }
+    : { label: "Gözləyir", bg: "#FEF3C7", fg: "#92400E" };
   return (
     <Link href="/patient/homework" className="pdash-feed-row">
       <div className="pdash-feed-row__dot" style={{ background: "#F59E0B" }} />

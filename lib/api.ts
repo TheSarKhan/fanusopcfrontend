@@ -1641,7 +1641,7 @@ export const patientApi = {
 
   // Homework
   homework: () => authedRequest<Homework[]>("GET", "/patient/homework"),
-  markHomework: (id: number, data: { status: "COMPLETED" | "SKIPPED" | "PENDING"; completionNote?: string }) =>
+  markHomework: (id: number, data: { status: "COMPLETED" | "IN_PROGRESS" | "PENDING"; completionNote?: string }) =>
     authedRequest<Homework>("POST", `/patient/homework/${id}/mark`, data),
   homeworkMove: (id: number, status: HomeworkStatus, position: number) =>
     authedRequest<Homework>("PATCH", `/patient/homework/${id}/move`, { status, position }),
@@ -2322,7 +2322,7 @@ export interface PsychologistReceivedReview {
 }
 
 // ─── Homework / Resource / Template types ─────────────────────────────
-export type HomeworkStatus = "PENDING" | "COMPLETED" | "SKIPPED";
+export type HomeworkStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED";
 export type HomeworkPriority = "LOW" | "MEDIUM" | "HIGH";
 export type HomeworkLabelColor =
   "blue" | "red" | "green" | "yellow" | "purple" | "orange" | "pink" | "teal" | "gray";

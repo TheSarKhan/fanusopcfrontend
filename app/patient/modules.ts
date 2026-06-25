@@ -22,7 +22,6 @@ export type PatientModuleKey =
   | "appointments"
   | "packages"
   | "homework"
-  | "goals"
   | "favorites"
   | "tests"
   | "profile";
@@ -35,10 +34,9 @@ export const PATIENT_MODULES: Record<PatientModuleKey, boolean> = {
   psychologists: true,  // AÇIQ — psixoloq kataloqu (seçim + randevu/paket girişi)
   appointments:  true,  // AÇIQ — paketlər də bura birləşib (Proqramlarım); ayrıca "packages" nav YOX
   packages:      false, // ayrıca modul AÇILMAYACAQ; məzmunu "appointments"-ə birləşir
-  homework:      false,
-  goals:         false,
+  homework:      true,   // AÇIQ — Ev tapşırıqları (kanban)
   favorites:     false,
-  tests:         false,
+  tests:         true,   // AÇIQ — Psixoloji testlər (təyinatlar)
   profile:       false, // sidebar-dan gizli, amma avatar linki ilə əlçatan
 };
 
@@ -48,7 +46,6 @@ const MODULE_PATHS: Partial<Record<PatientModuleKey, string[]>> = {
   appointments:  ["/patient/appointments"],
   packages:      ["/patient/packages"],
   homework:      ["/patient/homework"],
-  goals:         ["/patient/goals"],
   favorites:     ["/patient/favorites"],
   tests:         ["/patient/tests"],
 };

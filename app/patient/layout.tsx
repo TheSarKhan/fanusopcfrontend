@@ -8,7 +8,6 @@ import PanelShell, { type PanelNavItem } from "@/components/PanelShell";
 import { getStoredUser } from "@/lib/auth";
 import { patientApi, type PatientRiskLevel } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
-import { FEATURE_GOALS } from "@/lib/features";
 import {
   PATIENT_MODULES,
   isPatientPathLocked,
@@ -69,9 +68,6 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     { key: "appointments",  href: "/patient/appointments",  label: t("nav.appointments"),  icon: "calendar" },
     { key: "packages",      href: "/patient/packages",      label: t("pkg.myPackages"),    icon: "badge" },
     { key: "homework",      href: "/patient/homework",      label: t("nav.homework"),      icon: "check" },
-    ...(FEATURE_GOALS
-      ? [{ key: "goals", href: "/patient/goals", label: "Hədəflərim", icon: "check" } as ModuleNavItem]
-      : []),
     { key: "favorites",     href: "/patient/favorites",     label: t("nav.favorites"),     icon: "heart" },
     { key: "tests",         href: "/patient/tests",         label: "Testlər",              icon: "clipboard" },
     { key: "profile",       href: "/patient/profile",       label: t("nav.profile"),       icon: "user" },

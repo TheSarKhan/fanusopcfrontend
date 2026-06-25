@@ -36,7 +36,7 @@ export const PSYCHOLOG_MODULES: Record<PsychologModuleKey, boolean> = {
   clients:      true,  // AÇIQ — Müştərilər (siyahı + 360° profil) yenidən dizayn edildi
   homework:     true,   // AÇIQ — Ev tapşırıqları
   articles:     true,   // AÇIQ — Məqalələrim (bloq yazıları)
-  community:    false,
+  community:    true,   // AÇIQ — İcma (peer feed/follow + şərh/bəyənmə)
   resources:    true,   // AÇIQ — Resurslar (bilik bazası + material kitabxanası + testlər)
   availability: true,  // AÇIQ — İş vaxtları (cədvəl/istisna/məzuniyyət) yenidən dizayn edildi
   reviews:      false,

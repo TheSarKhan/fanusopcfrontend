@@ -23,6 +23,7 @@ const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }>
   COMPLETED:   { label: "Tamamlandı",   color: "#065F46",          bg: "#D1FAE5" },
   EXPIRED:     { label: "Vaxtı bitib",  color: "#991B1B",          bg: "#FEE2E2" },
   CANCELLED:   { label: "Ləğv",         color: "#991B1B",          bg: "#FEE2E2" },
+  CLOSED:      { label: "Bağlı",        color: "#374151",          bg: "#F3F4F6" },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -34,8 +35,33 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+const SHARE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
+  PRIVATE:  { label: "Şəxsi",            color: "#374151", bg: "#F3F4F6" },
+  PENDING:  { label: "Təsdiq gözləyir",  color: "#92400E", bg: "#FEF3C7" },
+  APPROVED: { label: "Paylaşılıb",       color: "#065F46", bg: "#D1FAE5" },
+  REJECTED: { label: "Rədd edildi",      color: "#991B1B", bg: "#FEE2E2" },
+};
+
+function ShareStatusBadge({ status }: { status: string }) {
+  const b = SHARE_BADGE[status] ?? SHARE_BADGE.PRIVATE;
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, color: b.color, background: b.bg }}>
+      {b.label}
+    </span>
+  );
+}
+
+function smallBtn(color: string, bg: string): React.CSSProperties {
+  return {
+    fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 7,
+    color, background: bg, border: "1px solid transparent",
+    textDecoration: "none", cursor: "pointer", whiteSpace: "nowrap",
+  };
+}
+
 export default function PsychologTestsPage() {
   const [tests, setTests] = useState<PsyTestSummary[]>([]);
+  const [myTests, setMyTests] = useState<PsyTestSummary[]>([]);
   const [assignments, setAssignments] = useState<TestAssignment[]>([]);
   const [clients, setClients] = useState<ClientSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,11 +80,13 @@ export default function PsychologTestsPage() {
       psychologistApi.assignableTests().catch(() => [] as PsyTestSummary[]),
       psychologistApi.testAssignments().catch(() => [] as TestAssignment[]),
       psychologistApi.clients().catch(() => [] as ClientSummary[]),
+      psychologistApi.myTests().catch(() => [] as PsyTestSummary[]),
     ])
-      .then(([ts, as, cs]) => {
+      .then(([ts, as, cs, mine]) => {
         setTests(ts);
         setAssignments(as);
         setClients(cs);
+        setMyTests(mine);
       })
       .finally(() => setLoading(false));
   };
@@ -96,17 +124,84 @@ export default function PsychologTestsPage() {
     }
   };
 
+  const closeLink = async (assignmentId: number) => {
+    if (!confirm("Bu linki bağlamaq istəyirsiniz? Sonra yeni cavab qəbul olunmayacaq (mövcud nəticələr qalır).")) return;
+    try {
+      const updated = await psychologistApi.closeTestLink(assignmentId);
+      setAssignments(prev => prev.map(a => a.id === assignmentId ? updated : a));
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  };
+
+  const requestShare = async (test: PsyTestSummary) => {
+    if (!confirm(`"${test.title}" testini digər psixoloqlarla paylaşmaq üçün admin təsdiqinə göndərək?`)) return;
+    try {
+      const updated = await psychologistApi.requestTestShare(test.id);
+      setMyTests(prev => prev.map(t => t.id === test.id ? updated : t));
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  };
+
+  const deleteMyTest = async (test: PsyTestSummary) => {
+    if (!confirm(`"${test.title}" testini silmək istəyirsiniz?`)) return;
+    try {
+      await psychologistApi.deleteMyTest(test.id);
+      setMyTests(prev => prev.filter(t => t.id !== test.id));
+      load();
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  };
+
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
         <PsychResourceTabs />
       </div>
-      <div style={{ marginBottom: 18 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535", margin: 0 }}>Psixoloji testlər</h1>
-        <p style={{ fontSize: 13, color: "#52718F", marginTop: 4 }}>
-          Testləri pasiyentlərə təyin edin və ya public link yaradın, nəticələri burada izləyin.
-        </p>
+      <div style={{ marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535", margin: 0 }}>Psixoloji testlər</h1>
+          <p style={{ fontSize: 13, color: "#52718F", marginTop: 4 }}>
+            Testləri pasiyentlərə təyin edin və ya public link yaradın, nəticələri burada izləyin.
+          </p>
+        </div>
+        <a href="/psycholog/tests/manage/new" style={{
+          display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 10,
+          background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 700, textDecoration: "none",
+        }}>+ Yeni test yarat</a>
       </div>
+
+      {/* ── My tests (psychologist-authored) ───────────────────────────────── */}
+      {!loading && myTests.length > 0 && (
+        <section style={{ marginBottom: 28 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: "0 0 12px" }}>Mənim testlərim</h2>
+          <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #EEF2F7", overflow: "hidden" }}>
+            {myTests.map((t, idx) => (
+              <div key={t.id} style={{
+                display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
+                borderTop: idx > 0 ? "1px solid #EEF2F7" : "none", flexWrap: "wrap",
+              }}>
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <div style={{ fontWeight: 600, color: "#1A2535", fontSize: 14 }}>{t.title}</div>
+                  <div style={{ fontSize: 11.5, color: "#52718F", marginTop: 2 }}>
+                    {t.questionCount} sual · {t.scaleCount} şkala
+                  </div>
+                </div>
+                <ShareStatusBadge status={t.shareStatus} />
+                <div style={{ display: "flex", gap: 6 }}>
+                  <a href={`/psycholog/tests/manage/${t.id}/edit`} style={smallBtn("#52718F", "#EEF2F7")}>Redaktə</a>
+                  {(t.shareStatus === "PRIVATE" || t.shareStatus === "REJECTED") && (
+                    <button onClick={() => requestShare(t)} style={smallBtn("var(--brand-700)", "var(--brand-50)")}>Paylaşım üçün göndər</button>
+                  )}
+                  <button onClick={() => deleteMyTest(t)} style={smallBtn("#991B1B", "#FEE2E2")}>Sil</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Available tests ────────────────────────────────────────────────── */}
       <section style={{ marginBottom: 28 }}>
@@ -218,23 +313,38 @@ export default function PsychologTestsPage() {
                       {a.patientName ? (
                         <span style={{ color: "#374151" }}>{a.patientName}</span>
                       ) : (
-                        <span style={{ color: "#52718F", fontStyle: "italic" }}>Public link</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ color: "#52718F", fontStyle: "italic" }}>Public link</span>
+                          <span title="Dolduran sayı" style={{
+                            fontSize: 11, fontWeight: 700, padding: "1px 8px", borderRadius: 999,
+                            background: a.submissionCount > 0 ? "var(--brand-50)" : "#F1F5F9",
+                            color: a.submissionCount > 0 ? "var(--brand-700)" : "#9AAFC4",
+                          }}>{a.submissionCount} nəfər</span>
+                        </span>
                       )}
                     </td>
-                    <td style={tdStyle}><StatusBadge status={a.status} /></td>
+                    <td style={tdStyle}><StatusBadge status={a.publicToken && a.status === "CANCELLED" ? "CLOSED" : a.status} /></td>
                     <td style={{ ...tdStyle, color: "#52718F" }}>{fmt(a.assignedAt)}</td>
                     <td style={{ ...tdStyle, color: "#52718F" }}>{fmt(a.completedAt)}</td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>
-                      {a.hasResult ? (
-                        <Link
-                          href={`/psycholog/tests/${a.id}`}
-                          style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none" }}
-                        >
-                          Nəticə ›
-                        </Link>
-                      ) : (
-                        <span style={{ color: "#9AAFC4" }}>—</span>
-                      )}
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 12, justifyContent: "flex-end" }}>
+                        {a.submissionCount > 0 ? (
+                          <Link
+                            href={`/psycholog/tests/${a.id}`}
+                            style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none" }}
+                          >
+                            {a.publicToken ? `${a.submissionCount} nəticə ›` : "Nəticə ›"}
+                          </Link>
+                        ) : (
+                          <span style={{ color: "#9AAFC4" }}>—</span>
+                        )}
+                        {a.publicToken && a.status !== "CANCELLED" && (
+                          <button onClick={() => closeLink(a.id)}
+                            style={{ fontSize: 12, fontWeight: 600, color: "#991B1B", background: "transparent", border: "1px solid #FECACA", padding: "3px 10px", borderRadius: 7, cursor: "pointer" }}>
+                            Bağla
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

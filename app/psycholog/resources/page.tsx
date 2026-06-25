@@ -32,7 +32,9 @@ function initials(name?: string | null) {
 /* ─── page ────────────────────────────────────────────────────────────────── */
 
 export default function PsychologResourcesPage() {
-  const [items, setItems] = useState<PsychResource[]>([]);
+  const [items, setItems] = useState<PsychResource[]>([]);   // shared library (approved)
+  const [mine, setMine] = useState<PsychResource[]>([]);     // own resources (any state)
+  const [tab, setTab] = useState<"library" | "mine">("library");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState<"ALL" | Category>("ALL");
@@ -42,7 +44,10 @@ export default function PsychologResourcesPage() {
 
   const load = () => {
     setLoading(true);
-    psychologistApi.listResources().then(setItems).catch(() => setItems([])).finally(() => setLoading(false));
+    Promise.all([
+      psychologistApi.listResources().catch(() => [] as PsychResource[]),
+      psychologistApi.myResources().catch(() => [] as PsychResource[]),
+    ]).then(([lib, m]) => { setItems(lib); setMine(m); }).finally(() => setLoading(false));
   };
   useEffect(load, []);
 
@@ -55,8 +60,9 @@ export default function PsychologResourcesPage() {
     if (found) setViewing(found);
   }, [loading, items]);
 
+  const activeList = tab === "library" ? items : mine;
   const filtered = useMemo(() => {
-    let list = [...items];
+    let list = [...activeList];
     if (catFilter !== "ALL") list = list.filter(r => r.category === catFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -67,18 +73,36 @@ export default function PsychologResourcesPage() {
       );
     }
     return list;
-  }, [items, catFilter, search]);
+  }, [activeList, catFilter, search]);
 
   const onSaved = (saved: PsychResource, isNew: boolean) => {
-    setItems(prev => isNew ? [saved, ...prev] : prev.map(r => r.id === saved.id ? saved : r));
+    if (isNew) {
+      // A new resource is PRIVATE — it lives under "Mənim resurslarım" until shared.
+      setMine(prev => [saved, ...prev]);
+      setTab("mine");
+    } else {
+      setItems(prev => prev.map(r => r.id === saved.id ? saved : r));
+      setMine(prev => prev.map(r => r.id === saved.id ? saved : r));
+    }
     setEditing(null);
   };
 
   const onDelete = async (r: PsychResource) => {
     await psychologistApi.deleteResource(r.id);
     setItems(prev => prev.filter(x => x.id !== r.id));
+    setMine(prev => prev.filter(x => x.id !== r.id));
     setConfirm(null);
     if (viewing?.id === r.id) setViewing(null);
+  };
+
+  const requestShare = async (r: PsychResource) => {
+    if (!window.confirm(`"${r.title}" resursunu digər psixoloqlarla paylaşmaq üçün admin təsdiqinə göndərək?`)) return;
+    try {
+      const updated = await psychologistApi.requestShareResource(r.id);
+      setMine(prev => prev.map(x => x.id === r.id ? updated : x));
+    } catch (e) {
+      alert((e as Error).message);
+    }
   };
 
   /* ─── render ────────────────────────────────────────────────────────────── */
@@ -93,12 +117,19 @@ export default function PsychologResourcesPage() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--oxford)", margin: 0 }}>Bilik bazası</h1>
           <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4, marginBottom: 0 }}>
-            Həmkarlarınızla protokol, şablon və materialları paylaşın.
+            Həmkarlarınızla protokol, şablon və materialları paylaşın. Yeni resurs əvvəlcə şəxsidir;
+            paylaşmaq üçün admin təsdiqinə göndərin.
           </p>
         </div>
         <button onClick={() => setEditing("new")} style={primaryBtn}>
-          <IconPlus /> Resurs paylaş
+          <IconPlus /> Resurs əlavə et
         </button>
+      </div>
+
+      {/* View switcher */}
+      <div style={{ display: "flex", gap: 6, background: "#fff", padding: 6, borderRadius: 10, border: "1px solid var(--oxford-10)", width: "fit-content" }}>
+        <ViewTab active={tab === "library"} onClick={() => setTab("library")}>Paylaşılan kitabxana ({items.length})</ViewTab>
+        <ViewTab active={tab === "mine"} onClick={() => setTab("mine")}>Mənim resurslarım ({mine.length})</ViewTab>
       </div>
 
       {/* Toolbar */}
@@ -136,20 +167,26 @@ export default function PsychologResourcesPage() {
           background: "#fff", borderRadius: 16, border: "1px dashed var(--oxford-10)",
         }}>
           <p style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", margin: "0 0 4px" }}>
-            {search.trim() || catFilter !== "ALL" ? "Uyğun resurs tapılmadı" : "Hələ resurs yoxdur"}
+            {search.trim() || catFilter !== "ALL"
+              ? "Uyğun resurs tapılmadı"
+              : tab === "mine" ? "Hələ resurs əlavə etməmisiniz" : "Paylaşılan resurs yoxdur"}
           </p>
           <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: "0 0 18px" }}>
-            Həmkarlarınıza faydalı olacaq ilk protokol və ya şablonu paylaşın.
+            {tab === "mine"
+              ? "İlk resursunuzu əlavə edin; sonra paylaşım üçün admin təsdiqinə göndərə bilərsiniz."
+              : "Təsdiqlənmiş resurslar burada görünəcək."}
           </p>
-          <button onClick={() => setEditing("new")} style={primaryBtn}><IconPlus /> Resurs paylaş</button>
+          <button onClick={() => setEditing("new")} style={primaryBtn}><IconPlus /> Resurs əlavə et</button>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
           {filtered.map(r => (
             <ResourceCard key={r.id} r={r}
+              showShare={tab === "mine"}
               onView={() => setViewing(r)}
               onEdit={() => setEditing(r)}
-              onDelete={() => setConfirm(r)} />
+              onDelete={() => setConfirm(r)}
+              onRequestShare={() => requestShare(r)} />
           ))}
         </div>
       )}
@@ -179,10 +216,40 @@ export default function PsychologResourcesPage() {
   );
 }
 
+/* ─── View tab + share badge ──────────────────────────────────────────────── */
+
+function ViewTab({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: "7px 14px", borderRadius: 8, border: "none",
+      background: active ? "var(--brand)" : "transparent",
+      color: active ? "#fff" : "var(--oxford-60)",
+      fontSize: 12.5, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
+    }}>{children}</button>
+  );
+}
+
+const RES_SHARE: Record<string, { label: string; color: string; bg: string }> = {
+  PRIVATE:  { label: "Şəxsi",           color: "#374151", bg: "#F3F4F6" },
+  PENDING:  { label: "Təsdiq gözləyir", color: "#92400E", bg: "#FEF3C7" },
+  APPROVED: { label: "Paylaşılıb",      color: "#065F46", bg: "#D1FAE5" },
+  REJECTED: { label: "Rədd edildi",     color: "#991B1B", bg: "#FEE2E2" },
+};
+
+function ResShareBadge({ status }: { status: string }) {
+  const b = RES_SHARE[status] ?? RES_SHARE.PRIVATE;
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, color: b.color, background: b.bg }}>
+      {b.label}
+    </span>
+  );
+}
+
 /* ─── Resource card ───────────────────────────────────────────────────────── */
 
-function ResourceCard({ r, onView, onEdit, onDelete }: {
+function ResourceCard({ r, onView, onEdit, onDelete, showShare, onRequestShare }: {
   r: PsychResource; onView: () => void; onEdit: () => void; onDelete: () => void;
+  showShare?: boolean; onRequestShare?: () => void;
 }) {
   const cs = catStyle(r.category);
   return (
@@ -223,6 +290,20 @@ function ResourceCard({ r, onView, onEdit, onDelete }: {
           }}>{r.description}</p>
         )}
       </button>
+      {showShare && (
+        <div style={{ padding: "0 14px 10px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <ResShareBadge status={r.shareStatus} />
+          {(r.shareStatus === "PRIVATE" || r.shareStatus === "REJECTED") && (
+            <button onClick={onRequestShare} style={{
+              fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 7,
+              background: "var(--brand-50)", color: "var(--brand-700)", border: "1px solid transparent", cursor: "pointer",
+            }}>Paylaşım üçün göndər</button>
+          )}
+          {r.shareStatus === "REJECTED" && r.adminNote && (
+            <span style={{ fontSize: 11, color: "#991B1B" }}>Səbəb: {r.adminNote}</span>
+          )}
+        </div>
+      )}
       <div style={{
         padding: "10px 14px", borderTop: "1px solid var(--oxford-10)",
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,

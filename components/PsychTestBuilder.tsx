@@ -60,9 +60,13 @@ function toRows(initial?: PsyTest | null): {
 export default function PsychTestBuilder({
   initial,
   onSubmit,
+  hidePublished = false,
 }: {
   initial?: PsyTest | null;
   onSubmit: (data: PsyTestReq) => Promise<void>;
+  /** Psychologists don't control global publishing — hide the toggle and always
+   *  submit published=false (sharing goes through admin moderation instead). */
+  hidePublished?: boolean;
 }) {
   const seed = toRows(initial);
 
@@ -191,7 +195,7 @@ export default function PsychTestBuilder({
       description: description.trim() || undefined,
       instructions: instructions.trim() || undefined,
       scoreBasis,
-      published,
+      published: hidePublished ? false : published,
       questions: reqQuestions,
       scales: reqScales,
     };
@@ -239,7 +243,7 @@ export default function PsychTestBuilder({
             />
           </Field>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: hidePublished ? "1fr" : "1fr 1fr", gap: 14 }}>
             <Field label="Hesablama üsulu">
               <select
                 className="select"
@@ -255,18 +259,20 @@ export default function PsychTestBuilder({
               </div>
             </Field>
 
-            <Field label="Status">
-              <div className="row" style={{ gap: 10, height: 38 }}>
-                <button
-                  type="button"
-                  className={`switch${published ? " on" : ""}`}
-                  onClick={() => setPublished((v) => !v)}
-                />
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
-                  {published ? "Yayımlanıb" : "Qaralama"}
-                </span>
-              </div>
-            </Field>
+            {!hidePublished && (
+              <Field label="Status">
+                <div className="row" style={{ gap: 10, height: 38 }}>
+                  <button
+                    type="button"
+                    className={`switch${published ? " on" : ""}`}
+                    onClick={() => setPublished((v) => !v)}
+                  />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
+                    {published ? "Yayımlanıb" : "Qaralama"}
+                  </span>
+                </div>
+              </Field>
+            )}
           </div>
         </div>
       </div>

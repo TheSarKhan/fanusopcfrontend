@@ -1143,7 +1143,7 @@ export type MaterialCategoryReq = { name: string; slug: string; color?: string; 
 export type MaterialReq = { title: string; description?: string; categoryId: number; active: boolean; sortOrder: number }
 
 // ─── Modul F: psixoloji testlər ──────────────────────────────────────────────
-export interface PsyTestSummary { id: number; title: string; published: boolean; questionCount: number; scaleCount: number }
+export interface PsyTestSummary { id: number; title: string; published: boolean; questionCount: number; scaleCount: number; shareStatus: string; mine: boolean }
 export interface PsyTestOption { id: number; label: string; points: number; displayOrder: number }
 export interface PsyTestQuestion { id: number; text: string; displayOrder: number; options: PsyTestOption[] }
 export interface PsyTestScale { id: number; label: string; minScore: number; maxScore: number; color?: string | null; description?: string | null; displayOrder: number }
@@ -1158,7 +1158,7 @@ export interface TakeTest { testId: number; assignmentId?: number | null; title:
 export type SubmitAnswer = { questionId: number; selectedOptionId: number }
 export interface AnswerResult { questionId: number; questionText: string; selectedOptionId: number; selectedLabel: string; pointsAwarded: number; displayOrder: number }
 export interface TestResult { resultId: number; assignmentId: number; totalScore: number; maxScore: number; percentage: number; scaleId?: number | null; scaleLabel?: string | null; respondentName?: string | null; submittedAt: string; answers: AnswerResult[] }
-export interface TestAssignment { id: number; testId: number; testTitle: string; patientId?: number | null; patientName?: string | null; status: string; publicToken?: string | null; assignedAt: string; completedAt?: string | null; hasResult: boolean }
+export interface TestAssignment { id: number; testId: number; testTitle: string; patientId?: number | null; patientName?: string | null; status: string; publicToken?: string | null; assignedAt: string; completedAt?: string | null; hasResult: boolean; submissionCount: number }
 
 // Psixoloq müraciət statusu — public (auth YOXDUR): e-poçtdakı token ilə baxılır.
 export interface ApplicationStatusResult {
@@ -1472,6 +1472,14 @@ export const adminApi = {
   createPsychTest: (data: PsyTestReq) => authedRequest<PsyTest>("POST", "/admin/psych-tests", data),
   updatePsychTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("PUT", `/admin/psych-tests/${id}`, data),
   deletePsychTest: (id: number) => authedRequest<void>("DELETE", `/admin/psych-tests/${id}`),
+  // Psychologist test-share moderation
+  pendingTestShares: () => authedRequest<PsyTestSummary[]>("GET", "/admin/psych-tests/pending-shares"),
+  approveTestShare: (id: number, note?: string) => authedRequest<PsyTestSummary>("POST", `/admin/psych-tests/${id}/approve-share`, { note }),
+  rejectTestShare: (id: number, note?: string) => authedRequest<PsyTestSummary>("POST", `/admin/psych-tests/${id}/reject-share`, { note }),
+  // Psychologist resource share moderation
+  pendingResources: () => authedRequest<PsychResource[]>("GET", "/admin/resources/pending"),
+  approveResource: (id: number, note?: string) => authedRequest<PsychResource>("POST", `/admin/resources/${id}/approve`, { note }),
+  rejectResource: (id: number, note?: string) => authedRequest<PsychResource>("POST", `/admin/resources/${id}/reject`, { note }),
 };
 
 export interface AdminReview {
@@ -1965,6 +1973,8 @@ export interface PsychResource {
   authorName?: string | null;
   authorPhotoUrl?: string | null;
   mine: boolean;
+  shareStatus: string;          // PRIVATE | PENDING | APPROVED | REJECTED
+  adminNote?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -2231,6 +2241,13 @@ export const psychologistApi = {
 
   // ─── Modul F: psixoloji testlər ──────────────────────────────────────────
   assignableTests: () => authedRequest<PsyTestSummary[]>("GET", "/psychologist/psych-tests"),
+  // Psychologist-authored tests (own builder; sharing needs admin approval)
+  myTests: () => authedRequest<PsyTestSummary[]>("GET", "/psychologist/psych-tests/manage"),
+  myTest: (id: number) => authedRequest<PsyTest>("GET", `/psychologist/psych-tests/manage/${id}`),
+  createMyTest: (data: PsyTestReq) => authedRequest<PsyTest>("POST", "/psychologist/psych-tests/manage", data),
+  updateMyTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("PUT", `/psychologist/psych-tests/manage/${id}`, data),
+  deleteMyTest: (id: number) => authedRequest<void>("DELETE", `/psychologist/psych-tests/manage/${id}`),
+  requestTestShare: (id: number) => authedRequest<PsyTestSummary>("POST", `/psychologist/psych-tests/manage/${id}/request-share`),
   assignTest: (data: { testId: number; patientId: number; note?: string }) =>
     authedRequest<TestAssignment>("POST", "/psychologist/psych-tests/assignments", data),
   createTestLink: (data: { testId: number; note?: string }) =>
@@ -2238,6 +2255,11 @@ export const psychologistApi = {
   testAssignments: () => authedRequest<TestAssignment[]>("GET", "/psychologist/psych-tests/assignments"),
   testResult: (assignmentId: number) =>
     authedRequest<TestResult>("GET", `/psychologist/psych-tests/assignments/${assignmentId}/result`),
+  /** All submissions for one assignment — a public link collects many takers. */
+  testSubmissions: (assignmentId: number) =>
+    authedRequest<TestResult[]>("GET", `/psychologist/psych-tests/assignments/${assignmentId}/results`),
+  closeTestLink: (assignmentId: number) =>
+    authedRequest<TestAssignment>("POST", `/psychologist/psych-tests/assignments/${assignmentId}/close`),
 
   // ─── Peer follow (psixoloqlar arası izləmə) ──────────────────────────────
   follow: (targetId: number) => authedRequest<void>("POST", `/psychologist/follow/${targetId}`),
@@ -2270,11 +2292,16 @@ export const psychologistApi = {
     return authedRequest<PsychResource[]>("GET", `/psychologist/resources${qs}`);
   },
   getResource: (id: number) => authedRequest<PsychResource>("GET", `/psychologist/resources/${id}`),
+  /** Current psychologist's OWN resources (any share state) — management view. */
+  myResources: () => authedRequest<PsychResource[]>("GET", "/psychologist/resources/mine"),
   createResource: (data: PsychResourceReq) =>
     authedRequest<PsychResource>("POST", "/psychologist/resources", data),
   updateResource: (id: number, data: PsychResourceReq) =>
     authedRequest<PsychResource>("PUT", `/psychologist/resources/${id}`, data),
   deleteResource: (id: number) => authedRequest<void>("DELETE", `/psychologist/resources/${id}`),
+  /** Ask an admin to publish this resource to the shared library. */
+  requestShareResource: (id: number) =>
+    authedRequest<PsychResource>("POST", `/psychologist/resources/${id}/request-share`),
 
   // ─── Keys yönləndirmə (referral) ─────────────────────────────────────────
   referralOptions: () => authedRequest<ReferableOptions>("GET", "/psychologist/referrals/options"),

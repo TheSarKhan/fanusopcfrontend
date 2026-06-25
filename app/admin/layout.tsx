@@ -45,6 +45,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     { href: "/admin/blog",              label: t("nav.blog"),          icon: "content" },
     { href: "/admin/materials",         label: "Materiallar",          icon: "content" },
     { href: "/admin/tests",             label: "Testlər",              icon: "clipboard" },
+    { href: "/admin/resources",         label: "Resurslar",            icon: "content" },
     { href: "/admin/messages",          label: t("nav.messages"),      icon: "message", badge: messageBadge },
     { href: "/admin/reviews",           label: t("nav.reviews"),       icon: "megaphone", badge: reviewBadge },
     { href: "/admin/audit-logs",        label: t("nav.audit"),         icon: "clipboard" },

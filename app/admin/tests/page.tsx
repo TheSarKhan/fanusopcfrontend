@@ -6,13 +6,37 @@ import { IconPlus } from "../_components/icons";
 
 export default function TestsPage() {
   const [items, setItems] = useState<PsyTestSummary[]>([]);
+  const [pending, setPending] = useState<PsyTestSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = () => {
     setLoading(true);
-    adminApi.getPsychTests().then(setItems).catch(() => {}).finally(() => setLoading(false));
+    Promise.all([
+      adminApi.getPsychTests().catch(() => [] as PsyTestSummary[]),
+      adminApi.pendingTestShares().catch(() => [] as PsyTestSummary[]),
+    ])
+      .then(([all, pend]) => { setItems(all); setPending(pend); })
+      .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
+
+  const approveShare = async (t: PsyTestSummary) => {
+    const note = prompt(`"${t.title}" testini təsdiqləyirsiniz. İstəyə bağlı qeyd:`, "") ?? undefined;
+    try {
+      await adminApi.approveTestShare(t.id, note || undefined);
+      setPending((prev) => prev.filter((x) => x.id !== t.id));
+      load();
+    } catch (e) { alert((e as Error).message); }
+  };
+
+  const rejectShare = async (t: PsyTestSummary) => {
+    const note = prompt(`"${t.title}" testini rədd edirsiniz. Səbəb (psixoloqa göndərilir):`, "");
+    if (note === null) return;
+    try {
+      await adminApi.rejectTestShare(t.id, note || undefined);
+      setPending((prev) => prev.filter((x) => x.id !== t.id));
+    } catch (e) { alert((e as Error).message); }
+  };
 
   const remove = async (id: number) => {
     if (!confirm("Bu testi silmək istədiyinizə əminsiniz? Bu əməliyyat geri qaytarıla bilməz.")) return;
@@ -40,6 +64,37 @@ export default function TestsPage() {
       </div>
 
       {loading && <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Yüklənir…</div>}
+
+      {!loading && pending.length > 0 && (
+        <div className="card" style={{ marginBottom: 18, borderColor: "#FDE68A" }}>
+          <div className="card-pad">
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
+              Paylaşım istəkləri ({pending.length})
+            </div>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 12 }}>
+              Psixoloqların yaratdığı testlər — təsdiqlədikdən sonra bütün psixoloqlara görünəcək.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {pending.map((t) => (
+                <div key={t.id} style={{
+                  display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+                  padding: "10px 12px", borderRadius: 10, background: "var(--bg)", border: "1px solid var(--line)",
+                }}>
+                  <div style={{ flex: 1, minWidth: 180 }}>
+                    <div style={{ fontWeight: 600, color: "var(--ink)" }}>{t.title}</div>
+                    <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+                      {t.questionCount} sual · {t.scaleCount} şkala
+                    </div>
+                  </div>
+                  <a className="btn sm ghost" href={`/admin/tests/${t.id}/edit`}>Bax</a>
+                  <button className="btn sm danger" onClick={() => rejectShare(t)}>Rədd et</button>
+                  <button className="btn sm primary" onClick={() => approveShare(t)}>Təsdiqlə</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {!loading && (
         <div className="table-wrap">

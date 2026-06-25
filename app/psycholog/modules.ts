@@ -39,7 +39,7 @@ export const PSYCHOLOG_MODULES: Record<PsychologModuleKey, boolean> = {
   community:    true,   // AÇIQ — İcma (peer feed/follow + şərh/bəyənmə)
   resources:    true,   // AÇIQ — Resurslar (bilik bazası + material kitabxanası + testlər)
   availability: true,  // AÇIQ — İş vaxtları (cədvəl/istisna/məzuniyyət) yenidən dizayn edildi
-  reviews:      false,
+  reviews:      true,   // AÇIQ — Rəylər (pasiyent rəyləri + cavab)
 };
 
 /** Hər modulun "sahib olduğu" route prefiksləri (guard üçün). */

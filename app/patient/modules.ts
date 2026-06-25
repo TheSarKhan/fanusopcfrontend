@@ -35,7 +35,7 @@ export const PATIENT_MODULES: Record<PatientModuleKey, boolean> = {
   appointments:  true,  // AÇIQ — paketlər də bura birləşib (Proqramlarım); ayrıca "packages" nav YOX
   packages:      false, // ayrıca modul AÇILMAYACAQ; məzmunu "appointments"-ə birləşir
   homework:      true,   // AÇIQ — Ev tapşırıqları (kanban)
-  favorites:     false,
+  favorites:     true,   // AÇIQ — Seçilmişlər (favorit psixoloqlar)
   tests:         true,   // AÇIQ — Psixoloji testlər (təyinatlar)
   profile:       false, // sidebar-dan gizli, amma avatar linki ilə əlçatan
 };

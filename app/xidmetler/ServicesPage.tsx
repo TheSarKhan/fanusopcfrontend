@@ -37,7 +37,6 @@ function ServicesHero() {
 
       <div className="fanus-container svc-hero__inner">
         <div className="svc-hero__copy">
-          <div className="fanus-eyebrow"><span className="dash" /> {t("services.eyebrow")}</div>
           <h1>{t("services.title")}</h1>
           <p className="svc-hero__lead">{t("services.lead")}</p>
           <div className="svc-hero__cta">
@@ -167,7 +166,6 @@ function ServicesPrograms() {
 
       <div className="fanus-container">
         <div className="svc-head">
-          <div className="fanus-eyebrow"><span className="dash" /> Proqramlar <span className="dash" /></div>
           <h2>{t("services.programsTitle")}</h2>
           <p>{t("services.programsSub")}</p>
         </div>
@@ -276,7 +274,6 @@ function ServicesMatch() {
 
       <div className="fanus-container">
         <div className="svc-head">
-          <div className="fanus-eyebrow"><span className="dash" /> Başlamağa hazırsınız? <span className="dash" /></div>
           <h2>Sizə uyğun psixoloqu birlikdə tapaq</h2>
           <p>Yazdığınızı oxuyub uyğun mütəxəssisi qısa müddətdə təklif edirik. İlk 15 dəqiqəlik tanışlıq pulsuzdur.</p>
           <div className="svc-match__cta">

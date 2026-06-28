@@ -34,8 +34,7 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
       <div className="fanus-container">
         <div className="fanus-art__head">
           <div>
-            <div className="fanus-eyebrow"><span className="dash" /> {t("articles.eyebrow")}</div>
-            <h2 style={{ marginTop: 14 }}>{t("articles.title")}</h2>
+            <h2>{t("articles.title")}</h2>
             <p className="fanus-art__lead">{t("articles.lead")}</p>
           </div>
           <Link href="/blog" className="fanus-btn fanus-btn-ghost">

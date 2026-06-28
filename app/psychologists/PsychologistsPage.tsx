@@ -125,7 +125,6 @@ function PsycHero() {
 
       <div className="fanus-container pp-hero__inner">
         <div className="pp-hero__copy">
-          <div className="fanus-eyebrow"><span className="dash" /> {t("psyList.eyebrow")}</div>
           <h1>{t("psyList.title")}</h1>
           <p className="pp-hero__lead">{t("psyList.lead")}</p>
           <ul className="pp-hero__strip" role="list">
@@ -593,7 +592,6 @@ function PsycCTA() {
       <Deco type="target" style={{ bottom: 30, left: "8%", width: 130, opacity: .55 }} anim="drift" />
       <div className="fanus-container">
         <div className="pp-cta__head">
-          <div className="fanus-eyebrow"><span className="dash" /> {t("psyList.matchCtaTitle")} <span className="dash" /></div>
           <h2>{t("home.heroTitle")}</h2>
           <p>{t("psyList.matchCtaSub")}</p>
           <div className="pp-cta__btns">

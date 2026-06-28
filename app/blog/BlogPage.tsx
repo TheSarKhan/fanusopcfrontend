@@ -147,7 +147,6 @@ function ArtHero({ search, setSearch }: { search: string; setSearch: (v: string)
 
       <div className="fanus-container ap-hero__inner">
         <div className="ap-hero__copy">
-          <div className="fanus-eyebrow"><span className="dash" /> {t("articles.eyebrow")}</div>
           <h1>{t("articles.title")}</h1>
           <p className="ap-hero__lead">{t("articles.lead")}</p>
 
@@ -522,7 +521,6 @@ function ArtNewsletter() {
       <Deco type="target" style={{ bottom: 30, left: "8%", width: 130, opacity: .55 }} anim="drift" />
       <div className="fanus-container">
         <div className="ap-news__head">
-          <div className="fanus-eyebrow"><span className="dash" /> E-bülleten <span className="dash" /></div>
           <h2>Aylıq məqalə bülletenimizə <span className="fanus-serif-accent">abunə olun</span></h2>
           <p>Hər ay Fanus psixoloqlarının seçilmiş yazıları birbaşa e-poçtunuza gəlsin.</p>
           <form className="ap-news__form" onSubmit={(e) => { e.preventDefault(); alert("Təşəkkürlər!"); }}>

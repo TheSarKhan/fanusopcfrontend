@@ -67,7 +67,6 @@ export default function MoodCheckIn() {
       </div>
       <div className="fanus-container">
         <div className="fanus-mood__head">
-          <div className="fanus-eyebrow"><span className="dash" /> {t("mood.eyebrow")} <span className="dash" /></div>
           <h2>{t("mood.title")}</h2>
           <p>{t("mood.sub")}</p>
         </div>

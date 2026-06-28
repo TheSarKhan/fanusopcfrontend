@@ -27,8 +27,7 @@ export default function FAQ({ faqs }: { faqs?: Faq[] }) {
       <Deco type="blob-1" style={{ bottom: 80, left: "-4%", width: 280, opacity: .55 }} anim="drift" />
       <div className="fanus-container fanus-faq__container">
         <div className="fanus-faq__left">
-          <div className="fanus-eyebrow"><span className="dash" /> {t("faq.eyebrow")}</div>
-          <h2 style={{ marginTop: 14 }}>{t("faq.title")}</h2>
+          <h2>{t("faq.title")}</h2>
           <p className="fanus-faq__lead">{t("faq.lead")}</p>
           <a href="#contact" className="fanus-btn fanus-btn-light" style={{ marginTop: 20 }}>
             <MsgIcon /> {t("faq.contactCta")}

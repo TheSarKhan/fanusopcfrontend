@@ -70,7 +70,6 @@ function MissionSection() {
           }}
         >
           <div>
-            <div className="fanus-eyebrow" style={{ marginBottom: 12 }}><span className="dash" /> Missiyamız</div>
             <h2 style={{ color: "var(--brand)" }}>Hər insan <span className="fanus-serif-accent">sağlam,</span><br />xoşbəxt olmağa layiqdir</h2>
             <p>
               Fanus 2019-cu ildə Azərbaycanda psixoloji yardımı ən yüksək standartlarda
@@ -103,7 +102,6 @@ function ValuesSection() {
           transform: visible ? "translateY(0)" : "translateY(24px)",
           transition: "opacity 0.6s ease, transform 0.6s ease",
         }}>
-          <div className="fanus-eyebrow" style={{ marginBottom: 16, justifyContent: "center" }}><span className="dash" /> Dəyərlərimiz</div>
           <h2 style={{ fontFamily: "var(--font-poppins), system-ui, sans-serif", fontSize: "clamp(32px, 3.6vw, 48px)", fontWeight: 700, color: "var(--brand)", lineHeight: 1.15, letterSpacing: "-0.025em" }}>
             Bizi fərqli edən <span className="fanus-serif-accent">dəyərlər</span>
           </h2>
@@ -148,7 +146,6 @@ export default function AboutPage() {
         <div className="container ap-hero-inner">
           <div className="abt-hero-grid">
             <div className="abt-hero-copy">
-              <div className="fanus-eyebrow"><span className="dash" /> {t("about.pageTitle")}</div>
               <h1 className="ap-hero-title" style={{ color: "var(--brand)" }}>
                 {t("about.pageTitle")}
               </h1>

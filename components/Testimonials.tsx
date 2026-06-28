@@ -15,6 +15,18 @@ const FALLBACK: Testimonial[] = [
   { id: 8, quote: "İş yerində burnout-dan çıxış yolu tapmışdım. İndi sərhəd qoymağı bilirəm.", authorName: "Cavid R.", authorRole: "Bakı · Burnout", initials: "CR", gradient: "linear-gradient(135deg,#3D70C8,#0B3F90)", rating: 5, active: true },
 ];
 
+/** Tam adı "Ad S." formatına salır. Cütlük ("Tural & Ayşə") və tək ad olduğu kimi qalır. */
+function shortName(full?: string): string {
+  if (!full) return "";
+  if (full.includes("&")) return full;
+  const parts = full.trim().split(/\s+/);
+  if (parts.length < 2) return full;
+  const first = parts[0];
+  const last = parts[parts.length - 1].replace(/\.$/, "");
+  if (!last) return first;
+  return `${first} ${last.charAt(0).toLocaleUpperCase("az")}.`;
+}
+
 function Stars({ count }: { count: number }) {
   return (
     <div style={{ display: "flex", gap: 2 }}>
@@ -35,7 +47,7 @@ function Card({ t }: { t: Testimonial }) {
       <div className="fanus-tcard__foot">
         <div className="fanus-tcard__avatar" style={{ background: t.gradient }}>{t.initials}</div>
         <div>
-          <p className="fanus-tcard__name">{t.authorName}</p>
+          <p className="fanus-tcard__name">{shortName(t.authorName)}</p>
           <p className="fanus-tcard__role">{t.authorRole}</p>
         </div>
       </div>
@@ -72,8 +84,7 @@ export default function Testimonials({ testimonials }: { testimonials?: Testimon
       <Deco type="cards" style={{ bottom: 30, right: "4%", width: 220, opacity: .6 }} />
       <div className="fanus-container">
         <div className="fanus-tst__head">
-          <div className="fanus-eyebrow"><span className="dash" /> {t("test.eyebrow")} <span className="dash" /></div>
-          <h2 style={{ marginTop: 14 }}>{t("test.title")}</h2>
+          <h2>{t("test.title")}</h2>
           <p>{t("test.sub")}</p>
         </div>
       </div>

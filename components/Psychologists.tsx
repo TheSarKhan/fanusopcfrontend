@@ -68,8 +68,7 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
       <div className="fanus-container">
         <div className="fanus-psyc__head">
           <div>
-            <div className="fanus-eyebrow"><span className="dash" /> {t("psyList.eyebrow")}</div>
-            <h2 style={{ marginTop: 14 }}>{t("psyList.title")}</h2>
+            <h2>{t("psyList.title")}</h2>
             <p className="fanus-psyc__lead">{t("psyList.lead")}</p>
           </div>
           <Link href="/psychologists" className="fanus-btn fanus-btn-ghost">

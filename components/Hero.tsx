@@ -52,14 +52,6 @@ export default function Hero() {
               Seans üçün müraciət et
             </button>
           </div>
-          <div style={{ marginTop: 10 }}>
-            <Link href="#how" className="fanus-hero__text-cta">
-              <span className="fanus-hero__play">
-                <svg width="11" height="11" fill="var(--fanus-primary)" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7V5z" /></svg>
-              </span>
-              {t("home.heroSecondaryCta")}
-            </Link>
-          </div>
         </div>
 
         <div className="fanus-hero__art">
@@ -130,40 +122,21 @@ function Arrow() {
 function HeroIllustration() {
   return (
     <div className="fanus-hart">
-      <div className="fanus-hart__glow fanus-hart__glow--1" />
-      <div className="fanus-hart__glow fanus-hart__glow--2" />
-      { }
       <img
-        src="/images/hero-main.png"
+        src="/images/hero-main.webp"
         alt="Onlayn video seansda psixoloq və klient — Fanus"
         className="fanus-hart__img"
         draggable={false}
       />
 
       <style>{`
-        .fanus-hart { position: relative; width: 100%; aspect-ratio: 16/10; min-height: 360px; }
+        .fanus-hart { position: relative; width: 100%; }
         .fanus-hart__img {
-          position: absolute; inset: 0;
-          width: 100%; height: 100%;
-          object-fit: contain;
-          z-index: 2;
+          display: block; width: 100%; height: auto;
           animation: heroFloat 6s ease-in-out infinite;
           user-select: none;
         }
         @keyframes heroFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-        .fanus-hart__glow { position: absolute; border-radius: 50%; pointer-events: none; filter: blur(40px); z-index: 1; }
-        .fanus-hart__glow--1 {
-          top: -8%; right: 6%; width: 200px; height: 200px;
-          background: radial-gradient(circle, rgba(245,185,70,.35), transparent 65%);
-          animation: heroFlicker 3.5s ease-in-out infinite;
-        }
-        .fanus-hart__glow--2 {
-          bottom: -6%; left: 8%; width: 240px; height: 240px;
-          background: radial-gradient(circle, rgba(16,81,183,.18), transparent 65%);
-          animation: heroFlicker 4.5s ease-in-out infinite -2s;
-        }
-        @keyframes heroFlicker { 0%, 100% { opacity: .9; transform: scale(1); } 50% { opacity: .55; transform: scale(1.08); } }
-        @media (max-width: 980px) { .fanus-hart { min-height: 320px; } }
       `}</style>
     </div>
   );

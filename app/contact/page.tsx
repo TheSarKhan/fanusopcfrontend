@@ -122,7 +122,6 @@ export default function ContactPage() {
             transition: "opacity 0.6s ease, transform 0.6s ease",
           }}
         >
-          <p className="section-eyebrow">Əlaqə</p>
           <h1 className="contact-title">Bizə yazın.<br />Tezliklə qayıdırıq.</h1>
           <p className="contact-sub">
             Sualınız, təklifiniz və ya əməkdaşlıq istəyiniz varsa — formu doldurun, biz iş günü ərzində geri dönəcəyik.

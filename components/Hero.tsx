@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Deco from "@/components/Deco";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import SessionRequestModal from "@/components/SessionRequestModal";
 
 export default function Hero() {
   const { t } = useT();
+  const [modalOpen, setModalOpen] = useState(false);
   return (
     <section className="fanus-hero" id="hero">
       <div className="fanus-hero__bg" aria-hidden>
@@ -41,6 +44,15 @@ export default function Hero() {
             <Link href="/psychologists" className="fanus-btn fanus-btn-primary fanus-btn-lg">
               {t("home.heroCta")} <Arrow />
             </Link>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="fanus-btn fanus-btn-ghost fanus-btn-lg"
+            >
+              Seans üçün müraciət et
+            </button>
+          </div>
+          <div style={{ marginTop: 10 }}>
             <Link href="#how" className="fanus-hero__text-cta">
               <span className="fanus-hero__play">
                 <svg width="11" height="11" fill="var(--fanus-primary)" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7V5z" /></svg>
@@ -54,6 +66,8 @@ export default function Hero() {
           <HeroIllustration />
         </div>
       </div>
+
+      <SessionRequestModal open={modalOpen} onClose={() => setModalOpen(false)} />
 
       <style>{`
         .fanus-hero { position: relative; padding: 56px 0 96px; overflow: hidden; }

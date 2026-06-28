@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { psychologistApi, type AppointmentDetail, type TimeSlot, type TimeSlotOverride, type Vacation } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
+import TimePicker from "@/components/TimePicker";
 import RescheduleComposeModal from "@/components/RescheduleComposeModal";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -677,12 +678,10 @@ function AddSlotModal({ initialDay, onClose, onCreated }: {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <Section label="Başlama">
-          <input type="time" value={start} onChange={e => setStart(e.target.value)}
-            style={timeInputStyle} />
+          <TimePicker value={start} onChange={setStart} theme="light" size="sm" />
         </Section>
         <Section label="Bitiş">
-          <input type="time" value={end} onChange={e => setEnd(e.target.value)}
-            style={timeInputStyle} />
+          <TimePicker value={end} onChange={setEnd} theme="light" size="sm" />
         </Section>
       </div>
 
@@ -761,10 +760,10 @@ function AddOverrideModal({ onClose, onCreated }: {
             Başlama {type === "BLOCK" && <span style={{ fontWeight: 400, color: "var(--oxford-60)" }}>(boş = bütün gün)</span>}
           </>
         }>
-          <input type="time" value={start} onChange={e => setStart(e.target.value)} style={timeInputStyle} />
+          <TimePicker value={start} onChange={setStart} theme="light" size="sm" clearable />
         </Section>
         <Section label="Bitiş">
-          <input type="time" value={end} onChange={e => setEnd(e.target.value)} style={timeInputStyle} />
+          <TimePicker value={end} onChange={setEnd} theme="light" size="sm" clearable />
         </Section>
       </div>
 

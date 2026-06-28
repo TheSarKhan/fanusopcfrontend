@@ -9,6 +9,7 @@ import {
   type TimeSlotOverride,
 } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
+import TimePicker from "@/components/TimePicker";
 
 const WEEKDAYS_AZ = [
   { iso: 1, label: "Bazar ertəsi" },
@@ -128,10 +129,12 @@ export default function AdminPsychologistAvailabilityPage() {
                 style={{ padding: 8, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }}>
                 {WEEKDAYS_AZ.map(d => <option key={d.iso} value={d.iso}>{d.label}</option>)}
               </select>
-              <input type="time" value={newStart} onChange={e => setNewStart(e.target.value)}
-                style={{ padding: 8, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }} />
-              <input type="time" value={newEnd} onChange={e => setNewEnd(e.target.value)}
-                style={{ padding: 8, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }} />
+              <div style={{ width: 120 }}>
+                <TimePicker value={newStart} onChange={setNewStart} theme="light" size="sm" />
+              </div>
+              <div style={{ width: 120 }}>
+                <TimePicker value={newEnd} onChange={setNewEnd} theme="light" size="sm" />
+              </div>
               <button type="submit" className="btn" style={{ background: "var(--ox)", color: "#fff" }}>+ Əlavə et</button>
             </form>
 
@@ -164,10 +167,8 @@ export default function AdminPsychologistAvailabilityPage() {
                 </select>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <input type="time" value={oStart} onChange={e => setOStart(e.target.value)} placeholder="Başlama"
-                  style={{ padding: 8, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }} />
-                <input type="time" value={oEnd} onChange={e => setOEnd(e.target.value)} placeholder="Bitiş"
-                  style={{ padding: 8, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }} />
+                <TimePicker value={oStart} onChange={setOStart} placeholder="Başlama" theme="light" size="sm" />
+                <TimePicker value={oEnd} onChange={setOEnd} placeholder="Bitiş" theme="light" size="sm" />
               </div>
               <input type="text" value={oNote} onChange={e => setONote(e.target.value)} placeholder="Qeyd"
                 style={{ padding: 8, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }} />

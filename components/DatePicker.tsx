@@ -59,6 +59,8 @@ export interface DatePickerProps {
   className?: string;
   /** Tetik sahəsinə əlavə stil. */
   style?: React.CSSProperties;
+  /** Popup (təqvim) z-index. Modal içindəki istifadə üçün modal z-index-dən yüksək seçin. */
+  popupZIndex?: number;
 }
 
 /* ─── Köməkçi funksiyalar ─────────────────────────────────────────────────── */
@@ -170,6 +172,7 @@ export default function DatePicker({
   ariaLabel,
   className,
   style,
+  popupZIndex = 9999,
 }: DatePickerProps) {
   const autoId = useId();
   const fieldId = id ?? `dp-${autoId}`;
@@ -404,7 +407,7 @@ export default function DatePicker({
           aria-label="Tarix seçici"
           style={{
             position: "fixed", top: pos.top, left: pos.left, width: pos.width,
-            zIndex: 2000,
+            zIndex: popupZIndex,
             background: pal.panelBg,
             border: `1px solid ${pal.panelBorder}`,
             borderRadius: 14,

@@ -47,6 +47,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
   // Nav-dakı "Pool" sayğacı — sahibsiz yeni müraciətlər (seans + ödəniş).
   // Operator hara olursa olsun gözləyən işin sayını görür.
   const [poolCount, setPoolCount] = useState(0);
+  const [sessionRequestCount, setSessionRequestCount] = useState(0);
   const loadPoolCount = useCallback(() => {
     Promise.all([
       operatorApi.listAppointments().catch(() => []),
@@ -57,19 +58,23 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
       setPoolCount(a + p);
     }).catch(() => {});
   }, []);
+  const loadSessionRequestCount = useCallback(() => {
+    operatorApi.sessionRequestCountNew().then(n => setSessionRequestCount(n)).catch(() => {});
+  }, []);
 
-  useEffect(() => { loadPoolCount(); }, [loadPoolCount]);
+  useEffect(() => { loadPoolCount(); loadSessionRequestCount(); }, [loadPoolCount, loadSessionRequestCount]);
 
   // Canlı yeniləmə: yeni müraciət/ödəniş bildirişi və ya sahiblik (claim) hadisəsi.
   useEffect(() => {
     const offN = subscribeNotifications((n) => {
       const ty = typeof n.type === "string" ? n.type : "";
       if (ty.startsWith("APPOINTMENT_") || ty.startsWith("PAYMENT_")) loadPoolCount();
+      if (ty === "SESSION_REQUEST_NEW") loadSessionRequestCount();
     });
     const offC = subscribeOperatorClaims(() => loadPoolCount());
-    const id = setInterval(loadPoolCount, 60_000);
+    const id = setInterval(() => { loadPoolCount(); loadSessionRequestCount(); }, 60_000);
     return () => { offN(); offC(); clearInterval(id); };
-  }, [loadPoolCount]);
+  }, [loadPoolCount, loadSessionRequestCount]);
 
   // Open palette on Cmd+K / Ctrl+K from anywhere in the operator panel.
   useEffect(() => {
@@ -86,9 +91,10 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
 
   // Bütün modullar. Kilidlilər (./modules.ts) sidebar-dan çıxarılır.
   const allNav: ModuleNavItem[] = [
-    { key: "dashboard",     href: "/operator",              label: t("nav.dashboard"),       icon: "home" },
-    { key: "pool",          href: "/operator/pool",         label: "Müraciət sırası",        icon: "inbox", badge: poolCount },
-    { key: "appointments",  href: "/operator/appointments", label: t("nav.appointments"),    icon: "calendar" },
+    { key: "dashboard",        href: "/operator",                    label: t("nav.dashboard"),       icon: "home" },
+    { key: "pool",             href: "/operator/pool",               label: "Müraciət sırası",        icon: "inbox", badge: poolCount },
+    { key: "sessionRequests",  href: "/operator/session-requests",   label: "Seans müraciətləri",     icon: "clipboard", badge: sessionRequestCount },
+    { key: "appointments",     href: "/operator/appointments",       label: t("nav.appointments"),    icon: "calendar" },
     { key: "meetingLinks",  href: "/operator/meeting-links", label: "Görüş linkləri",        icon: "video" },
     { key: "payments",      href: "/operator/payments",     label: t("pkg.paymentsTitle"),   icon: "clipboard" },
     { key: "feedback",      href: "/operator/feedback",     label: t("nav.feedbackTriage"),  icon: "star" },

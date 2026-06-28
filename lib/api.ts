@@ -3058,7 +3058,70 @@ export const operatorApi = {
     patientPackageId?: number | null;
   }) =>
     authedRequest<AppointmentDetail>("POST", "/operator/appointments/on-behalf", data),
+
+  // ─── Seans müraciətləri ───────────────────────────────────────────────────
+  listSessionRequests: (status?: string) =>
+    authedRequest<SessionRequest[]>("GET", `/operator/session-requests${status ? `?status=${status}` : ""}`),
+  sessionRequestCountNew: () =>
+    authedRequest<number>("GET", "/operator/session-requests/count-new").then((r: any) => (r?.count ?? 0) as number),
+  getSessionRequest: (id: number) =>
+    authedRequest<SessionRequest>("GET", `/operator/session-requests/${id}`),
+  scheduleSessionRequest: (id: number, data: {
+    psychologistId: number;
+    scheduledDate: string;
+    scheduledTime?: string | null;
+    sessionPackage?: string | null;
+    operatorNote?: string | null;
+  }) => authedRequest<SessionRequest>("POST", `/operator/session-requests/${id}/schedule`, data),
+  updateSessionRequestStatus: (id: number, data: { status: string; operatorNote?: string | null }) =>
+    authedRequest<SessionRequest>("PATCH", `/operator/session-requests/${id}/status`, data),
 };
+
+export interface SessionRequest {
+  id: number;
+  name: string;
+  phone: string;
+  email: string | null;
+  age: number | null;
+  reason: string;
+  preferredDate: string | null;
+  preferredTime: string | null;
+  notes: string | null;
+  status: "NEW" | "IN_REVIEW" | "SCHEDULED" | "CANCELLED";
+  assignedPsychologistId: number | null;
+  assignedPsychologistName: string | null;
+  scheduledDate: string | null;
+  scheduledTime: string | null;
+  sessionPackage: string | null;
+  operatorNote: string | null;
+  handledAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+export async function submitSessionRequest(data: {
+  name: string;
+  phone: string;
+  email?: string;
+  age?: number;
+  reason: string;
+  preferredDate?: string;
+  preferredTime?: string;
+  notes?: string;
+}): Promise<SessionRequest> {
+  const res = await fetch(`${BASE}/session-requests`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...localeHeaders() },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    const msg = (e as { message?: string; error?: string }).message ?? (e as { error?: string }).error;
+    throw new Error(msg ?? `Müraciət göndərilmədi (${res.status})`);
+  }
+  return res.json();
+}
 
 export interface OperatorSearchHit {
   type: "PATIENT" | "PSYCHOLOGIST" | "APPOINTMENT";

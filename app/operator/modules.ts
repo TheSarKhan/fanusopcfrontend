@@ -17,6 +17,7 @@
 export type OperatorModuleKey =
   | "dashboard"
   | "pool"
+  | "sessionRequests"
   | "appointments"
   | "meetingLinks"
   | "payments"
@@ -28,9 +29,10 @@ export type OperatorModuleKey =
 
 /** Hər nav modulunun açıq (true) / kilidli (false) vəziyyəti. */
 export const OPERATOR_MODULES: Record<OperatorModuleKey, boolean> = {
-  dashboard:     true,  // həmişə açıq — panelin girişi
-  pool:          true,  // AÇIQ — müraciət pool-u (intake/triage)
-  appointments:  true,  // AÇIQ — randevu detalı (bilet) + siyahı
+  dashboard:       true,  // həmişə açıq — panelin girişi
+  pool:            true,  // AÇIQ — müraciət pool-u (intake/triage)
+  sessionRequests: true,  // AÇIQ — Seans müraciətləri (anonim lead forması)
+  appointments:    true,  // AÇIQ — randevu detalı (bilet) + siyahı
   meetingLinks:  true,  // AÇIQ — Görüş linkləri (link göndərmə iş siyahısı)
   payments:      true,  // AÇIQ — Ödənişlər (təsdiq · ləğv · geri qaytarma tam/qismi)
   feedback:      true,   // AÇIQ — Seans rəyləri (psixoloq → pasient → rəylər)
@@ -42,8 +44,9 @@ export const OPERATOR_MODULES: Record<OperatorModuleKey, boolean> = {
 
 /** Yalnız route-u kilidlənə bilən modullar (dashboard burada YOXDUR). */
 const MODULE_PATHS: Partial<Record<OperatorModuleKey, string[]>> = {
-  pool:          ["/operator/pool"],
-  appointments:  ["/operator/appointments"],
+  pool:            ["/operator/pool"],
+  sessionRequests: ["/operator/session-requests"],
+  appointments:    ["/operator/appointments"],
   meetingLinks:  ["/operator/meeting-links"],
   payments:      ["/operator/payments"],
   feedback:      ["/operator/feedback"],

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { psychologistApi, type AppointmentDetail, type RescheduleProposal } from "@/lib/api";
 import { azFormatDateTime } from "@/lib/datetime";
 import DatePicker from "@/components/DatePicker";
+import TimePicker from "@/components/TimePicker";
 
 const MAX_OPTIONS = 3;
 
@@ -143,7 +144,7 @@ export default function RescheduleComposeModal({
                 </label>
                 <label>
                   <span>Başlama</span>
-                  <input type="time" value={o.startTime} onChange={e => update(i, { startTime: e.target.value })} />
+                  <TimePicker value={o.startTime} onChange={v => update(i, { startTime: v })} theme="light" size="sm" />
                 </label>
                 <label>
                   <span>Müddət (dəq)</span>

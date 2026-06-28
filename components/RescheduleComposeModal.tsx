@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { psychologistApi, type AppointmentDetail, type RescheduleProposal } from "@/lib/api";
 import { azFormatDateTime } from "@/lib/datetime";
+import DatePicker from "@/components/DatePicker";
 
 const MAX_OPTIONS = 3;
 
@@ -138,7 +139,7 @@ export default function RescheduleComposeModal({
               <div className="rsc-compose-row">
                 <label>
                   <span>Tarix</span>
-                  <input type="date" value={o.date} onChange={e => update(i, { date: e.target.value })} />
+                  <DatePicker value={o.date} onChange={v => update(i, { date: v })} theme="light" size="sm" style={{ width: "100%" }} />
                 </label>
                 <label>
                   <span>Başlama</span>

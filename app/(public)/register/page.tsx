@@ -294,7 +294,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
     if (personal.password !== personal.confirmPassword) return "Şifrələr uyğun deyil";
     if (!personal.birthDate) return "Doğum tarixi tələb olunur";
     if (!personal.gender) return "Cinsiyyət seçin";
-    if (!personal.finId || personal.finId.length < 5) return "FIN nömrəsi tələb olunur";
+    if (!personal.finId || personal.finId.length !== 7) return "FIN nömrəsi dəqiq 7 simvol olmalıdır";
     if (!photoFile) return "Profil şəklini yükləyib düzəldin";
     return null;
   };
@@ -442,7 +442,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
               </select>
             </Field>
             <Field label="FIN / ID nömrəsi">
-              <input className="auth-input" value={personal.finId} onChange={setP("finId")} placeholder="məs. 1ABC234" required style={{ minWidth: 0, width: "100%" }} />
+              <input className="auth-input" value={personal.finId} onChange={setP("finId")} placeholder="məs. 1ABC234" required maxLength={7} style={{ minWidth: 0, width: "100%" }} />
             </Field>
           </div>
 

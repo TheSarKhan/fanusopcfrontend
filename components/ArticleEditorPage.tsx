@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { adminApi, type BlogPost, type BlogCategory } from "@/lib/api";
 import { getMainSiteUrl } from "@/lib/auth";
 import ArticleEditor from "@/components/ArticleEditor";
+import DatePicker from "@/components/DatePicker";
 
 export interface ArticleEditorApi {
   createBlogPost: (data: Omit<BlogPost, "id">) => Promise<BlogPost>;
@@ -561,11 +562,11 @@ export default function ArticleEditorPage({
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", flexShrink: 0 }}>Tarix</label>
-            <input
-              type="date"
+            <DatePicker
               value={form.publishedDate}
-              onChange={e => setField("publishedDate", e.target.value)}
-              style={{ border: "none", background: "transparent", outline: "none", fontSize: 13, color: "#1A2535", fontWeight: 500 }}
+              onChange={v => setField("publishedDate", v)}
+              theme="light"
+              size="sm"
             />
           </div>
         </div>

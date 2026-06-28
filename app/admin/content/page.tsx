@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { adminApi, type BlogPost } from "@/lib/api";
 import { IconSearch, IconPlus, IconDownload } from "../_components/icons";
+import DatePicker from "@/components/DatePicker";
 
 type Tab = "articles" | "home" | "categories" | "media";
 type StatusFilter = "all" | "published" | "draft" | "archived";
@@ -338,8 +339,8 @@ export default function ContentPage() {
                           onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, readTimeMinutes: Number(e.target.value) } }))} />
                       </Field>
                       <Field label="Dərc tarixi">
-                        <input className="input" type="date" value={modal.item.publishedDate}
-                          onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, publishedDate: e.target.value } }))} />
+                        <DatePicker theme="light" size="sm" value={modal.item.publishedDate}
+                          onChange={(v) => setModal((m) => m && ({ ...m, item: { ...m.item, publishedDate: v } }))} />
                       </Field>
                     </div>
                     <div className="row" style={{ gap: 10 }}>

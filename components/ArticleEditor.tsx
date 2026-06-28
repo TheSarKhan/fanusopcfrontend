@@ -7,6 +7,7 @@ import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
+import { TextStyle } from "@tiptap/extension-text-style";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { useEffect, useCallback, useRef, useState } from "react";
 
@@ -42,6 +43,37 @@ const VideoExtension = Node.create({
   },
 });
 
+// ── FontSize extension (extends TextStyle) ───────────────────────────────────
+const FontSizeExtension = TextStyle.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      fontSize: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.style.fontSize || null,
+        renderHTML: (attrs: Record<string, unknown>) =>
+          attrs.fontSize ? { style: `font-size:${attrs.fontSize}` } : {},
+      },
+    };
+  },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  addCommands(): any {
+    return {
+      ...this.parent?.(),
+      setFontSize:
+        (size: string | null) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ({ chain }: any) =>
+          size
+            ? chain().setMark("textStyle", { fontSize: size }).run()
+            : chain()
+                .setMark("textStyle", { fontSize: null })
+                .removeEmptyTextStyle()
+                .run(),
+    };
+  },
+});
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function getStyleLabel(editor: Editor): string {
   if (editor.isActive("heading", { level: 1 })) return "Başlıq";
@@ -54,6 +86,8 @@ function setStyle(editor: Editor, value: string) {
   else if (value === "h2") editor.chain().focus().setHeading({ level: 2 }).run();
   else editor.chain().focus().setParagraph().run();
 }
+
+const FONT_SIZES = ["12px", "13px", "14px", "16px", "18px", "20px", "24px", "28px", "32px"];
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 const Divider = () => (
@@ -219,6 +253,106 @@ function StyleDropdown({ editor }: { editor: Editor }) {
   );
 }
 
+function FontSizeDropdown({ editor }: { editor: Editor }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const currentSize = editor.getAttributes("textStyle")?.fontSize || "16px";
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as globalThis.Node))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          padding: "5px 8px",
+          borderRadius: 6,
+          border: "none",
+          background: open ? "#E8F0FE" : "transparent",
+          color: "#1A2535",
+          fontSize: 13,
+          fontWeight: 500,
+          cursor: "pointer",
+          minWidth: 64,
+          justifyContent: "space-between",
+        }}
+        onMouseEnter={(e) => {
+          if (!open)
+            (e.currentTarget as HTMLElement).style.background = "#F0F5FF";
+        }}
+        onMouseLeave={(e) => {
+          if (!open)
+            (e.currentTarget as HTMLElement).style.background = "transparent";
+        }}
+      >
+        <span>{currentSize}</span>
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="currentColor"
+          style={{ opacity: 0.5 }}
+        >
+          <path d="M1 3l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        </svg>
+      </button>
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            background: "#fff",
+            border: "1px solid #E4EDF6",
+            borderRadius: 10,
+            boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
+            zIndex: 100,
+            minWidth: 80,
+            overflow: "hidden",
+          }}
+        >
+          {FONT_SIZES.map((size) => (
+            <button
+              key={size}
+              type="button"
+              onClick={() => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (editor.chain().focus() as any).setFontSize(size).run();
+                setOpen(false);
+              }}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: "8px 14px",
+                border: "none",
+                background: currentSize === size ? "#F0F5FF" : "transparent",
+                cursor: "pointer",
+                textAlign: "left",
+                color: "#1A2535",
+                fontSize: 13,
+              }}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 interface Props {
   value: string;
@@ -249,6 +383,7 @@ export default function ArticleEditor({
         },
       }),
       VideoExtension,
+      FontSizeExtension,
       Placeholder.configure({ placeholder }),
     ],
     immediatelyRender: false,
@@ -256,6 +391,7 @@ export default function ArticleEditor({
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: {
+        class: "fanus-article-editor",
         style:
           "min-height:420px;padding:20px 24px;outline:none;font-size:16px;line-height:1.85;color:#1A2535;",
       },
@@ -283,7 +419,6 @@ export default function ArticleEditor({
           setUploading(null);
         }
       } else {
-        // Fallback: read as data URL
         const reader = new FileReader();
         reader.onload = (e) => {
           const src = e.target?.result as string;
@@ -335,6 +470,20 @@ export default function ArticleEditor({
         overflow: "clip",
       }}
     >
+      {/* Heading + font size styles for the editor content area */}
+      <style>{`
+        .fanus-article-editor h1 { font-size: 28px; font-weight: 700; line-height: 1.3; margin: 14px 0 8px; }
+        .fanus-article-editor h2 { font-size: 20px; font-weight: 600; line-height: 1.4; margin: 10px 0 6px; }
+        .fanus-article-editor p { margin: 0 0 4px; }
+        .fanus-article-editor blockquote { border-left: 3px solid #C0D2E6; padding-left: 16px; color: #52718F; font-style: italic; margin: 12px 0; }
+        .fanus-article-editor ul { padding-left: 24px; list-style-type: disc; }
+        .fanus-article-editor ol { padding-left: 24px; list-style-type: decimal; }
+        .fanus-article-editor li { margin: 3px 0; }
+        .fanus-article-editor hr { border: none; border-top: 2px solid #E4EDF6; margin: 16px 0; }
+        .fanus-article-editor a { color: #2563EB; text-decoration: underline; }
+        .fanus-article-editor p.is-editor-empty:first-child::before { color: #9EAFC2; content: attr(data-placeholder); float: left; height: 0; pointer-events: none; }
+      `}</style>
+
       {/* Hidden file inputs */}
       <input
         type="file"
@@ -376,6 +525,10 @@ export default function ArticleEditor({
       >
         {/* Style dropdown */}
         <StyleDropdown editor={editor} />
+        <Divider />
+
+        {/* Font size dropdown */}
+        <FontSizeDropdown editor={editor} />
         <Divider />
 
         {/* Text formatting */}

@@ -17,6 +17,7 @@ import {
 } from "@/lib/api";
 import { azFormatDate, azFormatDateTime } from "@/lib/datetime";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import DatePicker from "@/components/DatePicker";
 
 const STATUS_LABEL: Record<string, string> = {
   PENDING: "Gözləyir", NEW: "Yeni", REJECTED: "Yenidən təyin", IN_REVIEW: "Operatorda",
@@ -629,10 +630,8 @@ function VacationsCard({ psyId, vacations, onChanged }: {
       <div className="card-pad" style={{ display: "grid", gap: 8 }}>
         <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--ink)" }}>Admin əvəzinə məzuniyyət qoy</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <input type="date" value={start} onChange={(e) => setStart(e.target.value)}
-            style={{ padding: 8, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }} />
-          <input type="date" value={end} onChange={(e) => setEnd(e.target.value)}
-            style={{ padding: 8, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }} />
+          <DatePicker theme="light" size="sm" style={{ width: "100%" }} value={start} onChange={setStart} />
+          <DatePicker theme="light" size="sm" style={{ width: "100%" }} value={end} onChange={setEnd} />
         </div>
         <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Səbəb (opsional)"
           style={{ padding: 8, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }} />

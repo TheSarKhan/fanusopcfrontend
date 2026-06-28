@@ -12,6 +12,7 @@ import { isoToAzLocal, azFormatDate, azFormatTime, azLocalToISO } from "@/lib/da
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
 import { confirmDialog } from "@/components/ConfirmDialog";
+import DatePicker from "@/components/DatePicker";
 import OnBehalfBookingModal from "@/components/OnBehalfBookingModal";
 
 function pad2(n: number) { return String(n).padStart(2, "0"); }
@@ -787,7 +788,7 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
                 )}
                 {manualOpen && (
                   <label style={{ display: "block", marginTop: 8 }}><span style={fLab}>Tarix və saat (əl ilə)</span>
-                    <input type="datetime-local" value={singleStart} onChange={e => { setSingleStart(e.target.value); setSingleEnd(addMinutes(e.target.value, 50)); }} style={field} />
+                    <DatePicker withTime theme="light" size="sm" value={singleStart} onChange={v => { setSingleStart(v); setSingleEnd(addMinutes(v, 50)); }} style={{ width: "100%" }} />
                   </label>
                 )}
                 {singleStart && <div style={{ fontSize: 12, color: "#065F46", fontWeight: 600, marginTop: 8 }}>Seçilmiş vaxt: {fmtDateTime(singleStart)} · ~50 dəq</div>}
@@ -935,11 +936,11 @@ function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
               <label style={{ display: "block" }}>
                 <span style={labS}>Başlama vaxtı</span>
-                <input type="datetime-local" value={start} onChange={e => { setStart(e.target.value); if (!end) setEnd(addMinutes(e.target.value, 50)); }} style={fieldS} />
+                <DatePicker withTime theme="light" size="sm" value={start} onChange={v => { setStart(v); if (!end) setEnd(addMinutes(v, 50)); }} style={{ width: "100%" }} />
               </label>
               <label style={{ display: "block" }}>
                 <span style={labS}>Bitmə vaxtı</span>
-                <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} style={fieldS} />
+                <DatePicker withTime theme="light" size="sm" value={end} onChange={setEnd} style={{ width: "100%" }} />
               </label>
             </div>
           )}

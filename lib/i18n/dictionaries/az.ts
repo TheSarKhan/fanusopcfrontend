@@ -237,7 +237,7 @@ export const az = {
     extendCta: "Atlanan {n} həftəni əvəzlə",
     extending: "Əlavə edilir…",
     extendDone: "{n} əlavə randevu yaradıldı",
-    courseLine: "Paket · {index}-ci sessiya / {total}",
+    courseLine: "Paket · {ordinal} sessiya / {total}",
   },
 
   course: {
@@ -293,7 +293,7 @@ export const az = {
     proposalBannerTitle: "Saat təklifi gözləyir",
     proposalBannerBody: "{psy} {n} alternativ saat təklif edir. Birini seçin və ya hamısını rədd edin.",
     proposalBannerAction: "Bax və seç",
-    sessionNumber: "{n}-ci seans",
+    sessionNumber: "{ordinal} seans",
     youConfirmed: "✓ Siz təsdiqlədiniz · psixoloqdan gözlənilir",
     sessionsCount: "{count} seans",
   },

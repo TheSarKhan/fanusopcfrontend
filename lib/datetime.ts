@@ -90,6 +90,23 @@ export function azFormatWeekday(input: string | Date) {
 }
 
 /**
+ * Sərbəst mətn içindəki naive ISO tarix/datetime sətirlərini istifadəçi üçün
+ * oxunaqlı yerli formata çevirir:
+ *   "2026-06-29T11:00" → "29.06.2026 11:00"
+ *   "2026-06-29"       → "29.06.2026"
+ * Bildiriş mətnləri (məs. backend `LocalDateTime` interpolasiyası) Asia/Baku
+ * divar-saatını naive saxladığı üçün sadəcə yenidən düzülüş kifayətdir — TZ
+ * çevrilməsi YOXDUR. Z/offset daşıyan həqiqi instant-lara toxunmur.
+ */
+export function humanizeDates(text: string | null | undefined): string {
+  if (!text) return "";
+  return text.replace(
+    /(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::\d{2})?)?(?![\d:TZ+-])/g,
+    (_m, y, mo, d, hh, mm) => (hh != null ? `${d}.${mo}.${y} ${hh}:${mm}` : `${d}.${mo}.${y}`)
+  );
+}
+
+/**
  * Verilən vaxtdan (seans başlama/bitmə) indiyə qədər keçən REAL saat sayını
  * qaytarır. Naive Asia/Baku stringi `toInstant` ilə həqiqi instant-a çevrilir,
  * sonra `Date.now()` ilə müqayisə olunur — brauzer timezone-undan asılı deyil.
@@ -113,4 +130,17 @@ export function azNow(): Date {
  */
 export function azNowLocal(): string {
   return isoToAzLocal(new Date().toISOString());
+}
+
+// Sıra sayı şəkilçisi — son rəqəmə görə sait ahəngi:
+// 0→cı  1→ci  2→ci  3→cü  4→cü  5→ci  6→cı  7→ci  8→ci  9→cu
+const AZ_ORDINAL: Record<number, string> = {
+  0: "cı", 1: "ci", 2: "ci", 3: "cü", 4: "cü",
+  5: "ci", 6: "cı", 7: "ci", 8: "ci", 9: "cu",
+};
+
+/** `azOrdinal(3)` → `"3-cü"`, `azOrdinal(6)` → `"6-cı"` */
+export function azOrdinal(n: number): string {
+  const lastDigit = Math.abs(n) % 10;
+  return `${n}-${AZ_ORDINAL[lastDigit]}`;
 }

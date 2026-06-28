@@ -8,6 +8,7 @@ import {
   type TimeSlot,
   type TimeSlotOverride,
 } from "@/lib/api";
+import DatePicker from "@/components/DatePicker";
 
 const WEEKDAYS_AZ = [
   { iso: 1, label: "Bazar ertəsi" },
@@ -155,8 +156,7 @@ export default function AdminPsychologistAvailabilityPage() {
             <h2 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Tarix istisnaları</h2>
             <form onSubmit={addOverride} style={{ display: "grid", gap: 8, marginBottom: 12 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <input type="date" value={oDate} onChange={e => setODate(e.target.value)}
-                  style={{ padding: 8, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }} />
+                <DatePicker theme="light" size="sm" style={{ width: "100%" }} value={oDate} onChange={setODate} />
                 <select value={oType} onChange={e => setOType(e.target.value as "BLOCK" | "EXTRA")}
                   style={{ padding: 8, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }}>
                   <option value="BLOCK">BLOCK</option>

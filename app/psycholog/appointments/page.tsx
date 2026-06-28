@@ -14,10 +14,12 @@ import {
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import CancelModal from "@/components/CancelModal";
+import DatePicker from "@/components/DatePicker";
 import RescheduleComposeModal from "@/components/RescheduleComposeModal";
 import JoinSessionButton from "@/components/JoinSessionButton";
 import PsyReferralsView from "@/components/PsyReferralsView";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { azOrdinal } from "@/lib/datetime";
 
 const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"];
 const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
@@ -534,7 +536,7 @@ function NextHero({ appt, now, client }: { appt: AppointmentDetail | null; now: 
         <span style={{ width: 56, height: 56, borderRadius: "50%", background: av, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, flex: "none" }}>{initialsOf(appt.patientName)}</span>
         <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 3 }}>{appt.patientName ?? "Pasiyent"}</div>
-          <div style={{ fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 600 }}>{relativeDayLabel(start, now)} · {fmtTime(start)}{sessionNumber ? ` · ${sessionNumber}-ci seans` : ""}</div>
+          <div style={{ fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 600 }}>{relativeDayLabel(start, now)} · {fmtTime(start)}{sessionNumber ? ` · ${azOrdinal(sessionNumber)} seans` : ""}</div>
         </div>
         <JoinSessionButton appointment={appt} variant="compact" />
       </div>
@@ -657,7 +659,7 @@ function SingleCard({ a, client, note, isNext, now, busyId, ...h }: {
   const sessionNumber = client ? client.completedSessions + 1 : null;
   const menu = buildMenu(a, h, now);
   const primary = primaryAction(a, h, busy);
-  const meta = `${start ? `${relativeDayLabel(start, now)} · ${fmtTime(start)}` : "Vaxt yoxdur"}${sessionNumber ? ` · ${sessionNumber}-ci seans` : ""}`;
+  const meta = `${start ? `${relativeDayLabel(start, now)} · ${fmtTime(start)}` : "Vaxt yoxdur"}${sessionNumber ? ` · ${azOrdinal(sessionNumber)} seans` : ""}`;
   return (
     <div style={{ background: "#fff", borderRadius: 14, boxShadow: isNext ? "0 6px 20px rgba(16,81,183,.12)" : "0 2px 12px rgba(0,0,0,.06)", border: `1px solid ${isNext ? "#C7DBF6" : "#EDF1F8"}`, borderLeft: `3px solid ${status.accent}`, padding: "16px 18px", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", animation: "gorFade .2s ease" }}>
       <span style={{ width: 46, height: 46, borderRadius: 13, background: av, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, flex: "none" }}>{initialsOf(a.patientName)}</span>
@@ -742,15 +744,26 @@ function PackageCard({ pkg, now, busyId, ...h }: {
       </button>
       {open && (
         <div style={{ marginTop: 6 }}>
-          {sessions.map((s, i) => <PackageSessionRow key={s.id} a={s} index={i + 1} now={now} busyId={busyId} {...h} />)}
-          {Array.from({ length: remaining }).map((_, i) => (
-            <div key={`rem-${i}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderTop: "1px solid #F4F7FB", flexWrap: "wrap" }}>
-              <span style={{ width: 22, height: 22, borderRadius: 7, background: "#fff", border: "1.5px solid #D6E2F7", color: "#9DB0CC", fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{sessions.length + i + 1}</span>
+          {(() => {
+            const RANK_EXCL = new Set(["CANCELLED", "REJECTED"]);
+            let ord = 0;
+            return sessions.map((s) => {
+              const excluded = RANK_EXCL.has(s.status);
+              if (!excluded) ord++;
+              return <PackageSessionRow key={s.id} a={s} index={excluded ? null : ord} now={now} busyId={busyId} {...h} />;
+            });
+          })()}
+          {(() => {
+            const activeCount = sessions.filter(s => s.status !== "CANCELLED" && s.status !== "REJECTED").length;
+            return Array.from({ length: remaining }).map((_, i) => (
+              <div key={`rem-${i}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderTop: "1px solid #F4F7FB", flexWrap: "wrap" }}>
+              <span style={{ width: 22, height: 22, borderRadius: 7, background: "#fff", border: "1.5px solid #D6E2F7", color: "#9DB0CC", fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{activeCount + i + 1}</span>
               <div style={{ width: 108, flex: "none" }}><span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)" }}>—</span></div>
               <span style={{ flex: 1, minWidth: 60, fontSize: 11.5, color: "#9DB0CC", fontWeight: 600 }}>planlaşmayıb</span>
               <span style={{ background: "#F2F6FD", color: "#082F6D", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>Qalıb</span>
             </div>
-          ))}
+            ));
+          })()}
         </div>
       )}
     </div>
@@ -758,7 +771,7 @@ function PackageCard({ pkg, now, busyId, ...h }: {
 }
 
 function PackageSessionRow({ a, index, now, busyId, ...h }: {
-  a: AppointmentDetail; index: number; now: Date; busyId: number | null;
+  a: AppointmentDetail; index: number | null; now: Date; busyId: number | null;
 } & Handlers) {
   const status = STATUS[a.status] ?? STATUS.ASSIGNED;
   const start = a.startAt ? new Date(a.startAt) : null;
@@ -767,7 +780,7 @@ function PackageSessionRow({ a, index, now, busyId, ...h }: {
   const primary = primaryAction(a, h, busy, true);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderTop: "1px solid #F4F7FB", flexWrap: "wrap" }}>
-      <span style={{ width: 22, height: 22, borderRadius: 7, background: status.bg, color: status.color, fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{index}</span>
+      <span style={{ width: 22, height: 22, borderRadius: 7, background: index != null ? status.bg : "#F3F4F6", color: index != null ? status.color : "#9CA3AF", fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{index ?? "—"}</span>
       <div style={{ width: 108, flex: "none" }}>
         {start
           ? <><span style={{ fontSize: 13, fontWeight: 700 }}>{start.getDate()} {MONTHS_AZ[start.getMonth()]}</span> <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 700 }}>{fmtTime(start)}</span></>
@@ -972,7 +985,7 @@ function AgendaRow({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 15.5, fontWeight: 700, color: "var(--oxford)" }}>{a.patientName ?? "Pasient"}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", marginTop: 2 }}>
-              <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>{sessionNumber ? `${sessionNumber}-ci seans` : "Seans"}</span>
+              <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>{sessionNumber ? `${azOrdinal(sessionNumber)} seans` : "Seans"}</span>
               {cd && <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: cdBg, color: cdColor, fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}><IClock s={11} c={cdColor} />{cd.text}</span>}
             </div>
           </div>
@@ -1382,13 +1395,11 @@ function BulkCancelModal({
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
             <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford)" }}>Başlanğıc</span>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                style={{ padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13 }} />
+              <DatePicker value={startDate} onChange={setStartDate} theme="light" size="sm" style={{ width: "100%" }} />
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford)" }}>Bitiş</span>
-              <input type="date" value={endDate} min={startDate} onChange={e => setEndDate(e.target.value)}
-                style={{ padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13 }} />
+              <DatePicker value={endDate} min={startDate} onChange={setEndDate} theme="light" size="sm" style={{ width: "100%" }} />
             </label>
           </div>
 

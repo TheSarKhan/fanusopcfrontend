@@ -11,6 +11,7 @@
 
 import { useEffect, useState, type CSSProperties } from "react";
 import { operatorApi, type OperatorSearchHit, type PackageDto } from "@/lib/api";
+import DatePicker from "@/components/DatePicker";
 
 export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId, presetPatientLabel }: {
   onClose: () => void;
@@ -200,9 +201,9 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <label style={{ fontSize: 11, fontWeight: 600, color: "#52718F", display: "grid", gap: 4 }}>Başlanğıc
-              <input type="datetime-local" value={startAt} onChange={e => onStart(e.target.value)} style={inp} /></label>
+              <DatePicker value={startAt} onChange={v => onStart(v)} theme="light" withTime size="sm" style={{ width: "100%" }} /></label>
             <label style={{ fontSize: 11, fontWeight: 600, color: "#52718F", display: "grid", gap: 4 }}>Bitiş
-              <input type="datetime-local" value={endAt} onChange={e => setEndAt(e.target.value)} style={inp} /></label>
+              <DatePicker value={endAt} onChange={v => setEndAt(v)} theme="light" withTime size="sm" style={{ width: "100%" }} /></label>
           </div>
 
           <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Qeyd (məcburi deyil)" style={{ ...inp, fontFamily: "inherit", resize: "vertical" }} />

@@ -42,7 +42,7 @@ function initials(name: string) {
 
 function daysSince(iso?: string | null): number | null {
   if (!iso) return null;
-  return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
+  return Math.abs(Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24)));
 }
 
 function lastSessionPill(days: number | null): { text: string; tone: string } {

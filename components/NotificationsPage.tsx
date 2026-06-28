@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { notificationsApi, type NotificationItem } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
+import { humanizeDates } from "@/lib/datetime";
 
 type IconName =
   | "calendar" | "check" | "refresh" | "x" | "clock" | "hourglass" | "check2"
@@ -379,8 +380,8 @@ function NotificationRow({
           <span className="ntf-row-type">{meta.label}</span>
           <span className="ntf-row-time">{timeAgo(item.createdAt)}</span>
         </div>
-        <div className="ntf-row-title">{item.title}</div>
-        {item.body && <div className="ntf-row-body">{item.body}</div>}
+        <div className="ntf-row-title">{humanizeDates(item.title)}</div>
+        {item.body && <div className="ntf-row-body">{humanizeDates(item.body)}</div>}
       </div>
       {isUnread && !selectable && <span className="ntf-row-dot" aria-label="oxunmamış" />}
     </>

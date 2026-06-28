@@ -18,11 +18,12 @@ import { azFormatTime } from "@/lib/datetime";
 import { FEATURE_GOALS } from "@/lib/features";
 
 const STATUS_LABEL: Record<string, { label: string; bg: string; fg: string }> = {
-  PENDING:               { label: "Gözlənilir",    bg: "#FEF3C7", fg: "#92400E" },
-  ASSIGNED:              { label: "Təyin edilib",  bg: "var(--brand-50)", fg: "var(--brand-700)" },
-  CONFIRMED:             { label: "Təsdiqlənib",   bg: "#D1FAE5", fg: "#065F46" },
+  PENDING:               { label: "Gözlənilir",      bg: "#FEF3C7", fg: "#92400E" },
+  ASSIGNED:              { label: "Təyin edilib",    bg: "var(--brand-50)", fg: "var(--brand-700)" },
+  CONFIRMED:             { label: "Təsdiqlənib",     bg: "#D1FAE5", fg: "#065F46" },
   AWAITING_CONFIRMATION: { label: "Təsdiq gözlənir", bg: "#FEF3C7", fg: "#92400E" },
-  COMPLETED:             { label: "Tamamlandı",    bg: "#F3F4F6", fg: "#374151" },
+  CANCEL_REQUESTED:      { label: "Ləğv gözlənir",  bg: "#FEE2E2", fg: "#991B1B" },
+  COMPLETED:             { label: "Tamamlandı",      bg: "#F3F4F6", fg: "#374151" },
 };
 
 function greet(): string {
@@ -131,7 +132,7 @@ export default function PatientDashboard() {
   const next = useMemo(() => {
     return appts
       .filter(a => a.startAt && new Date(a.startAt).getTime() > now - 30 * 60_000)
-      .filter(a => a.status === "ASSIGNED" || a.status === "CONFIRMED")
+      .filter(a => a.status === "ASSIGNED" || a.status === "CONFIRMED" || a.status === "CANCEL_REQUESTED")
       .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())[0] ?? null;
   }, [appts, now]);
 

@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 import { azLocalToISO, azFormatDate, azFormatTime, azFormatDateTime } from "@/lib/datetime";
 import { IconSearch } from "../_components/icons";
+import DatePicker from "@/components/DatePicker";
 
 /** MODUL 2: admin sətri = operator detail DTO + operator adı + pasiyent bayrağı. */
 type AdminAppt = AppointmentDetail & {
@@ -287,8 +288,8 @@ export default function AdminAppointmentsPage() {
           <option value="series">Yalnız qrup/seriya</option>
           <option value="single">Yalnız tək</option>
         </select>
-        <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="filter" />
-        <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="filter" />
+        <DatePicker value={fromDate} onChange={setFromDate} theme="light" size="sm" style={{ width: 150 }} />
+        <DatePicker value={toDate} onChange={setToDate} theme="light" size="sm" style={{ width: 150 }} />
         <button className={`filter${overdueOnly ? " active" : ""}`} onClick={() => setOverdueOnly((o) => !o)}>
           SLA gecikmiş{slaHours != null ? ` (${slaHours}s+)` : ""}
         </button>
@@ -822,13 +823,13 @@ function AssignModal({
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
                   <label style={{ display: "block" }}>
                     <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>Başlama vaxtı</span>
-                    <input type="datetime-local" value={manualStart} onChange={(e) => { setManualStart(e.target.value); setPickedSlot(null); }}
-                      style={{ width: "100%", padding: 9, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13, boxSizing: "border-box" }} />
+                    <DatePicker withTime theme="light" size="sm" style={{ width: "100%" }}
+                      value={manualStart} onChange={(v) => { setManualStart(v); setPickedSlot(null); }} />
                   </label>
                   <label style={{ display: "block" }}>
                     <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--muted)", marginBottom: 4 }}>Bitmə vaxtı</span>
-                    <input type="datetime-local" value={manualEnd} onChange={(e) => { setManualEnd(e.target.value); setPickedSlot(null); }}
-                      style={{ width: "100%", padding: 9, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13, boxSizing: "border-box" }} />
+                    <DatePicker withTime theme="light" size="sm" style={{ width: "100%" }}
+                      value={manualEnd} onChange={(v) => { setManualEnd(v); setPickedSlot(null); }} />
                   </label>
                 </div>
               </details>
@@ -969,10 +970,8 @@ function MediateModal({
         <div style={{ padding: 20 }}>
           {options.map((o, i) => (
             <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, marginBottom: 8 }}>
-              <input type="datetime-local" value={o.start} onChange={(e) => setOpt(i, "start", e.target.value)}
-                style={{ padding: 9, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }} />
-              <input type="datetime-local" value={o.end} onChange={(e) => setOpt(i, "end", e.target.value)}
-                style={{ padding: 9, borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }} />
+              <DatePicker withTime theme="light" size="sm" value={o.start} onChange={(v) => setOpt(i, "start", v)} />
+              <DatePicker withTime theme="light" size="sm" value={o.end} onChange={(v) => setOpt(i, "end", v)} />
               {options.length > 1 ? (
                 <button className="btn sm" onClick={() => setOptions((prev) => prev.filter((_, idx) => idx !== i))}>×</button>
               ) : <span />}

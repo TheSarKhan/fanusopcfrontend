@@ -75,6 +75,7 @@ export default function OperatorDashboard() {
   // status change) — surfaced here as their own queue group so operators don't
   // miss them when the transient notification scrolls away.
   const rescheduleReqs = useMemo(() => items.filter(a => a.rescheduleRequestedAt && (a.status === "CONFIRMED" || a.status === "ASSIGNED")).sort((a, b) => new Date(b.rescheduleRequestedAt!).getTime() - new Date(a.rescheduleRequestedAt!).getTime()), [items]);
+  const cancelReqs = useMemo(() => items.filter(a => a.status === "CANCEL_REQUESTED").sort((a, b) => new Date(b.cancelRequestedAt ?? b.updatedAt ?? b.createdAt).getTime() - new Date(a.cancelRequestedAt ?? a.updatedAt ?? a.createdAt).getTime()), [items]);
   const todayActive = useMemo(() => items.filter(a => a.startAt && isSameDay(new Date(a.startAt), now)).filter(a => ["ASSIGNED", "CONFIRMED", "AWAITING_CONFIRMATION"].includes(a.status)).sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime()), [items, now]);
   const awaitingConfirm = useMemo(() => items.filter(a => a.status === "AWAITING_CONFIRMATION"), [items]);
   const stalePending = useMemo(() => { const cutoff = now.getTime() - 4 * 3600000; return pending.filter(a => new Date(a.createdAt).getTime() < cutoff); }, [pending, now]);
@@ -102,7 +103,7 @@ export default function OperatorDashboard() {
     { label: "Orta cavab", value: fmtMin(stats?.avgResponseMinutes ?? null), hint: "bu ay", tone: "neutral", icon: <Ico d={I_WATCH} /> },
   ];
 
-  const queueEmpty = disputed.length === 0 && rejected.length === 0 && pending.length === 0 && rescheduleReqs.length === 0;
+  const queueEmpty = disputed.length === 0 && rejected.length === 0 && pending.length === 0 && rescheduleReqs.length === 0 && cancelReqs.length === 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -151,7 +152,7 @@ export default function OperatorDashboard() {
                 </div>
               ) : <>
                 {disputed.length > 0 && (
-                  <QueueBlock title="Acil həll et" tone="danger" count={disputed.length} icon={<Ico d={I_ALERT} />}>
+                  <QueueBlock title="Acil həll et" tone="danger" count={disputed.length} icon={<Ico d={I_ALERT} />} allHref="/operator/appointments?tab=DISPUTED">
                     {disputed.slice(0, 4).map(a => <QueueRow key={a.id} a={a} now={now} kind="disputed" />)}
                     {disputed.length > 4 && <Overflow n={disputed.length - 4} />}
                   </QueueBlock>
@@ -162,8 +163,14 @@ export default function OperatorDashboard() {
                     {rejected.length > 4 && <Overflow n={rejected.length - 4} />}
                   </QueueBlock>
                 )}
+                {cancelReqs.length > 0 && (
+                  <QueueBlock title="Ləğv tələbləri" tone="warn" count={cancelReqs.length} icon={<Ico d={I_BAN} />} allHref="/operator/appointments?tab=CANCEL_REQUESTED">
+                    {cancelReqs.slice(0, 4).map(a => <QueueRow key={a.id} a={a} now={now} kind="cancel" />)}
+                    {cancelReqs.length > 4 && <Overflow n={cancelReqs.length - 4} />}
+                  </QueueBlock>
+                )}
                 {rescheduleReqs.length > 0 && (
-                  <QueueBlock title="Vaxt dəyişikliyi tələbləri" tone="warn" count={rescheduleReqs.length} icon={<Ico d={I_CLOCK} />}>
+                  <QueueBlock title="Vaxt dəyişikliyi tələbləri" tone="warn" count={rescheduleReqs.length} icon={<Ico d={I_CLOCK} />} allHref="/operator/appointments?filter=reschedule">
                     {rescheduleReqs.slice(0, 4).map(a => <QueueRow key={a.id} a={a} now={now} kind="reschedule" />)}
                     {rescheduleReqs.length > 4 && <Overflow n={rescheduleReqs.length - 4} />}
                   </QueueBlock>
@@ -318,7 +325,7 @@ const QUEUE_TONE = {
   brand:  { border: "#1051B7", headBg: "#F2F6FD", headBorder: "#E1E9F5", fg: "#082F6D", chipBg: "#E4ECFA" },
 } as const;
 
-function QueueBlock({ title, tone, count, icon, children }: { title: string; tone: keyof typeof QUEUE_TONE; count: number; icon: ReactNode; children: ReactNode }) {
+function QueueBlock({ title, tone, count, icon, children, allHref = "/operator/appointments" }: { title: string; tone: keyof typeof QUEUE_TONE; count: number; icon: ReactNode; children: ReactNode; allHref?: string }) {
   const c = QUEUE_TONE[tone];
   return (
     <div style={{ ...CARD, borderLeft: `3px solid ${c.border}`, overflow: "hidden" }}>
@@ -327,17 +334,18 @@ function QueueBlock({ title, tone, count, icon, children }: { title: string; ton
         <span style={{ fontSize: 14, fontWeight: 700, color: c.fg }}>{title}</span>
         <span style={{ background: c.chipBg, color: c.fg, fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{count}</span>
         <span style={{ flex: 1 }} />
-        <Link href="/operator/appointments" style={{ fontSize: 12, fontWeight: 600, color: c.fg, textDecoration: "none" }}>Hamısı →</Link>
+        <Link href={allHref} style={{ fontSize: 12, fontWeight: 600, color: c.fg, textDecoration: "none" }}>Hamısı →</Link>
       </div>
       <div>{children}</div>
     </div>
   );
 }
 
-function QueueRow({ a, now, kind, severity }: { a: AppointmentDetail; now: Date; kind: "disputed" | "rejected" | "pending" | "reschedule"; severity?: "warn" | "warn-2" | "danger" }) {
-  const timeColor = severity === "danger" ? "#991B1B" : severity === "warn-2" ? "#92400E" : kind === "disputed" ? "#991B1B" : kind === "rejected" ? "#92400E" : "#52718F";
+function QueueRow({ a, now, kind, severity }: { a: AppointmentDetail; now: Date; kind: "disputed" | "rejected" | "pending" | "reschedule" | "cancel"; severity?: "warn" | "warn-2" | "danger" }) {
+  const timeColor = severity === "danger" ? "#991B1B" : severity === "warn-2" ? "#92400E" : kind === "disputed" ? "#991B1B" : kind === "rejected" || kind === "cancel" ? "#92400E" : "#52718F";
   const timeText = kind === "pending" ? `${timeAgo(a.createdAt, now)} gözləyir`
     : kind === "reschedule" ? `${timeAgo(a.rescheduleRequestedAt ?? a.updatedAt ?? a.createdAt, now)} əvvəl`
+    : kind === "cancel" ? `${timeAgo(a.cancelRequestedAt ?? a.updatedAt ?? a.createdAt, now)} gözləyir`
     : `${timeAgo(a.updatedAt ?? a.createdAt, now)} əvvəl`;
   return (
     <Link href={`/operator/appointments/${a.id}`} className="db-row" style={{ display: "flex", alignItems: "center", gap: 11, padding: "13px 18px", textDecoration: "none", color: "inherit", borderTop: "1px solid #F4F7FB", flexWrap: "wrap" }}>
@@ -348,6 +356,7 @@ function QueueRow({ a, now, kind, severity }: { a: AppointmentDetail; now: Date;
           {kind === "disputed" && <Pill bg="#FEE2E2" fg="#991B1B">Mübahisə</Pill>}
           {kind === "rejected" && <Pill bg="#FEF3C7" fg="#92400E">Rədd</Pill>}
           {kind === "reschedule" && <Pill bg="#E4ECFA" fg="#082F6D">Vaxt dəyişikliyi</Pill>}
+          {kind === "cancel" && <Pill bg="#FEF3C7" fg="#92400E">Ləğv tələbi</Pill>}
           {severity === "warn-2" && <Pill bg="#FEF3C7" fg="#92400E">24h+ gözləyir</Pill>}
           {severity === "danger" && <Pill bg="#FEE2E2" fg="#991B1B">48h+ gözləyir</Pill>}
         </div>
@@ -356,6 +365,7 @@ function QueueRow({ a, now, kind, severity }: { a: AppointmentDetail; now: Date;
           {kind === "rejected" && <>{a.requestedPsychologistName && <>İstənilən: {a.requestedPsychologistName}</>}{a.note && <> · <span style={{ fontStyle: "italic" }}>«{a.note.slice(0, 40)}…»</span></>}</>}
           {kind === "reschedule" && <>{a.psychologistName && <>{a.psychologistName} · </>}{a.rescheduleRequestNote ? <span style={{ fontStyle: "italic" }}>«{a.rescheduleRequestNote.slice(0, 50)}{a.rescheduleRequestNote.length > 50 ? "…" : ""}»</span> : "pasient vaxtı dəyişmək istəyir"}</>}
           {kind === "pending" && <>{a.requestedPsychologistName ? <>İstənilən: <strong>{a.requestedPsychologistName}</strong></> : "Psixoloq seçilməyib"}{a.note && <> · <span style={{ fontStyle: "italic" }}>«{a.note.slice(0, 40)}…»</span></>}</>}
+          {kind === "cancel" && <>{a.psychologistName && <>{a.psychologistName} · </>}{a.cancelRequestReasonText ? <span style={{ fontStyle: "italic" }}>«{a.cancelRequestReasonText.slice(0, 60)}{a.cancelRequestReasonText.length > 60 ? "…" : ""}»</span> : "pasient ləğv tələb edib"}</>}
         </div>
       </div>
       <span style={{ fontSize: 12, fontWeight: severity === "warn-2" || severity === "danger" ? 700 : 600, color: timeColor, flex: "none" }}>{timeText}</span>
@@ -406,6 +416,7 @@ const I_CHECK = ["M9 11l3 3L22 4", "M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2
 const I_WATCH = ["M12 14v-3", "M12 22a8 8 0 1 1 0-16 8 8 0 0 1 0 16z", "M9 2h6"];
 const I_LEAF = ["M11 20A7 7 0 0 1 4 13c0-4 3-9 11-12 0 0 5 6 5 12a7 7 0 0 1-7 7c-2 0-4-1-5-3", "M2 22c4-1 7-4 9-8"];
 const I_PLUS = "M12 5v14M5 12h14";
+const I_BAN = ["M18.36 6.64a9 9 0 1 1-12.73 0", "M18.36 17.36A9 9 0 0 1 5.64 6.64"];
 const I_CAL = ["M3 4h18v18H3z", "M16 2v4M8 2v4M3 10h18"];
 const I_CHART = ["M3 3v18h18", "M18 9l-5 5-3-3-4 4"];
 const I_INBOX = ["M22 12h-6l-2 3h-4l-2-3H2", "M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"];

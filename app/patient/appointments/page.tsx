@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import DatePicker from "@/components/DatePicker";
 import {
   patientApi,
   getPsychologistAvailability,
@@ -14,7 +15,7 @@ import {
   type SessionFeedback,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
-import { azFormatTime, azFormatDate, azLocalToISO, hoursSince } from "@/lib/datetime";
+import { azFormatTime, azFormatDate, azLocalToISO, hoursSince, azOrdinal } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
 import ReviewModal from "./ReviewModal";
 import RescheduleProposalModal from "@/components/RescheduleProposalModal";
@@ -618,12 +619,18 @@ function NextSessionHero({
         <div style={{ flex: 1, minWidth: 230 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", marginBottom: 8 }}>
             <span style={{ fontSize: 18, fontWeight: 700 }}>{appt.psychologistName ?? "Operator psixoloq təyin edəcək"}</span>
-            {sessionNumber && <span style={{ background: "#fff", border: "1px solid #D6E2F7", color: "#082F6D", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>{sessionNumber}-ci seans</span>}
+            {sessionNumber && <span style={{ background: "#fff", border: "1px solid #D6E2F7", color: "#082F6D", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>{azOrdinal(sessionNumber)} seans</span>}
           </div>
           {appt.note && (
             <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "rgba(255,255,255,.6)", border: "1px solid #D6E2F7", borderRadius: 11, padding: "10px 13px", maxWidth: 520 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1051B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
               <span style={{ fontSize: 13.5, color: "var(--oxford)", fontWeight: 500, lineHeight: 1.5 }}>Mövzunuz: <span style={{ fontStyle: "italic" }}>«{appt.note.slice(0, 140)}{appt.note.length > 140 ? "…" : ""}»</span></span>
+            </div>
+          )}
+          {appt.operatorNote && (
+            <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "rgba(255,255,255,.6)", border: "1px solid #FDE68A", borderRadius: 11, padding: "10px 13px", maxWidth: 520, marginTop: 8 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
+              <span style={{ fontSize: 13.5, color: "#92400E", fontWeight: 500, lineHeight: 1.5 }}>Operator qeydi: <span style={{ fontStyle: "italic" }}>«{appt.operatorNote.slice(0, 140)}{appt.operatorNote.length > 140 ? "…" : ""}»</span></span>
             </div>
           )}
         </div>
@@ -1018,30 +1025,38 @@ function AgendaRow({
   const rowIconBtn: React.CSSProperties = { width: 36, height: 36, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, cursor: "pointer" };
   const rowIconBtnDanger: React.CSSProperties = { ...rowIconBtn, color: "#991B1B", border: "1px solid #F3D6D6" };
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14, background: "#fff", border: "1px solid #EDF1F8", borderLeft: `3px solid ${status.accent}`, borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: "13px 15px", flexWrap: "wrap" }}>
-      <span style={{ fontSize: 17, fontWeight: 800, minWidth: 52 }}>{fmtTime(start)}</span>
-      <span style={{ width: 38, height: 38, borderRadius: 11, background: "#082F6D", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flex: "none" }}>{initialsOf(a.psychologistName)}</span>
-      <div style={{ flex: 1, minWidth: 150 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 14.5, fontWeight: 700 }}>{a.psychologistName ?? "Operator təyin edəcək"}</span>
-          {sessionNumber != null && <span style={{ color: "var(--oxford-60)", fontWeight: 500, fontSize: 13 }}>· {sessionNumber}-ci seans</span>}
-          {isNext && <span style={{ background: "var(--brand-100)", color: "#082F6D", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>Növbəti</span>}
-          {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
-            <span style={{ background: "var(--brand-50)", color: "var(--brand-700)", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>
-              {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
-            </span>
-          )}
-          {isToday && !tu.expired && <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>{tu.text}</span>}
+    <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderLeft: `3px solid ${status.accent}`, borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: "13px 15px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 17, fontWeight: 800, minWidth: 52 }}>{fmtTime(start)}</span>
+        <span style={{ width: 38, height: 38, borderRadius: 11, background: "#082F6D", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flex: "none" }}>{initialsOf(a.psychologistName)}</span>
+        <div style={{ flex: 1, minWidth: 150 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 14.5, fontWeight: 700 }}>{a.psychologistName ?? "Operator təyin edəcək"}</span>
+            {sessionNumber != null && <span style={{ color: "var(--oxford-60)", fontWeight: 500, fontSize: 13 }}>· {azOrdinal(sessionNumber)} seans</span>}
+            {isNext && <span style={{ background: "var(--brand-100)", color: "#082F6D", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>Növbəti</span>}
+            {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
+              <span style={{ background: "var(--brand-50)", color: "var(--brand-700)", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>
+                {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
+              </span>
+            )}
+            {isToday && !tu.expired && <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>{tu.text}</span>}
+          </div>
         </div>
+        <span style={{ background: status.bg, color: status.color, fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>{status.label}</span>
+        {a.status === "CANCEL_REQUESTED" ? (
+          <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>operator təsdiqini gözləyir</span>
+        ) : (
+          <div style={{ display: "flex", gap: 7 }}>
+            <JoinSessionButton appointment={a} variant="compact" />
+            <button onClick={onReschedule} title={t("staff.cardReschedule")} style={rowIconBtn}><IconClock /></button>
+            <button onClick={onCancel} title={t("staff.cardCancel")} style={rowIconBtnDanger}><IconX /></button>
+          </div>
+        )}
       </div>
-      <span style={{ background: status.bg, color: status.color, fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>{status.label}</span>
-      {a.status === "CANCEL_REQUESTED" ? (
-        <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>operator təsdiqini gözləyir</span>
-      ) : (
-        <div style={{ display: "flex", gap: 7 }}>
-          <JoinSessionButton appointment={a} variant="compact" />
-          <button onClick={onReschedule} title={t("staff.cardReschedule")} style={rowIconBtn}><IconClock /></button>
-          <button onClick={onCancel} title={t("staff.cardCancel")} style={rowIconBtnDanger}><IconX /></button>
+      {a.operatorNote && (
+        <div style={{ display: "flex", gap: 7, alignItems: "flex-start", marginTop: 9, background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "7px 10px" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
+          <span style={{ fontSize: 12.5, color: "#92400E", fontWeight: 500, lineHeight: 1.45 }}>Operator qeydi: <span style={{ fontStyle: "italic" }}>«{a.operatorNote.slice(0, 120)}{a.operatorNote.length > 120 ? "…" : ""}»</span></span>
         </div>
       )}
     </div>
@@ -1070,6 +1085,12 @@ function AwaitingOperatorCard({ a }: { a: AppointmentDetail }) {
         {a.note && (
           <div style={{ fontSize: 12.5, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 8, padding: "6px 9px", marginTop: 6, maxWidth: 440 }}>
             «{a.note.slice(0, 100)}{a.note.length > 100 ? "…" : ""}»
+          </div>
+        )}
+        {a.operatorNote && (
+          <div style={{ display: "flex", gap: 7, alignItems: "flex-start", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "6px 9px", marginTop: 6, maxWidth: 440 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
+            <span style={{ fontSize: 12.5, color: "#92400E", fontWeight: 500, lineHeight: 1.45 }}>Operator qeydi: <span style={{ fontStyle: "italic" }}>«{a.operatorNote.slice(0, 100)}{a.operatorNote.length > 100 ? "…" : ""}»</span></span>
           </div>
         )}
       </div>
@@ -1433,8 +1454,7 @@ function RescheduleModal({
         </div>
         <div style={{ padding: 22 }}>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>Yeni vaxt</label>
-          <input type="datetime-local" value={datetime} onChange={e => setDatetime(e.target.value)}
-            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 14 }} />
+          <DatePicker withTime value={datetime} onChange={setDatetime} theme="light" size="sm" style={{ width: "100%", marginBottom: 14 }} />
 
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>Qısa təsvir</label>
           <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}

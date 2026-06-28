@@ -488,6 +488,9 @@ export interface AppointmentDetail {
   // Paket meta (yalnız patientPackageId varsa backend doldurur)
   packageName?: string | null;
   packageTotal?: number | null;
+  // Ödəniş statusu (yalnız tək seans ödənişi; paket seanslarında null)
+  // null = ödəniş qeydi yoxdur; "PENDING" = operator hələ təsdiqləməyib; "PAID" = təsdiqlənib
+  paymentStatus?: string | null;
 }
 
 // Modul B: operator panelində link tarixçəsinin bir sətri

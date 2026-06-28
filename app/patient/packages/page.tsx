@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { patientApi, type PatientPackageItem } from "@/lib/api";
+import DatePicker from "@/components/DatePicker";
 import { azLocalToISO, azFormatDate } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -131,11 +132,13 @@ function PackageCard({ pkg, onScheduled }: { pkg: PatientPackageItem; onSchedule
             </p>
           )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <input
-              type="datetime-local"
+            <DatePicker
+              withTime
               value={datetime}
-              onChange={e => { setDatetime(e.target.value); setScheduled(false); }}
-              style={{ flex: "1 1 220px", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13 }}
+              onChange={v => { setDatetime(v); setScheduled(false); }}
+              theme="light"
+              size="sm"
+              style={{ flex: "1 1 220px" }}
             />
             <button
               type="button"

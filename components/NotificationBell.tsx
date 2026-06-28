@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { notificationsApi, type NotificationItem } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
+import { humanizeDates } from "@/lib/datetime";
 
 function timeAgo(iso: string): string {
   const diff = Math.max(0, Date.now() - new Date(iso).getTime());
@@ -66,7 +67,7 @@ export default function NotificationBell() {
       });
       try {
         if ("Notification" in window && Notification.permission === "granted") {
-          new Notification(n.title, { body: n.body ?? "" });
+          new Notification(humanizeDates(n.title), { body: humanizeDates(n.body) });
         }
       } catch { /* ignore */ }
     });
@@ -189,11 +190,11 @@ export default function NotificationBell() {
                     {!n.readAt && <span style={{ width: 8, height: 8, borderRadius: 4, background: "#3B6FA5", marginTop: 6, flexShrink: 0 }} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: "#1A2535", marginBottom: 2 }}>
-                        {n.title}
+                        {humanizeDates(n.title)}
                       </div>
                       {n.body && (
                         <div style={{ fontSize: 12, color: "#52718F", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                          {n.body}
+                          {humanizeDates(n.body)}
                         </div>
                       )}
                       <div style={{ fontSize: 11, color: "#8AAABF", marginTop: 4 }}>{timeAgo(n.createdAt)}</div>

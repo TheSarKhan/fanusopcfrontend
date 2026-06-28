@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { adminApi, type Announcement } from "@/lib/api";
 import { IconPlus } from "../_components/icons";
+import DatePicker from "@/components/DatePicker";
 
 const EMPTY: Omit<Announcement, "id"> = {
   category: "Yenilik",
@@ -159,8 +160,8 @@ export default function AnnouncementsPage() {
                     onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, categoryBg: e.target.value } }))} />
                 </Field>
                 <Field label="Tarix">
-                  <input className="input" type="date" value={modal.item.publishedDate}
-                    onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, publishedDate: e.target.value } }))} />
+                  <DatePicker theme="light" size="sm" value={modal.item.publishedDate}
+                    onChange={(v) => setModal((m) => m && ({ ...m, item: { ...m.item, publishedDate: v } }))} />
                 </Field>
               </div>
               <div className="row" style={{ marginTop: 14, gap: 10 }}>

@@ -19,6 +19,7 @@ import {
 } from "@/lib/api";
 import OnBehalfBookingModal from "@/components/OnBehalfBookingModal";
 import OperatorReferralsView from "@/components/OperatorReferralsView";
+import DatePicker from "@/components/DatePicker";
 import { getStoredUser } from "@/lib/auth";
 import { subscribeNotifications, subscribeOperatorClaims } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -139,7 +140,7 @@ export default function OperatorAppointmentsPage() {
   // "Mənim üzərimdə" filtri (daimi sahiblik)
   const [mineOnly, setMineOnly] = useState(false);
   // Pasient vaxt dəyişikliyi tələb edən aktiv randevular (status dəyişmir)
-  const [rescheduleOnly, setRescheduleOnly] = useState(false);
+  const [rescheduleOnly, setRescheduleOnly] = useState(() => searchParams.get("filter") === "reschedule");
   // Qeyd: Pool artıq ayrıca səhifədir (/operator/pool), siyahıda filtr deyil.
   const [slaHours, setSlaHours] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
@@ -635,8 +636,8 @@ function BulkAssignModal({ ids, onClose, onDone }: { ids: number[]; onClose: () 
             </div>
           </label>
           <div style={{ display: "flex", gap: 12 }}>
-            <label style={{ flex: 1 }}><span style={lbl}>Başlama</span><input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} style={{ ...fld, fontWeight: 600 }} /></label>
-            <label style={{ flex: 1 }}><span style={lbl}>Bitmə</span><input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} style={{ ...fld, fontWeight: 600 }} /></label>
+            <label style={{ flex: 1 }}><span style={lbl}>Başlama</span><DatePicker withTime theme="light" size="sm" value={start} onChange={setStart} style={{ width: "100%" }} /></label>
+            <label style={{ flex: 1 }}><span style={lbl}>Bitmə</span><DatePicker withTime theme="light" size="sm" value={end} onChange={setEnd} style={{ width: "100%" }} /></label>
           </div>
           <label><span style={lbl}>Operator qeydi (opsional)</span><textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Daxili qeyd…" style={{ ...fld, resize: "vertical", lineHeight: 1.5 }} /></label>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 12px", fontSize: 12, color: "#92400E", fontWeight: 600, lineHeight: 1.45 }}>

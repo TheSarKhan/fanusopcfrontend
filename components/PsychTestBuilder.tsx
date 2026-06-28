@@ -9,6 +9,7 @@ import type {
   PsyScaleReq,
 } from "@/lib/api";
 import { IconPlus, IconX } from "@/app/admin/_components/icons";
+import { azOrdinal } from "@/lib/datetime";
 
 // ─── Local editable shapes ──────────────────────────────────────────────────
 // We keep questions/options/scales as plain editable rows. displayOrder is
@@ -147,23 +148,23 @@ export default function PsychTestBuilder({
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       if (!q.text.trim()) {
-        setError(`${i + 1}-ci sualın mətni boş ola bilməz.`);
+        setError(`${azOrdinal(i + 1)} sualın mətni boş ola bilməz.`);
         return;
       }
       if (q.options.length < 1) {
-        setError(`${i + 1}-ci sualda ən azı bir variant olmalıdır.`);
+        setError(`${azOrdinal(i + 1)} sualda ən azı bir variant olmalıdır.`);
         return;
       }
       for (let j = 0; j < q.options.length; j++) {
         if (!q.options[j].label.trim()) {
-          setError(`${i + 1}-ci sualın ${j + 1}-ci variantı boş ola bilməz.`);
+          setError(`${azOrdinal(i + 1)} sualın ${azOrdinal(j + 1)} variantı boş ola bilməz.`);
           return;
         }
       }
     }
     for (let i = 0; i < scales.length; i++) {
       if (!scales[i].label.trim()) {
-        setError(`${i + 1}-ci şkalanın adı boş ola bilməz.`);
+        setError(`${azOrdinal(i + 1)} şkalanın adı boş ola bilməz.`);
         return;
       }
     }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import DatePicker from "@/components/DatePicker";
 import {
   psychologistApi,
   type AppointmentDetail,
@@ -53,7 +54,7 @@ function fmtShort(iso?: string | null) {
 function daysBetween(iso?: string | null) {
   if (!iso) return null;
   const ms = Date.now() - new Date(iso).getTime();
-  return Math.floor(ms / (1000 * 60 * 60 * 24));
+  return Math.abs(Math.floor(ms / (1000 * 60 * 60 * 24)));
 }
 function initialsOf(name?: string | null) {
   if (!name) return "?";
@@ -897,7 +898,7 @@ function GoalModal({
           </label>
           <div style={{ display: "flex", gap: 12 }}>
             <label style={{ flex: 1 }}><span style={mLabel}>Hədəf tarixi</span>
-              <input type="date" value={targetDate ?? ""} onChange={e => setTargetDate(e.target.value)} style={{ ...mInput, fontSize: 13.5 }} />
+              <DatePicker value={targetDate ?? ""} onChange={setTargetDate} theme="light" size="sm" style={{ width: "100%" }} />
             </label>
             <label style={{ flex: 1 }}><span style={mLabel}>Status</span>
               <div style={{ position: "relative" }}>

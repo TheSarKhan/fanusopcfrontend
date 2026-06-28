@@ -47,6 +47,7 @@ interface Item {
   publishedAt: number;
   author: string;
   illu: Illu;
+  coverUrl?: string;
 }
 
 const FALLBACK: Item[] = [
@@ -80,6 +81,7 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
         publishedAt: new Date(p.publishedDate).getTime(),
         author: p.authorName ?? "Fanus redaksiya",
         illu: ILLU_BY_CAT[cat],
+        coverUrl: p.coverImageUrl,
       };
     });
   }, [posts]);
@@ -361,7 +363,11 @@ function ArtList({
             {items.map((a) => (
               <Link key={a.slug} className="ap-card" href={`/blog/${a.slug}`}>
                 <div className="ap-card__cover">
-                  <ArtCover type={a.illu} color="#1051B7" />
+                  {a.coverUrl ? (
+                    <img src={a.coverUrl} alt={a.title} className="ap-card__cover-img" />
+                  ) : (
+                    <ArtCover type={a.illu} color="#1051B7" />
+                  )}
                   <span className="ap-card__tag">{a.tag}</span>
                 </div>
                 <div className="ap-card__body">
@@ -427,6 +433,8 @@ function ArtList({
         .ap-card__cover { position: relative; aspect-ratio: 16/9; overflow: hidden; background: var(--fanus-primary-50); }
         .ap-card__cover svg { display: block; transition: transform .5s ease; }
         .ap-card:hover .ap-card__cover svg { transform: scale(1.05); }
+        .ap-card__cover-img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .5s ease; }
+        .ap-card:hover .ap-card__cover-img { transform: scale(1.05); }
         .ap-card__tag {
           position: absolute; top: 12px; left: 12px;
           padding: 5px 11px; border-radius: 999px;

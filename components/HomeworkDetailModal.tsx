@@ -213,7 +213,12 @@ export default function HomeworkDetailModal({
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {role === "PSYCHOLOGIST" && onDelete && (
-              <button onClick={onDelete} style={iconBtn("#991B1B", "#FEE2E2")} title="Sil">×</button>
+              <button onClick={onDelete} style={{ ...iconBtn("#991B1B", "#FEE2E2"), display: "inline-flex", alignItems: "center", gap: 5 }} title="Tapşırığı sil">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
+                </svg>
+                Sil
+              </button>
             )}
             <button onClick={onClose} style={iconBtn("var(--oxford-60)", "var(--oxford-10)")}>Bağla</button>
           </div>
@@ -255,21 +260,27 @@ export default function HomeworkDetailModal({
                       }}>{item.label}</span>
                       {role === "PSYCHOLOGIST" && (
                         <button onClick={(e) => { e.preventDefault(); deleteItem(item); }}
-                          style={{ background: "transparent", border: "none", color: "var(--oxford-60)", cursor: "pointer", fontSize: 18, padding: 0, lineHeight: 1 }}
-                          title="Sil">×</button>
+                          style={{ background: "transparent", border: "none", color: "var(--oxford-40,#9EAFC2)", cursor: "pointer", padding: "2px 4px", lineHeight: 1, display: "inline-flex", alignItems: "center", borderRadius: 4 }}
+                          title="Alt-tapşırığı sil">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
+                          </svg>
+                        </button>
                       )}
                     </label>
                   ))}
                 </div>
               )}
-              <div style={{ display: "flex", gap: 6 }}>
-                <input value={newItem} onChange={e => setNewItem(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
-                  placeholder="Yeni alt-tapşırıq…"
-                  style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid var(--oxford-10)", fontSize: 12.5 }} />
-                <button onClick={addItem} disabled={busy || !newItem.trim()}
-                  style={smallBtn(!newItem.trim())}>+ Əlavə et</button>
-              </div>
+              {role !== "PATIENT" && (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input value={newItem} onChange={e => setNewItem(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
+                    placeholder="Yeni alt-tapşırıq…"
+                    style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid var(--oxford-10)", fontSize: 12.5 }} />
+                  <button onClick={addItem} disabled={busy || !newItem.trim()}
+                    style={smallBtn(!newItem.trim())}>+ Əlavə et</button>
+                </div>
+              )}
             </Section>
 
             {/* Attachments */}
@@ -306,8 +317,12 @@ export default function HomeworkDetailModal({
                         </span>
                         {canDelete && (
                           <button onClick={() => deleteAttachment(att)}
-                            style={{ background: "transparent", border: "none", color: "var(--oxford-60)", cursor: "pointer", fontSize: 18, padding: 0, lineHeight: 1 }}
-                            title="Sil">×</button>
+                            style={{ background: "transparent", border: "none", color: "var(--oxford-40,#9EAFC2)", cursor: "pointer", padding: "2px 4px", lineHeight: 1, display: "inline-flex", alignItems: "center", borderRadius: 4 }}
+                            title="Faylı sil">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
+                            </svg>
+                          </button>
                         )}
                       </div>
                     );

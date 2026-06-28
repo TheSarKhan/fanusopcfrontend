@@ -7,6 +7,7 @@ import {
   type HomeworkPriority,
 } from "@/lib/api";
 import { labelColors } from "./HomeworkLabelChip";
+import DatePicker from "@/components/DatePicker";
 
 const PRIORITY: Record<HomeworkPriority, { label: string; color: string; hint: string }> = {
   LOW:    { label: "Aşağı",   color: "#10B981", hint: "Vacib deyil, vaxtı çatanda" },
@@ -33,11 +34,6 @@ function daysFromNowIso(n: number): string {
 }
 function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase();
-}
-function fmtDate(iso: string): string {
-  const months = ["Yan","Fev","Mar","Apr","May","İyn","İyl","Avq","Sen","Okt","Noy","Dek"];
-  const d = new Date(iso + "T00:00:00");
-  return `${d.getDate()} ${months[d.getMonth()]}`;
 }
 
 interface Props {
@@ -71,7 +67,6 @@ export default function HomeworkCreateModal({
   const titleRef = useRef<HTMLInputElement | null>(null);
   const checklistInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const dueInputRef = useRef<HTMLInputElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Reset state every time the modal re-opens.
@@ -474,8 +469,6 @@ export default function HomeworkCreateModal({
                   { label: "3 gün",  iso: daysFromNowIso(3) },
                   { label: "Həftə",  iso: daysFromNowIso(7) },
                 ];
-                const matched = presets.find(p => p.iso === dueDate);
-                const isCustom = !!dueDate && !matched;
                 return (
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                     {presets.map(opt => (
@@ -485,54 +478,10 @@ export default function HomeworkCreateModal({
                         {opt.label}
                       </QuickChip>
                     ))}
-                    {isCustom ? (
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        padding: "4px 4px 4px 12px", borderRadius: 999,
-                        background: "var(--brand)", color: "#fff",
-                        fontSize: 11.5, fontWeight: 700,
-                        border: "1.5px solid var(--brand)",
-                      }}>
-                        {fmtDate(dueDate)}
-                        <button onClick={() => dueInputRef.current?.showPicker?.()}
-                          title="Tarixi dəyişdir"
-                          style={{
-                            background: "rgba(255,255,255,0.18)", border: "none",
-                            color: "#fff", cursor: "pointer",
-                            width: 20, height: 20, borderRadius: "50%",
-                            display: "inline-flex", alignItems: "center", justifyContent: "center",
-                          }}>
-                          <IconCalendar />
-                        </button>
-                        <button onClick={() => setDueDate("")}
-                          title="Təmizlə"
-                          style={{
-                            background: "rgba(255,255,255,0.18)", border: "none",
-                            color: "#fff", cursor: "pointer",
-                            width: 20, height: 20, borderRadius: "50%",
-                            fontSize: 13, lineHeight: 1,
-                          }}>×</button>
-                      </span>
-                    ) : (
-                      <button type="button"
-                        onClick={() => dueInputRef.current?.showPicker?.() ?? dueInputRef.current?.focus()}
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 5,
-                          padding: "5px 12px", borderRadius: 999,
-                          border: "1.5px dashed var(--oxford-10)",
-                          background: "#fff", color: "var(--oxford-60)",
-                          fontSize: 11.5, fontWeight: 600, cursor: "pointer",
-                        }}
-                        title="Custom tarix seç">
-                        <IconCalendar /> Başqa…
-                      </button>
-                    )}
-                    <input ref={dueInputRef} type="date" value={dueDate} min={todayIso()}
-                      onChange={e => setDueDate(e.target.value)}
-                      style={{
-                        position: "absolute", width: 1, height: 1,
-                        opacity: 0, pointerEvents: "none",
-                      }} />
+                    <div style={{ flex: "0 1 180px", minWidth: 150 }}>
+                      <DatePicker value={dueDate} onChange={setDueDate} min={todayIso()}
+                        theme="light" size="sm" clearable placeholder="Başqa tarix…" />
+                    </div>
                   </div>
                 );
               })()}
@@ -794,16 +743,6 @@ function IconUser() {
     <svg width="18" height="18" {...sw}>
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
-function IconCalendar() {
-  return (
-    <svg width="12" height="12" {...sw}>
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="3" y1="10" x2="21" y2="10" />
     </svg>
   );
 }

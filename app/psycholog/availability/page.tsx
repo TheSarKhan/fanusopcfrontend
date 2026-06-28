@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { psychologistApi, type AppointmentDetail, type TimeSlot, type TimeSlotOverride, type Vacation } from "@/lib/api";
+import DatePicker from "@/components/DatePicker";
 import RescheduleComposeModal from "@/components/RescheduleComposeModal";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -740,8 +741,7 @@ function AddOverrideModal({ onClose, onCreated }: {
   return (
     <Modal onClose={onClose} title="Tarix istisnası" subtitle="Birdəfəlik dəyişiklik üçün konkret günü qurun">
       <Section label="Tarix">
-        <input type="date" value={date} min={todayIso()} onChange={e => setDate(e.target.value)}
-          style={timeInputStyle} />
+        <DatePicker value={date} min={todayIso()} onChange={setDate} theme="light" size="sm" style={{ width: "100%" }} />
       </Section>
 
       <Section label="Tip">
@@ -920,12 +920,10 @@ function AddVacationModal({ onClose, onCreated }: {
       subtitle="Bu dövrdə bağlı qalacaqsız — mövcud randevular operator komandasına ötürüləcək">
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <Section label="Başlanğıc">
-          <input type="date" value={start} min={todayIso()} onChange={e => setStart(e.target.value)}
-            style={timeInputStyle} />
+          <DatePicker value={start} min={todayIso()} onChange={setStart} theme="light" size="sm" style={{ width: "100%" }} />
         </Section>
         <Section label="Bitiş">
-          <input type="date" value={end} min={start || todayIso()} onChange={e => setEnd(e.target.value)}
-            style={timeInputStyle} />
+          <DatePicker value={end} min={start || todayIso()} onChange={setEnd} theme="light" size="sm" style={{ width: "100%" }} />
         </Section>
       </div>
 

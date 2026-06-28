@@ -27,11 +27,12 @@ import {
   type SlotAllowance,
 } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
+import DatePicker from "@/components/DatePicker";
 import { toast as globalToast } from "@/components/Toast";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { subscribeNotifications, subscribeOperatorClaims } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
-import { azLocalToISO, isoToAzLocal, azFormatDate, azFormatTime, azFormatDateTime } from "@/lib/datetime";
+import { azLocalToISO, isoToAzLocal, azFormatDate, azFormatTime, azFormatDateTime, azOrdinal } from "@/lib/datetime";
 
 const QUEUE_KEY = "fanus.op.queue";
 const AUTO_ADVANCE_KEY = "fanus.op.autoAdvance";
@@ -721,7 +722,7 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
             {full.seriesSiblings.map(s => (
               <Link key={s.id} href={`/operator/appointments/${s.id}${suffix}`}
                 className={s.id === a.id ? "op-det-sibling op-det-sibling--current" : "op-det-sibling"}>
-                <span>#{s.id} · {(s.seriesIndex ?? 0) + 1}-ci seans</span>
+                <span>#{s.id} · {azOrdinal((s.seriesIndex ?? 0) + 1)} seans</span>
                 <span style={{ color: "#8AAABF" }}>{s.startAt ? azFormatDate(s.startAt) : "—"} · {STATUS_TONE[s.status]?.label ?? s.status}</span>
               </Link>
             ))}
@@ -732,8 +733,7 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
             {seriesRescheduleOpen ? (
               <div style={{ display: "grid", gap: 6 }}>
                 <label style={{ fontSize: 11, fontWeight: 600, color: "#52718F" }}>Növbəti seansın yeni başlanğıcı (qalanlar eyni qədər sürüşəcək)</label>
-                <input type="datetime-local" step={60} value={seriesStart} onChange={e => setSeriesStart(e.target.value)}
-                  style={{ padding: 8, borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 12 }} />
+                <DatePicker withTime theme="light" size="sm" value={seriesStart} onChange={setSeriesStart} />
                 <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                   <button onClick={() => { setSeriesRescheduleOpen(false); setSeriesStart(""); }} disabled={seriesBusy}
                     style={{ padding: "6px 12px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 12, fontWeight: 600, background: "#fff", cursor: "pointer" }}>Ləğv</button>
@@ -1281,13 +1281,11 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     <label style={{ display: "block" }}>
                       <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 5 }}>Başlama vaxtı</span>
-                      <input type="datetime-local" step={60} value={manualStart} onChange={e => { setManualStart(e.target.value); setPickedSlots([]); }}
-                        style={{ width: "100%", padding: "10px 12px", borderRadius: 9, border: "1px solid #D6E2F7", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }} />
+                      <DatePicker withTime theme="light" size="sm" value={manualStart} onChange={v => { setManualStart(v); setPickedSlots([]); }} style={{ width: "100%" }} />
                     </label>
                     <label style={{ display: "block" }}>
                       <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 5 }}>Bitmə vaxtı</span>
-                      <input type="datetime-local" step={60} value={manualEnd} onChange={e => { setManualEnd(e.target.value); setPickedSlots([]); }}
-                        style={{ width: "100%", padding: "10px 12px", borderRadius: 9, border: "1px solid #D6E2F7", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }} />
+                      <DatePicker withTime theme="light" size="sm" value={manualEnd} onChange={v => { setManualEnd(v); setPickedSlots([]); }} style={{ width: "100%" }} />
                     </label>
                   </div>
                 </div>

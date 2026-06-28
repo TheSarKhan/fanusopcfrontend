@@ -202,7 +202,13 @@ export default function TimePicker({
   useEffect(() => {
     if (!open) return;
     reposition();
-    const onScroll = () => reposition();
+    const onScroll = (e: Event) => {
+      // Popup-un öz sütun scroll-u repozisiyanı tetikləməməlidir — əks halda
+      // mərkəzləmə yenidən işləyir və skroll seçili dəyərə geri atılır.
+      const t = e.target as Node | null;
+      if (t && popupRef.current?.contains(t)) return;
+      reposition();
+    };
     window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", onScroll);
     return () => {
@@ -211,9 +217,13 @@ export default function TimePicker({
     };
   }, [open, reposition]);
 
-  // Açılanda seçili saat/dəqiqəni görünüşə sürüşdür.
+  // Açılanda seçili saat/dəqiqəni görünüşə sürüşdür — yalnız BİR DƏFƏ
+  // (sonrakı pos dəyişiklikləri istifadəçi skrollunu pozmamalıdır).
+  const didCenterRef = useRef(false);
   useEffect(() => {
-    if (!open || !pos) return;
+    if (!open) { didCenterRef.current = false; return; }
+    if (!pos || didCenterRef.current) return;
+    didCenterRef.current = true;
     const id = window.requestAnimationFrame(() => {
       const scrollToSel = (col: HTMLDivElement | null) => {
         if (!col) return;

@@ -395,6 +395,8 @@ export const en: typeof az = {
   why: {
     eyebrow: "Why Fanus?",
     title: "The right place for your inner light.",
+    expertTitle: "Certified psychologists",
+    expertText: "Experienced, certified specialists bound by a code of ethics.",
     privacyTitle: "Full privacy",
     privacyText: "Every session is end-to-end encrypted. Your story stays between you and your therapist.",
     matchTitle: "The right therapist for you",
@@ -407,6 +409,7 @@ export const en: typeof az = {
     eyebrow: "Services",
     title: "Services for you",
     lead: "Individual therapy, couples, groups, acute support, teens — pick what fits.",
+    allCta: "All services",
     programsTitle: "Where we work",
     programsSub: "We find a certified psychologist for each programme.",
     moreCta: "Learn more",
@@ -421,6 +424,8 @@ export const en: typeof az = {
     crisisText: "We're with you in the hardest moments. Rapid response for acute stress, trauma or crisis.",
     childTitle: "Children & teens",
     childText: "A special approach to young people's emotional development. Support programmes for parents are also available.",
+    corporateTitle: "Corporate support",
+    corporateText: "Mental health support for teams. Custom packages for companies.",
   },
 
   how: {
@@ -432,6 +437,7 @@ export const en: typeof az = {
     step2Text: "We suggest 3 matching therapists. The first 15-minute conversation — free of charge.",
     step3Title: "Session",
     step3Text: "The choice is yours. Start an online session with your preferred therapist whenever you want.",
+    finalTitle: "Take the first step today to feel better.",
     cta: "Get started",
     ctaNote: "First conversation is free · No commitment",
   },

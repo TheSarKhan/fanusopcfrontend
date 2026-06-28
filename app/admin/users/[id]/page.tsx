@@ -291,7 +291,12 @@ function PatientCardView({ userId }: { userId: number }) {
 
         <div style={{ display: "grid", gap: 14 }}>
           {/* Klinik data — break-glass */}
-          <ClinicalSection userId={userId} grant={card.clinicalAccess} onGranted={load} />
+          {card.patientId != null
+            ? <ClinicalSection userId={userId} grant={card.clinicalAccess} onGranted={load} />
+            : <div className="card" style={{ padding: 16, fontSize: 12.5, color: "var(--muted)" }}>
+                Bu istifadəçinin pasiyent profili mövcud deyil — klinik data əlçatmazdır.
+              </div>
+          }
 
           {/* Bildiriş tarixçəsi */}
           <div className="card">

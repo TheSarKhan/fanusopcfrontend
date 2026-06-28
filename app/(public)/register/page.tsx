@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { registerPatient, registerPsychologist, type PsychologistRegistrationData } from "@/lib/api";
 import PhotoCropper from "@/components/PhotoCropper";
+import DatePicker from "@/components/DatePicker";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
@@ -429,7 +430,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <Field label="Telefon"><input type="tel" className="auth-input" value={personal.phone} onChange={setP("phone")} placeholder="+994 50 000 00 00" required style={{ minWidth: 0, width: "100%" }} /></Field>
-            <Field label="Doğum tarixi"><input type="date" className="auth-input" value={personal.birthDate} onChange={setP("birthDate")} required style={{ minWidth: 0, width: "100%" }} /></Field>
+            <Field label="Doğum tarixi"><DatePicker value={personal.birthDate} onChange={v => setPersonal(p => ({ ...p, birthDate: v }))} theme="light" style={{ minWidth: 0, width: "100%" }} ariaLabel="Doğum tarixi" /></Field>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

@@ -8,9 +8,9 @@ import { withSlugs } from "@/lib/slug";
 import { MOOD_TO_CAT, deriveCategory, type MoodId } from "@/lib/moodMap";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
-type Mood = { id: MoodId; label: string; color: string };
+export type Mood = { id: MoodId; label: string; color: string };
 
-const MOOD_COLORS: Record<MoodId, string> = {
+export const MOOD_COLORS: Record<MoodId, string> = {
   anxious: "#88AEEC",
   sad:     "#5089E0",
   tired:   "#2A6BD0",
@@ -21,7 +21,7 @@ const MOOD_COLORS: Record<MoodId, string> = {
   happy:   "#1051B7",
 };
 
-function MoodIcon({ id, size = 30 }: { id: MoodId; size?: number }) {
+export function MoodIcon({ id, size = 30 }: { id: MoodId; size?: number }) {
   const p = { width: size, height: size, viewBox: "0 0 32 32", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   switch (id) {
     case "anxious": return <svg {...p}><path d="M9 18 Q4 18 4 14 Q4 10 8 10 Q9 6 13 6 Q19 6 20 11 Q26 11 26 16 Q26 20 22 20 L9 20 Z" fill="currentColor" opacity=".18"/><path d="M9 18 Q4 18 4 14 Q4 10 8 10 Q9 6 13 6 Q19 6 20 11 Q26 11 26 16 Q26 20 22 20 L9 20 Z"/><path d="M11 24 L10 27 M16 24 L15 27 M21 24 L20 27"/></svg>;
@@ -156,7 +156,7 @@ export default function MoodCheckIn() {
   );
 }
 
-function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }) {
+export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }) {
   const { t } = useT();
   // GAP-08: real psychologists matched to the selected mood's category.
   const [allPsy, setAllPsy] = useState<(Psychologist & { slug: string })[]>([]);

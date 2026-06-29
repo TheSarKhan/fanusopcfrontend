@@ -1,5 +1,4 @@
 import Hero from "@/components/Hero";
-import MoodCheckIn from "@/components/MoodCheckIn";
 import WhyFanus from "@/components/WhyFanus";
 import Services from "@/components/Services";
 import HowItWorks from "@/components/HowItWorks";
@@ -25,7 +24,6 @@ export default async function HomePage() {
   return (
     <div className="fanus-root">
       <Hero />
-      <MoodCheckIn />
       <WhyFanus />
       <Services />
       <HowItWorks />

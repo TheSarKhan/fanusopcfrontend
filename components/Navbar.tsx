@@ -23,7 +23,14 @@ export default function Navbar() {
   ];
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(prev => {
+        if (!prev && y > 80) return true;
+        if (prev && y < 60) return false;
+        return prev;
+      });
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -121,36 +128,55 @@ export default function Navbar() {
 
       <style>{`
         .fanus-nav {
-          position: sticky; top: 0; z-index: 50;
-          backdrop-filter: blur(14px) saturate(1.2);
-          -webkit-backdrop-filter: blur(14px) saturate(1.2);
-          background: rgba(255,255,255,0.72);
+          position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+          background: transparent;
           border-bottom: 1px solid transparent;
           transition: background .3s, border-color .3s, box-shadow .3s;
         }
         .fanus-nav.is-scrolled {
-          background: rgba(255,255,255,0.92);
+          background: rgba(255,255,255,0.95);
+          backdrop-filter: blur(16px) saturate(1.3);
+          -webkit-backdrop-filter: blur(16px) saturate(1.3);
           border-bottom-color: var(--fanus-line);
-          box-shadow: 0 2px 12px rgba(10,26,51,.04);
+          box-shadow: 0 2px 16px rgba(10,26,51,.07);
         }
+
+        /* ── Inner ── */
         .fanus-nav__inner {
           display: flex; align-items: center; justify-content: space-between;
-          gap: 24px; padding: 14px 28px;
+          gap: 24px; padding: 20px 28px;
+          transition: padding .3s ease;
         }
-        .fanus-nav__brand {
-          display: inline-flex; align-items: center; gap: 12px;
-        }
+        .fanus-nav.is-scrolled .fanus-nav__inner { padding: 10px 28px; }
+
+        /* ── Brand ── */
+        .fanus-nav__brand { display: inline-flex; align-items: center; gap: 12px; }
         .fanus-nav__mark { display: inline-flex; align-items: center; }
-        .fanus-nav__mark img { object-fit: contain; height: 40px; width: auto; }
+        .fanus-nav__mark img {
+          object-fit: contain; height: 64px; width: auto;
+          transition: height .3s ease;
+        }
+        .fanus-nav.is-scrolled .fanus-nav__mark img { height: 40px; }
+
         .fanus-nav__type { display: flex; flex-direction: column; line-height: 1; }
         .fanus-nav__type-name {
-          font-weight: 800; font-size: 18px; letter-spacing: 0.02em;
-          color: var(--fanus-primary);
+          font-weight: 800; letter-spacing: 0.02em;
+          color: var(--fanus-primary); font-size: 22px;
+          transition: font-size .3s ease;
         }
+        .fanus-nav.is-scrolled .fanus-nav__type-name { font-size: 17px; }
         .fanus-nav__type-sub {
           font-weight: 500; font-size: 9px; letter-spacing: 0.08em;
-          color: rgba(16,81,183,.7); margin-top: 4px; text-transform: uppercase;
+          color: rgba(16,81,183,.7); margin-top: 5px; text-transform: uppercase;
+          max-height: 16px; opacity: 1;
+          transition: max-height .3s ease, opacity .2s ease, margin-top .3s ease;
+          overflow: hidden;
         }
+        .fanus-nav.is-scrolled .fanus-nav__type-sub {
+          max-height: 0; opacity: 0; margin-top: 0;
+        }
+
+        /* ── Links ── */
         .fanus-nav__links { display: flex; align-items: center; gap: 4px; }
         .fanus-nav__link {
           position: relative; padding: 10px 16px;
@@ -164,12 +190,16 @@ export default function Navbar() {
           transition: opacity .2s; z-index: -1;
         }
         .fanus-nav__link:hover .fanus-nav__glow { opacity: 1; }
+
+        /* ── CTA ── */
         .fanus-nav__cta { display: flex; gap: 10px; align-items: center; }
         .fanus-nav__login {
           font-size: 14px; font-weight: 500; color: var(--fanus-ink-2);
           padding: 8px 14px; border-radius: 999px;
         }
         .fanus-nav__login:hover { color: var(--fanus-primary); }
+
+        /* ── Mobile ── */
         .fanus-nav__menu {
           display: none; padding: 8px; color: var(--fanus-ink);
           background: transparent; border: none; cursor: pointer;
@@ -180,6 +210,8 @@ export default function Navbar() {
           border-top: 1px solid var(--fanus-line); gap: 4px;
         }
         @media (max-width: 980px) {
+          .fanus-nav__inner { padding: 12px 20px; }
+          .fanus-nav.is-scrolled .fanus-nav__inner { padding: 8px 20px; }
           .fanus-nav__links, .fanus-nav__cta { display: none; }
           .fanus-nav__menu { display: inline-flex; }
           .fanus-nav__mobile { display: flex; }

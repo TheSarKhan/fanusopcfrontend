@@ -590,7 +590,7 @@ export default function BookPsychologistPage() {
   return (
     <main style={{ background: "#F0F4FA", minHeight: "100vh", width: "100%", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--oxford)" }}>
       <style>{layoutCss}</style>
-      <div className="bkx-app" style={{ width: "100%", padding: "30px 32px 56px", maxWidth: 1240, margin: "0 auto" }}>
+      <div className="bkx-app" style={{ width: "100%", padding: "30px 32px 56px", maxWidth: "min(1360px, 94vw)", margin: "0 auto" }}>
 
         {/* breadcrumb + title */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 14 }}>

@@ -34,20 +34,17 @@ export default function HowItWorks() {
               </div>
             </div>
           ))}
+        </div>
 
-          <div className="fanus-how-step fanus-how-step--cta">
-            <div className="fanus-how-step__node fanus-how-step__node--end"><HeartIcon /></div>
-            <div className="fanus-how-cta-card">
-              <div className="fanus-how-cta-card__body">
-                <h3>{t("how.finalTitle")}</h3>
-                <Link href="/register" className="fanus-btn fanus-btn-primary">
-                  {t("how.cta")} <Arrow />
-                </Link>
-              </div>
-              <div className="fanus-how-cta-card__visual">
-                <img src="/images/how/step4.webp" alt="" loading="lazy" />
-              </div>
-            </div>
+        <div className="fanus-how-cta-card">
+          <div className="fanus-how-cta-card__body">
+            <h3>{t("how.finalTitle")}</h3>
+            <Link href="/register" className="fanus-btn fanus-btn-primary">
+              {t("how.cta")} <Arrow />
+            </Link>
+          </div>
+          <div className="fanus-how-cta-card__visual">
+            <img src="/images/how/step4.webp" alt="" loading="lazy" />
           </div>
         </div>
       </div>
@@ -103,6 +100,7 @@ export default function HowItWorks() {
           background: linear-gradient(135deg, #FFF8EA 0%, #FCEFCF 100%);
           border: 1px solid #F2E1BB; border-radius: 20px;
           padding: 24px 26px; overflow: hidden;
+          max-width: 880px; margin: 24px auto 0;
         }
         .fanus-how-cta-card__body { flex: 1; }
         .fanus-how-cta-card__body h3 {

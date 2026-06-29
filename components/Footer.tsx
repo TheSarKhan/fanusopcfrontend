@@ -35,23 +35,6 @@ export default function Footer() {
   ];
   return (
     <footer className="fanus-ftr" id="contact">
-      {!isAuthed && (
-        <div className="fanus-ftr-cta">
-          <div className="fanus-container fanus-ftr-cta__inner">
-            <div className="fanus-ftr-cta__lantern">
-              <Image src="/images/logos/logo-white.png" alt="Fanus" width={72} height={72} style={{ objectFit: "contain" }} />
-            </div>
-            <div>
-              <h3 className="fanus-ftr-cta__title">{t("footer2.ctaTitle")}</h3>
-              <p className="fanus-ftr-cta__sub">{t("footer2.ctaSub")}</p>
-            </div>
-            <div className="fanus-ftr-cta__btns">
-              <Link href="/register" className="fanus-btn fanus-btn-light">{t("nav.register")} <Arrow /></Link>
-              <Link href="/book" className="fanus-btn fanus-ftr-cta__ghost">{t("footer2.ctaTalkNow")}</Link>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="fanus-container fanus-ftr__main">
         <div className="fanus-ftr__brand">

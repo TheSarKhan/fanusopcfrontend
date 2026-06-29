@@ -137,7 +137,7 @@ export default async function PsychologistProfilePage(
   return (
     <main style={{ background: "#F0F4FA", minHeight: "100vh", width: "100%", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--oxford)" }}>
       <style>{layoutCss}</style>
-      <div className="ppx-app" style={{ width: "100%", padding: "24px 32px 56px", maxWidth: 1180, margin: "0 auto" }}>
+      <div className="ppx-app" style={{ width: "100%", padding: "24px 32px 56px", maxWidth: "min(1360px, 94vw)", margin: "0 auto" }}>
 
         <a href="/psychologists" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 18, textDecoration: "none" }}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>

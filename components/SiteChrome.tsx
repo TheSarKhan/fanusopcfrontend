@@ -23,6 +23,8 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
   return (
     <>
       <Navbar />
+      {/* Spacer reserves the large-navbar height so content starts below it */}
+      <div style={{ height: 104 }} aria-hidden />
       <main className="flex-1">{children}</main>
       <Footer />
       <BookingModal />

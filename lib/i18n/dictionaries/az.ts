@@ -622,6 +622,7 @@ export const az = {
     opTake: "Götür",
     opPoolFilter: "Pool",
     opReleaseToPool: "Pool-a burax",
+    opReleaseLockedBySession: "Seans/paket sizdədir — ödəniş tək başına buraxıla bilməz",
     opClaimBlocked: "Bu müraciət {name} üzərindədir — əvvəlcə ondan alınmalıdır",
     opReassign: "Başqasına ver",
     opReassignTitle: "Başqa operatora ver",

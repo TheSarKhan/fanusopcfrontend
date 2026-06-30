@@ -227,7 +227,8 @@ function Row({ p, meId, isAdmin, busy, onTake, onRelease, onMarkPaid, onCancel, 
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: "none" }}>
         {st === "PENDING" && p.claimedByOperatorId == null && <Btn tone="green" busy={busy} onClick={() => onTake(p)}>{t("staff.opTake")}</Btn>}
-        {st === "PENDING" && mine && <Btn tone="ghost" busy={busy} onClick={() => onRelease(p)}>{t("staff.opReleaseToPool")}</Btn>}
+        {st === "PENDING" && mine && !p.linkedOwned && <Btn tone="ghost" busy={busy} onClick={() => onRelease(p)}>{t("staff.opReleaseToPool")}</Btn>}
+        {st === "PENDING" && mine && p.linkedOwned && <span title={t("staff.opReleaseLockedBySession")} style={{ fontSize: 11.5, color: "#9DB0CC", fontWeight: 600, padding: "8px 4px", maxWidth: 190, lineHeight: 1.35 }}>{t("staff.opReleaseLockedBySession")}</span>}
         {st === "PENDING" && canAct && <Btn tone="brand" busy={busy} onClick={() => onMarkPaid(p)} icon={<path d="M20 6L9 17l-5-5" />}>{t("pkg.markPaid")}</Btn>}
         {st === "PENDING" && canAct && <Btn tone="danger" busy={busy} onClick={() => onCancel(p)}>Ləğv et</Btn>}
         {canRefund && canAct && <Btn tone="orange" busy={busy} onClick={() => onRefund(p)} icon={<><path d="M3 7v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" /></>}>{refunded > 0 ? "Qalanı qaytar" : "Geri qaytar"}</Btn>}

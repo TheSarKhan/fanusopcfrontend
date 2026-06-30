@@ -608,6 +608,7 @@ export const ru: typeof az = {
     opTake: "Взять",
     opPoolFilter: "Пул",
     opReleaseToPool: "Вернуть в пул",
+    opReleaseLockedBySession: "Сессия/пакет за вами — платёж нельзя вернуть отдельно",
     opClaimBlocked: "Эта заявка у {name} — сначала нужно её освободить",
     opReassign: "Передать",
     opReassignTitle: "Передать оператору",

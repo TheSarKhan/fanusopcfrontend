@@ -7,6 +7,8 @@ import {
   type AppointmentDetail,
   type OperatorStats,
   type PaymentSummary,
+  type SessionRequest,
+  type Referral,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { getStoredUser } from "@/lib/auth";
@@ -49,6 +51,8 @@ export default function OperatorDashboard() {
   const { t } = useT();
   const user = getStoredUser();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
+  const [leads, setLeads] = useState<SessionRequest[]>([]);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
   const [stats, setStats] = useState<OperatorStats | null>(null);
   const [summary, setSummary] = useState<PaymentSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,10 +67,12 @@ export default function OperatorDashboard() {
       operatorApi.listAppointments(),
       operatorApi.stats().catch(() => null),
       operatorApi.paymentsSummary().catch(() => null),
-    ]).then(([list, s, sm]) => { setItems(list); setStats(s); setSummary(sm); }).catch(() => {}).finally(() => setLoading(false));
+      operatorApi.listSessionRequests("NEW").catch(() => [] as SessionRequest[]),
+      operatorApi.pendingReferrals().catch(() => [] as Referral[]),
+    ]).then(([list, s, sm, ld, rf]) => { setItems(list); setStats(s); setSummary(sm); setLeads(ld); setReferrals(rf); }).catch(() => {}).finally(() => setLoading(false));
   };
   useEffect(load, []);
-  useEffect(() => subscribeNotifications(n => { if (typeof n.type === "string" && (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_"))) load(); }), []);
+  useEffect(() => subscribeNotifications(n => { if (typeof n.type === "string" && (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_") || n.type.startsWith("SESSION_REQUEST") || n.type.startsWith("REFERRAL"))) load(); }), []);
 
   const disputed = useMemo(() => items.filter(a => a.status === "DISPUTED").sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()), [items]);
   const rejected = useMemo(() => items.filter(a => a.status === "REJECTED").sort((a, b) => new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()), [items]);
@@ -76,6 +82,36 @@ export default function OperatorDashboard() {
   // miss them when the transient notification scrolls away.
   const rescheduleReqs = useMemo(() => items.filter(a => a.rescheduleRequestedAt && (a.status === "CONFIRMED" || a.status === "ASSIGNED")).sort((a, b) => new Date(b.rescheduleRequestedAt!).getTime() - new Date(a.rescheduleRequestedAt!).getTime()), [items]);
   const cancelReqs = useMemo(() => items.filter(a => a.status === "CANCEL_REQUESTED").sort((a, b) => new Date(b.cancelRequestedAt ?? b.updatedAt ?? b.createdAt).getTime() - new Date(a.cancelRequestedAt ?? a.updatedAt ?? a.createdAt).getTime()), [items]);
+  // ─── Vahid inbox: bütün müraciət növləri (lead + randevu + reschedule + ləğv +
+  // mübahisə + rədd + yönləndirmə) əvvəlcə tək siyahıda, ən yenisi yuxarıda. ─────
+  const inbox = useMemo<InboxItem[]>(() => {
+    const clip = (s?: string | null, n = 56) => (s ? `«${s.length > n ? s.slice(0, n) + "…" : s}»` : "");
+    const out: InboxItem[] = [];
+    for (const l of leads)
+      out.push({ key: `lead-${l.id}`, kind: "lead", href: `/operator/session-requests/${l.id}`,
+        name: l.name, sub: clip(l.reason) || "yeni müraciət forması", ts: l.createdAt });
+    for (const a of pending)
+      out.push({ key: `pending-${a.id}`, kind: "pending", href: `/operator/appointments/${a.id}`,
+        name: a.patientName ?? "—", sub: a.requestedPsychologistName ? `İstənilən: ${a.requestedPsychologistName}` : "psixoloq seçilməyib", ts: a.createdAt });
+    for (const a of rescheduleReqs)
+      out.push({ key: `resched-${a.id}`, kind: "reschedule", href: `/operator/appointments/${a.id}`,
+        name: a.patientName ?? "—", sub: clip(a.rescheduleRequestNote) || "pasiyent vaxtı dəyişmək istəyir", ts: a.rescheduleRequestedAt ?? a.updatedAt ?? a.createdAt });
+    for (const a of cancelReqs)
+      out.push({ key: `cancel-${a.id}`, kind: "cancel", href: `/operator/appointments/${a.id}`,
+        name: a.patientName ?? "—", sub: clip(a.cancelRequestReasonText) || "pasiyent ləğv tələb edib", ts: a.cancelRequestedAt ?? a.updatedAt ?? a.createdAt });
+    for (const a of disputed)
+      out.push({ key: `disp-${a.id}`, kind: "disputed", href: `/operator/appointments/${a.id}`,
+        name: a.patientName ?? "—", sub: clip(a.disputeReason) || "mübahisə açıldı", ts: a.updatedAt ?? a.createdAt });
+    for (const a of rejected)
+      out.push({ key: `rej-${a.id}`, kind: "rejected", href: `/operator/appointments/${a.id}`,
+        name: a.patientName ?? "—", sub: a.requestedPsychologistName ? `İstənilən: ${a.requestedPsychologistName}` : "psixoloq rədd etdi", ts: a.updatedAt ?? a.createdAt });
+    for (const r of referrals)
+      out.push({ key: `ref-${r.id}`, kind: "referral", href: `/operator/referrals`,
+        name: r.patientName ?? "—", sub: `${r.fromPsychologistName} → ${r.toPsychologistName}`, ts: r.createdAt ?? "" });
+    return out.sort((a, b) => new Date(b.ts || 0).getTime() - new Date(a.ts || 0).getTime());
+  }, [leads, pending, rescheduleReqs, cancelReqs, disputed, rejected, referrals]);
+  const leadItems = useMemo(() => inbox.filter(i => i.kind === "lead"), [inbox]);
+  const referralItems = useMemo(() => inbox.filter(i => i.kind === "referral"), [inbox]);
   const todayActive = useMemo(() => items.filter(a => a.startAt && isSameDay(new Date(a.startAt), now)).filter(a => ["ASSIGNED", "CONFIRMED", "AWAITING_CONFIRMATION"].includes(a.status)).sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime()), [items, now]);
   const awaitingConfirm = useMemo(() => items.filter(a => a.status === "AWAITING_CONFIRMATION"), [items]);
   const stalePending = useMemo(() => { const cutoff = now.getTime() - 4 * 3600000; return pending.filter(a => new Date(a.createdAt).getTime() < cutoff); }, [pending, now]);
@@ -103,7 +139,7 @@ export default function OperatorDashboard() {
     { label: "Orta cavab", value: fmtMin(stats?.avgResponseMinutes ?? null), hint: "bu ay", tone: "neutral", icon: <Ico d={I_WATCH} /> },
   ];
 
-  const queueEmpty = disputed.length === 0 && rejected.length === 0 && pending.length === 0 && rescheduleReqs.length === 0 && cancelReqs.length === 0;
+  const queueEmpty = inbox.length === 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -151,22 +187,29 @@ export default function OperatorDashboard() {
                   <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 500 }}>Bütün müraciətlər həll edilib. Yeni müraciət gəldikdə burada görünəcək.</div>
                 </div>
               ) : <>
+                {/* VAHİD INBOX — bütün müraciət növləri əvvəlcə burada toplanır */}
+                <QueueBlock title="Yeni müraciətlər" tone="brand" count={inbox.length} icon={<Ico d={I_INBOX} />} allHref="/operator/appointments">
+                  {inbox.slice(0, 8).map(it => <InboxRow key={it.key} item={it} now={now} />)}
+                  {inbox.length > 8 && <Overflow n={inbox.length - 8} />}
+                </QueueBlock>
+
+                {/* Daha sonra eyni müraciətlər uyğun kateqoriyalar üzrə bölünür */}
                 {disputed.length > 0 && (
                   <QueueBlock title="Acil həll et" tone="danger" count={disputed.length} icon={<Ico d={I_ALERT} />} allHref="/operator/appointments?tab=DISPUTED">
                     {disputed.slice(0, 4).map(a => <QueueRow key={a.id} a={a} now={now} kind="disputed" />)}
                     {disputed.length > 4 && <Overflow n={disputed.length - 4} />}
                   </QueueBlock>
                 )}
-                {rejected.length > 0 && (
-                  <QueueBlock title="Yenidən təyin lazımdır" tone="warn" count={rejected.length} icon={<Ico d={I_REFRESH} />}>
-                    {rejected.slice(0, 4).map(a => <QueueRow key={a.id} a={a} now={now} kind="rejected" />)}
-                    {rejected.length > 4 && <Overflow n={rejected.length - 4} />}
+                {leadItems.length > 0 && (
+                  <QueueBlock title="Yeni müraciət formaları (lead)" tone="brand" count={leadItems.length} icon={<Ico d={I_PLUS} />} allHref="/operator/session-requests">
+                    {leadItems.slice(0, 4).map(it => <InboxRow key={it.key} item={it} now={now} />)}
+                    {leadItems.length > 4 && <Overflow n={leadItems.length - 4} />}
                   </QueueBlock>
                 )}
-                {cancelReqs.length > 0 && (
-                  <QueueBlock title="Ləğv tələbləri" tone="warn" count={cancelReqs.length} icon={<Ico d={I_BAN} />} allHref="/operator/appointments?tab=CANCEL_REQUESTED">
-                    {cancelReqs.slice(0, 4).map(a => <QueueRow key={a.id} a={a} now={now} kind="cancel" />)}
-                    {cancelReqs.length > 4 && <Overflow n={cancelReqs.length - 4} />}
+                {pending.length > 0 && (
+                  <QueueBlock title="Yeni randevu tələbləri" tone="brand" count={pending.length} icon={<Ico d={I_PLUS} />}>
+                    {pending.slice(0, 6).map(a => <QueueRow key={a.id} a={a} now={now} kind="pending" severity={staleSeverity(a)} />)}
+                    {pending.length > 6 && <Overflow n={pending.length - 6} />}
                   </QueueBlock>
                 )}
                 {rescheduleReqs.length > 0 && (
@@ -175,10 +218,22 @@ export default function OperatorDashboard() {
                     {rescheduleReqs.length > 4 && <Overflow n={rescheduleReqs.length - 4} />}
                   </QueueBlock>
                 )}
-                {pending.length > 0 && (
-                  <QueueBlock title="Yeni müraciətlər" tone="brand" count={pending.length} icon={<Ico d={I_PLUS} />}>
-                    {pending.slice(0, 6).map(a => <QueueRow key={a.id} a={a} now={now} kind="pending" severity={staleSeverity(a)} />)}
-                    {pending.length > 6 && <Overflow n={pending.length - 6} />}
+                {cancelReqs.length > 0 && (
+                  <QueueBlock title="Ləğv tələbləri" tone="warn" count={cancelReqs.length} icon={<Ico d={I_BAN} />} allHref="/operator/appointments?tab=CANCEL_REQUESTED">
+                    {cancelReqs.slice(0, 4).map(a => <QueueRow key={a.id} a={a} now={now} kind="cancel" />)}
+                    {cancelReqs.length > 4 && <Overflow n={cancelReqs.length - 4} />}
+                  </QueueBlock>
+                )}
+                {rejected.length > 0 && (
+                  <QueueBlock title="Yenidən təyin lazımdır" tone="warn" count={rejected.length} icon={<Ico d={I_REFRESH} />}>
+                    {rejected.slice(0, 4).map(a => <QueueRow key={a.id} a={a} now={now} kind="rejected" />)}
+                    {rejected.length > 4 && <Overflow n={rejected.length - 4} />}
+                  </QueueBlock>
+                )}
+                {referralItems.length > 0 && (
+                  <QueueBlock title="Yönləndirmələr" tone="warn" count={referralItems.length} icon={<Ico d={I_REFRESH} />} allHref="/operator/referrals">
+                    {referralItems.slice(0, 4).map(it => <InboxRow key={it.key} item={it} now={now} />)}
+                    {referralItems.length > 4 && <Overflow n={referralItems.length - 4} />}
                   </QueueBlock>
                 )}
               </>}
@@ -375,6 +430,36 @@ function QueueRow({ a, now, kind, severity }: { a: AppointmentDetail; now: Date;
 
 function Pill({ bg, fg, children }: { bg: string; fg: string; children: ReactNode }) {
   return <span style={{ background: bg, color: fg, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{children}</span>;
+}
+
+/* ─── Vahid inbox sətri (bütün müraciət növlərini eyni formatda göstərir) ──── */
+type InboxKind = "lead" | "pending" | "reschedule" | "cancel" | "disputed" | "rejected" | "referral";
+interface InboxItem { key: string; kind: InboxKind; href: string; name: string; sub: string; ts: string }
+
+const INBOX_META: Record<InboxKind, { label: string; bg: string; fg: string }> = {
+  lead:       { label: "Lead",             bg: "#DCFCE7", fg: "#166534" },
+  pending:    { label: "Yeni randevu",     bg: "#E4ECFA", fg: "#082F6D" },
+  reschedule: { label: "Vaxt dəyişikliyi", bg: "#E0E7FF", fg: "#3730A3" },
+  cancel:     { label: "Ləğv tələbi",      bg: "#FEF3C7", fg: "#92400E" },
+  disputed:   { label: "Mübahisə",         bg: "#FEE2E2", fg: "#991B1B" },
+  rejected:   { label: "Rədd → təyin",     bg: "#FEF3C7", fg: "#92400E" },
+  referral:   { label: "Yönləndirmə",      bg: "#F3E8FF", fg: "#6B21A8" },
+};
+
+function InboxRow({ item, now }: { item: InboxItem; now: Date }) {
+  const m = INBOX_META[item.kind];
+  return (
+    <Link href={item.href} className="db-row" style={{ display: "flex", alignItems: "center", gap: 11, padding: "13px 18px", textDecoration: "none", color: "inherit", borderTop: "1px solid #F4F7FB", flexWrap: "wrap" }}>
+      <div style={{ flex: 1, minWidth: 160 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{item.name}</span>
+          <Pill bg={m.bg} fg={m.fg}>{m.label}</Pill>
+        </div>
+        {item.sub && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>{item.sub}</div>}
+      </div>
+      <span style={{ fontSize: 12, fontWeight: 600, color: "#52718F", flex: "none" }}>{item.ts ? `${timeAgo(item.ts, now)} əvvəl` : ""}</span>
+    </Link>
+  );
 }
 function Overflow({ n }: { n: number }) {
   return <Link href="/operator/appointments" style={{ display: "block", textAlign: "center", padding: 11, fontSize: 12.5, fontWeight: 600, color: "var(--brand)", textDecoration: "none", borderTop: "1px solid #F4F7FB" }}>+{n} daha →</Link>;

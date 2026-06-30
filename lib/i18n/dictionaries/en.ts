@@ -605,6 +605,7 @@ export const en: typeof az = {
     opTake: "Take",
     opPoolFilter: "Pool",
     opReleaseToPool: "Release to pool",
+    opReleaseLockedBySession: "Session/package is yours — payment can't be released on its own",
     opClaimBlocked: "This request is owned by {name} — it must be released first",
     opReassign: "Reassign",
     opReassignTitle: "Reassign to operator",

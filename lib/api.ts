@@ -1556,6 +1556,8 @@ export interface PaymentItem {
   // Geri qaytarma / ləğv
   refundedAmount?: number | null;
   statusNote?: string | null;
+  // Bağlı seans/paket operator sahibliyindədir → ödəniş tək başına pool-a buraxıla bilməz.
+  linkedOwned?: boolean;
 }
 
 export interface PaymentSummary {

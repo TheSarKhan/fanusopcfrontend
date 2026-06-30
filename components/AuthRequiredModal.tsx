@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { buildPanelUrl, getStoredUser } from "@/lib/auth";
 
 interface Props {
   open: boolean;
@@ -11,13 +12,13 @@ interface Props {
   message?: string;
 }
 
-export default function AuthRequiredModal({
-  open,
-  onClose,
-  next,
-  title = "Davam etmək üçün daxil olun",
-  message = "Randevu almaq üçün hesabınıza daxil olmalı və ya qeydiyyatdan keçməlisiniz.",
-}: Props) {
+const ROLE_LABEL: Record<string, string> = {
+  PSYCHOLOGIST: "psixoloq",
+  OPERATOR: "operator",
+  ADMIN: "admin",
+};
+
+export default function AuthRequiredModal({ open, onClose, next, title, message }: Props) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
@@ -26,7 +27,20 @@ export default function AuthRequiredModal({
 
   if (!open) return null;
 
+  // Logged-in non-patient (psychologist/operator/admin): booking is patient-only,
+  // so instead of a login/register prompt we point them to their own panel.
+  const user = getStoredUser();
+  const nonPatient = !!user && user.role !== "PATIENT";
+  const roleLabel = nonPatient ? (ROLE_LABEL[user!.role] ?? "bu") : "";
+
   const nextParam = next ? `?next=${encodeURIComponent(next)}` : "";
+
+  const headTitle = title ?? (nonPatient
+    ? "Randevu yalnız pasiyentlər üçündür"
+    : "Davam etmək üçün daxil olun");
+  const headMessage = message ?? (nonPatient
+    ? `Siz ${roleLabel} hesabı ilə daxil olmusunuz. Randevu yalnız pasiyent hesabı ilə mümkündür.`
+    : "Randevu almaq üçün hesabınıza daxil olmalı və ya qeydiyyatdan keçməlisiniz.");
 
   return (
     <div
@@ -69,29 +83,43 @@ export default function AuthRequiredModal({
               <path d="M19 8v6" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-[#1A2535]">{title}</h2>
-          <p className="text-sm text-[#52718F] mt-2 leading-relaxed">{message}</p>
+          <h2 className="text-xl font-bold text-[#1A2535]">{headTitle}</h2>
+          <p className="text-sm text-[#52718F] mt-2 leading-relaxed">{headMessage}</p>
         </div>
 
         <div className="flex flex-col gap-3">
-          <Link
-            href={`/login${nextParam}`}
-            className="py-3 rounded-xl text-sm font-bold text-white text-center transition-all"
-            style={{ background: "var(--brand)", color: "#fff" }}
-          >
-            Daxil ol
-          </Link>
-          <Link
-            href={`/register${nextParam}`}
-            className="py-3 rounded-xl text-sm font-bold text-center transition-all"
-            style={{ background: "#FAFCFF", color: "#1A2535", border: "1.5px solid #C0D2E6" }}
-          >
-            Qeydiyyatdan keç
-          </Link>
+          {nonPatient ? (
+            <a
+              href={buildPanelUrl(user!.role)}
+              className="py-3 rounded-xl text-sm font-bold text-white text-center transition-all"
+              style={{ background: "var(--brand)", color: "#fff" }}
+            >
+              Panelə keç
+            </a>
+          ) : (
+            <>
+              <Link
+                href={`/login${nextParam}`}
+                className="py-3 rounded-xl text-sm font-bold text-white text-center transition-all"
+                style={{ background: "var(--brand)", color: "#fff" }}
+              >
+                Daxil ol
+              </Link>
+              <Link
+                href={`/register${nextParam}`}
+                className="py-3 rounded-xl text-sm font-bold text-center transition-all"
+                style={{ background: "#FAFCFF", color: "#1A2535", border: "1.5px solid #C0D2E6" }}
+              >
+                Qeydiyyatdan keç
+              </Link>
+            </>
+          )}
         </div>
 
         <p className="text-center text-xs text-[#8AAABF] mt-5">
-          Yalnız xəstə hesabları randevu ala bilər.
+          {nonPatient
+            ? "Pasiyent kimi randevu almaq üçün həmin hesabdan çıxıb pasiyent hesabı ilə daxil olun."
+            : "Yalnız xəstə hesabları randevu ala bilər."}
         </p>
       </div>
     </div>

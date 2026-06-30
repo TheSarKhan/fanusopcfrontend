@@ -161,8 +161,16 @@ export default function BookPsychologistPage() {
       router.replace(`/login?next=${encodeURIComponent(`/book/${rawSlug}`)}`);
       return;
     }
+    // Randevu yalnız pasiyent üçündür — digər rolları (psixoloq/operator/admin)
+    // öz panellərinə ötür, randevu səhifəsində saxlama.
     if (user.role !== "PATIENT") {
-      setError("Yalnız pasiyent hesabı ilə müraciət edə bilərsiniz");
+      window.location.replace(buildPanelUrl(user.role));
+      return;
+    }
+    // Pasiyent randevunu öz panelində götürür — saytın public /book səhifəsinə
+    // (birbaşa link və ya login-sonrası `next`) düşərsə, panel versiyasına ötür.
+    if (!window.location.pathname.startsWith("/patient/")) {
+      window.location.replace(`${buildPanelUrl("PATIENT")}/book/${rawSlug}`);
     }
   }, [rawSlug, router]);
 

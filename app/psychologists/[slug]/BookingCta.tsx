@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { getStoredUser } from "@/lib/auth";
+import { buildPanelUrl, getStoredUser } from "@/lib/auth";
 import AuthRequiredModal from "@/components/AuthRequiredModal";
 
 export default function BookingCta({
@@ -14,14 +13,15 @@ export default function BookingCta({
   psychologistSlug?: string;
   name: string;
 }) {
-  const router = useRouter();
   const [authOpen, setAuthOpen] = useState(false);
-  const target = `/book/${psychologistSlug ?? psychologistId}`;
+  const slug = psychologistSlug ?? psychologistId;
+  const target = `/book/${slug}`;
 
   const onClick = () => {
     const user = getStoredUser();
     if (!user || user.role !== "PATIENT") { setAuthOpen(true); return; }
-    router.push(target);
+    // Daxil olmuş pasiyent randevunu saytda yox, öz panelində (subdomain) götürür.
+    window.location.href = `${buildPanelUrl("PATIENT")}/book/${slug}`;
   };
 
   return (

@@ -77,7 +77,7 @@ export default function AuthRequiredModal({
           <Link
             href={`/login${nextParam}`}
             className="py-3 rounded-xl text-sm font-bold text-white text-center transition-all"
-            style={{ background: "var(--brand)" }}
+            style={{ background: "var(--brand)", color: "#fff" }}
           >
             Daxil ol
           </Link>

@@ -140,6 +140,7 @@ export const az = {
     successForgot: "Email göndərildi. Gələn qutunuza baxın.",
     passwordRequirements: "Ən az 8 simvol, böyük və kiçik hərf, rəqəm.",
     passwordMismatch: "Şifrələr uyğun gəlmir",
+    passwordWeak: "Şifrə ən az 8 simvol, böyük hərf, kiçik hərf və rəqəm ehtiva etməlidir.",
   },
 
   psychologists: {

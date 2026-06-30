@@ -1051,6 +1051,15 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     }
   };
 
+  const selectPsy = (id: number | null) => {
+    setPsyId(id);
+    setPickedSlots([]);
+    setManualStart("");
+    setManualEnd("");
+    const psy = id !== null ? psychologists.find(p => p.id === id) : null;
+    setSinglePrice(psy?.individualPrice != null ? String(psy.individualPrice) : "");
+  };
+
   const requestedMs = appointment.requestedStartAt ? new Date(appointment.requestedStartAt).getTime() : null;
   const chosenSlots = pickedSlots.length > 0
     ? pickedSlots.map(st => {
@@ -1128,9 +1137,39 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
         </div>
       )}
 
+      {(() => {
+        if (!appointment.startAt || !appointment.endAt || !selectedPsy?.defaultSessionMinutes) return null;
+        const storedMin = Math.round((new Date(appointment.endAt).getTime() - new Date(appointment.startAt).getTime()) / 60_000);
+        if (storedMin === selectedPsy.defaultSessionMinutes) return null;
+        return (
+          <div style={{ display: "flex", gap: 8, alignItems: "center", background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: 10, padding: "9px 13px", marginBottom: 14, fontSize: 12, fontWeight: 600, color: "#92400E" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+            Mövcud seans müddəti {storedMin} dəq, psixoloqun standartı isə {selectedPsy.defaultSessionMinutes} dəq. Vaxtı yenidən seçərək uyğunlaşdırın.
+          </div>
+        );
+      })()}
+
       <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", margin: "6px 0 6px" }}>Operator qeydi</div>
       <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Təyinat haqqında daxili qeyd…"
         style={{ width: "100%", border: "1px solid #D6E2F7", background: "#fff", borderRadius: 10, padding: 11, fontSize: 13.5, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", resize: "vertical", lineHeight: 1.5, marginBottom: 15, boxSizing: "border-box" }} />
+
+      {!allowance?.packageName && (
+        <div style={{ marginBottom: 15 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 6 }}>
+            Seans məbləği (₼)
+            <span style={{ color: "#9DB0CC", fontWeight: 400 }}> — boş qalarsa ödəniş yaranmır</span>
+          </div>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={singlePrice}
+            onChange={e => setSinglePrice(e.target.value)}
+            placeholder={selectedPsy?.individualPrice != null ? String(selectedPsy.individualPrice) : "məs. 80"}
+            style={{ width: "100%", border: "1px solid #D6E2F7", background: "#fff", borderRadius: 10, padding: 11, fontSize: 13.5, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", boxSizing: "border-box" }}
+          />
+        </div>
+      )}
 
       {error && (
         <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12.5, marginBottom: 12 }}>
@@ -1161,7 +1200,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                   const sel = psyId === s.psychologistId;
                   return (
                     <button key={s.psychologistId} type="button"
-                      onClick={() => { setPsyId(s.psychologistId); setPickedSlots([]); setManualStart(""); setManualEnd(""); }}
+                      onClick={() => selectPsy(s.psychologistId)}
                       style={{ display: "flex", alignItems: "center", gap: 11, textAlign: "left", background: sel ? "#fff" : "#FAFFFD", border: `1.5px solid ${sel ? "#047857" : "#C9EFD9"}`, borderRadius: 10, padding: "11px 13px", cursor: "pointer", fontFamily: "inherit" }}>
                       <span style={{ width: 20, height: 20, borderRadius: "50%", border: `2px solid ${sel ? "#047857" : "#A7D8BC"}`, background: sel ? "#047857" : "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: sel ? 1 : 0 }}><path d="M20 6L9 17l-5-5" /></svg>
@@ -1182,7 +1221,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
           )}
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 6 }}>Psixoloq</div>
           <div style={{ position: "relative" }}>
-            <select value={psyId ?? ""} onChange={e => { setPsyId(Number(e.target.value) || null); setPickedSlots([]); setManualStart(""); setManualEnd(""); }}
+            <select value={psyId ?? ""} onChange={e => selectPsy(Number(e.target.value) || null)}
               style={{ width: "100%", appearance: "none", WebkitAppearance: "none", background: "#fff", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 38px 11px 13px", fontSize: 14, fontWeight: 600, color: "var(--oxford)", fontFamily: "inherit", cursor: "pointer" }}>
               <option value="">Psixoloq seçin…</option>
               {psychologists.map(p => <option key={p.id} value={p.id}>{p.name} · {p.title}</option>)}

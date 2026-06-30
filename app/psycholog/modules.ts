@@ -21,6 +21,7 @@ export type PsychologModuleKey =
   | "packages"
   | "clients"
   | "homework"
+  | "tests"
   | "articles"
   | "community"
   | "resources"
@@ -35,9 +36,10 @@ export const PSYCHOLOG_MODULES: Record<PsychologModuleKey, boolean> = {
   packages:     true,  // AÇIQ — Paketlərim (satış/istifadə statistikası)
   clients:      true,  // AÇIQ — Müştərilər (siyahı + 360° profil) yenidən dizayn edildi
   homework:     true,   // AÇIQ — Ev tapşırıqları
+  tests:        true,   // AÇIQ — Psixoloji testlər (yarat / təyin et / nəticə izlə)
   articles:     true,   // AÇIQ — Məqalələrim (bloq yazıları)
   community:    true,   // AÇIQ — İcma (peer feed/follow + şərh/bəyənmə)
-  resources:    true,   // AÇIQ — Resurslar (bilik bazası + material kitabxanası + testlər)
+  resources:    true,   // AÇIQ — Resurslar (bilik bazası + material kitabxanası)
   availability: true,  // AÇIQ — İş vaxtları (cədvəl/istisna/məzuniyyət) yenidən dizayn edildi
   reviews:      true,   // AÇIQ — Rəylər (pasiyent rəyləri + cavab)
 };
@@ -50,9 +52,10 @@ const MODULE_PATHS: Record<PsychologModuleKey, string[]> = {
   packages:     ["/psycholog/packages"],
   clients:      ["/psycholog/clients"],
   homework:     ["/psycholog/homework"],
+  tests:        ["/psycholog/tests"],
   articles:     ["/psycholog/articles"],
   community:    ["/psycholog/community"],
-  resources:    ["/psycholog/resources", "/psycholog/materials", "/psycholog/tests"],
+  resources:    ["/psycholog/resources", "/psycholog/materials"],
   availability: ["/psycholog/availability"],
   reviews:      ["/psycholog/reviews"],
 };

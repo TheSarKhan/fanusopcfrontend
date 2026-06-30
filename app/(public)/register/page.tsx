@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { registerPatient, registerPsychologist, type PsychologistRegistrationData } from "@/lib/api";
+import { checkEmail, registerPatient, registerPsychologist, type PsychologistRegistrationData } from "@/lib/api";
 import PhotoCropper from "@/components/PhotoCropper";
 import DatePicker from "@/components/DatePicker";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -144,6 +144,8 @@ function PatientForm({ onBack }: { onBack: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (form.password.length < 8 || !/[A-Z]/.test(form.password) || !/[a-z]/.test(form.password) || !/[0-9]/.test(form.password))
+      return setError("Şifrə ən az 8 simvol, böyük hərf, kiçik hərf və rəqəm ehtiva etməlidir.");
     if (form.password !== form.confirmPassword) return setError("Şifrələr uyğun deyil");
     setLoading(true); setError("");
     try {
@@ -199,7 +201,7 @@ function PatientForm({ onBack }: { onBack: () => void }) {
 
       <Field label="Şifrə">
         <div className="auth-input-wrap">
-          <input type={showPass ? "text" : "password"} className="auth-input" value={form.password} onChange={set("password")} required minLength={8} />
+          <input type={showPass ? "text" : "password"} className="auth-input" value={form.password} onChange={set("password")} required />
           <button type="button" className="auth-eye" onClick={() => setShowPass(v => !v)}><EyeIcon open={showPass} /></button>
         </div>
       </Field>
@@ -291,7 +293,8 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
     if (!personal.firstName || !personal.lastName) return "Ad və soyad tələb olunur";
     if (!personal.email) return "Email tələb olunur";
     if (!personal.phone) return "Telefon tələb olunur";
-    if (!personal.password || personal.password.length < 8) return "Şifrə ən az 8 simvol";
+    if (!personal.password || personal.password.length < 8 || !/[A-Z]/.test(personal.password) || !/[a-z]/.test(personal.password) || !/[0-9]/.test(personal.password))
+      return "Şifrə ən az 8 simvol, böyük hərf, kiçik hərf və rəqəm ehtiva etməlidir.";
     if (personal.password !== personal.confirmPassword) return "Şifrələr uyğun deyil";
     if (!personal.birthDate) return "Doğum tarixi tələb olunur";
     if (!personal.gender) return "Cinsiyyət seçin";
@@ -321,7 +324,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
     return null;
   };
 
-  const next = (e: React.FormEvent) => {
+  const next = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     let err: string | null = null;
@@ -329,6 +332,22 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
     else if (step === 1) err = validateStep1();
     else if (step === 2) err = validateStep2();
     if (err) { setError(err); return; }
+
+    if (step === 0) {
+      setLoading(true);
+      try {
+        const res = await checkEmail(personal.email);
+        if (res.taken) {
+          setError("Bu email artıq qeydiyyatdan keçib. Daxil olmağa cəhd edin.");
+          return;
+        }
+      } catch {
+        // Network error — let the final submit surface it
+      } finally {
+        setLoading(false);
+      }
+    }
+
     setStep(s => s + 1);
   };
 
@@ -449,7 +468,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
 
           <Field label="Şifrə">
             <div className="auth-input-wrap">
-              <input type={showPass ? "text" : "password"} className="auth-input" value={personal.password} onChange={setP("password")} required minLength={8} />
+              <input type={showPass ? "text" : "password"} className="auth-input" value={personal.password} onChange={setP("password")} required />
               <button type="button" className="auth-eye" onClick={() => setShowPass(v => !v)}><EyeIcon open={showPass} /></button>
             </div>
           </Field>
@@ -463,7 +482,9 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
           {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>{error}</div>}
           <div style={{ display: "flex", gap: 10 }}>
             <button type="button" onClick={onBack} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← Geri</button>
-            <button type="submit" className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 10, flex: 1 }}>Növbəti →</button>
+            <button type="submit" disabled={loading} className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 10, flex: 1 }}>
+              {loading ? "Yoxlanılır..." : "Növbəti →"}
+            </button>
           </div>
         </form>
       )}

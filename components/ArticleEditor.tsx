@@ -455,8 +455,10 @@ export default function ArticleEditor({
       editor.chain().focus().unsetLink().run();
       return;
     }
-    const url = prompt("Link URL-i:");
-    if (url) editor.chain().focus().setLink({ href: url, target: "_blank" }).run();
+    const raw = prompt("Link URL-i:");
+    if (!raw) return;
+    const url = /^https?:\/\//i.test(raw.trim()) ? raw.trim() : `https://${raw.trim()}`;
+    editor.chain().focus().setLink({ href: url, target: "_blank" }).run();
   }, [editor]);
 
   if (!editor) return null;

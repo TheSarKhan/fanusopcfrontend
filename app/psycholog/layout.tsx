@@ -46,10 +46,11 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
     { key: "packages",     href: "/psycholog/packages",     label: "Paketlərim",          icon: "package" },
     { key: "clients",      href: "/psycholog/clients",      label: t("nav.clients"),      icon: "users" },
     { key: "homework",     href: "/psycholog/homework",     label: t("nav.homework"),     icon: "check" },
+    { key: "tests",        href: "/psycholog/tests",        label: "Testlər",             icon: "clipboard" },
     { key: "articles",     href: "/psycholog/articles",     label: t("nav.articles"),     icon: "book" },
     { key: "community",    href: "/psycholog/community",    label: "İcma",                icon: "users" },
     { key: "resources",    href: "/psycholog/resources",    label: "Resurslar",           icon: "content",
-      match: ["/psycholog/materials", "/psycholog/tests"] },
+      match: ["/psycholog/materials"] },
     { key: "availability", href: "/psycholog/availability", label: t("nav.workHours"),    icon: "clock" },
     { key: "reviews",      href: "/psycholog/reviews",      label: t("nav.reviews"),      icon: "star" },
   ];

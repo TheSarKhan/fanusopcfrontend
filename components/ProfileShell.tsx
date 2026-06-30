@@ -183,6 +183,7 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
     try {
       const { url } = await meApi.uploadPhoto(file);
       onChanged({ ...me, photoUrl: url });
+      window.dispatchEvent(new CustomEvent("profilePhotoChanged", { detail: { photoUrl: url } }));
     } catch (e) { setErr((e as Error).message || "Yükləmə uğursuz oldu"); }
     finally {
       setUploading(false);
@@ -197,6 +198,7 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
     try {
       await meApi.deletePhoto();
       onChanged({ ...me, photoUrl: null });
+      window.dispatchEvent(new CustomEvent("profilePhotoChanged", { detail: { photoUrl: null } }));
     } catch (e) { setErr((e as Error).message || "Silmə uğursuz oldu"); }
     finally { setRemoving(false); }
   };
@@ -502,7 +504,10 @@ function PasswordCard() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
-    if (next.length < 8) { setErr("Yeni şifrə ən azı 8 simvol olmalıdır"); return; }
+    if (next.length < 8 || !/[A-Z]/.test(next) || !/[a-z]/.test(next) || !/[0-9]/.test(next)) {
+      setErr("Şifrə ən az 8 simvol, böyük hərf, kiçik hərf və rəqəm ehtiva etməlidir.");
+      return;
+    }
     if (next !== confirm) { setErr("Yeni şifrə təkrarı uyğun deyil"); return; }
     setSaving(true);
     try {
@@ -528,8 +533,8 @@ function PasswordCard() {
         <div className="uprof-grid-2">
           <div className="uprof-field">
             <label>Yeni şifrə</label>
-            <input type="password" value={next} onChange={e => setNext(e.target.value)} required minLength={8} />
-            <small>Ən azı 8 simvol</small>
+            <input type="password" value={next} onChange={e => setNext(e.target.value)} required />
+            <small>Ən azı 8 simvol, böyük/kiçik hərf, rəqəm</small>
           </div>
           <div className="uprof-field">
             <label>Yeni şifrə təkrarı</label>

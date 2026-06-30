@@ -136,6 +136,7 @@ export const ru: typeof az = {
     successForgot: "Email отправлен. Проверьте почту.",
     passwordRequirements: "Минимум 8 символов, заглавная и строчная буквы, цифра.",
     passwordMismatch: "Пароли не совпадают",
+    passwordWeak: "Пароль должен содержать не менее 8 символов, заглавную букву, строчную букву и цифру.",
   },
 
   psychologists: {

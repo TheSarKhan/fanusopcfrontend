@@ -55,8 +55,8 @@ export default function ForgotPasswordPage() {
             </p>
             <Link
               href="/login"
-              className="block py-3 rounded-xl text-sm font-bold text-white text-center"
-              style={{ background: "var(--brand)" }}
+              className="block py-3 rounded-xl text-sm font-bold text-center"
+              style={{ background: "var(--brand)", color: "#fff" }}
             >
               {t("auth.backToLogin")}
             </Link>

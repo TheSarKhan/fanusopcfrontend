@@ -739,6 +739,10 @@ export const logout = async () => {
 };
 
 // ─── Patient Auth ──────────────────────────────────────────────────────────────
+export const checkEmail = (email: string): Promise<{ taken: boolean }> =>
+  fetch(`${BASE}/auth/check-email?email=${encodeURIComponent(email)}`)
+    .then(r => r.json());
+
 export const registerPatient = (data: {
   email: string; password: string; firstName: string; lastName: string; phone?: string;
   // Modul G — opsional təcili əlaqə + yaşayış ünvanı

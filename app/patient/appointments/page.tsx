@@ -611,7 +611,9 @@ function NextSessionHero({
         <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: urgent ? "#EF4444" : "var(--brand)", color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", padding: "6px 12px", borderRadius: 999 }}>
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#fff" }} />NÖVBƏTİ SEANS
         </span>
-        <span style={{ fontSize: 14, fontWeight: 600, color: "#082F6D" }}>{relativeDayLabel(start, now)} · <strong>{fmtTime(start)}</strong></span>
+        <span style={{ fontSize: 14, fontWeight: 600, color: "#082F6D" }}>
+          {relativeDayLabel(start, now)} · <strong>{fmtTime(start)}{appt.endAt ? ` – ${fmtTime(new Date(appt.endAt))}` : ""}</strong>
+        </span>
       </div>
 
       <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
@@ -1027,7 +1029,7 @@ function AgendaRow({
   return (
     <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderLeft: `3px solid ${status.accent}`, borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: "13px 15px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 17, fontWeight: 800, minWidth: 52 }}>{fmtTime(start)}</span>
+        <span style={{ fontSize: 17, fontWeight: 800, minWidth: 52 }}>{fmtTime(start)}{a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}</span>
         <span style={{ width: 38, height: 38, borderRadius: 11, background: "#082F6D", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flex: "none" }}>{initialsOf(a.psychologistName)}</span>
         <div style={{ flex: 1, minWidth: 150 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
@@ -1197,7 +1199,7 @@ function AwaitingCard({
     <div className="psy-card psy-card--today" style={{ borderLeft: `4px solid ${status.accent}` }}>
       <div className="psy-card__top">
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span className="psy-card__time">{a.startAt ? `${azFormatDate(a.startAt).slice(0, 5)} · ${fmtTime(new Date(a.startAt))}` : "—"}</span>
+          <span className="psy-card__time">{a.startAt ? `${azFormatDate(a.startAt).slice(0, 5)} · ${fmtTime(new Date(a.startAt))}${a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}` : "—"}</span>
           <span className="psy-card__badge" style={{ color: status.color, background: status.bg }}>
             {status.label}
           </span>

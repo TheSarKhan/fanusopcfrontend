@@ -240,9 +240,15 @@ export default function OperatorAppointmentsPage() {
   }, [items]);
 
   const overdueCount = useMemo(() => items.filter(isOverdue).length, [items, slaHours, now]); // eslint-disable-line react-hooks/exhaustive-deps
-  const mineCount = useMemo(
-    () => items.filter(a => a.claimedByUserId != null && a.claimedByUserId === meId).length,
-    [items, meId]);
+  const mineCount = useMemo(() => {
+    if (meId == null) return 0;
+    const ids = new Set(
+      items
+        .filter(a => a.claimedByUserId != null && a.claimedByUserId === meId && a.patientId != null)
+        .map(a => a.patientId)
+    );
+    return ids.size;
+  }, [items, meId]);
 
   // Pooldan (və ya siyahıdan) götür → müraciət daimi olaraq bu operatora aid olur.
   const takeOwnership = useCallback((id: number) => {

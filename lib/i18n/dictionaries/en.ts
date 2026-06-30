@@ -133,6 +133,7 @@ export const en: typeof az = {
     successForgot: "Email sent. Check your inbox.",
     passwordRequirements: "At least 8 characters, upper and lower case, a digit.",
     passwordMismatch: "Passwords do not match",
+    passwordWeak: "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a digit.",
   },
 
   psychologists: {

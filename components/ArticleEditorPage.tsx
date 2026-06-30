@@ -435,18 +435,30 @@ export default function ArticleEditorPage({
             </button>
           )}
 
-          <button
-            onClick={handlePublish}
-            disabled={publishing}
-            style={{
-              padding: "7px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: publishing ? "not-allowed" : "pointer",
-              border: "none",
-              background: publishing ? "#52718F" : "var(--brand)",
-              color: "#fff",
-            }}
-          >
-            {publishing ? "..." : "Yayımla"}
-          </button>
+          {isPublished ? (
+            <button
+              onClick={handleUnpublish}
+              style={{
+                padding: "7px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer",
+                border: "1.5px solid #C0D2E6", background: "#fff", color: "#52718F",
+              }}
+            >
+              Qaralamaya al
+            </button>
+          ) : (
+            <button
+              onClick={handlePublish}
+              disabled={publishing}
+              style={{
+                padding: "7px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: publishing ? "not-allowed" : "pointer",
+                border: "none",
+                background: publishing ? "#52718F" : "var(--brand)",
+                color: "#fff",
+              }}
+            >
+              {publishing ? "..." : "Yayımla"}
+            </button>
+          )}
         </div>
       </div>
 

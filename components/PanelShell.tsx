@@ -76,6 +76,14 @@ export default function PanelShell({
       .catch(() => { /* non-fatal — fall back to initials */ });
   }, []);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      setPhotoUrl((e as CustomEvent<{ photoUrl: string | null }>).detail.photoUrl);
+    };
+    window.addEventListener("profilePhotoChanged", handler);
+    return () => window.removeEventListener("profilePhotoChanged", handler);
+  }, []);
+
   const handleLogout = async () => {
     setLoggingOut(true);
     await logout();

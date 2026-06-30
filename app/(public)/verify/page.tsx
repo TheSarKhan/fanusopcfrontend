@@ -64,8 +64,8 @@ export default function VerifyPage() {
             </p>
             <Link
               href="/login"
-              className="block py-3 rounded-xl text-sm font-bold text-white"
-              style={{ background: "var(--brand)" }}
+              className="block py-3 rounded-xl text-sm font-bold"
+              style={{ background: "var(--brand)", color: "#fff" }}
             >
               Daxil ol
             </Link>
@@ -85,8 +85,8 @@ export default function VerifyPage() {
             </p>
             <Link
               href="/register"
-              className="block py-3 rounded-xl text-sm font-bold text-white"
-              style={{ background: "var(--brand)" }}
+              className="block py-3 rounded-xl text-sm font-bold"
+              style={{ background: "var(--brand)", color: "#fff" }}
             >
               Yenidən qeydiyyat
             </Link>

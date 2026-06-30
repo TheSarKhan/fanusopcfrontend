@@ -5,8 +5,10 @@ import ReadingProgressBar from "@/app/blog/components/ReadingProgressBar";
 import ShareBar from "@/app/blog/components/ShareBar";
 import RelatedPosts from "@/app/blog/components/RelatedPosts";
 
-function formatDate(dateStr: string) {
+function formatDate(dateStr?: string | null) {
+  if (!dateStr) return "";
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
   const months = ["Yanvar","Fevral","Mart","Aprel","May","İyun","İyul","Avqust","Sentyabr","Oktyabr","Noyabr","Dekabr"];
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
@@ -43,12 +45,13 @@ export async function generateStaticParams() {
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  let post;
-  try {
-    post = await getBlogPostBySlug(slug);
-  } catch {
-    notFound();
-  }
+
+  // notFound() throws a control-flow error, so per Next.js docs it must be called
+  // OUTSIDE a try/catch. Calling it inside the catch made this route return a 500
+  // instead of a 404 in Next 16 — which surfaced as "Internal Server Error" on
+  // every blog post once the ISR cache went stale and the page re-rendered.
+  const post = await getBlogPostBySlug(slug).catch(() => null);
+  if (!post) notFound();
 
   const allPosts = await getBlogPosts().catch(() => []);
   const related = allPosts

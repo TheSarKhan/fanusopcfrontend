@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import type { Psychologist, PackageSummary } from "@/lib/api";
-import Deco from "@/components/Deco";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { formatAzn } from "@/lib/money";
 
@@ -63,8 +62,6 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
 
   return (
     <section className="fanus-psyc" id="psychologists">
-      <Deco type="wave-top-2" style={{ top: -30, right: "-6%", width: 460, opacity: .5 }} anim="drift" />
-      <Deco type="target" style={{ bottom: 80, left: "4%", width: 140, opacity: .65 }} />
       <div className="fanus-container">
         <div className="fanus-psyc__head">
           <div>

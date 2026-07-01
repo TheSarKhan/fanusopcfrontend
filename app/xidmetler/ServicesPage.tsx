@@ -18,102 +18,25 @@ function ServicesHero() {
   const { t } = useT();
   return (
     <section className="svc-hero">
-      <Deco type="wave-top" style={{ top: -20, left: "-4%", width: 520, opacity: .55 }} anim="drift" />
-      <Deco type="blob-cloud" style={{ top: 40, right: "-6%", width: 360, opacity: .55 }} anim="drift" />
-      <Deco type="sphere-blue" style={{ top: "55%", left: "8%", width: 60, opacity: .8 }} anim="floatY" />
-      <Deco type="dot-small" style={{ top: "20%", right: "15%", width: 38, opacity: .8 }} />
-
-      <div className="svc-hero__bg" aria-hidden>
-        <svg viewBox="0 0 1440 600" preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
-          <defs>
-            <linearGradient id="svcHeroBg" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stopColor="#F2F6FD" />
-              <stop offset="100%" stopColor="#E4ECFA" />
-            </linearGradient>
-          </defs>
-          <rect width="1440" height="600" fill="url(#svcHeroBg)" />
-        </svg>
-      </div>
-
       <div className="fanus-container svc-hero__inner">
-        <div className="svc-hero__copy">
-          <h1>{t("services.title")}</h1>
-          <p className="svc-hero__lead">{t("services.lead")}</p>
-          <div className="svc-hero__cta">
-            <Link href="#programs" className="fanus-btn fanus-btn-primary fanus-btn-lg">
-              {t("how.cta")} <Arrow />
-            </Link>
-          </div>
-        </div>
-
-        <div className="svc-hero__visual" aria-hidden>
-          <div className="svc-hero__glow svc-hero__glow--1" />
-          <div className="svc-hero__glow svc-hero__glow--2" />
-          { }
-          <img
-            src="/images/hero-xidmetler.png"
-            alt="Fanus xidmətləri — psixoloji dəstək"
-            className="svc-hero__img"
-            draggable={false}
-          />
-        </div>
+        <h1>{t("services.title")}</h1>
+        <p className="svc-hero__lead">{t("services.lead")}</p>
       </div>
 
       <style>{`
-        .svc-hero { position: relative; padding: 56px 0 110px; overflow: hidden; }
-        .svc-hero__bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-        .svc-hero__inner {
-          position: relative; z-index: 1;
-          display: grid; grid-template-columns: 1fr 1fr;
-          gap: 48px; align-items: center;
-          min-height: 460px;
-        }
-        .svc-hero__copy h1 {
-          margin: 18px 0 18px;
+        .svc-hero { padding: 72px 0 28px; text-align: center; }
+        .svc-hero__inner { max-width: 720px; margin: 0 auto; }
+        .svc-hero h1 {
+          margin: 0 0 16px;
           font-family: var(--font-poppins), system-ui, sans-serif;
-          font-size: clamp(38px, 5.4vw, 68px);
-          font-weight: 800; letter-spacing: -0.035em; line-height: 1.1;
-          color: var(--fanus-ink);
+          font-size: clamp(32px, 4.6vw, 54px); font-weight: 800;
+          letter-spacing: -0.03em; line-height: 1.1; color: var(--fanus-ink);
         }
-        .svc-hero__lead { font-size: 18px; color: var(--fanus-ink-3); line-height: 1.6; max-width: 480px; margin: 0; }
-        .svc-hero__cta { margin-top: 32px; }
-
-        .svc-hero__visual {
-          position: relative;
-          width: 100%; aspect-ratio: 16/10; min-height: 380px;
+        .svc-hero__lead {
+          font-size: 17px; color: var(--fanus-ink-3); line-height: 1.6;
+          max-width: 600px; margin: 0 auto;
         }
-        .svc-hero__img {
-          position: absolute; inset: 0;
-          width: 100%; height: 100%;
-          object-fit: contain;
-          z-index: 2;
-          animation: svcHeroFloat 6s ease-in-out infinite;
-          user-select: none;
-        }
-        @keyframes svcHeroFloat {
-          0%, 100% { transform: translateY(0); }
-          50%      { transform: translateY(-8px); }
-        }
-        .svc-hero__glow { position: absolute; border-radius: 50%; pointer-events: none; filter: blur(40px); z-index: 1; }
-        .svc-hero__glow--1 {
-          top: -8%; right: 8%; width: 220px; height: 220px;
-          background: radial-gradient(circle, rgba(245,185,70,.30), transparent 65%);
-          animation: svcHeroFlicker 3.5s ease-in-out infinite;
-        }
-        .svc-hero__glow--2 {
-          bottom: -6%; left: 6%; width: 260px; height: 260px;
-          background: radial-gradient(circle, rgba(16,81,183,.22), transparent 65%);
-          animation: svcHeroFlicker 4.5s ease-in-out infinite -2s;
-        }
-        @keyframes svcHeroFlicker {
-          0%, 100% { opacity: .9; transform: scale(1); }
-          50%      { opacity: .55; transform: scale(1.08); }
-        }
-
-        @media (max-width: 980px) {
-          .svc-hero__inner { grid-template-columns: 1fr; }
-          .svc-hero__visual { min-height: 320px; }
-        }
+        @media (max-width: 640px) { .svc-hero { padding: 48px 0 20px; } }
       `}</style>
     </section>
   );

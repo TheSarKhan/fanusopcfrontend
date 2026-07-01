@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Deco from "@/components/Deco";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import SessionRequestModal from "@/components/SessionRequestModal";
 import { MoodIcon, MoodModal, MOOD_COLORS, type Mood } from "@/components/MoodCheckIn";
@@ -83,11 +82,6 @@ export default function Hero() {
           ))}
         </svg>
       </div>
-
-      <Deco type="wave-top"    style={{ top: -20,    left: "-4%",  width: 520, opacity: .5  }} anim="drift" />
-      <Deco type="blob-cloud"  style={{ top: 40,     right: "-6%", width: 360, opacity: .5  }} anim="drift" />
-      <Deco type="wavy-lines"  style={{ bottom: 60,  left: "40%",  width: 520, opacity: .4  }} anim="drift" />
-      <Deco type="sphere-blue" style={{ top: "35%",  left: "6%",   width: 70,  opacity: .8  }} anim="floatY" />
 
       {/* ── Main two-column content ── */}
       <div className="fanus-container fanus-hero__inner">

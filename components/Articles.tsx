@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import type { BlogPost } from "@/lib/api";
-import Deco from "@/components/Deco";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 const COLORS = ["#5089E0", "#1051B7", "#0B3F90", "#2A6BD0"];
@@ -29,8 +28,6 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
 
   return (
     <section className="fanus-art" id="articles">
-      <Deco type="mesh-blob" style={{ top: -20, right: "-5%", width: 380, opacity: .5 }} anim="drift" />
-      <Deco type="sphere-blue" style={{ top: "25%", left: "4%", width: 70, opacity: .7 }} anim="floatY" />
       <div className="fanus-container">
         <div className="fanus-art__head">
           <div>

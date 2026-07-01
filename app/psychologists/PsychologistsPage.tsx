@@ -108,124 +108,25 @@ function PsycHero() {
   const { t } = useT();
   return (
     <section className="pp-hero">
-      <Deco type="wave-top" style={{ top: -20, left: "-4%", width: 520, opacity: .55 }} anim="drift" />
-      <Deco type="sphere-blue" style={{ top: "65%", left: "8%", width: 44, opacity: .8 }} anim="floatY" />
-
-      <div className="pp-hero__bg" aria-hidden>
-        <svg viewBox="0 0 1440 600" preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
-          <defs>
-            <linearGradient id="ppHeroBg" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stopColor="#F2F6FD" />
-              <stop offset="100%" stopColor="#E4ECFA" />
-            </linearGradient>
-          </defs>
-          <rect width="1440" height="600" fill="url(#ppHeroBg)" />
-        </svg>
-      </div>
-
       <div className="fanus-container pp-hero__inner">
-        <div className="pp-hero__copy">
-          <h1>{t("psyList.title")}</h1>
-          <p className="pp-hero__lead">{t("psyList.lead")}</p>
-          <ul className="pp-hero__strip" role="list">
-            <li><strong>12+</strong> sertifikatlı psixoloq</li>
-            <li><strong>5+ il</strong> orta təcrübə</li>
-            <li><strong>3 dil</strong>: AZ · RU · EN</li>
-          </ul>
-        </div>
-
-        <div className="pp-hero__visual" aria-hidden>
-          <div className="pp-hero__glow pp-hero__glow--1" />
-          <div className="pp-hero__glow pp-hero__glow--2" />
-          { }
-          <img
-            src="/images/hero-psixoloqlar.png"
-            alt="Fanus psixoloq komandası"
-            className="pp-hero__img"
-            draggable={false}
-          />
-        </div>
+        <h1>{t("psyList.title")}</h1>
+        <p className="pp-hero__lead">{t("psyList.lead")}</p>
       </div>
 
       <style>{`
-        .pp-hero { position: relative; padding: 56px 0 90px; overflow: hidden; }
-        .pp-hero__bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-        .pp-hero__inner {
-          position: relative; z-index: 1;
-          display: grid; grid-template-columns: 1.05fr 1fr;
-          gap: 48px; align-items: center;
-          min-height: 460px;
-        }
-        .pp-hero__copy { min-width: 0; }
+        .pp-hero { padding: 72px 0 28px; text-align: center; }
+        .pp-hero__inner { max-width: 720px; margin: 0 auto; }
         .pp-hero h1 {
-          margin: 18px 0 18px;
+          margin: 0 0 16px;
           font-family: var(--font-poppins), system-ui, sans-serif;
-          font-size: clamp(34px, 4.8vw, 60px); font-weight: 800;
-          letter-spacing: -0.035em; line-height: 1.1; color: var(--fanus-ink);
+          font-size: clamp(32px, 4.6vw, 54px); font-weight: 800;
+          letter-spacing: -0.03em; line-height: 1.1; color: var(--fanus-ink);
         }
-        .pp-hero__lead { font-size: 17px; color: var(--fanus-ink-3); line-height: 1.6; max-width: 540px; margin: 0; }
-        .pp-hero__strip {
-          list-style: none; padding: 0; margin: 28px 0 0;
-          display: flex; flex-wrap: wrap; gap: 12px 28px;
-          font-size: 14.5px; color: var(--fanus-ink-3);
+        .pp-hero__lead {
+          font-size: 17px; color: var(--fanus-ink-3); line-height: 1.6;
+          max-width: 600px; margin: 0 auto;
         }
-        .pp-hero__strip li {
-          position: relative; padding-right: 28px;
-          line-height: 1.4;
-        }
-        .pp-hero__strip li:not(:last-child)::after {
-          content: ""; position: absolute; right: 0; top: 50%;
-          width: 4px; height: 4px; border-radius: 50%;
-          background: var(--fanus-primary); opacity: .35;
-          transform: translateY(-50%);
-        }
-        .pp-hero__strip li:last-child { padding-right: 0; }
-        .pp-hero__strip strong {
-          color: var(--fanus-primary); font-weight: 700;
-          margin-right: 4px;
-        }
-        @media (max-width: 540px) {
-          .pp-hero__strip { gap: 10px 0; flex-direction: column; }
-          .pp-hero__strip li { padding-right: 0; }
-          .pp-hero__strip li:not(:last-child)::after { display: none; }
-        }
-
-        .pp-hero__visual {
-          position: relative;
-          width: 100%; aspect-ratio: 16/12; min-height: 380px;
-        }
-        .pp-hero__img {
-          position: absolute; inset: 0;
-          width: 100%; height: 100%;
-          object-fit: contain;
-          z-index: 2;
-          animation: ppHeroFloat 6s ease-in-out infinite;
-          user-select: none;
-        }
-        @keyframes ppHeroFloat {
-          0%, 100% { transform: translateY(0); }
-          50%      { transform: translateY(-8px); }
-        }
-        .pp-hero__glow { position: absolute; border-radius: 50%; pointer-events: none; filter: blur(40px); z-index: 1; }
-        .pp-hero__glow--1 {
-          top: -6%; right: 6%; width: 240px; height: 240px;
-          background: radial-gradient(circle, rgba(245,185,70,.28), transparent 65%);
-          animation: ppHeroFlicker 3.5s ease-in-out infinite;
-        }
-        .pp-hero__glow--2 {
-          bottom: -8%; left: 4%; width: 280px; height: 280px;
-          background: radial-gradient(circle, rgba(16,81,183,.22), transparent 65%);
-          animation: ppHeroFlicker 4.5s ease-in-out infinite -2s;
-        }
-        @keyframes ppHeroFlicker {
-          0%, 100% { opacity: .9; transform: scale(1); }
-          50%      { opacity: .55; transform: scale(1.08); }
-        }
-
-        @media (max-width: 980px) {
-          .pp-hero__inner { grid-template-columns: 1fr; gap: 32px; min-height: auto; }
-          .pp-hero__visual { min-height: 280px; aspect-ratio: 16/9; max-width: 540px; margin: 0 auto; }
-        }
+        @media (max-width: 640px) { .pp-hero { padding: 48px 0 20px; } }
       `}</style>
     </section>
   );

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import type { Faq } from "@/lib/api";
-import Deco from "@/components/Deco";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 const FALLBACK: Faq[] = [
@@ -23,8 +22,6 @@ export default function FAQ({ faqs }: { faqs?: Faq[] }) {
 
   return (
     <section className="fanus-faq" id="faq">
-      <Deco type="wavy-lines" style={{ top: "10%", right: "-8%", width: 520, opacity: .5 }} anim="drift" />
-      <Deco type="blob-1" style={{ bottom: 80, left: "-4%", width: 280, opacity: .55 }} anim="drift" />
       <div className="fanus-container fanus-faq__container">
         <div className="fanus-faq__left">
           <h2>{t("faq.title")}</h2>

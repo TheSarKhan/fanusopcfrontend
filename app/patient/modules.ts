@@ -37,7 +37,7 @@ export const PATIENT_MODULES: Record<PatientModuleKey, boolean> = {
   homework:      true,   // AÇIQ — Ev tapşırıqları (kanban)
   favorites:     true,   // AÇIQ — Seçilmişlər (favorit psixoloqlar)
   tests:         true,   // AÇIQ — Psixoloji testlər (təyinatlar)
-  profile:       false, // sidebar-dan gizli, amma avatar linki ilə əlçatan
+  profile:       true,  // AÇIQ — Profil sidebar-da görünür (avatar linki də qalır)
 };
 
 /** Yalnız route-u kilidlənə bilən modullar (dashboard və profile burada YOXDUR). */

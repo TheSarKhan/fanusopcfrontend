@@ -35,7 +35,7 @@ export default function EditArticlePage() {
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "#F7FAFD", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
         <p style={{ fontSize: 15, fontWeight: 600, color: "#1A2535" }}>Məqalə tapılmadı</p>
-        <a href="/admin/blog" style={{ fontSize: 13, color: "#002147", fontWeight: 600 }}>← Məqalələrə qayıt</a>
+        <a href="/admin/blog" style={{ fontSize: 13, color: "#1051B7", fontWeight: 600 }}>← Məqalələrə qayıt</a>
       </div>
     );
   }

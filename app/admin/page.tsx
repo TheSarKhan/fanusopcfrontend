@@ -84,7 +84,7 @@ function ActivityIcon({ entry }: { entry: ActivityEntry }) {
 function Donut({ slices }: { slices: { color: string; percent: number }[] }) {
   return (
     <svg className="donut" viewBox="0 0 42 42">
-      <circle cx="21" cy="21" r="15.9" fill="transparent" stroke="#eef1f7" strokeWidth="6" />
+      <circle cx="21" cy="21" r="15.9" fill="transparent" stroke="#F2F6FD" strokeWidth="6" />
       {slices.map((s, i) => {
         const offset = 25 + slices.slice(0, i).reduce((sum, x) => sum + x.percent, 0);
         return (
@@ -324,7 +324,7 @@ export default function AdminDashboard() {
             {deltaLabel(metrics.totalUsers.deltaPercent)}
             <span>{metrics.totalUsers.label}</span>
           </div>
-          <Spark color="#7c9a86" />
+          <Spark color="#10B981" />
         </div>
 
         <div className="stat">
@@ -342,7 +342,7 @@ export default function AdminDashboard() {
             <span className="delta up">↑ {metrics.activePsychologists.value > 0 ? metrics.activePsychologists.value : 0}</span>
             <span>{metrics.activePsychologists.label || "ümumi"}</span>
           </div>
-          <Spark color="#7c6f99" />
+          <Spark color="#6366F1" />
         </div>
 
         <div className="stat">
@@ -355,7 +355,7 @@ export default function AdminDashboard() {
             <span className="delta down">↓ {metrics.pendingAppointments.value}</span>
             <span>{metrics.pendingAppointments.label || "diqqət tələb edir"}</span>
           </div>
-          <Spark color="#b58a3c" />
+          <Spark color="#F59E0B" />
         </div>
 
         <div className="stat">
@@ -368,7 +368,7 @@ export default function AdminDashboard() {
             {deltaLabel(metrics.newMessages.deltaPercent)}
             <span>{metrics.newMessages.label}</span>
           </div>
-          <Spark color="#2f5283" />
+          <Spark color="#3A74D6" />
         </div>
 
         <div className="stat">
@@ -381,7 +381,7 @@ export default function AdminDashboard() {
             {deltaLabel(metrics.articleReads.deltaPercent)}
             <span>{metrics.articleReads.label}</span>
           </div>
-          <Spark color="#0a2d59" />
+          <Spark color="#082F6D" />
         </div>
       </div>
 
@@ -401,7 +401,7 @@ export default function AdminDashboard() {
           <div className="legend">
             <span className="lg"><span className="sw" style={{ background: "var(--ox-500)" }} /><span>Təsdiqləndi</span></span>
             <span className="lg"><span className="sw" style={{ background: "var(--ox-200)" }} /><span>Gözləyir</span></span>
-            <span className="lg"><span className="sw" style={{ background: "#d4b76a" }} /><span>Ləğv edildi</span></span>
+            <span className="lg"><span className="sw" style={{ background: "#F59E0B" }} /><span>Ləğv edildi</span></span>
           </div>
           <div style={{ padding: "8px 14px 14px" }}>
             <BarChart flow={metrics.appointmentFlow.length ? metrics.appointmentFlow : Array.from({ length: 14 }, (_, i) => ({ date: String(i + 17), confirmed: 0, pending: 0, cancelled: 0 }))} />

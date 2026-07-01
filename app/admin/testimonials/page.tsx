@@ -68,7 +68,7 @@ export default function TestimonialsPage() {
               <p className="text-sm text-[#1A2535] line-clamp-2 mb-3">&ldquo;{t.quote}&rdquo;</p>
               <div className="flex gap-2">
                 <button onClick={() => setModal({ open: true, item: { ...t }, id: t.id })}
-                  className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-[#002147]"
+                  className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-[#1051B7]"
                   style={{ background: "#EEF5FF" }}>Redaktə</button>
                 <button onClick={() => handleDelete(t.id)}
                   className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-red-600"

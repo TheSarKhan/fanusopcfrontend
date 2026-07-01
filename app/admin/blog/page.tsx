@@ -117,7 +117,7 @@ function AuthorBadge({ name, isAdmin }: { name?: string; isAdmin?: boolean }) {
         background: isAdmin ? "#EEF5FF" : "#F0FDF4",
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: 11, fontWeight: 700,
-        color: isAdmin ? "#002147" : "#166534",
+        color: isAdmin ? "#1051B7" : "#166534",
         flexShrink: 0,
       }}>
         {name.charAt(0).toUpperCase()}
@@ -445,7 +445,7 @@ export default function ArticlesPage() {
           </p>
           {hasActiveFilters ? (
             <button onClick={() => { setSearch(""); setFilterStatus("all"); setFilterCategory("all"); setFilterAuthor("all"); }}
-              style={{ padding: "8px 18px", borderRadius: 8, border: "1.5px solid #E4EDF6", background: "#fff", color: "#002147", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              style={{ padding: "8px 18px", borderRadius: 8, border: "1.5px solid #E4EDF6", background: "#fff", color: "#1051B7", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
               Filtri sıfırla
             </button>
           ) : (
@@ -461,7 +461,7 @@ export default function ArticlesPage() {
           <div data-keep-cols style={{ display: "grid", gridTemplateColumns: "40px 52px 1fr 140px 130px 120px 100px 130px", alignItems: "center", padding: "10px 16px", borderBottom: "1.5px solid #E4EDF6", background: "#F8FAFC", minWidth: 880 }}>
             <div>
               <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
-                style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#002147" }} />
+                style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#1051B7" }} />
             </div>
             <div />
             <div style={{ fontSize: 11, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em" }}>Məqalə</div>
@@ -496,7 +496,7 @@ export default function ArticlesPage() {
                 {/* Checkbox */}
                 <div>
                   <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(p.id)}
-                    style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#002147" }} />
+                    style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#1051B7" }} />
                 </div>
 
                 {/* Thumbnail */}
@@ -558,7 +558,7 @@ export default function ArticlesPage() {
                     <span style={{
                       fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 20,
                       background: p.categoryBg || "#EEF5FF",
-                      color: p.categoryColor || "#002147",
+                      color: p.categoryColor || "#1051B7",
                       whiteSpace: "nowrap",
                     }}>
                       {p.emoji && `${p.emoji} `}{p.category}
@@ -638,7 +638,7 @@ export default function ArticlesPage() {
                       href={`/admin/blog/${p.id}/edit`}
                       style={{
                         width: 30, height: 30, borderRadius: 7, border: "1px solid #E4EDF6",
-                        background: "#EEF5FF", color: "#002147",
+                        background: "#EEF5FF", color: "#1051B7",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         textDecoration: "none",
                       }}

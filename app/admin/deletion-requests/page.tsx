@@ -73,7 +73,7 @@ export default function DeletionRequestsPage() {
                 </div>
                 <div className="li-meta">
                   İstək: {azFormatDateTime(r.requestedAt)} ·
-                  <span style={{ color: r.daysLeft <= 5 ? "#8b3d35" : undefined, fontWeight: 600 }}>
+                  <span style={{ color: r.daysLeft <= 5 ? "#991B1B" : undefined, fontWeight: 600 }}>
                     {" "}avtomatik silinməyə {r.daysLeft} gün qalıb
                   </span>
                 </div>

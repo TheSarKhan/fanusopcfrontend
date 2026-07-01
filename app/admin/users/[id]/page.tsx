@@ -326,7 +326,7 @@ function Stat({ label, value, valueStr, danger }: { label: string; value?: numbe
   return (
     <div style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px", textAlign: "center" }}>
       <div style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: danger ? "#8b3d35" : "var(--ink)" }}>{valueStr ?? value}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: danger ? "#991B1B" : "var(--ink)" }}>{valueStr ?? value}</div>
     </div>
   );
 }

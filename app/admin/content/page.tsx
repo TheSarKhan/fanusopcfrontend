@@ -10,8 +10,8 @@ type StatusFilter = "all" | "published" | "draft" | "archived";
 
 const EMPTY_POST: Omit<BlogPost, "id"> = {
   category: "Mental sağlamlıq",
-  categoryColor: "#002147",
-  categoryBg: "#eef1f7",
+  categoryColor: "#1051B7",
+  categoryBg: "#F2F6FD",
   title: "",
   excerpt: "",
   readTimeMinutes: 5,
@@ -23,7 +23,7 @@ const EMPTY_POST: Omit<BlogPost, "id"> = {
   status: "PUBLISHED",
 };
 
-const AV_COLORS = ["#7c6f99", "#7c9a86", "#b58a3c", "#2f5283", "#0a2d59"];
+const AV_COLORS = ["#6366F1", "#10B981", "#F59E0B", "#3A74D6", "#082F6D"];
 
 function avatarColor(s: string) {
   const h = Array.from(s).reduce((sum, c) => sum + c.charCodeAt(0), 0);

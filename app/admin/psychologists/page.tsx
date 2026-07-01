@@ -15,7 +15,7 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const AV_COLORS = ["#7c6f99", "#7c9a86", "#b58a3c", "#2f5283", "#0a2d59", "#5d6b85"];
+const AV_COLORS = ["#6366F1", "#10B981", "#F59E0B", "#3A74D6", "#082F6D", "#5d6b85"];
 
 function initials(name: string) {
   return name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
@@ -59,7 +59,7 @@ function ActiveToggle({ active, onChange }: { active: boolean; onChange: () => v
       title={active ? "Passiv et" : "Aktiv et"}
       style={{
         width: 36, height: 20, borderRadius: 10, border: "none", cursor: "pointer", position: "relative",
-        background: active ? "#002147" : "#D1D5DB", transition: "background 0.2s", flexShrink: 0,
+        background: active ? "#1051B7" : "#D1D5DB", transition: "background 0.2s", flexShrink: 0,
       }}
     >
       <span style={{
@@ -79,7 +79,7 @@ function ProfileModal({ p, onClose, onEdit }: { p: Psychologist; onClose: () => 
     <div className="admin-shell-modal" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" style={{ maxWidth: 620, padding: 0, overflow: "hidden" }}>
         {/* Cover */}
-        <div style={{ height: 88, background: p.bgColor || "#EEF1F7", position: "relative" }}>
+        <div style={{ height: 88, background: p.bgColor || "#F2F6FD", position: "relative" }}>
           <button onClick={onClose} style={{ position: "absolute", top: 12, right: 12, width: 30, height: 30, borderRadius: 8, border: "none", background: "rgba(0,0,0,0.12)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>✕</button>
         </div>
 
@@ -119,8 +119,8 @@ function ProfileModal({ p, onClose, onEdit }: { p: Psychologist; onClose: () => 
           {/* Contact */}
           {(p.phone || p.email) && (
             <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-              {p.phone && <a href={`tel:${p.phone}`} style={{ fontSize: 12, color: "#002147", fontWeight: 600, textDecoration: "none", background: "#EEF5FF", padding: "5px 12px", borderRadius: 20 }}>{p.phone}</a>}
-              {p.email && <a href={`mailto:${p.email}`} style={{ fontSize: 12, color: "#002147", fontWeight: 600, textDecoration: "none", background: "#EEF5FF", padding: "5px 12px", borderRadius: 20 }}>{p.email}</a>}
+              {p.phone && <a href={`tel:${p.phone}`} style={{ fontSize: 12, color: "#1051B7", fontWeight: 600, textDecoration: "none", background: "#EEF5FF", padding: "5px 12px", borderRadius: 20 }}>{p.phone}</a>}
+              {p.email && <a href={`mailto:${p.email}`} style={{ fontSize: 12, color: "#1051B7", fontWeight: 600, textDecoration: "none", background: "#EEF5FF", padding: "5px 12px", borderRadius: 20 }}>{p.email}</a>}
             </div>
           )}
 
@@ -195,7 +195,7 @@ const EMPTY: Omit<Psychologist, "id"> = {
   sessionsCount: "", rating: "", photoUrl: "",
   bio: "", phone: "", email: "", languages: "", sessionTypes: "",
   university: "", degree: "", graduationYear: "",
-  accentColor: "#2f5283", bgColor: "#eef1f7", displayOrder: 0, active: true,
+  accentColor: "#3A74D6", bgColor: "#F2F6FD", displayOrder: 0, active: true,
 };
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
@@ -273,7 +273,7 @@ export default function PsychologistsPage() {
         languages: p.languages ?? "", sessionTypes: p.sessionTypes ?? "",
         university: p.university ?? "",
         degree: p.degree ?? "", graduationYear: p.graduationYear ?? "",
-        accentColor: p.accentColor ?? "#2f5283", bgColor: p.bgColor ?? "#eef1f7",
+        accentColor: p.accentColor ?? "#3A74D6", bgColor: p.bgColor ?? "#F2F6FD",
         displayOrder: p.displayOrder ?? 0, active: p.active ?? true,
       },
       id: p.id,
@@ -501,7 +501,7 @@ export default function PsychologistsPage() {
                 <a href={`/admin/psychologists/${p.id}/availability`} style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#FFF7E6", color: "#92400E", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none" }}>
                   Vaxtlar
                 </a>
-                <button onClick={() => openEdit(p)} style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#EEF5FF", color: "#002147", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Redaktə</button>
+                <button onClick={() => openEdit(p)} style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#EEF5FF", color: "#1051B7", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Redaktə</button>
                 <button onClick={() => remove(p.id)} style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#FFF1F1", color: "#DC2626", fontSize: 12, cursor: "pointer" }}>✕</button>
               </div>
             </div>

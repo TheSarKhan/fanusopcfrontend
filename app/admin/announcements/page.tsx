@@ -7,8 +7,8 @@ import DatePicker from "@/components/DatePicker";
 
 const EMPTY: Omit<Announcement, "id"> = {
   category: "Yenilik",
-  categoryColor: "#002147",
-  categoryBg: "#eef1f7",
+  categoryColor: "#1051B7",
+  categoryBg: "#F2F6FD",
   title: "",
   excerpt: "",
   publishedDate: new Date().toISOString().split("T")[0],

@@ -7,8 +7,8 @@ import { IconPlus } from "../../_components/icons";
 const EMPTY: MaterialCategoryReq = {
   name: "",
   slug: "",
-  color: "#002147",
-  bg: "#eef1f7",
+  color: "#1051B7",
+  bg: "#F2F6FD",
   active: true,
   sortOrder: 0,
 };
@@ -41,8 +41,8 @@ export default function MaterialCategoriesPage() {
       item: {
         name: c.name,
         slug: c.slug,
-        color: c.color ?? "#002147",
-        bg: c.bg ?? "#eef1f7",
+        color: c.color ?? "#1051B7",
+        bg: c.bg ?? "#F2F6FD",
         active: c.active,
         sortOrder: c.sortOrder,
       },
@@ -115,13 +115,13 @@ export default function MaterialCategoriesPage() {
               {items.map((c) => (
                 <tr key={c.id} style={{ opacity: c.active ? 1 : 0.6 }}>
                   <td>
-                    <span className="pill" style={{ background: c.bg ?? "#eef1f7", color: c.color ?? "#002147" }}>{c.name}</span>
+                    <span className="pill" style={{ background: c.bg ?? "#F2F6FD", color: c.color ?? "#1051B7" }}>{c.name}</span>
                   </td>
                   <td style={{ fontSize: 13, color: "var(--muted)" }}>{c.slug}</td>
                   <td>
                     <div className="row" style={{ gap: 6, alignItems: "center" }}>
-                      <span style={{ width: 16, height: 16, borderRadius: 4, border: "1px solid var(--border)", background: c.color ?? "#002147" }} />
-                      <span style={{ width: 16, height: 16, borderRadius: 4, border: "1px solid var(--border)", background: c.bg ?? "#eef1f7" }} />
+                      <span style={{ width: 16, height: 16, borderRadius: 4, border: "1px solid var(--border)", background: c.color ?? "#1051B7" }} />
+                      <span style={{ width: 16, height: 16, borderRadius: 4, border: "1px solid var(--border)", background: c.bg ?? "#F2F6FD" }} />
                       <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{c.color ?? "—"} / {c.bg ?? "—"}</span>
                     </div>
                   </td>

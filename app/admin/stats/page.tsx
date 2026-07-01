@@ -61,7 +61,7 @@ export default function StatsPage() {
               <p className="text-xs text-[#52718F] mt-0.5">{s.subLabel}</p>
               <div className="flex gap-2 mt-3">
                 <button onClick={() => setModal({ open: true, item: { ...s }, id: s.id })}
-                  className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-[#002147]"
+                  className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-[#1051B7]"
                   style={{ background: "#EEF5FF" }}>Redaktə</button>
                 <button onClick={() => handleDelete(s.id)}
                   className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-red-600"

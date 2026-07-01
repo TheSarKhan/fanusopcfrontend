@@ -32,7 +32,7 @@ const ROLE_ICONS: Record<string, React.ReactNode> = {
   ADMIN: <IconSettings size={14} />, // Changed to simple settings icon as fallback
 };
 
-const AV_COLORS = ["#7c6f99", "#7c9a86", "#b58a3c", "#2f5283", "#0a2d59", "#5d6b85"];
+const AV_COLORS = ["#6366F1", "#10B981", "#F59E0B", "#3A74D6", "#082F6D", "#5d6b85"];
 
 // ── Helpers ──────────────────────────────────────────────────────
 function initials(u: UserRecord) {
@@ -67,7 +67,7 @@ const EMPTY_PROFILE: Omit<Psychologist, "id"> = {
   sessionsCount: "0", rating: "0.0", photoUrl: "", bio: "", phone: "",
   email: "", languages: "", sessionTypes: "",
   university: "", degree: "", graduationYear: "",
-  accentColor: "#2f5283", bgColor: "#eef1f7", displayOrder: 0, active: true,
+  accentColor: "#3A74D6", bgColor: "#F2F6FD", displayOrder: 0, active: true,
 };
 
 // ── Custom Hook for Debounce ─────────────────────────────────────
@@ -244,8 +244,8 @@ export default function UsersPage() {
       const pData: Omit<Psychologist, "id"> = {
         ...profData,
         specializations: specsInput.split(",").map((s) => s.trim()).filter(Boolean),
-        accentColor: profData.accentColor || "#2f5283",
-        bgColor: profData.bgColor || "#eef1f7",
+        accentColor: profData.accentColor || "#3A74D6",
+        bgColor: profData.bgColor || "#F2F6FD",
         displayOrder: profData.displayOrder || 0,
         active: profData.active ?? true
       };

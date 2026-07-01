@@ -57,7 +57,7 @@ export default function FaqsPage() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                    style={{ background: "#E0EBF7", color: "#002147" }}>
+                    style={{ background: "#E0EBF7", color: "#1051B7" }}>
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <div>
@@ -67,7 +67,7 @@ export default function FaqsPage() {
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
                   <button onClick={() => setModal({ open: true, item: { ...f }, id: f.id })}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#002147]"
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#1051B7]"
                     style={{ background: "#EEF5FF" }}>Redaktə</button>
                   <button onClick={() => handleDelete(f.id)}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600"

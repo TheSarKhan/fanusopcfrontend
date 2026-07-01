@@ -164,7 +164,7 @@ export default function AdminMessagesPage() {
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: "#1A2535", marginBottom: 2 }}>
                   {m.ticketCode && (
-                    <span style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: "#002147", background: "#EEF5FF", border: "1px solid #C3D6F6", borderRadius: 6, padding: "1px 6px", marginRight: 8 }}>
+                    <span style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: "#1051B7", background: "#EEF5FF", border: "1px solid #C3D6F6", borderRadius: 6, padding: "1px 6px", marginRight: 8 }}>
                       {m.ticketCode}
                     </span>
                   )}
@@ -206,7 +206,7 @@ export default function AdminMessagesPage() {
                 </h3>
                 <p style={{ fontSize: 12, color: "#8AAABF", margin: 0 }}>
                   {openMessage.ticketCode && (
-                    <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#002147", marginRight: 8 }}>
+                    <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#1051B7", marginRight: 8 }}>
                       {openMessage.ticketCode}
                     </span>
                   )}

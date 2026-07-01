@@ -4,7 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import { adminApi, type ReportsData } from "@/lib/api";
 import { IconCalendar, IconDownload } from "../_components/icons";
 
-const HEAT_COLORS = ["#eef1f7", "#dde3ee", "#b7c3d8", "#7d92b3", "#2f5283", "#0a2d59", "#002147"];
+const HEAT_COLORS = ["#F2F6FD", "#E4ECFA", "#C7DAF5", "#8FB0E3", "#3A74D6", "#082F6D", "#1051B7"];
 const DAYS = ["B.", "B.e.", "Ç.a.", "Ç.", "C.a.", "C.", "Ş."];
 
 function fmt(n: number) {
@@ -14,7 +14,7 @@ function fmt(n: number) {
 function Donut({ slices }: { slices: { color: string; percent: number }[] }) {
   return (
     <svg className="donut" viewBox="0 0 42 42">
-      <circle cx="21" cy="21" r="15.9" fill="transparent" stroke="#eef1f7" strokeWidth="6" />
+      <circle cx="21" cy="21" r="15.9" fill="transparent" stroke="#F2F6FD" strokeWidth="6" />
       {slices.map((s, i) => {
         const offset = 25 + slices.slice(0, i).reduce((sum, x) => sum + x.percent, 0);
         return (
@@ -69,10 +69,10 @@ export default function ReportsPage() {
       {!loading && data && (
         <>
           <div className="stats-grid col-4">
-            <Headline title="Konversiya (məqalə → randevu)" m={data.conversion} sparkColor="#7c9a86" />
-            <Headline title="Tamamlanma faizi" m={data.completion} sparkColor="#002147" />
-            <Headline title="Orta sessiya rəyi" m={data.averageRating} sparkColor="#b58a3c" />
-            <Headline title="Aktiv istifadəçi (DAU)" m={data.activeUsers} sparkColor="#7c6f99" />
+            <Headline title="Konversiya (məqalə → randevu)" m={data.conversion} sparkColor="#10B981" />
+            <Headline title="Tamamlanma faizi" m={data.completion} sparkColor="#1051B7" />
+            <Headline title="Orta sessiya rəyi" m={data.averageRating} sparkColor="#F59E0B" />
+            <Headline title="Aktiv istifadəçi (DAU)" m={data.activeUsers} sparkColor="#6366F1" />
           </div>
 
           <div className="grid-3-2 mt-16">

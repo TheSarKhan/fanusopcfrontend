@@ -57,7 +57,7 @@ const OPERATOR_REASONS: { code: string; label: string }[] = [
   { code: "OPERATOR_OTHER", label: "Digər" },
 ];
 
-const AVATAR_COLORS = ["#7c6f99", "#7c9a86", "#b58a3c", "#2f5283", "#5d6b85", "#0a2d59"];
+const AVATAR_COLORS = ["#6366F1", "#10B981", "#F59E0B", "#3A74D6", "#5d6b85", "#082F6D"];
 
 function initials(name: string) {
   return name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
@@ -315,7 +315,7 @@ export default function AdminAppointmentsPage() {
         <div style={{ background: "var(--ox-800)", color: "#fff", borderRadius: 10, padding: "10px 14px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>{selected.size} randevu seçilib</span>
           <button onClick={() => setBulkCancelOpen(true)}
-            style={{ padding: "7px 14px", border: "none", borderRadius: 8, background: "#fff", color: "#8b3d35", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+            style={{ padding: "7px 14px", border: "none", borderRadius: 8, background: "#fff", color: "#991B1B", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
             Toplu ləğv et (səbəblə)
           </button>
         </div>

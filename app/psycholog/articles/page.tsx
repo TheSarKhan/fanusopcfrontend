@@ -147,7 +147,8 @@ export default function PsychologArticlesPage() {
   };
 
   const deleteArticle = async (id: number) => {
-    await psychologistApi.deleteArticle(id);
+    const slug = items.find(p => p.id === id)?.slug;
+    await psychologistApi.deleteArticle(id, slug);
     setItems(prev => prev.filter(p => p.id !== id));
   };
 

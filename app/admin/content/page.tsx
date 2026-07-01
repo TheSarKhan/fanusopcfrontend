@@ -100,10 +100,10 @@ export default function ContentPage() {
     }
   };
 
-  const remove = async (id: number) => {
+  const remove = async (id: number, slug?: string) => {
     if (!confirm("Silmək istədiyinizə əminsiniz?")) return;
     try {
-      await adminApi.deleteBlogPost(id);
+      await adminApi.deleteBlogPost(id, slug);
       load();
     } catch (e) { alert((e as Error).message); }
   };
@@ -242,7 +242,7 @@ export default function ContentPage() {
                         <div className="row" style={{ gap: 4 }}>
                           <button className="btn sm ghost" onClick={() => openEdit(p)}>Redaktə</button>
                           <button className="btn sm ghost" onClick={() => toggleActive(p)}>{p.active ? "Arxivlə" : "Aktivləşdir"}</button>
-                          <button className="btn sm danger" onClick={() => remove(p.id)}>Sil</button>
+                          <button className="btn sm danger" onClick={() => remove(p.id, p.slug)}>Sil</button>
                         </div>
                       </td>
                     </tr>

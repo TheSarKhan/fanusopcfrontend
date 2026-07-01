@@ -226,6 +226,9 @@ function PatientForm({ onBack }: { onBack: () => void }) {
 const PSY_STEPS = ["Şəxsi", "Təhsil", "Peşəkar", "Sertifikat"];
 const EXP_YEARS = ["1 ildən az", "1-3 il", "3-5 il", "5-10 il", "10+ il"];
 const YEARS = Array.from({ length: 60 }, (_, i) => String(new Date().getFullYear() - i));
+/** Bir təhsili bitirmək üçün minimal ağlabatan yaş — doğum ili ilə bitirmə ilinin
+ *  məntiqi ziddiyyətini (məs. doğum ili = bitirmə ili) qabaqcadan əngəlləyir. */
+const MIN_GRADUATION_AGE = 18;
 
 type EducationRow = { institution: string; degree: string; graduationYear: string };
 type CertificateRow = { title: string; issuer: string; year: string; type: "CERTIFICATE" | "SEMINAR" };
@@ -253,6 +256,11 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
     { institution: "", degree: "", graduationYear: "" }
   ]);
   const [diplomaFile, setDiplomaFile] = useState<File | null>(null);
+
+  const birthYear = personal.birthDate ? Number(personal.birthDate.slice(0, 4)) : null;
+  const graduationYearOptions = birthYear
+    ? YEARS.filter(y => Number(y) - birthYear >= MIN_GRADUATION_AGE)
+    : YEARS;
 
   const [professional, setProfessional] = useState({
     title: "", experienceYears: "", priorSessions: "",
@@ -305,6 +313,10 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
   const validateStep1 = () => {
     const valid = educations.filter(e => e.institution.trim() && e.degree.trim() && e.graduationYear);
     if (valid.length === 0) return "Ən azı 1 təhsil tam doldurun";
+    if (birthYear) {
+      const invalid = valid.find(e => Number(e.graduationYear) - birthYear < MIN_GRADUATION_AGE);
+      if (invalid) return `Bitirmə ili (${invalid.graduationYear}) doğum tarixinizlə uyğun deyil`;
+    }
     if (!diplomaFile) return "Diplom faylı tələb olunur";
     return null;
   };
@@ -517,7 +529,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
                 <Field label="Bitirmə ili">
                   <select className="auth-select" value={ed.graduationYear} onChange={(e) => updateEducation(i, "graduationYear", e.target.value)} required>
                     <option value="">İl</option>
-                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                    {graduationYearOptions.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </Field>
               </div>

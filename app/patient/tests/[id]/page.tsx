@@ -117,6 +117,22 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
         {test.description && <p>{test.description}</p>}
       </header>
 
+      {test.note && (
+        <div
+          style={{
+            background: "#FEF3C7",
+            border: "1px solid #FDE68A",
+            color: "#92400E",
+            borderRadius: 12,
+            padding: "14px 16px",
+            fontSize: 13,
+            marginBottom: test.instructions ? 10 : 18,
+            lineHeight: 1.5,
+          }}>
+          <strong>Psixoloqunuzdan qeyd: </strong>{test.note}
+        </div>
+      )}
+
       {test.instructions && (
         <div
           style={{
@@ -140,7 +156,7 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
             return (
               <fieldset key={q.id} className="pgoal-card" style={{ border: "1px solid var(--brand-100)" }}>
                 <legend style={{ fontWeight: 600, color: "var(--oxford)", fontSize: 14, marginBottom: 10, padding: 0 }}>
-                  {qi + 1}. {q.text}
+                  {qi + 1}. {stripLeadingNumber(q.text)}
                 </legend>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {q.options.map(opt => {
@@ -221,6 +237,12 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
   );
 }
 
+// Question text is sometimes authored with its own leading "N." prefix,
+// which would otherwise duplicate the {index + 1} badge we render next to it.
+function stripLeadingNumber(text: string): string {
+  return text.replace(/^\s*\d+[.)]\s*/, "");
+}
+
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   const months = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
@@ -230,6 +252,10 @@ function fmtDate(iso: string | null | undefined): string {
 
 function ResultView({ result, title }: { result: TestResult; title?: string }) {
   const pct = Math.round(result.percentage);
+  const sortedAnswers = useMemo(
+    () => [...result.answers].sort((a, b) => a.displayOrder - b.displayOrder),
+    [result],
+  );
   return (
     <div className="pgoals">
       <header className="pgoals__head">
@@ -289,6 +315,31 @@ function ResultView({ result, title }: { result: TestResult; title?: string }) {
           <div style={{ width: `${pct}%`, height: "100%", background: "var(--brand)" }} />
         </div>
       </div>
+
+      {sortedAnswers.length > 0 && (
+        <div style={{ marginTop: 22 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", margin: "0 0 12px" }}>
+            Cavablarınız <span style={{ color: "var(--oxford-60)", fontWeight: 600 }}>({sortedAnswers.length})</span>
+          </h2>
+          <div className="pgoals__list" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {sortedAnswers.map((a, i) => (
+              <div key={a.questionId} className="pgoal-card" style={{ border: "1px solid var(--brand-100)" }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)", marginBottom: 8 }}>
+                  {i + 1}. {stripLeadingNumber(a.questionText)}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 13, color: "var(--oxford)", padding: "4px 10px", background: "var(--brand-50)", borderRadius: 8, border: "1px solid var(--brand-100)" }}>
+                    {a.selectedLabel}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#065F46", padding: "4px 10px", background: "#D1FAE5", borderRadius: 999 }}>
+                    {a.pointsAwarded} bal
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ marginTop: 20 }}>
         <Link href="/patient/tests" className="pgoals__empty-cta">← Testlərə qayıt</Link>

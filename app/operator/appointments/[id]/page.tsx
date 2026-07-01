@@ -334,6 +334,10 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const canAssign = !isCancelReq && !isFinal && ["PENDING", "NEW", "REJECTED", "ASSIGNED", "IN_REVIEW", "CONFIRMED"].includes(a.status);
   const canCancel = !isCancelReq && !isFinal && a.status !== "DISPUTED";
   const canResolve = a.status === "DISPUTED";
+  // Tək (paketsiz) seans təyin/yaradılanda qiymət yoxdusa ödəniş yaranmır — belə
+  // hallarda "Ödənişlər"də görünmür. Operator burdan əl ilə əlavə edə bilsin.
+  const needsPayment = !["PENDING", "NEW", "IN_REVIEW", "REJECTED", "CANCELLED"].includes(a.status)
+    && !a.patientPackageId && a.patientId != null && !a.paymentStatus;
   // Option B: sessions auto-complete; operator retroactively marks a no-show.
   const canMarkNoShow = a.status === "COMPLETED" || a.status === "AWAITING_CONFIRMATION";
   const phone = normalizePhone(a.patientPhone);
@@ -476,6 +480,12 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
           {!isFinal && (
             <LinkBlock key={`link-${a.id}`} appointment={a} cold={claimedByOther}
               guardAction={guardAction} onDone={(u, m) => onActionDone(u, m)} />
+          )}
+
+          {/* Ödəniş qeydi yoxdursa — operator əl ilə əlavə edə bilsin */}
+          {needsPayment && (
+            <PaymentMissingBlock key={`payment-${a.id}`} appointment={a}
+              onCreated={() => { load(true); setToast("Ödəniş əlavə edildi"); }} />
           )}
 
           {/* Digər əməliyyatlar — kart şəbəkəsi + fokuslu modal */}
@@ -1461,6 +1471,48 @@ function LinkBlock({ appointment, cold }: {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ─── Ödəniş qeydi yoxdursa — əl ilə əlavə et ────────────────────────────────── */
+
+function PaymentMissingBlock({ appointment, onCreated }: {
+  appointment: AppointmentDetail;
+  onCreated: () => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    const amt = Number(amount);
+    if (!Number.isFinite(amt) || amt <= 0) { setErr("Məbləği düzgün daxil edin"); return; }
+    setErr(null); setSaving(true);
+    try {
+      await operatorApi.createManualPayment(appointment.id, amt);
+      onCreated();
+    } catch (e) { setErr((e as Error).message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="op-det-card">
+      <div className="op-det-card__title">Ödəniş</div>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", background: "#FEF3C7", border: "1px solid #FCE7A8", borderRadius: 11, padding: "12px 14px", marginBottom: 12 }}>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: "#92400E" }}>Bu seans üçün ödəniş qeydi yoxdur — "Ödənişlər"də görünmür</span>
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+        <input type="number" min={0} step="0.01" value={amount} onChange={e => setAmount(e.target.value)}
+          placeholder="Seans məbləği (₼)"
+          style={{ flex: 1, border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 12px", fontSize: 13.5, fontWeight: 500, fontFamily: "inherit", boxSizing: "border-box" }} />
+        <button onClick={submit} disabled={saving || !amount.trim()}
+          style={{ background: (saving || !amount.trim()) ? "#A9BEE2" : "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: (saving || !amount.trim()) ? "not-allowed" : "pointer", flex: "none" }}>
+          {saving ? "Saxlanılır…" : "Ödəniş əlavə et"}
+        </button>
+      </div>
+      {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>{err}</div>}
     </div>
   );
 }

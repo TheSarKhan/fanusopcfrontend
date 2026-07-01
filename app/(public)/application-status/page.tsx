@@ -67,8 +67,8 @@ export default function ApplicationStatusPage() {
             </p>
             <Link
               href="/contact"
-              className="block py-3 rounded-xl text-sm font-bold text-white"
-              style={{ background: "var(--brand)" }}
+              className="block py-3 rounded-xl text-sm font-bold"
+              style={{ background: "var(--brand)", color: "#fff" }}
             >
               Bizimlə əlaqə
             </Link>
@@ -116,8 +116,8 @@ export default function ApplicationStatusPage() {
             </p>
             <Link
               href="/login"
-              className="block py-3 rounded-xl text-sm font-bold text-white"
-              style={{ background: "var(--brand)" }}
+              className="block py-3 rounded-xl text-sm font-bold"
+              style={{ background: "var(--brand)", color: "#fff" }}
             >
               Daxil ol
             </Link>
@@ -147,8 +147,8 @@ export default function ApplicationStatusPage() {
             )}
             <Link
               href="/contact"
-              className="block py-3 rounded-xl text-sm font-bold text-white"
-              style={{ background: "var(--brand)" }}
+              className="block py-3 rounded-xl text-sm font-bold"
+              style={{ background: "var(--brand)", color: "#fff" }}
             >
               Bizimlə əlaqə
             </Link>

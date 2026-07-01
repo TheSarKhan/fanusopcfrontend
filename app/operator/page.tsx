@@ -219,7 +219,7 @@ export default function OperatorDashboard() {
                   </QueueBlock>
                 )}
                 {cancelReqs.length > 0 && (
-                  <QueueBlock title="Ləğv tələbləri" tone="warn" count={cancelReqs.length} icon={<Ico d={I_BAN} />} allHref="/operator/appointments?tab=CANCEL_REQUESTED">
+                  <QueueBlock title="Ləğv tələbləri" tone="warn" count={cancelReqs.length} icon={<Ico d={I_BAN} />} allHref="/operator/appointments?filter=cancel">
                     {cancelReqs.slice(0, 4).map(a => <QueueRow key={a.id} a={a} now={now} kind="cancel" />)}
                     {cancelReqs.length > 4 && <Overflow n={cancelReqs.length - 4} />}
                   </QueueBlock>

@@ -82,6 +82,8 @@ export default function PatientTestsPage() {
                     </span>
                   </div>
 
+                  {a.note && <div className="pgoal-card__desc">{a.note}</div>}
+
                   <div className="pgoal-card__meta">
                     <span className="pgoal-card__date">Təyin edildi: {fmtDate(a.assignedAt)}</span>
                     {done && a.completedAt && (

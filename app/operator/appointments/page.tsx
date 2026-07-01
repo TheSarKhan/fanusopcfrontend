@@ -28,11 +28,14 @@ import { statusMeta, isPoolEligible } from "@/lib/appointmentStatus";
 
 const QUEUE_KEY = "fanus.op.queue";
 
-type Tab = "PENDING" | "CONFIRMED" | "DISPUTED" | "COMPLETED" | "CANCELLED" | "CANCEL_REQUESTED";
+type Tab = "PENDING" | "CONFIRMED" | "DISPUTED" | "COMPLETED" | "CANCELLED";
 
+// "Yeni müraciətlər" is the unified triage inbox: new booking requests, patient
+// cancel requests and reschedule requests all land here (no dedicated tab for
+// each) so operators only need to watch one place. "Ləğv tələbləri" / "Vaxt
+// dəyişikliyi" remain as narrowing chips within it.
 const TAB_META: Record<Tab, { label: string; color: string }> = {
   PENDING:          { label: "Yeni müraciətlər",  color: "#92400E" },
-  CANCEL_REQUESTED: { label: "Ləğv tələbləri",    color: "#92400E" },
   CONFIRMED:        { label: "Təsdiqlənmiş",      color: "#065F46" },
   DISPUTED:         { label: "Mübahisəli",        color: "#991B1B" },
   COMPLETED:        { label: "Tamamlanmış",       color: "#374151" },
@@ -141,6 +144,8 @@ export default function OperatorAppointmentsPage() {
   const [mineOnly, setMineOnly] = useState(false);
   // Pasient vaxt dəyişikliyi tələb edən aktiv randevular (status dəyişmir)
   const [rescheduleOnly, setRescheduleOnly] = useState(() => searchParams.get("filter") === "reschedule");
+  // Pasient ləğv tələb edib — "Yeni müraciətlər"in bir alt-filtri (əvvəllər ayrıca tab idi)
+  const [cancelOnly, setCancelOnly] = useState(() => searchParams.get("filter") === "cancel");
   // Qeyd: Pool artıq ayrıca səhifədir (/operator/pool), siyahıda filtr deyil.
   const [slaHours, setSlaHours] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
@@ -204,6 +209,11 @@ export default function OperatorAppointmentsPage() {
   // Patient reschedule request on an active appointment (no status change).
   const isRescheduleReq = (a: AppointmentDetail) =>
     !!a.rescheduleRequestedAt && (a.status === "CONFIRMED" || a.status === "ASSIGNED");
+  const isCancelReq = (a: AppointmentDetail) => a.status === "CANCEL_REQUESTED";
+  // Everything that belongs in the unified "Yeni müraciətlər" inbox: brand-new
+  // requests plus patient-initiated cancel/reschedule requests on existing bookings.
+  const isNewRequest = (a: AppointmentDetail) =>
+    a.status === "PENDING" || a.status === "REJECTED" || isCancelReq(a) || isRescheduleReq(a);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -211,10 +221,12 @@ export default function OperatorAppointmentsPage() {
       if (mineOnly && a.claimedByUserId !== meId) return false;
       if (rescheduleOnly) {
         if (!isRescheduleReq(a)) return false;
+      } else if (cancelOnly) {
+        if (!isCancelReq(a)) return false;
       } else if (overdueOnly) {
         if (!isOverdue(a)) return false;
       } else if (!mineOnly && !allOnly) {
-        if (tab === "PENDING" && !(a.status === "PENDING" || a.status === "REJECTED")) return false;
+        if (tab === "PENDING" && !isNewRequest(a)) return false;
         // CONFIRMED tab covers AWAITING_CONFIRMATION (post-session) and any
         // legacy ASSIGNED rows (operator assignment now confirms directly).
         if (tab === "CONFIRMED" && !(a.status === "CONFIRMED" || a.status === "AWAITING_CONFIRMATION" || a.status === "ASSIGNED")) return false;
@@ -225,18 +237,22 @@ export default function OperatorAppointmentsPage() {
       return hay.includes(q);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, tab, allOnly, search, overdueOnly, mineOnly, rescheduleOnly, meId, slaHours]);
+  }, [items, tab, allOnly, search, overdueOnly, mineOnly, rescheduleOnly, cancelOnly, meId, slaHours]);
 
-  const rescheduleCount = useMemo(() => items.filter(isRescheduleReq).length, [items]); // eslint-disable-line react-hooks/exhaustive-deps
+  const rescheduleCount = useMemo(() => items.filter(isRescheduleReq).length, [items]);
+  const cancelReqCount = useMemo(() => items.filter(isCancelReq).length, [items]);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { PENDING: 0, CONFIRMED: 0, DISPUTED: 0, COMPLETED: 0, CANCELLED: 0, CANCEL_REQUESTED: 0 };
+    const c: Record<string, number> = { PENDING: 0, CONFIRMED: 0, DISPUTED: 0, COMPLETED: 0, CANCELLED: 0 };
     for (const a of items) {
-      if (a.status === "PENDING" || a.status === "REJECTED") c.PENDING++;
-      else if (a.status === "AWAITING_CONFIRMATION" || a.status === "ASSIGNED") c.CONFIRMED++;
-      else if (c[a.status] !== undefined) c[a.status]++;
+      if (isNewRequest(a)) c.PENDING++;
+      if (a.status === "AWAITING_CONFIRMATION" || a.status === "ASSIGNED" || a.status === "CONFIRMED") c.CONFIRMED++;
+      else if (a.status === "DISPUTED") c.DISPUTED++;
+      else if (a.status === "COMPLETED") c.COMPLETED++;
+      else if (a.status === "CANCELLED") c.CANCELLED++;
     }
     return c;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
   const overdueCount = useMemo(() => items.filter(isOverdue).length, [items, slaHours, now]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -265,7 +281,7 @@ export default function OperatorAppointmentsPage() {
       sessionStorage.setItem(QUEUE_KEY, JSON.stringify({ ids: filtered.map(x => x.id), ts: Date.now() }));
     } catch { /* ignore */ }
     const params = new URLSearchParams();
-    if (!overdueOnly && !mineOnly && !allOnly && !rescheduleOnly) params.set("queue", tab);
+    if (!overdueOnly && !mineOnly && !allOnly && !rescheduleOnly && !cancelOnly) params.set("queue", tab);
     if (search.trim()) params.set("q", search.trim());
     if (overdueOnly) params.set("filter", "overdue");
     const qs = params.toString();
@@ -289,8 +305,8 @@ export default function OperatorAppointmentsPage() {
   const [onBehalfOpen, setOnBehalfOpen] = useState(false);
 
   // ─── Filtr çipləri ─────────────────────────────────────────────────────────
-  const pickStatus = (tk: Tab) => { setShowReferrals(false); setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setRescheduleOnly(false); setTab(tk); };
-  const statusActive = (tk: Tab) => !showReferrals && !allOnly && !overdueOnly && !mineOnly && !rescheduleOnly && tab === tk;
+  const pickStatus = (tk: Tab) => { setShowReferrals(false); setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setRescheduleOnly(false); setCancelOnly(false); setTab(tk); };
+  const statusActive = (tk: Tab) => !showReferrals && !allOnly && !overdueOnly && !mineOnly && !rescheduleOnly && !cancelOnly && tab === tk;
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -341,19 +357,21 @@ export default function OperatorAppointmentsPage() {
       {/* FILTER TABS */}
       <div className="or-tabs" style={{ display: "flex", alignItems: "center", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 20 }}>
         <Chip label="Hamısı" count={items.length} active={!showReferrals && allOnly} tone="var(--brand)"
-          onClick={() => { setShowReferrals(false); setAllOnly(true); setOverdueOnly(false); setMineOnly(false); setRescheduleOnly(false); }} />
+          onClick={() => { setShowReferrals(false); setAllOnly(true); setOverdueOnly(false); setMineOnly(false); setRescheduleOnly(false); setCancelOnly(false); }} />
         {(Object.keys(TAB_META) as Tab[]).map(tk => (
           <Chip key={tk} label={TAB_META[tk].label} count={counts[tk] ?? 0} active={statusActive(tk)} tone={TAB_META[tk].color} onClick={() => pickStatus(tk)} />
         ))}
         <Chip label="Gecikmiş" count={overdueCount} active={!showReferrals && overdueOnly} tone="#DC2626" dot="#EF4444"
-          onClick={() => { setShowReferrals(false); setAllOnly(false); setMineOnly(false); setRescheduleOnly(false); setOverdueOnly(o => !o); }} />
+          onClick={() => { setShowReferrals(false); setAllOnly(false); setMineOnly(false); setRescheduleOnly(false); setCancelOnly(false); setOverdueOnly(o => !o); }} />
+        <Chip label="Ləğv tələbləri" count={cancelReqCount} active={!showReferrals && cancelOnly} tone="#92400E" dot="#F59E0B"
+          onClick={() => { setShowReferrals(false); setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setRescheduleOnly(false); setCancelOnly(c => !c); }} />
         <Chip label="Vaxt dəyişikliyi" count={rescheduleCount} active={!showReferrals && rescheduleOnly} tone="#082F6D" dot="#1051B7"
-          onClick={() => { setShowReferrals(false); setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setRescheduleOnly(r => !r); }} />
+          onClick={() => { setShowReferrals(false); setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setCancelOnly(false); setRescheduleOnly(r => !r); }} />
         <Chip label={t("staff.opMineFilter")} count={mineCount} active={!showReferrals && mineOnly} tone="var(--brand)" dot="#1051B7"
-          onClick={() => { setShowReferrals(false); setAllOnly(false); setOverdueOnly(false); setRescheduleOnly(false); setMineOnly(m => !m); }} />
+          onClick={() => { setShowReferrals(false); setAllOnly(false); setOverdueOnly(false); setRescheduleOnly(false); setCancelOnly(false); setMineOnly(m => !m); }} />
         <span aria-hidden style={{ width: 1, alignSelf: "stretch", background: "#E1E9F5", margin: "4px 2px", flex: "none" }} />
         <Chip label="Yönləndirmələr" count={refCount} active={showReferrals} tone="#5B21B6" dot="#7C3AED"
-          onClick={() => { setShowReferrals(true); setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setRescheduleOnly(false); setSelectMode(false); setSelected(new Set()); }} />
+          onClick={() => { setShowReferrals(true); setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setRescheduleOnly(false); setCancelOnly(false); setSelectMode(false); setSelected(new Set()); }} />
         <div style={{ position: "relative", flex: "none", minWidth: 220, marginLeft: 4 }}>
           <Svg w={15} stroke="#9DB0CC" style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} d={<><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>} />
           <input type="text" placeholder="Axtar (ad, psixoloq, qeyd…)" value={search} onChange={e => setSearch(e.target.value)}

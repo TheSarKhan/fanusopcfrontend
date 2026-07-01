@@ -308,6 +308,11 @@ export default function PsychologTestsPage() {
                   <tr key={a.id} style={{ borderTop: "1px solid #EEF2F7" }}>
                     <td style={tdStyle}>
                       <span style={{ fontWeight: 600, color: "#1A2535" }}>{a.testTitle}</span>
+                      {a.note && (
+                        <div style={{ fontSize: 11.5, color: "#52718F", marginTop: 3, maxWidth: 240 }}>
+                          {a.note}
+                        </div>
+                      )}
                     </td>
                     <td style={tdStyle}>
                       {a.patientName ? (

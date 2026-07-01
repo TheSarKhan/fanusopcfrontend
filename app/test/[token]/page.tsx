@@ -230,6 +230,23 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
           {test.description && (
             <p style={{ color: MUTED, margin: "0 0 14px", lineHeight: 1.65 }}>{test.description}</p>
           )}
+          {test.note && (
+            <div
+              style={{
+                background: "#FEF3C7",
+                border: "1px solid #FDE68A",
+                borderRadius: 12,
+                padding: "14px 16px",
+                color: "#92400E",
+                lineHeight: 1.6,
+                fontSize: 14,
+                whiteSpace: "pre-wrap",
+                marginBottom: test.instructions ? 10 : 0,
+              }}
+            >
+              <strong>Psixoloqunuzdan qeyd: </strong>{test.note}
+            </div>
+          )}
           {test.instructions && (
             <div
               style={{

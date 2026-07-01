@@ -252,7 +252,7 @@ export default function ArticlesPage() {
   };
 
   const deleteItems = async (ids: number[]) => {
-    await Promise.all(ids.map(id => adminApi.deleteBlogPost(id)));
+    await Promise.all(ids.map(id => adminApi.deleteBlogPost(id, items.find(p => p.id === id)?.slug)));
     setItems(prev => prev.filter(p => !ids.includes(p.id)));
     setSelected(new Set());
   };

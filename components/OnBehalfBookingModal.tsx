@@ -30,7 +30,7 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [psyId, setPsyId] = useState<number | null>(null);
-  const [psys, setPsys] = useState<{ id: number; name?: string | null }[]>([]);
+  const [psys, setPsys] = useState<{ id: number; name?: string | null; defaultSessionMinutes?: number | null }[]>([]);
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
   const [note, setNote] = useState("");
@@ -66,7 +66,10 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
   const onStart = (v: string) => {
     setStartAt(v);
     if (v && !endAt) {
-      const d = new Date(v); d.setMinutes(d.getMinutes() + 50);
+      // Seçilmiş psixoloqun standart seans müddəti — server də eyni dəyərdən
+      // hesablayır (createOnBehalf), ona görə göstərilən önizləmə də ona uyğun olmalıdır.
+      const sessionMin = psys.find(p => p.id === psyId)?.defaultSessionMinutes || 50;
+      const d = new Date(v); d.setMinutes(d.getMinutes() + sessionMin);
       const p = (n: number) => String(n).padStart(2, "0");
       setEndAt(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`);
     }

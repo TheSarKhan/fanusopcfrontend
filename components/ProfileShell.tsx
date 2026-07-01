@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { meApi, patientApi, type AccountStatus, type EmergencyContact, type MeProfile } from "@/lib/api";
+import { meApi, patientApi, revalidatePsychologistsCache, type AccountStatus, type EmergencyContact, type MeProfile } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -184,6 +184,10 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
       const { url } = await meApi.uploadPhoto(file);
       onChanged({ ...me, photoUrl: url });
       window.dispatchEvent(new CustomEvent("profilePhotoChanged", { detail: { photoUrl: url } }));
+      // The psychologist's photo also lives on their public /psychologists/[slug]
+      // page, which Next.js caches — ping it so the change shows up immediately
+      // instead of waiting for the passive revalidate window.
+      if (me.role === "PSYCHOLOGIST") revalidatePsychologistsCache();
     } catch (e) { setErr((e as Error).message || "Yükləmə uğursuz oldu"); }
     finally {
       setUploading(false);
@@ -199,6 +203,7 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
       await meApi.deletePhoto();
       onChanged({ ...me, photoUrl: null });
       window.dispatchEvent(new CustomEvent("profilePhotoChanged", { detail: { photoUrl: null } }));
+      if (me.role === "PSYCHOLOGIST") revalidatePsychologistsCache();
     } catch (e) { setErr((e as Error).message || "Silmə uğursuz oldu"); }
     finally { setRemoving(false); }
   };

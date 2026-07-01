@@ -22,13 +22,36 @@ function localeHeaders(): Record<string, string> {
 
 async function get<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    next: { revalidate: 30 },
+    ...opts,
+    // Merge rather than let `...opts` clobber this — callers pass `next.tags`
+    // to enable on-demand revalidation without losing the time-based fallback.
+    next: { revalidate: 30, ...(opts?.next ?? {}) },
     credentials: "include",
     headers: { ...localeHeaders(), ...(opts?.headers as Record<string, string> | undefined) },
-    ...opts,
   });
   if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
   return res.json();
+}
+
+/** Ping our own Next.js server to bust the ISR cache for blog content.
+ *  Mutations happen via direct fetches to the Spring backend from the browser,
+ *  so Next has no idea the underlying data changed — without this, the public
+ *  site keeps serving the stale cached page until the revalidate window (or a
+ *  lucky refresh) catches up. Fire-and-forget: a failed revalidation ping
+ *  shouldn't block the save flow, it'll just self-heal after 30s. */
+function revalidateBlogCache(slug?: string | null) {
+  if (typeof window === "undefined") return;
+  const qs = slug ? `?slug=${encodeURIComponent(slug)}` : "";
+  fetch(`/api/revalidate-blog${qs}`, { method: "POST" }).catch(() => {});
+}
+
+/** Same idea as revalidateBlogCache, for the public psychologist directory —
+ *  photo/profile edits (self-service or admin) otherwise stay stale on
+ *  /psychologists/[slug] until the fetch's 30s revalidate window (or a lucky
+ *  refresh) catches up. Fire-and-forget: safe to skip on failure, it self-heals. */
+export function revalidatePsychologistsCache() {
+  if (typeof window === "undefined") return;
+  fetch("/api/revalidate-psychologists", { method: "POST" }).catch(() => {});
 }
 
 // Tokens live in HTTP-only cookies. JS can't read or write them — backend handles
@@ -598,13 +621,14 @@ export interface PsychologistApplication {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 export const getPsychologists = async (): Promise<Psychologist[]> => {
-  const list = await get<Psychologist[]>("/psychologists");
+  const list = await get<Psychologist[]>("/psychologists", { next: { revalidate: 30, tags: ["psychologists"] } });
   return withSlugs(list);
 };
 export const getStats = () => get<Stat[]>("/stats");
 export const getAnnouncements = () => get<Announcement[]>("/announcements");
-export const getBlogPosts = () => get<BlogPost[]>("/blog-posts");
-export const getBlogPostBySlug = (slug: string) => get<BlogPost>(`/blog-posts/${slug}`);
+export const getBlogPosts = () => get<BlogPost[]>("/blog-posts", { next: { tags: ["blog-posts"] } });
+export const getBlogPostBySlug = (slug: string) =>
+  get<BlogPost>(`/blog-posts/${slug}`, { next: { tags: ["blog-posts", `blog-post-${slug}`] } });
 export const getFaqs = () => get<Faq[]>("/faqs");
 export const getTestimonials = () => get<Testimonial[]>("/testimonials");
 export const getSiteConfig = () => get<SiteConfig>("/site-config");
@@ -1161,11 +1185,11 @@ export type PsyScaleReq = { label: string; minScore: number; maxScore: number; c
 export type PsyTestReq = { title: string; description?: string; instructions?: string; scoreBasis: string; published: boolean; questions: PsyQuestionReq[]; scales: PsyScaleReq[] }
 export interface TakeOption { id: number; label: string }
 export interface TakeQuestion { id: number; text: string; options: TakeOption[] }
-export interface TakeTest { testId: number; assignmentId?: number | null; title: string; description?: string | null; instructions?: string | null; questions: TakeQuestion[] }
+export interface TakeTest { testId: number; assignmentId?: number | null; title: string; description?: string | null; instructions?: string | null; questions: TakeQuestion[]; note?: string | null }
 export type SubmitAnswer = { questionId: number; selectedOptionId: number }
 export interface AnswerResult { questionId: number; questionText: string; selectedOptionId: number; selectedLabel: string; pointsAwarded: number; displayOrder: number }
 export interface TestResult { resultId: number; assignmentId: number; totalScore: number; maxScore: number; percentage: number; scaleId?: number | null; scaleLabel?: string | null; respondentName?: string | null; submittedAt: string; answers: AnswerResult[] }
-export interface TestAssignment { id: number; testId: number; testTitle: string; patientId?: number | null; patientName?: string | null; status: string; publicToken?: string | null; assignedAt: string; completedAt?: string | null; hasResult: boolean; submissionCount: number }
+export interface TestAssignment { id: number; testId: number; testTitle: string; patientId?: number | null; patientName?: string | null; status: string; publicToken?: string | null; assignedAt: string; completedAt?: string | null; hasResult: boolean; submissionCount: number; note?: string | null }
 
 // Psixoloq müraciət statusu — public (auth YOXDUR): e-poçtdakı token ilə baxılır.
 export interface ApplicationStatusResult {
@@ -1220,9 +1244,12 @@ export const adminApi = {
 
   // Psychologists
   getPsychologists: () => authedRequest<Psychologist[]>("GET", "/admin/psychologists"),
-  createPsychologist: (data: Omit<Psychologist, "id">) => authedRequest<Psychologist>("POST", "/admin/psychologists", data),
-  updatePsychologist: (id: number, data: Omit<Psychologist, "id">) => authedRequest<Psychologist>("PUT", `/admin/psychologists/${id}`, data),
-  deletePsychologist: (id: number) => authedRequest<void>("DELETE", `/admin/psychologists/${id}`),
+  createPsychologist: (data: Omit<Psychologist, "id">) =>
+    authedRequest<Psychologist>("POST", "/admin/psychologists", data).then(p => { revalidatePsychologistsCache(); return p; }),
+  updatePsychologist: (id: number, data: Omit<Psychologist, "id">) =>
+    authedRequest<Psychologist>("PUT", `/admin/psychologists/${id}`, data).then(p => { revalidatePsychologistsCache(); return p; }),
+  deletePsychologist: (id: number) =>
+    authedRequest<void>("DELETE", `/admin/psychologists/${id}`).then(r => { revalidatePsychologistsCache(); return r; }),
   // Modul C — Fanus/Adi tip + Fanus qiymət/paket idarəsi (ayrıca endpointlər;
   // PsychologistRequest pozisional record-a toxunulmur)
   setPsyType: (psyId: number, type: "FANUS" | "NORMAL") =>
@@ -1256,9 +1283,12 @@ export const adminApi = {
   // Blog
   getBlogPosts: () => authedRequest<BlogPost[]>("GET", "/admin/blog-posts"),
   getBlogPostById: (id: number) => authedRequest<BlogPost>("GET", `/admin/blog-posts/${id}`),
-  createBlogPost: (data: Omit<BlogPost, "id">) => authedRequest<BlogPost>("POST", "/admin/blog-posts", data),
-  updateBlogPost: (id: number, data: Omit<BlogPost, "id">) => authedRequest<BlogPost>("PUT", `/admin/blog-posts/${id}`, data),
-  deleteBlogPost: (id: number) => authedRequest<void>("DELETE", `/admin/blog-posts/${id}`),
+  createBlogPost: (data: Omit<BlogPost, "id">) =>
+    authedRequest<BlogPost>("POST", "/admin/blog-posts", data).then(p => { revalidateBlogCache(p.slug); return p; }),
+  updateBlogPost: (id: number, data: Omit<BlogPost, "id">) =>
+    authedRequest<BlogPost>("PUT", `/admin/blog-posts/${id}`, data).then(p => { revalidateBlogCache(p.slug); return p; }),
+  deleteBlogPost: (id: number, slug?: string) =>
+    authedRequest<void>("DELETE", `/admin/blog-posts/${id}`).then(() => revalidateBlogCache(slug)),
   addAttachment: async (articleId: number, file: File, displayOrder = 0): Promise<ArticleAttachment> => {
     const form = new FormData();
     form.append("file", file);
@@ -2200,14 +2230,15 @@ export const psychologistApi = {
   listArticles: () => authedRequest<BlogPost[]>("GET", "/psychologist/articles"),
   getArticleById: (id: number) => authedRequest<BlogPost>("GET", `/psychologist/articles/${id}`),
   createArticle: (data: Omit<BlogPost, "id">) =>
-    authedRequest<BlogPost>("POST", "/psychologist/articles", data),
+    authedRequest<BlogPost>("POST", "/psychologist/articles", data).then(p => { revalidateBlogCache(p.slug); return p; }),
   updateArticle: (id: number, data: Omit<BlogPost, "id">) =>
-    authedRequest<BlogPost>("PUT", `/psychologist/articles/${id}`, data),
+    authedRequest<BlogPost>("PUT", `/psychologist/articles/${id}`, data).then(p => { revalidateBlogCache(p.slug); return p; }),
   /** Flip status only — bypasses the shadow-draft auto-save path so
    *  unpublishing actually unpublishes. */
   setArticleStatus: (id: number, status: "PUBLISHED" | "DRAFT") =>
-    authedRequest<BlogPost>("PATCH", `/psychologist/articles/${id}/status`, { status }),
-  deleteArticle: (id: number) => authedRequest<void>("DELETE", `/psychologist/articles/${id}`),
+    authedRequest<BlogPost>("PATCH", `/psychologist/articles/${id}/status`, { status }).then(p => { revalidateBlogCache(p.slug); return p; }),
+  deleteArticle: (id: number, slug?: string) =>
+    authedRequest<void>("DELETE", `/psychologist/articles/${id}`).then(() => revalidateBlogCache(slug)),
   addArticleAttachment: async (articleId: number, file: File, displayOrder = 0): Promise<ArticleAttachment> => {
     const form = new FormData();
     form.append("file", file);
@@ -2909,6 +2940,9 @@ export const operatorApi = {
     authedRequest<PaymentItem>("POST", `/operator/payments/${id}/claim/release`),
   reassignPayment: (id: number, operatorId: number) =>
     authedRequest<PaymentItem>("POST", `/operator/payments/${id}/reassign`, { operatorId }),
+  // Randevuya bağlı ödəniş qeydi yoxdursa (təyin zamanı qiymət daxil edilməyib) əl ilə yarat
+  createManualPayment: (appointmentId: number, amount: number, currency = "AZN") =>
+    authedRequest<PaymentItem>("POST", `/operator/appointments/${appointmentId}/payment`, { amount, currency }),
   // Operator paket satışı (kataloq + xüsusi) → PENDING ödəniş
   psychologistPackages: (psychologistId: number) =>
     authedRequest<PackageDto[]>("GET", `/operator/psychologists/${psychologistId}/packages`),

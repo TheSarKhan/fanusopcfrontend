@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import Deco from "@/components/Deco";
-import { getPsychologists, trackFunnelEvent, type Psychologist } from "@/lib/api";
+import { getBlogPosts, getPsychologists, trackFunnelEvent, type BlogPost, type Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
 import { MOOD_TO_CAT, deriveCategory, type MoodId } from "@/lib/moodMap";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -160,6 +160,7 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
   const { t } = useT();
   // GAP-08: real psychologists matched to the selected mood's category.
   const [allPsy, setAllPsy] = useState<(Psychologist & { slug: string })[]>([]);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
   const cat = MOOD_TO_CAT[mood.id];
   const matchHref = cat === "all" ? "/psychologists" : `/psychologists?filter=${cat}`;
 
@@ -174,6 +175,10 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
       .catch(() => setAllPsy([]));
   }, []);
 
+  useEffect(() => {
+    getBlogPosts().then(setPosts).catch(() => setPosts([]));
+  }, []);
+
   const matched = useMemo(() => {
     const byRating = [...allPsy].sort(
       (a, b) => parseFloat(b.rating ?? "0") - parseFloat(a.rating ?? "0"));
@@ -183,6 +188,15 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
     const rest = byRating.filter(p => !inCat.includes(p));
     return [...inCat, ...rest].slice(0, 3);
   }, [allPsy, cat]);
+
+  // Real blog posts matched to the mood's category (top up with latest when thin).
+  const matchedArticles = useMemo(() => {
+    if (cat === "all") return posts.slice(0, 3);
+    const catOf = (p: BlogPost) => deriveCategory([p.category, p.title, p.excerpt].filter(Boolean) as string[]);
+    const inCat = posts.filter(p => catOf(p) === cat);
+    const rest = posts.filter(p => !inCat.includes(p));
+    return [...inCat, ...rest].slice(0, 3);
+  }, [posts, cat]);
 
   const MESSAGE_KEYS: Record<MoodId, "mood.msgAnxious" | "mood.msgSad" | "mood.msgTired" | "mood.msgAngry" | "mood.msgMixed" | "mood.msgLonely" | "mood.msgHopeful" | "mood.msgHappy"> = {
     anxious: "mood.msgAnxious",
@@ -194,12 +208,6 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
     hopeful: "mood.msgHopeful",
     happy:   "mood.msgHappy",
   };
-
-  const articles = [
-    { tag: t("psyList.filterAnxiety"), title: t("articles.title"),       read: t("articles.minutes", { n: 6 }) },
-    { tag: t("how.eyebrow"),           title: t("how.step1Text"),        read: t("articles.minutes", { n: 4 }) },
-    { tag: t("psyList.filterAnxiety"), title: t("home.heroSub"),         read: t("articles.minutes", { n: 8 }) },
-  ];
 
   return (
     <div className="fanus-mm-backdrop" onClick={onClose}>
@@ -221,11 +229,15 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
           <div>
             <div className="fanus-mm-title">{t("mood.suggestedArticles")}</div>
             <div className="fanus-mm-articles">
-              {articles.map((a, i) => (
-                <Link key={i} className="fanus-mm-article" href="/blog">
-                  <span className="fanus-mm-article__tag">{a.tag}</span>
+              {matchedArticles.length === 0 ? (
+                <div style={{ fontSize: 13, color: "var(--fanus-ink-3)", padding: "10px 4px", gridColumn: "1 / -1" }}>
+                  {t("common.loading")}
+                </div>
+              ) : matchedArticles.map((a) => (
+                <Link key={a.id} className="fanus-mm-article" href={`/blog/${a.slug}`}>
+                  <span className="fanus-mm-article__tag">{a.category}</span>
                   <span className="fanus-mm-article__title">{a.title}</span>
-                  <span className="fanus-mm-article__meta">{a.read} →</span>
+                  <span className="fanus-mm-article__meta">{t("articles.minutes", { n: a.readTimeMinutes })} →</span>
                 </Link>
               ))}
             </div>
@@ -240,7 +252,9 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
               ) : matched.map((p) => (
                 <div key={p.id} className="fanus-mm-psyc-card">
                   <div className="fanus-mm-psyc-card__avatar" style={{ background: p.accentColor || "#1051B7" }}>
-                    {p.name.split(" ").filter(Boolean).map((n) => n[0]).slice(0, 2).join("")}
+                    {p.photoUrl
+                      ? <img src={p.photoUrl} alt={p.name} className="fanus-mm-psyc-card__img" />
+                      : p.name.split(" ").filter(Boolean).map((n) => n[0]).slice(0, 2).join("")}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="fanus-mm-psyc-card__name">{p.name}</div>
@@ -248,6 +262,13 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
                       {(p.specializations ?? []).slice(0, 2).join(", ") || p.title}
                       {p.experience ? ` · ${p.experience} ${t("psyList.yearsExp")}` : ""}
                     </div>
+                    {p.sessionTypes && (
+                      <div className="fanus-mm-psyc-card__types">
+                        {p.sessionTypes.split(",").map(s => s.trim()).filter(Boolean).slice(0, 3).map((st) => (
+                          <span key={st} className="fanus-mm-psyc-card__type">{st}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <Link
                     href={`/book/${p.slug}`}
@@ -336,10 +357,18 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
           width: 44px; height: 44px; border-radius: 50%;
           color: white; font-weight: 700; font-size: 14px;
           display: inline-flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
+          flex-shrink: 0; overflow: hidden;
+        }
+        .fanus-mm-psyc-card__img {
+          width: 100%; height: 100%; object-fit: cover; display: block;
         }
         .fanus-mm-psyc-card__name { font-size: 14px; font-weight: 600; color: var(--fanus-ink); }
         .fanus-mm-psyc-card__spec { font-size: 12px; color: var(--fanus-ink-3); }
+        .fanus-mm-psyc-card__types { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+        .fanus-mm-psyc-card__type {
+          font-size: 10.5px; font-weight: 600; color: var(--fanus-primary);
+          background: var(--fanus-primary-50); border-radius: 6px; padding: 2px 7px;
+        }
         .fanus-mm-foot {
           padding: 20px 36px 28px;
           display: flex; justify-content: flex-end; gap: 10px;

@@ -236,7 +236,7 @@ function PoolApptCard({
   const phone = normalizePhone(a.patientPhone);
 
   return (
-    <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={e => { if (e.key === "Enter") onOpen(); }}
+    <div role="button" tabIndex={0} data-pool-appt={a.id} onClick={onOpen} onKeyDown={e => { if (e.key === "Enter") onOpen(); }}
       style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", borderLeft: "3px solid #047857", padding: 18, display: "flex", flexDirection: "column", cursor: "pointer" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
         <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", letterSpacing: ".02em" }}>#FNS-{String(a.id).padStart(4, "0")}</span>
@@ -308,7 +308,7 @@ function PoolPayRow({ p, first, busy, onTake }: { p: PaymentItem; first: boolean
   const { t } = useT();
   const isPackage = p.patientPackageId != null;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "15px 18px", borderTop: `1px solid ${first ? "transparent" : "#F0F4FA"}`, borderLeft: "3px solid #B45309", flexWrap: "wrap" }}>
+    <div data-pool-pay={p.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "15px 18px", borderTop: `1px solid ${first ? "transparent" : "#F0F4FA"}`, borderLeft: "3px solid #B45309", flexWrap: "wrap" }}>
       <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--brand-700)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flex: "none" }}>{initialsOf(p.patientName)}</span>
       <div style={{ flex: 1, minWidth: 170 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>

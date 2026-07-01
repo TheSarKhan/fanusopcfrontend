@@ -205,7 +205,7 @@ function Row({ p, meId, isAdmin, busy, onTake, onRelease, onMarkPaid, onCancel, 
   const terminal = st === "REFUNDED" || st === "CANCELLED";
 
   return (
-    <div className="py-row" style={{ borderTop: "1px solid #F4F7FB", borderRadius: 10, padding: "15px 12px", display: "flex", alignItems: "flex-start", gap: 14, flexWrap: "wrap" }}>
+    <div className="py-row" data-pay-row={p.id} style={{ borderTop: "1px solid #F4F7FB", borderRadius: 10, padding: "15px 12px", display: "flex", alignItems: "flex-start", gap: 14, flexWrap: "wrap" }}>
       <span style={{ width: 42, height: 42, borderRadius: 12, background: av.bg, color: av.color, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none" }}>{initialsOf(p.patientName)}</span>
       <div style={{ flex: 1, minWidth: 200 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>

@@ -16,11 +16,23 @@ const EMPTY: Omit<Announcement, "id"> = {
   active: true,
 };
 
-const ICONS: Record<string, string> = {
-  STAR: "⭐",
-  GROUP: "👥",
-  VIDEO: "🎥",
-};
+/** Elan kartı ikonu — SVG (emoji istifadə edilmir). Naməlum tip → meqafon. */
+function AnnIcon({ type, size = 32 }: { type: string; size?: number }) {
+  const common = {
+    width: size, height: size, viewBox: "0 0 24 24", fill: "none",
+    stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
+  };
+  switch (type) {
+    case "STAR":
+      return <svg {...common}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>;
+    case "GROUP":
+      return <svg {...common}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
+    case "VIDEO":
+      return <svg {...common}><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>;
+    default:
+      return <svg {...common}><path d="M3 11l18-5v12L3 14v-3z" /><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" /></svg>;
+  }
+}
 
 function statusOf(a: Announcement): "active" | "scheduled" | "archived" {
   if (!a.active) return "archived";
@@ -86,7 +98,7 @@ export default function AnnouncementsPage() {
             return (
               <div key={a.id} className="card" style={{ overflow: "hidden" }}>
                 <div className="img-ph" style={{ height: 140, borderRadius: 0, borderLeft: 0, borderRight: 0, borderTop: 0, background: a.categoryBg, color: a.categoryColor }}>
-                  <span style={{ fontSize: 32 }}>{ICONS[a.iconType] ?? "📢"}</span>
+                  <AnnIcon type={a.iconType} size={36} />
                 </div>
                 <div className="card-pad">
                   <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
@@ -144,9 +156,9 @@ export default function AnnouncementsPage() {
                 <Field label="İkon">
                   <select className="select" value={modal.item.iconType}
                     onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, iconType: e.target.value } }))}>
-                    <option value="STAR">⭐ Star</option>
-                    <option value="GROUP">👥 Group</option>
-                    <option value="VIDEO">🎥 Video</option>
+                    <option value="STAR">Ulduz</option>
+                    <option value="GROUP">Qrup</option>
+                    <option value="VIDEO">Video</option>
                   </select>
                 </Field>
               </div>

@@ -36,7 +36,7 @@ export const OPERATOR_MODULES: Record<OperatorModuleKey, boolean> = {
   meetingLinks:  true,  // AÇIQ — Görüş linkləri (link göndərmə iş siyahısı)
   payments:      true,  // AÇIQ — Ödənişlər (təsdiq · ləğv · geri qaytarma tam/qismi)
   feedback:      true,   // AÇIQ — Seans rəyləri (psixoloq → pasient → rəylər)
-  referrals:     false,
+  referrals:     true,  // AÇIQ — Yönləndirmələr (psixoloqlar arası randevu/paket transferi, operator təsdiqi)
   analytics:     true,  // AÇIQ — Analitika (gəlir/refund + əməliyyat göstəriciləri)
   customers:     true,  // AÇIQ — Müştərilər (360° profil + paket satışı)
   psychologists: true,  // AÇIQ — Psixoloq statistikası (reytinq siyahısı + 360° detal)

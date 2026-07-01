@@ -37,10 +37,12 @@ export default function ForgotPasswordPage() {
       }}>
         <div className="text-center mb-8">
           <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4"
+            className="w-14 h-14 rounded-2xl flex items-center justify-center text-white mx-auto mb-4"
             style={{ background: "var(--brand)" }}
           >
-            🔑
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+            </svg>
           </div>
           <h1 className="text-2xl font-bold text-[#1A2535]">{t("auth.forgotTitle")}</h1>
           <p className="text-sm text-[#52718F] mt-1">

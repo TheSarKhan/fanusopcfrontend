@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Standalone operator yönləndirmə təsdiq səhifəsi. Modul kilidlidir
- * (modules.ts → referrals:false); əsas giriş Randevular səhifəsinin
- * "Yönləndirmələr" tabıdır. Bu fayl yalnız paneli tək mənbədən render edir.
+ * Standalone operator yönləndirmə təsdiq səhifəsi (modules.ts → referrals:true).
+ * Eyni görünüş Randevular səhifəsinin "Yönləndirmələr" tabında da mövcuddur;
+ * hər ikisi OperatorReferralsView-u tək mənbə kimi işlədir.
  */
 
 import OperatorReferralsView from "@/components/OperatorReferralsView";

@@ -635,7 +635,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
             <div key={i} style={{ background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <strong style={{ fontSize: 13, color: "var(--oxford)" }}>
-                  {c.type === "SEMINAR" ? "🎤 Seminar" : "🏅 Sertifikat"} #{i + 1}
+                  {c.type === "SEMINAR" ? "Seminar" : "Sertifikat"} #{i + 1}
                 </strong>
                 <button type="button" onClick={() => removeCertificate(i)} style={{ fontSize: 12, color: "#991B1B", background: "transparent", border: "none", cursor: "pointer" }}>Sil</button>
               </div>

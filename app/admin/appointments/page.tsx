@@ -10,6 +10,7 @@ import {
   type AuditLogEntry,
   type AvailableSlot,
   type BookingSeries,
+  type ClaimState,
   type ConflictInfo,
   type Psychologist,
   type PsychologistSuggestion,
@@ -119,6 +120,7 @@ export default function AdminAppointmentsPage() {
   const [assignFor, setAssignFor] = useState<AdminAppt | null>(null);
   const [cancelFor, setCancelFor] = useState<AdminAppt | null>(null);
   const [resolveFor, setResolveFor] = useState<AdminAppt | null>(null);
+  const [reassignFor, setReassignFor] = useState<AdminAppt | null>(null);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
 
@@ -403,6 +405,7 @@ export default function AdminAppointmentsPage() {
           onAssign={() => { setAssignFor(detailFor); }}
           onCancel={() => { setCancelFor(detailFor); }}
           onResolve={() => { setResolveFor(detailFor); }}
+          onReassign={() => { setReassignFor(detailFor); }}
           onApproveCancelReq={() => approveCancelReq(detailFor)}
           onRejectCancelReq={() => rejectCancelReq(detailFor)}
         />
@@ -433,6 +436,22 @@ export default function AdminAppointmentsPage() {
         />
       )}
 
+      {reassignFor && (
+        <AdminReassignModal
+          appointment={reassignFor}
+          onClose={() => setReassignFor(null)}
+          onDone={(c) => {
+            patch({
+              ...reassignFor,
+              claimedByUserId: c.claimedByUserId,
+              claimedByName: c.claimedByName,
+              claimedAt: c.claimedAt,
+            });
+            setReassignFor(null);
+          }}
+        />
+      )}
+
       {bulkCancelOpen && (
         <BulkCancelModal
           ids={Array.from(selected)}
@@ -447,7 +466,7 @@ export default function AdminAppointmentsPage() {
 /* ─── Detal drawer: tam məlumat + əməliyyatlar + status tarixçəsi ─────────── */
 
 function DetailDrawer({
-  appt, onClose, onPatched, onAssign, onCancel, onResolve, onApproveCancelReq, onRejectCancelReq,
+  appt, onClose, onPatched, onAssign, onCancel, onResolve, onReassign, onApproveCancelReq, onRejectCancelReq,
 }: {
   appt: AdminAppt;
   onClose: () => void;
@@ -455,6 +474,7 @@ function DetailDrawer({
   onAssign: () => void;
   onCancel: () => void;
   onResolve: () => void;
+  onReassign: () => void;
   onApproveCancelReq: () => void;
   onRejectCancelReq: () => void;
 }) {
@@ -497,6 +517,8 @@ function DetailDrawer({
   const canCancel = !["COMPLETED", "CANCELLED", "CANCEL_REQUESTED"].includes(s);
   const canResolve = s === "DISPUTED";
   const isCancelReq = s === "CANCEL_REQUESTED";
+  // Sahiblik dəyişməsi terminal statuslarda mənasızdır (bilet artıq işlənməyəcək).
+  const canReassign = !["COMPLETED", "CANCELLED"].includes(s);
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(10,22,51,0.45)", zIndex: 80, display: "flex", justifyContent: "flex-end" }}>
@@ -524,6 +546,7 @@ function DetailDrawer({
               </>
             )}
             {canAssign && <button className="btn primary" onClick={onAssign}>{s === "ASSIGNED" ? "Yenidən təyin et" : "Təyin et"}</button>}
+            {canReassign && <button className="btn" onClick={onReassign}>Operatoru dəyiş</button>}
             {canCancel && !canResolve && <button className="btn danger" onClick={onCancel}>Ləğv et (səbəblə)</button>}
             {phone && <a className="btn" href={`tel:${phone}`}>Zəng et</a>}
             {phone && <a className="btn" href={whatsappLink(phone)} target="_blank" rel="noopener noreferrer">WhatsApp</a>}
@@ -535,6 +558,7 @@ function DetailDrawer({
             <Info label="Email" value={appt.patientEmail ?? "—"} />
             <Info label="Psixoloq" value={appt.psychologistName ?? (appt.requestedPsychologistName ? `(istənilən) ${appt.requestedPsychologistName}` : "—")} />
             <Info label="Təyin edən operator" value={appt.assignedByOperatorName ?? "—"} />
+            <Info label="Müraciət sahibi (operator)" value={appt.claimedByName ?? "Sahibsiz"} />
             <Info label="Seans vaxtı" value={appt.startAt ? `${fmtDT(appt.startAt)} – ${appt.endAt ? azFormatTime(appt.endAt) : ""}` : "—"} />
             <Info label="İstənilən vaxt" value={fmtDT(appt.requestedStartAt)} />
             <Info label="Yaradılıb" value={fmtDT(appt.createdAt)} />
@@ -1213,6 +1237,68 @@ function ResolveDisputeModal({
             <button className="btn" onClick={onClose}>Bağla</button>
             <button className={`btn ${decision === "COMPLETE" ? "primary" : "danger"}`} onClick={submit} disabled={saving}>
               {saving ? "Göndərilir…" : decision === "COMPLETE" ? "Tamamlanmış say" : "Ləğv et"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Admin: müraciət sahibliyini başqa operatora keçir (reassign) ─────────── */
+
+function AdminReassignModal({
+  appointment, onClose, onDone,
+}: {
+  appointment: AdminAppt;
+  onClose: () => void;
+  onDone: (c: ClaimState) => void;
+}) {
+  const [operators, setOperators] = useState<{ id: number; name: string }[]>([]);
+  const [opId, setOpId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    operatorApi.listOperators().then(setOperators).catch(() => {});
+  }, []);
+
+  const submit = async () => {
+    if (!opId) { setErr("Operator seçin"); return; }
+    setSaving(true); setErr(null);
+    try { onDone(await operatorApi.reassignAppointment(appointment.id, opId)); }
+    catch (e) { setErr((e as Error).message); setSaving(false); }
+  };
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,28,46,0.5)", zIndex: 90, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: "min(440px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
+        <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--line)" }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)", margin: 0 }}>Operatoru dəyiş</h2>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+            #FNS-{String(appointment.id).padStart(4, "0")} · {appointment.patientName ?? "—"}
+            {appointment.claimedByName
+              ? <> · hazırkı sahib: <strong>{appointment.claimedByName}</strong></>
+              : <> · hazırda sahibsizdir</>}
+          </p>
+        </div>
+        <div style={{ padding: 20 }}>
+          <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>Yeni sahib</label>
+          <select value={opId ?? ""} onChange={(e) => setOpId(Number(e.target.value) || null)}
+            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid var(--line)", fontSize: 13, marginBottom: 12 }}>
+            <option value="">— Operator seçin —</option>
+            {operators.filter((o) => o.id !== appointment.claimedByUserId).map((o) => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 12px" }}>
+            Keçid qeyd-şərtsizdir: əvvəlki sahibə bildiriş gedir, əməliyyat audit-loqa yazılır.
+          </p>
+          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button className="btn" onClick={onClose}>Bağla</button>
+            <button className="btn primary" onClick={submit} disabled={saving}>
+              {saving ? "Göndərilir…" : "Sahibliyi keçir"}
             </button>
           </div>
         </div>

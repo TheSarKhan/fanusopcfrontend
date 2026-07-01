@@ -1323,6 +1323,11 @@ function CancelRequestNoteModal({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  const hoursLeft = appointment.startAt
+    ? (new Date(appointment.startAt).getTime() - Date.now()) / (1000 * 60 * 60)
+    : null;
+  const isLate = hoursLeft !== null && hoursLeft >= 0 && hoursLeft < 24;
+
   const submit = async () => {
     setSaving(true); setErr(null);
     try {
@@ -1343,6 +1348,16 @@ function CancelRequestNoteModal({
           </p>
         </div>
         <div style={{ padding: 22 }}>
+          {isLate ? (
+            <div style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#991B1B", lineHeight: 1.5 }}>
+              Seansa <strong>{Math.max(0, Math.floor(hoursLeft!))} saat</strong> qalıb (24 saatdan az).
+              Bu halda <strong>ödəniş geri qaytarılmır</strong> və gec-ləğv sayğacınıza əlavə olunur.
+            </div>
+          ) : (
+            <div style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#166534", lineHeight: 1.5 }}>
+              Seansa 24 saatdan çox qaldığına görə ləğv etsəniz <strong>ödəniş paketinizə geri qaytarılacaq</strong>.
+            </div>
+          )}
           <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
             placeholder="Səbəb (məcburi deyil)"
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />

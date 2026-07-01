@@ -22,39 +22,26 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
     let cancelled = false;
     setLoading(true);
     setErr(null);
-    // Try to take the test. If it is already completed / a result exists,
-    // fall back to showing the stored result instead of the form.
-    patientApi.takeTest(assignmentId)
-      .then(t => {
-        if (cancelled) return;
-        setTest(t);
-      })
-      .catch(async () => {
-        // takeTest may reject when the assignment is already completed —
-        // attempt to surface the result before giving up.
-        try {
-          const r = await patientApi.patientTestResult(assignmentId);
-          if (!cancelled) setResult(r);
-        } catch (e) {
-          if (!cancelled) setErr((e as Error).message);
-        }
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
+    // A completed assignment must always surface the stored result (with the
+    // patient's per-question answers) — never a blank re-take form. So we look
+    // for a result FIRST; only when none exists do we load the take form.
+    (async () => {
+      try {
+        const r = await patientApi.patientTestResult(assignmentId);
+        if (!cancelled) setResult(r);
+        return;
+      } catch {
+        // No stored result yet — the test hasn't been taken, so load the form.
+      }
+      try {
+        const t = await patientApi.takeTest(assignmentId);
+        if (!cancelled) setTest(t);
+      } catch (e) {
+        if (!cancelled) setErr((e as Error).message);
+      }
+    })().finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [assignmentId]);
-
-  // If the test loaded but it is really already done, pull the result so the
-  // patient sees their score rather than a re-take form.
-  useEffect(() => {
-    if (!test || result) return;
-    // We have a takeable test with questions — nothing to do.
-    if (test.questions.length > 0) return;
-    let cancelled = false;
-    patientApi.patientTestResult(assignmentId)
-      .then(r => { if (!cancelled) setResult(r); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [test, result, assignmentId]);
 
   const allAnswered = useMemo(
     () => !!test && test.questions.every(q => answers[q.id] != null),
@@ -239,8 +226,11 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
 
 // Question text is sometimes authored with its own leading "N." prefix,
 // which would otherwise duplicate the {index + 1} badge we render next to it.
+// Strips any leading numbering the author baked into the question text so we
+// don't double it against our own index. Handles single ("6."), compound
+// ("6.6.", "1.2.3.") and spaced ("6. 6.") forms alike.
 function stripLeadingNumber(text: string): string {
-  return text.replace(/^\s*\d+[.)]\s*/, "");
+  return text.replace(/^\s*(\d+[.)]\s*)+/, "");
 }
 
 function fmtDate(iso: string | null | undefined): string {

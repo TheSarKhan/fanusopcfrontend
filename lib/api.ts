@@ -514,6 +514,8 @@ export interface AppointmentDetail {
   // Ödəniş statusu (yalnız tək seans ödənişi; paket seanslarında null)
   // null = ödəniş qeydi yoxdur; "PENDING" = operator hələ təsdiqləməyib; "PAID" = təsdiqlənib
   paymentStatus?: string | null;
+  // Ödəniş məbləği (tək seans). 0 = qəbul olunub, lakin operator hələ məbləği təyin etməyib.
+  paymentAmount?: number | null;
 }
 
 // Modul B: operator panelində link tarixçəsinin bir sətri

@@ -336,8 +336,11 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const canResolve = a.status === "DISPUTED";
   // Tək (paketsiz) seans təyin/yaradılanda qiymət yoxdusa ödəniş yaranmır — belə
   // hallarda "Ödənişlər"də görünmür. Operator burdan əl ilə əlavə edə bilsin.
+  // Ödəniş bloku: ya heç ödəniş qeydi yoxdursa, ya da qəbul zamanı yaranmış
+  // gözləyən ödənişin məbləği hələ 0-dırsa (qiymətsiz psixoloq) — operator təyin etsin.
+  const paymentAmountUnset = a.paymentStatus === "PENDING" && (a.paymentAmount == null || a.paymentAmount <= 0);
   const needsPayment = !["PENDING", "NEW", "IN_REVIEW", "REJECTED", "CANCELLED"].includes(a.status)
-    && !a.patientPackageId && a.patientId != null && !a.paymentStatus;
+    && !a.patientPackageId && a.patientId != null && (!a.paymentStatus || paymentAmountUnset);
   // Option B: sessions auto-complete; operator retroactively marks a no-show.
   const canMarkNoShow = a.status === "COMPLETED" || a.status === "AWAITING_CONFIRMATION";
   const phone = normalizePhone(a.patientPhone);
@@ -1484,6 +1487,8 @@ function PaymentMissingBlock({ appointment, onCreated }: {
   const [amount, setAmount] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Qəbul zamanı 0 məbləğli gözləyən ödəniş yaranıb (qiymətsiz psixoloq) — məbləği təyin edirik.
+  const amountUnset = appointment.paymentStatus === "PENDING";
 
   const submit = async () => {
     const amt = Number(amount);
@@ -1501,7 +1506,9 @@ function PaymentMissingBlock({ appointment, onCreated }: {
       <div className="op-det-card__title">Ödəniş</div>
       <div style={{ display: "flex", gap: 10, alignItems: "center", background: "#FEF3C7", border: "1px solid #FCE7A8", borderRadius: 11, padding: "12px 14px", marginBottom: 12 }}>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
-        <span style={{ fontSize: 13.5, fontWeight: 700, color: "#92400E" }}>Bu seans üçün ödəniş qeydi yoxdur — "Ödənişlər"də görünmür</span>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: "#92400E" }}>{amountUnset
+          ? "Bu seansın ödəniş məbləği hələ təyin olunmayıb — məbləği daxil edin"
+          : "Bu seans üçün ödəniş qeydi yoxdur — \"Ödənişlər\"də görünmür"}</span>
       </div>
       <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
         <input type="number" min={0} step="0.01" value={amount} onChange={e => setAmount(e.target.value)}
@@ -1509,7 +1516,7 @@ function PaymentMissingBlock({ appointment, onCreated }: {
           style={{ flex: 1, border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 12px", fontSize: 13.5, fontWeight: 500, fontFamily: "inherit", boxSizing: "border-box" }} />
         <button onClick={submit} disabled={saving || !amount.trim()}
           style={{ background: (saving || !amount.trim()) ? "#A9BEE2" : "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: (saving || !amount.trim()) ? "not-allowed" : "pointer", flex: "none" }}>
-          {saving ? "Saxlanılır…" : "Ödəniş əlavə et"}
+          {saving ? "Saxlanılır…" : amountUnset ? "Məbləği təyin et" : "Ödəniş əlavə et"}
         </button>
       </div>
       {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>{err}</div>}

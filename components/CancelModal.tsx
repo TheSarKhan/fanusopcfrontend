@@ -93,9 +93,9 @@ export default function CancelModal({ appointment, role, mode = "cancel", onClos
           )}
           {isLate && !isPast && (
             <div className="cm-warn">
-              ⚠ <strong>Geç ləğv:</strong> seansa {Math.max(0, Math.floor(hours!))} saat qalıb.
-              {role === "PATIENT" && " Bu, geç-ləğv sayğacınıza əlavə olunacaq."}
-              {role === "PSYCHOLOGIST" && " Bu, sizin geç-ləğv sayğacınıza əlavə olunacaq."}
+              ⚠ <strong>Gec ləğv:</strong> seansa {Math.max(0, Math.floor(hours!))} saat qalıb (24 saatdan az).
+              {role === "PATIENT" && <> Bu halda <strong>ödəniş geri qaytarılmır</strong> və gec-ləğv sayğacınıza əlavə olunur.</>}
+              {role === "PSYCHOLOGIST" && " Bu, sizin gec-ləğv sayğacınıza əlavə olunacaq."}
             </div>
           )}
 

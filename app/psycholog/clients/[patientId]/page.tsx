@@ -87,16 +87,6 @@ const TAG_TINTS: Record<string, { bg: string; color: string; border: string }> =
   teal:    { bg: "#CCFBF1", color: "#115E59", border: "#99F6E4" },
 };
 
-function TabBtn({ active, label, count, onClick }: { active: boolean; label: string; count: number; onClick: () => void }) {
-  return (
-    <button type="button" role="tab" aria-selected={active} onClick={onClick} className="m360-tab"
-      style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "none", border: "none", padding: "11px 6px", marginBottom: -1, fontSize: 14.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", color: active ? "#082F6D" : "var(--oxford-60)", borderBottom: `2px solid ${active ? "var(--brand)" : "transparent"}`, whiteSpace: "nowrap" }}>
-      {label}
-      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 20, height: 20, padding: "0 6px", background: active ? "#E4ECFA" : "#F2F6FD", color: "#082F6D", fontSize: 11, fontWeight: 700, borderRadius: 999 }}>{count}</span>
-    </button>
-  );
-}
-
 const STATUS: Record<string, { label: string; color: string; bg: string; accent: string }> = {
   PENDING:               { label: "Yeni",          color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
   ASSIGNED:              { label: "Təyin edilib",  color: "var(--brand-700)", bg: "var(--brand-50)", accent: "var(--brand)" },
@@ -161,7 +151,7 @@ const REASON_LABELS: Record<string, string> = {
   OPERATOR_OTHER: "Digər",
 };
 
-type Tab = "history" | "notes" | "goals";
+type Tab = "overview" | "history" | "packages" | "notes" | "goals";
 
 
 const GOAL_STATUS_META: Record<PatientGoalStatus, { label: string; bg: string; fg: string; border: string }> = {
@@ -183,7 +173,7 @@ export default function PatientDetailPage() {
   const [crisis, setCrisis] = useState<CrisisCheckIn[]>([]);
   const [loading, setLoading] = useState(true);
   const [now] = useState(() => Date.now());
-  const [tab, setTab] = useState<Tab>("history");
+  const [tab, setTab] = useState<Tab>("overview");
   const [goalModalGoal, setGoalModalGoal] = useState<PatientGoal | null>(null);
   const [goalModalOpen, setGoalModalOpen] = useState(false);
 
@@ -320,6 +310,27 @@ export default function PatientDetailPage() {
     });
   }, [appointments]);
 
+  // "Seanslar" tabı — yalnız tək (paketsiz) seanslar; paketlilər öz tabındadır.
+  const singleAppts = useMemo(
+    () => sortedHistory.filter(a => a.patientPackageId == null),
+    [sortedHistory],
+  );
+
+  // "Paketlər" tabı — patientPackageId üzrə qruplar (ən son aktivliyi olan üstdə).
+  const packageGroups = useMemo(() => {
+    const map = new Map<number, AppointmentDetail[]>();
+    for (const a of appointments) {
+      if (a.patientPackageId != null) {
+        const arr = map.get(a.patientPackageId) ?? [];
+        arr.push(a);
+        map.set(a.patientPackageId, arr);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([id, appts]) => ({ id, appts: [...appts].sort((x, y) => apptTs(x) - apptTs(y)) }))
+      .sort((x, y) => Math.max(...y.appts.map(apptTs)) - Math.max(...x.appts.map(apptTs)));
+  }, [appointments]);
+
   const upcoming = useMemo(() => {
     return appointments
       .filter(a => a.startAt && new Date(a.startAt).getTime() > now)
@@ -412,7 +423,6 @@ export default function PatientDetailPage() {
 @keyframes m360Fade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes m360Sheet{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 .m360-link:hover{text-decoration:underline}
-.m360-tab:hover{color:#082F6D !important}
 .m360-ghost:hover{border-color:var(--brand) !important;color:var(--brand) !important}
 .m360-soft:hover{background:#FEE2E2 !important}
 .m360-primary:hover{background:var(--brand-700) !important}
@@ -461,10 +471,9 @@ export default function PatientDetailPage() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M12 5v14M5 12h14" /></svg>Qeyd əlavə et
               </button>
             </div>
-          </div>
 
-          {/* ── Tags ─────────────────────────────────────────────────────────── */}
-          <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "16px 18px", marginBottom: 14, position: "relative" }}>
+            {/* ── Etiketlər — hero kartının içində (ayrıca kart yığını azaldılıb) ── */}
+            <div style={{ borderTop: "1px solid #F0F4FA", marginTop: 16, paddingTop: 14, position: "relative" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)" }}>Etiketlər:</span>
               {tags.length === 0 && !tagPickerOpen && (
@@ -489,7 +498,7 @@ export default function PatientDetailPage() {
             </div>
 
             {tagPickerOpen && (
-              <div style={{ position: "absolute", left: 18, top: 58, zIndex: 20, width: 330, maxWidth: "calc(100% - 36px)", background: "#fff", border: "1px solid #E1E9F5", borderRadius: 13, boxShadow: "0 12px 40px rgba(8,47,109,.18)", padding: 15, animation: "m360Fade .18s ease" }}>
+              <div style={{ position: "absolute", left: 0, top: 46, zIndex: 20, width: 330, maxWidth: "100%", background: "#fff", border: "1px solid #E1E9F5", borderRadius: 13, boxShadow: "0 12px 40px rgba(8,47,109,.18)", padding: 15, animation: "m360Fade .18s ease" }}>
                 <input value={tagDraft} onChange={e => setTagDraft(e.target.value)}
                   onKeyDown={e => {
                     if (e.key === "Enter") { e.preventDefault(); addTag(tagDraft); }
@@ -525,9 +534,36 @@ export default function PatientDetailPage() {
                 </div>
               </div>
             )}
+            </div>
           </div>
 
-          {/* ── Context cards: next + last session side by side ───────────── */}
+          {/* ── Tabs (pill) — İcmal | Seanslar | Klinik qeydlər | Hədəflər ── */}
+          <div role="tablist" style={{ display: "inline-flex", maxWidth: "100%", overflowX: "auto", gap: 4, background: "#fff", border: "1px solid #EDF1F8", borderRadius: 12, padding: 5, boxShadow: "0 2px 12px rgba(0,0,0,.04)", marginBottom: 18 }}>
+            {(
+              [
+                ["overview", "İcmal", null],
+                ["history", "Seanslar", singleAppts.length],
+                ["packages", "Paketlər", packageGroups.length],
+                ["notes", "Klinik qeydlər", notes.length],
+                ...(FEATURE_GOALS ? ([["goals", "Hədəflər", goals.length]] as [Tab, string, number | null][]) : []),
+              ] as [Tab, string, number | null][]
+            ).map(([key, label, count]) => {
+              const active = tab === key;
+              return (
+                <button key={key} type="button" role="tab" aria-selected={active} onClick={() => setTab(key)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 7, background: active ? "var(--brand)" : "transparent", color: active ? "#fff" : "var(--oxford)", border: "none", borderRadius: 9, padding: "9px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap", flex: "none" }}>
+                  {label}
+                  {count != null && count > 0 && (
+                    <span style={{ background: active ? "rgba(255,255,255,.22)" : "var(--brand-50)", color: active ? "#fff" : "var(--brand-700)", fontSize: 11.5, fontWeight: 700, minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{count}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── İcmal tabı — kontekst kartları, böhran, əhval trendi, ilk müraciət ── */}
+          {tab === "overview" && (
+            <div style={{ animation: "m360Fade .2s ease" }}>
           {(upcoming?.startAt || lastCompleted) && (
             <div className="m360-2col" style={{ marginBottom: 14 }}>
               {upcoming && upcoming.startAt && (
@@ -578,15 +614,33 @@ export default function PatientDetailPage() {
             </div>
           )}
 
-          {/* ── Tabs ──────────────────────────────────────────────────────── */}
-          <div style={{ display: "flex", gap: 8, borderBottom: "1px solid #E1E9F5", marginBottom: 18, overflowX: "auto" }} role="tablist">
-            <TabBtn active={tab === "history"} label="Tarixçə" count={appointments.length} onClick={() => setTab("history")} />
-            <TabBtn active={tab === "notes"} label="Klinik qeydlər" count={notes.length} onClick={() => setTab("notes")} />
-            {FEATURE_GOALS && <TabBtn active={tab === "goals"} label="Hədəflər" count={goals.length} onClick={() => setTab("goals")} />}
-          </div>
+          {/* Heç bir icmal məlumatı yoxdursa boş vəziyyət */}
+          {!upcoming?.startAt && !lastCompleted && crisis.length === 0 && moodPoints.length < 2 && !firstNote?.note && (
+            <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "32px 24px", textAlign: "center" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Hələ icmal üçün məlumat azdır</div>
+              <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>Seanslar keçirildikcə növbəti seans, əhval tendensiyası və son qeyd burada görünəcək.</p>
+            </div>
+          )}
+            </div>
+          )}
 
           {tab === "history" && (
-            <HistorySection items={sortedHistory} />
+            <SessionsSection items={singleAppts} />
+          )}
+
+          {tab === "packages" && (
+            <div style={{ animation: "m360Fade .2s ease" }}>
+              {packageGroups.length === 0 ? (
+                <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "32px 24px", textAlign: "center" }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Bu müştərinin paketi yoxdur</div>
+                  <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>Paket alındıqda proqram və seansları burada görünəcək.</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {packageGroups.map(p => <PackageProgramCard key={p.id} appts={p.appts} />)}
+                </div>
+              )}
+            </div>
           )}
 
           {FEATURE_GOALS && tab === "goals" && (
@@ -928,66 +982,46 @@ function GoalModal({
   );
 }
 
-/* ─── Summary stat ───────────────────────────────────────────────────────── */
-
-/* ─── History section ────────────────────────────────────────────────────── */
+/* ─── Seanslar tabı — tək seanslar kart görünüşündə ──────────────────────── */
 
 const apptTs = (a: AppointmentDetail) => new Date(a.startAt ?? a.endAt ?? a.createdAt).getTime();
 
-function HistorySection({ items }: { items: AppointmentDetail[] }) {
-  // Paket seanslarını patientPackageId-ə görə qruplaşdır, tək seansları ayır.
-  const { packages, singles } = useMemo(() => {
-    const map = new Map<number, AppointmentDetail[]>();
-    const solo: AppointmentDetail[] = [];
-    for (const a of items) {
-      if (a.patientPackageId != null) {
-        const arr = map.get(a.patientPackageId) ?? [];
-        arr.push(a);
-        map.set(a.patientPackageId, arr);
-      } else {
-        solo.push(a);
-      }
-    }
-    const packages = Array.from(map.entries())
-      .map(([id, appts]) => ({ id, appts: [...appts].sort((x, y) => apptTs(x) - apptTs(y)) }))
-      .sort((x, y) => Math.max(...y.appts.map(apptTs)) - Math.max(...x.appts.map(apptTs)));
-    return { packages, singles: solo };
-  }, [items]);
-
+function SessionsSection({ items }: { items: AppointmentDetail[] }) {
   if (items.length === 0) {
     return (
       <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "32px 24px", textAlign: "center", animation: "m360Fade .2s ease" }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Hələ randevu yoxdur</div>
-        <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>İlk randevu təyin olunduğunda burada görünəcək.</p>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Tək seans yoxdur</div>
+        <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>Bu müştəri ilə paketdən kənar seans təyin olunduqda burada görünəcək.</p>
       </div>
     );
   }
-
   return (
-    <div style={{ animation: "m360Fade .2s ease" }}>
-      {packages.length > 0 && (
-        <div style={{ marginBottom: singles.length > 0 ? 26 : 0 }}>
-          <HistLabel text="Paketlər" count={packages.length} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {packages.map(p => <PackageProgramCard key={p.id} appts={p.appts} />)}
-          </div>
-        </div>
-      )}
-      {singles.length > 0 && (
-        <div>
-          <HistLabel text="Tək seanslar" count={singles.length} />
-          <SinglesTimeline items={singles} />
-        </div>
-      )}
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12, alignItems: "start", animation: "m360Fade .2s ease" }}>
+      {items.map(a => <SessionCard360 key={a.id} a={a} />)}
     </div>
   );
 }
 
-function HistLabel({ text, count }: { text: string; count: number }) {
+/* Seans kartı — randevu səhifələrindəki kart dili ilə (yalnız oxu). */
+function SessionCard360({ a }: { a: AppointmentDetail }) {
+  const st = STATUS[a.status] ?? STATUS.ASSIGNED;
+  const when = a.startAt ?? a.requestedStartAt ?? a.createdAt;
+  const d = new Date(when);
+  const hasBadges = (!!a.cancelReasonCode && a.cancelReasonCode.includes("NO_SHOW"))
+    || !!a.lateCancel
+    || (a.status === "COMPLETED" && (!!a.autoConfirmedAt || (!!a.patientConfirmedAt && !!a.psychologistConfirmedAt)));
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 13 }}>
-      <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)" }}>{text}</span>
-      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 20, height: 20, padding: "0 6px", background: "#F2F6FD", color: "#082F6D", fontSize: 11, fontWeight: 700, borderRadius: 999 }}>{count}</span>
+    <div className="psy-card" style={{ borderLeft: `3px solid ${st.accent}`, display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+        <span className="psy-card__time">{fmtShort(when)} · {fmtTime(d)}</span>
+        <span className="psy-card__badge" style={{ background: st.bg, color: st.color }}>{st.label}</span>
+      </div>
+      {hasBadges && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+          <SessionBadges a={a} />
+        </div>
+      )}
+      <SessionDetail a={a} />
     </div>
   );
 }
@@ -1143,40 +1177,6 @@ function PackageRemainingRow({ index, last }: { index: number; last: boolean }) 
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <span style={miniPill("#F2F6FD", "#082F6D")}>Qalıb</span>
-      </div>
-    </div>
-  );
-}
-
-/** Tək (paketsiz) seanslar — vahid kart içində şaquli timeline. */
-function SinglesTimeline({ items }: { items: AppointmentDetail[] }) {
-  return (
-    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 20 }}>
-      <div style={{ position: "relative" }}>
-        {items.map((a, i) => <TimelineNode key={a.id} a={a} last={i === items.length - 1} />)}
-      </div>
-    </div>
-  );
-}
-
-function TimelineNode({ a, last }: { a: AppointmentDetail; last: boolean }) {
-  const st = STATUS[a.status] ?? STATUS.ASSIGNED;
-  const when = a.startAt ?? a.requestedStartAt ?? a.createdAt;
-  const d = new Date(when);
-  return (
-    <div style={{ display: "flex", gap: 15, paddingBottom: last ? 0 : 18, position: "relative" }}>
-      {!last && <div style={{ position: "absolute", left: 6, top: 16, bottom: -2, width: 2, background: "#EDF1F8" }} />}
-      <span style={{ width: 14, height: 14, borderRadius: "50%", background: "#fff", border: `3px solid ${st.accent}`, flex: "none", zIndex: 1, marginTop: 2 }} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 0 }}>
-          <div style={{ minWidth: 80 }}>
-            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--oxford)" }}>{pad2(d.getDate())} {MONTHS_AZ[d.getMonth()]}</span>{" "}
-            <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 700 }}>· {fmtTime(d)}</span>
-          </div>
-          <span style={{ ...miniPill(st.bg, st.color), fontSize: 11 }}>{st.label}</span>
-          <SessionBadges a={a} />
-        </div>
-        <SessionDetail a={a} />
       </div>
     </div>
   );

@@ -7,10 +7,10 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 
 const DAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"]; // Mon..Sun
 
-// Google Calendar overlay is wired up but hidden for now — flip to true to re-enable.
-const SHOW_GOOGLE_INTEGRATION = false;
+// Google Calendar inteqrasiyası — header-dəki "Sinxronlaşdır" düyməsi + status banner.
+const SHOW_GOOGLE_INTEGRATION = true;
 
-const HOUR_PX = 56;                  // 1 minute ≈ 0.93px — comfortable for 50-min sessions
+const HOUR_PX = 72;                  // 1 dəqiqə = 1.2px — 11:20–12:25 kimi seanslar dəqiq proporsiyada görünür
 const PX_PER_MIN = HOUR_PX / 60;
 const DROP_SNAP_MIN = 15;            // drop targets snap to a 15-minute grid
 const DEFAULT_HOUR_MIN = 7;
@@ -420,6 +420,27 @@ export default function PsychologCalendarPage() {
             <button onClick={() => setWeekStart(addDays(weekStart, 7))} style={navBtnStyle(true)} title="Növbəti həftə" aria-label="Növbəti həftə"><ChevronRight /></button>
           </div>
           <button onClick={() => setRefreshNonce(x => x + 1)} style={navBtnStyle(false)} title="Yenilə" aria-label="Yenilə"><RefreshIcon /></button>
+          {SHOW_GOOGLE_INTEGRATION && (
+            <button
+              onClick={gStatus?.connected ? handleGoogleResync : handleGoogleConnect}
+              disabled={gConnecting || gLoading || (gStatus != null && !gStatus.configured)}
+              title={gStatus != null && !gStatus.configured
+                ? "İnteqrasiya hələ konfiqurasiya olunmayıb"
+                : gStatus?.connected ? "Google Calendar hadisələrini yenilə" : "Google Calendar hesabınızı qoşun"}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                background: "#fff", color: "var(--oxford)",
+                border: "1px solid var(--oxford-10)", borderRadius: 10,
+                padding: "0 14px", height: 36, fontSize: 13, fontWeight: 600, fontFamily: "inherit",
+                cursor: gConnecting || gLoading ? "wait" : (gStatus != null && !gStatus.configured) ? "not-allowed" : "pointer",
+                opacity: gStatus != null && !gStatus.configured ? 0.6 : 1,
+              }}>
+              <GoogleIcon size={15} />
+              {gStatus?.connected
+                ? (gLoading ? "Sinxronlaşdırılır…" : "Sinxronlaşdır")
+                : (gConnecting ? "Yönləndirilir…" : "Google Calendar ilə sinxronlaşdır")}
+            </button>
+          )}
         </div>
       </div>
 
@@ -528,11 +549,23 @@ export default function PsychologCalendarPage() {
                           position: "absolute",
                           left: 0, right: 0,
                           top: (h - hourMin) * HOUR_PX + HOUR_PX / 2,
-                          borderTop: "1px dashed #F8FAFC",
+                          borderTop: "1px dashed #E8EEF7",
                           height: 0,
                           pointerEvents: "none",
                         }} />
                       ))}
+                      {/* 15 dəqiqəlik incə bölgülər — seansın saat kvadratının hansı
+                          hissəsini tutduğu dəqiq oxunsun deyə */}
+                      {hours.flatMap(h => [15, 45].map(m => (
+                        <div key={`q-${h}-${m}`} style={{
+                          position: "absolute",
+                          left: 0, right: 0,
+                          top: (h - hourMin) * HOUR_PX + (m / 60) * HOUR_PX,
+                          borderTop: "1px dotted #F2F6FB",
+                          height: 0,
+                          pointerEvents: "none",
+                        }} />
+                      )))}
 
                       {/* Cari vaxt xətti — yalnız bugünkü sütunda */}
                       {isToday && (() => {
@@ -668,7 +701,7 @@ export default function PsychologCalendarPage() {
                                   whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                                   fontWeight: 600,
                                 }}>
-                                  <span>{fmtHM(ev.start)} {a.patientName ?? "—"}</span>
+                                  <span>{fmtHM(ev.start)}–{fmtHM(ev.end)} {a.patientName ?? "—"}</span>
                                   {draggable && <span style={{ opacity: 0.55, display: "inline-flex", alignItems: "center" }}><GripIcon /></span>}
                                 </div>
                               ) : (

@@ -2,33 +2,31 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import DatePicker from "@/components/DatePicker";
+import { useSearchParams } from "next/navigation";
 import {
   patientApi,
-  getPsychologistAvailability,
-  reasonLabel,
+  getPsychologists,
   type AppointmentDetail,
-  type AvailableSlot,
-  type MyReview,
   type PatientPackageItem,
   type RescheduleProposal,
-  type SessionFeedback,
 } from "@/lib/api";
+import { googleCalendarUrl } from "@/lib/calendar";
+import { appUrl } from "@/lib/appUrl";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
-import { azFormatTime, azFormatDate, azLocalToISO, hoursSince, azOrdinal } from "@/lib/datetime";
+import { azFormatTime, azFormatDate, azOrdinal } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
-import ReviewModal from "./ReviewModal";
 import RescheduleProposalModal from "@/components/RescheduleProposalModal";
 import AddToCalendarMenu from "@/components/AddToCalendarMenu";
 import JoinSessionButton from "@/components/JoinSessionButton";
-import SessionFeedbackModal from "@/components/SessionFeedbackModal";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import {
+  STATUS, PKG_STATUS, PA_STYLE,
+  PackageBadge, IconClock, IconX, Section, Empty,
+  initialsOf, pad2,
+} from "./shared";
 
-const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"];
 const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
 
-function pad2(n: number) { return String(n).padStart(2, "0"); }
-function isoDateOnly(d: Date) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
 function fmtTime(d: Date) { return azFormatTime(d); }
 // AZ-zone year/month/day key for a Date — uses Intl with Asia/Baku.
 function azDayKey(d: Date): string {
@@ -72,35 +70,10 @@ function timeUntil(target: Date, now: Date): CountdownInfo {
   return { expired: false, urgent: false, text: `${days} gün qaldı` };
 }
 
-function initialsOf(name?: string | null) {
-  if (!name) return "?";
-  return name.split(" ").filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
-}
-
-const STATUS: Record<string, { label: string; color: string; bg: string; accent: string }> = {
-  PENDING:                { label: "Gözlənilir",       color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
-  ASSIGNED:               { label: "Təyin edilib",     color: "var(--brand-700)", bg: "var(--brand-50)", accent: "var(--brand)" },
-  CONFIRMED:              { label: "Təsdiqlənib",      color: "#065F46",          bg: "#D1FAE5",         accent: "#10B981" },
-  AWAITING_CONFIRMATION:  { label: "Təsdiq gözlənir",  color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
-  DISPUTED:               { label: "Mübahisəli",       color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
-  COMPLETED:              { label: "Tamamlandı",       color: "#374151",          bg: "#F3F4F6",         accent: "#9CA3AF" },
-  CANCELLED:              { label: "Ləğv edildi",      color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
-  CANCEL_REQUESTED:       { label: "Ləğv gözlənir",    color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
-  REJECTED:               { label: "Yenidən təyin",    color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
-};
-
 const ACTIVE_STATUSES = new Set(["ASSIGNED", "CONFIRMED", "PENDING", "REJECTED", "CANCEL_REQUESTED"]);
 
 type StatusFilter = "all" | "confirmed" | "pending";
-
-// Səhifəyə xas animasiya + filter scrollbar gizlətməsi (media query inline ola bilmir).
-const PA_STYLE = `
-@keyframes paFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
-@keyframes paSheet{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-@keyframes paLive{0%,100%{opacity:1}50%{opacity:.45}}
-.pa-filters::-webkit-scrollbar{height:0}
-.pa-live{animation:paLive 1.4s ease-in-out infinite}
-`;
+type TabKey = "sessions" | "packages";
 
 // Avatar tinti — psixoloq id-sinə görə sabit (determinist).
 const PA_AVATAR_TINTS: { bg: string; color: string }[] = [
@@ -118,24 +91,31 @@ function avatarTint(id?: number | null): { bg: string; color: string } {
 
 export default function PatientAppointmentsPage() {
   const { t } = useT();
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [packages, setPackages] = useState<PatientPackageItem[]>([]);
-  const [myReviews, setMyReviews] = useState<MyReview[]>([]);
+  // Kartlarda psixoloq şəkli: public kataloqdan id → photoUrl xəritəsi
+  const [psyPhotos, setPsyPhotos] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [now, setNow] = useState(new Date());
+  // Tab: paket detalından geri dönüş ?tab=paketler ilə düz taba düşsün.
+  const [tab, setTab] = useState<TabKey>(searchParams.get("tab") === "paketler" ? "packages" : "sessions");
+  // "Aç" düyməsi — seansın ətraflı məlumat pəncərəsi
+  const [detailFor, setDetailFor] = useState<AppointmentDetail | null>(null);
   // GAP-03: new no-penalty flow — patient proposes slots, psychologist decides
   const [reschedRequestFor, setReschedRequestFor] = useState<AppointmentDetail | null>(null);
-  const [reviewFor, setReviewFor] = useState<AppointmentDetail | null>(null);
   const [disputeFor, setDisputeFor] = useState<AppointmentDetail | null>(null);
   const [cancelFor, setCancelFor] = useState<AppointmentDetail | null>(null);
   const [proposals, setProposals] = useState<RescheduleProposal[]>([]);
   const [proposalFor, setProposalFor] = useState<RescheduleProposal | null>(null);
-  const [feedbackFor, setFeedbackFor] = useState<AppointmentDetail | null>(null);
-  const [existingFeedback, setExistingFeedback] = useState<SessionFeedback | null>(null);
-  const [feedbackGiven, setFeedbackGiven] = useState<Set<number>>(new Set());
   const [psyFilter, setPsyFilter] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  const switchTab = (next: TabKey) => {
+    setTab(next);
+    window.history.replaceState(null, "", next === "packages" ? "?tab=paketler" : window.location.pathname);
+  };
 
   // Tick every minute for countdown
   useEffect(() => {
@@ -147,36 +127,19 @@ export default function PatientAppointmentsPage() {
     setLoading(true);
     Promise.all([
       patientApi.myAppointments(),
-      patientApi.myReviews().catch(() => [] as MyReview[]),
       patientApi.pendingRescheduleProposals().catch(() => [] as RescheduleProposal[]),
       patientApi.myPackages().catch(() => [] as PatientPackageItem[]),
+      getPsychologists().catch(() => []),
     ])
-      .then(([appts, revs, props, pkgs]) => {
+      .then(([appts, props, pkgs, psys]) => {
         setItems(appts);
-        setMyReviews(revs);
         setPackages(pkgs);
+        const photos: Record<number, string> = {};
+        for (const p of psys) if (p.photoUrl) photos[p.id] = p.photoUrl;
+        setPsyPhotos(photos);
         // Only psychologist-initiated proposals are FOR the patient to decide;
         // the patient's own GAP-03 requests are awaiting the psychologist.
         setProposals(props.filter(p => p.initiator !== "PATIENT"));
-        // Refresh-də "Necə keçdi?" düyməsi təkrar görünməsin: artıq rəy verilmiş
-        // tamamlanmış seansları serverdən öyrən. Düymə yalnız göstərilən tarixçə
-        // sətirlərində (ən son 30) çıxır — sorğu sayını ona görə məhdudlaşdırırıq.
-        const fbCandidates = appts
-          .filter(a => a.status === "COMPLETED")
-          .sort((x, y) => new Date(y.startAt ?? y.endAt ?? 0).getTime() - new Date(x.startAt ?? x.endAt ?? 0).getTime())
-          .slice(0, 30);
-        if (fbCandidates.length) {
-          Promise.all(fbCandidates.map(a =>
-            patientApi.getSessionFeedback(a.id).then(fb => (fb ? a.id : null)).catch(() => null),
-          )).then(ids => {
-            const given = ids.filter((x): x is number => x != null);
-            if (given.length) setFeedbackGiven(prev => {
-              const next = new Set(prev);
-              given.forEach(id => next.add(id));
-              return next;
-            });
-          });
-        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -192,10 +155,15 @@ export default function PatientAppointmentsPage() {
 
   }, []);
 
-  // "Proqramlarım" — yalnız aktiv (seans qalan) paketlər. Bitmiş/müddəti
-  // keçənlər göstərilmir (razılaşma 2026-06-22).
+  // "Paketlərim" — aktiv (seans qalan) paketlər balans kartı kimi göstərilir.
   const activePackages = useMemo(
     () => packages.filter(p => p.status === "ACTIVE"),
+    [packages],
+  );
+
+  // Bitmiş/müddəti keçmiş/ləğv edilmiş paketlər — yığılmış tarixçə bölməsi.
+  const pastPackages = useMemo(
+    () => packages.filter(p => p.status !== "ACTIVE"),
     [packages],
   );
 
@@ -233,61 +201,27 @@ export default function PatientAppointmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, now, psyFilter, statusFilter]);
 
-  /** All upcoming (today + future), filtered, grouped by AZ day key.
-   *  Paket seansları paket kartında idarə olunur — burada görünmür. */
-  const agendaGroups = useMemo(() => {
-    const list = items
-      .filter(a => a.patientPackageId == null) // paket seansları paket kartında idarə olunur
-      .filter(a => a.startAt && new Date(a.startAt).getTime() > now.getTime() - 30 * 60_000)
-      // Yalnız operator tərəfindən təyin/təsdiq olunmuş seanslar; gözləyən
-      // müraciətlər (PENDING/REJECTED) aşağıdakı ayrıca bölmədə göstərilir.
-      .filter(a => a.status === "ASSIGNED" || a.status === "CONFIRMED" || a.status === "CANCEL_REQUESTED")
+  /** All upcoming, filtered, xronoloji — bir grid-də. Ayrıca "Operator təsdiqi
+   *  gözləyir" bölməsi yoxdur: PENDING/REJECTED müraciətlər də bu sıraya vaxtına
+   *  görə daxil olur. Paket seansları da adi seans kimi görünür («Paket» nişanı). */
+  const agendaList = useMemo(() => {
+    return items
+      .filter(a => {
+        // Gözləyən müraciətlər vaxt filtrindən keçmir — operator baxana qədər görünür.
+        if (a.status === "PENDING" || a.status === "REJECTED") return true;
+        if (a.status !== "ASSIGNED" && a.status !== "CONFIRMED" && a.status !== "CANCEL_REQUESTED") return false;
+        return !!a.startAt && new Date(a.startAt).getTime() > now.getTime() - 30 * 60_000;
+      })
       .filter(matchesFilters)
-      .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
-    const groups: { key: string; label: string; items: AppointmentDetail[] }[] = [];
-    let last: typeof groups[number] | null = null;
-    for (const a of list) {
-      const d = new Date(a.startAt!);
-      const key = azDayKey(d);
-      if (!last || last.key !== key) {
-        last = { key, label: relativeDayLabel(d, now), items: [] };
-        groups.push(last);
-      }
-      last.items.push(a);
-    }
-    return groups;
+      .sort((x, y) => {
+        const dx = new Date(x.startAt ?? x.requestedStartAt ?? x.createdAt).getTime();
+        const dy = new Date(y.startAt ?? y.requestedStartAt ?? y.createdAt).getTime();
+        return dx - dy;
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, now, psyFilter, statusFilter]);
 
-  const agendaTotal = useMemo(() => agendaGroups.reduce((n, g) => n + g.items.length, 0), [agendaGroups]);
-
-  /** Operatorun təsdiq/təyin etməsini gözləyən müraciətlər (PENDING/REJECTED).
-   *  Paket seansları paket kartında göstərilir, ona görə buradan çıxarılır.
-   *  Bunlar əvvəllər heç yerdə görünmürdü (Yaxınlaşan bölməsi startAt tələb edirdi). */
-  const awaitingOperator = useMemo(() => {
-    return items
-      .filter(a => a.patientPackageId == null)
-      .filter(a => a.status === "PENDING" || a.status === "REJECTED")
-      .filter(matchesFilters)
-      .sort((a, b) => {
-        const da = new Date(a.requestedStartAt ?? a.startAt ?? a.createdAt).getTime();
-        const db = new Date(b.requestedStartAt ?? b.startAt ?? b.createdAt).getTime();
-        return da - db;
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, psyFilter, statusFilter]);
-
-  const history = useMemo(() => {
-    return items
-      .filter(a => ["COMPLETED", "CANCELLED", "AWAITING_CONFIRMATION", "DISPUTED"].includes(a.status))
-      .filter(matchesFilters)
-      .sort((a, b) => {
-        const da = new Date(a.startAt ?? a.endAt ?? 0).getTime();
-        const db = new Date(b.startAt ?? b.endAt ?? 0).getTime();
-        return db - da;
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, psyFilter, statusFilter]);
+  const agendaTotal = agendaList.length;
 
   const action = async (id: number, fn: () => Promise<AppointmentDetail>) => {
     setBusyId(id);
@@ -322,18 +256,6 @@ export default function PatientAppointmentsPage() {
     return idx >= 0 ? idx + 1 : null;
   };
 
-  const reviewedFor = (psyId?: number | null) =>
-    psyId ? myReviews.find(r => r.psychologistId === psyId) ?? null : null;
-
-  const openFeedback = async (a: AppointmentDetail) => {
-    setExistingFeedback(null); setFeedbackFor(a);
-    try {
-      const fb = await patientApi.getSessionFeedback(a.id);
-      setExistingFeedback(fb);
-      if (fb) setFeedbackGiven(prev => new Set(prev).add(a.id));
-    } catch { /* opening modal fresh — backend may have returned 200 with null */ }
-  };
-
   return (
     <div className="psy-appt-page" style={{ maxWidth: 1040, margin: "0 auto" }}>
       <style>{PA_STYLE}</style>
@@ -342,18 +264,32 @@ export default function PatientAppointmentsPage() {
           <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 700, letterSpacing: "-.01em", color: "var(--oxford)" }}>{t("appt.pageTitle")}</h1>
           <p style={{ margin: 0, fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>{t("appt.pageSub")}</p>
         </div>
-        <Link
-          href="/patient/psychologists"
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            background: "var(--brand)", color: "#fff",
-            padding: "11px 17px", borderRadius: 10,
-            fontSize: 14, fontWeight: 600, textDecoration: "none",
-            boxShadow: "0 4px 14px rgba(16,81,183,.25)",
-          }}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          {t("appt.newCta")}
-        </Link>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Link
+            href="/patient/appointments/history"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              background: "#fff", color: "var(--oxford)",
+              border: "1px solid #D6E2F7",
+              padding: "11px 17px", borderRadius: 10,
+              fontSize: 14, fontWeight: 600, textDecoration: "none",
+            }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>
+            Tarixçə
+          </Link>
+          <Link
+            href="/patient/psychologists"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              background: "var(--brand)", color: "#fff",
+              padding: "11px 17px", borderRadius: 10,
+              fontSize: 14, fontWeight: 600, textDecoration: "none",
+              boxShadow: "0 4px 14px rgba(16,81,183,.25)",
+            }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+            {t("appt.newCta")}
+          </Link>
+        </div>
       </header>
 
       {proposals.length > 0 && (
@@ -381,7 +317,7 @@ export default function PatientAppointmentsPage() {
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>
           Yüklənir…
         </div>
-      ) : items.length === 0 ? (
+      ) : items.length === 0 && packages.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 16, padding: "4rem 2rem", textAlign: "center", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
           <h3 style={{ fontWeight: 700, color: "var(--oxford)", marginBottom: 6, fontSize: 17 }}>Hələ randevunuz yoxdur</h3>
           <p style={{ color: "var(--oxford-60)", fontSize: 13, marginBottom: 18 }}>
@@ -395,20 +331,11 @@ export default function PatientAppointmentsPage() {
         </div>
       ) : (
         <>
-          {(psyChips.length > 1 || statusFilter !== "all" || psyFilter != null) && (
-            <FilterBar
-              psyChips={psyChips}
-              psyFilter={psyFilter}
-              statusFilter={statusFilter}
-              onPsy={setPsyFilter}
-              onStatus={setStatusFilter}
-            />
-          )}
-
           <NextSessionHero
             appt={next}
             now={now}
             sessionNumber={next ? sessionOrdinalFor(next) : null}
+            photoUrl={next?.psychologistId != null ? psyPhotos[next.psychologistId] ?? null : null}
             busyId={busyId}
             onConfirm={(a) => action(a.id, () => patientApi.confirmSession(a.id))}
             onDispute={(a) => setDisputeFor(a)}
@@ -416,116 +343,119 @@ export default function PatientAppointmentsPage() {
             onCancel={(a) => cancel(a)}
           />
 
-          {/* Operator təsdiqi gözləyən müraciətlər — pasiyent öz sorğusunun
-              statusunu görsün (əvvəllər heç yerdə görünmürdü). */}
-          {awaitingOperator.length > 0 && (
-            <Section title="Operator təsdiqi gözləyir" count={awaitingOperator.length} icon="" collapsible={false}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {awaitingOperator.map(a => (
-                  <AwaitingOperatorCard key={a.id} a={a} />
-                ))}
-              </div>
-            </Section>
-          )}
+          {/* Seanslar / Paketlər tab seçimi */}
+          <div role="tablist" style={{ display: "inline-flex", gap: 4, background: "#fff", border: "1px solid #EDF1F8", borderRadius: 12, padding: 5, boxShadow: "0 2px 12px rgba(0,0,0,.04)" }}>
+            {([
+              ["sessions", "Seanslar", agendaTotal],
+              ["packages", "Paketlər", activePackages.length],
+            ] as [TabKey, string, number][]).map(([key, label, count]) => {
+              const active = tab === key;
+              return (
+                <button key={key} type="button" role="tab" aria-selected={active} onClick={() => switchTab(key)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 7, background: active ? "var(--brand)" : "transparent", color: active ? "#fff" : "var(--oxford)", border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
+                  {label}
+                  <span style={{ background: active ? "rgba(255,255,255,.22)" : "var(--brand-50)", color: active ? "#fff" : "var(--brand-700)", fontSize: 11.5, fontWeight: 700, minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
 
-          {/* "Proqramlarım" — yalnız alınmış paketlər (booking_series anlayışı yoxdur). */}
-          {activePackages.length > 0 && (
-            <Section
-              title="Proqramlarım"
-              count={activePackages.length}
-              icon=""
-            >
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
-                gap: 16,
-              }}>
-                {activePackages.map(p => (
-                  <PackageProgramCard
-                    key={`pkg-${p.id}`}
-                    pkg={p}
-                    sessions={items.filter(a => a.patientPackageId === p.id && a.status !== "COMPLETED" && a.status !== "CANCELLED")}
-                    onChanged={load}
+          {tab === "sessions" && (
+            <>
+              {(psyChips.length > 1 || statusFilter !== "all" || psyFilter != null) && (
+                <div style={{ marginTop: 18 }}>
+                  <FilterBar
+                    psyChips={psyChips}
+                    psyFilter={psyFilter}
+                    statusFilter={statusFilter}
+                    onPsy={setPsyFilter}
+                    onStatus={setStatusFilter}
                   />
-                ))}
-              </div>
-            </Section>
-          )}
+                </div>
+              )}
 
-          <Section title="Yaxınlaşan" count={agendaTotal} icon="" collapsible={false}>
-            {agendaGroups.length === 0 ? (
-              <Empty msg={
-                psyFilter != null || statusFilter !== "all"
-                  ? "Bu filtrlərə uyğun yaxınlaşan randevu yoxdur"
-                  : "Yaxınlaşan randevu yoxdur"
-              } />
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                {agendaGroups.map(g => (
-                  <div key={g.key}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 10 }}>{g.label}</div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                      {g.items.map(a => (
-                        <AgendaRow
-                          key={a.id}
-                          a={a}
-                          isNext={next?.id === a.id}
-                          now={now}
-                          sessionNumber={sessionOrdinalFor(a)}
-                          onReschedule={() => openReschedule(a)}
-                          onCancel={() => cancel(a)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Section>
-
-          <Section title={t("appt.sectionHistory")} count={history.length} icon="" card defaultCollapsed>
-            {history.length === 0 ? (
-              <div style={{ padding: 20, textAlign: "center", color: "var(--oxford-60)", fontSize: 13, borderTop: "1px solid #F0F4FA" }}>Hələ tamamlanmış seansınız yoxdur</div>
-            ) : (
-              <div style={{ padding: "0 8px 10px" }}>
-                {history.slice(0, 30).map(a => (
-                  <HistoryRow
-                    key={a.id}
-                    a={a}
-                    review={reviewedFor(a.psychologistId)}
-                    feedbackGiven={feedbackGiven.has(a.id)}
-                    onWriteReview={() => setReviewFor(a)}
-                    onFeedback={() => openFeedback(a)}
-                  />
-                ))}
-                {history.length > 30 && (
-                  <div style={{ textAlign: "center", padding: "13px 0 6px", borderTop: "1px solid #F0F4FA", fontSize: 13, fontWeight: 600, color: "var(--brand)" }}>
-                    +{history.length - 30} daha
+              <Section title="Yaxınlaşan" count={agendaTotal} icon="" collapsible={false}>
+                {agendaList.length === 0 ? (
+                  <Empty msg={
+                    psyFilter != null || statusFilter !== "all"
+                      ? "Bu filtrlərə uyğun yaxınlaşan randevu yoxdur"
+                      : "Yaxınlaşan randevu yoxdur"
+                  } />
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))", gap: 12 }}>
+                    {agendaList.map(a => (
+                      <AgendaRow
+                        key={a.id}
+                        a={a}
+                        isNext={next?.id === a.id}
+                        now={now}
+                        sessionNumber={sessionOrdinalFor(a)}
+                        photoUrl={(a.psychologistId ?? a.requestedPsychologistId) != null ? psyPhotos[(a.psychologistId ?? a.requestedPsychologistId)!] ?? null : null}
+                        onOpen={() => setDetailFor(a)}
+                        onReschedule={() => openReschedule(a)}
+                        onCancel={() => cancel(a)}
+                      />
+                    ))}
                   </div>
                 )}
-              </div>
-            )}
-          </Section>
+              </Section>
+            </>
+          )}
+
+          {tab === "packages" && (
+            <>
+              {activePackages.length === 0 ? (
+                <div style={{ marginTop: 22 }}>
+                  <Empty msg="Aktiv paketiniz yoxdur — paket almaq üçün psixoloq profilinə baxın" />
+                </div>
+              ) : (
+                <Section title="Aktiv paketlər" count={activePackages.length} icon="" collapsible={false}>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
+                    gap: 16,
+                  }}>
+                    {activePackages.map(p => (
+                      <PackageProgramCard
+                        key={`pkg-${p.id}`}
+                        pkg={p}
+                        sessions={items.filter(a => a.patientPackageId === p.id)}
+                      />
+                    ))}
+                  </div>
+                </Section>
+              )}
+
+              {pastPackages.length > 0 && (
+                <Section title="Əvvəlki paketlər" count={pastPackages.length} icon="" card defaultCollapsed>
+                  <div style={{ padding: "0 8px 10px" }}>
+                    {pastPackages.map(p => (
+                      <PastPackageRow key={`past-${p.id}`} pkg={p} />
+                    ))}
+                  </div>
+                </Section>
+              )}
+            </>
+          )}
         </>
       )}
 
+      {detailFor && (
+        <SessionDetailModal
+          a={detailFor}
+          photoUrl={detailFor.psychologistId != null ? psyPhotos[detailFor.psychologistId] ?? null : null}
+          sessionNumber={sessionOrdinalFor(detailFor)}
+          now={now}
+          onClose={() => setDetailFor(null)}
+          onReschedule={() => { openReschedule(detailFor); setDetailFor(null); }}
+          onCancel={() => { cancel(detailFor); setDetailFor(null); }}
+        />
+      )}
       {reschedRequestFor && (
         <RescheduleRequestNoteModal
           appointment={reschedRequestFor}
           onClose={() => setReschedRequestFor(null)}
           onDone={() => { setReschedRequestFor(null); load(); }}
-        />
-      )}
-      {reviewFor && reviewFor.psychologistId && (
-        <ReviewModal
-          psychologistId={reviewFor.psychologistId}
-          psychologistName={reviewFor.psychologistName ?? "Psixoloq"}
-          appointmentId={reviewFor.id}
-          onClose={() => setReviewFor(null)}
-          onSubmitted={(saved) => {
-            setMyReviews(prev => [saved, ...prev.filter(r => r.id !== saved.id)]);
-            setReviewFor(null);
-          }}
         />
       )}
       {disputeFor && (
@@ -555,18 +485,6 @@ export default function PatientAppointmentsPage() {
           onResolved={() => { setProposalFor(null); load(); }}
         />
       )}
-      {feedbackFor && (
-        <SessionFeedbackModal
-          appointment={feedbackFor}
-          existing={existingFeedback}
-          onClose={() => { setFeedbackFor(null); setExistingFeedback(null); }}
-          onSubmitted={(fb) => {
-            setFeedbackGiven(prev => new Set(prev).add(feedbackFor.id));
-            setExistingFeedback(fb);
-            setFeedbackFor(null);
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -574,11 +492,12 @@ export default function PatientAppointmentsPage() {
 /* ─── Hero — next session ─────────────────────────────────────────────────── */
 
 function NextSessionHero({
-  appt, now, sessionNumber, busyId, onConfirm, onDispute, onReschedule, onCancel,
+  appt, now, sessionNumber, photoUrl, busyId, onConfirm, onDispute, onReschedule, onCancel,
 }: {
   appt: AppointmentDetail | null;
   now: Date;
   sessionNumber: number | null;
+  photoUrl: string | null;
   busyId: number | null;
   onConfirm: (a: AppointmentDetail) => void;
   onDispute: (a: AppointmentDetail) => void;
@@ -617,11 +536,21 @@ function NextSessionHero({
       </div>
 
       <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-        <span style={{ width: 58, height: 58, borderRadius: "50%", background: "#082F6D", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 19, fontWeight: 700, flex: "none" }}>{initialsOf(appt.psychologistName)}</span>
+        <span style={{ width: 58, height: 58, borderRadius: "50%", background: "#082F6D", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 19, fontWeight: 700, flex: "none", overflow: "hidden" }}>
+          {photoUrl ? (
+             
+            <img src={photoUrl} alt={appt.psychologistName ?? ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : initialsOf(appt.psychologistName)}
+        </span>
         <div style={{ flex: 1, minWidth: 230 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", marginBottom: 8 }}>
             <span style={{ fontSize: 18, fontWeight: 700 }}>{appt.psychologistName ?? "Operator psixoloq təyin edəcək"}</span>
             {sessionNumber && <span style={{ background: "#fff", border: "1px solid #D6E2F7", color: "#082F6D", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>{azOrdinal(sessionNumber)} seans</span>}
+            {appt.patientPackageId != null && (
+              <span title={appt.packageName ?? undefined} style={{ background: "#fff", border: "1px solid #D6E2F7", color: "var(--brand-700)", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                Paket{appt.packageName ? ` · ${appt.packageName}` : ""}
+              </span>
+            )}
           </div>
           {appt.note && (
             <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "rgba(255,255,255,.6)", border: "1px solid #D6E2F7", borderRadius: 11, padding: "10px 13px", maxWidth: 520 }}>
@@ -681,58 +610,26 @@ function NextSessionHero({
   );
 }
 
-/* ─── Package program card — paket Randevulara birləşdi ──────────────────── */
+/* ─── Package card — xülasə kartı; klik → paket detal səhifəsi ──────────────
+   Paketin seansları burada idarə olunmur — onlar «Seanslar» tabında adi seans
+   kimi, tam siyahı isə paket detal səhifəsində görünür. */
 
 function PackageProgramCard({
-  pkg, sessions, onChanged,
+  pkg, sessions,
 }: {
   pkg: PatientPackageItem;
   sessions: AppointmentDetail[];
-  onChanged: () => void;
 }) {
-  // null | yeni seans planla | mövcud seansın vaxtını dəyiş
-  const [mode, setMode] = useState<null | { kind: "new" } | { kind: "change"; appt: AppointmentDetail }>(null);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const done = Math.max(0, pkg.total - pkg.remaining);
-  const pct = pkg.total > 0 ? Math.round((done / pkg.total) * 100) : 0;
-  const canSchedule = pkg.status === "ACTIVE" && pkg.remaining > 0;
-
-  const sorted = [...sessions].sort((a, b) =>
-    new Date(a.startAt ?? a.requestedStartAt ?? a.createdAt).getTime()
-    - new Date(b.startAt ?? b.requestedStartAt ?? b.createdAt).getTime());
-
-  const changeAppt = mode?.kind === "change" ? mode.appt : null;
-  const changePsyId = changeAppt
-    ? (changeAppt.psychologistId ?? changeAppt.requestedPsychologistId ?? pkg.psychologistId)
-    : pkg.psychologistId;
-
-  // Yeni seans — seçilmiş slot → PENDING (birbaşa deyil, operator təsdiqləyir).
-  const scheduleSlot = async (slot: AvailableSlot) => {
-    setBusy(true); setErr(null);
-    try {
-      await patientApi.schedulePackageSession(pkg.id, { startAt: slot.startAt });
-      setMode(null);
-      onChanged();
-    } catch (e) { setErr((e as Error).message); setBusy(false); }
-  };
-
-  // Mövcud seansın vaxtını dəyiş — yeni slot seçilə bilər və ya yalnız siqnal; ikisi də operatora gedir.
-  const requestChange = async (appt: AppointmentDetail, preferred?: AvailableSlot) => {
-    setBusy(true); setErr(null);
-    const msg = preferred
-      ? `İstənilən yeni vaxt: ${azFormatDate(preferred.startAt)} · ${azFormatTime(preferred.startAt)}`
-      : "Bu seansın vaxtının dəyişdirilməsini xahiş edirəm.";
-    try {
-      await patientApi.requestRescheduleNote(appt.id, msg);
-      setMode(null);
-      onChanged();
-    } catch (e) { setErr((e as Error).message); setBusy(false); }
-  };
+  // Balans: remaining = hələ planlanmamış seanslar (backend hesabıdır).
+  // Tamamlanan/planlanan saylar pasiyentin randevu siyahısından çıxarılır.
+  const completed = sessions.filter(a => a.status === "COMPLETED").length;
+  const planned = sessions.filter(a => a.status !== "COMPLETED" && a.status !== "CANCELLED").length;
+  const completedPct = pkg.total > 0 ? (completed / pkg.total) * 100 : 0;
+  const plannedPct = pkg.total > 0 ? (planned / pkg.total) * 100 : 0;
 
   return (
-    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 22, display: "flex", flexDirection: "column" }}>
+    <Link href={`/patient/appointments/packages/${pkg.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 22, display: "flex", flexDirection: "column", height: "100%", cursor: "pointer" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 16 }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--brand-100)", color: "var(--brand-700)", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", padding: "5px 10px", borderRadius: 7 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -755,12 +652,18 @@ function PackageProgramCard({
       <div style={{ marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>
-            {done}/{pkg.total} · <span style={{ color: "var(--brand)" }}>{pkg.remaining} qalıb</span>
+            {completed}/{pkg.total} tamamlanıb · <span style={{ color: "var(--brand)" }}>{pkg.remaining} seans qalıb</span>
           </span>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>{pct}%</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>{Math.round(completedPct)}%</span>
         </div>
-        <div style={{ height: 9, background: "var(--brand-100)", borderRadius: 999, overflow: "hidden" }}>
-          <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg,#1051B7,#3A74D6)", borderRadius: 999 }} />
+        <div style={{ display: "flex", height: 9, background: "var(--brand-100)", borderRadius: 999, overflow: "hidden" }}>
+          <div style={{ width: `${completedPct}%`, height: "100%", background: "linear-gradient(90deg,#1051B7,#3A74D6)" }} />
+          <div style={{ width: `${plannedPct}%`, height: "100%", background: "#9DBCEB" }} />
+        </div>
+        <div style={{ display: "flex", gap: 12, marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)", flexWrap: "wrap" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1051B7", flex: "none" }} />{completed} tamamlanıb</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#9DBCEB", flex: "none" }} />{planned} planlanıb</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--brand-100)", flex: "none" }} />{pkg.remaining} planlanmamış</span>
         </div>
       </div>
 
@@ -775,172 +678,31 @@ function PackageProgramCard({
         </div>
       </div>
 
-      {sorted.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8 }}>Seçilmiş seanslar</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {sorted.map(a => {
-              const st = STATUS[a.status] ?? STATUS.PENDING;
-              const when = a.startAt ?? a.requestedStartAt;
-              const canChange = a.status === "CONFIRMED" || a.status === "ASSIGNED";
-              return (
-                <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "9px 11px", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>{when ? `${azFormatDate(when)} · ${azFormatTime(when)}` : "Operator vaxtı təyin edəcək"}</span>
-                  <span style={{ background: st.bg, color: st.color, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{st.label}</span>
-                  <span style={{ flex: 1 }} />
-                  {canChange ? (
-                    <button type="button" onClick={() => { setErr(null); setMode(changeAppt?.id === a.id ? null : { kind: "change", appt: a }); }}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#fff", color: "#082F6D", border: "1px solid #C7DAF5", borderRadius: 8, padding: "6px 11px", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
-                      <IconClock />Dəyiş
-                    </button>
-                  ) : (
-                    <span style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>operator təsdiqi gözlənilir</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {canSchedule ? (
-        <button
-          type="button"
-          onClick={() => { setErr(null); setMode(mode?.kind === "new" ? null : { kind: "new" }); }}
-          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: mode?.kind === "new" ? "#fff" : "var(--brand)", color: mode?.kind === "new" ? "var(--oxford-60)" : "#fff", border: mode?.kind === "new" ? "1px solid #D6E2F7" : "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", marginTop: "auto" }}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" />
-          </svg>
-          {mode?.kind === "new" ? "Planlaşdırmanı bağla" : "Seans planla"}
-        </button>
-      ) : sorted.length === 0 ? (
-        <div style={{ marginTop: "auto", textAlign: "center", fontSize: 12.5, color: "var(--oxford-60)", background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>
-          Bütün seanslar istifadə olunub
-        </div>
-      ) : null}
-
-      {err && (
-        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 12 }}>{err}</div>
-      )}
-
-      {mode?.kind === "new" && canSchedule && (
-        <div style={{ marginTop: 14, background: "var(--brand-50)", border: "1px solid #D6E2F7", borderRadius: 12, padding: 16, animation: "paFade .25s ease" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--brand-700)", marginBottom: 4 }}>Psixoloqun açıq vaxtından seçin</div>
-          <div style={{ fontSize: 12, color: "var(--oxford-60)", marginBottom: 12 }}>Seçdiyiniz vaxt operatora gedəcək, təsdiqdən sonra randevuya çevriləcək.</div>
-          <SlotPicker psychologistId={pkg.psychologistId} busy={busy} onPick={scheduleSlot}
-            confirmNote="Seçdiyiniz vaxt operatora göndəriləcək, təsdiqdən sonra randevuya çevriləcək." />
-        </div>
-      )}
-
-      {changeAppt && (
-        <div style={{ marginTop: 14, background: "var(--brand-50)", border: "1px solid #D6E2F7", borderRadius: 12, padding: 16, animation: "paFade .25s ease" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--brand-700)", marginBottom: 4 }}>Vaxtı dəyiş</div>
-          <div style={{ fontSize: 12, color: "var(--oxford-60)", marginBottom: 12 }}>Yeni vaxt seçin — dəyişiklik operator təsdiqindən keçəcək.</div>
-          <SlotPicker psychologistId={changePsyId} busy={busy} onPick={(slot) => requestChange(changeAppt, slot)}
-            confirmNote="Vaxt dəyişikliyi tələbiniz operatora göndəriləcək, təsdiqdən sonra qüvvəyə minəcək." />
-          <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "12px 0" }}>
-            <span style={{ flex: 1, height: 1, background: "#D6E2F7" }} /><span style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600 }}>və ya</span><span style={{ flex: 1, height: 1, background: "#D6E2F7" }} />
-          </div>
-          <button type="button" disabled={busy} onClick={() => requestChange(changeAppt)}
-            style={{ width: "100%", background: "#fff", color: "#082F6D", border: "1px solid #C7DAF5", borderRadius: 9, padding: 11, fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: busy ? "wait" : "pointer" }}>
-            Uyğun vaxt yoxdur — operatorla əlaqə
-          </button>
-        </div>
-      )}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: "auto", paddingTop: 4, color: "var(--brand)", fontSize: 13.5, fontWeight: 700 }}>
+        {pkg.remaining > 0 ? "Paketə bax və seans planla" : "Paketə bax"}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+      </div>
     </div>
+    </Link>
   );
 }
 
-/* ─── Slot picker — psixoloqun açıq vaxtları (paket planlama/dəyişmə üçün) ─── */
+/* ─── Əvvəlki paket sətri — klik → paket detal səhifəsi ──────────────────── */
 
-function SlotPicker({ psychologistId, busy, onPick, confirmNote }: {
-  psychologistId: number;
-  busy: boolean;
-  onPick: (slot: AvailableSlot) => void | Promise<void>;
-  confirmNote?: string;
-}) {
-  const [slots, setSlots] = useState<AvailableSlot[]>([]);
-  const [loading, setLoading] = useState(true);
-  // Saata basmaq müraciəti birbaşa göndərmir — əvvəlcə təsdiq popup-ı çıxır.
-  const [picked, setPicked] = useState<AvailableSlot | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    const today = new Date();
-    const to = new Date(); to.setDate(to.getDate() + 21);
-    getPsychologistAvailability(psychologistId, isoDateOnly(today), isoDateOnly(to))
-      .then(s => { if (alive) setSlots(s); })
-      .catch(() => { if (alive) setSlots([]); })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
-  }, [psychologistId]);
-
-  const grouped = useMemo(() => {
-    const map = new Map<string, AvailableSlot[]>();
-    for (const s of slots) {
-      const k = azFormatDate(s.startAt);
-      if (!map.has(k)) map.set(k, []);
-      map.get(k)!.push(s);
-    }
-    return Array.from(map.entries());
-  }, [slots]);
-
-  if (loading) return <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Açıq vaxtlar yüklənir…</div>;
-  if (slots.length === 0) return <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Bu psixoloqun yaxın 3 həftədə açıq vaxtı yoxdur.</div>;
-
-  // Təsdiqlə: sorğu bitənə qədər popup açıq qalır (busy → "Göndərilir…"), sonra bağlanır.
-  const confirm = async () => { if (!picked) return; await onPick(picked); setPicked(null); };
-
+function PastPackageRow({ pkg }: { pkg: PatientPackageItem }) {
+  const st = PKG_STATUS[pkg.status] ?? PKG_STATUS.EXHAUSTED;
+  const used = Math.max(0, pkg.total - pkg.remaining);
   return (
-    <>
-      <div style={{ display: "grid", gap: 10, maxHeight: 240, overflowY: "auto" }}>
-        {grouped.map(([day, daySlots]) => (
-          <div key={day}>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 6 }}>{day}</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {daySlots.map(s => (
-                <button key={s.startAt} type="button" disabled={busy} onClick={() => setPicked(s)}
-                  style={{ background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer" }}>
-                  {azFormatTime(s.startAt)}
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
+    <Link href={`/patient/appointments/packages/${pkg.id}`} style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", borderTop: "1px solid #F0F4FA", padding: "13px 12px", textDecoration: "none", color: "inherit" }}>
+      <span style={{ fontSize: 13.5, fontWeight: 700, minWidth: 100 }}>{azFormatDate(pkg.purchasedAt)}</span>
+      <div style={{ flex: 1, minWidth: 170 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{pkg.packageName}</div>
+        <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 2 }}>{pkg.psychologistName}</div>
       </div>
-
-      {picked && (
-        <div onClick={() => !busy && setPicked(null)}
-          style={{ position: "fixed", inset: 0, background: "rgba(10,26,51,.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18, zIndex: 1000, animation: "paFade .15s ease" }}>
-          <div onClick={e => e.stopPropagation()}
-            style={{ background: "#fff", borderRadius: 16, boxShadow: "0 12px 40px rgba(0,0,0,.22)", border: "1px solid #EDF1F8", padding: 24, width: "100%", maxWidth: 380, animation: "paSheet .2s ease" }}>
-            <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, borderRadius: 12, background: "var(--brand-100)", color: "var(--brand-700)", marginBottom: 14 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-              </svg>
-            </div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Bu vaxtı təsdiqləyirsiniz?</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--brand-700)", marginBottom: 8 }}>
-              {azFormatDate(picked.startAt)} · {azFormatTime(picked.startAt)}
-            </div>
-            <div style={{ fontSize: 13, color: "var(--oxford-60)", lineHeight: 1.5, marginBottom: 20 }}>
-              {confirmNote ?? "Seçdiyiniz vaxt operatora göndəriləcək, təsdiqdən sonra randevuya çevriləcək."}
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button type="button" disabled={busy} onClick={() => setPicked(null)}
-                style={{ flex: 1, background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: busy ? "wait" : "pointer" }}>
-                Ləğv et
-              </button>
-              <button type="button" disabled={busy} onClick={confirm}
-                style={{ flex: 1.4, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer" }}>
-                {busy ? "Göndərilir…" : "Bəli, göndər"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>{used}/{pkg.total} seans istifadə olunub</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>{formatAzn(pkg.pricePaid)}</span>
+      <span style={{ background: st.bg, color: st.color, fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>{st.label}</span>
+    </Link>
   );
 }
 
@@ -1006,306 +768,380 @@ function FilterBar({
   );
 }
 
-/* ─── Compact agenda row ─────────────────────────────────────────────────── */
+/* ─── Agenda card — seans kartı ──────────────────────────────────────────────
+   Struktur: şəkil + ad → vaxt aralığı → status → aşağıda "Seansa qoşul"
+   (link təyin edilibsə aktiv, edilməyibsə boz). Digər əməliyyatlar (təqvim,
+   vaxt dəyişmə, ləğv) yuxarı sağdakı 3 nöqtə menyusundadır. */
 
 function AgendaRow({
-  a, isNext, now, sessionNumber, onReschedule, onCancel,
+  a, isNext, now, sessionNumber, photoUrl, onOpen, onReschedule, onCancel,
 }: {
   a: AppointmentDetail;
   isNext: boolean;
   now: Date;
   sessionNumber: number | null;
+  photoUrl: string | null;
+  onOpen: () => void;
   onReschedule: () => void;
   onCancel: () => void;
 }) {
-  const { t } = useT();
-  if (!a.startAt) return null;
-  const start = new Date(a.startAt);
-  const status = STATUS[a.status] ?? STATUS.ASSIGNED;
-  const tu = timeUntil(start, now);
-  const isToday = isSameDay(start, now);
-  const rowIconBtn: React.CSSProperties = { width: 36, height: 36, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, cursor: "pointer" };
-  const rowIconBtnDanger: React.CSSProperties = { ...rowIconBtn, color: "#991B1B", border: "1px solid #F3D6D6" };
-  return (
-    <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderLeft: `3px solid ${status.accent}`, borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: "13px 15px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 17, fontWeight: 800, minWidth: 52 }}>{fmtTime(start)}{a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}</span>
-        <span style={{ width: 38, height: 38, borderRadius: 11, background: "#082F6D", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flex: "none" }}>{initialsOf(a.psychologistName)}</span>
-        <div style={{ flex: 1, minWidth: 150 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 14.5, fontWeight: 700 }}>{a.psychologistName ?? "Operator təyin edəcək"}</span>
-            {sessionNumber != null && <span style={{ color: "var(--oxford-60)", fontWeight: 500, fontSize: 13 }}>· {azOrdinal(sessionNumber)} seans</span>}
-            {isNext && <span style={{ background: "var(--brand-100)", color: "#082F6D", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>Növbəti</span>}
-            {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
-              <span style={{ background: "var(--brand-50)", color: "var(--brand-700)", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>
-                {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
-              </span>
-            )}
-            {isToday && !tu.expired && <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>{tu.text}</span>}
-          </div>
-        </div>
-        <span style={{ background: status.bg, color: status.color, fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>{status.label}</span>
-        {a.status === "CANCEL_REQUESTED" ? (
-          <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>operator təsdiqini gözləyir</span>
-        ) : (
-          <div style={{ display: "flex", gap: 7 }}>
-            <JoinSessionButton appointment={a} variant="compact" />
-            <button onClick={onReschedule} title={t("staff.cardReschedule")} style={rowIconBtn}><IconClock /></button>
-            <button onClick={onCancel} title={t("staff.cardCancel")} style={rowIconBtnDanger}><IconX /></button>
-          </div>
-        )}
-      </div>
-      {a.operatorNote && (
-        <div style={{ display: "flex", gap: 7, alignItems: "flex-start", marginTop: 9, background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "7px 10px" }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
-          <span style={{ fontSize: 12.5, color: "#92400E", fontWeight: 500, lineHeight: 1.45 }}>Operator qeydi: <span style={{ fontStyle: "italic" }}>«{a.operatorNote.slice(0, 120)}{a.operatorNote.length > 120 ? "…" : ""}»</span></span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── Operator təsdiqi gözləyən müraciət sətri ───────────────────────────── */
-
-function AwaitingOperatorCard({ a }: { a: AppointmentDetail }) {
-  const status = STATUS[a.status] ?? STATUS.PENDING;
+  // Operator təsdiqi gözləyən müraciət (PENDING/REJECTED) — ayrıca bölmə yoxdur,
+  // eyni kart sırasında göstərilir: vaxt "istədiyiniz vaxt"dır, əməliyyatlar bağlıdır.
+  const awaiting = a.status === "PENDING" || a.status === "REJECTED";
   const when = a.startAt ?? a.requestedStartAt;
+  const start = a.startAt ? new Date(a.startAt) : null;
+  const status = STATUS[a.status] ?? STATUS.ASSIGNED;
+  const tu = start ? timeUntil(start, now) : null;
+  const isToday = start ? isSameDay(start, now) : false;
+  const cancelRequested = a.status === "CANCEL_REQUESTED";
   const psyName = a.psychologistName ?? a.requestedPsychologistName ?? null;
-  const hint = a.status === "REJECTED"
+  const awaitingHint = a.status === "REJECTED"
     ? "Operator sizə yeni psixoloq təyin edəcək"
     : "Operatorumuz müraciətinizi nəzərdən keçirir";
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14, background: "#fff", border: "1px solid #EDF1F8", borderLeft: `3px solid ${status.accent}`, borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: "13px 15px", flexWrap: "wrap" }}>
-      <span style={{ width: 38, height: 38, borderRadius: 11, background: "#FEF3C7", color: "#92400E", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-      </span>
-      <div style={{ flex: 1, minWidth: 170 }}>
-        <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--oxford)" }}>{psyName ?? "Operator psixoloq təyin edəcək"}</div>
-        <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 2 }}>
-          {when ? `İstədiyiniz vaxt: ${azFormatDate(when)} · ${azFormatTime(when)}` : "Vaxt operator tərəfindən təyin olunacaq"}
+    <div className={`psy-card psy-card--today${isNext ? " psy-card--next" : ""}`} style={{ borderLeft: `3px solid ${status.accent}`, display: "flex", flexDirection: "column" }}>
+      {/* Şəkil + ad, sağda 3 nöqtə menyu */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <div className="psy-card__avatar" style={{ width: 46, height: 46, overflow: "hidden", ...(photoUrl ? {} : { background: "#082F6D", color: "#fff", border: "none" }) }}>
+          {photoUrl ? (
+            <img src={photoUrl} alt={psyName ?? ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : initialsOf(psyName)}
         </div>
-        {a.note && (
-          <div style={{ fontSize: 12.5, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 8, padding: "6px 9px", marginTop: 6, maxWidth: 440 }}>
-            «{a.note.slice(0, 100)}{a.note.length > 100 ? "…" : ""}»
-          </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="psy-card__name">{psyName ?? "Operator təyin edəcək"}</div>
+          {sessionNumber != null && <div className="psy-card__nth">{azOrdinal(sessionNumber)} seans</div>}
+        </div>
+        {!cancelRequested && !awaiting && <SessionCardMenu a={a} onReschedule={onReschedule} onCancel={onCancel} />}
+      </div>
+
+      {/* Vaxt aralığı — tarix başlıqları yığışdırılıb, gün etiketi burada */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+        {when ? (
+          <span className="psy-card__time">
+            {relativeDayLabel(new Date(when), now)} · {fmtTime(new Date(when))}{start && a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}
+          </span>
+        ) : (
+          <span className="psy-card__time" style={{ color: "var(--oxford-60)" }}>Vaxt operator təyin edəcək</span>
         )}
-        {a.operatorNote && (
-          <div style={{ display: "flex", gap: 7, alignItems: "flex-start", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "6px 9px", marginTop: 6, maxWidth: 440 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
-            <span style={{ fontSize: 12.5, color: "#92400E", fontWeight: 500, lineHeight: 1.45 }}>Operator qeydi: <span style={{ fontStyle: "italic" }}>«{a.operatorNote.slice(0, 100)}{a.operatorNote.length > 100 ? "…" : ""}»</span></span>
+        {awaiting && when && <span style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>istədiyiniz vaxt</span>}
+        {isToday && tu && !tu.expired && (
+          <span className={tu.urgent ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: tu.urgent ? "#FEE2E2" : "#ECFDF5", color: tu.urgent ? "#991B1B" : "#047857", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+            {tu.text}
+          </span>
+        )}
+      </div>
+
+      {/* Status + nişanlar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+        <span className="psy-card__badge" style={{ background: status.bg, color: status.color }}>{status.label}</span>
+        {isNext && <span className="psy-card__chip psy-card__chip--next">Növbəti</span>}
+        {a.patientPackageId != null && <PackageBadge name={a.packageName} />}
+      </div>
+
+      {/* Gözləmə vəziyyətləri */}
+      {cancelRequested && (
+        <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
+          <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
+          Ləğv istəyiniz operator təsdiqini gözləyir
+        </div>
+      )}
+      {awaiting && (
+        <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
+          <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
+          {awaitingHint}
+        </div>
+      )}
+
+      {/* Aşağı: Aç (ətraflı məlumat) + Qoşul */}
+      <div style={{ display: "flex", gap: 8, marginTop: "auto", paddingTop: 14 }}>
+        <button type="button" onClick={onOpen}
+          style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 14px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>
+          Aç
+        </button>
+        {!cancelRequested && !awaiting && (
+          <div style={{ flex: 1.6 }}>
+            <SessionJoinButton a={a} />
           </div>
         )}
       </div>
-      <span style={{ background: status.bg, color: status.color, fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: 999, flex: "none" }}>{status.label}</span>
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, flex: "none" }}>
-        <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
-        {hint}
-      </span>
     </div>
   );
 }
 
-function IconClock() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-    </svg>
-  );
+/* Google Calendar hadisə linki (AddToCalendarMenu ilə eyni format) —
+   3 nöqtə menyusu və detal pəncərəsi tərəfindən paylaşılır. */
+function gcalHrefFor(a: AppointmentDetail): string | null {
+  if (!a.startAt || !a.endAt) return null;
+  return googleCalendarUrl({
+    uid: String(a.id),
+    title: `Fanus seansı${a.psychologistName ? ` — ${a.psychologistName}` : ""}`,
+    description: [
+      a.psychologistName ? `Psixoloq: ${a.psychologistName}` : null,
+      a.note ? `Qeyd: ${a.note}` : null,
+      appUrl("/patient/appointments"),
+    ].filter(Boolean).join("\n"),
+    location: "Online (Fanus)",
+    start: new Date(a.startAt),
+    end: new Date(a.endAt),
+    url: appUrl("/patient/appointments"),
+  });
 }
-function IconX() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-    </svg>
-  );
-}
 
-/* ─── Sections wrapper ───────────────────────────────────────────────────── */
-
-function Section({
-  title, count, icon, children, defaultCollapsed = false, card = false, collapsible = true,
-}: {
-  title: string;
-  count: number;
-  icon: string;
-  children: React.ReactNode;
-  defaultCollapsed?: boolean;
-  card?: boolean;
-  collapsible?: boolean;
-}) {
-  const [open, setOpen] = useState(!defaultCollapsed);
-  const isOpen = collapsible ? open : true;
-
-  const labelRow = (
-    <>
-      {icon && <span style={{ fontSize: 16 }}>{icon}</span>}
-      <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--oxford)" }}>{title}</span>
-      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 22, height: 22, padding: "0 7px", background: "var(--brand-50)", color: "var(--brand-700)", fontSize: 12, fontWeight: 700, borderRadius: 999 }}>{count}</span>
-    </>
-  );
-  const chevron = (
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .2s" }}><path d="M6 9l6 6 6-6" /></svg>
-  );
-
-  if (card) {
+/* Qoşulma düyməsi — link operator tərəfindən təyin edilibsə aktiv (brand),
+   edilməyibsə boz/deaktiv. Ödəniş təsdiqlənməyibsə də bloklanır. */
+function SessionJoinButton({ a }: { a: AppointmentDetail }) {
+  const link = a.meetingLink;
+  const paymentPending = a.paymentStatus === "PENDING";
+  const base: React.CSSProperties = {
+    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+    width: "100%", borderRadius: 10, padding: "11px 14px",
+    fontSize: 13.5, fontWeight: 700, fontFamily: "inherit",
+  };
+  if (link && !paymentPending) {
     return (
-      <section style={{ marginTop: 22, background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", overflow: "hidden" }}>
-        <button type="button" onClick={() => setOpen(o => !o)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", padding: "18px 20px", cursor: "pointer", fontFamily: "inherit" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 10 }}>{labelRow}</span>
-          {chevron}
-        </button>
-        {isOpen && children}
-      </section>
+      <a href={link} target="_blank" rel="noopener noreferrer"
+        style={{ ...base, background: "var(--brand)", color: "#fff", textDecoration: "none", boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
+        <VideoIcon />
+        Seansa qoşul
+      </a>
     );
   }
-
   return (
-    <section style={{ marginTop: 22 }}>
-      <button type="button" onClick={() => collapsible && setOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "transparent", border: "none", padding: "0 0 16px", cursor: collapsible ? "pointer" : "default", textAlign: "left", fontFamily: "inherit" }}>
-        {labelRow}
-        <span style={{ flex: 1 }} />
-        {collapsible && chevron}
-      </button>
-      {isOpen && children}
-    </section>
+    <span
+      title={paymentPending ? "Ödəniş operator tərəfindən hələ təsdiqlənməyib" : "Görüş linkini operator təyin edəcək"}
+      style={{ ...base, background: "#EEF2F8", color: "#9AA7BD", cursor: "not-allowed", userSelect: "none" }}>
+      <VideoIcon />
+      {paymentPending ? "Ödəniş gözlənilir" : "Seansa qoşul"}
+    </span>
   );
 }
 
-function Empty({ msg }: { msg: string }) {
+function VideoIcon() {
   return (
-    <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: 26, textAlign: "center", fontSize: 14, color: "var(--oxford-60)", fontWeight: 600 }}>
-      {msg}
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}>
+      <path d="m22 8-6 4 6 4V8Z" /><rect x="2" y="6" width="14" height="12" rx="2" />
+    </svg>
+  );
+}
+
+/* 3 nöqtə menyu — Google Calendar, Vaxtı dəyiş, Ləğv et */
+function SessionCardMenu({ a, onReschedule, onCancel }: {
+  a: AppointmentDetail;
+  onReschedule: () => void;
+  onCancel: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const itemStyle: React.CSSProperties = {
+    display: "flex", alignItems: "center", gap: 9, width: "100%",
+    background: "transparent", border: "none", borderRadius: 8,
+    padding: "9px 11px", fontSize: 13, fontWeight: 600, fontFamily: "inherit",
+    color: "var(--oxford)", cursor: "pointer", textDecoration: "none", textAlign: "left",
+  };
+
+  const gcalHref = gcalHrefFor(a);
+
+  return (
+    <div style={{ position: "relative", flex: "none" }}>
+      <button type="button" aria-label="Əməliyyatlar" onClick={() => setOpen(o => !o)}
+        style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", background: open ? "var(--brand-50)" : "transparent", color: "var(--oxford-60)", border: "none", borderRadius: 8, cursor: "pointer" }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden><circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" /></svg>
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+          <div style={{ position: "absolute", top: 36, right: 0, zIndex: 41, background: "#fff", border: "1px solid #E3EAF6", borderRadius: 12, boxShadow: "0 10px 30px rgba(8,47,109,.14)", padding: 6, minWidth: 224, animation: "paFade .15s ease" }}>
+            {gcalHref && (
+              <a href={gcalHref} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} style={itemStyle}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                Google Calendar-a əlavə et
+              </a>
+            )}
+            <button type="button" onClick={() => { setOpen(false); onReschedule(); }} style={itemStyle}>
+              <IconClock />
+              Vaxtı dəyiş
+            </button>
+            <div style={{ height: 1, background: "#F0F4FA", margin: "4px 6px" }} />
+            <button type="button" onClick={() => { setOpen(false); onCancel(); }} style={{ ...itemStyle, color: "#991B1B" }}>
+              <IconX />
+              Ləğv et
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-/* ─── Awaiting confirmation card ─────────────────────────────────────────── */
+/* ─── Seans detal pəncərəsi — "Aç" düyməsi ilə açılır ─────────────────────────
+   Seans barədə bütün məlumat bir yerdə: vaxt, status, paket, ödəniş, mövzu,
+   operator qeydi, görüş linki və əməliyyatlar. */
 
-function AwaitingCard({
-  a, busyId, onConfirm, onDispute,
+function SessionDetailModal({
+  a, photoUrl, sessionNumber, now, onClose, onReschedule, onCancel,
 }: {
   a: AppointmentDetail;
-  busyId: number | null;
-  onConfirm: () => void;
-  onDispute: () => void;
+  photoUrl: string | null;
+  sessionNumber: number | null;
+  now: Date;
+  onClose: () => void;
+  onReschedule: () => void;
+  onCancel: () => void;
 }) {
-  const { t } = useT();
-  const status = STATUS[a.status] ?? STATUS.AWAITING_CONFIRMATION;
+  const status = STATUS[a.status] ?? STATUS.ASSIGNED;
   const start = a.startAt ? new Date(a.startAt) : null;
-  const alreadyConfirmed = !!a.patientConfirmedAt;
-  const isDisputed = a.status === "DISPUTED";
+  const tu = start ? timeUntil(start, now) : null;
+  const cancelRequested = a.status === "CANCEL_REQUESTED";
+  // Operator təsdiqi gözləyən müraciət — görüş/əməliyyat blokları bağlıdır.
+  const awaiting = a.status === "PENDING" || a.status === "REJECTED";
+  const psyName = a.psychologistName ?? a.requestedPsychologistName ?? null;
+  const gcalHref = gcalHrefFor(a);
+
+  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 4 };
+  const ghostBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 14px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", textDecoration: "none" };
 
   return (
-    <div className="psy-card psy-card--today" style={{ borderLeft: `4px solid ${status.accent}` }}>
-      <div className="psy-card__top">
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span className="psy-card__time">{a.startAt ? `${azFormatDate(a.startAt).slice(0, 5)} · ${fmtTime(new Date(a.startAt))}${a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}` : "—"}</span>
-          <span className="psy-card__badge" style={{ color: status.color, background: status.bg }}>
-            {status.label}
-          </span>
-          {a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null && (
-            <span className="psy-card__chip" style={{ background: "var(--brand-50)", color: "var(--brand-700)", fontWeight: 600 }}>
-              {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal })}
-            </span>
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(10,22,51,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, maxWidth: 560, width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+        {/* Başlıq: şəkil + ad + status */}
+        <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--brand-100)", display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="psy-card__avatar" style={{ width: 46, height: 46, overflow: "hidden", ...(photoUrl ? {} : { background: "#082F6D", color: "#fff", border: "none" }) }}>
+            {photoUrl ? (
+              <img src={photoUrl} alt={psyName ?? ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : initialsOf(psyName)}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{psyName ?? "Operator təyin edəcək"}</div>
+            {sessionNumber != null && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1 }}>{azOrdinal(sessionNumber)} seans</div>}
+          </div>
+          <span className="psy-card__badge" style={{ background: status.bg, color: status.color, flex: "none" }}>{status.label}</span>
+          <button type="button" aria-label="Bağla" onClick={onClose}
+            style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "var(--oxford-60)", border: "none", borderRadius: 8, cursor: "pointer", flex: "none" }}>
+            <IconX />
+          </button>
+        </div>
+
+        <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Vaxt */}
+          <div>
+            <div style={labelStyle}>Vaxt</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
+                {a.startAt
+                  ? `${azFormatDate(a.startAt)} · ${fmtTime(new Date(a.startAt))}${a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}`
+                  : a.requestedStartAt
+                    ? `İstədiyiniz vaxt: ${azFormatDate(a.requestedStartAt)} · ${fmtTime(new Date(a.requestedStartAt))}`
+                    : "Operator vaxtı təyin edəcək"}
+              </span>
+              {tu && !tu.expired && (
+                <span className={tu.urgent ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: tu.urgent ? "#FEE2E2" : "#ECFDF5", color: tu.urgent ? "#991B1B" : "#047857", fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                  {tu.text}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Paket bağlantısı */}
+          {a.patientPackageId != null && (
+            <div>
+              <div style={labelStyle}>Paket</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: "var(--brand-50)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 13px", flexWrap: "wrap" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: "var(--brand-700)" }}>
+                  <PackageBadge name={a.packageName} />
+                  {a.packageName ?? "Paket seansı"}
+                  {a.packageTotal != null && a.packageRemaining != null && (
+                    <span style={{ fontWeight: 600, color: "var(--oxford-60)", fontSize: 12.5 }}>· {a.packageRemaining} seans qalıb</span>
+                  )}
+                </span>
+                <Link href={`/patient/appointments/packages/${a.patientPackageId}`} style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", textDecoration: "none", whiteSpace: "nowrap" }}>
+                  Paketə bax
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Ödəniş (yalnız tək seans) */}
+          {a.paymentStatus != null && (
+            <div>
+              <div style={labelStyle}>Ödəniş</div>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)" }}>
+                {a.paymentAmount ? formatAzn(a.paymentAmount) : "Məbləğ təyin edilməyib"}
+                <span style={{ color: a.paymentStatus === "PAID" ? "#047857" : "#92400E", marginLeft: 8 }}>
+                  {a.paymentStatus === "PAID" ? "Təsdiqlənib" : "Operator təsdiqi gözlənilir"}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Mövzu */}
+          {a.note && (
+            <div>
+              <div style={labelStyle}>Mövzunuz</div>
+              <div style={{ fontSize: 13.5, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 13px", lineHeight: 1.5 }}>
+                «{a.note}»
+              </div>
+            </div>
+          )}
+
+          {/* Operator qeydi */}
+          {a.operatorNote && (
+            <div>
+              <div style={labelStyle}>Operator qeydi</div>
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 13px", fontSize: 13.5, color: "#92400E", fontWeight: 500, lineHeight: 1.5 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 2 }}><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
+                <span style={{ fontStyle: "italic" }}>«{a.operatorNote}»</span>
+              </div>
+            </div>
+          )}
+
+          {/* Görüş linki — gözləyən müraciətdə hələ mənasızdır */}
+          {!awaiting && (
+            <div>
+              <div style={labelStyle}>Görüş</div>
+              <SessionJoinButton a={a} />
+              {!a.meetingLink && (
+                <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500, marginTop: 6 }}>
+                  Görüş linki operator tərəfindən seans vaxtından əvvəl təyin ediləcək.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Əməliyyatlar */}
+          {cancelRequested || awaiting ? (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>
+              <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
+              {cancelRequested
+                ? "Ləğv istəyiniz operator təsdiqini gözləyir"
+                : a.status === "REJECTED"
+                  ? "Operator sizə yeni psixoloq təyin edəcək"
+                  : "Operatorumuz müraciətinizi nəzərdən keçirir"}
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", borderTop: "1px solid #F0F4FA", paddingTop: 16 }}>
+              {gcalHref && (
+                <a href={gcalHref} target="_blank" rel="noopener noreferrer" style={ghostBtn}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                  Google Calendar-a əlavə et
+                </a>
+              )}
+              <button type="button" onClick={onReschedule} style={ghostBtn}>
+                <IconClock />
+                Vaxtı dəyiş
+              </button>
+              <button type="button" onClick={onCancel} style={{ ...ghostBtn, color: "#991B1B", border: "1px solid #F3D6D6" }}>
+                <IconX />
+                Ləğv et
+              </button>
+            </div>
           )}
         </div>
       </div>
-      <div className="psy-card__body">
-        <div className="psy-card__avatar">{initialsOf(a.psychologistName)}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="psy-card__name">{a.psychologistName ?? "Psixoloq"}</div>
-          <div className="psy-card__ctx">
-            {isDisputed ? (
-              <span className="psy-card__ctx-quote">Operator komandamız sizinlə əlaqə saxlayacaq.</span>
-            ) : alreadyConfirmed ? (
-              <span className="psy-card__ctx-quote">Siz təsdiqlədiniz — psixoloqdan gözlənilir</span>
-            ) : (
-              <span className="psy-card__ctx-quote">Seans baş tutdumu? Qısa təsdiq lazımdır.</span>
-            )}
-          </div>
-        </div>
-      </div>
-      {!isDisputed && !alreadyConfirmed && (
-        <div className="psy-card__actions">
-          <button
-            disabled={busyId === a.id}
-            onClick={onConfirm}
-            className="psy-card__btn psy-card__btn--primary">
-            {busyId === a.id ? "…" : t("staff.cardConfirm")}
-          </button>
-          <button
-            onClick={onDispute}
-            className="psy-card__btn psy-card__btn--ghost">
-            {t("staff.cardDispute")}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── History row ────────────────────────────────────────────────────────── */
-
-function HistoryRow({
-  a, review, feedbackGiven, onWriteReview, onFeedback,
-}: {
-  a: AppointmentDetail;
-  review: MyReview | null;
-  feedbackGiven: boolean;
-  onWriteReview: () => void;
-  onFeedback: () => void;
-}) {
-  const ref = a.startAt ?? a.endAt;
-  if (!ref) return null;
-  const status = STATUS[a.status] ?? STATUS.COMPLETED;
-  const canReview = a.status === "COMPLETED" && a.psychologistId && !review;
-  // Rəy yalnız seansdan sonrakı 24 saat ərzində yazıla bilər. Vaxt keçəndə
-  // "Necə keçdi?" düyməsi yox olur (anchor: seansın bitmə vaxtı, yoxdursa başlama).
-  const fbAnchor = a.endAt ?? a.startAt;
-  const fbStatusOk = a.status === "COMPLETED" || a.status === "AWAITING_CONFIRMATION";
-  const fbWindowOpen = fbStatusOk && fbAnchor != null && hoursSince(fbAnchor) <= 24;
-  // "Rəyim" badge-i göstərilmir (lazım deyil) — yalnız moderasiya gözləyən rəy üçün işarə qalır.
-  const reviewLabel = review && review.status === "PENDING" ? "Rəy gözləyir" : null;
-  const isCancelled = a.status === "CANCELLED";
-  const cancelWho = a.cancelledBy === "PATIENT" ? "Siz ləğv etdiniz"
-    : a.cancelledBy === "PSYCHOLOGIST" ? "Psixoloq ləğv etdi"
-    : a.cancelledBy === "OPERATOR" ? "Operator ləğv etdi" : "Ləğv edildi";
-  // PATIENT_OTHER ("Digər") faydasızdır — onun yerinə yalnız pasiyentin qeydini göstəririk.
-  const cancelReasonTxt = a.cancelReasonCode && a.cancelReasonCode !== "PATIENT_OTHER" ? reasonLabel(a.cancelReasonCode) : "";
-  return (
-    <div style={{ borderTop: "1px solid #F0F4FA", padding: "13px 12px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 13.5, fontWeight: 700, minWidth: 100 }}>{azFormatDate(ref)}</span>
-        <span style={{ flex: 1, minWidth: 150, fontSize: 14, color: "var(--oxford-60)", fontWeight: 500 }}>{a.psychologistName ?? "Psixoloq"}</span>
-        <span style={{ background: status.bg, color: status.color, fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>{status.label}</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {feedbackGiven ? (
-            <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>rəy verildi</span>
-          ) : fbWindowOpen ? (
-            <button onClick={onFeedback} type="button" style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)", background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-              Necə keçdi?
-            </button>
-          ) : null}
-        {canReview ? (
-          <button onClick={onWriteReview} type="button" style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#fff", color: "#082F6D", border: "1px solid #C7DAF5", borderRadius: 8, padding: "6px 11px", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z" /></svg>
-            Rəy yaz
-          </button>
-        ) : reviewLabel ? (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#FEF3C7", color: "#92400E", fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="#F59E0B" stroke="none"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z" /></svg>
-            {reviewLabel}
-          </span>
-        ) : null}
-        </div>
-      </div>
-      {isCancelled && (a.cancelledBy || a.cancelReasonText || cancelReasonTxt) && (
-        <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500, marginTop: 7 }}>
-          <span style={{ color: "#991B1B", fontWeight: 600 }}>{cancelWho}</span>
-          {cancelReasonTxt && <> · {cancelReasonTxt}</>}
-          {a.cancelReasonText && <> · «{a.cancelReasonText}»</>}
-        </div>
-      )}
     </div>
   );
 }
@@ -1322,9 +1158,11 @@ function CancelRequestNoteModal({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Modal açılan andakı vaxt — render içində Date.now() çağırmamaq üçün state-də.
+  const [openedAtMs] = useState(() => Date.now());
 
   const hoursLeft = appointment.startAt
-    ? (new Date(appointment.startAt).getTime() - Date.now()) / (1000 * 60 * 60)
+    ? (new Date(appointment.startAt).getTime() - openedAtMs) / (1000 * 60 * 60)
     : null;
   const isLate = hoursLeft !== null && hoursLeft >= 0 && hoursLeft < 24;
 
@@ -1417,76 +1255,6 @@ function RescheduleRequestNoteModal({
             <button onClick={submit} disabled={saving}
               style={{ padding: "8px 20px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
               {saving ? "Göndərilir…" : "İstək göndər"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Reschedule modal (kept from previous version, brand-aligned) ───────── */
-
-function RescheduleModal({
-  appointment, onClose, onDone,
-}: {
-  appointment: AppointmentDetail;
-  onClose: () => void;
-  onDone: () => void;
-}) {
-  const [datetime, setDatetime] = useState("");
-  const [note, setNote] = useState(appointment.note ?? "");
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const submit = async () => {
-    setErr(null);
-    if (!datetime) { setErr("Yeni vaxt seçin"); return; }
-    const trimmed = note.trim();
-    if (trimmed.length < 5) { setErr("Qısa təsvir yazın (ən azı 5 simvol)"); return; }
-    setSaving(true);
-    try {
-      await patientApi.reschedule(appointment.id, {
-        note: trimmed,
-        requestedPsychologistId: appointment.psychologistId ?? appointment.requestedPsychologistId ?? null,
-        requestedStartAt: azLocalToISO(datetime),
-      });
-      onDone();
-    } catch (e) {
-      setErr((e as Error).message);
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div onClick={onClose}
-      style={{ position: "fixed", inset: 0, background: "rgba(15,28,46,0.5)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div onClick={e => e.stopPropagation()}
-        style={{ background: "#fff", borderRadius: 16, width: "min(560px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
-        <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--brand-100)" }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Vaxtı dəyişdir</h2>
-          <p style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 4 }}>
-            Mövcud randevu ləğv ediləcək və yeni müraciət qeydə alınacaq. Operator yeni vaxtı təsdiqləyəcək.
-          </p>
-        </div>
-        <div style={{ padding: 22 }}>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>Yeni vaxt</label>
-          <DatePicker withTime value={datetime} onChange={setDatetime} theme="light" size="sm" style={{ width: "100%", marginBottom: 14 }} />
-
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>Qısa təsvir</label>
-          <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
-            placeholder="Vaxt dəyişdirmə səbəbi və ya yeni qeydlər"
-            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12 }} />
-
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>{err}</div>}
-
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>
-              Bağla
-            </button>
-            <button onClick={submit} disabled={saving}
-              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
-              {saving ? "Göndərilir…" : "Vaxtı dəyiş"}
             </button>
           </div>
         </div>

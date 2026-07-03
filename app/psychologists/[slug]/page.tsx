@@ -9,7 +9,6 @@ import {
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import BookingCta from "./BookingCta";
-import { formatAzn } from "@/lib/money";
 
 function getInitials(name: string) {
   return name.split(" ").filter((w) => w.length > 1).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -197,28 +196,18 @@ export default async function PsychologistProfilePage(
           {/* ===== STICKY BOOKING CARD ===== */}
           <aside className="ppx-book">
             <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 8px 30px rgba(8,47,109,.12)", border: "1px solid #EDF1F8", padding: 22 }}>
-              {psychologist.individualPrice != null && (
+              {psychologist.packages && psychologist.packages.length > 0 && (
                 <>
-                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 6 }}>Qiymət</div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 16 }}>
-                    <span style={{ fontSize: 30, fontWeight: 800, color: "var(--brand-700)", letterSpacing: "-.02em" }}>{formatAzn(psychologist.individualPrice)}</span>
-                    <span style={{ fontSize: 14, color: "var(--oxford-60)", fontWeight: 600 }}>/ seans</span>
+                  <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 10 }}>Seans seçimləri</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 16 }}>
+                    {psychologist.packages.map((pkg) => (
+                      <div key={pkg.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 11, padding: "11px 13px" }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 700 }}>{pkg.name}</div>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--brand-700)" }}>{pkg.sessionCount} seans</span>
+                      </div>
+                    ))}
                   </div>
                 </>
-              )}
-
-              {psychologist.packages && psychologist.packages.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 16 }}>
-                  {psychologist.packages.map((pkg) => (
-                    <div key={pkg.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 11, padding: "11px 13px" }}>
-                      <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 700 }}>{pkg.name}</div>
-                        <div style={{ fontSize: 11.5, color: "#065F46", fontWeight: 700 }}>{formatAzn(pkg.perSessionPrice)} / seans</div>
-                      </div>
-                      <span style={{ fontSize: 15, fontWeight: 800, color: "var(--brand-700)" }}>{formatAzn(pkg.packagePrice)}</span>
-                    </div>
-                  ))}
-                </div>
               )}
 
               <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 16 }}>
@@ -343,12 +332,6 @@ export default async function PsychologistProfilePage(
 
       {/* MOBILE STICKY BOTTOM BAR */}
       <div className="ppx-bottombar" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "#fff", borderTop: "1px solid #E1E9F5", boxShadow: "0 -4px 20px rgba(8,47,109,.10)", padding: "12px 18px", alignItems: "center", gap: 14 }}>
-        {psychologist.individualPrice != null && (
-          <div style={{ flex: "none" }}>
-            <div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600 }}>Qiymət</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "var(--brand-700)" }}>{formatAzn(psychologist.individualPrice)}<span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}> / seans</span></div>
-          </div>
-        )}
         <div style={{ flex: 1 }}>
           <BookingCta psychologistId={psychologist.id} psychologistSlug={psychologist.slug} name={psychologist.name} />
         </div>

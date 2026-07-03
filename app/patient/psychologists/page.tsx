@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { getPsychologists, patientApi, type Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
-import { formatAzn } from "@/lib/money";
 
 type SortMode = "recommended" | "rating" | "experience" | "newest";
 
@@ -267,7 +266,6 @@ function PsyCard({
   const rating = ratingNum(p.rating);
   const years = experienceNum(p.experience);
   const sessions = p.displayedSessionCount ?? sessionsNum(p.sessionsCount);
-  const price = p.individualPrice != null ? formatAzn(p.individualPrice) : null;
   const hasPackages = (p.packages?.length ?? 0) > 0;
   const profileHref = p.slug ? `/patient/psychologists/${p.slug}` : "/patient/psychologists";
   const bookHref = p.slug ? `/patient/book/${p.slug}` : "/patient/psychologists";
@@ -360,20 +358,12 @@ function PsyCard({
         </div>
       )}
 
-      {(price || hasPackages) && (
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10, marginBottom: 18 }}>
-          {price ? (
-            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-              <span style={{ fontSize: 22, fontWeight: 800, color: "var(--brand-700)", letterSpacing: "-.01em" }}>{price}</span>
-              <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>/ seans</span>
-            </div>
-          ) : <span />}
-          {hasPackages && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#D1FAE5", color: "#065F46", fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.27 6.96L12 12.01l8.73-5.05" /></svg>
-              Paketlər var
-            </span>
-          )}
+      {hasPackages && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 18 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#D1FAE5", color: "#065F46", fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.27 6.96L12 12.01l8.73-5.05" /></svg>
+            Paketlər var
+          </span>
         </div>
       )}
 

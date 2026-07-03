@@ -15,7 +15,6 @@ import {
   type Psychologist,
   type PackageSummary,
 } from "@/lib/api";
-import { formatAzn } from "@/lib/money";
 import { buildPanelUrl, getStoredUser } from "@/lib/auth";
 import { withSlugs } from "@/lib/slug";
 import { downloadIcsMulti } from "@/lib/calendar";
@@ -569,10 +568,6 @@ export default function BookPsychologistPage() {
   const ready = blockers.length === 0;
   const submitDisabled = submitting || !ready;
 
-  let total = "—";
-  if (mode === "PACKAGE" && selectedPackage) total = formatAzn(selectedPackage.packagePrice);
-  else if (psychologist?.individualPrice != null) total = formatAzn(psychologist.individualPrice * Math.max(1, okItems.length));
-
   const submitLabel = submitting
     ? t("common.sending")
     : mode === "PACKAGE" && selectedPackage
@@ -661,9 +656,7 @@ export default function BookPsychologistPage() {
                     <TypeCard
                       selected={mode === "SINGLE"}
                       label={t("pkg.single")}
-                      priceMain={psychologist.individualPrice != null ? formatAzn(psychologist.individualPrice) : "—"}
-                      priceSub="/ seans"
-                      per="Bir dəfəlik"
+                      note="Bir dəfəlik seans"
                       onClick={() => { setMode("SINGLE"); setSelectedPackage(null); setChooseLater(false); }}
                     />
                     {psychologist.packages?.map(pkg => {
@@ -674,9 +667,7 @@ export default function BookPsychologistPage() {
                           isPkg
                           selected={picked}
                           label={pkg.name}
-                          priceMain={formatAzn(pkg.packagePrice)}
-                          priceSub="cəmi"
-                          per={`${formatAzn(pkg.perSessionPrice)}${t("pricing.perSession")}`}
+                          note={`${pkg.sessionCount} seans daxildir`}
                           onClick={() => { setMode("PACKAGE"); setSelectedPackage(pkg); }}
                         />
                       );
@@ -900,11 +891,6 @@ export default function BookPsychologistPage() {
                   <CheckRow done={noteOk} label="Mövzu yazıldı" />
                 </div>
 
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 16 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>Cəmi</span>
-                  <span style={{ fontSize: 24, fontWeight: 800, color: "var(--brand-700)" }}>{total}</span>
-                </div>
-
                 <button type="submit" disabled={submitDisabled} title={!ready ? blockers.join(" · ") : undefined}
                   style={{ width: "100%", background: submitDisabled ? "#A9BEE2" : "var(--brand)", color: "#fff", border: "none", borderRadius: 11, padding: 14, fontSize: 15, fontWeight: 700, fontFamily: "inherit", cursor: submitDisabled ? "not-allowed" : "pointer", boxShadow: submitDisabled ? "none" : "0 4px 14px rgba(16,81,183,.28)" }}>
                   {submitLabel}
@@ -926,9 +912,9 @@ export default function BookPsychologistPage() {
 
             {/* MOBILE STICKY BOTTOM BAR */}
             <div className="bkx-bottombar" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "#fff", borderTop: "1px solid #E1E9F5", boxShadow: "0 -4px 20px rgba(8,47,109,.10)", padding: "12px 18px", alignItems: "center", gap: 14 }}>
-              <div style={{ flex: "none" }}>
-                <div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600 }}>Cəmi</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--brand-700)" }}>{total}</div>
+              <div style={{ flex: "none", maxWidth: 140 }}>
+                <div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600 }}>Növ</div>
+                <div style={{ fontSize: 14.5, fontWeight: 800, color: "var(--brand-700)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{typeSummary}</div>
               </div>
               <button type="submit" disabled={submitDisabled}
                 style={{ flex: 1, background: submitDisabled ? "#A9BEE2" : "var(--brand)", color: "#fff", border: "none", borderRadius: 11, padding: 14, fontSize: 15, fontWeight: 700, fontFamily: "inherit", cursor: submitDisabled ? "not-allowed" : "pointer" }}>
@@ -954,14 +940,12 @@ function SectionHead({ n, title }: { n: number; title: string }) {
 }
 
 function TypeCard({
-  selected, isPkg, label, priceMain, priceSub, per, onClick,
+  selected, isPkg, label, note, onClick,
 }: {
   selected: boolean;
   isPkg?: boolean;
   label: string;
-  priceMain: string;
-  priceSub: string;
-  per: string;
+  note: string;
   onClick: () => void;
 }) {
   return (
@@ -974,11 +958,7 @@ function TypeCard({
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: selected ? 1 : 0 }}><path d="M20 6L9 17l-5-5" /></svg>
       </span>
       <span style={{ fontSize: 14.5, fontWeight: 700, color: "var(--oxford)", paddingRight: 24 }}>{label}</span>
-      <span style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-        <span style={{ fontSize: 20, fontWeight: 800, color: "var(--brand-700)" }}>{priceMain}</span>
-        <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>{priceSub}</span>
-      </span>
-      <span style={{ fontSize: 12, fontWeight: 600, color: isPkg ? "#065F46" : "var(--oxford-60)" }}>{per}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: isPkg ? "#065F46" : "var(--oxford-60)" }}>{note}</span>
     </button>
   );
 }

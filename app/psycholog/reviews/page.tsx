@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { psychologistApi, type PsychologistReceivedReview } from "@/lib/api";
+import { psychologistApi, type PsychologistReceivedReview, type ReviewDeletionRequestItem } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
@@ -35,7 +35,9 @@ export default function PsychologReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"ALL" | "APPROVED" | "PENDING">("APPROVED");
   const [replyFor, setReplyFor] = useState<PsychologistReceivedReview | null>(null);
+  const [deleteFor, setDeleteFor] = useState<PsychologistReceivedReview | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [deletionRequests, setDeletionRequests] = useState<ReviewDeletionRequestItem[]>([]);
 
   const load = () => {
     setLoading(true);
@@ -43,9 +45,19 @@ export default function PsychologReviewsPage() {
       .then(setItems)
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
+    psychologistApi.myReviewDeletionRequests()
+      .then(setDeletionRequests)
+      .catch(() => setDeletionRequests([]));
   };
 
   useEffect(load, []);
+
+  const deletionByReview = useMemo(() => {
+    const map = new Map<number, ReviewDeletionRequestItem>();
+    // ilk (ən yeni) tələb qalır — siyahı createdAt desc gəlir
+    deletionRequests.forEach(dr => { if (!map.has(dr.reviewId)) map.set(dr.reviewId, dr); });
+    return map;
+  }, [deletionRequests]);
 
   const visible = useMemo(() => {
     if (filter === "ALL") return items;
@@ -145,6 +157,26 @@ export default function PsychologReviewsPage() {
                   {r.comment}
                 </p>
 
+                {(() => {
+                  const dr = deletionByReview.get(r.id);
+                  if (!dr) return null;
+                  const drBadge = dr.status === "PENDING"
+                    ? { label: "Silmə tələbi: Gözləmədə", bg: "#FEF3C7", color: "#92400E" }
+                    : dr.status === "APPROVED"
+                      ? { label: "Silmə tələbi: Təsdiqləndi (rəy silindi)", bg: "#D1FAE5", color: "#065F46" }
+                      : { label: "Silmə tələbi: Rədd edildi", bg: "#FEE2E2", color: "#991B1B" };
+                  return (
+                    <div style={{ marginTop: 10 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, color: drBadge.color, background: drBadge.bg }}>
+                        {drBadge.label}
+                      </span>
+                      {dr.decisionNote && (
+                        <span style={{ fontSize: 12, color: "#52718F", marginLeft: 8 }}>{dr.decisionNote}</span>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {r.reply ? (
                   <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--brand-50)", borderLeft: "3px solid var(--brand)", borderRadius: "0 8px 8px 0" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
@@ -164,11 +196,17 @@ export default function PsychologReviewsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ marginTop: 12 }}>
+                  <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
                     <button onClick={() => setReplyFor(r)}
                       style={{ padding: "7px 14px", fontSize: 13, fontWeight: 600, border: "1px solid var(--brand-200)", color: "var(--brand)", background: "var(--brand-50)", borderRadius: 8, cursor: "pointer" }}>
                       Cavab yaz
                     </button>
+                    {!deletionByReview.get(r.id) && (
+                      <button onClick={() => setDeleteFor(r)}
+                        style={{ padding: "7px 14px", fontSize: 13, fontWeight: 600, border: "1px solid #FECACA", color: "#991B1B", background: "#FEF2F2", borderRadius: 8, cursor: "pointer" }}>
+                        Silmə tələbi göndər
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -187,6 +225,90 @@ export default function PsychologReviewsPage() {
           }}
         />
       )}
+
+      {deleteFor && (
+        <DeletionRequestModal
+          review={deleteFor}
+          onClose={() => setDeleteFor(null)}
+          onSaved={(dr) => {
+            setDeletionRequests(prev => [dr, ...prev]);
+            setDeleteFor(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Rəy Silmə Tələbi — rəy birbaşa silinmir, qərar Operatorundur (PSI-BR-04). */
+function DeletionRequestModal({ review, onClose, onSaved }: {
+  review: PsychologistReceivedReview;
+  onClose: () => void;
+  onSaved: (dr: ReviewDeletionRequestItem) => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    setErr(null);
+    if (reason.trim().length < 5) { setErr("Səbəbi qısaca izah edin (ən azı 5 simvol)"); return; }
+    setBusy(true);
+    try {
+      const dr = await psychologistApi.requestReviewDeletion(review.id, reason.trim());
+      onSaved(dr);
+    } catch (e) {
+      setErr((e as Error).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(15,28,46,0.5)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, width: "min(560px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
+        <div style={{ padding: "16px 22px", borderBottom: "1px solid #EFF2F7" }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: 0 }}>
+            Rəy üçün silmə tələbi
+          </h2>
+          <p style={{ fontSize: 12, color: "#52718F", marginTop: 4 }}>
+            Tələbiniz Operatora göndərilir — rəy yalnız Operator təsdiqindən sonra silinir.
+          </p>
+        </div>
+        <div style={{ padding: 22 }}>
+          <div style={{ background: "#F8FAFC", border: "1px solid #EEF2F7", padding: 12, borderRadius: 8, marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#52718F", marginBottom: 4 }}>
+              {review.patientName} · <Stars value={review.rating} size={12} />
+            </div>
+            <p style={{ fontSize: 13, color: "#374151", margin: 0, whiteSpace: "pre-wrap" }}>{review.comment}</p>
+          </div>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
+            Silinmə səbəbi
+          </label>
+          <textarea
+            rows={4} value={reason} maxLength={2000}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Rəyin niyə uyğunsuz olduğunu izah edin…"
+            style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", lineHeight: 1.55, resize: "vertical" }}
+          />
+          {err && (
+            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>
+              {err}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+            <button onClick={onClose} disabled={busy}
+              style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: busy ? "wait" : "pointer" }}>
+              Bağla
+            </button>
+            <button onClick={submit} disabled={busy}
+              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "#991B1B", color: "#fff", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>
+              {busy ? "Göndərilir…" : "Tələbi göndər"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

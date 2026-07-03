@@ -2,10 +2,11 @@
 
 /**
  * Müraciət Pool-u — ayrıca intake səhifəsi. Yeni (sahibsiz) müraciətlər
- * burada toplanır: həm SEANS müraciətləri, həm də ÖDƏNİŞ/PAKET müraciətləri.
- * Operator buradan "Götür" → müraciət daimi olaraq onun üzərinə keçir və
- * pooldan çıxır. Sonrakı idarəetmə müvafiq səhifələrdə (randevu detalı /
- * ödənişlər) davam edir. Pool artıq siyahı içində filtr deyil — öz səhifəsidir.
+ * (seans/paket) burada toplanır. Operator buradan "Götür" → müraciət
+ * daimi olaraq onun üzərinə keçir və pooldan çıxır. Ayrıca ödəniş pool-u
+ * yoxdur — müraciətin ödənişi bu götürmə ilə birlikdə avtomatik operatorun
+ * üzərinə keçir (bax OperatorPaymentsPage). Pool artıq siyahı içində filtr
+ * deyil — öz səhifəsidir.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -13,14 +14,12 @@ import { useRouter } from "next/navigation";
 import {
   operatorApi,
   type AppointmentDetail,
-  type PaymentItem,
 } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
 import { subscribeNotifications, subscribeOperatorClaims } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDateTime } from "@/lib/datetime";
 import { statusMeta, isPoolEligible } from "@/lib/appointmentStatus";
-import { formatAzn } from "@/lib/money";
 import { toast as uiToast } from "@/components/Toast";
 
 function normalizePhone(raw: string | null | undefined): string | null {
@@ -61,17 +60,13 @@ export default function OperatorPoolPage() {
   const router = useRouter();
 
   const [appts, setAppts] = useState<AppointmentDetail[]>([]);
-  const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
-    Promise.all([
-      operatorApi.listAppointments().catch(() => [] as AppointmentDetail[]),
-      operatorApi.listPendingPayments("PENDING").catch(() => [] as PaymentItem[]),
-    ])
-      .then(([a, p]) => { setAppts(a); setPayments(p); })
+    operatorApi.listAppointments().catch(() => [] as AppointmentDetail[])
+      .then(setAppts)
       .finally(() => setLoading(false));
   }, []);
 
@@ -81,7 +76,7 @@ export default function OperatorPoolPage() {
   useEffect(() => {
     return subscribeNotifications((n) => {
       const ty = typeof n.type === "string" ? n.type : "";
-      if (ty.startsWith("APPOINTMENT_") || ty.startsWith("PAYMENT_")) load();
+      if (ty.startsWith("APPOINTMENT_")) load();
     });
   }, [load]);
 
@@ -94,15 +89,35 @@ export default function OperatorPoolPage() {
     });
   }, []);
 
-  // Pool = sahibsiz + yeni müraciət.
+  // Pool = sahibsiz + yeni müraciət (randevu tələbi, PENDING/NEW/REJECTED).
+  // Ayrıca "ödəniş pool"u yoxdur — müraciəti götürəndə onun ödənişi də
+  // avtomatik operatorun üzərinə keçir (Ödənişlər səhifəsində idarə olunur).
   const poolAppts = useMemo(
     () => appts.filter(a => a.claimedByUserId == null && isPoolEligible(a.status)),
     [appts]);
-  const poolPayments = useMemo(
-    () => payments.filter(p => p.claimedByOperatorId == null),
-    [payments]);
 
-  const total = poolAppts.length + poolPayments.length;
+  // Paket alışı arxa planda hər seans üçün ayrı appointment sətri kimi yaranır,
+  // amma operator üçün bu SEANS müraciəti deyil — PAKET müraciətidir, öz biznes
+  // məntiqi ilə (paket adı, neçə seanslıq, kimə aiddir). Ona görə seans siyahısında
+  // fərdi ticket kimi yox, ayrıca "paket" kartı kimi göstərilir.
+  const { poolPackages, poolStandaloneAppts } = useMemo(() => {
+    const groups = new Map<number, AppointmentDetail[]>();
+    const standalone: AppointmentDetail[] = [];
+    for (const a of poolAppts) {
+      if (a.patientPackageId != null) {
+        if (!groups.has(a.patientPackageId)) groups.set(a.patientPackageId, []);
+        groups.get(a.patientPackageId)!.push(a);
+      } else {
+        standalone.push(a);
+      }
+    }
+    for (const list of groups.values()) {
+      list.sort((x, y) => new Date(x.createdAt).getTime() - new Date(y.createdAt).getTime());
+    }
+    return { poolPackages: Array.from(groups.values()), poolStandaloneAppts: standalone };
+  }, [poolAppts]);
+
+  const total = poolAppts.length;
 
   const takeAppt = useCallback((a: AppointmentDetail) => {
     setBusyId(`a${a.id}`);
@@ -115,19 +130,22 @@ export default function OperatorPoolPage() {
       .finally(() => setBusyId(null));
   }, [t]);
 
-  const takePayment = useCallback((p: PaymentItem) => {
-    setBusyId(`p${p.id}`);
-    operatorApi.claimPayment(p.id)
+  // Paket vahid götürülür: backend bir seansı claim edəndə eyni patientPackageId-ə
+  // aid bütün qalan sətirləri avtomatik operatora bağlayır (AppointmentClaimService
+  // .maybeAdoptPackage) — ayrı-ayrı hər seans üçün claim göndərmək lazım deyil, əksinə
+  // paralel claim-lər paket sahibliyi üzərində eyni-vaxtlı yazı toqquşmasına (500) səbəb olurdu.
+  const takePackage = useCallback((sessions: AppointmentDetail[]) => {
+    const pkgId = sessions[0].patientPackageId;
+    setBusyId(`pkg${pkgId}`);
+    operatorApi.claim(sessions[0].id)
       .then(() => {
-        setPayments(prev => prev.filter(x => x.id !== p.id));
-        // Ödəniş götürüldükdən sonra "Ödənişlər → Gözləyir"də yaşayır; operatoru
-        // birbaşa ora aparırıq ki, "itdi" hissi yaranmasın (mark-paid orada olur).
-        uiToast("Ödəniş götürüldü — Ödənişlər → Gözləyir", "success");
-        router.push("/operator/payments");
+        const ids = new Set(sessions.map(a => a.id));
+        setAppts(prev => prev.filter(x => !ids.has(x.id)));
+        uiToast(t("staff.opPoolTaken"), "success");
       })
       .catch((e) => uiToast((e as Error).message, "error"))
       .finally(() => setBusyId(null));
-  }, [router]);
+  }, [t]);
 
   return (
     <div style={{ width: "100%" }}>
@@ -136,12 +154,7 @@ export default function OperatorPoolPage() {
       {/* HEADER */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 24 }}>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-.02em", color: "var(--oxford)" }}>{t("staff.opPoolTitle")}</h1>
-            {total > 0 && (
-              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 28, height: 28, padding: "0 10px", background: "#ECFDF5", color: "#047857", fontSize: 14, fontWeight: 800, borderRadius: 999 }}>{total}</span>
-            )}
-          </div>
+          <h1 style={{ margin: "0 0 6px", fontSize: 26, fontWeight: 800, letterSpacing: "-.02em", color: "var(--oxford)" }}>{t("staff.opPoolTitle")}</h1>
           <p style={{ margin: 0, fontSize: 14.5, color: "var(--oxford-60)", fontWeight: 500 }}>{t("staff.opPoolSub")}</p>
         </div>
         <button onClick={load} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 16px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
@@ -163,52 +176,27 @@ export default function OperatorPoolPage() {
           <div style={{ fontSize: 14, color: "var(--oxford-60)", fontWeight: 500 }}>Yeni müraciət gələndə burada görünəcək.</div>
         </div>
       ) : (
-        <>
-          {poolAppts.length > 0 && (
-            <div style={{ marginBottom: 30 }}>
-              <SectionHeader color="#047857" tintBg="#ECFDF5" label={t("staff.opPoolApptSection")} count={poolAppts.length} />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
-                {poolAppts.map(a => (
-                  <PoolApptCard
-                    key={a.id}
-                    a={a}
-                    busy={busyId === `a${a.id}`}
-                    onTake={() => takeAppt(a)}
-                    onOpen={() => router.push(`/operator/appointments/${a.id}`)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {poolPayments.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <SectionHeader color="#B45309" tintBg="#FEF3C7" label={t("staff.opPoolPaySection")} count={poolPayments.length} />
-              <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", overflow: "hidden" }}>
-                {poolPayments.map((p, i) => (
-                  <PoolPayRow
-                    key={p.id}
-                    p={p}
-                    first={i === 0}
-                    busy={busyId === `p${p.id}`}
-                    onTake={() => takePayment(p)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
+          {poolPackages.map(sessions => (
+            <PoolPackageCard
+              key={sessions[0].patientPackageId}
+              sessions={sessions}
+              busy={busyId === `pkg${sessions[0].patientPackageId}`}
+              onTake={() => takePackage(sessions)}
+              onOpen={() => router.push(`/operator/customers/${sessions[0].patientId}`)}
+            />
+          ))}
+          {poolStandaloneAppts.map(a => (
+            <PoolApptCard
+              key={a.id}
+              a={a}
+              busy={busyId === `a${a.id}`}
+              onTake={() => takeAppt(a)}
+              onOpen={() => router.push(`/operator/appointments/${a.id}`)}
+            />
+          ))}
+        </div>
       )}
-    </div>
-  );
-}
-
-function SectionHeader({ color, tintBg, label, count }: { color: string; tintBg: string; label: string; count: number }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-      <span style={{ width: 9, height: 9, borderRadius: "50%", background: color }} />
-      <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford)" }}>{label}</span>
-      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 22, height: 22, padding: "0 7px", background: tintBg, color, fontSize: 12, fontWeight: 700, borderRadius: 999 }}>{count}</span>
     </div>
   );
 }
@@ -234,12 +222,17 @@ function PoolApptCard({
   const { t } = useT();
   const meta = statusMeta(a.status);
   const phone = normalizePhone(a.patientPhone);
+  // Rədd edilib yenidən təyin gözləyən müraciət kəhrəba, təzə müraciət yaşıl.
+  const accent = a.status === "REJECTED" ? "#B45309" : "#047857";
 
   return (
     <div role="button" tabIndex={0} data-pool-appt={a.id} onClick={onOpen} onKeyDown={e => { if (e.key === "Enter") onOpen(); }}
-      style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", borderLeft: "3px solid #047857", padding: 18, display: "flex", flexDirection: "column", cursor: "pointer" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
-        <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", letterSpacing: ".02em" }}>#FNS-{String(a.id).padStart(4, "0")}</span>
+      style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", borderLeft: `3px solid ${accent}`, padding: 18, display: "flex", flexDirection: "column", cursor: "pointer" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ background: "#ECFDF5", color: "#047857", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>Seans</span>
+          <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", letterSpacing: ".02em" }}>#FNS-{String(a.id).padStart(4, "0")}</span>
+        </div>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: meta.bg, color: meta.fg, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: meta.fg }} />{meta.label}
         </span>
@@ -291,7 +284,7 @@ function PoolApptCard({
 
       <div style={{ display: "flex", gap: 9, marginTop: "auto" }}>
         <button onClick={e => { e.stopPropagation(); onTake(); }} disabled={busy}
-          style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "#047857", color: "#fff", border: "none", borderRadius: 10, padding: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1, boxShadow: "0 4px 12px rgba(4,120,87,.24)" }}>
+          style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: accent, color: "#fff", border: "none", borderRadius: 10, padding: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1, boxShadow: `0 4px 12px ${accent}3d` }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
           {t("staff.opTake")}
         </button>
@@ -304,30 +297,109 @@ function PoolApptCard({
   );
 }
 
-function PoolPayRow({ p, first, busy, onTake }: { p: PaymentItem; first: boolean; busy: boolean; onTake: () => void }) {
+const PKG_STATUS: Record<string, { label: string; bg: string; color: string }> = {
+  ACTIVE:    { label: "Aktiv",       bg: "#D1FAE5", color: "#065F46" },
+  EXHAUSTED: { label: "Tamamlanıb",  bg: "#F3F4F6", color: "#374151" },
+  EXPIRED:   { label: "Vaxtı keçib", bg: "#FEF3C7", color: "#92400E" },
+  CANCELLED: { label: "Ləğv",        bg: "#FEE2E2", color: "#991B1B" },
+};
+
+/** Paket müraciəti — SEANS deyil, öz biznes məntiqi olan ayrıca müraciət növüdür:
+ *  patiyent paket alıb, operator paketi (kimin, neçə seanslıq) götürüb daxil olur.
+ *  Backend bir sətri claim edəndə eyni paketə aid bütün sətirləri avtomatik operatora
+ *  bağlayır (AppointmentClaimService.maybeAdoptPackage) — ona görə kart daxilində
+ *  seansları ayrı-ayrı göstərmək / götürmək YOXDUR, "Götür" bütöv paketi götürür.
+ *  Digər pool kartları (seans/lead) ilə eyni sıxlıqda: badge+id sətri, əsas kimlik
+ *  sətri, zəngin kontent bloku (proqres), əlaqə düymələri, əməliyyat düymələri. */
+function PoolPackageCard({
+  sessions, busy, onTake, onOpen,
+}: {
+  sessions: AppointmentDetail[];
+  busy: boolean;
+  onTake: () => void;
+  onOpen: () => void;
+}) {
   const { t } = useT();
-  const isPackage = p.patientPackageId != null;
+  const first = sessions[0];
+  const phone = normalizePhone(first.patientPhone);
+  const total = first.packageTotal ?? sessions.length;
+  const remaining = first.packageRemaining ?? sessions.length;
+  const used = Math.max(0, total - remaining);
+  const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+  const st = PKG_STATUS[first.packageStatus ?? "ACTIVE"] ?? PKG_STATUS.ACTIVE;
+
   return (
-    <div data-pool-pay={p.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "15px 18px", borderTop: `1px solid ${first ? "transparent" : "#F0F4FA"}`, borderLeft: "3px solid #B45309", flexWrap: "wrap" }}>
-      <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--brand-700)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flex: "none" }}>{initialsOf(p.patientName)}</span>
-      <div style={{ flex: 1, minWidth: 170 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
-          <span style={{ fontSize: 14.5, fontWeight: 700, color: "var(--oxford)" }}>{p.patientName}</span>
-          <span style={{ background: isPackage ? "#FEF3C7" : "#F3F4F6", color: isPackage ? "#B45309" : "#374151", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 6 }}>
-            {isPackage ? t("pkg.paymentPackage") : t("pkg.paymentSingle")}
-          </span>
+    <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={e => { if (e.key === "Enter") onOpen(); }}
+      style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", borderLeft: "3px solid #B45309", padding: 18, display: "flex", flexDirection: "column", cursor: "pointer" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ background: "#FEF3C7", color: "#B45309", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>Paket müraciəti</span>
+          <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", letterSpacing: ".02em" }}>#PKG-{String(first.patientPackageId).padStart(4, "0")}</span>
         </div>
-        <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
-          {t("pkg.amount")}: <span style={{ color: "var(--oxford)", fontWeight: 700 }}>{formatAzn(p.amount)}</span>
-          {" · "}{t("pkg.method")}: {p.method}
-          {" · "}{t("pkg.date")}: {fmtDt(p.createdAt)}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: st.color }} />{st.label}
+        </span>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 13 }}>
+        <span style={{ width: 42, height: 42, borderRadius: 12, background: "#FEF3C7", color: "#B45309", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></svg>
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{first.packageName ?? "Paket"}</div>
+          <div style={{ fontSize: 12.5, color: "#9DB0CC", fontWeight: 600 }}>{timeAgo(first.createdAt) || `${fmtDt(first.createdAt)} yaradılıb`}</div>
         </div>
       </div>
-      <button onClick={onTake} disabled={busy}
-        style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#047857", color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1, boxShadow: "0 4px 12px rgba(4,120,87,.22)" }}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-        {t("staff.opTake")}
-      </button>
+
+      <div style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "11px 13px", marginBottom: 13 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford)" }}>İstifadə olunub: {used}/{total}</span>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: "#B45309" }}>{remaining} qalıb</span>
+        </div>
+        <div style={{ height: 6, background: "#EEF2F7", borderRadius: 999, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${pct}%`, background: "#B45309", borderRadius: 999 }} />
+        </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 13 }}>
+        <span style={{ width: 40, height: 40, borderRadius: 11, background: "var(--brand-700)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none" }}>{initialsOf(first.patientName)}</span>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{first.patientName ?? "—"}</div>
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>Pasiyent</div>
+        </div>
+      </div>
+
+      {(phone || first.patientEmail) && (
+        <div style={{ display: "flex", gap: 7, marginBottom: 15, flexWrap: "wrap" }}>
+          {phone && (
+            <>
+              <ContactBtn href={`tel:${phone}`} label="Zəng">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+              </ContactBtn>
+              <ContactBtn href={whatsappLink(phone)} target="_blank" label="WhatsApp">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
+              </ContactBtn>
+            </>
+          )}
+          {first.patientEmail && (
+            <ContactBtn href={`mailto:${first.patientEmail}`} label="Email">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="M22 7l-10 5L2 7" /></svg>
+            </ContactBtn>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 9, marginTop: "auto" }}>
+        <button onClick={e => { e.stopPropagation(); onTake(); }} disabled={busy}
+          style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "#B45309", color: "#fff", border: "none", borderRadius: 10, padding: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1, boxShadow: "0 4px 12px rgba(180,83,9,.24)" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+          {t("staff.opTake")}
+        </button>
+        <button onClick={e => { e.stopPropagation(); onOpen(); }}
+          style={{ flex: "none", background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 14px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+          Müştəri profili
+        </button>
+      </div>
     </div>
   );
 }

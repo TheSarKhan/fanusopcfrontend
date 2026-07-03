@@ -87,6 +87,11 @@ export default function Footer() {
         </div>
       </div>
 
+      {/* Böhran/təcili yardım — bütün səhifələrdə daimi (SAYT-FR-17) */}
+      <div className="fanus-container fanus-ftr__crisis" role="note">
+        <strong>{t("footer2.crisisTitle")}:</strong> {t("footer2.crisisText")}
+      </div>
+
       <div className="fanus-container fanus-ftr__bottom">
         <div>{t("footer2.rights")}</div>
         <div className="fanus-ftr__bottom-links">
@@ -183,6 +188,12 @@ export default function Footer() {
         }
         .fanus-ftr__lang { display: inline-flex; align-items: center; gap: 6px; color: var(--fanus-ink-3); font-size: 12px; margin-top: 16px; }
 
+        .fanus-ftr__crisis {
+          padding: 14px 28px;
+          border-top: 1px solid var(--fanus-line);
+          background: #FFF7E6;
+          color: #7A4E00; font-size: 13px; line-height: 1.5;
+        }
         .fanus-ftr__bottom {
           display: flex; align-items: center; justify-content: space-between;
           padding: 24px 28px;

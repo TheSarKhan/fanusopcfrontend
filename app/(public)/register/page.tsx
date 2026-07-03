@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { checkEmail, registerPatient, registerPsychologist, type PsychologistRegistrationData } from "@/lib/api";
@@ -745,6 +745,12 @@ export default function RegisterPage() {
   const { t } = useT();
   const [role, setRole] = useState<Role>(null);
   const panelData = role ? PANEL[role] : PANEL.patient;
+
+  // "Bizə Qoşulun" (header/footer) linki psixoloq formasını birbaşa açır (Sayt BRD §16)
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get("role");
+    if (p === "psychologist" || p === "patient") setRole(p);
+  }, []);
 
   return (
     <div className="auth-split">

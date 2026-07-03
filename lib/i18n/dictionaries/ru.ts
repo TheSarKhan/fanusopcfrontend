@@ -48,6 +48,8 @@ export const ru: typeof az = {
     register: "Регистрация",
     logout: "Выход",
     myAccount: "Мой кабинет",
+    joinUs: "Присоединиться к нам",
+    applyCta: "Оставить заявку",
     appointments: "Сессии",
     favorites: "Избранное",
     notifications: "Уведомления",
@@ -518,6 +520,9 @@ export const ru: typeof az = {
   },
 
   footer2: {
+    crisisTitle: "Экстренная психологическая помощь",
+    crisisText: "Если вы в кризисной ситуации, не ждите: 103 Скорая помощь | *1123 Линия психологической поддержки",
+    joinUs: "Присоединиться к нам",
     ctaTitle: "Сделайте первый шаг сегодня.",
     ctaSub: "Бесплатная вводная встреча — без обязательств.",
     ctaTalkNow: "Начать беседу",
@@ -618,10 +623,10 @@ export const ru: typeof az = {
     opReassignConfirm: "Передать",
     opReassignDone: "Заявка передана",
     // Pool — отдельная страница приёма
-    opPoolTitle: "Пул заявок",
+    opPoolTitle: "Все заявки",
     opPoolSub: "Берите новые заявки — взятое навсегда закрепляется за вами.",
     opPoolApptSection: "Заявки на сессии",
-    opPoolPaySection: "Заявки на оплату",
+    opPoolPaySection: "Заявки на пакет",
     opPoolEmpty: "Пул пуст — новых заявок нет",
     opPoolTaken: "Взято — теперь это ваше",
 

@@ -511,6 +511,8 @@ export interface AppointmentDetail {
   // Paket meta (yalnız patientPackageId varsa backend doldurur)
   packageName?: string | null;
   packageTotal?: number | null;
+  packageRemaining?: number | null;
+  packageStatus?: string | null;
   // Ödəniş statusu (yalnız tək seans ödənişi; paket seanslarında null)
   // null = ödəniş qeydi yoxdur; "PENDING" = operator hələ təsdiqləməyib; "PAID" = təsdiqlənib
   paymentStatus?: string | null;
@@ -1519,7 +1521,145 @@ export const adminApi = {
   pendingResources: () => authedRequest<PsychResource[]>("GET", "/admin/resources/pending"),
   approveResource: (id: number, note?: string) => authedRequest<PsychResource>("POST", `/admin/resources/${id}/approve`, { note }),
   rejectResource: (id: number, note?: string) => authedRequest<PsychResource>("POST", `/admin/resources/${id}/reject`, { note }),
+
+  // ─── Təsdiqlər: İadə + Hovuz-Buraxma (Admin BRD §8, §9) ──────────────────
+  listRefundRequests: (status?: string) =>
+    authedRequest<RefundRequestItem[]>("GET", `/admin/refund-requests${status ? `?status=${status}` : ""}`),
+  approveRefundRequest: (id: number, note?: string) =>
+    authedRequest<RefundRequestItem>("POST", `/admin/refund-requests/${id}/approve`, { note }),
+  rejectRefundRequest: (id: number, note?: string) =>
+    authedRequest<RefundRequestItem>("POST", `/admin/refund-requests/${id}/reject`, { note }),
+  listPoolReleaseRequests: (status?: string) =>
+    authedRequest<PoolReleaseRequestItem[]>("GET", `/admin/pool-release-requests${status ? `?status=${status}` : ""}`),
+  approvePoolReleaseRequest: (id: number, note?: string) =>
+    authedRequest<PoolReleaseRequestItem>("POST", `/admin/pool-release-requests/${id}/approve`, { note }),
+  rejectPoolReleaseRequest: (id: number, note?: string) =>
+    authedRequest<PoolReleaseRequestItem>("POST", `/admin/pool-release-requests/${id}/reject`, { note }),
+  approvalsPendingCounts: () =>
+    authedRequest<{ refundRequests: number; poolReleaseRequests: number }>("GET", "/admin/approvals/pending-counts"),
+
+  // ─── Maliyyə və Komissiya (Admin BRD §12) ────────────────────────────────
+  getCommission: () => authedRequest<{ globalPercent: number | null }>("GET", "/admin/finance/commission"),
+  setCommission: (percent: number) =>
+    authedRequest<{ globalPercent: number | null }>("PUT", "/admin/finance/commission", { percent }),
+  setPsychologistCommission: (psychologistId: number, percent: number | null) =>
+    authedRequest<void>("PUT", `/admin/finance/psychologists/${psychologistId}/commission`, { percent }),
+  payoutBalances: () => authedRequest<PayoutBalance[]>("GET", "/admin/finance/payouts/balances"),
+  listPayouts: (psychologistId?: number) =>
+    authedRequest<PayoutItem[]>("GET", `/admin/finance/payouts${psychologistId ? `?psychologistId=${psychologistId}` : ""}`),
+  createPayout: (data: { psychologistId: number; amount: number; note?: string }) =>
+    authedRequest<PayoutItem>("POST", "/admin/finance/payouts", data),
+  listSubscriptionPlans: () => authedRequest<SubscriptionPlanItem[]>("GET", "/admin/finance/plans"),
+  createSubscriptionPlan: (data: { name: string; price: number; period: string; perks?: string; active?: boolean }) =>
+    authedRequest<SubscriptionPlanItem>("POST", "/admin/finance/plans", data),
+  updateSubscriptionPlan: (id: number, data: { name: string; price: number; period: string; perks?: string; active?: boolean }) =>
+    authedRequest<SubscriptionPlanItem>("PUT", `/admin/finance/plans/${id}`, data),
+  listSubscriptions: () => authedRequest<PsySubscriptionItem[]>("GET", "/admin/finance/subscriptions"),
+  createSubscription: (data: { psychologistId: number; planId: number; startedAt?: string; expiresAt?: string }) =>
+    authedRequest<PsySubscriptionItem>("POST", "/admin/finance/subscriptions", data),
+  updateSubscriptionStatus: (id: number, status: string) =>
+    authedRequest<PsySubscriptionItem>("POST", `/admin/finance/subscriptions/${id}/status`, { status }),
+  financeSummary: (from?: string, to?: string) => {
+    const q = new URLSearchParams();
+    if (from) q.set("from", from);
+    if (to) q.set("to", to);
+    const qs = q.toString();
+    return authedRequest<FinanceSummary>("GET", `/admin/finance/summary${qs ? `?${qs}` : ""}`);
+  },
 };
+
+// ─── Təsdiq axınları + Maliyyə tipləri ───────────────────────────────────────
+
+export interface ReviewDeletionRequestItem {
+  id: number;
+  reviewId: number;
+  reviewRating: number;
+  reviewComment: string;
+  patientName: string | null;
+  psychologistId: number;
+  psychologistName: string;
+  reason: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  decisionNote: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+}
+
+export interface RefundRequestItem {
+  id: number;
+  paymentId: number;
+  amount: number;
+  paymentAmount: number | null;
+  alreadyRefunded: number;
+  patientName: string | null;
+  reason: string;
+  requestedByName: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  decisionNote: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+}
+
+export interface PoolReleaseRequestItem {
+  id: number;
+  appointmentId: number;
+  appointmentStatus: string | null;
+  patientName: string | null;
+  operatorId: number;
+  operatorName: string | null;
+  reason: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  decisionNote: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+}
+
+export interface PayoutBalance {
+  psychologistId: number;
+  psychologistName: string;
+  earnedNet: number;
+  paidOut: number;
+  balance: number;
+}
+
+export interface PayoutItem {
+  id: number;
+  psychologistId: number;
+  psychologistName: string | null;
+  amount: number;
+  note: string | null;
+  status: "PENDING" | "PAID";
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface SubscriptionPlanItem {
+  id: number;
+  name: string;
+  price: number;
+  period: "MONTHLY" | "YEARLY";
+  perks: string | null;
+  active: boolean;
+}
+
+export interface PsySubscriptionItem {
+  id: number;
+  psychologistId: number;
+  psychologistName: string | null;
+  planId: number;
+  planName: string | null;
+  planPrice: number | null;
+  status: "ACTIVE" | "EXPIRED" | "OVERDUE" | "CANCELLED";
+  startedAt: string;
+  expiresAt: string | null;
+}
+
+export interface FinanceSummary {
+  commissionRevenue: number;
+  activeSubscriptions: number;
+  subscriptionMonthlyRevenue: number;
+  totalRevenue: number;
+}
 
 export interface AdminReview {
   id: number;
@@ -1574,6 +1714,7 @@ export interface PaymentItem {
   id: number;
   patientPackageId?: number | null;
   appointmentId?: number | null;
+  patientId?: number | null;
   patientName: string;
   amount: number;
   currency: string;
@@ -2227,6 +2368,11 @@ export const psychologistApi = {
     authedRequest<PsychologistReceivedReview>("POST", `/psychologist/reviews/${reviewId}/reply`, { reply }),
   deleteReviewReply: (reviewId: number) =>
     authedRequest<void>("DELETE", `/psychologist/reviews/${reviewId}/reply`),
+  /** Rəy Silmə Tələbi göndər — qərar Operatorundur (PSI-FR-17). */
+  requestReviewDeletion: (reviewId: number, reason: string) =>
+    authedRequest<ReviewDeletionRequestItem>("POST", `/psychologist/reviews/${reviewId}/deletion-request`, { reason }),
+  myReviewDeletionRequests: () =>
+    authedRequest<ReviewDeletionRequestItem[]>("GET", "/psychologist/review-deletion-requests"),
 
   // Articles (psychologist-owned blog posts)
   listArticles: () => authedRequest<BlogPost[]>("GET", "/psychologist/articles"),
@@ -2889,6 +3035,7 @@ export const operatorApi = {
   listAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/operator/appointments"),
   // ─── Psixoloqlar arası yönləndirmə təsdiqi ───────────────────────────────
   pendingReferrals: () => authedRequest<Referral[]>("GET", "/operator/referrals"),
+  referral: (id: number) => authedRequest<Referral>("GET", `/operator/referrals/${id}`),
   approveReferral: (id: number) =>
     authedRequest<Referral>("POST", `/operator/referrals/${id}/approve`),
   rejectReferral: (id: number, note?: string) =>
@@ -2904,6 +3051,9 @@ export const operatorApi = {
     authedRequest<ClaimState>("POST", `/operator/appointments/${id}/claim`),
   claimRelease: (id: number) =>
     authedRequest<ClaimState>("POST", `/operator/appointments/${id}/claim/release`),
+  /** Status dəyişikliyi aparılmış müraciət üçün hovuza buraxma tələbi (Admin təsdiqinə gedir). */
+  releaseRequest: (id: number, reason?: string) =>
+    authedRequest<PoolReleaseRequestItem>("POST", `/operator/appointments/${id}/release-request`, { reason }),
   reassignAppointment: (id: number, operatorId: number) =>
     authedRequest<ClaimState>("POST", `/operator/appointments/${id}/reassign`, { operatorId }),
   /** Admin reassign dropdown üçün operator siyahısı. */
@@ -2925,7 +3075,8 @@ export const operatorApi = {
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/meeting-link/send`),
   meetingLinkHistory: (id: number) =>
     authedRequest<MeetingLinkLogItem[]>("GET", `/operator/appointments/${id}/meeting-link/history`),
-  // Modul A — manual ödəniş idarəsi + pool sahibliyi
+  // Modul A — manual ödəniş idarəsi. Sahiblik ödənişin bağlı olduğu seansdan/paketdən
+  // törəyir (ayrıca ödəniş pool-u yoxdur) — mine=true → yalnız mənim götürdüklərim.
   listPendingPayments: (status = "PENDING", mine = false) =>
     authedRequest<PaymentItem[]>("GET", `/operator/payments?status=${status}${mine ? "&mine=true" : ""}`),
   markPaymentPaid: (id: number) =>
@@ -2934,14 +3085,11 @@ export const operatorApi = {
     authedRequest<PaymentSummary>("GET", "/operator/payments/summary"),
   cancelPayment: (id: number, reason: string) =>
     authedRequest<PaymentItem>("POST", `/operator/payments/${id}/cancel`, { reason }),
+  /** İadə tələbi yaradır — icra Admin təsdiqindən sonra (OP-BR-07). */
   refundPayment: (id: number, amount: number, reason: string) =>
-    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/refund`, { amount, reason }),
-  claimPayment: (id: number) =>
-    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/claim`),
-  releasePayment: (id: number) =>
-    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/claim/release`),
-  reassignPayment: (id: number, operatorId: number) =>
-    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/reassign`, { operatorId }),
+    authedRequest<RefundRequestItem>("POST", `/operator/payments/${id}/refund`, { amount, reason }),
+  listRefundRequests: (status?: string) =>
+    authedRequest<RefundRequestItem[]>("GET", `/operator/refund-requests${status ? `?status=${status}` : ""}`),
   // Randevuya bağlı ödəniş qeydi yoxdursa (təyin zamanı qiymət daxil edilməyib) əl ilə yarat
   createManualPayment: (appointmentId: number, amount: number, currency = "AZN") =>
     authedRequest<PaymentItem>("POST", `/operator/appointments/${appointmentId}/payment`, { amount, currency }),
@@ -2967,7 +3115,7 @@ export const operatorApi = {
   }) => authedRequest<{ paymentId: number; amount: number; currency: string; status: string }>(
     "POST", `/operator/patients/${patientId}/single-session`, data),
   // Operator paket seansını pasiyent adına planlayır (balansdan sərf → CONFIRMED seans)
-  schedulePackageSession: (patientId: number, packageId: number, data: { startAt: string; endAt?: string | null; note?: string | null }) =>
+  schedulePackageSession: (patientId: number, packageId: number, data: { startAt: string; endAt?: string | null; note?: string | null; psychologistId?: number | null }) =>
     authedRequest<AppointmentDetail>("POST", `/operator/patients/${patientId}/packages/${packageId}/schedule`, data),
   cancel: (id: number, reasonCode: string, note?: string) =>
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/cancel`, { reasonCode, note }),
@@ -3117,6 +3265,35 @@ export const operatorApi = {
   }) => authedRequest<SessionRequest>("POST", `/operator/session-requests/${id}/schedule`, data),
   updateSessionRequestStatus: (id: number, data: { status: string; operatorNote?: string | null }) =>
     authedRequest<SessionRequest>("PATCH", `/operator/session-requests/${id}/status`, data),
+
+  // ─── Tələblər modulu: Rəy Silmə Tələbləri (Operator BRD §10) ──────────────
+  listReviewDeletionRequests: (status?: string) =>
+    authedRequest<ReviewDeletionRequestItem[]>("GET", `/operator/review-deletion-requests${status ? `?status=${status}` : ""}`),
+  reviewDeletionCountPending: () =>
+    authedRequest<{ count: number }>("GET", "/operator/review-deletion-requests/count-pending")
+      .then((r: any) => (r?.count ?? 0) as number),
+  approveReviewDeletion: (id: number, note?: string) =>
+    authedRequest<ReviewDeletionRequestItem>("POST", `/operator/review-deletion-requests/${id}/approve`, { note }),
+  rejectReviewDeletion: (id: number, note?: string) =>
+    authedRequest<ReviewDeletionRequestItem>("POST", `/operator/review-deletion-requests/${id}/reject`, { note }),
+
+  // ─── Hesabat exportu (OP-FR-14/15) ────────────────────────────────────────
+  downloadReport: async (format: "xlsx" | "pdf", from?: string, to?: string) => {
+    const q = new URLSearchParams({ format });
+    if (from) q.set("from", from);
+    if (to) q.set("to", to);
+    const res = await fetch(`${BASE}/operator/reports/export?${q}`, { credentials: "include" });
+    if (!res.ok) throw new Error(`Hesabat yüklənmədi (${res.status})`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `operator-hesabat.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
 };
 
 export interface SessionRequest {
@@ -3129,6 +3306,9 @@ export interface SessionRequest {
   preferredDate: string | null;
   preferredTime: string | null;
   notes: string | null;
+  budget: string | null;
+  priority: boolean;
+  crisisDetected: boolean;
   status: "NEW" | "IN_REVIEW" | "SCHEDULED" | "CANCELLED";
   assignedPsychologistId: number | null;
   assignedPsychologistName: string | null;
@@ -3150,6 +3330,7 @@ export async function submitSessionRequest(data: {
   preferredDate?: string;
   preferredTime?: string;
   notes?: string;
+  budget?: string;
 }): Promise<SessionRequest> {
   const res = await fetch(`${BASE}/session-requests`, {
     method: "POST",

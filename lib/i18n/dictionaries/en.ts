@@ -45,6 +45,8 @@ export const en: typeof az = {
     register: "Sign up",
     logout: "Sign out",
     myAccount: "My account",
+    joinUs: "Join Us",
+    applyCta: "Request a Session",
     appointments: "Sessions",
     favorites: "Favourites",
     notifications: "Notifications",
@@ -515,6 +517,9 @@ export const en: typeof az = {
   },
 
   footer2: {
+    crisisTitle: "Emergency psychological help",
+    crisisText: "If you are in crisis, do not wait: 103 Emergency Medical Aid | *1123 Psychological Support Line",
+    joinUs: "Join Us",
     ctaTitle: "Take the first step today.",
     ctaSub: "Free intro session — no commitment.",
     ctaTalkNow: "Talk now",
@@ -615,10 +620,10 @@ export const en: typeof az = {
     opReassignConfirm: "Reassign",
     opReassignDone: "Request reassigned",
     // Pool — dedicated intake page
-    opPoolTitle: "Request Pool",
+    opPoolTitle: "All Requests",
     opPoolSub: "Pick up new requests — what you take stays permanently assigned to you.",
     opPoolApptSection: "Session requests",
-    opPoolPaySection: "Payment requests",
+    opPoolPaySection: "Package requests",
     opPoolEmpty: "The pool is empty — no new requests",
     opPoolTaken: "Taken — it's now yours",
 

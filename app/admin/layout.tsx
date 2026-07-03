@@ -42,6 +42,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     { href: "/admin/appointments",      label: "Randevular",           icon: "calendar" },
     { href: "/admin/payments",          label: "Ödənişlər",            icon: "package" },
     { href: "/admin/operators",         label: "Operatorlar",          icon: "users" },
+    { href: "/admin/approvals",         label: "Təsdiqlər",            icon: "shield" },
+    { href: "/admin/finance",           label: "Maliyyə",              icon: "package" },
     { href: "/admin/deletion-requests", label: "Silinmə istəkləri",    icon: "clipboard" },
     { href: "/admin/blog",              label: t("nav.blog"),          icon: "content" },
     { href: "/admin/materials",         label: "Materiallar",          icon: "content" },

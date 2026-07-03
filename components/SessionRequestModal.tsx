@@ -1,26 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { submitSessionRequest } from "@/lib/api";
-import DatePicker from "@/components/DatePicker";
-import TimePicker from "@/components/TimePicker";
+import QuickRequestForm from "@/components/QuickRequestForm";
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
-const INITIAL = {
-  name: "", phone: "", email: "", age: "", reason: "",
-  preferredDate: "", preferredTime: "", notes: "",
-};
-
+/** "Bizə Müraciət Edin" — psixoloqsuz sürətli müraciət modalı (Sayt BRD §8.2, SAYT-FR-19). */
 export default function SessionRequestModal({ open, onClose }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
-  const [form, setForm] = useState(INITIAL);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [formKey, setFormKey] = useState(0);
 
   // Escape to close
   useEffect(() => {
@@ -30,41 +21,12 @@ export default function SessionRequestModal({ open, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // Reset when opened
+  // Reset form state each time the modal opens
   useEffect(() => {
-    if (open) { setForm(INITIAL); setError(""); setSuccess(false); }
+    if (open) setFormKey(k => k + 1);
   }, [open]);
 
   if (!open) return null;
-
-  const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setForm(prev => ({ ...prev, [field]: e.target.value }));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name.trim())   { setError("Ad Soyad daxil edin"); return; }
-    if (!form.phone.trim())  { setError("Telefon nömrəsi daxil edin"); return; }
-    if (!form.reason.trim()) { setError("Müraciətin səbəbini yazın"); return; }
-    setError("");
-    setSending(true);
-    try {
-      await submitSessionRequest({
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-        email: form.email.trim() || undefined,
-        age: form.age ? Number(form.age) : undefined,
-        reason: form.reason.trim(),
-        preferredDate: form.preferredDate || undefined,
-        preferredTime: form.preferredTime || undefined,
-        notes: form.notes.trim() || undefined,
-      });
-      setSuccess(true);
-    } catch (err: any) {
-      setError(err?.message ?? "Müraciət göndərilmədi. Yenidən cəhd edin.");
-    } finally {
-      setSending(false);
-    }
-  };
 
   return (
     <>
@@ -111,177 +73,9 @@ export default function SessionRequestModal({ open, onClose }: Props) {
             </button>
           </div>
 
-          {success ? (
-            <div style={{ textAlign: "center", padding: "24px 0" }}>
-              <div style={{
-                width: 60, height: 60, borderRadius: "50%",
-                background: "#D1FAE5", display: "flex", alignItems: "center", justifyContent: "center",
-                margin: "0 auto 16px",
-              }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2.5">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </div>
-              <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: "#065F46" }}>
-                Müraciətiniz qəbul edildi!
-              </h3>
-              <p style={{ margin: "0 0 24px", fontSize: 14, color: "#374151" }}>
-                Ən qısa zamanda operator komandamız sizinlə əlaqə saxlayacaq.
-                {form.email && " Təsdiq e-poçtu göndərildi."}
-              </p>
-              <button
-                onClick={onClose}
-                style={{
-                  padding: "10px 28px", background: "#5A4FC8", color: "#fff",
-                  border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
-                }}
-              >
-                Bağla
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} noValidate>
-              {error && (
-                <div style={{
-                  background: "#FEE2E2", color: "#991B1B",
-                  borderRadius: 8, padding: "10px 14px", fontSize: 13, marginBottom: 16,
-                }}>
-                  {error}
-                </div>
-              )}
-
-              {/* Name */}
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Ad Soyad *</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={set("name")}
-                  placeholder="Adınız və Soyadınız"
-                  style={inputStyle}
-                />
-              </div>
-
-              {/* Phone */}
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Əlaqə nömrəsi *</label>
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={set("phone")}
-                  placeholder="+994 50 000 00 00"
-                  style={inputStyle}
-                />
-              </div>
-
-              {/* Email + Age */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 12, marginBottom: 14 }}>
-                <div>
-                  <label style={labelStyle}>E-poçt (opsional)</label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={set("email")}
-                    placeholder="example@email.com"
-                    style={inputStyle}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Yaş</label>
-                  <input
-                    type="number"
-                    value={form.age}
-                    onChange={set("age")}
-                    min={5} max={120}
-                    placeholder="25"
-                    style={inputStyle}
-                  />
-                </div>
-              </div>
-
-              {/* Reason */}
-              <div style={{ marginBottom: 14 }}>
-                <label style={labelStyle}>Müraciətin səbəbi *</label>
-                <textarea
-                  value={form.reason}
-                  onChange={set("reason")}
-                  rows={4}
-                  placeholder="Nə haqqında məsləhət almaq istədiyinizi qısaca yazın..."
-                  style={{ ...inputStyle, resize: "vertical" }}
-                />
-              </div>
-
-              {/* Preferred date + time */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 140px", gap: 12, marginBottom: 14 }}>
-                <div>
-                  <label style={labelStyle}>Üstünlük verilən tarix (opsional)</label>
-                  <DatePicker
-                    value={form.preferredDate}
-                    onChange={val => setForm(prev => ({ ...prev, preferredDate: val }))}
-                    placeholder="gg.aa.iiii"
-                    theme="light"
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Saat (opsional)</label>
-                  <TimePicker
-                    value={form.preferredTime}
-                    onChange={val => setForm(prev => ({ ...prev, preferredTime: val }))}
-                    theme="light"
-                    size="sm"
-                  />
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div style={{ marginBottom: 22 }}>
-                <label style={labelStyle}>Əlavə qeydlər (opsional)</label>
-                <textarea
-                  value={form.notes}
-                  onChange={set("notes")}
-                  rows={2}
-                  placeholder="Başqa bildirmək istədiyiniz bir şey..."
-                  style={{ ...inputStyle, resize: "vertical" }}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={sending}
-                style={{
-                  width: "100%", padding: "12px 0",
-                  background: "#5A4FC8", color: "#fff",
-                  border: "none", borderRadius: 10, fontSize: 15, fontWeight: 600,
-                  cursor: sending ? "not-allowed" : "pointer",
-                  opacity: sending ? 0.7 : 1,
-                }}
-              >
-                {sending ? "Göndərilir..." : "Müraciəti göndər"}
-              </button>
-            </form>
-          )}
+          <QuickRequestForm key={formKey} onDone={onClose} />
         </div>
       </div>
     </>
   );
 }
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: 12,
-  fontWeight: 600,
-  color: "#374151",
-  marginBottom: 5,
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "9px 12px",
-  border: "1px solid #D1D5DB",
-  borderRadius: 8,
-  fontSize: 13,
-  color: "#111",
-  outline: "none",
-  boxSizing: "border-box",
-  fontFamily: "inherit",
-};

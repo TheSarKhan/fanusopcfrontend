@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * Admin — Ödəniş sahibliyi.
- * Operator ödəniş pool-unun admin görünüşü: kim hansı ödənişin üzərindədir,
- * sahibsiz qalan varmı, lazım olduqda sahibliyi başqa operatora keçir (reassign).
- * Ödəniş əməliyyatlarının özü (təsdiq/ləğv/refund) operator panelindədir —
- * admin burada yalnız sahibliyi idarə edir. Backend: /operator/payments (ADMIN icazəli),
- * /operator/payments/{id}/reassign (yalnız ADMIN).
+ * Admin — Ödəniş sahibliyi (oxu görünüşü).
+ * Ayrıca "ödəniş pool"u yoxdur — sahiblik ödənişin bağlı olduğu seansın/paketin
+ * claim-indən DƏRHAL törəyir. Sahibliyi dəyişmək üçün admin bağlı seansı/paketi
+ * Müraciətlər səhifəsində "Operatoru dəyiş" ilə köçürür — ödəniş avtomatik onu izləyir.
+ * Ödəniş əməliyyatlarının özü (təsdiq/ləğv/refund) operator panelindədir.
+ * Backend: /operator/payments (ADMIN icazəli).
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -38,7 +38,6 @@ export default function AdminPaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [unownedOnly, setUnownedOnly] = useState(false);
-  const [reassignFor, setReassignFor] = useState<PaymentItem | null>(null);
 
   const load = (b: BucketKey = bucket) => {
     setLoading(true);
@@ -67,10 +66,6 @@ export default function AdminPaymentsPage() {
       return hay.includes(q);
     });
   }, [items, search, unownedOnly]);
-
-  const patch = (updated: PaymentItem) => {
-    setItems((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
-  };
 
   return (
     <div className="page">
@@ -117,13 +112,11 @@ export default function AdminPaymentsPage() {
             <div style={{ flex: 2 }}>Ödəniş</div>
             <div style={{ flex: 1, textAlign: "center" }}>Məbləğ</div>
             <div style={{ flex: 1, textAlign: "center" }}>Status</div>
-            <div style={{ flex: 1.4 }}>Sahib (operator)</div>
-            <div style={{ flex: 1, textAlign: "right" }}>Əməliyyat</div>
+            <div style={{ flex: 1.4 }}>Sahib (bağlı seans/paketin operatoru)</div>
           </div>
           {filtered.map((p) => {
             const meta = STATUS_META[p.status] ?? { label: p.status, pill: "ox" };
             const refunded = p.refundedAmount ?? 0;
-            const terminal = p.status === "REFUNDED" || p.status === "CANCELLED";
             return (
               <div className="list-item" key={p.id}>
                 <div style={{ flex: 2, minWidth: 0 }}>
@@ -150,90 +143,13 @@ export default function AdminPaymentsPage() {
                 <div style={{ flex: 1.4, fontSize: 13 }}>
                   {p.claimedByName
                     ? <>{p.claimedByName}{p.claimedAt && <span style={{ color: "var(--muted-2)", fontSize: 11 }}> · {azFormatDateTime(p.claimedAt)}</span>}</>
-                    : <span style={{ color: "var(--muted)" }}>Sahibsiz</span>}
-                </div>
-                <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
-                  {!terminal && (
-                    <button className="btn ghost sm" onClick={() => setReassignFor(p)}>
-                      {p.claimedByOperatorId != null ? "Operatoru dəyiş" : "Operatora ver"}
-                    </button>
-                  )}
+                    : <span style={{ color: "var(--muted)" }}>Sahibsiz — Müraciətlər pool-unda</span>}
                 </div>
               </div>
             );
           })}
         </div>
       )}
-
-      {reassignFor && (
-        <ReassignPaymentModal
-          payment={reassignFor}
-          onClose={() => setReassignFor(null)}
-          onDone={(u) => { patch(u); setReassignFor(null); }}
-        />
-      )}
-    </div>
-  );
-}
-
-/* ─── Ödəniş sahibliyini operatora keçir ──────────────────────────────────── */
-
-function ReassignPaymentModal({
-  payment, onClose, onDone,
-}: {
-  payment: PaymentItem;
-  onClose: () => void;
-  onDone: (p: PaymentItem) => void;
-}) {
-  const [operators, setOperators] = useState<{ id: number; name: string }[]>([]);
-  const [opId, setOpId] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  useEffect(() => {
-    operatorApi.listOperators().then(setOperators).catch(() => {});
-  }, []);
-
-  const submit = async () => {
-    if (!opId) { setErr("Operator seçin"); return; }
-    setSaving(true); setErr(null);
-    try { onDone(await operatorApi.reassignPayment(payment.id, opId)); }
-    catch (e) { setErr((e as Error).message); setSaving(false); }
-  };
-
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,28,46,0.5)", zIndex: 90, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: "min(440px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
-        <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--line)" }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)", margin: 0 }}>Ödəniş sahibliyini keçir</h2>
-          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-            #PAY-{String(payment.id).padStart(4, "0")} · {payment.patientName || "—"} · {formatAzn(payment.amount)}
-            {payment.claimedByName
-              ? <> · hazırkı sahib: <strong>{payment.claimedByName}</strong></>
-              : <> · hazırda sahibsizdir</>}
-          </p>
-        </div>
-        <div style={{ padding: 20 }}>
-          <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>Yeni sahib</label>
-          <select value={opId ?? ""} onChange={(e) => setOpId(Number(e.target.value) || null)}
-            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid var(--line)", fontSize: 13, marginBottom: 12 }}>
-            <option value="">— Operator seçin —</option>
-            {operators.filter((o) => o.id !== payment.claimedByOperatorId).map((o) => (
-              <option key={o.id} value={o.id}>{o.name}</option>
-            ))}
-          </select>
-          <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 12px" }}>
-            Keçid qeyd-şərtsizdir və audit-loqa yazılır; ödənişin təsdiqi/ləğvi yeni sahibin üzərindədir.
-          </p>
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button className="btn" onClick={onClose}>Bağla</button>
-            <button className="btn primary" onClick={submit} disabled={saving}>
-              {saving ? "Göndərilir…" : "Sahibliyi keçir"}
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

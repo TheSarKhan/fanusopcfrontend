@@ -4,8 +4,8 @@
  * OP-1: Müraciət detal səhifəsi — modal yığını əvəzinə "ticket" iş səhifəsi.
  * 3 zona (kontekst / əməliyyat / fəaliyyət lenti) + sticky header.
  * Pool sahibliyi: səhifəni açmaq sahibliyi GÖTÜRMÜR — operator açıq "Götür"
- * düyməsi (və ya ilk əməliyyat) ilə müraciəti daimi öz üzərinə götürür; sahib
- * "Pool-a burax", admin isə başqa operatora keçirə bilər.
+ * düyməsi (və ya ilk əməliyyat) ilə müraciəti daimi öz üzərinə götürür; admin
+ * başqa operatora keçirə bilər.
  */
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -34,8 +34,6 @@ import { subscribeNotifications, subscribeOperatorClaims } from "@/lib/notificat
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azLocalToISO, isoToAzLocal, azFormatDate, azFormatTime, azFormatDateTime, azOrdinal } from "@/lib/datetime";
 
-const QUEUE_KEY = "fanus.op.queue";
-const AUTO_ADVANCE_KEY = "fanus.op.autoAdvance";
 
 const STATUS_TONE: Record<string, { label: string; bg: string; fg: string }> = {
   PENDING:               { label: "Gözlənilir",      bg: "#FEF3C7", fg: "#92400E" },
@@ -51,29 +49,6 @@ const STATUS_TONE: Record<string, { label: string; bg: string; fg: string }> = {
   CANCEL_REQUESTED:      { label: "Ləğv gözlənir",   bg: "#FEF3C7", fg: "#92400E" },
 };
 
-const CHANNEL_LABEL: Record<string, string> = {
-  CALL: "Zəng", WHATSAPP: "WhatsApp", SMS: "SMS", EMAIL: "Email", OTHER: "Digər",
-};
-const OUTCOME_LABEL: Record<string, string> = {
-  ANSWERED: "Cavab verdi", NO_ANSWER: "Cavab vermədi", BUSY: "Məşğul",
-  REFUSED: "İmtina etdi", RESCHEDULED: "Vaxt dəyişdi", OTHER: "Digər",
-};
-const AUDIT_LABEL: Record<string, string> = {
-  APPT_ASSIGN: "Təyinat",
-  APPT_FORCE_CANCEL: "Operator ləğvi",
-  APPT_DISPUTE_RESOLVE: "Mübahisə həlli",
-  APPT_CANCEL_REQ_APPROVE: "Ləğv tələbi təsdiqi",
-  APPT_CANCEL_REQ_REJECT: "Ləğv tələbi rəddi",
-  APPT_HANDOFF: "Psixoloq operatora ötürdü",
-  APPT_CLAIM_REASSIGN: "Müraciət təhvili",
-  APPT_MEETING_LINK_SET: "Görüş linki əlavə edildi",
-  APPT_MEETING_LINK_UPDATED: "Görüş linki yeniləndi",
-  APPT_MEETING_LINK_REVOKED: "Görüş linki ləğv edildi",
-  APPT_MEETING_LINK_SENT: "Görüş linki göndərildi",
-};
-const FLAG_LABEL: Record<string, string> = {
-  HIGH_NO_SHOW: "Yüksək no-show", HIGH_LATE_CANCEL: "Yüksək gec ləğv", HIGH_REJECT: "Yüksək rədd",
-};
 
 function fmtDateTime(iso?: string | null) { return iso ? azFormatDateTime(iso) : "—"; }
 function isoDateOnly(d: Date) {
@@ -116,28 +91,13 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const [claim, setClaim] = useState<ClaimState | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [toast, setToast] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [queueIds, setQueueIds] = useState<number[]>([]);
-  const [autoAdvance, setAutoAdvance] = useState(true);
   const [reassignOpen, setReassignOpen] = useState(false);
-  const [zone, setZone] = useState<"work" | "context" | "feed">("work"); // <900px tablar
+  const [zone, setZone] = useState<"work" | "context">("work"); // <900px tablar
   const assignFocusRef = useRef<HTMLButtonElement | null>(null);
-  const composerFocusRef = useRef<HTMLTextAreaElement | null>(null);
 
   const a = full?.appointment ?? null;
   const claimedByOther = !!claim?.claimedByUserId && !claim.mine;
   const unowned = !claim?.claimedByUserId;
-
-  // ── localStorage: auto-advance toggle ─────────────────────────────────────
-  useEffect(() => {
-    try { setAutoAdvance(JSON.parse(localStorage.getItem(AUTO_ADVANCE_KEY) ?? "true")); } catch { /* default */ }
-  }, []);
-  const toggleAutoAdvance = () => {
-    setAutoAdvance(prev => {
-      try { localStorage.setItem(AUTO_ADVANCE_KEY, JSON.stringify(!prev)); } catch { /* ignore */ }
-      return !prev;
-    });
-  };
 
   // ── Data load ──────────────────────────────────────────────────────────────
   const load = useCallback((silent = false) => {
@@ -189,46 +149,11 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     return () => clearInterval(iv);
   }, []);
 
-  // ── Növbə konteksti (J/K naviqasiyası siyahı filtrinə hörmət edir) ────────
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(QUEUE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as { ids: number[] };
-        if (Array.isArray(parsed.ids) && parsed.ids.includes(id)) {
-          setQueueIds(parsed.ids);
-          return;
-        }
-      }
-    } catch { /* fall through */ }
-    // Deep-link (bildirişdən) — siyahını çəkib URL filtr kontekstini tətbiq et
-    const queue = searchParams.get("queue");
-    const q = (searchParams.get("q") ?? "").trim().toLowerCase();
-    const overdue = searchParams.get("filter") === "overdue";
-    operatorApi.listAppointments().then(items => {
-      const ids = items.filter(x => {
-        if (overdue) return x.status === "PENDING" || x.status === "NEW";
-        if (queue === "PENDING") { if (!(x.status === "PENDING" || x.status === "REJECTED")) return false; }
-        else if (queue === "CONFIRMED") { if (!(x.status === "CONFIRMED" || x.status === "AWAITING_CONFIRMATION")) return false; }
-        else if (queue) { if (x.status !== queue) return false; }
-        if (!q) return true;
-        const hay = `${x.id} ${x.patientName ?? ""} ${x.psychologistName ?? ""} ${x.note ?? ""}`.toLowerCase();
-        return hay.includes(q);
-      }).map(x => x.id);
-      setQueueIds(ids.length ? ids : items.map(x => x.id));
-    }).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  const queuePos = queueIds.indexOf(id);
-  const prevId = queuePos > 0 ? queueIds[queuePos - 1] : null;
-  const nextId = queuePos >= 0 && queuePos < queueIds.length - 1 ? queueIds[queuePos + 1] : null;
-
   const qs = searchParams.toString();
-  const goTo = useCallback((target: number) => {
-    router.push(`/operator/appointments/${target}${qs ? `?${qs}` : ""}`);
-  }, [router, qs]);
   const backToList = useCallback(() => {
+    // Paket səhifəsindən gəlibsə (?pkg=), həmin paketin daxili səhifəsinə qayıt.
+    const pkg = searchParams.get("pkg");
+    if (pkg) { router.push(`/operator/appointments/package/${pkg}`); return; }
     const listQs = new URLSearchParams(qs);
     listQs.delete("queue");
     const tab = searchParams.get("queue");
@@ -237,26 +162,6 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     router.push(`/operator/appointments${s ? `?${s}` : ""}`);
   }, [router, qs, searchParams]);
 
-  // ── Klaviatura: J/K növbə, A təyinat, N qeyd, Esc siyahı ──────────────────
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const el = e.target as HTMLElement | null;
-      const tag = el?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea" || tag === "select" || el?.isContentEditable) return;
-      // Modal (psixoloq/vaxt/əməliyyat) açıqdırsa qısayolları söndür.
-      if (typeof document !== "undefined" && document.querySelector("[data-op-modal]")) return;
-      const k = e.key.toLowerCase();
-      if (k === "j" && nextId) { e.preventDefault(); goTo(nextId); }
-      else if (k === "k" && prevId) { e.preventDefault(); goTo(prevId); }
-      else if (k === "a") { e.preventDefault(); assignFocusRef.current?.focus(); }
-      else if (k === "n") { e.preventDefault(); composerFocusRef.current?.focus(); }
-      else if (e.key === "Escape" && !reassignOpen) { e.preventDefault(); backToList(); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [nextId, prevId, goTo, backToList, reassignOpen]);
-
   // ── Toast ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!toast) return;
@@ -264,13 +169,9 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     return () => clearTimeout(tm);
   }, [toast]);
 
-  // ── Pooldan götür / pool-a burax ──────────────────────────────────────────
+  // ── Pooldan götür ──────────────────────────────────────────────────────────
   const takeOwnership = useCallback(() => {
     operatorApi.claim(id).then(setClaim).catch(e => setToast((e as Error).message));
-  }, [id]);
-
-  const releaseOwnership = useCallback(() => {
-    operatorApi.claimRelease(id).then(setClaim).catch(e => setToast((e as Error).message));
   }, [id]);
 
   // ── Əməliyyat qoruması: sahibsizsə avtomatik götür, başqasınınkındadırsa blokla ─
@@ -289,16 +190,13 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     operatorApi.claim(id).then(c => { setClaim(c); run(); }).catch(() => run());
   }, [claim?.mine, claim?.claimedByName, claimedByOther, isAdmin, id, meId, t]);
 
-  // ── Yekun əməliyyat: toast + auto-advance ─────────────────────────────────
+  // ── Yekun əməliyyat: toast ────────────────────────────────────────────────
   // Sahiblik QALIR (pool modeli) — yekun əməliyyat claim-i sıfırlamır.
   const onActionDone = useCallback((updated: AppointmentDetail, msg: string) => {
     setFull(prev => prev ? { ...prev, appointment: updated } : prev);
     setToast(msg);
     load(true); // lenti yenilə (audit qeydi gəlib)
-    if (autoAdvance && nextId) {
-      setTimeout(() => goTo(nextId), 700);
-    }
-  }, [autoAdvance, nextId, goTo, load]);
+  }, [load]);
 
   // ── Render halları ─────────────────────────────────────────────────────────
   if (notFound) {
@@ -325,8 +223,9 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const statusMeta = STATUS_TONE[a.status] ?? { label: a.status, bg: "#EEF2F7", fg: "#374151" };
   const isFinal = a.status === "COMPLETED" || a.status === "CANCELLED";
   const ageMin = minutesSince(a.createdAt, nowMs);
-  const slaColor = ageMin < 60 ? "#065F46" : ageMin <= full.slaHours * 60 ? "#92400E" : "#DC2626";
-  const slaBg = ageMin < 60 ? "#D1FAE5" : ageMin <= full.slaHours * 60 ? "#FEF3C7" : "#FEE2E2";
+  const slaUrgent = ageMin >= 60; // yalnız SLA-ya yaxınlaşanda/keçəndə rəngli nişan qoyulur
+  const slaColor = ageMin <= full.slaHours * 60 ? "#92400E" : "#DC2626";
+  const slaBg = ageMin <= full.slaHours * 60 ? "#FEF3C7" : "#FEE2E2";
   const claimedMin = claim?.claimedAt ? minutesSince(claim.claimedAt, nowMs) : 0;
 
   const isCancelReq = a.status === "CANCEL_REQUESTED";
@@ -345,14 +244,6 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const canMarkNoShow = a.status === "COMPLETED" || a.status === "AWAITING_CONFIRMATION";
   const phone = normalizePhone(a.patientPhone);
 
-  const copyLink = () => {
-    try {
-      navigator.clipboard.writeText(`${window.location.origin}/operator/appointments/${id}`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
-  };
-
   return (
     <div className={claimedByOther ? "op-det op-det--busy" : "op-det"}>
 
@@ -367,16 +258,24 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
           <span style={{ padding: "4px 11px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, background: statusMeta.bg, color: statusMeta.fg }}>
             {statusMeta.label}
           </span>
+          {/* Gözləmə vaxtı: yalnız SLA-ya yaxınlaşanda/keçəndə (kəhrəba/qırmızı) rəngli
+              nişan kimi diqqət çəkir; sağlam vəziyyətdə sakit mətn kimi görünür. */}
           {!isFinal && (
-            <span title={`SLA: ${full.slaHours} saat`}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 11px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, background: slaBg, color: slaColor }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-              {t("staff.opDetWaiting", { time: ageLabel(a.createdAt, nowMs) })}
-            </span>
+            slaUrgent ? (
+              <span title={`SLA: ${full.slaHours} saat`}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 11px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, background: slaBg, color: slaColor }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                {t("staff.opDetWaiting", { time: ageLabel(a.createdAt, nowMs) })}
+              </span>
+            ) : (
+              <span title={`SLA: ${full.slaHours} saat`} style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>
+                {t("staff.opDetWaiting", { time: ageLabel(a.createdAt, nowMs) })}
+              </span>
+            )
           )}
           {claim?.claimedByUserId && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 11px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, background: claim.mine ? "#ECFDF5" : "#FEF3C7", color: claim.mine ? "#047857" : "#92400E" }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: claim.mine ? "#047857" : "#D97706" }} />
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: claim.mine ? "#047857" : "#92400E" }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: claim.mine ? "#047857" : "#D97706" }} />
               {claim.mine ? t("staff.opClaimMine") : t("staff.opClaimWorking", { name: claim.claimedByName ?? "?" })}
             </span>
           )}
@@ -388,46 +287,12 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
               {t("staff.opTake")}
             </button>
           )}
-          {claim?.mine && (
-            <button onClick={releaseOwnership}
-              style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "8px 13px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
-              {t("staff.opReleaseToPool")}
-            </button>
-          )}
           {isAdmin && !unowned && (
             <button onClick={() => setReassignOpen(true)}
               style={{ background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "8px 13px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
               {t("staff.opReassign")}
             </button>
           )}
-          <button onClick={toggleAutoAdvance}
-            style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #D6E2F7", borderRadius: 9, padding: "7px 12px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", color: "var(--oxford)" }}>
-            <span style={{ width: 34, height: 19, borderRadius: 999, background: autoAdvance ? "#047857" : "#CBD5E6", position: "relative", flex: "none", transition: "background .2s" }}>
-              <span style={{ position: "absolute", top: 2, left: 2, width: 15, height: 15, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 2px rgba(0,0,0,.3)", transform: autoAdvance ? "translateX(15px)" : "translateX(0)", transition: "transform .2s" }} />
-            </span>
-            {t("staff.opDetAutoAdvance")}
-          </button>
-          <button onClick={copyLink}
-            style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "8px 13px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-            {copied ? t("staff.opDetCopied") : t("staff.opDetCopyLink")}
-          </button>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#fff", border: "1px solid #D6E2F7", borderRadius: 9, padding: 3 }}>
-            <button onClick={() => prevId && goTo(prevId)} disabled={!prevId} title={t("staff.opDetPrev")}
-              style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: 7, cursor: prevId ? "pointer" : "not-allowed", opacity: prevId ? 1 : 0.35, color: "var(--oxford)" }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-            </button>
-            <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12.5, fontWeight: 700, color: "var(--oxford-60)", padding: "0 4px" }}>
-              {queuePos >= 0 ? `${queuePos + 1}/${queueIds.length}` : "—"}
-            </span>
-            <button onClick={() => nextId && goTo(nextId)} disabled={!nextId} title={t("staff.opDetNext")}
-              style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: 7, cursor: nextId ? "pointer" : "not-allowed", opacity: nextId ? 1 : 0.35, color: "var(--oxford)" }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-            </button>
-          </div>
-          <span title="Klaviatura qısayolları" style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, fontWeight: 600, color: "#8AAABF" }}>
-            J/K növbə · A təyin · N qeyd · Esc siyahı
-          </span>
         </div>
       </div>
 
@@ -443,7 +308,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
 
       {/* ── <900px zona tabları ────────────────────────────────────────────── */}
       <div className="op-det__tabs">
-        {([["work", t("staff.opDetZoneWork")], ["context", t("staff.opDetZoneContext")], ["feed", t("staff.opDetZoneFeed")]] as const).map(([z, label]) => (
+        {([["work", t("staff.opDetZoneWork")], ["context", t("staff.opDetZoneContext")]] as const).map(([z, label]) => (
           <button key={z} onClick={() => setZone(z)}
             className={zone === z ? "op-det__tab op-det__tab--active" : "op-det__tab"}>
             {label}
@@ -505,17 +370,6 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
             onCancelDone={(u) => onActionDone(u, "Ləğv edildi")}
           />
         </main>
-
-        {/* ── Sağ zona: Fəaliyyət lenti ──────────────────────────────────────── */}
-        <aside className={`op-det__zone op-det__zone--feed${zone === "feed" ? " op-det__zone--visible" : ""}`}>
-          <ActivityFeed
-            items={full.activity}
-            t={t}
-            composerRef={composerFocusRef}
-            onAdd={(item) => setFull(prev => prev ? { ...prev, activity: [...prev.activity, item] } : prev)}
-            appointmentId={id}
-          />
-        </aside>
       </div>
 
       {/* ── Admin: başqa operatora keçir (reassign) modalı ─────────────────── */}
@@ -705,26 +559,6 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
         )}
       </div>
 
-      {/* Reputasiya */}
-      {h && (
-        <div className="op-det-card">
-          <div className="op-det-card__title">{t("staff.opDetReputation")}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-            <RepCell label={t("staff.opDetNoShow")} value={h.noShowCount} warn={h.noShowCount >= 3} />
-            <RepCell label={t("staff.opDetLateCancel")} value={h.lateCancelCount} warn={h.lateCancelCount >= 5} />
-            <RepCell label={t("staff.opDetRejects")} value={h.rejectedCount} warn={h.rejectedCount >= 3} />
-          </div>
-          {h.autoFlag && (
-            <div style={{ marginTop: 8, padding: "6px 10px", background: "#FEE2E2", color: "#991B1B", borderRadius: 8, fontSize: 11, fontWeight: 700 }}>
-              {FLAG_LABEL[h.autoFlag] ?? h.autoFlag}
-            </div>
-          )}
-          {h.blocked && h.blockReason && (
-            <div style={{ marginTop: 6, fontSize: 11, color: "#991B1B" }}>Səbəb: {h.blockReason}</div>
-          )}
-        </div>
-      )}
-
       {/* Kurs konteksti */}
       {a.seriesId != null && full.seriesSiblings.length > 0 && (
         <div className="op-det-card">
@@ -770,34 +604,42 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
         </div>
       )}
 
-      {/* Pasiyent tarixçəsi */}
-      <div className="op-det-card">
-        <div className="op-det-card__title">{t("staff.opDetHistory")}</div>
-        {!h || h.recent.length === 0 ? (
-          <div style={{ fontSize: 12, color: "#8AAABF" }}>{t("staff.opDetHistoryEmpty")}</div>
-        ) : (
-          <div style={{ display: "grid", gap: 4 }}>
-            {h.recent.map(r => (
-              <Link key={r.id} href={`/operator/appointments/${r.id}${suffix}`}
-                className={r.id === a.id ? "op-det-sibling op-det-sibling--current" : "op-det-sibling"}>
-                <span>#{r.id} · {STATUS_TONE[r.status]?.label ?? r.status}</span>
-                <span style={{ color: "#8AAABF" }}>{r.psychologistName ?? "—"}</span>
-              </Link>
+      {/* Son fəaliyyət — soyuq siyahı, kart deyil: qısa kontekst kartlarından
+          sonra qalan boş sahəni mənalı doldurur (ayrıca "lent" zonası əvəzinə). */}
+      {full.activity.length > 0 && (
+        <div style={{ padding: "2px 2px 0" }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 10 }}>
+            Son fəaliyyət
+          </div>
+          <div style={{ display: "grid" }}>
+            {full.activity.slice(0, 4).map((item, i, arr) => (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "10px 1fr", gap: 10, paddingBottom: i === arr.length - 1 ? 0 : 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#C7D2E3", marginTop: 5, flexShrink: 0 }} />
+                  {i !== arr.length - 1 && <span style={{ width: 1, flex: 1, background: "#E1E9F5", marginTop: 3 }} />}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: "var(--oxford-90)" }}>{activityLabel(item)}</div>
+                  <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 2 }}>{azFormatDateTime(item.createdAt)}</div>
+                </div>
+              </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
     </>
   );
 }
 
-function RepCell({ label, value, warn }: { label: string; value: number; warn: boolean }) {
-  return (
-    <div style={{ background: warn ? "#FEE2E2" : "#F8FAFD", border: warn ? "1px solid #F3D6D6" : "1px solid #EDF1F8", borderRadius: 10, padding: "11px 8px", textAlign: "center" }}>
-      <div style={{ fontSize: 20, fontWeight: 800, color: warn ? "#DC2626" : "var(--oxford)" }}>{value}</div>
-      <div style={{ fontSize: 11, fontWeight: 600, color: warn ? "#991B1B" : "var(--oxford-60)", marginTop: 2 }}>{label}</div>
-    </div>
-  );
+function activityLabel(item: OperatorActivityItem): string {
+  if (item.text) return item.text;
+  switch (item.kind) {
+    case "CREATED": return "Müraciət yaradıldı";
+    case "CONTACT": return "Pasiyentlə əlaqə saxlanıldı";
+    case "NOTE": return "Qeyd əlavə edildi";
+    default: return item.action ?? "Yeniləndi";
+  }
 }
 
 /* ─── Mərkəz: müraciət məzmunu ─────────────────────────────────────────────── */
@@ -1856,135 +1698,3 @@ function CancelBlock({ appointment, guardAction, onClose, onDone }: {
   );
 }
 
-/* ─── Sağ zona: fəaliyyət lenti + composer ─────────────────────────────────── */
-
-function FeedIcon({ kind }: { kind: OperatorActivityItem["kind"] }) {
-  const map: Record<OperatorActivityItem["kind"], { bg: string; color: string; path: React.ReactNode }> = {
-    CREATED: { bg: "#E4ECFA", color: "#1051B7", path: <><circle cx="12" cy="12" r="10" /><path d="M12 8v8M8 12h8" /></> },
-    CONTACT: { bg: "#ECFDF5", color: "#047857", path: <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /> },
-    NOTE: { bg: "#F0F4FA", color: "#5C6B85", path: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /> },
-    AUDIT: { bg: "#D1FAE5", color: "#065F46", path: <path d="M20 6L9 17l-5-5" /> },
-  };
-  const m = map[kind] ?? map.NOTE;
-  return (
-    <span style={{ width: 28, height: 28, borderRadius: "50%", background: m.bg, color: m.color, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none", zIndex: 1 }}>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{m.path}</svg>
-    </span>
-  );
-}
-
-function ActivityFeed({ items, t, composerRef, onAdd, appointmentId }: {
-  items: OperatorActivityItem[];
-  t: ReturnType<typeof useT>["t"];
-  composerRef: React.RefObject<HTMLTextAreaElement | null>;
-  onAdd: (item: OperatorActivityItem) => void;
-  appointmentId: number;
-}) {
-  const [mode, setMode] = useState<"note" | "contact">("note");
-  const [text, setText] = useState("");
-  const [channel, setChannel] = useState<"CALL" | "WHATSAPP" | "SMS" | "EMAIL" | "OTHER">("CALL");
-  const [outcome, setOutcome] = useState<"ANSWERED" | "NO_ANSWER" | "BUSY" | "REFUSED" | "RESCHEDULED" | "OTHER">("ANSWERED");
-  const [saving, setSaving] = useState(false);
-  const feedEndRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    feedEndRef.current?.scrollIntoView({ block: "end" });
-  }, [items.length]);
-
-  const submit = async () => {
-    if (mode === "note" && !text.trim()) return;
-    setSaving(true);
-    try {
-      if (mode === "note") {
-        const item = await operatorApi.addNote(appointmentId, text.trim());
-        onAdd(item);
-      } else {
-        const log = await operatorApi.addContactLog(appointmentId, {
-          channel, outcome, note: text.trim() || undefined,
-        });
-        onAdd({ kind: "CONTACT", channel: log.channel, outcome: log.outcome, text: log.note, actorName: log.operatorName, createdAt: log.createdAt });
-      }
-      setText("");
-    } catch (e) { globalToast((e as Error).message, "error"); }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <div className="op-det-card" style={{ display: "flex", flexDirection: "column", maxHeight: "calc(100vh - 110px)", position: "sticky", top: 76, padding: 0, minWidth: 0 }}>
-      <div className="op-det-card__title" style={{ padding: "17px 17px 4px", margin: 0 }}>{t("staff.opDetZoneFeed")}</div>
-
-      <div style={{ flex: 1, overflowY: "auto", padding: "14px 17px" }}>
-        {items.length === 0 ? (
-          <div style={{ fontSize: 12.5, color: "#8AAABF" }}>{t("staff.opDetFeedEmpty")}</div>
-        ) : items.map((it, i) => (
-          <div key={i} style={{ display: "flex", gap: 11, paddingBottom: 16, position: "relative" }}>
-            {i < items.length - 1 && <span style={{ position: "absolute", left: 13, top: 28, bottom: 0, width: 2, background: "#F0F4FA" }} />}
-            <FeedIcon kind={it.kind} />
-            <div style={{ flex: 1, minWidth: 0, paddingTop: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)", lineHeight: 1.4 }}>
-                {it.kind === "CREATED" && t("staff.opDetCreatedEvent")}
-                {it.kind === "CONTACT" && <>{CHANNEL_LABEL[it.channel ?? ""] ?? it.channel} · {OUTCOME_LABEL[it.outcome ?? ""] ?? it.outcome}</>}
-                {it.kind === "NOTE" && "Qeyd"}
-                {it.kind === "AUDIT" && (AUDIT_LABEL[it.action ?? ""] ?? it.action)}
-              </div>
-              {it.text && (
-                <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 8, padding: "7px 10px", marginTop: 5, lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word" }}>{it.text}</div>
-              )}
-              <div style={{ fontSize: 11.5, color: "#9DB0CC", fontWeight: 600, marginTop: 4 }}>
-                {it.actorName ? `${it.actorName} · ` : ""}{fmtDateTime(it.createdAt)}
-              </div>
-            </div>
-          </div>
-        ))}
-        <div ref={feedEndRef} />
-      </div>
-
-      {/* Composer */}
-      <div style={{ borderTop: "1px solid #F0F4FA", padding: "14px 17px" }}>
-        <div style={{ display: "flex", gap: 6, background: "#F0F4FA", borderRadius: 9, padding: 3, marginBottom: 11 }}>
-          <button onClick={() => setMode("note")}
-            style={{ flex: 1, border: "none", borderRadius: 7, padding: 7, fontSize: 12.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", background: mode === "note" ? "#fff" : "transparent", color: mode === "note" ? "var(--brand-700)" : "var(--oxford-60)", boxShadow: mode === "note" ? "0 1px 3px rgba(8,47,109,.12)" : "none" }}>
-            {t("staff.opDetComposerNote")}
-          </button>
-          <button onClick={() => setMode("contact")}
-            style={{ flex: 1, border: "none", borderRadius: 7, padding: 7, fontSize: 12.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", background: mode === "contact" ? "#fff" : "transparent", color: mode === "contact" ? "var(--brand-700)" : "var(--oxford-60)", boxShadow: mode === "contact" ? "0 1px 3px rgba(8,47,109,.12)" : "none" }}>
-            {t("staff.opDetComposerContact")}
-          </button>
-        </div>
-
-        {mode === "contact" && (
-          <div style={{ display: "flex", gap: 8, marginBottom: 9 }}>
-            <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
-              <select value={channel} onChange={e => setChannel(e.target.value as typeof channel)}
-                style={{ width: "100%", appearance: "none", WebkitAppearance: "none", background: "#fff", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 28px 9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--oxford)", fontFamily: "inherit", cursor: "pointer" }}>
-                {(["CALL", "WHATSAPP", "SMS", "EMAIL", "OTHER"] as const).map(c => <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>)}
-              </select>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}><path d="M6 9l6 6 6-6" /></svg>
-            </div>
-            <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
-              <select value={outcome} onChange={e => setOutcome(e.target.value as typeof outcome)}
-                style={{ width: "100%", appearance: "none", WebkitAppearance: "none", background: "#fff", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 28px 9px 11px", fontSize: 12.5, fontWeight: 600, color: "var(--oxford)", fontFamily: "inherit", cursor: "pointer" }}>
-                {(["ANSWERED", "NO_ANSWER", "BUSY", "REFUSED", "RESCHEDULED", "OTHER"] as const).map(o => <option key={o} value={o}>{OUTCOME_LABEL[o]}</option>)}
-              </select>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}><path d="M6 9l6 6 6-6" /></svg>
-            </div>
-          </div>
-        )}
-
-        <textarea ref={composerRef} rows={2} value={text} onChange={e => setText(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }}
-          placeholder={mode === "note" ? "Qeyd yazın…" : "Əlaqə nəticəsi haqqında qeyd…"}
-          style={{ width: "100%", border: "1px solid #D6E2F7", background: "#fff", borderRadius: 9, padding: 10, fontSize: 13, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", resize: "vertical", lineHeight: 1.5, marginBottom: 9, boxSizing: "border-box" }} />
-
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 11, fontWeight: 600, color: "#8AAABF" }}>⌘+Enter</span>
-          <button onClick={submit} disabled={saving || (mode === "note" && !text.trim())}
-            style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--brand-700)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 16px", fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "wait" : "pointer", opacity: saving || (mode === "note" && !text.trim()) ? 0.6 : 1 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-            {saving ? "Əlavə edilir…" : t("staff.opDetComposerSend")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}

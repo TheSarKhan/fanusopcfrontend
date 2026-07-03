@@ -14,46 +14,45 @@
 // Profil və bildirişlər modul deyil — onlar həmişə əlçatandır.
 // ============================================================================
 
+// Qeyd: "sessionRequests" (anonim lead forması), "feedback" (seans rəyləri) və
+// "referrals" (standalone siyahı) modulları qarışıqlıq yaratmamaq üçün SİLİNİB
+// (2026-07-03). Lazım olsa git tarixçəsindən bərpa olunur. Yönləndirmə detalı
+// (/operator/referrals/{id}) qalır — Randevular səhifəsinin tabından açılır.
+
 export type OperatorModuleKey =
   | "dashboard"
   | "pool"
-  | "sessionRequests"
   | "appointments"
   | "meetingLinks"
   | "payments"
-  | "feedback"
-  | "referrals"
   | "analytics"
   | "customers"
-  | "psychologists";
+  | "psychologists"
+  | "requests";
 
 /** Hər nav modulunun açıq (true) / kilidli (false) vəziyyəti. */
 export const OPERATOR_MODULES: Record<OperatorModuleKey, boolean> = {
-  dashboard:       true,  // həmişə açıq — panelin girişi
-  pool:            true,  // AÇIQ — müraciət pool-u (intake/triage)
-  sessionRequests: true,  // AÇIQ — Seans müraciətləri (anonim lead forması)
-  appointments:    true,  // AÇIQ — randevu detalı (bilet) + siyahı
-  meetingLinks:  true,  // AÇIQ — Görüş linkləri (link göndərmə iş siyahısı)
-  payments:      true,  // AÇIQ — Ödənişlər (təsdiq · ləğv · geri qaytarma tam/qismi)
-  feedback:      true,   // AÇIQ — Seans rəyləri (psixoloq → pasient → rəylər)
-  referrals:     true,  // AÇIQ — Yönləndirmələr (psixoloqlar arası randevu/paket transferi, operator təsdiqi)
-  analytics:     true,  // AÇIQ — Analitika (gəlir/refund + əməliyyat göstəriciləri)
-  customers:     true,  // AÇIQ — Müştərilər (360° profil + paket satışı)
-  psychologists: true,  // AÇIQ — Psixoloq statistikası (reytinq siyahısı + 360° detal)
+  dashboard:       true,   // həmişə açıq — panelin girişi
+  pool:            true,   // AÇIQ — müraciət pool-u (intake/triage)
+  appointments:    true,   // AÇIQ — randevu detalı (bilet) + siyahı + paketlər + yönləndirmə tabı
+  meetingLinks:    true,   // AÇIQ — görüş linkləri (link göndərmə iş siyahısı)
+  payments:        true,   // AÇIQ — Ödənişlər (təsdiq · ləğv · geri qaytarma tam/qismi)
+  analytics:       false,  // Analitika (gəlir/refund + əməliyyat göstəriciləri)
+  customers:       false,  // Müştərilər (360° profil + paket satışı)
+  psychologists:   false,  // Psixoloq statistikası (reytinq siyahısı + 360° detal)
+  requests:        false,  // Tələblər (Rəy Silmə Tələbləri, Operator BRD §10)
 };
 
 /** Yalnız route-u kilidlənə bilən modullar (dashboard burada YOXDUR). */
 const MODULE_PATHS: Partial<Record<OperatorModuleKey, string[]>> = {
   pool:            ["/operator/pool"],
-  sessionRequests: ["/operator/session-requests"],
   appointments:    ["/operator/appointments"],
   meetingLinks:  ["/operator/meeting-links"],
   payments:      ["/operator/payments"],
-  feedback:      ["/operator/feedback"],
-  referrals:     ["/operator/referrals"],
   analytics:     ["/operator/analytics"],
   customers:     ["/operator/customers"],
   psychologists: ["/operator/psychologists"],
+  requests:      ["/operator/requests"],
 };
 
 function pathMatches(pathname: string, prefix: string): boolean {

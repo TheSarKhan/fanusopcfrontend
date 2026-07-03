@@ -77,16 +77,6 @@ export default function OperatorPaymentsPage() {
     loadSummary();
   };
 
-  const take = async (p: PaymentItem) => {
-    setBusyId(p.id);
-    try { patch(await operatorApi.claimPayment(p.id)); }
-    catch (e) { uiToast((e as Error).message, "error"); } finally { setBusyId(null); }
-  };
-  const release = async (p: PaymentItem) => {
-    setBusyId(p.id);
-    try { patch(await operatorApi.releasePayment(p.id)); }
-    catch (e) { uiToast((e as Error).message, "error"); } finally { setBusyId(null); }
-  };
   const markPaid = async (p: PaymentItem) => {
     setBusyId(p.id);
     try {
@@ -96,7 +86,8 @@ export default function OperatorPaymentsPage() {
     } catch (e) { uiToast((e as Error).message, "error"); } finally { setBusyId(null); }
   };
   const onCancelled = (p: PaymentItem) => { setCancelFor(null); settle(p); flash(`${p.patientName} · ödəniş ləğv edildi`); };
-  const onRefunded = (p: PaymentItem) => { setRefundFor(null); settle(p); flash(`${p.patientName} · ${formatAzn(p.refundedAmount ?? 0)} geri qaytarıldı`); };
+  // İadə artıq dərhal icra olunmur — Admin təsdiqinə gedir (OP-BR-07, ADM-BR-03).
+  const onRefundRequested = () => { setRefundFor(null); flash("İadə tələbi Admin təsdiqinə göndərildi — təsdiqdən sonra icra olunacaq"); };
 
   const mineCountItems = useMemo(() => items.filter(p => p.claimedByOperatorId === meId).length, [items, meId]);
   const filtered = useMemo(() => {
@@ -119,7 +110,7 @@ export default function OperatorPaymentsPage() {
 
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, letterSpacing: "-.01em", color: "var(--oxford)" }}>{t("pkg.paymentsTitle")}</h1>
-        <p style={{ margin: 0, fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>Ödənişləri statusa görə idarə edin — təsdiq, ləğv və geri qaytarma (tam/qismi).</p>
+        <p style={{ margin: 0, fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>Özünüzün götürdüyünüz müraciətlərin ödənişlərini idarə edin — təsdiq, ləğv və geri qaytarma (tam/qismi).</p>
       </div>
 
       {/* KPI */}
@@ -147,10 +138,14 @@ export default function OperatorPaymentsPage() {
             </button>
           );
         })}
-        <button type="button" onClick={() => setMineOnly(v => !v)}
-          style={{ display: "inline-flex", alignItems: "center", gap: 7, background: mineOnly ? "#fff" : "rgba(255,255,255,.5)", border: mineOnly ? "2px solid var(--brand)" : "1px solid #E1E9F5", borderRadius: 999, padding: mineOnly ? "6px 13px" : "7px 14px", fontSize: 13, fontWeight: 600, color: mineOnly ? "var(--brand-700)" : "#52718F", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flex: "none" }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1051B7" }} />Mənim üzərimdə <span style={{ opacity: 0.7, fontWeight: 700 }}>{summary?.mineCount ?? mineCountItems}</span>
-        </button>
+        {/* Admin qlobal siyahıya baxır, "mənim üzərimdə" ilə öz götürdüklərinə süzə bilir.
+            Operator artıq server tərəfdə yalnız özününkülərini görür — bu çip mənasız olardı. */}
+        {isAdmin && (
+          <button type="button" onClick={() => setMineOnly(v => !v)}
+            style={{ display: "inline-flex", alignItems: "center", gap: 7, background: mineOnly ? "#fff" : "rgba(255,255,255,.5)", border: mineOnly ? "2px solid var(--brand)" : "1px solid #E1E9F5", borderRadius: 999, padding: mineOnly ? "6px 13px" : "7px 14px", fontSize: 13, fontWeight: 600, color: mineOnly ? "var(--brand-700)" : "#52718F", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flex: "none" }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1051B7" }} />Mənim üzərimdə <span style={{ opacity: 0.7, fontWeight: 700 }}>{summary?.mineCount ?? mineCountItems}</span>
+          </button>
+        )}
         <div style={{ position: "relative", flex: "none", minWidth: 210, marginLeft: 4 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Pasiyent adı ilə axtar…"
@@ -166,11 +161,11 @@ export default function OperatorPaymentsPage() {
       ) : (
         <div style={{ ...CARD, padding: "6px 12px 10px" }}>
           {filtered.map(p => <Row key={p.id} p={p} meId={meId} isAdmin={isAdmin} busy={busyId === p.id}
-            onTake={take} onRelease={release} onMarkPaid={markPaid} onCancel={setCancelFor} onRefund={setRefundFor} />)}
+            onMarkPaid={markPaid} onCancel={setCancelFor} onRefund={setRefundFor} />)}
         </div>
       )}
 
-      {refundFor && <RefundModal payment={refundFor} onClose={() => setRefundFor(null)} onDone={onRefunded} />}
+      {refundFor && <RefundModal payment={refundFor} onClose={() => setRefundFor(null)} onDone={onRefundRequested} />}
       {cancelFor && <CancelModal payment={cancelFor} onClose={() => setCancelFor(null)} onDone={onCancelled} />}
 
       {toast && (
@@ -186,9 +181,9 @@ export default function OperatorPaymentsPage() {
 
 // ─── Sətir ───────────────────────────────────────────────────────────────────
 
-function Row({ p, meId, isAdmin, busy, onTake, onRelease, onMarkPaid, onCancel, onRefund }: {
+function Row({ p, meId, isAdmin, busy, onMarkPaid, onCancel, onRefund }: {
   p: PaymentItem; meId: number | null; isAdmin: boolean; busy: boolean;
-  onTake: (p: PaymentItem) => void; onRelease: (p: PaymentItem) => void; onMarkPaid: (p: PaymentItem) => void;
+  onMarkPaid: (p: PaymentItem) => void;
   onCancel: (p: PaymentItem) => void; onRefund: (p: PaymentItem) => void;
 }) {
   const { t } = useT();
@@ -225,10 +220,12 @@ function Row({ p, meId, isAdmin, busy, onTake, onRelease, onMarkPaid, onCancel, 
         </div>
         {p.statusNote && <div style={{ fontSize: 12, color: "var(--oxford-60)", fontStyle: "italic", fontWeight: 500, marginTop: 4 }}>Səbəb: «{p.statusNote}»</div>}
       </div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: "none" }}>
-        {st === "PENDING" && p.claimedByOperatorId == null && <Btn tone="green" busy={busy} onClick={() => onTake(p)}>{t("staff.opTake")}</Btn>}
-        {st === "PENDING" && mine && !p.linkedOwned && <Btn tone="ghost" busy={busy} onClick={() => onRelease(p)}>{t("staff.opReleaseToPool")}</Btn>}
-        {st === "PENDING" && mine && p.linkedOwned && <span title={t("staff.opReleaseLockedBySession")} style={{ fontSize: 11.5, color: "#9DB0CC", fontWeight: 600, padding: "8px 4px", maxWidth: 190, lineHeight: 1.35 }}>{t("staff.opReleaseLockedBySession")}</span>}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: "none", alignItems: "center" }}>
+        {st === "PENDING" && p.claimedByOperatorId == null && (
+          <span style={{ fontSize: 11.5, color: "#9A3412", fontWeight: 600, padding: "8px 4px", maxWidth: 210, lineHeight: 1.35 }}>
+            Bağlı seans/paket hələ götürülməyib — Pool-dan götürün ki, ödəniş sizə keçsin
+          </span>
+        )}
         {st === "PENDING" && canAct && <Btn tone="brand" busy={busy} onClick={() => onMarkPaid(p)} icon={<path d="M20 6L9 17l-5-5" />}>{t("pkg.markPaid")}</Btn>}
         {st === "PENDING" && canAct && <Btn tone="danger" busy={busy} onClick={() => onCancel(p)}>Ləğv et</Btn>}
         {canRefund && canAct && <Btn tone="orange" busy={busy} onClick={() => onRefund(p)} icon={<><path d="M3 7v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" /></>}>{refunded > 0 ? "Qalanı qaytar" : "Geri qaytar"}</Btn>}
@@ -286,7 +283,7 @@ function EmptyCard() {
 
 // ─── Geri qaytarma modalı ─────────────────────────────────────────────────────
 
-function RefundModal({ payment, onClose, onDone }: { payment: PaymentItem; onClose: () => void; onDone: (p: PaymentItem) => void }) {
+function RefundModal({ payment, onClose, onDone }: { payment: PaymentItem; onClose: () => void; onDone: () => void }) {
   const remaining = payment.amount - (payment.refundedAmount ?? 0);
   const [amount, setAmount] = useState(String(remaining));
   const [reason, setReason] = useState("");
@@ -300,12 +297,12 @@ function RefundModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
   const submit = async () => {
     if (!ready || busy) return;
     setBusy(true); setErr(null);
-    try { onDone(await operatorApi.refundPayment(payment.id, amt, reason.trim())); }
+    try { await operatorApi.refundPayment(payment.id, amt, reason.trim()); onDone(); }
     catch (e) { setErr((e as Error).message); setBusy(false); }
   };
 
   return (
-    <Sheet title="Geri qaytarma" sub={`${payment.patientName} · ödəniş ${formatAzn(payment.amount)} · qalıq ${formatAzn(remaining)}`} onClose={onClose}>
+    <Sheet title="İadə tələbi" sub={`${payment.patientName} · ödəniş ${formatAzn(payment.amount)} · qalıq ${formatAzn(remaining)}`} onClose={onClose}>
       <Field label="Geri qaytarılacaq məbləğ (₼)">
         <input type="number" min={0} step="0.01" max={remaining} value={amount} onChange={e => setAmount(e.target.value)} style={{ ...INPUT, fontSize: 15 }} autoFocus />
       </Field>
@@ -316,9 +313,9 @@ function RefundModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
       <Field label="Səbəb (məcburi)">
         <textarea rows={2} value={reason} onChange={e => setReason(e.target.value)} placeholder="Geri qaytarma səbəbi…" style={{ ...INPUT, resize: "vertical", lineHeight: 1.5 }} />
       </Field>
-      <InfoBox tone="brand">Tam geri qaytarma → «Geri qaytarılıb»; qismi → «Qismi qaytarılıb».{payment.patientPackageId != null && " Paket ödənişidirsə qalan seanslar bağlanacaq."}</InfoBox>
+      <InfoBox tone="brand">Bütün iadələr (tam və qismi) Admin təsdiqindən keçir — tələb təsdiqlənəndə icra olunacaq.{payment.patientPackageId != null && " Paket ödənişidirsə icra zamanı qalan seanslar bağlanacaq."}</InfoBox>
       {err && <ErrBox>{err}</ErrBox>}
-      <Footer onClose={onClose} onSubmit={submit} disabled={!ready || busy} label={busy ? "Göndərilir…" : `${formatAzn(amtOk ? amt : 0)} geri qaytar`} />
+      <Footer onClose={onClose} onSubmit={submit} disabled={!ready || busy} label={busy ? "Göndərilir…" : `${formatAzn(amtOk ? amt : 0)} üçün tələb göndər`} />
     </Sheet>
   );
 }

@@ -52,6 +52,8 @@ export const az = {
     register: "Qeydiyyat",
     logout: "Çıxış",
     myAccount: "Hesabım",
+    joinUs: "Bizə Qoşulun",
+    applyCta: "Bizə Müraciət Edin",
     appointments: "Randevular",
     favorites: "Favoritlər",
     notifications: "Bildirişlər",
@@ -524,6 +526,9 @@ export const az = {
 
   // ── Footer ────────────────────────────────────────────────────────────
   footer2: {
+    crisisTitle: "Təcili psixoloji yardım",
+    crisisText: "Böhran vəziyyətindəsinizsə, gözləməyin: 103 Təcili Tibbi Yardım | *1123 Psixoloji Dəstək Xətti",
+    joinUs: "Bizə Qoşulun",
     ctaTitle: "İlk görüşünüzü bu gün planlaşdırın.",
     ctaSub: "Pulsuz tanışlıq görüşü.",
     ctaTalkNow: "İndi danış",
@@ -632,10 +637,10 @@ export const az = {
     opReassignConfirm: "Keçir",
     opReassignDone: "Müraciət təhvil verildi",
     // Pool — ayrıca intake səhifəsi
-    opPoolTitle: "Müraciət Pool-u",
+    opPoolTitle: "Bütün müraciətlər",
     opPoolSub: "Yeni müraciətləri götürün — götürdüyünüz daimi olaraq sizin üzərinizdə qalır.",
     opPoolApptSection: "Seans müraciətləri",
-    opPoolPaySection: "Ödəniş müraciətləri",
+    opPoolPaySection: "Paket müraciətləri",
     opPoolEmpty: "Pool boşdur — yeni müraciət yoxdur",
     opPoolTaken: "Götürüldü — sizin üzərinizdədir",
 

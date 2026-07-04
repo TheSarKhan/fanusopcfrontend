@@ -68,6 +68,15 @@ const STATUS_COLOR: Record<string, { bg: string; fg: string; dashed?: boolean }>
 const DRAGGABLE_STATUSES = new Set(["ASSIGNED", "CONFIRMED"]);
 const DRAG_MIME = "application/x-fanus-appointment";
 
+const STATUS_LABEL: Record<string, string> = {
+  PENDING: "Gözləmədə",
+  ASSIGNED: "Təyin edilib",
+  CONFIRMED: "Təsdiqlənib",
+  COMPLETED: "Tamamlanıb",
+  CANCELLED: "Ləğv olunub",
+  REJECTED: "Rədd edilib",
+};
+
 interface PositionedEvent {
   item: AppointmentDetail;
   start: Date;
@@ -85,6 +94,14 @@ interface PositionedExternal {
   end: Date;
   startMinOfDay: number;
   endMinOfDay: number;
+}
+
+/** Fanus seansı + onunla üst-üstə düşən Google hadisələri. */
+interface ConflictPair {
+  appointment: AppointmentDetail;
+  start: Date;
+  end: Date;
+  events: GoogleExternalEvent[];
 }
 
 /** Pack overlapping events into lanes (columns). Returns the same events with
@@ -131,7 +148,7 @@ export default function PsychologCalendarPage() {
   // Drag-and-drop state
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<{ day: string; minute: number } | null>(null);
-  const [proposalFor, setProposalFor] = useState<{ appointment: AppointmentDetail; newStart: Date } | null>(null);
+  const [proposalFor, setProposalFor] = useState<{ appointment: AppointmentDetail; newStart: Date; editable?: boolean } | null>(null);
 
   // Google Calendar overlay
   const [gStatus, setGStatus] = useState<GoogleCalendarStatus | null>(null);
@@ -140,6 +157,7 @@ export default function PsychologCalendarPage() {
   const [gShown, setGShown] = useState(true);
   const [gConnecting, setGConnecting] = useState(false);
   const [gError, setGError] = useState<string | null>(null);
+  const [showConflicts, setShowConflicts] = useState(false);
 
   const gridScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -175,6 +193,22 @@ export default function PsychologCalendarPage() {
   useEffect(() => {
     if (!SHOW_GOOGLE_INTEGRATION) return;
     psychologistApi.googleStatus().then(setGStatus).catch(() => setGStatus(null));
+  }, []);
+
+  // OAuth callback nəticəsi — backend ?google=connected|error ilə bura yönləndirir.
+  // Xəta səbəbini banner-də göstərib URL-i təmizləyirik.
+  useEffect(() => {
+    if (!SHOW_GOOGLE_INTEGRATION) return;
+    const params = new URLSearchParams(window.location.search);
+    const g = params.get("google");
+    if (!g) return;
+    if (g === "error") {
+      setGError(params.get("reason") || "Google bağlantısı alınmadı");
+    }
+    params.delete("google");
+    params.delete("reason");
+    const qs = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
   }, []);
 
   // Fetch Google events for the visible week whenever week or connection changes.
@@ -216,23 +250,31 @@ export default function PsychologCalendarPage() {
     return { hourMin: lo, hourMax: hi };
   }, [items, gEvents, gShown, gStatus?.connected, weekStart]);
 
-  // Compute which appointments overlap with any external event (visual warning).
-  const conflictIds = useMemo(() => {
-    const out = new Set<number>();
+  // Fanus seansları ilə üst-üstə düşən Google hadisələri — konflikt paneli
+  // hər cütü göstərib həll yolu (yeni vaxt təklifi / Google-da köçürmə) təqdim edir.
+  const conflictPairs = useMemo(() => {
+    const out: ConflictPair[] = [];
     if (!gShown || !gStatus?.connected || gEvents.length === 0) return out;
     for (const a of items) {
       if (!a.startAt) continue;
       if (a.status === "CANCELLED" || a.status === "REJECTED") continue;
-      const aStart = new Date(a.startAt).getTime();
-      const aEnd = a.endAt ? new Date(a.endAt).getTime() : aStart + 50 * 60_000;
-      for (const ev of gEvents) {
+      const start = new Date(a.startAt);
+      const end = a.endAt ? new Date(a.endAt) : new Date(start.getTime() + 50 * 60_000);
+      const events = gEvents.filter(ev => {
         const eS = new Date(ev.startAt).getTime();
         const eE = new Date(ev.endAt).getTime();
-        if (aStart < eE && eS < aEnd) { out.add(a.id); break; }
-      }
+        return start.getTime() < eE && eS < end.getTime();
+      });
+      if (events.length > 0) out.push({ appointment: a, start, end, events });
     }
+    out.sort((x, y) => x.start.getTime() - y.start.getTime());
     return out;
   }, [items, gEvents, gShown, gStatus?.connected]);
+
+  const conflictIds = useMemo(
+    () => new Set(conflictPairs.map(p => p.appointment.id)),
+    [conflictPairs]
+  );
 
   const hours = useMemo(
     () => Array.from({ length: hourMax - hourMin }, (_, i) => i + hourMin),
@@ -401,6 +443,34 @@ export default function PsychologCalendarPage() {
     }
   };
 
+  // Səhv hesabla qoşulubsa: köhnə bağlantını silib dərhal yenidən OAuth-a
+  // yönləndiririk — select_account sayəsində Google hesab seçimi ekranı çıxır.
+  const handleGoogleChangeAccount = async () => {
+    setGConnecting(true); setGError(null);
+    try {
+      await psychologistApi.googleDisconnect();
+      const { url } = await psychologistApi.googleAuthUrl();
+      window.location.href = url;
+    } catch (e) {
+      setGError((e as Error).message);
+      setGConnecting(false);
+    }
+  };
+
+  const handleGoogleDisconnect = async () => {
+    if (!window.confirm("Google Calendar bağlantısı kəsilsin? Mövcud hadisələr Google Calendar-da qalacaq, yeni seanslar daha sinxronlaşmayacaq.")) return;
+    setGLoading(true); setGError(null);
+    try {
+      await psychologistApi.googleDisconnect();
+      setGEvents([]);
+      psychologistApi.googleStatus().then(setGStatus).catch(() => {});
+    } catch (e) {
+      setGError((e as Error).message);
+    } finally {
+      setGLoading(false);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
@@ -455,8 +525,11 @@ export default function PsychologCalendarPage() {
           error={gError}
           onConnect={handleGoogleConnect}
           onResync={handleGoogleResync}
+          onChangeAccount={handleGoogleChangeAccount}
+          onDisconnect={handleGoogleDisconnect}
           onToggleShown={() => setGShown(s => !s)}
           onDismissError={() => setGError(null)}
+          onShowConflicts={() => setShowConflicts(true)}
         />
       )}
 
@@ -756,8 +829,20 @@ export default function PsychologCalendarPage() {
         <DragProposalModal
           appointment={proposalFor.appointment}
           newStart={proposalFor.newStart}
+          editable={proposalFor.editable}
           onClose={() => setProposalFor(null)}
           onSubmitted={() => { setProposalFor(null); setRefreshNonce(x => x + 1); }}
+        />
+      )}
+
+      {showConflicts && (
+        <ConflictModal
+          pairs={conflictPairs}
+          onClose={() => setShowConflicts(false)}
+          onPropose={(a) => {
+            setShowConflicts(false);
+            if (a.startAt) setProposalFor({ appointment: a, newStart: new Date(a.startAt), editable: true });
+          }}
         />
       )}
     </div>
@@ -777,7 +862,7 @@ function GoogleIcon({ size = 14 }: { size?: number }) {
 
 function GoogleStatusBanner({
   status, loading, shown, eventCount, conflictCount, connecting, error,
-  onConnect, onResync, onToggleShown, onDismissError,
+  onConnect, onResync, onChangeAccount, onDisconnect, onToggleShown, onDismissError, onShowConflicts,
 }: {
   status: GoogleCalendarStatus | null;
   loading: boolean;
@@ -788,8 +873,11 @@ function GoogleStatusBanner({
   error: string | null;
   onConnect: () => void;
   onResync: () => void;
+  onChangeAccount: () => void;
+  onDisconnect: () => void;
   onToggleShown: () => void;
   onDismissError: () => void;
+  onShowConflicts: () => void;
 }) {
   const baseCard: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
@@ -883,6 +971,21 @@ function GoogleStatusBanner({
         }}>
           <GoogleIcon size={13} /> {connecting ? "Yönləndirilir…" : "Google ilə qoşul"}
         </button>
+        {error && (
+          <div style={{
+            width: "100%",
+            background: "#FEF2F2", border: "1px solid #FECACA",
+            color: "#991B1B",
+            padding: "8px 10px", borderRadius: 8, fontSize: 11.5,
+            display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
+          }}>
+            <span>{error}</span>
+            <button onClick={onDismissError} aria-label="Bağla" style={{
+              border: 0, background: "transparent", color: "#991B1B",
+              fontSize: 14, cursor: "pointer", padding: 0, lineHeight: 1,
+            }}>×</button>
+          </div>
+        )}
       </div>
     );
   }
@@ -936,6 +1039,18 @@ function GoogleStatusBanner({
         />
         Göstər
       </label>
+      {conflictCount > 0 && (
+        <button onClick={onShowConflicts} style={{
+          padding: "7px 12px", borderRadius: 8,
+          border: "1px solid #F59E0B",
+          background: "#B45309",
+          color: "#fff",
+          fontWeight: 700, fontSize: 12,
+          cursor: "pointer",
+        }}>
+          Konfliktləri həll et
+        </button>
+      )}
       <button onClick={onResync} disabled={loading} style={{
         padding: "7px 12px", borderRadius: 8,
         border: conflictCount > 0 ? "1px solid #FDE68A" : "1px solid #A7F3D0",
@@ -945,6 +1060,26 @@ function GoogleStatusBanner({
         cursor: loading ? "wait" : "pointer", opacity: loading ? 0.7 : 1,
       }}>
         {loading ? "Yüklənir…" : "Yenilə"}
+      </button>
+      <button onClick={onChangeAccount} disabled={connecting || loading} title="Başqa Google hesabı ilə qoşul" style={{
+        padding: "7px 12px", borderRadius: 8,
+        border: conflictCount > 0 ? "1px solid #FDE68A" : "1px solid #A7F3D0",
+        background: "#fff",
+        color: conflictCount > 0 ? "#854D0E" : "#065F46",
+        fontWeight: 600, fontSize: 12,
+        cursor: connecting ? "wait" : "pointer", opacity: connecting || loading ? 0.7 : 1,
+      }}>
+        {connecting ? "Yönləndirilir…" : "Hesabı dəyiş"}
+      </button>
+      <button onClick={onDisconnect} disabled={connecting || loading} title="Google Calendar bağlantısını kəs" style={{
+        padding: "7px 12px", borderRadius: 8,
+        border: "1px solid #FECACA",
+        background: "#fff",
+        color: "#B91C1C",
+        fontWeight: 600, fontSize: 12,
+        cursor: loading ? "wait" : "pointer", opacity: connecting || loading ? 0.7 : 1,
+      }}>
+        Bağlantını kəs
       </button>
       {error && (
         <div style={{
@@ -1020,16 +1155,20 @@ function CalendarSkeleton() {
 /* ─── Drag-to-reschedule proposal modal ──────────────────────────────────── */
 
 function DragProposalModal({
-  appointment, newStart, onClose, onSubmitted,
+  appointment, newStart, editable, onClose, onSubmitted,
 }: {
   appointment: AppointmentDetail;
   newStart: Date;
+  /** true → istifadəçi yeni vaxtı modal daxilində özü seçir (konflikt panelindən). */
+  editable?: boolean;
   onClose: () => void;
   onSubmitted: () => void;
 }) {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [start, setStart] = useState<Date>(newStart);
+  const [openedAt] = useState(() => new Date());
 
   const originalStart = appointment.startAt ? new Date(appointment.startAt) : null;
   const duration = (() => {
@@ -1038,13 +1177,21 @@ function DragProposalModal({
     }
     return 50 * 60_000;
   })();
-  const newEnd = new Date(newStart.getTime() + duration);
+  const newEnd = new Date(start.getTime() + duration);
 
   const submit = async () => {
+    if (start.getTime() < openedAt.getTime()) {
+      setErr("Keçmiş vaxta təklif göndərmək olmaz — başqa vaxt seçin.");
+      return;
+    }
+    if (originalStart && start.getTime() === originalStart.getTime()) {
+      setErr("Yeni vaxt köhnə vaxtla eynidir — başqa vaxt seçin.");
+      return;
+    }
     setSubmitting(true); setErr(null);
     try {
       await psychologistApi.proposeReschedule(appointment.id, {
-        options: [{ startAt: newStart.toISOString(), endAt: newEnd.toISOString() }],
+        options: [{ startAt: start.toISOString(), endAt: newEnd.toISOString() }],
         reason: reason.trim() || undefined,
         expiresInHours: 48,
       });
@@ -1068,9 +1215,23 @@ function DragProposalModal({
           </p>
         </div>
         <div style={{ padding: 22 }}>
+          {editable && (
+            <>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
+                Yeni vaxt
+              </label>
+              <input
+                type="datetime-local"
+                value={toInputValue(start)}
+                min={toInputValue(openedAt)}
+                onChange={e => { if (e.target.value) setStart(new Date(e.target.value)); }}
+                style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box" }}
+              />
+            </>
+          )}
           <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
             <Row label="Köhnə saat" value={originalStart ? `${fmtFullDateTime(originalStart)}–${fmtHM(new Date(originalStart.getTime() + duration))}` : "—"} muted />
-            <Row label="Yeni təklif" value={`${fmtFullDateTime(newStart)}–${fmtHM(newEnd)}`} highlight />
+            <Row label="Yeni təklif" value={`${fmtFullDateTime(start)}–${fmtHM(newEnd)}`} highlight />
           </div>
 
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
@@ -1091,6 +1252,110 @@ function DragProposalModal({
               {submitting ? "Göndərilir…" : "Təklif göndər"}
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Date → datetime-local input dəyəri (lokal vaxt, dəqiqə dəqiqliyi). */
+function toInputValue(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/** Konflikt paneli — hər Fanus seansı ilə üst-üstə düşən Google hadisələrini
+ *  göstərir və iki həll yolu təklif edir: seansa yeni vaxt təklifi göndərmək
+ *  (pasiyent təsdiqləməlidir) və ya şəxsi hadisəni Google Calendar-da açıb
+ *  oradan köçürmək/silmək. */
+function ConflictModal({
+  pairs, onClose, onPropose,
+}: {
+  pairs: ConflictPair[];
+  onClose: () => void;
+  onPropose: (a: AppointmentDetail) => void;
+}) {
+  const [now] = useState(() => new Date());
+
+  return (
+    <div onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ background: "#fff", borderRadius: 16, maxWidth: 620, width: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", overflow: "hidden" }}>
+        <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+          <div>
+            <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: 0 }}>
+              Cədvəl konfliktləri{pairs.length > 0 ? ` (${pairs.length})` : ""}
+            </h3>
+            <p style={{ fontSize: 12, color: "#52718F", margin: "4px 0 0" }}>
+              Fanus seansları şəxsi Google Calendar hadisələrinizlə üst-üstə düşür.
+              Seansa yeni vaxt təklif edin (pasiyent təsdiqləməlidir) və ya şəxsi
+              hadisənizi Google Calendar-da başqa vaxta köçürün.
+            </p>
+          </div>
+          <button onClick={onClose} aria-label="Bağla" style={{ border: 0, background: "transparent", color: "#52718F", fontSize: 20, cursor: "pointer", padding: 0, lineHeight: 1 }}>×</button>
+        </div>
+
+        <div style={{ padding: 20, overflowY: "auto" }}>
+          {pairs.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 24, fontSize: 13.5, color: "#52718F", fontWeight: 600 }}>
+              Aktiv konflikt qalmayıb
+            </div>
+          ) : pairs.map(p => {
+            const a = p.appointment;
+            const colors = STATUS_COLOR[a.status] ?? STATUS_COLOR.PENDING;
+            const proposable = DRAGGABLE_STATUSES.has(a.status) && p.start.getTime() > now.getTime();
+            return (
+              <div key={a.id} style={{ border: "1px solid #FECACA", borderLeft: "3px solid #DC2626", borderRadius: 12, padding: "13px 15px", marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: "#1A2535" }}>
+                    {fmtFullDateTime(p.start)}–{fmtHM(p.end)}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#1A2535" }}>
+                    · {a.patientName ?? "Pasiyent"}
+                  </span>
+                  <span style={{ background: colors.bg, color: colors.fg, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>
+                    {STATUS_LABEL[a.status] ?? a.status}
+                  </span>
+                </div>
+
+                {p.events.map(ev => (
+                  <div key={ev.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", background: "rgba(66,133,244,0.06)", border: "1px solid rgba(66,133,244,0.25)", borderRadius: 8, padding: "7px 10px", marginBottom: 6, fontSize: 12.5 }}>
+                    <GoogleIcon size={12} />
+                    <span style={{ fontWeight: 600, color: "#1E3A8A", flex: 1, minWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {ev.title}
+                    </span>
+                    <span style={{ color: "#3B5BA5", fontWeight: 600 }}>
+                      {fmtHM(new Date(ev.startAt))}–{fmtHM(new Date(ev.endAt))}
+                    </span>
+                    {ev.htmlLink && (
+                      <a href={ev.htmlLink} target="_blank" rel="noopener noreferrer"
+                        style={{ fontSize: 12, fontWeight: 700, color: "#1E3A8A", textDecoration: "underline", whiteSpace: "nowrap" }}>
+                        Google-da aç
+                      </a>
+                    )}
+                  </div>
+                ))}
+
+                <div style={{ display: "flex", gap: 8, marginTop: 9, flexWrap: "wrap" }}>
+                  {proposable ? (
+                    <button onClick={() => onPropose(a)} style={{
+                      padding: "7px 13px", borderRadius: 8, border: "none",
+                      background: "var(--brand)", color: "#fff",
+                      fontWeight: 600, fontSize: 12.5, fontFamily: "inherit", cursor: "pointer",
+                    }}>
+                      Yeni vaxt təklif et
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: 11.5, color: "#9CA3AF", fontWeight: 600, alignSelf: "center" }}>
+                      {p.start.getTime() <= now.getTime()
+                        ? "Seansın vaxtı keçib — vaxt təklifi mümkün deyil"
+                        : "Bu statusda vaxt təklifi mümkün deyil"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

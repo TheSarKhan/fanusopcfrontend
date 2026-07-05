@@ -7,6 +7,7 @@ import Footer from "./Footer";
 import BookingModal from "./BookingModal";
 import BackToTop from "./BackToTop";
 import WhatsAppButton from "./WhatsAppButton";
+import RandevuButton from "./RandevuButton";
 
 const AUTH_PATHS = new Set(["/login", "/register", "/verify", "/forgot-password", "/reset-password"]);
 
@@ -31,6 +32,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
       <BookingModal />
       <BackToTop />
       <WhatsAppButton />
+      <RandevuButton />
     </>
   );
 }

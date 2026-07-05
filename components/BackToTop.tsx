@@ -30,7 +30,7 @@ export default function BackToTop() {
       <style>{`
         .fanus-totop {
           position: fixed;
-          right: 24px; bottom: 24px;
+          right: 24px; bottom: 88px;
           z-index: 60;
           width: 48px; height: 48px;
           border-radius: 50%;
@@ -57,7 +57,7 @@ export default function BackToTop() {
           transform: translateY(0) scale(.96);
         }
         @media (max-width: 540px) {
-          .fanus-totop { right: 16px; bottom: 16px; width: 44px; height: 44px; }
+          .fanus-totop { right: 16px; bottom: 76px; width: 44px; height: 44px; }
         }
       `}</style>
     </button>

@@ -62,16 +62,24 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { loadPoolCount(); }, [loadPoolCount]);
 
+  // Nav-dakı "Müraciətlər" sayğacı — saytdan gələn yeni (hələ götürülməmiş) lead-lər.
+  const [sessionReqCount, setSessionReqCount] = useState(0);
+  const loadSessionReqCount = useCallback(() => {
+    operatorApi.sessionRequestCountNew().then(setSessionReqCount).catch(() => {});
+  }, []);
+  useEffect(() => { loadSessionReqCount(); }, [loadSessionReqCount]);
+
   // Canlı yeniləmə: yeni müraciət/ödəniş bildirişi və ya sahiblik (claim) hadisəsi.
   useEffect(() => {
     const offN = subscribeNotifications((n) => {
       const ty = typeof n.type === "string" ? n.type : "";
       if (ty.startsWith("APPOINTMENT_") || ty.startsWith("PAYMENT_")) loadPoolCount();
+      if (ty === "SESSION_REQUEST_NEW") loadSessionReqCount();
     });
     const offC = subscribeOperatorClaims(() => loadPoolCount());
-    const id = setInterval(() => { loadPoolCount(); }, 60_000);
+    const id = setInterval(() => { loadPoolCount(); loadSessionReqCount(); }, 60_000);
     return () => { offN(); offC(); clearInterval(id); };
-  }, [loadPoolCount]);
+  }, [loadPoolCount, loadSessionReqCount]);
 
   // Open palette on Cmd+K / Ctrl+K from anywhere in the operator panel.
   useEffect(() => {
@@ -97,6 +105,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
     { key: "customers",     href: "/operator/customers",     label: "Müştərilər",            icon: "users" },
     { key: "psychologists", href: "/operator/psychologists", label: "Psixoloq statistikası", icon: "user" },
     { key: "requests",      href: "/operator/requests",      label: "Tələblər",              icon: "inbox" },
+    { key: "sessionRequests", href: "/operator/session-requests", label: "Müraciətlər",       icon: "message", badge: sessionReqCount },
   ];
 
   const nav: PanelNavItem[] = allNav.filter((item) => OPERATOR_MODULES[item.key]);

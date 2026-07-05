@@ -14,10 +14,12 @@
 // Profil və bildirişlər modul deyil — onlar həmişə əlçatandır.
 // ============================================================================
 
-// Qeyd: "sessionRequests" (anonim lead forması), "feedback" (seans rəyləri) və
-// "referrals" (standalone siyahı) modulları qarışıqlıq yaratmamaq üçün SİLİNİB
-// (2026-07-03). Lazım olsa git tarixçəsindən bərpa olunur. Yönləndirmə detalı
-// (/operator/referrals/{id}) qalır — Randevular səhifəsinin tabından açılır.
+// Qeyd: "feedback" (seans rəyləri) və "referrals" (standalone siyahı) modulları
+// qarışıqlıq yaratmamaq üçün SİLİNİB (2026-07-03). Lazım olsa git tarixçəsindən
+// bərpa olunur. Yönləndirmə detalı (/operator/referrals/{id}) qalır — Randevular
+// səhifəsinin tabından açılır. "sessionRequests" (anonim lead forması) həmin
+// tarixdə eyni səbəbdən bağlanmışdı — indi hovuz/sahiblik modeli ilə (Appointment
+// pool-una bənzər) yenidən açılıb.
 
 export type OperatorModuleKey =
   | "dashboard"
@@ -28,7 +30,8 @@ export type OperatorModuleKey =
   | "analytics"
   | "customers"
   | "psychologists"
-  | "requests";
+  | "requests"
+  | "sessionRequests";
 
 /** Hər nav modulunun açıq (true) / kilidli (false) vəziyyəti. */
 export const OPERATOR_MODULES: Record<OperatorModuleKey, boolean> = {
@@ -40,7 +43,8 @@ export const OPERATOR_MODULES: Record<OperatorModuleKey, boolean> = {
   analytics:       false,  // Analitika (gəlir/refund + əməliyyat göstəriciləri)
   customers:       false,  // Müştərilər (360° profil + paket satışı)
   psychologists:   false,  // Psixoloq statistikası (reytinq siyahısı + 360° detal)
-  requests:        false,  // Tələblər (Rəy Silmə Tələbləri, Operator BRD §10)
+  requests:        true,   // AÇIQ — Tələblər (Rəy Silmə Tələbləri, Operator BRD §10)
+  sessionRequests: true,   // AÇIQ — Müraciətlər (saytdan gələn anonim lead-lər → hovuz → randevu/paket)
 };
 
 /** Yalnız route-u kilidlənə bilən modullar (dashboard burada YOXDUR). */
@@ -53,6 +57,7 @@ const MODULE_PATHS: Partial<Record<OperatorModuleKey, string[]>> = {
   customers:     ["/operator/customers"],
   psychologists: ["/operator/psychologists"],
   requests:      ["/operator/requests"],
+  sessionRequests: ["/operator/session-requests"],
 };
 
 function pathMatches(pathname: string, prefix: string): boolean {

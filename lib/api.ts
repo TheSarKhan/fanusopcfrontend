@@ -3342,6 +3342,21 @@ export const operatorApi = {
   }) => authedRequest<SessionRequest>("POST", `/operator/session-requests/${id}/schedule`, data),
   updateSessionRequestStatus: (id: number, data: { status: string; operatorNote?: string | null }) =>
     authedRequest<SessionRequest>("PATCH", `/operator/session-requests/${id}/status`, data),
+  sessionRequestsPoolPaged: (opts: { status?: string; page?: number; size?: number } = {}) =>
+    authedRequest<Paged<SessionRequest>>("GET", `/operator/session-requests/pool/paged${pagedQuery(opts)}`),
+  sessionRequestsMinePaged: (opts: { status?: string; page?: number; size?: number } = {}) =>
+    authedRequest<Paged<SessionRequest>>("GET", `/operator/session-requests/mine/paged${pagedQuery(opts)}`),
+  claimSessionRequest: (id: number) =>
+    authedRequest<SessionRequestClaimState>("POST", `/operator/session-requests/${id}/claim`),
+  releaseSessionRequest: (id: number) =>
+    authedRequest<SessionRequestClaimState>("POST", `/operator/session-requests/${id}/release`),
+  convertSessionRequestToAppointment: (id: number, data: {
+    psychologistId: number; startAt: string; endAt?: string | null; note?: string | null;
+  }) => authedRequest<SessionRequest>("POST", `/operator/session-requests/${id}/convert-to-appointment`, data),
+  convertSessionRequestToPackage: (id: number, data: {
+    sessionPackageId?: number | null; psychologistId?: number | null; packageName?: string | null;
+    sessionCount?: number | null; price?: number | null; currency?: string | null;
+  }) => authedRequest<SessionRequest>("POST", `/operator/session-requests/${id}/convert-to-package`, data),
 
   // ─── Tələblər modulu: Rəy Silmə Tələbləri (Operator BRD §10) ──────────────
   listReviewDeletionRequests: (status?: string) =>
@@ -3388,7 +3403,7 @@ export interface SessionRequest {
   budget: string | null;
   priority: boolean;
   crisisDetected: boolean;
-  status: "NEW" | "IN_REVIEW" | "SCHEDULED" | "CANCELLED";
+  status: "NEW" | "IN_REVIEW" | "SCHEDULED" | "CANCELLED" | "CONVERTED";
   assignedPsychologistId: number | null;
   assignedPsychologistName: string | null;
   scheduledDate: string | null;
@@ -3396,8 +3411,22 @@ export interface SessionRequest {
   sessionPackage: string | null;
   operatorNote: string | null;
   handledAt: string | null;
+  claimedByUserId: number | null;
+  claimedByName: string | null;
+  claimedAt: string | null;
+  convertedPatientId: number | null;
+  convertedAppointmentId: number | null;
+  convertedPackageId: number | null;
   createdAt: string;
   updatedAt: string | null;
+}
+
+export interface SessionRequestClaimState {
+  requestId: number;
+  claimedByUserId: number | null;
+  claimedByName: string | null;
+  claimedAt: string | null;
+  mine: boolean;
 }
 
 export async function submitSessionRequest(data: {

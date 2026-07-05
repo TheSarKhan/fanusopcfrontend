@@ -102,7 +102,7 @@ export default function MoodCheckIn() {
           width: 700px; height: 700px;
           background: radial-gradient(circle, rgba(245,185,70,.12) 0%, rgba(245,185,70,0) 50%);
         }
-        .fanus-mood__head { text-align: center; max-width: 720px; margin: 0 auto 48px; }
+        .fanus-mood__head { max-width: 720px; margin: 0 0 48px; }
         .fanus-mood__head h2 {
           font-family: var(--font-poppins), system-ui, sans-serif;
           font-size: clamp(30px, 3.6vw, 48px); font-weight: 700;

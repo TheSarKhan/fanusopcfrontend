@@ -64,34 +64,36 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
     <section className="fanus-psyc" id="psychologists">
       <div className="fanus-container">
         <div className="fanus-psyc__head">
-          <div>
-            <h2>{t("psyList.title")}</h2>
-            <p className="fanus-psyc__lead">{t("psyList.lead")}</p>
-          </div>
-          <Link href="/psychologists" className="fanus-btn fanus-btn-ghost">
-            {t("psyList.seeAll")} <Arrow />
-          </Link>
+          <h2>{t("psyList.title")}</h2>
+          <p className="fanus-psyc__lead">{t("psyList.lead")}</p>
         </div>
 
         <div className="fanus-psyc__grid">
           {data.map((p) => <PsyCard key={p.id} p={p} />)}
+        </div>
+
+        <div className="fanus-psyc__foot">
+          <Link href="/psychologists" className="fanus-btn fanus-btn-ghost">
+            {t("psyList.seeAll")}
+          </Link>
         </div>
       </div>
 
       <style>{`
         .fanus-psyc { padding: 100px 0; position: relative; overflow: hidden; }
         .fanus-psyc > .fanus-container { position: relative; z-index: 1; }
-        .fanus-psyc__head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 48px; gap: 24px; flex-wrap: wrap; }
+        .fanus-psyc__head { margin-bottom: 48px; }
         .fanus-psyc__head h2 {
           font-family: var(--font-poppins), system-ui, sans-serif;
           font-size: clamp(30px, 3.6vw, 48px); font-weight: 700;
           letter-spacing: -0.025em; line-height: 1.1; color: var(--fanus-ink);
-          margin: 14px 0 0;
+          margin: 0;
         }
         .fanus-psyc__lead { margin-top: 12px; max-width: 540px; font-size: 17px; color: var(--fanus-ink-3); }
         .fanus-psyc__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
         @media (max-width: 980px) { .fanus-psyc__grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 640px) { .fanus-psyc__grid { grid-template-columns: 1fr; } }
+        .fanus-psyc__foot { display: flex; justify-content: center; margin-top: 40px; }
       `}</style>
     </section>
   );
@@ -188,10 +190,9 @@ function PsyCard({ p }: { p: CardItem }) {
       <div className="pp-card__foot">
         <Link href={`/psychologists/${p.slug}`} className="pp-btn pp-btn--ghost">
           {t("psyList.profile")}
-          <Arrow />
         </Link>
         <Link href={`/book/${p.slug}`} className="pp-btn pp-btn--primary">
-          <CalIcon /> {t("psyList.bookCta")}
+          {t("psyList.bookCta")}
         </Link>
       </div>
 
@@ -343,7 +344,7 @@ function PsyCard({ p }: { p: CardItem }) {
 
         .pp-card__foot {
           margin-top: auto; display: grid;
-          grid-template-columns: 1fr auto;
+          grid-template-columns: 1fr 1fr;
           gap: 8px; padding-top: 14px;
           border-top: 1px dashed var(--fanus-line);
           position: relative; z-index: 1;
@@ -399,10 +400,8 @@ function Stars({ value }: { value: number }) {
   );
 }
 
-function Arrow() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.4" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>; }
 function GlobeIcon() { return <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18" /></svg>; }
 function ClockIcon() { return <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>; }
 function HourIcon() { return <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 22h14M5 2h14M17 22v-4.18a2 2 0 00-.59-1.41L13 13l3.41-3.41A2 2 0 0017 8.18V4M7 22v-4.18a2 2 0 01.59-1.41L11 13 7.59 9.59A2 2 0 017 8.18V4" /></svg>; }
 function ShieldIcon({ size = 16 }: { size?: number }) { return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></svg>; }
-function CalIcon() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /></svg>; }
 function TagIcon() { return <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>; }

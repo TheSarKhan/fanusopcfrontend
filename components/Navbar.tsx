@@ -86,7 +86,6 @@ export default function Navbar() {
               <Link href="/login" className="fanus-nav__login">{t("nav.login")}</Link>
               <Link href="/register" className="fanus-btn fanus-btn-primary fanus-btn-sm">
                 {t("nav.register")}
-                <ArrowRight />
               </Link>
             </>
           )}
@@ -144,13 +143,17 @@ export default function Navbar() {
         /* ── Inner ── */
         .fanus-nav__inner {
           display: flex; align-items: center; justify-content: space-between;
-          gap: 24px; padding: 20px 28px;
+          gap: 24px; padding: 20px 72px;
           transition: padding .3s ease;
         }
-        .fanus-nav.is-scrolled .fanus-nav__inner { padding: 10px 28px; }
+        .fanus-nav.is-scrolled .fanus-nav__inner { padding: 10px 72px; }
+        @media (max-width: 1100px) {
+          .fanus-nav__inner { padding: 20px 40px; }
+          .fanus-nav.is-scrolled .fanus-nav__inner { padding: 10px 40px; }
+        }
 
         /* ── Brand ── */
-        .fanus-nav__brand { display: inline-flex; align-items: center; gap: 12px; }
+        .fanus-nav__brand { display: inline-flex; align-items: center; gap: 8px; }
         .fanus-nav__mark { display: inline-flex; align-items: center; }
         .fanus-nav__mark img {
           object-fit: contain; height: 64px; width: auto;
@@ -195,9 +198,10 @@ export default function Navbar() {
         .fanus-nav__cta { display: flex; gap: 10px; align-items: center; }
         .fanus-nav__login {
           font-size: 14px; font-weight: 500; color: var(--fanus-ink-2);
-          padding: 8px 14px; border-radius: 999px;
+          padding: 9px 18px; border-radius: 999px;
+          border: 1px solid var(--fanus-line);
         }
-        .fanus-nav__login:hover { color: var(--fanus-primary); }
+        .fanus-nav__login:hover { color: var(--fanus-primary); border-color: var(--fanus-primary); }
 
         /* ── Mobile ── */
         .fanus-nav__menu {
@@ -219,8 +223,4 @@ export default function Navbar() {
       `}</style>
     </header>
   );
-}
-
-function ArrowRight() {
-  return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
 }

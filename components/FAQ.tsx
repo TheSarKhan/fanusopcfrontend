@@ -58,6 +58,7 @@ export default function FAQ({ faqs }: { faqs?: Faq[] }) {
         .fanus-faq__container { display: grid; grid-template-columns: 1fr 1.4fr; gap: 56px; align-items: flex-start; }
         .fanus-faq__left { position: sticky; top: 100px; }
         .fanus-faq__left h2 {
+          margin: 0;
           font-family: var(--font-poppins), system-ui, sans-serif;
           font-size: clamp(30px, 3.6vw, 48px); font-weight: 700;
           letter-spacing: -0.025em; line-height: 1.1; color: var(--fanus-ink);

@@ -115,7 +115,7 @@ export default function Testimonials({ testimonials }: { testimonials?: Testimon
         }
 
         /* ── Heading ── */
-        .tst-top { text-align: center; margin-bottom: 32px; }
+        .tst-top { margin-bottom: 32px; }
         .tst-heading {
           font-family: var(--font-poppins), system-ui, sans-serif;
           font-size: clamp(26px, 3vw, 40px);

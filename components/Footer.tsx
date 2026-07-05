@@ -142,8 +142,8 @@ export default function Footer() {
         .fanus-ftr__lockup-sub { font-weight: 500; font-size: 9px; letter-spacing: 0.08em; color: rgba(16,81,183,.7); margin-top: 4px; text-transform: uppercase; }
         .fanus-ftr__tag {
           color: var(--fanus-ink-3);
-          font-family: var(--fanus-serif);
-          font-style: italic; font-size: 16px;
+          font-family: var(--font-poppins), system-ui, sans-serif;
+          font-weight: 500; font-size: 16px;
           margin: 16px 0 24px; max-width: 240px;
         }
         .fanus-ftr__contact { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
@@ -160,7 +160,8 @@ export default function Footer() {
         .fanus-ftr__social:hover { background: var(--fanus-primary); border-color: var(--fanus-primary); color: white; }
 
         .fanus-ftr__col-title {
-          font-size: 12px; font-weight: 700;
+          font-family: var(--font-poppins), system-ui, sans-serif;
+          font-size: 12px; font-weight: 500;
           text-transform: uppercase; letter-spacing: .08em;
           color: var(--fanus-primary); margin: 0 0 18px;
         }

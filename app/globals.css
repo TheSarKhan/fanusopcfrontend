@@ -10159,7 +10159,8 @@ a.contact-chip:hover {
 
 .fanus-root { color: var(--fanus-ink); }
 .fanus-root *, .fanus-root *::before, .fanus-root *::after { box-sizing: border-box; }
-.fanus-container { max-width: 1360px; margin: 0 auto; padding: 0 28px; }
+.fanus-container { max-width: 1360px; margin: 0 auto; padding: 0 72px; }
+@media (max-width: 1100px) { .fanus-container { padding: 0 40px; } }
 @media (max-width: 860px) { .fanus-container { padding: 0 20px; } }
 @media (min-width: 1600px) { .fanus-container { max-width: 1480px; } }
 @media (min-width: 1920px) { .fanus-container { max-width: 1680px; } }

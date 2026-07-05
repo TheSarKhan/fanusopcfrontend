@@ -16,40 +16,36 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
         title: p.title,
         date: new Date(p.publishedDate).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" }),
         read: t("articles.minutes", { n: p.readTimeMinutes }),
-        color: p.categoryColor || COLORS[i % COLORS.length],
+        bg: p.categoryBg || COLORS[i % COLORS.length],
+        fg: p.categoryColor || "#fff",
         coverUrl: p.coverImageUrl,
       }))
     : [
-        { slug: "narahatliq", tag: "Narahatlıq",   title: "Səhər yuxudan narahat oyananda nə etməli", date: "12 May 2025", read: "6 dəq", color: COLORS[0], coverUrl: undefined as string | undefined },
-        { slug: "munasibetler", tag: "Münasibətlər", title: "Sərhəd qoymaq eqoist olmaq deyil",        date: "8 May 2025",  read: "8 dəq", color: COLORS[1], coverUrl: undefined },
-        { slug: "ozune-qayim", tag: "Özünəqayım",   title: "Tükənmişlik (burnout) — gizli əlamətlər",   date: "3 May 2025",  read: "7 dəq", color: COLORS[2], coverUrl: undefined },
-        { slug: "yuxu", tag: "Yuxu",           title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", date: "28 Apr 2025", read: "5 dəq", color: COLORS[3], coverUrl: undefined },
+        { slug: "narahatliq", tag: "Narahatlıq",   title: "Səhər yuxudan narahat oyananda nə etməli", date: "12 May 2025", read: "6 dəq", bg: COLORS[0], fg: "#fff", coverUrl: undefined as string | undefined },
+        { slug: "munasibetler", tag: "Münasibətlər", title: "Sərhəd qoymaq eqoist olmaq deyil",        date: "8 May 2025",  read: "8 dəq", bg: COLORS[1], fg: "#fff", coverUrl: undefined },
+        { slug: "ozune-qayim", tag: "Özünəqayım",   title: "Tükənmişlik (burnout) — gizli əlamətlər",   date: "3 May 2025",  read: "7 dəq", bg: COLORS[2], fg: "#fff", coverUrl: undefined },
+        { slug: "yuxu", tag: "Yuxu",           title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", date: "28 Apr 2025", read: "5 dəq", bg: COLORS[3], fg: "#fff", coverUrl: undefined },
       ];
 
   return (
     <section className="fanus-art" id="articles">
       <div className="fanus-container">
         <div className="fanus-art__head">
-          <div>
-            <h2>{t("articles.title")}</h2>
-            <p className="fanus-art__lead">{t("articles.lead")}</p>
-          </div>
-          <Link href="/blog" className="fanus-btn fanus-btn-ghost">
-            {t("articles.seeAll")} <Arrow />
-          </Link>
+          <h2>{t("articles.title")}</h2>
+          <p className="fanus-art__lead">{t("articles.lead")}</p>
         </div>
 
         <div className="fanus-art__grid">
           {data.map((a, i) => (
             <Link key={i} className="fanus-art-card" href={`/blog/${a.slug}`}>
-              <div className="fanus-art-card__cover" style={{ background: a.color }}>
+              <div className="fanus-art-card__cover" style={{ background: a.bg }}>
                 {a.coverUrl ? (
-                   
+
                   <img src={a.coverUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
-                  <CoverArt color={a.color} variant={i % 4} />
+                  <CoverArt color={a.bg} variant={i % 4} />
                 )}
-                <span className="fanus-art-card__tag" style={{ background: a.color }}>{a.tag}</span>
+                <span className="fanus-art-card__tag" style={{ background: a.bg, color: a.fg }}>{a.tag}</span>
               </div>
               <div className="fanus-art-card__body">
                 <div className="fanus-art-card__date">
@@ -62,20 +58,27 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
             </Link>
           ))}
         </div>
+
+        <div className="fanus-art__foot">
+          <Link href="/blog" className="fanus-btn fanus-btn-ghost">
+            {t("articles.seeAll")}
+          </Link>
+        </div>
       </div>
 
       <style>{`
         .fanus-art { padding: 100px 0; background: var(--fanus-paper); position: relative; overflow: hidden; }
         .fanus-art > .fanus-container { position: relative; z-index: 1; }
-        .fanus-art__head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 48px; gap: 24px; flex-wrap: wrap; }
+        .fanus-art__head { margin-bottom: 48px; }
         .fanus-art__head h2 {
           font-family: var(--font-poppins), system-ui, sans-serif;
           font-size: clamp(30px, 3.6vw, 48px); font-weight: 700;
           letter-spacing: -0.025em; line-height: 1.1; color: var(--fanus-ink);
-          margin: 14px 0 0;
+          margin: 0;
         }
         .fanus-art__lead { margin-top: 12px; max-width: 540px; font-size: 17px; color: var(--fanus-ink-3); }
         .fanus-art__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+        .fanus-art__foot { display: flex; justify-content: center; margin-top: 40px; }
         .fanus-art-card {
           display: flex; flex-direction: column;
           background: white; border: 1px solid var(--fanus-line);
@@ -122,10 +125,6 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
       `}</style>
     </section>
   );
-}
-
-function Arrow() {
-  return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
 }
 
 function CoverArt({ color, variant }: { color: string; variant: number }) {

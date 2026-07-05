@@ -1,6 +1,7 @@
 import Hero from "@/components/Hero";
 import WhyFanus from "@/components/WhyFanus";
 import Services from "@/components/Services";
+import MoodCheckIn from "@/components/MoodCheckIn";
 import HowItWorks from "@/components/HowItWorks";
 import Psychologists from "@/components/Psychologists";
 import Testimonials from "@/components/Testimonials";
@@ -26,6 +27,7 @@ export default async function HomePage() {
       <Hero />
       <WhyFanus />
       <Services />
+      <MoodCheckIn />
       <HowItWorks />
       <Psychologists psychologists={psychologists} />
       <Testimonials testimonials={testimonials} />

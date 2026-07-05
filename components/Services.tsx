@@ -25,8 +25,8 @@ export default function Services() {
                 <li key={label}><Check />{label}</li>
               ))}
             </ul>
-            <Link href="/xidmetler" className="fanus-btn fanus-btn-ghost">
-              {t("services.allCta")} <Arrow />
+            <Link href="/xidmetler" className="fanus-btn fanus-btn-ghost fanus-svc__cta">
+              {t("services.allCta")}
             </Link>
           </div>
           <div className="fanus-svc__media">
@@ -48,9 +48,9 @@ export default function Services() {
           font-size: clamp(26px, 3.2vw, 40px); font-weight: 700;
           letter-spacing: -0.025em; line-height: 1.15; color: var(--fanus-ink);
         }
-        .fanus-svc__lead { margin: 14px 0 0; font-size: 16px; line-height: 1.6; color: var(--fanus-ink-2); max-width: 460px; }
+        .fanus-svc__lead { margin: 8px 0 0; font-size: 16px; line-height: 1.6; color: var(--fanus-ink-2); max-width: 460px; }
         .fanus-svc__list {
-          list-style: none; margin: 26px 0 28px; padding: 0;
+          list-style: none; margin: 44px 0 28px; padding: 0;
           display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px;
         }
         .fanus-svc__list li { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; color: var(--fanus-ink); }
@@ -58,7 +58,10 @@ export default function Services() {
           flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
           background: #DCEAFB; display: inline-flex; align-items: center; justify-content: center;
         }
-        .fanus-svc__media img { width: 100%; height: auto; display: block; border-radius: 18px; }
+        .fanus-svc__cta { border-color: var(--fanus-ink-3); }
+        .fanus-svc__cta:hover { border-color: var(--fanus-primary); }
+        .fanus-svc__media { aspect-ratio: 4 / 3; border-radius: 18px; overflow: hidden; }
+        .fanus-svc__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
         @media (max-width: 860px) {
           .fanus-svc__panel { grid-template-columns: 1fr; gap: 28px; }
           .fanus-svc__media { order: -1; }
@@ -69,10 +72,6 @@ export default function Services() {
       `}</style>
     </section>
   );
-}
-
-function Arrow() {
-  return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
 }
 
 function Check() {

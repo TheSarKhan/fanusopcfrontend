@@ -127,6 +127,8 @@ export default function PsychologClientsPage() {
   const [tagsByPatient, setTagsByPatient] = useState<Record<number, PatientTag[]>>({});
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("ALL");
@@ -159,6 +161,7 @@ export default function PsychologClientsPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
     psychologistApi.clientsPaged({ q: debouncedSearch || undefined, page: 0, size: PAGE_SIZE })
       .then(res => {
         if (cancelled) return;
@@ -166,20 +169,21 @@ export default function PsychologClientsPage() {
         setTotalElements(res.totalElements);
         setPage(0);
       })
-      .catch(() => {})
+      .catch(e => { if (!cancelled) setError((e as Error).message || "Müştərilər yüklənmədi"); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [debouncedSearch]);
+  }, [debouncedSearch, reloadNonce]);
 
   const loadMore = () => {
     setLoadingMore(true);
+    setError(null);
     psychologistApi.clientsPaged({ q: debouncedSearch || undefined, page: page + 1, size: PAGE_SIZE })
       .then(res => {
         setClients(prev => [...prev, ...res.content]);
         setTotalElements(res.totalElements);
         setPage(res.page);
       })
-      .catch(() => {})
+      .catch(e => setError((e as Error).message || "Müştərilər yüklənmədi"))
       .finally(() => setLoadingMore(false));
   };
 
@@ -385,6 +389,15 @@ export default function PsychologClientsPage() {
           </div>
         </div>
       </div>
+
+      {error && (
+        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", borderRadius: 12, padding: "13px 16px", marginBottom: 16, fontSize: 13.5, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <span>Müştərilər yüklənərkən xəta baş verdi: {error}</span>
+          <button type="button" onClick={() => setReloadNonce(n => n + 1)} style={{ background: "#fff", color: "#991B1B", border: "1px solid #FECACA", borderRadius: 8, padding: "6px 12px", fontSize: 12.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", flex: "none" }}>
+            Yenidən cəhd et
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>

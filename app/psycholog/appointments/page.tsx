@@ -20,7 +20,6 @@ import {
   type ClientNote,
   type ClientSummary,
   type RescheduleProposal,
-  type Referral,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import CancelModal from "@/components/CancelModal";
@@ -82,14 +81,15 @@ export default function PsychologistAppointmentsPage() {
     Promise.all([
       psychologistApi.myAppointments(),
       psychologistApi.clients().catch(() => [] as ClientSummary[]),
-      psychologistApi.myRescheduleProposals().catch(() => [] as RescheduleProposal[]),
-      psychologistApi.receivedReferrals().catch(() => [] as Referral[]),
+      // Yalnız PENDING təkliflər — bütün təklif tarixçəsini çəkməyə ehtiyac yoxdur.
+      psychologistApi.myRescheduleProposals("PENDING").catch(() => [] as RescheduleProposal[]),
+      psychologistApi.receivedReferralsCountPending().catch(() => 0),
     ])
-      .then(([appts, cs, props, refs]) => {
+      .then(([appts, cs, props, refPending]) => {
         setItems(appts);
         setClients(cs);
         setPatientRequests(props.filter(p => p.initiator === "PATIENT" && p.status === "PENDING"));
-        setReferralPending(refs.filter(r => r.status === "PENDING_REVIEW").length);
+        setReferralPending(refPending);
       })
       .catch(() => {})
       .finally(() => setLoading(false));

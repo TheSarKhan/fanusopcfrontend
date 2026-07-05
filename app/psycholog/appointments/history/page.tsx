@@ -2,64 +2,110 @@
 
 // ============================================================================
 // Psixoloq seans tarixçəsi — tamamlanmış / ləğv edilmiş / rədd edilmiş
-// seansların tam siyahısı, aya görə qruplaşmış. Əsas randevu səhifəsindəki
+// seansların tam siyahısı, ardıcıl kart grid-i. Əsas randevu səhifəsindəki
 // "Tarixçə" düyməsindən açılır. Buradan seans qeydi yazmaq, yaxın keçmişdəki
 // seansı "baş tutmadı" kimi bildirmək və Müştəri 360° səhifəsinə keçmək olur.
 // ============================================================================
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { psychologistApi, type AppointmentDetail } from "@/lib/api";
 import {
   pad2, fmtTime, avatarColor, initialsOf, STATUS, NO_SHOW_REPORT_WINDOW_MS,
-  PSY_APPT_STYLE, IMsg, IAlert, IUser,
+  PSY_APPT_STYLE, IMsg, IAlert, IUser, ISearch,
   PackageBadge, RowMenu, type MenuItem, DisputeModal, OutcomeModal,
 } from "../shared";
 
-const HISTORY_STATUSES = new Set(["COMPLETED", "CANCELLED", "REJECTED"]);
-const MONTHS_AZ_FULL = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
+const CANCEL_REASON_LABEL: Record<string, string> = {
+  PATIENT_BUSY: "Məşğul oldu",
+  PATIENT_HEALTH: "Xəstələndi",
+  PATIENT_FORGOT: "Unutdu",
+  PATIENT_NOT_NEEDED: "Lazım deyildi",
+  PATIENT_TECHNICAL: "Texniki problem",
+  PATIENT_TIME_CONFLICT: "Vaxt uyğun deyildi",
+  PATIENT_OTHER: "Digər",
+  PSY_HEALTH: "Psixoloq xəstələndi",
+  PSY_EMERGENCY: "Psixoloq təcili",
+  PSY_TECHNICAL: "Texniki problem",
+  PSY_INCOMPATIBLE: "Profil uyğun deyildi",
+  PSY_OTHER: "Digər",
+  OPERATOR_PATIENT_REQUEST: "Pasient telefonla bildirdi",
+  OPERATOR_PSY_UNAVAILABLE: "Psixoloq mövcud deyildi",
+  OPERATOR_DISPUTE_RESOLUTION: "Mübahisə həlli",
+  OPERATOR_NO_SHOW_BOTH: "İkisi də gəlmədi",
+  OPERATOR_PATIENT_BLOCKED: "Pasient bloklandı",
+  OPERATOR_OTHER: "Digər",
+};
+
 const PAGE_SIZE = 30;
+
+type StatusFilter = "ALL" | "COMPLETED" | "CANCELLED" | "REJECTED";
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: "ALL", label: "Hamısı" },
+  { key: "COMPLETED", label: "Tamamlandı" },
+  { key: "CANCELLED", label: "Ləğv" },
+  { key: "REJECTED", label: "Rədd" },
+];
 
 export default function PsychologistAppointmentHistoryPage() {
   const [items, setItems] = useState<AppointmentDetail[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [outcomeFor, setOutcomeFor] = useState<AppointmentDetail | null>(null);
   const [disputeFor, setDisputeFor] = useState<AppointmentDetail | null>(null);
-  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [now] = useState(() => new Date());
 
+  // Axtarış yazılışını 300ms gecikdiririk ki, hər hərfə sorğu getməsin.
   useEffect(() => {
-    psychologistApi.myAppointments()
-      .then(setItems)
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // Filtr/axtarış dəyişəndə birinci səhifədən yenidən yüklə.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    psychologistApi.myAppointmentsPaged({
+      scope: statusFilter === "ALL" ? "history" : statusFilter,
+      q: debouncedQuery || undefined,
+      page: 0,
+      size: PAGE_SIZE,
+    })
+      .then(res => {
+        if (cancelled) return;
+        setItems(res.content);
+        setTotalElements(res.totalElements);
+        setPage(0);
+      })
       .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [debouncedQuery, statusFilter]);
 
-  const history = useMemo(() => {
-    return items
-      .filter(a => HISTORY_STATUSES.has(a.status))
-      .filter(a => a.startAt ?? a.endAt)
-      .sort((a, b) => {
-        const da = new Date(a.startAt ?? a.endAt ?? 0).getTime();
-        const db = new Date(b.startAt ?? b.endAt ?? 0).getTime();
-        return db - da;
-      });
-  }, [items]);
+  const loadMore = () => {
+    setLoadingMore(true);
+    psychologistApi.myAppointmentsPaged({
+      scope: statusFilter === "ALL" ? "history" : statusFilter,
+      q: debouncedQuery || undefined,
+      page: page + 1,
+      size: PAGE_SIZE,
+    })
+      .then(res => {
+        setItems(prev => [...prev, ...res.content]);
+        setTotalElements(res.totalElements);
+        setPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
 
-  const monthGroups = useMemo(() => {
-    const groups: { key: string; label: string; items: AppointmentDetail[] }[] = [];
-    let last: typeof groups[number] | null = null;
-    for (const a of history.slice(0, limit)) {
-      const d = new Date((a.startAt ?? a.endAt)!);
-      const key = `${d.getFullYear()}-${d.getMonth()}`;
-      if (!last || last.key !== key) {
-        last = { key, label: `${MONTHS_AZ_FULL[d.getMonth()]} ${d.getFullYear()}`, items: [] };
-        groups.push(last);
-      }
-      last.items.push(a);
-    }
-    return groups;
-  }, [history, limit]);
+  const visible = items;
+  const hasMore = items.length < totalElements;
 
   return (
     <div className="psy-appt-page" style={{ maxWidth: 1040, margin: "0 auto" }}>
@@ -75,40 +121,59 @@ export default function PsychologistAppointmentHistoryPage() {
         </p>
       </header>
 
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+        <div style={{ position: "relative", flex: "1 1 240px", minWidth: 200 }}>
+          <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--oxford-60)", display: "inline-flex" }}>
+            <ISearch />
+          </span>
+          <input
+            type="text" value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="Pasiyent adına görə axtar…"
+            style={{ width: "100%", padding: "10px 12px 10px 36px", borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13.5, fontFamily: "inherit", boxSizing: "border-box", background: "#fff" }} />
+        </div>
+        <div role="tablist" className="gor-tabs" style={{ display: "inline-flex", maxWidth: "100%", overflowX: "auto", gap: 4, background: "#fff", border: "1px solid #EDF1F8", borderRadius: 12, padding: 5, boxShadow: "0 2px 12px rgba(0,0,0,.04)" }}>
+          {STATUS_FILTERS.map(({ key, label }) => {
+            const active = statusFilter === key;
+            return (
+              <button key={key} type="button" role="tab" aria-selected={active} onClick={() => setStatusFilter(key)}
+                style={{ display: "inline-flex", alignItems: "center", gap: 7, background: active ? "var(--brand)" : "transparent", color: active ? "#fff" : "var(--oxford)", border: "none", borderRadius: 9, padding: "8px 14px", fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap", flex: "none" }}>
+                {label}
+                {active && !loading && (
+                  <span style={{ background: "rgba(255,255,255,.22)", color: "#fff", fontSize: 11, fontWeight: 700, minWidth: 19, height: 19, padding: "0 5px", borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{totalElements}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {loading ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>
           Yüklənir…
         </div>
-      ) : history.length === 0 ? (
+      ) : visible.length === 0 ? (
         <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: 40, textAlign: "center", fontSize: 14, color: "var(--oxford-60)", fontWeight: 600 }}>
-          Hələ tamamlanmış seansınız yoxdur
+          {debouncedQuery || statusFilter !== "ALL" ? "Axtarışa uyğun seans tapılmadı" : "Hələ tamamlanmış seansınız yoxdur"}
         </div>
       ) : (
         <>
-          {monthGroups.map(g => (
-            <section key={g.key} style={{ marginBottom: 22 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 10 }}>
-                {g.label}
-              </div>
-              <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "0 8px" }}>
-                {g.items.map(a => (
-                  <HistoryRow
-                    key={a.id}
-                    a={a}
-                    now={now}
-                    onOutcome={() => setOutcomeFor(a)}
-                    onDispute={() => setDisputeFor(a)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12, marginBottom: 20 }}>
+            {visible.map(a => (
+              <HistoryCard
+                key={a.id}
+                a={a}
+                now={now}
+                onOutcome={() => setOutcomeFor(a)}
+                onDispute={() => setDisputeFor(a)}
+              />
+            ))}
+          </div>
 
-          {history.length > limit && (
+          {hasMore && (
             <div style={{ textAlign: "center", marginTop: 4 }}>
-              <button type="button" onClick={() => setLimit(l => l + PAGE_SIZE)}
-                style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
-                Daha çox göstər (+{Math.min(PAGE_SIZE, history.length - limit)})
+              <button type="button" onClick={loadMore} disabled={loadingMore}
+                style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
+                {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - visible.length)})`}
               </button>
             </div>
           )}
@@ -136,9 +201,9 @@ export default function PsychologistAppointmentHistoryPage() {
   );
 }
 
-/* ─── Tarixçə sətri ──────────────────────────────────────────────────────── */
+/* ─── Tarixçə kartı ──────────────────────────────────────────────────────── */
 
-function HistoryRow({
+function HistoryCard({
   a, now, onOutcome, onDispute,
 }: {
   a: AppointmentDetail;
@@ -155,28 +220,51 @@ function HistoryRow({
   const endMs = a.endAt ? new Date(a.endAt).getTime() : null;
   const reportableNoShow = a.status === "COMPLETED" && endMs != null
     && now.getTime() - endMs < NO_SHOW_REPORT_WINDOW_MS;
+  const cancelReason = a.cancelReasonCode ? (CANCEL_REASON_LABEL[a.cancelReasonCode] ?? a.cancelReasonCode) : null;
 
   const menu: MenuItem[] = [];
   if (reportableNoShow) menu.push({ label: "Baş tutmadı", onClick: onDispute, icon: <IAlert s={15} c="#5C6B85" /> });
   if (a.patientId) menu.push({ label: "Müştəri 360°", href: `/psycholog/clients/${a.patientId}`, icon: <IUser /> });
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", borderTop: "1px solid #F0F4FA", padding: "13px 12px" }}>
-      <span style={{ fontSize: 13.5, fontWeight: 700, minWidth: 100 }}>{pad2(d.getDate())}.{pad2(d.getMonth() + 1)}.{d.getFullYear()} · {fmtTime(d)}</span>
-      <span style={{ width: 30, height: 30, borderRadius: 9, background: av, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flex: "none" }}>{initialsOf(a.patientName)}</span>
-      <span style={{ flex: 1, minWidth: 150, fontSize: 14, color: "var(--oxford)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-        {a.patientName ?? "Pasiyent"}
+    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "14px 16px", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <div className="psy-card__avatar" style={{ width: 46, height: 46, background: av, color: "#fff", border: "none" }}>
+          {initialsOf(a.patientName)}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="psy-card__name">{a.patientName ?? "Pasiyent"}</div>
+          <div className="psy-card__nth">{pad2(d.getDate())}.{pad2(d.getMonth() + 1)}.{d.getFullYear()} · {fmtTime(d)}</div>
+        </div>
+        {menu.length > 0 && <RowMenu items={menu} />}
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
+        <span className="psy-card__badge" style={{ background: status.bg, color: status.color }}>{status.label}</span>
         {a.patientPackageId != null && <PackageBadge name={a.packageName} />}
-      </span>
-      <span style={{ background: status.bg, color: status.color, fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>{status.label}</span>
-      {a.status === "COMPLETED" && (
-        <button type="button" onClick={onOutcome}
-          style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#fff", color: "#082F6D", border: "1px solid #C7DAF5", borderRadius: 8, padding: "6px 11px", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
-          <IMsg c="var(--brand)" />
-          Seans qeydi
-        </button>
+      </div>
+
+      {cancelReason && (
+        <div style={{ marginTop: 12, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
+          Səbəb: <span style={{ color: "var(--oxford)" }}>{cancelReason}</span>
+          {a.cancelledBy && <span style={{ color: "var(--oxford-60)" }}> · {a.cancelledBy === "PATIENT" ? "pasiyent" : a.cancelledBy === "PSYCHOLOGIST" ? "sizin tərəfdən" : "operator"}</span>}
+        </div>
       )}
-      {menu.length > 0 && <RowMenu items={menu} size={30} />}
+      {a.status === "COMPLETED" && a.note && (
+        <div style={{ marginTop: 12, fontSize: 12.5, color: "var(--oxford-60)", fontStyle: "italic", lineHeight: 1.4 }}>
+          «{a.note}»
+        </div>
+      )}
+
+      {a.status === "COMPLETED" && (
+        <div style={{ marginTop: "auto", paddingTop: 14 }}>
+          <button type="button" onClick={onOutcome}
+            style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 14px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
+            <IMsg c="var(--brand)" />
+            Seans qeydi
+          </button>
+        </div>
+      )}
     </div>
   );
 }

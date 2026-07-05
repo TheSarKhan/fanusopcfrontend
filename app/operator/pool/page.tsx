@@ -65,7 +65,7 @@ export default function OperatorPoolPage() {
 
   const load = useCallback(() => {
     setLoading(true);
-    operatorApi.listAppointments().catch(() => [] as AppointmentDetail[])
+    operatorApi.listPoolAppointments().catch(() => [] as AppointmentDetail[])
       .then(setAppts)
       .finally(() => setLoading(false));
   }, []);

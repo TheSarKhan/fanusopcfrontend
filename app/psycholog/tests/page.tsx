@@ -6,6 +6,7 @@ import PsychResourceTabs from "@/components/PsychResourceTabs";
 import {
   psychologistApi,
   type ClientSummary,
+  type Paged,
   type PsyTestSummary,
   type TestAssignment,
 } from "@/lib/api";
@@ -59,10 +60,16 @@ function smallBtn(color: string, bg: string): React.CSSProperties {
   };
 }
 
+const PAGE_SIZE = 30;
+const EMPTY_ASSIGN_PAGE: Paged<TestAssignment> = { content: [], totalElements: 0, totalPages: 0, page: 0, size: PAGE_SIZE };
+
 export default function PsychologTestsPage() {
   const [tests, setTests] = useState<PsyTestSummary[]>([]);
   const [myTests, setMyTests] = useState<PsyTestSummary[]>([]);
   const [assignments, setAssignments] = useState<TestAssignment[]>([]);
+  const [assignTotal, setAssignTotal] = useState(0);
+  const [assignPage, setAssignPage] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [clients, setClients] = useState<ClientSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -78,13 +85,15 @@ export default function PsychologTestsPage() {
     setLoading(true);
     Promise.all([
       psychologistApi.assignableTests().catch(() => [] as PsyTestSummary[]),
-      psychologistApi.testAssignments().catch(() => [] as TestAssignment[]),
+      psychologistApi.testAssignmentsPaged({ page: 0, size: PAGE_SIZE }).catch(() => EMPTY_ASSIGN_PAGE),
       psychologistApi.clients().catch(() => [] as ClientSummary[]),
       psychologistApi.myTests().catch(() => [] as PsyTestSummary[]),
     ])
       .then(([ts, as, cs, mine]) => {
         setTests(ts);
-        setAssignments(as);
+        setAssignments(as.content);
+        setAssignTotal(as.totalElements);
+        setAssignPage(0);
         setClients(cs);
         setMyTests(mine);
       })
@@ -92,6 +101,29 @@ export default function PsychologTestsPage() {
   };
 
   useEffect(load, []);
+
+  // Yeni təyinat / yeni public link sonrası siyahını 0-cı səhifədən yenilə.
+  const reloadAssignments = () => {
+    psychologistApi.testAssignmentsPaged({ page: 0, size: PAGE_SIZE })
+      .then(res => {
+        setAssignments(res.content);
+        setAssignTotal(res.totalElements);
+        setAssignPage(0);
+      })
+      .catch(() => {});
+  };
+
+  const loadMoreAssignments = () => {
+    setLoadingMore(true);
+    psychologistApi.testAssignmentsPaged({ page: assignPage + 1, size: PAGE_SIZE })
+      .then(res => {
+        setAssignments(prev => [...prev, ...res.content]);
+        setAssignTotal(res.totalElements);
+        setAssignPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
 
   const sortedAssignments = useMemo(() => {
     return [...assignments].sort(
@@ -105,7 +137,7 @@ export default function PsychologTestsPage() {
       const res = await psychologistApi.createTestLink({ testId: test.id });
       setLinks(prev => ({ ...prev, [test.id]: { url: res.url, token: res.token } }));
       // Refresh assignments so the new public link appears in the table.
-      psychologistApi.testAssignments().then(setAssignments).catch(() => {});
+      reloadAssignments();
     } catch (e) {
       alert((e as Error).message);
     } finally {
@@ -167,10 +199,10 @@ export default function PsychologTestsPage() {
             Testləri pasiyentlərə təyin edin və ya public link yaradın, nəticələri burada izləyin.
           </p>
         </div>
-        <a href="/psycholog/tests/manage/new" style={{
+        <Link href="/psycholog/tests/manage/new" style={{
           display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 10,
           background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 700, textDecoration: "none",
-        }}>+ Yeni test yarat</a>
+        }}>+ Yeni test yarat</Link>
       </div>
 
       {/* ── My tests (psychologist-authored) ───────────────────────────────── */}
@@ -291,6 +323,7 @@ export default function PsychologTestsPage() {
             Hələ təyinat yoxdur.
           </div>
         ) : (
+          <>
           <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #EEF2F7", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
@@ -356,6 +389,15 @@ export default function PsychologTestsPage() {
               </tbody>
             </table>
           </div>
+          {assignments.length < assignTotal && (
+            <div style={{ textAlign: "center", marginTop: 14 }}>
+              <button type="button" onClick={loadMoreAssignments} disabled={loadingMore}
+                style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
+                {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, assignTotal - assignments.length)})`}
+              </button>
+            </div>
+          )}
+          </>
         )}
       </section>
 
@@ -364,8 +406,8 @@ export default function PsychologTestsPage() {
           test={assignTest}
           clients={clients}
           onClose={() => setAssignTest(null)}
-          onAssigned={(created) => {
-            setAssignments(prev => [created, ...prev]);
+          onAssigned={() => {
+            reloadAssignments();
             setAssignTest(null);
           }}
         />

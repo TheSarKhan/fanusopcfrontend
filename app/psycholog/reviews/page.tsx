@@ -10,6 +10,8 @@ const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }>
   REJECTED: { label: "Rədd",         color: "#991B1B", bg: "#FEE2E2" },
 };
 
+const PAGE_SIZE = 30;
+
 function fmt(iso?: string | null) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -32,7 +34,10 @@ function Stars({ value, size = 14 }: { value: number; size?: number }) {
 export default function PsychologReviewsPage() {
   const { t } = useT();
   const [items, setItems] = useState<PsychologistReceivedReview[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [filter, setFilter] = useState<"ALL" | "APPROVED" | "PENDING">("APPROVED");
   const [replyFor, setReplyFor] = useState<PsychologistReceivedReview | null>(null);
   const [deleteFor, setDeleteFor] = useState<PsychologistReceivedReview | null>(null);
@@ -41,8 +46,12 @@ export default function PsychologReviewsPage() {
 
   const load = () => {
     setLoading(true);
-    psychologistApi.receivedReviews()
-      .then(setItems)
+    psychologistApi.receivedReviewsPaged({ page: 0, size: PAGE_SIZE })
+      .then(res => {
+        setItems(res.content);
+        setTotalElements(res.totalElements);
+        setPage(0);
+      })
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
     psychologistApi.myReviewDeletionRequests()
@@ -51,6 +60,20 @@ export default function PsychologReviewsPage() {
   };
 
   useEffect(load, []);
+
+  const loadMore = () => {
+    setLoadingMore(true);
+    psychologistApi.receivedReviewsPaged({ page: page + 1, size: PAGE_SIZE })
+      .then(res => {
+        setItems(prev => [...prev, ...res.content]);
+        setTotalElements(res.totalElements);
+        setPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
+
+  const hasMore = items.length < totalElements;
 
   const deletionByReview = useMemo(() => {
     const map = new Map<number, ReviewDeletionRequestItem>();
@@ -64,11 +87,12 @@ export default function PsychologReviewsPage() {
     return items.filter(r => r.status === filter);
   }, [items, filter]);
 
+  // ALL server cəmidir (totalElements); status sayları yüklənmiş rəylərdən hesablanır.
   const counts = useMemo(() => {
-    const c = { ALL: items.length, APPROVED: 0, PENDING: 0 } as Record<string, number>;
+    const c = { ALL: totalElements, APPROVED: 0, PENDING: 0 } as Record<string, number>;
     items.forEach(r => { c[r.status] = (c[r.status] ?? 0) + 1; });
     return c;
-  }, [items]);
+  }, [items, totalElements]);
 
   const summary = useMemo(() => {
     const approved = items.filter(r => r.status === "APPROVED");
@@ -212,6 +236,15 @@ export default function PsychologReviewsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {!loading && hasMore && (
+        <div style={{ textAlign: "center", marginTop: 16 }}>
+          <button type="button" onClick={loadMore} disabled={loadingMore}
+            style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
+            {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
+          </button>
         </div>
       )}
 

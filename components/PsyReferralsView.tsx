@@ -41,25 +41,76 @@ function fmtDate(d?: string | null) {
 
 type Tab = "RECEIVED" | "SENT";
 
+const PAGE_SIZE = 30;
+
 export default function PsyReferralsView({ onPendingCount }: { onPendingCount?: (n: number) => void }) {
   const [tab, setTab] = useState<Tab>("RECEIVED");
   const [received, setReceived] = useState<Referral[]>([]);
+  const [receivedTotal, setReceivedTotal] = useState(0);
+  const [receivedPage, setReceivedPage] = useState(0);
   const [sent, setSent] = useState<Referral[]>([]);
+  const [sentTotal, setSentTotal] = useState(0);
+  const [sentPage, setSentPage] = useState(0);
+  const [pendingReceived, setPendingReceived] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMoreReceived, setLoadingMoreReceived] = useState(false);
+  const [loadingMoreSent, setLoadingMoreSent] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
-    Promise.all([psychologistApi.receivedReferrals(), psychologistApi.sentReferrals()])
-      .then(([rec, snt]) => { setReceived(rec); setSent(snt); })
-      .catch(() => { setReceived([]); setSent([]); })
+    Promise.all([
+      psychologistApi.receivedReferralsPaged({ page: 0, size: PAGE_SIZE }),
+      psychologistApi.sentReferralsPaged({ page: 0, size: PAGE_SIZE }),
+      // Yüngül sorğu — badge üçün yalnız totalElements lazımdır.
+      psychologistApi.receivedReferralsPaged({ status: "PENDING_REVIEW", size: 5 }),
+    ])
+      .then(([rec, snt, pend]) => {
+        setReceived(rec.content); setReceivedTotal(rec.totalElements); setReceivedPage(0);
+        setSent(snt.content); setSentTotal(snt.totalElements); setSentPage(0);
+        setPendingReceived(pend.totalElements);
+      })
+      .catch(() => {
+        setReceived([]); setReceivedTotal(0);
+        setSent([]); setSentTotal(0);
+        setPendingReceived(0);
+      })
       .finally(() => setLoading(false));
   };
   useEffect(load, []);
 
-  const pendingReceived = useMemo(() => received.filter(r => r.status === "PENDING_REVIEW").length, [received]);
+  const loadMoreReceived = () => {
+    setLoadingMoreReceived(true);
+    psychologistApi.receivedReferralsPaged({ page: receivedPage + 1, size: PAGE_SIZE })
+      .then(res => {
+        setReceived(prev => [...prev, ...res.content]);
+        setReceivedTotal(res.totalElements);
+        setReceivedPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreReceived(false));
+  };
+
+  const loadMoreSent = () => {
+    setLoadingMoreSent(true);
+    psychologistApi.sentReferralsPaged({ page: sentPage + 1, size: PAGE_SIZE })
+      .then(res => {
+        setSent(prev => [...prev, ...res.content]);
+        setSentTotal(res.totalElements);
+        setSentPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMoreSent(false));
+  };
+
+  // Yeni yönləndirmə yaradılanda göndərilənlərin birinci səhifəsini təzələ.
+  const reloadSent = () => {
+    psychologistApi.sentReferralsPaged({ page: 0, size: PAGE_SIZE })
+      .then(res => { setSent(res.content); setSentTotal(res.totalElements); setSentPage(0); })
+      .catch(() => {});
+  };
 
   // Valideynə (Görüşlər tab badge-i üçün) cavab gözləyən sayını bildir.
   useEffect(() => { onPendingCount?.(pendingReceived); }, [pendingReceived, onPendingCount]);
@@ -72,6 +123,8 @@ export default function PsyReferralsView({ onPendingCount }: { onPendingCount?: 
         ? await psychologistApi.acceptReferral(r.id)
         : await psychologistApi.declineReferral(r.id);
       setReceived(prev => prev.map(x => x.id === r.id ? updated : x));
+      // Cavablanan yönləndirmə PENDING_REVIEW-dan çıxdı — badge sayını azalt.
+      setPendingReceived(n => Math.max(0, n - 1));
     } catch (e) {
       setError("Əməliyyat alınmadı: " + (e as Error).message);
     } finally {
@@ -100,7 +153,7 @@ export default function PsyReferralsView({ onPendingCount }: { onPendingCount?: 
           padding: 6, border: "1px solid var(--oxford-10)",
         }}>
           <TabBtn active={tab === "RECEIVED"} onClick={() => setTab("RECEIVED")} count={pendingReceived}>Aldıqlarım</TabBtn>
-          <TabBtn active={tab === "SENT"} onClick={() => setTab("SENT")} count={sent.length}>Göndərdiklərim</TabBtn>
+          <TabBtn active={tab === "SENT"} onClick={() => setTab("SENT")} count={sentTotal}>Göndərdiklərim</TabBtn>
         </div>
         <button onClick={() => setCreating(true)} style={primaryBtn}>
           <IconPlus /> Yeni yönləndirmə
@@ -121,31 +174,51 @@ export default function PsyReferralsView({ onPendingCount }: { onPendingCount?: 
           ))}
         </div>
       ) : tab === "RECEIVED" ? (
-        received.length === 0 ? (
-          <Empty title="Aldığınız yönləndirmə yoxdur" body="Həmkarınız sizə randevu və ya paket yönləndirəndə (operator təsdiqindən sonra) burada görünəcək." />
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {received.map(r => (
-              <ReceivedCard key={r.id} r={r} busy={busyId === r.id} onRespond={respond} />
-            ))}
-          </div>
-        )
+        <>
+          {received.length === 0 ? (
+            <Empty title="Aldığınız yönləndirmə yoxdur" body="Həmkarınız sizə randevu və ya paket yönləndirəndə (operator təsdiqindən sonra) burada görünəcək." />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {received.map(r => (
+                <ReceivedCard key={r.id} r={r} busy={busyId === r.id} onRespond={respond} />
+              ))}
+            </div>
+          )}
+          {received.length < receivedTotal && (
+            <div style={{ textAlign: "center", marginTop: 4 }}>
+              <button type="button" onClick={loadMoreReceived} disabled={loadingMoreReceived}
+                style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMoreReceived ? "wait" : "pointer", opacity: loadingMoreReceived ? 0.7 : 1 }}>
+                {loadingMoreReceived ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, receivedTotal - received.length)})`}
+              </button>
+            </div>
+          )}
+        </>
       ) : (
-        sent.length === 0 ? (
-          <Empty title="Göndərdiyiniz yönləndirmə yoxdur" body="İlk yönləndirməni yaratmaq üçün yuxarıdakı düyməyə basın." />
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {sent.map(r => (
-              <SentCard key={r.id} r={r} busy={busyId === r.id} onCancel={cancel} />
-            ))}
-          </div>
-        )
+        <>
+          {sent.length === 0 ? (
+            <Empty title="Göndərdiyiniz yönləndirmə yoxdur" body="İlk yönləndirməni yaratmaq üçün yuxarıdakı düyməyə basın." />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {sent.map(r => (
+                <SentCard key={r.id} r={r} busy={busyId === r.id} onCancel={cancel} />
+              ))}
+            </div>
+          )}
+          {sent.length < sentTotal && (
+            <div style={{ textAlign: "center", marginTop: 4 }}>
+              <button type="button" onClick={loadMoreSent} disabled={loadingMoreSent}
+                style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMoreSent ? "wait" : "pointer", opacity: loadingMoreSent ? 0.7 : 1 }}>
+                {loadingMoreSent ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, sentTotal - sent.length)})`}
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {creating && (
         <CreateModal
           onClose={() => setCreating(false)}
-          onCreated={(r) => { setSent(prev => [r, ...prev]); setCreating(false); setTab("SENT"); }} />
+          onCreated={() => { reloadSent(); setCreating(false); setTab("SENT"); }} />
       )}
     </div>
   );

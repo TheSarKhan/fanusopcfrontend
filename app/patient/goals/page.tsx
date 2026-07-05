@@ -25,20 +25,43 @@ function initials(name: string | null): string {
   return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
 }
 
+const PAGE_SIZE = 30;
+
 export default function PatientGoalsPage() {
   // Goals MVP-dən gizlədilib — flag açıq deyilsə birbaşa URL ilə də açılmasın.
   if (!FEATURE_GOALS) notFound();
 
   const [goals, setGoals] = useState<PatientGoalView[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    patientApi.goals()
-      .then(setGoals)
+    patientApi.goalsPaged({ page: 0, size: PAGE_SIZE })
+      .then(res => {
+        setGoals(res.content);
+        setTotalElements(res.totalElements);
+        setPage(0);
+      })
       .catch(e => setErr((e as Error).message))
       .finally(() => setLoading(false));
   }, []);
+
+  const loadMore = () => {
+    setLoadingMore(true);
+    patientApi.goalsPaged({ page: page + 1, size: PAGE_SIZE })
+      .then(res => {
+        setGoals(prev => [...prev, ...res.content]);
+        setTotalElements(res.totalElements);
+        setPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
+
+  const hasMore = goals.length < totalElements;
 
   const grouped = useMemo(() => {
     const active = goals.filter(g => g.status === "OPEN" || g.status === "IN_PROGRESS");
@@ -89,6 +112,14 @@ export default function PatientGoalsPage() {
             <Section title="Tərk edilmiş" count={grouped.abandoned.length}>
               {grouped.abandoned.map(g => <GoalCard key={g.id} g={g} />)}
             </Section>
+          )}
+          {hasMore && (
+            <div style={{ textAlign: "center", marginTop: 16 }}>
+              <button type="button" onClick={loadMore} disabled={loadingMore}
+                style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
+                {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - goals.length)})`}
+              </button>
+            </div>
           )}
         </>
       )}

@@ -73,6 +73,10 @@ type FilterTab = "ALL" | "UNREAD" | "APPOINTMENT" | "OTHER";
 export default function NotificationsPage() {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  // Son sorğu tam səhifə qaytarıbsa, davamı ola bilər.
+  const [hasMore, setHasMore] = useState(false);
   const [filter, setFilter] = useState<FilterTab>("ALL");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
@@ -80,12 +84,34 @@ export default function NotificationsPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const searchRef = useRef<HTMLInputElement | null>(null);
 
+  const PAGE_SIZE = 50;
+
   const load = () => {
     setLoading(true);
-    notificationsApi.list(100)
-      .then(setItems)
+    notificationsApi.list(PAGE_SIZE, 0)
+      .then(res => {
+        setItems(res);
+        setPage(0);
+        setHasMore(res.length === PAGE_SIZE);
+      })
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
+  };
+
+  const loadMore = () => {
+    setLoadingMore(true);
+    notificationsApi.list(PAGE_SIZE, page + 1)
+      .then(res => {
+        // Canlı bildirişlər siyahını irəli sürüşdürə bilər — dublikatları at.
+        setItems(prev => {
+          const seen = new Set(prev.map(i => i.id));
+          return [...prev, ...res.filter(i => !seen.has(i.id))];
+        });
+        setPage(p => p + 1);
+        setHasMore(res.length === PAGE_SIZE);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
   };
 
   useEffect(load, []);
@@ -310,6 +336,15 @@ export default function NotificationsPage() {
               </div>
             </section>
           ))}
+        </div>
+      )}
+
+      {!loading && hasMore && (
+        <div style={{ textAlign: "center", marginTop: 16 }}>
+          <button type="button" onClick={loadMore} disabled={loadingMore}
+            style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
+            {loadingMore ? "Yüklənir…" : "Daha çox göstər"}
+          </button>
         </div>
       )}
     </div>

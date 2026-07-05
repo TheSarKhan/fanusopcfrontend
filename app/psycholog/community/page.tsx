@@ -26,12 +26,17 @@ function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("") || "P";
 }
 
+const FEED_PAGE_SIZE = 20;
+
 /* ─── page (full-width feed + üfüqi tövsiyə karuseli) ───────────────────────── */
 
 export default function PsychologCommunityPage() {
   const [meId, setMeId] = useState<number | null>(null);
   const [feed, setFeed] = useState<BlogPost[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
+  const [feedTotal, setFeedTotal] = useState(0);
+  const [feedPage, setFeedPage] = useState(0);
+  const [feedLoadingMore, setFeedLoadingMore] = useState(false);
   const [all, setAll] = useState<Psychologist[]>([]);
   const [following, setFollowing] = useState<FollowSummary[]>([]);
   const [discoverLoading, setDiscoverLoading] = useState(true);
@@ -41,7 +46,21 @@ export default function PsychologCommunityPage() {
 
   const loadFeed = () => {
     setFeedLoading(true);
-    psychologistApi.feed().then(setFeed).catch(() => setFeed([])).finally(() => setFeedLoading(false));
+    psychologistApi.feedPaged({ page: 0, size: FEED_PAGE_SIZE })
+      .then(res => { setFeed(res.content); setFeedTotal(res.totalElements); setFeedPage(0); })
+      .catch(() => { setFeed([]); setFeedTotal(0); setFeedPage(0); })
+      .finally(() => setFeedLoading(false));
+  };
+  const loadMoreFeed = () => {
+    setFeedLoadingMore(true);
+    psychologistApi.feedPaged({ page: feedPage + 1, size: FEED_PAGE_SIZE })
+      .then(res => {
+        setFeed(prev => [...prev, ...res.content]);
+        setFeedTotal(res.totalElements);
+        setFeedPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setFeedLoadingMore(false));
   };
   const loadDiscover = () => {
     setDiscoverLoading(true);
@@ -123,9 +142,19 @@ export default function PsychologCommunityPage() {
             sub="İzlədiyiniz psixoloqlar məqalə paylaşanda burada görünəcək. Yuxarıdakı tövsiyələrdən başlayın."
           />
         ) : (
-          <div className="pcom-feed">
-            {feed.map(p => <FeedCard key={p.id} p={p} />)}
-          </div>
+          <>
+            <div className="pcom-feed">
+              {feed.map(p => <FeedCard key={p.id} p={p} />)}
+            </div>
+            {feed.length < feedTotal && (
+              <div style={{ textAlign: "center", marginTop: 16 }}>
+                <button type="button" onClick={loadMoreFeed} disabled={feedLoadingMore}
+                  style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: feedLoadingMore ? "wait" : "pointer", opacity: feedLoadingMore ? 0.7 : 1 }}>
+                  {feedLoadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(FEED_PAGE_SIZE, feedTotal - feed.length)})`}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>

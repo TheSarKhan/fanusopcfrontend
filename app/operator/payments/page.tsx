@@ -44,8 +44,12 @@ export default function OperatorPaymentsPage() {
   const me = getStoredUser();
   const meId = me?.userId ?? null;
   const isAdmin = me?.role === "ADMIN";
+  const PAGE_SIZE = 30;
   const [items, setItems] = useState<PaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [bucket, setBucket] = useState<BucketKey>("PENDING");
   const [mineOnly, setMineOnly] = useState(false);
@@ -55,9 +59,28 @@ export default function OperatorPaymentsPage() {
   const [cancelFor, setCancelFor] = useState<PaymentItem | null>(null);
   const [toast, setToast] = useState<{ id: number; msg: string } | null>(null);
 
+  // Server səhifələməsi — bucket dəyişəndə birinci səhifədən başlanır.
   const load = (bk: BucketKey = bucket) => {
     setLoading(true);
-    operatorApi.listPendingPayments(bucketStatuses(bk).join(",")).then(setItems).catch(() => setItems([])).finally(() => setLoading(false));
+    operatorApi.listPaymentsPaged({ status: bucketStatuses(bk).join(","), page: 0, size: PAGE_SIZE })
+      .then(res => {
+        setItems(res.content);
+        setTotalElements(res.totalElements);
+        setPage(0);
+      })
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+  };
+  const loadMore = () => {
+    setLoadingMore(true);
+    operatorApi.listPaymentsPaged({ status: bucketStatuses(bucket).join(","), page: page + 1, size: PAGE_SIZE })
+      .then(res => {
+        setItems(prev => [...prev, ...res.content]);
+        setTotalElements(res.totalElements);
+        setPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
   };
   const loadSummary = () => { operatorApi.paymentsSummary().then(setSummary).catch(() => {}); };
 
@@ -162,6 +185,15 @@ export default function OperatorPaymentsPage() {
         <div style={{ ...CARD, padding: "6px 12px 10px" }}>
           {filtered.map(p => <Row key={p.id} p={p} meId={meId} isAdmin={isAdmin} busy={busyId === p.id}
             onMarkPaid={markPaid} onCancel={setCancelFor} onRefund={setRefundFor} />)}
+        </div>
+      )}
+
+      {!loading && items.length < totalElements && (
+        <div style={{ textAlign: "center", marginTop: 16 }}>
+          <button type="button" onClick={loadMore} disabled={loadingMore}
+            style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
+            {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
+          </button>
         </div>
       )}
 

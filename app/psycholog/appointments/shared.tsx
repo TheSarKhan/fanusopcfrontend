@@ -6,7 +6,7 @@
 // uyğunlaşdırılıb (app/patient/appointments/shared.tsx).
 // ============================================================================
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { psychologistApi, type AppointmentDetail } from "@/lib/api";
 import { googleCalendarUrl } from "@/lib/calendar";
@@ -106,6 +106,7 @@ export function IUser({ s = 18, c = "var(--brand)" }: IcoProps) { return <svg wi
 export function IX({ s = 18, c = "currentColor" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>; }
 export function IVideo({ s = 15, c = "currentColor" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><path d="m22 8-6 4 6 4V8Z" /><rect x="2" y="6" width="14" height="12" rx="2" /></svg>; }
 export function IOpen({ s = 15, c = "currentColor" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>; }
+export function ISearch({ s = 15, c = "currentColor" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="m21 21-4.35-4.35" /></svg>; }
 
 /* Paket seansını adi seans siyahılarında fərqləndirən nişan. */
 export function PackageBadge({ name }: { name?: string | null }) {
@@ -279,23 +280,51 @@ export function OutcomeModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [loading, setLoading] = useState(true);
+  const [existingId, setExistingId] = useState<number | null>(null);
   const [body, setBody] = useState("");
   const [mood, setMood] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // Bu seans üçün əvvəlcədən yazılmış qeyd varsa, formu onunla dolduraq —
+  // yoxdursa boş qalır və submit "create" edir.
+  useEffect(() => {
+    let cancelled = false;
+    psychologistApi.noteForAppointment(appointment.id)
+      .then(n => {
+        if (cancelled || !n) return;
+        setExistingId(n.id);
+        setBody(n.body ?? "");
+        setMood(n.moodScore ?? "");
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [appointment.id]);
 
   const submit = async () => {
     if (!body.trim()) { setErr("Qeyd mətni boş ola bilməz"); return; }
     if (!appointment.patientId) { setErr("Pasient ID tapılmadı"); return; }
     setSaving(true); setErr(null);
     try {
-      await psychologistApi.createNote({
-        patientId: appointment.patientId,
-        appointmentId: appointment.id,
-        title: null,
-        body: body.trim(),
-        moodScore: typeof mood === "number" ? mood : null,
-      });
+      if (existingId != null) {
+        await psychologistApi.updateNote(existingId, {
+          patientId: appointment.patientId,
+          appointmentId: appointment.id,
+          title: null,
+          body: body.trim(),
+          moodScore: typeof mood === "number" ? mood : null,
+        });
+      } else {
+        await psychologistApi.createNote({
+          patientId: appointment.patientId,
+          appointmentId: appointment.id,
+          title: null,
+          body: body.trim(),
+          moodScore: typeof mood === "number" ? mood : null,
+        });
+      }
       onSaved();
     } catch (e) {
       setErr((e as Error).message);
@@ -310,27 +339,35 @@ export function OutcomeModal({
       <div onClick={e => e.stopPropagation()}
         style={{ background: "#fff", borderRadius: 16, padding: 0, maxWidth: 540, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", overflow: "hidden" }}>
         <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9" }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Seans qeydi</h3>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>
+            {existingId != null ? "Seans qeydini redaktə et" : "Seans qeydi"}
+          </h3>
           <p style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 4 }}>
             {appointment.patientName ?? "Pasient"} ilə seans haqqında qısa qeyd — pasient bunu görmür, AES-256 ilə şifrələnir.
           </p>
         </div>
         <div style={{ padding: 22 }}>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
-            Seansın nəticəsi
-          </label>
-          <textarea
-            rows={6} value={body} onChange={e => setBody(e.target.value)}
-            placeholder="İşlənən mövzu, müştəri reaksiyası, gələcək plan…"
-            autoFocus
-            style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box", resize: "vertical" }} />
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "24px 0", fontSize: 13, color: "var(--oxford-60)" }}>Yüklənir…</div>
+          ) : (
+            <>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
+                Seansın nəticəsi
+              </label>
+              <textarea
+                rows={6} value={body} onChange={e => setBody(e.target.value)}
+                placeholder="İşlənən mövzu, müştəri reaksiyası, gələcək plan…"
+                autoFocus
+                style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box", resize: "vertical" }} />
 
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
-            Əhval-ruhiyyə qiymətləndirməsi (1–10, məcburi deyil)
-          </label>
-          <input type="number" min={1} max={10} value={mood}
-            onChange={e => { const v = e.target.value; setMood(v === "" ? "" : Math.max(1, Math.min(10, Number(v)))); }}
-            style={{ width: 80, padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 12 }} />
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
+                Əhval-ruhiyyə qiymətləndirməsi (1–10, məcburi deyil)
+              </label>
+              <input type="number" min={1} max={10} value={mood}
+                onChange={e => { const v = e.target.value; setMood(v === "" ? "" : Math.max(1, Math.min(10, Number(v)))); }}
+                style={{ width: 80, padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 12 }} />
+            </>
+          )}
 
           {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>{err}</div>}
 
@@ -338,9 +375,9 @@ export function OutcomeModal({
             <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>
               Ləğv
             </button>
-            <button onClick={submit} disabled={saving}
-              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
-              {saving ? "Saxlanılır…" : "Qeydi saxla"}
+            <button onClick={submit} disabled={saving || loading}
+              style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: (saving || loading) ? "wait" : "pointer", opacity: (saving || loading) ? 0.7 : 1 }}>
+              {saving ? "Saxlanılır…" : existingId != null ? "Yenilə" : "Qeydi saxla"}
             </button>
           </div>
         </div>

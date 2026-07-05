@@ -21,6 +21,8 @@ const PRIORITY_LABEL: Record<HomeworkPriority, string> = {
 
 const DRAG_MIME = "application/x-fanus-homework";
 
+const PAGE_SIZE = 30;
+
 function isOverdue(h: Homework): boolean {
   if (h.status === "COMPLETED" || !h.dueDate) return false;
   return new Date(h.dueDate + "T23:59:59").getTime() < Date.now();
@@ -29,16 +31,40 @@ function isOverdue(h: Homework): boolean {
 export default function PatientHomeworkPage() {
   const { t } = useT();
   const [items, setItems] = useState<Homework[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [detailId, setDetailId] = useState<number | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<HomeworkStatus | null>(null);
 
   const load = () => {
     setLoading(true);
-    patientApi.homework().then(setItems).catch(() => {}).finally(() => setLoading(false));
+    patientApi.homeworkPaged({ page: 0, size: PAGE_SIZE })
+      .then(res => {
+        setItems(res.content);
+        setTotalElements(res.totalElements);
+        setPage(0);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   };
   useEffect(load, []);
+
+  const loadMore = () => {
+    setLoadingMore(true);
+    patientApi.homeworkPaged({ page: page + 1, size: PAGE_SIZE })
+      .then(res => {
+        setItems(prev => [...prev, ...res.content]);
+        setTotalElements(res.totalElements);
+        setPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
+
+  const hasMore = items.length < totalElements;
 
   const updateOne = (h: Homework) => setItems(prev => prev.map(x => x.id === h.id ? h : x));
 
@@ -100,24 +126,35 @@ export default function PatientHomeworkPage() {
           <div style={{ fontWeight: 600, color: "var(--oxford)" }}>{t("staff.patHwEmpty")}</div>
         </div>
       ) : (
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(260px, 1fr))",
-          gap: 12,
-        }}>
-          {COLUMNS.map(col => (
-            <KanbanColumn key={col.status}
-              column={col}
-              items={byStatus[col.status]}
-              isDropTarget={dragOver === col.status}
-              isDragging={draggingId !== null}
-              onCardClick={id => setDetailId(id)}
-              onDragStart={onDragStart}
-              onDragEnd={onDragEnd}
-              onDragOver={onColDragOver}
-              onDrop={onColDrop} />
-          ))}
-        </div>
+        <>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(260px, 1fr))",
+            gap: 12,
+          }}>
+            {COLUMNS.map(col => (
+              <KanbanColumn key={col.status}
+                column={col}
+                items={byStatus[col.status]}
+                isDropTarget={dragOver === col.status}
+                isDragging={draggingId !== null}
+                onCardClick={id => setDetailId(id)}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
+                onDragOver={onColDragOver}
+                onDrop={onColDrop} />
+            ))}
+          </div>
+
+          {hasMore && (
+            <div style={{ textAlign: "center", marginTop: 16 }}>
+              <button type="button" onClick={loadMore} disabled={loadingMore}
+                style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
+                {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {detail && (

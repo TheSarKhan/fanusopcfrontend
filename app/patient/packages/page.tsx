@@ -23,20 +23,43 @@ const STATUS_TONE: Record<string, { color: string; bg: string }> = {
   CANCELLED: { color: "#991B1B", bg: "#FEE2E2" },
 };
 
+const PAGE_SIZE = 30;
+
 export default function PatientPackagesPage() {
   const { t } = useT();
   const [items, setItems] = useState<PatientPackageItem[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const load = () => {
     setLoading(true);
-    patientApi.myPackages()
-      .then(setItems)
+    patientApi.myPackagesPaged({ page: 0, size: PAGE_SIZE })
+      .then(res => {
+        setItems(res.content);
+        setTotalElements(res.totalElements);
+        setPage(0);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   };
 
   useEffect(load, []);
+
+  const loadMore = () => {
+    setLoadingMore(true);
+    patientApi.myPackagesPaged({ page: page + 1, size: PAGE_SIZE })
+      .then(res => {
+        setItems(prev => [...prev, ...res.content]);
+        setTotalElements(res.totalElements);
+        setPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
+
+  const hasMore = items.length < totalElements;
 
   return (
     <div className="psy-appt-page">
@@ -59,11 +82,22 @@ export default function PatientPackagesPage() {
           {t("pkg.noPackages")}
         </div>
       ) : (
-        <div style={{ display: "grid", gap: 12 }}>
-          {items.map(p => (
-            <PackageCard key={p.id} pkg={p} onScheduled={load} />
-          ))}
-        </div>
+        <>
+          <div style={{ display: "grid", gap: 12 }}>
+            {items.map(p => (
+              <PackageCard key={p.id} pkg={p} onScheduled={load} />
+            ))}
+          </div>
+
+          {hasMore && (
+            <div style={{ textAlign: "center", marginTop: 16 }}>
+              <button type="button" onClick={loadMore} disabled={loadingMore}
+                style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
+                {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

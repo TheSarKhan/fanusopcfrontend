@@ -49,9 +49,11 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
   const [poolCount, setPoolCount] = useState(0);
   const loadPoolCount = useCallback(() => {
     Promise.all([
-      operatorApi.listAppointments().catch(() => []),
+      operatorApi.listPoolAppointments().catch(() => []),
       operatorApi.listPendingPayments("PENDING").catch(() => []),
     ]).then(([appts, payments]) => {
+      // Pool endpoint-i onsuz da sahibsiz+uyğun statusları qaytarır; filtr
+      // müdafiə xarakterlidir (endpoint semantikası dəyişsə say şişməsin).
       const a = appts.filter(x => x.claimedByUserId == null && isPoolEligible(x.status)).length;
       const p = payments.filter(x => x.claimedByOperatorId == null).length;
       setPoolCount(a + p);

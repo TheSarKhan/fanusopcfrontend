@@ -158,10 +158,11 @@ export default function OperatorCustomersPage() {
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 30); }, []);
 
-  // Default — randevulardan son müştəriləri yüklə
+  // Default — son aktiv pasiyentlərin randevularından "son müştərilər" siyahısı
+  // (tam cədvəl skanı əvəzinə məqsədli sorğu; derive məntiqi eynidir).
   useEffect(() => {
     let alive = true;
-    operatorApi.listAppointments()
+    operatorApi.listRecentCustomerAppointments(30)
       .then(a => { if (alive) setRecent(deriveRecent(a)); })
       .catch(() => { if (alive) setRecent([]); });
     return () => { alive = false; };

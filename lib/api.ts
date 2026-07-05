@@ -1750,8 +1750,30 @@ export interface PackagePurchaseInput {
   note?: string;
 }
 
+/** Backend PagedResponse<T> — bütün səhifələnmiş endpoint-lərin ortaq cavab forması. */
+export interface Paged<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+}
+
+/** Səhifələmə + filtr parametrlərindən query string qur (boşlar atılır). */
+function pagedQuery(params: Record<string, string | number | undefined | null>): string {
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
+  }
+  const s = sp.toString();
+  return s ? `?${s}` : "";
+}
+
 export const patientApi = {
   myAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/patient/appointments"),
+  /** Səhifələnmiş — scope: "history" keçmiş seanslar; q: psixoloq adı axtarışı. */
+  myAppointmentsPaged: (opts: { page?: number; size?: number; scope?: string; q?: string } = {}) =>
+    authedRequest<Paged<AppointmentDetail>>("GET", `/patient/appointments/paged${pagedQuery(opts)}`),
   book: (data: PatientBookingPayload) =>
     authedRequest<AppointmentDetail>("POST", "/patient/appointments", data),
   cancel: (id: number, reasonCode: string, reasonText?: string) =>
@@ -1766,6 +1788,8 @@ export const patientApi = {
   purchasePackage: (data: PackagePurchaseInput) =>
     authedRequest<{ patientPackageId: number; basketResult: BasketResult | null }>("POST", "/patient/packages/purchase", data),
   myPackages: () => authedRequest<PatientPackageItem[]>("GET", "/patient/packages"),
+  myPackagesPaged: (opts: { page?: number; size?: number } = {}) =>
+    authedRequest<Paged<PatientPackageItem>>("GET", `/patient/packages/paged${pagedQuery(opts)}`),
   schedulePackageSession: (id: number, data: { startAt: string; note?: string }) =>
     authedRequest<AppointmentDetail>("POST", `/patient/packages/${id}/schedule`, data),
 
@@ -1831,6 +1855,8 @@ export const patientApi = {
 
   // Homework
   homework: () => authedRequest<Homework[]>("GET", "/patient/homework"),
+  homeworkPaged: (opts: { page?: number; size?: number; status?: string } = {}) =>
+    authedRequest<Paged<Homework>>("GET", `/patient/homework/paged${pagedQuery(opts)}`),
   markHomework: (id: number, data: { status: "COMPLETED" | "IN_PROGRESS" | "PENDING"; completionNote?: string }) =>
     authedRequest<Homework>("POST", `/patient/homework/${id}/mark`, data),
   homeworkMove: (id: number, status: HomeworkStatus, position: number) =>
@@ -1863,6 +1889,8 @@ export const patientApi = {
 
   // Treatment goals (read-only + progress self-report)
   goals: () => authedRequest<PatientGoalView[]>("GET", "/patient/goals"),
+  goalsPaged: (opts: { page?: number; size?: number } = {}) =>
+    authedRequest<Paged<PatientGoalView>>("GET", `/patient/goals/paged${pagedQuery(opts)}`),
   updateGoalProgress: (id: number, progressPct: number, note?: string | null) =>
     authedRequest<PatientGoalView>("PATCH", `/patient/goals/${id}/progress`, {
       progressPct, note: note ?? null,
@@ -1975,7 +2003,9 @@ export interface NotificationItem {
 }
 
 export const notificationsApi = {
-  list: (limit = 30) => authedRequest<NotificationItem[]>("GET", `/me/notifications?limit=${limit}`),
+  /** page: köhnə bildirişlərə çatmaq üçün — cavab limit-dən qısadırsa son səhifədir. */
+  list: (limit = 30, page = 0) =>
+    authedRequest<NotificationItem[]>("GET", `/me/notifications?limit=${limit}${page > 0 ? `&page=${page}` : ""}`),
   unreadCount: () => authedRequest<{ count: number }>("GET", "/me/notifications/unread-count"),
   markRead: (id: number) => authedRequest<void>("POST", `/me/notifications/${id}/read`),
   markAllRead: () => authedRequest<{ updated: number }>("POST", "/me/notifications/read-all"),
@@ -2206,6 +2236,9 @@ export const psychologistApi = {
     authedRequest<void>(`DELETE`, `/psychologist/time-slot-overrides/${id}`),
 
   myAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/psychologist/appointments"),
+  /** Səhifələnmiş — scope: "history" keçmiş seanslar; q: pasiyent adı axtarışı. */
+  myAppointmentsPaged: (opts: { page?: number; size?: number; scope?: string; q?: string } = {}) =>
+    authedRequest<Paged<AppointmentDetail>>("GET", `/psychologist/appointments/paged${pagedQuery(opts)}`),
   confirm: (id: number) =>
     authedRequest<AppointmentDetail>("POST", `/psychologist/appointments/${id}/confirm`),
   reject: (id: number, reasonCode: string, reasonText?: string) =>
@@ -2225,8 +2258,14 @@ export const psychologistApi = {
 
   stats: () => authedRequest<PsychologistStats>("GET", "/psychologist/stats"),
   clients: () => authedRequest<ClientSummary[]>("GET", "/psychologist/clients"),
+  clientsPaged: (opts: { page?: number; size?: number; q?: string } = {}) =>
+    authedRequest<Paged<ClientSummary>>("GET", `/psychologist/clients/paged${pagedQuery(opts)}`),
   notesForPatient: (patientId: number) =>
     authedRequest<ClientNote[]>("GET", `/psychologist/clients/${patientId}/notes`),
+  /** Bu seansa yazılmış qeyd — yoxdursa `null` (backend 204 qaytarır). */
+  noteForAppointment: (appointmentId: number) =>
+    authedRequest<ClientNote | undefined>("GET", `/psychologist/appointments/${appointmentId}/note`)
+      .then(n => n ?? null),
   createNote: (data: ClientNotePayload) =>
     authedRequest<ClientNote>("POST", "/psychologist/client-notes", data),
   updateNote: (id: number, data: ClientNotePayload) =>
@@ -2250,8 +2289,9 @@ export const psychologistApi = {
     authedRequest<{ nudged: number }>("POST", `/psychologist/clients/${patientId}/suggest-series-renewal`),
 
   // Reschedule proposals (psy side)
-  myRescheduleProposals: () =>
-    authedRequest<RescheduleProposal[]>("GET", "/psychologist/reschedule-proposals"),
+  /** status verilərsə (məs. PENDING) yalnız o — tam tarixçə çəkilmir. */
+  myRescheduleProposals: (status?: string) =>
+    authedRequest<RescheduleProposal[]>("GET", `/psychologist/reschedule-proposals${status ? `?status=${status}` : ""}`),
   proposeReschedule: (appointmentId: number, data: {
     options: { startAt: string; endAt: string }[];
     reason?: string;
@@ -2299,6 +2339,9 @@ export const psychologistApi = {
 
   // Homework
   homework: () => authedRequest<Homework[]>("GET", "/psychologist/homework"),
+  /** Səhifələnmiş — status verilərsə (PENDING/IN_PROGRESS/COMPLETED) yalnız o sütun. */
+  homeworkPaged: (opts: { page?: number; size?: number; status?: string } = {}) =>
+    authedRequest<Paged<Homework>>("GET", `/psychologist/homework/paged${pagedQuery(opts)}`),
   createHomework: (data: {
     patientId: number; title: string; description?: string; dueDate?: string;
     checklist?: string[]; priority?: HomeworkPriority; labelIds?: number[];
@@ -2364,6 +2407,8 @@ export const psychologistApi = {
   // Reviews (received from patients)
   receivedReviews: () =>
     authedRequest<PsychologistReceivedReview[]>("GET", "/psychologist/reviews"),
+  receivedReviewsPaged: (opts: { page?: number; size?: number } = {}) =>
+    authedRequest<Paged<PsychologistReceivedReview>>("GET", `/psychologist/reviews/paged${pagedQuery(opts)}`),
   replyToReview: (reviewId: number, reply: string) =>
     authedRequest<PsychologistReceivedReview>("POST", `/psychologist/reviews/${reviewId}/reply`, { reply }),
   deleteReviewReply: (reviewId: number) =>
@@ -2376,6 +2421,8 @@ export const psychologistApi = {
 
   // Articles (psychologist-owned blog posts)
   listArticles: () => authedRequest<BlogPost[]>("GET", "/psychologist/articles"),
+  listArticlesPaged: (opts: { page?: number; size?: number } = {}) =>
+    authedRequest<Paged<BlogPost>>("GET", `/psychologist/articles/paged${pagedQuery(opts)}`),
   getArticleById: (id: number) => authedRequest<BlogPost>("GET", `/psychologist/articles/${id}`),
   createArticle: (data: Omit<BlogPost, "id">) =>
     authedRequest<BlogPost>("POST", "/psychologist/articles", data).then(p => { revalidateBlogCache(p.slug); return p; }),
@@ -2441,6 +2488,8 @@ export const psychologistApi = {
   createTestLink: (data: { testId: number; note?: string }) =>
     authedRequest<{ token: string; url: string }>("POST", "/psychologist/psych-tests/public-links", data),
   testAssignments: () => authedRequest<TestAssignment[]>("GET", "/psychologist/psych-tests/assignments"),
+  testAssignmentsPaged: (opts: { page?: number; size?: number } = {}) =>
+    authedRequest<Paged<TestAssignment>>("GET", `/psychologist/psych-tests/assignments/paged${pagedQuery(opts)}`),
   testResult: (assignmentId: number) =>
     authedRequest<TestResult>("GET", `/psychologist/psych-tests/assignments/${assignmentId}/result`),
   /** All submissions for one assignment — a public link collects many takers. */
@@ -2457,6 +2506,8 @@ export const psychologistApi = {
   following: () => authedRequest<FollowSummary[]>("GET", "/psychologist/following"),
   followers: () => authedRequest<FollowSummary[]>("GET", "/psychologist/followers"),
   feed: () => authedRequest<BlogPost[]>("GET", "/psychologist/feed"),
+  feedPaged: (opts: { page?: number; size?: number } = {}) =>
+    authedRequest<Paged<BlogPost>>("GET", `/psychologist/feed/paged${pagedQuery(opts)}`),
 
   // ─── İcma daxili interaktivlik (məqalə oxucu + şərh + bəyənmə) ────────────
   communityPost: (id: number) =>
@@ -2482,6 +2533,10 @@ export const psychologistApi = {
   getResource: (id: number) => authedRequest<PsychResource>("GET", `/psychologist/resources/${id}`),
   /** Current psychologist's OWN resources (any share state) — management view. */
   myResources: () => authedRequest<PsychResource[]>("GET", "/psychologist/resources/mine"),
+  listResourcesPaged: (opts: { page?: number; size?: number } = {}) =>
+    authedRequest<Paged<PsychResource>>("GET", `/psychologist/resources/paged${pagedQuery(opts)}`),
+  myResourcesPaged: (opts: { page?: number; size?: number } = {}) =>
+    authedRequest<Paged<PsychResource>>("GET", `/psychologist/resources/mine/paged${pagedQuery(opts)}`),
   createResource: (data: PsychResourceReq) =>
     authedRequest<PsychResource>("POST", "/psychologist/resources", data),
   updateResource: (id: number, data: PsychResourceReq) =>
@@ -2497,6 +2552,14 @@ export const psychologistApi = {
     authedRequest<Referral>("POST", "/psychologist/referrals", data),
   sentReferrals: () => authedRequest<Referral[]>("GET", "/psychologist/referrals/sent"),
   receivedReferrals: () => authedRequest<Referral[]>("GET", "/psychologist/referrals/received"),
+  sentReferralsPaged: (opts: { page?: number; size?: number } = {}) =>
+    authedRequest<Paged<Referral>>("GET", `/psychologist/referrals/sent/paged${pagedQuery(opts)}`),
+  receivedReferralsPaged: (opts: { page?: number; size?: number; status?: string } = {}) =>
+    authedRequest<Paged<Referral>>("GET", `/psychologist/referrals/received/paged${pagedQuery(opts)}`),
+  /** Randevular səhifəsindəki nişan — baxılmamış yönləndirmə sayı. */
+  receivedReferralsCountPending: () =>
+    authedRequest<{ count?: number }>("GET", "/psychologist/referrals/received/count-pending")
+      .then(r => r?.count ?? 0),
   acceptReferral: (id: number) =>
     authedRequest<Referral>("POST", `/psychologist/referrals/${id}/accept`),
   declineReferral: (id: number) =>
@@ -3033,6 +3096,15 @@ export type AnalyticsPeriod = "daily" | "weekly" | "monthly" | "yearly";
 
 export const operatorApi = {
   listAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/operator/appointments"),
+  /** Səhifələnmiş triyaj siyahısı — status (tək) + q (pasiyent/psixoloq adı). */
+  listAppointmentsPaged: (opts: { page?: number; size?: number; status?: string; q?: string } = {}) =>
+    authedRequest<Paged<AppointmentDetail>>("GET", `/operator/appointments/paged${pagedQuery(opts)}`),
+  /** Pool — sahibsiz yeni müraciətlər (tam siyahı əvəzinə məqsədli sorğu). */
+  listPoolAppointments: () =>
+    authedRequest<AppointmentDetail[]>("GET", "/operator/appointments/pool"),
+  /** Müştərilər səhifəsi — son aktiv N pasiyentin randevuları. */
+  listRecentCustomerAppointments: (patients = 30) =>
+    authedRequest<AppointmentDetail[]>("GET", `/operator/appointments/recent-customers?patients=${patients}`),
   // ─── Psixoloqlar arası yönləndirmə təsdiqi ───────────────────────────────
   pendingReferrals: () => authedRequest<Referral[]>("GET", "/operator/referrals"),
   referral: (id: number) => authedRequest<Referral>("GET", `/operator/referrals/${id}`),
@@ -3079,6 +3151,9 @@ export const operatorApi = {
   // törəyir (ayrıca ödəniş pool-u yoxdur) — mine=true → yalnız mənim götürdüklərim.
   listPendingPayments: (status = "PENDING", mine = false) =>
     authedRequest<PaymentItem[]>("GET", `/operator/payments?status=${status}${mine ? "&mine=true" : ""}`),
+  listPaymentsPaged: (opts: { page?: number; size?: number; status?: string; mine?: boolean } = {}) =>
+    authedRequest<Paged<PaymentItem>>("GET",
+      `/operator/payments/paged${pagedQuery({ page: opts.page, size: opts.size, status: opts.status, mine: opts.mine ? "true" : undefined })}`),
   markPaymentPaid: (id: number) =>
     authedRequest<PaymentItem>("POST", `/operator/payments/${id}/mark-paid`),
   paymentsSummary: () =>
@@ -3090,6 +3165,8 @@ export const operatorApi = {
     authedRequest<RefundRequestItem>("POST", `/operator/payments/${id}/refund`, { amount, reason }),
   listRefundRequests: (status?: string) =>
     authedRequest<RefundRequestItem[]>("GET", `/operator/refund-requests${status ? `?status=${status}` : ""}`),
+  listRefundRequestsPaged: (opts: { page?: number; size?: number; status?: string } = {}) =>
+    authedRequest<Paged<RefundRequestItem>>("GET", `/operator/refund-requests/paged${pagedQuery(opts)}`),
   // Randevuya bağlı ödəniş qeydi yoxdursa (təyin zamanı qiymət daxil edilməyib) əl ilə yarat
   createManualPayment: (appointmentId: number, amount: number, currency = "AZN") =>
     authedRequest<PaymentItem>("POST", `/operator/appointments/${appointmentId}/payment`, { amount, currency }),
@@ -3253,7 +3330,7 @@ export const operatorApi = {
   listSessionRequests: (status?: string) =>
     authedRequest<SessionRequest[]>("GET", `/operator/session-requests${status ? `?status=${status}` : ""}`),
   sessionRequestCountNew: () =>
-    authedRequest<number>("GET", "/operator/session-requests/count-new").then((r: any) => (r?.count ?? 0) as number),
+    authedRequest<{ count?: number }>("GET", "/operator/session-requests/count-new").then(r => r?.count ?? 0),
   getSessionRequest: (id: number) =>
     authedRequest<SessionRequest>("GET", `/operator/session-requests/${id}`),
   scheduleSessionRequest: (id: number, data: {
@@ -3269,9 +3346,11 @@ export const operatorApi = {
   // ─── Tələblər modulu: Rəy Silmə Tələbləri (Operator BRD §10) ──────────────
   listReviewDeletionRequests: (status?: string) =>
     authedRequest<ReviewDeletionRequestItem[]>("GET", `/operator/review-deletion-requests${status ? `?status=${status}` : ""}`),
+  listReviewDeletionRequestsPaged: (opts: { page?: number; size?: number; status?: string } = {}) =>
+    authedRequest<Paged<ReviewDeletionRequestItem>>("GET", `/operator/review-deletion-requests/paged${pagedQuery(opts)}`),
   reviewDeletionCountPending: () =>
-    authedRequest<{ count: number }>("GET", "/operator/review-deletion-requests/count-pending")
-      .then((r: any) => (r?.count ?? 0) as number),
+    authedRequest<{ count?: number }>("GET", "/operator/review-deletion-requests/count-pending")
+      .then(r => r?.count ?? 0),
   approveReviewDeletion: (id: number, note?: string) =>
     authedRequest<ReviewDeletionRequestItem>("POST", `/operator/review-deletion-requests/${id}/approve`, { note }),
   rejectReviewDeletion: (id: number, note?: string) =>

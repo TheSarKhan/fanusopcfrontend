@@ -39,11 +39,16 @@ type ViewMode = "grid" | "list";
 type SortMode = "newest" | "oldest" | "title";
 type Tab = "ALL" | "PUBLISHED" | "DRAFT";
 
+const PAGE_SIZE = 30;
+
 /* ─── page ────────────────────────────────────────────────────────────────── */
 
 export default function PsychologArticlesPage() {
   const [items, setItems] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalElements, setTotalElements] = useState(0);
+  const [pageNum, setPageNum] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("ALL");
   const [categoryFilter, setCategoryFilter] = useState<string | "ALL">("ALL");
@@ -56,9 +61,24 @@ export default function PsychologArticlesPage() {
 
   const load = () => {
     setLoading(true);
-    psychologistApi.listArticles().then(setItems).catch(() => {}).finally(() => setLoading(false));
+    psychologistApi.listArticlesPaged({ page: 0, size: PAGE_SIZE })
+      .then(res => { setItems(res.content); setTotalElements(res.totalElements); setPageNum(0); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   };
   useEffect(load, []);
+
+  const loadMore = () => {
+    setLoadingMore(true);
+    psychologistApi.listArticlesPaged({ page: pageNum + 1, size: PAGE_SIZE })
+      .then(res => {
+        setItems(prev => [...prev, ...res.content]);
+        setTotalElements(res.totalElements);
+        setPageNum(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
 
   // "/" focuses search (Notion / GitHub / Linear convention).
   useEffect(() => {
@@ -149,7 +169,8 @@ export default function PsychologArticlesPage() {
   const deleteArticle = async (id: number) => {
     const slug = items.find(p => p.id === id)?.slug;
     await psychologistApi.deleteArticle(id, slug);
-    setItems(prev => prev.filter(p => p.id !== id));
+    // Silinəndən sonra birinci səhifədən yenidən yüklə — toplanmış siyahı sıfırlanır.
+    load();
   };
 
   /* ─── render ────────────────────────────────────────────────────────────── */
@@ -172,7 +193,7 @@ export default function PsychologArticlesPage() {
 
       {/* Stat strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
-        <StatCell label="Ümumi"      value={stats.total}     tone="brand" />
+        <StatCell label="Ümumi"      value={totalElements}   tone="brand" />
         <StatCell label="Yayımlandı" value={stats.published} tone="good" />
         <StatCell label="Qaralama"   value={stats.draft}     tone="warn" />
       </div>
@@ -278,6 +299,15 @@ export default function PsychologArticlesPage() {
               onDelete={() => setConfirm({ id: p.id, title: p.title || "Başlıqsız" })}
             />
           ))}
+        </div>
+      )}
+
+      {!loading && items.length < totalElements && (
+        <div style={{ textAlign: "center", marginTop: 4 }}>
+          <button type="button" onClick={loadMore} disabled={loadingMore}
+            style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
+            {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
+          </button>
         </div>
       )}
 

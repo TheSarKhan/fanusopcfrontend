@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { psychologistApi, type PsychResource, type PsychResourceReq } from "@/lib/api";
+import { psychologistApi, type Paged, type PsychResource, type PsychResourceReq } from "@/lib/api";
 import PsychResourceTabs from "@/components/PsychResourceTabs";
 
 /* ─── kateqoriyalar (sabit dəst) ──────────────────────────────────────────── */
@@ -29,11 +29,20 @@ function initials(name?: string | null) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("") || "P";
 }
 
+const PAGE_SIZE = 30;
+const EMPTY_PAGE: Paged<PsychResource> = { content: [], totalElements: 0, totalPages: 0, page: 0, size: PAGE_SIZE };
+
 /* ─── page ────────────────────────────────────────────────────────────────── */
 
 export default function PsychologResourcesPage() {
   const [items, setItems] = useState<PsychResource[]>([]);   // shared library (approved)
+  const [itemsTotal, setItemsTotal] = useState(0);
+  const [itemsPage, setItemsPage] = useState(0);
+  const [itemsLoadingMore, setItemsLoadingMore] = useState(false);
   const [mine, setMine] = useState<PsychResource[]>([]);     // own resources (any state)
+  const [mineTotal, setMineTotal] = useState(0);
+  const [minePage, setMinePage] = useState(0);
+  const [mineLoadingMore, setMineLoadingMore] = useState(false);
   const [tab, setTab] = useState<"library" | "mine">("library");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -45,11 +54,45 @@ export default function PsychologResourcesPage() {
   const load = () => {
     setLoading(true);
     Promise.all([
-      psychologistApi.listResources().catch(() => [] as PsychResource[]),
-      psychologistApi.myResources().catch(() => [] as PsychResource[]),
-    ]).then(([lib, m]) => { setItems(lib); setMine(m); }).finally(() => setLoading(false));
+      psychologistApi.listResourcesPaged({ page: 0, size: PAGE_SIZE }).catch(() => EMPTY_PAGE),
+      psychologistApi.myResourcesPaged({ page: 0, size: PAGE_SIZE }).catch(() => EMPTY_PAGE),
+    ]).then(([lib, m]) => {
+      setItems(lib.content); setItemsTotal(lib.totalElements); setItemsPage(0);
+      setMine(m.content); setMineTotal(m.totalElements); setMinePage(0);
+    }).finally(() => setLoading(false));
   };
   useEffect(load, []);
+
+  const loadMoreLibrary = () => {
+    setItemsLoadingMore(true);
+    psychologistApi.listResourcesPaged({ page: itemsPage + 1, size: PAGE_SIZE })
+      .then(res => {
+        setItems(prev => [...prev, ...res.content]);
+        setItemsTotal(res.totalElements);
+        setItemsPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setItemsLoadingMore(false));
+  };
+
+  const loadMoreMine = () => {
+    setMineLoadingMore(true);
+    psychologistApi.myResourcesPaged({ page: minePage + 1, size: PAGE_SIZE })
+      .then(res => {
+        setMine(prev => [...prev, ...res.content]);
+        setMineTotal(res.totalElements);
+        setMinePage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setMineLoadingMore(false));
+  };
+
+  // Yaratma/silmə sonrası "Mənim resurslarım" siyahısını 0-cı səhifədən yenilə.
+  const reloadMine = () => {
+    psychologistApi.myResourcesPaged({ page: 0, size: PAGE_SIZE })
+      .then(res => { setMine(res.content); setMineTotal(res.totalElements); setMinePage(0); })
+      .catch(() => {});
+  };
 
   // Bildiriş deep-link: ?id=… → resursu aç.
   useEffect(() => {
@@ -75,10 +118,14 @@ export default function PsychologResourcesPage() {
     return list;
   }, [activeList, catFilter, search]);
 
+  const activeTotal = tab === "library" ? itemsTotal : mineTotal;
+  const activeLoadingMore = tab === "library" ? itemsLoadingMore : mineLoadingMore;
+  const activeLoadMore = tab === "library" ? loadMoreLibrary : loadMoreMine;
+
   const onSaved = (saved: PsychResource, isNew: boolean) => {
     if (isNew) {
       // A new resource is PRIVATE — it lives under "Mənim resurslarım" until shared.
-      setMine(prev => [saved, ...prev]);
+      reloadMine();
       setTab("mine");
     } else {
       setItems(prev => prev.map(r => r.id === saved.id ? saved : r));
@@ -89,8 +136,11 @@ export default function PsychologResourcesPage() {
 
   const onDelete = async (r: PsychResource) => {
     await psychologistApi.deleteResource(r.id);
-    setItems(prev => prev.filter(x => x.id !== r.id));
-    setMine(prev => prev.filter(x => x.id !== r.id));
+    if (items.some(x => x.id === r.id)) {
+      setItems(prev => prev.filter(x => x.id !== r.id));
+      setItemsTotal(t => Math.max(0, t - 1));
+    }
+    reloadMine();
     setConfirm(null);
     if (viewing?.id === r.id) setViewing(null);
   };
@@ -128,8 +178,8 @@ export default function PsychologResourcesPage() {
 
       {/* View switcher */}
       <div style={{ display: "flex", gap: 6, background: "#fff", padding: 6, borderRadius: 10, border: "1px solid var(--oxford-10)", width: "fit-content" }}>
-        <ViewTab active={tab === "library"} onClick={() => setTab("library")}>Paylaşılan kitabxana ({items.length})</ViewTab>
-        <ViewTab active={tab === "mine"} onClick={() => setTab("mine")}>Mənim resurslarım ({mine.length})</ViewTab>
+        <ViewTab active={tab === "library"} onClick={() => setTab("library")}>Paylaşılan kitabxana ({itemsTotal})</ViewTab>
+        <ViewTab active={tab === "mine"} onClick={() => setTab("mine")}>Mənim resurslarım ({mineTotal})</ViewTab>
       </div>
 
       {/* Toolbar */}
@@ -188,6 +238,15 @@ export default function PsychologResourcesPage() {
               onDelete={() => setConfirm(r)}
               onRequestShare={() => requestShare(r)} />
           ))}
+        </div>
+      )}
+
+      {!loading && activeList.length < activeTotal && (
+        <div style={{ textAlign: "center" }}>
+          <button type="button" onClick={activeLoadMore} disabled={activeLoadingMore}
+            style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: activeLoadingMore ? "wait" : "pointer", opacity: activeLoadingMore ? 0.7 : 1 }}>
+            {activeLoadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, activeTotal - activeList.length)})`}
+          </button>
         </div>
       )}
 

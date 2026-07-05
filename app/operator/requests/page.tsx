@@ -36,30 +36,53 @@ function Stars({ value }: { value: number }) {
 }
 
 export default function OperatorRequestsPage() {
+  const PAGE_SIZE = 30;
   const [items, setItems] = useState<ReviewDeletionRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [tab, setTab] = useState<Tab>("PENDING");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [reportFrom, setReportFrom] = useState("");
   const [reportTo, setReportTo] = useState("");
   const [exporting, setExporting] = useState<"xlsx" | "pdf" | null>(null);
 
+  // Server səhifələməsi: aktiv tabın statusu sorğuya ötürülür, tab dəyişəndə sıfırlanır.
   const load = useCallback(() => {
     setLoading(true);
-    operatorApi.listReviewDeletionRequests()
-      .then(setItems)
+    operatorApi.listReviewDeletionRequestsPaged({ status: tab === "ALL" ? undefined : tab, page: 0, size: PAGE_SIZE })
+      .then(res => {
+        setItems(res.content);
+        setTotalElements(res.totalElements);
+        setPage(0);
+      })
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [tab]);
 
   useEffect(() => { load(); }, [load]);
 
+  const loadMore = () => {
+    setLoadingMore(true);
+    operatorApi.listReviewDeletionRequestsPaged({ status: tab === "ALL" ? undefined : tab, page: page + 1, size: PAGE_SIZE })
+      .then(res => {
+        setItems(prev => [...prev, ...res.content]);
+        setTotalElements(res.totalElements);
+        setPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
+
+  // Qərar veriləndən sonra status dəyişir — köhnə davranış kimi uyğun olmayan
+  // sətir aktiv tabdan çıxsın deyə status filtri yığılmış siyahıya da tətbiq olunur.
   const visible = useMemo(
     () => tab === "ALL" ? items : items.filter(r => r.status === tab),
     [items, tab]
   );
 
-  const countFor = (t: Tab) => t === "ALL" ? items.length : items.filter(r => r.status === t).length;
+  const hasMore = items.length < totalElements;
 
   const decide = async (id: number, action: "approve" | "reject") => {
     const note = prompt(action === "approve"
@@ -145,11 +168,10 @@ export default function OperatorRequestsPage() {
         </p>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — say yalnız aktiv tabda göstərilir (server cəmi) */}
       <div style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "1px solid #E5E7EB" }}>
         {(Object.keys(TAB_META) as Tab[]).map(t => {
           const active = tab === t;
-          const count = countFor(t);
           return (
             <button key={t} onClick={() => setTab(t)}
               style={{
@@ -160,12 +182,12 @@ export default function OperatorRequestsPage() {
                 marginBottom: -1, display: "flex", alignItems: "center", gap: 6,
               }}>
               {TAB_META[t].label}
-              {count > 0 && (
+              {active && !loading && totalElements > 0 && (
                 <span style={{
-                  background: active ? TAB_META[t].color : "#E5E7EB",
-                  color: active ? "#fff" : "#374151",
+                  background: TAB_META[t].color,
+                  color: "#fff",
                   borderRadius: 10, padding: "1px 6px", fontSize: 11, fontWeight: 600,
-                }}>{count}</span>
+                }}>{totalElements}</span>
               )}
             </button>
           );
@@ -250,6 +272,15 @@ export default function OperatorRequestsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {!loading && hasMore && (
+        <div style={{ textAlign: "center", marginTop: 16 }}>
+          <button type="button" onClick={loadMore} disabled={loadingMore}
+            style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
+            {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
+          </button>
         </div>
       )}
     </div>

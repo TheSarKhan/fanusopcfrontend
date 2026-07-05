@@ -32,16 +32,16 @@ export type PsychologModuleKey =
 export const PSYCHOLOG_MODULES: Record<PsychologModuleKey, boolean> = {
   dashboard:    true,  // həmişə açıq — panelin girişi
   calendar:     true,  // AÇIQ — Cədvəl (təqvim görünüşü)
-  appointments: true,  // AÇIQ — Görüşlər (seanslar) yenidən dizayn edildi
+  appointments: true,  // AÇIQ — Görüşlər (seanslar)
   packages:     true,  // AÇIQ — Paketlərim (satış/istifadə statistikası)
-  clients:      true,  // AÇIQ — Müştərilər (siyahı + 360° profil) yenidən dizayn edildi
-  homework:     true,   // AÇIQ — Ev tapşırıqları
-  tests:        true,   // AÇIQ — Psixoloji testlər (yarat / təyin et / nəticə izlə)
-  articles:     true,   // AÇIQ — Məqalələrim (bloq yazıları)
-  community:    true,   // AÇIQ — İcma (peer feed/follow + şərh/bəyənmə)
-  resources:    true,   // AÇIQ — Resurslar (bilik bazası + material kitabxanası)
-  availability: true,  // AÇIQ — İş vaxtları (cədvəl/istisna/məzuniyyət) yenidən dizayn edildi
-  reviews:      true,   // AÇIQ — Rəylər (pasiyent rəyləri + cavab)
+  clients:      true,  // AÇIQ — Müştərilər (siyahı + 360° profil)
+  homework:     true,  // AÇIQ — Ev tapşırıqları
+  tests:        true,  // AÇIQ — Psixoloji testlər (yarat / təyin et / nəticə izlə)
+  articles:     true,  // AÇIQ — Məqalələrim (bloq yazıları)
+  community:    true,  // AÇIQ — İcma (peer feed/follow + şərh/bəyənmə)
+  resources:    true,  // AÇIQ — Resurslar (bilik bazası + material kitabxanası)
+  availability: true,  // AÇIQ — İş vaxtları (cədvəl/istisna/məzuniyyət)
+  reviews:      true,  // AÇIQ — Rəylər (pasiyent rəyləri + cavab)
 };
 
 /** Hər modulun "sahib olduğu" route prefiksləri (guard üçün). */

@@ -1,9 +1,9 @@
 "use client";
 
 // ============================================================================
-// Seans tarixçəsi — tamamlanmış / ləğv edilmiş / mübahisəli seansların tam
-// siyahısı, aya görə qruplaşmış. Əsas randevu səhifəsindəki "Tarixçə"
-// düyməsindən açılır; rəy ("Rəy yaz") və seans feedback-i buradan verilir.
+// Seans tarixçəsi — tamamlanmış / ləğv edilmiş / rədd edilmiş seansların
+// server-səhifələnmiş siyahısı, aya görə qruplaşmış. Əsas randevu səhifəsindəki
+// "Tarixçə" düyməsindən açılır; rəy ("Rəy yaz") və seans feedback-i buradan verilir.
 // ============================================================================
 
 import Link from "next/link";
@@ -20,7 +20,6 @@ import ReviewModal from "../ReviewModal";
 import SessionFeedbackModal from "@/components/SessionFeedbackModal";
 import { STATUS, PA_STYLE, PackageBadge } from "../shared";
 
-const HISTORY_STATUSES = new Set(["COMPLETED", "CANCELLED", "AWAITING_CONFIRMATION", "DISPUTED"]);
 const MONTHS_AZ_FULL = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
 const PAGE_SIZE = 30;
 
@@ -37,26 +36,27 @@ export default function PatientAppointmentHistoryPage() {
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [myReviews, setMyReviews] = useState<MyReview[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [reviewFor, setReviewFor] = useState<AppointmentDetail | null>(null);
   const [feedbackFor, setFeedbackFor] = useState<AppointmentDetail | null>(null);
   const [existingFeedback, setExistingFeedback] = useState<SessionFeedback | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<Set<number>>(new Set());
-  const [limit, setLimit] = useState(PAGE_SIZE);
 
   useEffect(() => {
     Promise.all([
-      patientApi.myAppointments(),
+      patientApi.myAppointmentsPaged({ scope: "history", page: 0, size: PAGE_SIZE }),
       patientApi.myReviews().catch(() => [] as MyReview[]),
     ])
-      .then(([appts, revs]) => {
-        setItems(appts);
+      .then(([res, revs]) => {
+        setItems(res.content);
+        setTotalElements(res.totalElements);
         setMyReviews(revs);
         // "Necə keçdi?" düyməsi artıq rəy verilmiş seanslarda təkrar görünməsin.
-        // Feedback pəncərəsi 24 saatdır — yalnız ən son 30 tamamlanmış seans yoxlanır.
-        const fbCandidates = appts
-          .filter(a => a.status === "COMPLETED")
-          .sort((x, y) => new Date(y.startAt ?? y.endAt ?? 0).getTime() - new Date(x.startAt ?? x.endAt ?? 0).getTime())
-          .slice(0, 30);
+        // Feedback pəncərəsi 24 saatdır — server onsuz da DESC sıralayır, ona görə
+        // yalnız ilk səhifədəki (ən son) tamamlanmış seanslar yoxlanır.
+        const fbCandidates = res.content.filter(a => a.status === "COMPLETED");
         if (fbCandidates.length) {
           Promise.all(fbCandidates.map(a =>
             patientApi.getSessionFeedback(a.id).then(fb => (fb ? a.id : null)).catch(() => null),
@@ -74,22 +74,28 @@ export default function PatientAppointmentHistoryPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const history = useMemo(() => {
-    return items
-      .filter(a => HISTORY_STATUSES.has(a.status))
-      .filter(a => a.startAt ?? a.endAt)
-      .sort((a, b) => {
-        const da = new Date(a.startAt ?? a.endAt ?? 0).getTime();
-        const db = new Date(b.startAt ?? b.endAt ?? 0).getTime();
-        return db - da;
-      });
-  }, [items]);
+  const loadMore = () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    patientApi.myAppointmentsPaged({ scope: "history", page: page + 1, size: PAGE_SIZE })
+      .then(res => {
+        setItems(prev => [...prev, ...res.content]);
+        setPage(res.page);
+        setTotalElements(res.totalElements);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
 
+  // Server artıq tarixçə statuslarına görə filtrləyib DESC sıralayır — burada
+  // yalnız aya görə qruplaşdırırıq (tarixi olmayan sətirlər buraxılır).
   const monthGroups = useMemo(() => {
     const groups: { key: string; label: string; items: AppointmentDetail[] }[] = [];
     let last: typeof groups[number] | null = null;
-    for (const a of history.slice(0, limit)) {
-      const { key, label } = azMonthOf((a.startAt ?? a.endAt)!);
+    for (const a of items) {
+      const ref = a.startAt ?? a.endAt;
+      if (!ref) continue;
+      const { key, label } = azMonthOf(ref);
       if (!last || last.key !== key) {
         last = { key, label, items: [] };
         groups.push(last);
@@ -97,7 +103,7 @@ export default function PatientAppointmentHistoryPage() {
       last.items.push(a);
     }
     return groups;
-  }, [history, limit]);
+  }, [items]);
 
   const reviewedFor = (psyId?: number | null) =>
     psyId ? myReviews.find(r => r.psychologistId === psyId) ?? null : null;
@@ -129,7 +135,7 @@ export default function PatientAppointmentHistoryPage() {
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>
           Yüklənir…
         </div>
-      ) : history.length === 0 ? (
+      ) : items.length === 0 ? (
         <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: 40, textAlign: "center", fontSize: 14, color: "var(--oxford-60)", fontWeight: 600 }}>
           Hələ tamamlanmış seansınız yoxdur
         </div>
@@ -155,11 +161,11 @@ export default function PatientAppointmentHistoryPage() {
             </section>
           ))}
 
-          {history.length > limit && (
+          {items.length < totalElements && (
             <div style={{ textAlign: "center", marginTop: 4 }}>
-              <button type="button" onClick={() => setLimit(l => l + PAGE_SIZE)}
-                style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
-                Daha çox göstər (+{Math.min(PAGE_SIZE, history.length - limit)})
+              <button type="button" onClick={loadMore} disabled={loadingMore}
+                style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "default" : "pointer", opacity: loadingMore ? .6 : 1 }}>
+                {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
               </button>
             </div>
           )}

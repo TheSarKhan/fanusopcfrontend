@@ -7,6 +7,7 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 
 const ACTIVE_DAYS = 30;
 const DORMANT_DAYS = 90;
+const PAGE_SIZE = 30;
 
 const FLAG_META: Record<string, { label: string; tone: string }> = {
   HIGH_NO_SHOW:     { label: "Yüksək no-show",      tone: "danger" },
@@ -121,22 +122,23 @@ function exportClientsCsv(clients: ClientSummary[], tagsByPatient: Record<number
 export default function PsychologClientsPage() {
   const { t } = useT();
   const [clients, setClients] = useState<ClientSummary[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [page, setPage] = useState(0);
   const [tagsByPatient, setTagsByPatient] = useState<Record<number, PatientTag[]>>({});
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("ALL");
   const [sort, setSort] = useState<SortKey>("LAST");
   const [view, setView] = useState<ViewMode>("grid");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
 
+  // Etiketlər bir dəfə yüklənir — müştəri siyahısı isə server-side səhifələnir.
   useEffect(() => {
-    Promise.all([
-      psychologistApi.clients().catch(() => [] as ClientSummary[]),
-      psychologistApi.allMyPatientTags().catch(() => [] as PatientTag[]),
-    ])
-      .then(([cs, ts]) => {
-        setClients(cs);
+    psychologistApi.allMyPatientTags()
+      .then(ts => {
         const map: Record<number, PatientTag[]> = {};
         for (const tg of ts) {
           if (!map[tg.patientId]) map[tg.patientId] = [];
@@ -144,8 +146,42 @@ export default function PsychologClientsPage() {
         }
         setTagsByPatient(map);
       })
-      .finally(() => setLoading(false));
+      .catch(() => {});
   }, []);
+
+  // Axtarış yazılışını 300ms gecikdiririk ki, hər hərfə sorğu getməsin.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Axtarış dəyişəndə birinci səhifədən yenidən yüklə.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    psychologistApi.clientsPaged({ q: debouncedSearch || undefined, page: 0, size: PAGE_SIZE })
+      .then(res => {
+        if (cancelled) return;
+        setClients(res.content);
+        setTotalElements(res.totalElements);
+        setPage(0);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [debouncedSearch]);
+
+  const loadMore = () => {
+    setLoadingMore(true);
+    psychologistApi.clientsPaged({ q: debouncedSearch || undefined, page: page + 1, size: PAGE_SIZE })
+      .then(res => {
+        setClients(prev => [...prev, ...res.content]);
+        setTotalElements(res.totalElements);
+        setPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
 
   // "/" focuses search.
   useEffect(() => {
@@ -162,6 +198,7 @@ export default function PsychologClientsPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // "all" server cəmidir (totalElements); qalan sayğaclar yüklənmiş siyahıdan hesablanır.
   const counters = useMemo(() => {
     let active = 0, dormant = 0, flagged = 0;
     for (const c of clients) {
@@ -170,8 +207,8 @@ export default function PsychologClientsPage() {
       else if (d !== null && d > DORMANT_DAYS) dormant++;
       if (c.autoFlag) flagged++;
     }
-    return { all: clients.length, active, dormant, flagged };
-  }, [clients]);
+    return { all: totalElements, active, dormant, flagged };
+  }, [clients, totalElements]);
 
   const allTagLabels = useMemo(() => {
     const counts = new Map<string, number>();
@@ -188,9 +225,8 @@ export default function PsychologClientsPage() {
   }, [clients]);
 
   const visible = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    // Ad/email axtarışı server tərəfdə (q) aparılır — burada yalnız yüklənmiş siyahı filtrlənir.
     let list = clients.filter(c => {
-      if (q && !(c.name + " " + (c.email ?? "") + " " + (c.phone ?? "")).toLowerCase().includes(q)) return false;
       if (tagFilter) {
         const labels = (tagsByPatient[c.patientId] ?? []).map(tg => tg.label);
         if (!labels.includes(tagFilter)) return false;
@@ -215,9 +251,12 @@ export default function PsychologClientsPage() {
       }
     });
     return list;
-  }, [clients, search, filter, sort, tagFilter, tagsByPatient]);
+  }, [clients, filter, sort, tagFilter, tagsByPatient]);
 
   const hasFilters = filter !== "ALL" || tagFilter !== null || search.trim().length > 0;
+  const hasMore = clients.length < totalElements;
+  // Yalnız server axtarışı aktivdirsə nəticə sayı server cəmidir; lokal filtrlə ekrandakı saydır.
+  const resultCount = filter === "ALL" && !tagFilter ? totalElements : visible.length;
 
   return (
     <div>
@@ -324,13 +363,13 @@ export default function PsychologClientsPage() {
       {/* Toolbar */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
-          {!hasFilters && <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{visible.length} müştəri</span>}
+          {!hasFilters && <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{totalElements} müştəri</span>}
           {filter === "ACTIVE"  && <FilterChip label={`Aktiv son ${ACTIVE_DAYS} gün`} onClear={() => setFilter("ALL")} />}
           {filter === "DORMANT" && <FilterChip label={`${DORMANT_DAYS}+ gün passiv`} onClear={() => setFilter("ALL")} />}
           {filter === "FLAGGED" && <FilterChip label="İşarələnmiş" onClear={() => setFilter("ALL")} />}
           {tagFilter && <FilterChip label={`#${tagFilter}`} onClear={() => setTagFilter(null)} />}
           {search.trim() && <FilterChip label={`"${search.trim()}"`} onClear={() => setSearch("")} />}
-          {hasFilters && <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)" }}>{visible.length} nəticə</span>}
+          {hasFilters && <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)" }}>{resultCount} nəticə</span>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>Sıralama:</span>
@@ -376,6 +415,15 @@ export default function PsychologClientsPage() {
       ) : (
         <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", overflow: "hidden" }}>
           {visible.map(c => <ClientCard key={c.patientId} c={c} tags={tagsByPatient[c.patientId] ?? []} />)}
+        </div>
+      )}
+
+      {!loading && hasMore && (
+        <div style={{ textAlign: "center", marginTop: 20 }}>
+          <button type="button" onClick={loadMore} disabled={loadingMore}
+            style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
+            {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - clients.length)})`}
+          </button>
         </div>
       )}
     </div>

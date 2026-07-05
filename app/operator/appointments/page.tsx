@@ -6,6 +6,9 @@
  * səhifəsinə köçüb. Burada yalnız toplu əməliyyat (bulk-assign) qalıb.
  * OP-2: claim çipləri ("● Sənin üzərində") + "Mənim üzərimdə" filtri, real-time.
  *
+ * Siyahı server səhifələməsi ilə yüklənir (createdAt DESC) — "Daha çox göstər"
+ * növbəti səhifəni əlavə edir; tək-statuslu filtrlər serverə ötürülür.
+ *
  * Görünüş "Operator Randevular.dc" maketinə uyğun redizayn edilib — məntiq eynidir.
  */
 
@@ -37,6 +40,12 @@ const TAB_META: Record<Tab, { label: string; color: string }> = {
   COMPLETED:        { label: "Tamamlanmış",       color: "#374151" },
   CANCELLED:        { label: "Ləğv olunmuş",      color: "#991B1B" },
 };
+
+// Server status filtri yalnız tək-statuslu tablar üçün mümkündür; PENDING
+// ("Yeni müraciətlər") və CONFIRMED birləşmiş/törəmə statusları əhatə etdiyindən
+// onların filtri yığılmış items üzərində client-side qalır.
+const SERVER_STATUS_TABS: readonly Tab[] = ["DISPUTED", "COMPLETED", "CANCELLED"];
+const PAGE_SIZE = 30;
 
 function fmtDateTime(iso?: string | null) {
   if (!iso) return "—";
@@ -128,6 +137,9 @@ export default function OperatorAppointmentsPage() {
   const meId = getStoredUser()?.userId ?? null;
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [tab, setTab] = useState<Tab>(() => {
     const fromUrl = searchParams.get("tab");
     return fromUrl && fromUrl in TAB_META ? (fromUrl as Tab) : "PENDING";
@@ -176,6 +188,47 @@ export default function OperatorAppointmentsPage() {
 
   useEffect(load, []);
 
+  // ─── Arxiv tabları (Mübahisəli/Tamamlanmış/Ləğv olunmuş) — server səhifələməsi.
+  // Bu statuslar illərlə hüdudsuz böyüyür; aktiv triyaj tam siyahıdan işləməyə davam edir.
+  // null = hələ yüklənir (skeleton). Xüsusi filtrlər (Gecikmiş/Mənim və s.) legacy yoldadır.
+  const [archiveItems, setArchiveItems] = useState<AppointmentDetail[] | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const tmr = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(tmr);
+  }, [search]);
+
+  const archiveMode = view === "appointments"
+    && (SERVER_STATUS_TABS as readonly string[]).includes(tab)
+    && !allOnly && !overdueOnly && !mineOnly && !rescheduleOnly && !cancelOnly;
+
+  useEffect(() => {
+    if (!archiveMode) return;
+    let cancelled = false;
+    setArchiveItems(null);
+    operatorApi.listAppointmentsPaged({ status: tab, q: debouncedSearch || undefined, page: 0, size: PAGE_SIZE })
+      .then(res => {
+        if (cancelled) return;
+        setArchiveItems(res.content);
+        setTotalElements(res.totalElements);
+        setPage(0);
+      })
+      .catch(() => { if (!cancelled) setArchiveItems([]); });
+    return () => { cancelled = true; };
+  }, [archiveMode, tab, debouncedSearch]);
+
+  const loadMoreArchive = () => {
+    setLoadingMore(true);
+    operatorApi.listAppointmentsPaged({ status: tab, q: debouncedSearch || undefined, page: page + 1, size: PAGE_SIZE })
+      .then(res => {
+        setArchiveItems(prev => [...(prev ?? []), ...res.content]);
+        setTotalElements(res.totalElements);
+        setPage(res.page);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
+
   // Live refresh on any appointment-related notification (new, assigned, etc.)
   useEffect(() => {
     return subscribeNotifications((n) => {
@@ -188,9 +241,11 @@ export default function OperatorAppointmentsPage() {
   // OP-2: claim hadisələri çipləri canlı yeniləyir (səhifə reload-suz)
   useEffect(() => {
     return subscribeOperatorClaims((ev) => {
-      setItems(prev => prev.map(a => a.id === ev.appointmentId
+      const patch = (a: AppointmentDetail) => a.id === ev.appointmentId
         ? { ...a, claimedByUserId: ev.claimedByUserId ?? null, claimedByName: ev.claimedByName ?? null, claimedAt: ev.claimedAt ?? null }
-        : a));
+        : a;
+      setItems(prev => prev.map(patch));
+      setArchiveItems(prev => prev ? prev.map(patch) : prev);
     });
   }, []);
 
@@ -314,9 +369,11 @@ export default function OperatorAppointmentsPage() {
   // Pooldan (və ya siyahıdan) götür → müraciət daimi olaraq bu operatora aid olur.
   const takeOwnership = useCallback((id: number) => {
     operatorApi.claim(id).then(c => {
-      setItems(prev => prev.map(a => a.id === id ? {
+      const patch = (a: AppointmentDetail) => a.id === id ? {
         ...a, claimedByUserId: c.claimedByUserId ?? null, claimedByName: c.claimedByName ?? null, claimedAt: c.claimedAt ?? null,
-      } : a));
+      } : a;
+      setItems(prev => prev.map(patch));
+      setArchiveItems(prev => prev ? prev.map(patch) : prev);
     }).catch(() => {});
   }, []);
 
@@ -458,6 +515,36 @@ export default function OperatorAppointmentsPage() {
             ))}
           </div>
         )
+      ) : archiveMode ? (
+        archiveItems == null ? (
+          <SkeletonCards />
+        ) : (() => {
+          // Paket seansları öz tabında yaşayır — arxivdə də yalnız tək seanslar.
+          const singles = archiveItems.filter(a => a.patientPackageId == null);
+          const hasMore = archiveItems.length < totalElements;
+          return (
+            <>
+              {singles.length === 0 ? (
+                <EmptyCard />
+              ) : (
+                <div style={GRID}>
+                  {singles.map(a => (
+                    <AppointmentCard key={a.id} a={a} meId={meId}
+                      onTake={() => takeOwnership(a.id)} onOpen={() => openDetail(a)} />
+                  ))}
+                </div>
+              )}
+              {hasMore && (
+                <div style={{ textAlign: "center", marginTop: 18 }}>
+                  <button type="button" onClick={loadMoreArchive} disabled={loadingMore}
+                    style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
+                    {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - archiveItems.length)})`}
+                  </button>
+                </div>
+              )}
+            </>
+          );
+        })()
       ) : filtered.length === 0 ? (
         <EmptyCard />
       ) : (
@@ -722,7 +809,7 @@ function PackageCard({ sessions, onOpen }: { sessions: AppointmentDetail[]; onOp
   for (let i = 0; i < empty; i++) dots.push({ key: `e${i}`, kind: "empty" });
 
   // Növbəti seans (gələcəkdə ən yaxın) — yoxdursa son keçmiş seans
-  const now = Date.now();
+  const [now] = useState(() => Date.now());
   const upcoming = scheduledList.find(s => new Date(s.startAt!).getTime() >= now);
   const nextS = upcoming ?? (scheduledList.length ? scheduledList[scheduledList.length - 1] : null);
   const nextLabel = upcoming ? "Növbəti" : "Son seans";

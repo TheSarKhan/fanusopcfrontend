@@ -3,9 +3,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { adminApi } from "@/lib/api";
 
-type Tab = "notifications" | "payment" | "ai" | "integrations" | "team" | "branding";
+type Tab = "rules" | "notifications" | "payment" | "ai" | "integrations" | "team" | "branding";
 
 const DEFAULTS: Record<string, string> = {
+  // ADM-FR-16 — sistem qaydaları (backend SystemRulesService ilə eyni açarlar).
+  // Bu default-lar yalnız server dəyər qaytarmasa göstərilir; adətən getSiteConfig
+  // effektiv dəyəri (DB override və ya application.yml/env) qaytarır.
+  "rules.sla.newAppointmentHours": "2",
+  "rules.sla.escalationHours": "6",
+  "rules.dispute.timeoutHours": "48",
+  "rules.reschedule.minHoursBefore": "24",
+  "rules.reschedule.maxPatientRequests": "2",
+  "rules.series.renewalNoticeDays": "7",
+  "rules.crisis.moodThreshold": "2",
+  "rules.ranking.ratingWeight": "2",
+  "rules.ranking.fanusBonusPct": "10",
   // notifications
   "notif.email.newAppointment": "true",
   "notif.email.confirmation": "true",
@@ -93,6 +105,7 @@ export default function SettingsPage() {
 
       <div className="tabs">
         {([
+          { k: "rules", l: "Sistem qaydaları" },
           { k: "notifications", l: "Bildirişlər" },
           { k: "payment", l: "Ödəniş" },
           { k: "ai", l: "AI yönləndirmə" },
@@ -107,6 +120,60 @@ export default function SettingsPage() {
       </div>
 
       {loading && <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Yüklənir…</div>}
+
+      {!loading && tab === "rules" && (
+        <>
+          <div className="card">
+            <div className="card-head">
+              <div>
+                <h3 className="card-title">SLA & eskalasiya</h3>
+                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+                  Cavabsız müraciət və mübahisələrin eskalasiya vaxtları
+                </div>
+              </div>
+            </div>
+            <div style={{ padding: "0 18px" }}>
+              <NumRow title="SLA — operator bildirişi" unit="saat" k="rules.sla.newAppointmentHours" data={data} set={set}
+                help="Müraciət bu qədər saat cavabsız qalanda operatorlara bildiriş göndərilir" />
+              <NumRow title="SLA — admin eskalasiyası" unit="saat" k="rules.sla.escalationHours" data={data} set={set}
+                help="Bu qədər saatdan sonra cavabsız müraciət admin-ə eskalasiya olunur" />
+              <NumRow title="Mübahisə timeout" unit="saat" k="rules.dispute.timeoutHours" data={data} set={set}
+                help="Həll olunmayan mübahisəli randevu bu qədər saatdan sonra eskalasiya olunur" />
+            </div>
+          </div>
+
+          <div className="card mt-16">
+            <div className="card-head"><h3 className="card-title">Randevu qaydaları</h3></div>
+            <div style={{ padding: "0 18px" }}>
+              <NumRow title="Yenidən planlama — minimum vaxt" unit="saat" k="rules.reschedule.minHoursBefore" data={data} set={set}
+                help="Pasiyent seansdan ən azı bu qədər saat əvvəl vaxt dəyişikliyi istəyə bilər (24 saat qaydası)" />
+              <NumRow title="Yenidən planlama — maksimum sorğu" unit="sorğu" k="rules.reschedule.maxPatientRequests" data={data} set={set}
+                help="Hər randevu üçün pasiyentin göndərə biləcəyi vaxt dəyişikliyi sorğularının sayı" />
+              <NumRow title="Seriya bitmə bildirişi" unit="gün" k="rules.series.renewalNoticeDays" data={data} set={set}
+                help="Təkrarlanan seriyanın son seansından bu qədər gün əvvəl pasiyentə xəbərdarlıq göndərilir" />
+              <NumRow title="Böhran əhval eşiyi" unit="" k="rules.crisis.moodThreshold" data={data} set={set}
+                help="Bu bal və ya aşağı əhval check-in-i operatorları dərhal xəbərdar edir (1–5)" />
+            </div>
+          </div>
+
+          <div className="card mt-16">
+            <div className="card-head">
+              <div>
+                <h3 className="card-title">Sıralama çəkiləri</h3>
+                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+                  Psixoloqların profil sıralamasında istifadə olunan bal düsturu
+                </div>
+              </div>
+            </div>
+            <div style={{ padding: "0 18px" }}>
+              <NumRow title="Reytinq çəkisi" unit="" step="0.1" k="rules.ranking.ratingWeight" data={data} set={set}
+                help="Bir reytinq xalı neçə tamamlanmış seansa bərabər tutulur" />
+              <NumRow title="FANUS görünürlük bonusu" unit="%" k="rules.ranking.fanusBonusPct" data={data} set={set}
+                help="FANUS statistikasını seçən psixoloq sıralamada bu qədər əlavə bonus alır" />
+            </div>
+          </div>
+        </>
+      )}
 
       {!loading && tab === "notifications" && (
         <>
@@ -302,6 +369,22 @@ export default function SettingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function NumRow({ title, help, k, unit, step, data, set }: {
+  title: string; help: string; k: string; unit: string; step?: string;
+  data: Record<string, string>; set: (key: string, value: string) => void;
+}) {
+  return (
+    <Row title={title} help={help}>
+      <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>
+        <input className="input" type="number" step={step ?? "1"} value={data[k] ?? ""}
+          style={{ maxWidth: 100, textAlign: "right", fontFeatureSettings: "'tnum'" }}
+          onChange={(e) => set(k, e.target.value)} />
+        {unit && <span style={{ fontSize: 13, color: "var(--muted)", minWidth: 28 }}>{unit}</span>}
+      </div>
+    </Row>
   );
 }
 

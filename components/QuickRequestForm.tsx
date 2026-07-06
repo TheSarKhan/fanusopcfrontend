@@ -4,6 +4,7 @@ import { useState } from "react";
 import { submitSessionRequest } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
+import { azNowLocal } from "@/lib/datetime";
 
 /**
  * Psixoloqsuz sürətli müraciət forması (Sayt BRD §8.2) — həm Əlaqə səhifəsində
@@ -41,6 +42,21 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
     if (!form.phone.trim())  { setError("Telefon nömrəsi daxil edin"); return; }
     if (!form.budget)        { setError("Büdcə seçin"); return; }
     if (!form.reason.trim()) { setError("Müraciətin səbəbini yazın"); return; }
+    // Üstünlük verilən tarix/saat opsionaldır, lakin verilibsə keçmiş ola bilməz
+    // (Asia/Baku divar-saatı; backend də eyni yoxlamanı aparır).
+    if (form.preferredDate) {
+      const nowLocal = azNowLocal();            // "YYYY-MM-DDTHH:mm" (Asia/Baku)
+      const today = nowLocal.slice(0, 10);
+      if (form.preferredDate < today) {
+        setError("Keçmiş tarix üçün müraciət göndərmək olmaz");
+        return;
+      }
+      if (form.preferredDate === today && form.preferredTime
+          && `${form.preferredDate}T${form.preferredTime}` < nowLocal) {
+        setError("Keçmiş saat üçün müraciət göndərmək olmaz");
+        return;
+      }
+    }
     setError("");
     setSending(true);
     try {
@@ -177,6 +193,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
           <DatePicker
             value={form.preferredDate}
             onChange={val => setForm(prev => ({ ...prev, preferredDate: val }))}
+            min={azNowLocal().slice(0, 10)}
             placeholder="gg.aa.iiii"
             theme="light"
           />

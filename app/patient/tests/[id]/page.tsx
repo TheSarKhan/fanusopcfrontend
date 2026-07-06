@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, use } from "react";
 import { patientApi, type TakeTest, type TestResult } from "@/lib/api";
+import { stripLeadingNumber } from "@/lib/testQuestion";
 
 export default function PatientTakeTestPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -222,15 +223,6 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
       </form>
     </div>
   );
-}
-
-// Question text is sometimes authored with its own leading "N." prefix,
-// which would otherwise duplicate the {index + 1} badge we render next to it.
-// Strips any leading numbering the author baked into the question text so we
-// don't double it against our own index. Handles single ("6."), compound
-// ("6.6.", "1.2.3.") and spaced ("6. 6.") forms alike.
-function stripLeadingNumber(text: string): string {
-  return text.replace(/^\s*(\d+[.)]\s*)+/, "");
 }
 
 function fmtDate(iso: string | null | undefined): string {

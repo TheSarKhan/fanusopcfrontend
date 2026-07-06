@@ -13,6 +13,7 @@ import {
   type TakeTest,
   type TestResult,
 } from "@/lib/api";
+import { stripLeadingNumber } from "@/lib/testQuestion";
 
 const BRAND = "#0B3F90";
 const BRAND_DARK = "#082F6D";
@@ -320,7 +321,7 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
                   {idx + 1}
                 </span>
                 <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: INK, lineHeight: 1.5, paddingTop: 3 }}>
-                  {q.text}
+                  {stripLeadingNumber(q.text)}
                 </p>
               </div>
 

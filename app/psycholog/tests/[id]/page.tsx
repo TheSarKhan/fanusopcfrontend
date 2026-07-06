@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { psychologistApi, type TestResult } from "@/lib/api";
+import { stripLeadingNumber } from "@/lib/testQuestion";
 
 function fmtDateTime(iso?: string | null) {
   if (!iso) return "—";
@@ -208,7 +209,7 @@ function ResultDetail({ result }: { result: TestResult }) {
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: "#1A2535", marginBottom: 8 }}>
-                    {a.questionText}
+                    {stripLeadingNumber(a.questionText)}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 13, color: "#374151", padding: "4px 10px", background: "var(--brand-50)", borderRadius: 8, border: "1px solid var(--brand-100)" }}>

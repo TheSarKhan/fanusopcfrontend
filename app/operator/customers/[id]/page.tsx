@@ -598,6 +598,11 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
       .finally(() => setLoadingCat(false));
   }, [psyId]);
 
+  // Tək seansın müddəti — seçilmiş psixoloqun CARİ standart müddəti (backend
+  // onsuz da endAt-ı bundan hesablayır; burada preview/label yanlış olmasın).
+  const selPsy = psys.find(p => p.id === psyId) ?? null;
+  const sessionMin = selPsy?.defaultSessionMinutes ?? 50;
+
   const submit = async () => {
     setErr(null);
     if (!psyId) { setErr("Psixoloq seçin"); return; }
@@ -610,7 +615,7 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
       setSaving(true);
       try {
         await operatorApi.sellSingleSession(patientId, {
-          psychologistId: psyId, price: p, startAt: singleStart, endAt: singleEnd || addMinutes(singleStart, 50),
+          psychologistId: psyId, price: p, startAt: singleStart, endAt: singleEnd || addMinutes(singleStart, sessionMin),
         });
         onDone(singleName.trim() || "Tək seans", true);
       } catch (e) {
@@ -788,10 +793,10 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
                 )}
                 {manualOpen && (
                   <label style={{ display: "block", marginTop: 8 }}><span style={fLab}>Tarix və saat (əl ilə)</span>
-                    <DatePicker withTime theme="light" size="sm" value={singleStart} onChange={v => { setSingleStart(v); setSingleEnd(addMinutes(v, 50)); }} style={{ width: "100%" }} />
+                    <DatePicker withTime theme="light" size="sm" value={singleStart} onChange={v => { setSingleStart(v); setSingleEnd(addMinutes(v, sessionMin)); }} style={{ width: "100%" }} />
                   </label>
                 )}
-                {singleStart && <div style={{ fontSize: 12, color: "#065F46", fontWeight: 600, marginTop: 8 }}>Seçilmiş vaxt: {fmtDateTime(singleStart)} · ~50 dəq</div>}
+                {singleStart && <div style={{ fontSize: 12, color: "#065F46", fontWeight: 600, marginTop: 8 }}>Seçilmiş vaxt: {fmtDateTime(singleStart)} · ~{sessionMin} dəq</div>}
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

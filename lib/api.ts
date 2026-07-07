@@ -288,10 +288,11 @@ export interface Psychologist {
   userId?: number | null;
   /** Computed client-side from name + collision suffix; safe to use in URLs. */
   slug?: string;
-  // Modul A/C — Fanus/Adi tipi + public qiymət göstərimi
+  // Modul A/C — Fanus/Adi tipi. Qiymət yalnız Operator/Admin/psixoloqun özü görür —
+  // public/pasiyent cavabında bu sahələr backend tərəfindən null/omit edilir.
   psychologistType?: "FANUS" | "NORMAL";
   individualPrice?: number | null;
-  currency?: string;
+  currency?: string | null;
   packages?: PackageSummary[];
   // Modul D — statistika mənbəyi + sıralama göstəriciləri
   statsSource?: "FANUS_PLATFORM" | "PRIOR_EXPERIENCE";
@@ -300,13 +301,14 @@ export interface Psychologist {
   displayedSessionCount?: number;
 }
 
-// Modul A — public kartda göstərilən paket xülasəsi
+// Modul A — public/pasiyent kartda göstərilən paket xülasəsi. Qiymət sahələri
+// yalnız Operator/Admin/psixoloqun özü üçün doldurulur; public/pasiyent üçün null.
 export interface PackageSummary {
   id: number;
   name: string;
   sessionCount: number;
-  packagePrice: number;
-  perSessionPrice: number;
+  packagePrice: number | null;
+  perSessionPrice: number | null;
 }
 
 // Modul A — psixoloq/admin idarəetməsində tam paket

@@ -785,7 +785,7 @@ function RequestContent({ full, t }: { full: OperatorAppointmentFull; t: ReturnT
 function ModalShell({ title, sub, badge, onClose, footer, maxWidth = 480, children }: {
   title: string;
   sub?: string;
-  badge?: { label: string; cls: string };
+  badge?: { label: string; bg: string; color: string };
   onClose: () => void;
   footer?: React.ReactNode;
   maxWidth?: number;
@@ -804,7 +804,7 @@ function ModalShell({ title, sub, badge, onClose, footer, maxWidth = 480, childr
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
               <span className="fx-h3">{title}</span>
-              {badge && <span className={`fx-pill ${badge.cls}`}>{badge.label}</span>}
+              {badge && <span className="fx-pill" style={{ background: badge.bg, color: badge.color }}>{badge.label}</span>}
             </div>
             {sub && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3 }}>{sub}</div>}
           </div>

@@ -20,6 +20,7 @@ import { buildPanelUrl, getStoredUser } from "@/lib/auth";
 import { withSlugs } from "@/lib/slug";
 import { downloadIcsMulti } from "@/lib/calendar";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import DatePicker from "@/components/DatePicker";
 
 const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"];
 
@@ -124,6 +125,17 @@ export default function BookPsychologistPage() {
   // haqqa malikdir; 2-ci yalnız operator icazə versə.
   const [sessionKind, setSessionKind] = useState<"STANDARD" | "INTRO">("STANDARD");
   const [introEligibility, setIntroEligibility] = useState<IntroEligibility | null>(null);
+  // Eligible olduqda göstərilən "istəyirsiniz?" bannerinin cavablanıb-cavablanmadığı —
+  // TypeCard-lar bu cavabı istənilən vaxt dəyişdirmək üçün mexanizm kimi qalır.
+  const [introPromptAnswered, setIntroPromptAnswered] = useState(false);
+  // sessionKind toggle olunanda grid yenidən yüklənir — page-level `loading`-dən ayrı.
+  const [slotsLoading, setSlotsLoading] = useState(false);
+
+  // Əlavə vaxt seçimi — günün mövcud aralığı daxilində grid-ə bağlı olmayan sərbəst vaxt.
+  const [customTimeOpen, setCustomTimeOpen] = useState(false);
+  const [customTimeDraft, setCustomTimeDraft] = useState("");
+  const [customTime, setCustomTime] = useState<string | null>(null);
+  const [customTimeError, setCustomTimeError] = useState<string | null>(null);
 
   // Repeat accelerator (B1-2)
   const [repeatOpenFor, setRepeatOpenFor] = useState<string | null>(null);
@@ -207,19 +219,36 @@ export default function BookPsychologistPage() {
           return;
         }
         setPsychologist(match);
-        const today = new Date();
-        const to = new Date();
-        to.setDate(to.getDate() + 21);
-        getPsychologistAvailability(match.id, isoDateOnly(today), isoDateOnly(to))
-          .then(setSlots)
-          .catch(() => setSlots([]))
-          .finally(() => setLoading(false));
+        setLoading(false);
       })
       .catch(() => {
         setError("Məlumatları yükləmək alınmadı");
         setLoading(false);
       });
   }, [rawSlug, router]);
+
+  // sessionKind toggle olunanda köhnə grid-ə aid seçimlər (basket/custom vaxt) etibarsızlaşır.
+  useEffect(() => {
+    setBasket([]);
+    setCustomTime(null);
+    setCustomTimeOpen(false);
+    setCustomTimeError(null);
+  }, [sessionKind]);
+
+  // Slot grid-i psixoloq yükləndikdə VƏ sessionKind hər dəfə dəyişdikdə yenidən çəkir —
+  // STANDARD üçün param-sız (bugünkü davranışla eyni sorğu), INTRO üçün 15-dəq grid.
+  useEffect(() => {
+    if (!psychologist) return;
+    setSlotsLoading(true);
+    const today = new Date();
+    const to = new Date();
+    to.setDate(to.getDate() + 21);
+    getPsychologistAvailability(psychologist.id, isoDateOnly(today), isoDateOnly(to),
+      sessionKind === "INTRO" ? "INTRO" : undefined)
+      .then(setSlots)
+      .catch(() => setSlots([]))
+      .finally(() => setSlotsLoading(false));
+  }, [psychologist?.id, sessionKind]);
 
   // B2-2: prefill the basket from the course's rhythm when extending.
   useEffect(() => {
@@ -264,17 +293,81 @@ export default function BookPsychologistPage() {
     [grouped, activeDayKey],
   );
 
-  const okItems = useMemo(() => basket.filter(b => b.kind === "ok"), [basket]);
+  // Seçilmiş günün mövcud aralığı (əlavə vaxt seçimi üçün sərhəd) — min/max reduce ilə,
+  // çünki nə backend, nə də `grouped` gün-daxili xronoloji sıra zəmanət vermir.
+  const dayBounds = useMemo(() => {
+    if (activeSlots.length === 0) return null;
+    const minIso = activeSlots.map(s => s.startAt).reduce((a, b) => (a < b ? a : b));
+    const maxIso = activeSlots.map(s => s.endAt).reduce((a, b) => (a > b ? a : b));
+    return { minIso, maxIso };
+  }, [activeSlots]);
+
+  // Grid-dən seçilmiş vaxtlar + (varsa) əlavə vaxt seçimi ilə təsdiqlənmiş sərbəst vaxt.
+  const okItems = useMemo(() => {
+    const gridOk = basket.filter(b => b.kind === "ok");
+    return customTime ? [...gridOk, { kind: "ok" as const, startAt: customTime }] : gridOk;
+  }, [basket, customTime]);
   const conflictItems = useMemo(() => basket.filter(b => b.kind === "conflict"), [basket]);
   const inBasket = (startAt: string) => basket.some(b => b.startAt === startAt && b.kind === "ok");
 
   const toggleSlot = (s: AvailableSlot) => {
     setError(null);
+    setCustomTime(null);
     setBasket(prev => {
       const hit = prev.find(b => b.startAt === s.startAt);
       if (hit) return prev.filter(b => b.startAt !== s.startAt);
       return sortBasket([...prev, { kind: "ok", startAt: s.startAt }]);
     });
+  };
+
+  // Gün tab-ı dəyişəndə açıq (təsdiqlənməmiş) əlavə-vaxt formu bağlanır — sərhədlər
+  // artıq həmin günə aid deyil. Təsdiqlənmiş customTime toxunulmur (basket kimi qalır).
+  useEffect(() => {
+    setCustomTimeOpen(false);
+    setCustomTimeDraft("");
+    setCustomTimeError(null);
+  }, [activeDayKey]);
+
+  const confirmCustomTime = () => {
+    if (!dayBounds || !customTimeDraft) return;
+    const picked = new Date(customTimeDraft);
+    if (Number.isNaN(picked.getTime())) {
+      setCustomTimeError("Etibarsız vaxt");
+      return;
+    }
+    if (picked <= new Date()) {
+      setCustomTimeError("Keçmiş vaxt seçilə bilməz");
+      return;
+    }
+    if (dayKey(customTimeDraft) !== activeDayKey) {
+      setCustomTimeError("Seçilmiş gün üçün vaxt daxil edin");
+      return;
+    }
+    if (customTimeDraft < dayBounds.minIso || customTimeDraft > dayBounds.maxIso) {
+      setCustomTimeError(`Seçdiyiniz vaxt mövcud aralıqdan (${fmtTime(dayBounds.minIso)}–${fmtTime(dayBounds.maxIso)}) kənardır`);
+      return;
+    }
+    setCustomTimeError(null);
+    setCustomTime(customTimeDraft);
+    setBasket([]);
+    setCustomTimeOpen(false);
+  };
+
+  // Seans növü seçimi — həm "istəyirsiniz?" banneri, həm TypeCard-lar bunları çağırır
+  // (banner cavablandıqdan sonra TypeCard-lar fikri dəyişmək üçün mexanizm kimi qalır).
+  const chooseStandardSingle = () => {
+    setMode("SINGLE"); setSelectedPackage(null); setChooseLater(false);
+    setSessionKind("STANDARD"); setIntroPromptAnswered(true);
+  };
+  const chooseIntro = () => {
+    setMode("SINGLE"); setSelectedPackage(null); setChooseLater(false);
+    setSessionKind("INTRO"); setIntroPromptAnswered(true);
+  };
+  const choosePackage = (pkg: PackageSummary) => {
+    setMode("PACKAGE"); setSelectedPackage(pkg); setSessionKind("STANDARD"); setIntroPromptAnswered(true);
+    // sessionKind effekti yalnız STANDARD↔INTRO keçidində tetiklənir — Single(standard)→Package
+    // keçidində sessionKind dəyişmədiyi üçün custom vaxtı əl ilə təmizləyirik.
+    setCustomTime(null); setCustomTimeOpen(false); setCustomTimeError(null);
   };
 
   const removeRow = (startAt: string) => {
@@ -324,7 +417,8 @@ export default function BookPsychologistPage() {
     const today = new Date();
     const to = new Date();
     to.setDate(to.getDate() + 21);
-    getPsychologistAvailability(psychologist.id, isoDateOnly(today), isoDateOnly(to))
+    getPsychologistAvailability(psychologist.id, isoDateOnly(today), isoDateOnly(to),
+      sessionKind === "INTRO" ? "INTRO" : undefined)
       .then(setSlots)
       .catch(() => {});
   };
@@ -673,12 +767,33 @@ export default function BookPsychologistPage() {
               {!extendCtx && (
                 <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 20 }}>
                   <SectionHead n={1} title={t("pkg.chooseType")} />
+
+                  {introEligibility?.eligible && !introPromptAnswered && (
+                    <div style={{ background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 12, padding: 16, marginBottom: 14 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--brand-700)", marginBottom: 4 }}>
+                        Sizin 1 dəfəlik pulsuz 15 dəqiqəlik tanışlıq görüşü keçirmək şansınız var
+                        {introEligibility.usedCount === 1 ? " (2-ci pulsuz seans)" : ""}.
+                      </div>
+                      <p style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, margin: "0 0 12px" }}>İstəyirsiniz?</p>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button type="button" onClick={chooseIntro}
+                          style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 16px", fontSize: 13.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                          Bəli
+                        </button>
+                        <button type="button" onClick={chooseStandardSingle}
+                          style={{ background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 16px", fontSize: 13.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                          Xeyr, uzun seans istəyirəm
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
                     <TypeCard
                       selected={mode === "SINGLE" && sessionKind === "STANDARD"}
                       label={t("pkg.single")}
                       note="Bir dəfəlik seans"
-                      onClick={() => { setMode("SINGLE"); setSelectedPackage(null); setChooseLater(false); setSessionKind("STANDARD"); }}
+                      onClick={chooseStandardSingle}
                     />
                     {introEligibility?.eligible && (
                       <TypeCard
@@ -686,7 +801,7 @@ export default function BookPsychologistPage() {
                         badge="Pulsuz"
                         label="Tanışlıq görüşü"
                         note="15 dəq · Pulsuz"
-                        onClick={() => { setMode("SINGLE"); setSelectedPackage(null); setChooseLater(false); setSessionKind("INTRO"); }}
+                        onClick={chooseIntro}
                       />
                     )}
                     {psychologist.packages?.map(pkg => {
@@ -698,7 +813,7 @@ export default function BookPsychologistPage() {
                           selected={picked}
                           label={pkg.name}
                           note={`${pkg.sessionCount} seans daxildir`}
-                          onClick={() => { setMode("PACKAGE"); setSelectedPackage(pkg); setSessionKind("STANDARD"); }}
+                          onClick={() => choosePackage(pkg)}
                         />
                       );
                     })}
@@ -733,7 +848,9 @@ export default function BookPsychologistPage() {
                     )}
                   </div>
 
-                  {grouped.length === 0 ? (
+                  {slotsLoading ? (
+                    <div style={{ background: "#F8FAFD", border: "1px dashed var(--brand-100)", borderRadius: 10, padding: 24, textAlign: "center", fontSize: 13, color: "var(--oxford-60)" }}>{t("common.loading")}</div>
+                  ) : grouped.length === 0 ? (
                     <div style={{ background: "#F8FAFD", border: "1px dashed var(--brand-100)", borderRadius: 10, padding: 24, textAlign: "center", fontSize: 13, color: "var(--oxford-60)" }}>{t("book.noSlots")}</div>
                   ) : (
                     <>
@@ -794,6 +911,48 @@ export default function BookPsychologistPage() {
                           </div>
                         );
                       })()}
+
+                      {/* Əlavə vaxt seçimi — grid-ə uyğun gəlməyəndə günün mövcud aralığında sərbəst vaxt */}
+                      {mode === "SINGLE" && !extendCtx && dayBounds && (
+                        <div style={{ marginTop: 14 }}>
+                          {customTime ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>
+                              <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{dayLabel(customTime)}, {fmtTime(customTime)}</span>
+                              <span style={{ background: "var(--brand-50)", color: "var(--brand-700)", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>Fərqli saat</span>
+                              <button type="button" onClick={() => setCustomTime(null)}
+                                style={{ marginLeft: "auto", background: "#fff", border: "1px solid #E1E9F5", borderRadius: 8, padding: "5px 10px", fontSize: 12, fontWeight: 600, color: "#991B1B", cursor: "pointer", fontFamily: "inherit" }}>
+                                Sil
+                              </button>
+                            </div>
+                          ) : !customTimeOpen ? (
+                            <button type="button" onClick={() => { setCustomTimeOpen(true); setCustomTimeDraft(""); setCustomTimeError(null); }}
+                              style={{ background: "none", border: "none", color: "var(--brand-700)", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
+                              Fərqli saat istəyirəm →
+                            </button>
+                          ) : (
+                            <div style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: 14 }}>
+                              <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 8 }}>
+                                Bu gün üçün mövcud aralıq: {fmtTime(dayBounds.minIso)}–{fmtTime(dayBounds.maxIso)}
+                              </div>
+                              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                <DatePicker value={customTimeDraft} onChange={setCustomTimeDraft} withTime theme="light" size="sm"
+                                  min={dayBounds.minIso} max={dayBounds.maxIso} style={{ minWidth: 220 }} />
+                                <button type="button" onClick={confirmCustomTime}
+                                  style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                                  Bu vaxtı seç
+                                </button>
+                                <button type="button" onClick={() => setCustomTimeOpen(false)}
+                                  style={{ background: "#fff", border: "1px solid #D6E2F7", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                                  Ləğv et
+                                </button>
+                              </div>
+                              {customTimeError && (
+                                <div style={{ color: "#991B1B", fontSize: 12, fontWeight: 600, marginTop: 8 }}>{customTimeError}</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* selected-times basket */}
                       {basket.length > 0 && (

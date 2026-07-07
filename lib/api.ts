@@ -643,10 +643,13 @@ export const getFaqs = () => get<Faq[]>("/faqs");
 export const getTestimonials = () => get<Testimonial[]>("/testimonials");
 export const getSiteConfig = () => get<SiteConfig>("/site-config");
 
-export const getPsychologistAvailability = (id: number, from?: string, to?: string) => {
+export const getPsychologistAvailability = (
+  id: number, from?: string, to?: string, sessionKind?: "STANDARD" | "INTRO",
+) => {
   const params = new URLSearchParams();
   if (from) params.set("from", from);
   if (to) params.set("to", to);
+  if (sessionKind === "INTRO") params.set("sessionKind", sessionKind);
   const qs = params.toString();
   return get<AvailableSlot[]>(`/psychologists/${id}/availability${qs ? "?" + qs : ""}`);
 };

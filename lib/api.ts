@@ -358,7 +358,7 @@ export interface PriceChangeLogItem {
   oldPrice?: number | null;
   newPrice: number;
   currency: string;
-  changedByRole: "ADMIN" | "PSYCHOLOGIST";
+  changedByRole: "ADMIN" | "OPERATOR" | "PSYCHOLOGIST";
   reason?: string | null;
   createdAt: string;
 }
@@ -3126,6 +3126,37 @@ export interface OperatorPsychologistStat {
   psychologistType?: string | null;
   statsSource?: string | null;
   monthlyDynamics: { month: string; total: number; completed: number; cancelled: number }[];
+  // ─── Operator idarəetməsi: əlaqə + status + qiymət + risk + əlçatanlıq ───
+  phone?: string | null;
+  email?: string | null;
+  active: boolean;
+  suspendedAt?: string | null;
+  suspendReason?: string | null;
+  individualPrice?: number | null;
+  currency?: string | null;
+  commissionPercent?: number | null;
+  rejectionRatePct?: number | null;
+  avgConfirmMinutes?: number | null;
+  next7FullnessPct?: number | null;
+  next7Booked: number;
+  next7FreeSlots: number;
+}
+/** Operator psixoloq qeydi — zəng/izləmə/müşahidə (Psixoloq 360 "Operator qeydləri"). */
+export interface PsychologistNote {
+  id: number;
+  text: string;
+  authorName?: string | null;
+  createdAt: string;
+}
+export interface PsychologistVacation {
+  id: number;
+  psychologistId: number;
+  startDate: string;
+  endDate: string;
+  reason?: string | null;
+  notifyPatients: boolean;
+  cancelledAt?: string | null;
+  createdAt: string;
 }
 export interface AnalyticsTimePoint { bucket: string; incoming: number; assigned: number; completed: number; cancelled: number; revenue?: number | null }
 export interface RevenueBreakdown {
@@ -3133,7 +3164,14 @@ export interface RevenueBreakdown {
   singleRevenue: number;
   byPsychologist: { psychologistId: number; name: string; revenue: number }[];
 }
-export interface PsychologistRankItem { psychologistId: number; name: string; completedSessions: number; fanusSessions: number; activePatients: number; rankingScore?: number | null; psychologistType?: string | null }
+export interface PsychologistRankItem {
+  psychologistId: number; name: string; completedSessions: number; fanusSessions: number;
+  activePatients: number; rankingScore?: number | null; psychologistType?: string | null;
+  phone?: string | null; email?: string | null;
+  individualPrice?: number | null; currency?: string | null;
+  active: boolean; suspendedAt?: string | null;
+  rejectionRatePct?: number | null; onVacationToday: boolean;
+}
 export type AnalyticsPeriod = "daily" | "weekly" | "monthly" | "yearly";
 
 export const operatorApi = {
@@ -3340,6 +3378,22 @@ export const operatorApi = {
     authedRequest<CustomerNote>("POST", `/operator/customers/${patientId}/notes`, { text }),
   psychologistStats: (id: number) =>
     authedRequest<OperatorPsychologistStat>("GET", `/operator/psychologists/${id}/stats`),
+  psychologistVacations: (id: number) =>
+    authedRequest<PsychologistVacation[]>("GET", `/operator/psychologists/${id}/vacations`),
+  setPsychologistPricing: (id: number, individualPrice: number) =>
+    authedRequest<{ individualPrice: number | null; currency: string }>("PUT", `/operator/psychologists/${id}/pricing`, { individualPrice }),
+  createPsychologistPackage: (id: number, data: PackageReq) =>
+    authedRequest<PackageDto>("POST", `/operator/psychologists/${id}/packages`, data),
+  updatePsychologistPackage: (id: number, packageId: number, data: PackageReq) =>
+    authedRequest<PackageDto>("PUT", `/operator/psychologists/${id}/packages/${packageId}`, data),
+  deletePsychologistPackage: (id: number, packageId: number) =>
+    authedRequest<void>("DELETE", `/operator/psychologists/${id}/packages/${packageId}`),
+  psychologistPriceHistory: (id: number) =>
+    authedRequest<PriceChangeLogItem[]>("GET", `/operator/psychologists/${id}/price-history`),
+  psychologistNotes: (id: number) =>
+    authedRequest<PsychologistNote[]>("GET", `/operator/psychologists/${id}/notes`),
+  addPsychologistNote: (id: number, text: string) =>
+    authedRequest<PsychologistNote>("POST", `/operator/psychologists/${id}/notes`, { text }),
   analyticsSessions: (period: AnalyticsPeriod = "daily") =>
     authedRequest<AnalyticsTimePoint[]>("GET", `/operator/analytics/sessions?period=${period}`),
   psychologistRanking: () =>

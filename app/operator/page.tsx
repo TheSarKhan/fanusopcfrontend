@@ -184,25 +184,56 @@ export default function OperatorDashboard() {
 
           {/* ƏSAS SAHƏ */}
           <div className="db-main" style={{ marginBottom: 18 }}>
-            {/* SOL — TRİYAJ (sağ sütunla eyni hündürlüyə uzanır, əsas fokus burada) */}
-            <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            {/* SOL — TRİYAJ + SON FƏALİYYƏT (əsas fokus burada; hər kart öz məzmununa görə hündürlük alır) */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {queueEmpty ? (
-                <div className="fx-card--empty" style={{ flex: 1, justifyContent: "center", padding: "44px 24px" }}>
+                <div className="fx-card--empty" style={{ justifyContent: "center", padding: "44px 24px" }}>
                   <div style={{ color: "var(--sage)", marginBottom: 2 }}><Ico d={I_LEAF} w={36} sw={1.4} /></div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>Növbə boşdur</div>
                   <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 500 }}>Bütün müraciətlər həll edilib. Yeni müraciət gəldikdə burada görünəcək.</div>
                 </div>
               ) : (
                 /* VAHİD INBOX — bütün müraciət növləri tək siyahıda, pill ilə fərqləndirilir;
-                   mübahisəlilər həmişə yuxarıda. Sağ sütunla eyni hündürlüyə uzanır, artıq
-                   sətirlər daxildə scroll olunur — boş sahə qalmır. */
-                <QueueBlock title="Yeni müraciətlər" count={inbox.length} icon={<Ico d={I_INBOX} />} allHref="/operator/appointments">
-                  {inbox.map(it => (
+                   mübahisəlilər həmişə yuxarıda. İlk 5 sətir göstərilir, qalanı üçün
+                   alt hissədə "Hamısına bax" düyməsi çıxır. */
+                <QueueBlock title="Yeni müraciətlər" count={inbox.length} shownCount={5} icon={<Ico d={I_INBOX} />} allHref="/operator/appointments">
+                  {inbox.slice(0, 5).map(it => (
                     <InboxRow key={it.key} item={it} now={now}
                       onClaim={it.kind === "pending" ? handleClaim : undefined}
                       claiming={it.appointmentId != null && claimingId === it.appointmentId} />
                   ))}
                 </QueueBlock>
+              )}
+
+              {/* Son fəaliyyət — sol sütunda, triyaj bloku altında; sağ sütunla boşluğu təbii doldurur */}
+              {recentActions.length > 0 && (
+                <div className="fx-card" style={{ padding: "18px 20px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+                    <span className="fx-card-title">Son fəaliyyət</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div className="fx-segmented">
+                        {(["all", "mine"] as const).map(s => {
+                          const on = scope === s;
+                          const disabled = s === "mine" && (!user?.userId || mineCount === 0);
+                          return <button key={s} type="button" disabled={disabled} onClick={() => setScope(s)} className={on ? "fx-seg--active" : ""} style={{ opacity: disabled ? 0.5 : 1, cursor: disabled ? "default" : "pointer" }}>{s === "all" ? "Bütün operatorlar" : `Mənim (${mineCount})`}</button>;
+                        })}
+                      </div>
+                      <Link href="/operator/appointments" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--brand)", textDecoration: "none" }}>Hamısı →</Link>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {recentActions.map(a => {
+                      const vt = verbTone(a.status);
+                      return (
+                        <Link key={a.id} href={`/operator/appointments/${a.id}`} className="db-hover" style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 8px", borderTop: "1px solid var(--hairline)", textDecoration: "none", color: "inherit", flexWrap: "wrap" }}>
+                          <span className="fx-num" style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, minWidth: 90 }}>{timeAgo(a.updatedAt ?? a.createdAt, now)} əvvəl</span>
+                          <span className="fx-pill" style={{ background: vt.bg, color: vt.fg, fontSize: 11, fontWeight: 700, padding: "3px 10px" }}>{statusVerb(a.status)}</span>
+                          <span style={{ flex: 1, minWidth: 150, fontSize: 13.5, fontWeight: 600, color: "var(--oxford)" }}>{a.patientName ?? "—"} <span style={{ color: "var(--oxford-60)", fontWeight: 500 }}>→ {a.psychologistName ?? "—"}</span></span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -253,37 +284,6 @@ export default function OperatorDashboard() {
               )}
             </div>
           </div>
-
-          {/* SON FƏALİYYƏT */}
-          {recentActions.length > 0 && (
-            <div className="fx-card" style={{ padding: "18px 20px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-                <span className="fx-card-title">Son fəaliyyət</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div className="fx-segmented">
-                    {(["all", "mine"] as const).map(s => {
-                      const on = scope === s;
-                      const disabled = s === "mine" && (!user?.userId || mineCount === 0);
-                      return <button key={s} type="button" disabled={disabled} onClick={() => setScope(s)} className={on ? "fx-seg--active" : ""} style={{ opacity: disabled ? 0.5 : 1, cursor: disabled ? "default" : "pointer" }}>{s === "all" ? "Bütün operatorlar" : `Mənim (${mineCount})`}</button>;
-                    })}
-                  </div>
-                  <Link href="/operator/appointments" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--brand)", textDecoration: "none" }}>Hamısı →</Link>
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                {recentActions.map(a => {
-                  const vt = verbTone(a.status);
-                  return (
-                    <Link key={a.id} href={`/operator/appointments/${a.id}`} className="db-hover" style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 8px", borderTop: "1px solid var(--hairline)", textDecoration: "none", color: "inherit", flexWrap: "wrap" }}>
-                      <span className="fx-num" style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, minWidth: 90 }}>{timeAgo(a.updatedAt ?? a.createdAt, now)} əvvəl</span>
-                      <span className="fx-pill" style={{ background: vt.bg, color: vt.fg, fontSize: 11, fontWeight: 700, padding: "3px 10px" }}>{statusVerb(a.status)}</span>
-                      <span style={{ flex: 1, minWidth: 150, fontSize: 13.5, fontWeight: 600, color: "var(--oxford)" }}>{a.patientName ?? "—"} <span style={{ color: "var(--oxford-60)", fontWeight: 500 }}>→ {a.psychologistName ?? "—"}</span></span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </>
       )}
     </div>
@@ -378,17 +378,21 @@ function StatItem({ label, value, hint, tone, href, icon }: { label: string; val
     : <div className="fx-kpi">{content}</div>;
 }
 
-function QueueBlock({ title, count, icon, children, allHref = "/operator/appointments" }: { title: string; count: number; icon: ReactNode; children: ReactNode; allHref?: string }) {
+function QueueBlock({ title, count, shownCount, icon, children, allHref = "/operator/appointments" }: { title: string; count: number; shownCount?: number; icon: ReactNode; children: ReactNode; allHref?: string }) {
+  const hasMore = shownCount != null && count > shownCount;
   return (
-    <div className="fx-card" style={{ overflow: "hidden", display: "flex", flexDirection: "column", height: "100%" }}>
+    <div className="fx-card" style={{ overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div className="fx-card__head" style={{ gap: 9, justifyContent: "flex-start", flex: "none" }}>
         <span style={{ color: "var(--brand)", display: "inline-flex" }}>{icon}</span>
         <span className="fx-card-title">{title}</span>
         <span className="fx-pill fx-pill--count fx-num">{count}</span>
-        <span style={{ flex: 1 }} />
-        <Link href={allHref} style={{ fontSize: 12, fontWeight: 600, color: "var(--brand)", textDecoration: "none" }}>Hamısı →</Link>
       </div>
-      <div style={{ flex: 1, overflowY: "auto" }}>{children}</div>
+      <div>{children}</div>
+      {hasMore && (
+        <div style={{ flex: "none", padding: "11px 18px", borderTop: "1px solid var(--hairline)", textAlign: "right" }}>
+          <Link href={allHref} style={{ fontSize: 12.5, fontWeight: 600, color: "var(--brand)", textDecoration: "none" }}>Hamısına bax →</Link>
+        </div>
+      )}
     </div>
   );
 }
@@ -513,7 +517,7 @@ const I_CARD = ["M2 5h20v14H2z", "M2 10h20"];
 const I_PHONE = "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.11 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7a2 2 0 0 1 1.72 2.03z";
 
 const CSS = `
-.db-main{display:grid;grid-template-columns:1.6fr 1fr;gap:18px;align-items:stretch}
+.db-main{display:grid;grid-template-columns:1.6fr 1fr;gap:18px;align-items:start}
 @media(max-width:840px){.db-main{grid-template-columns:1fr}}
 
 /* KPI zolağının sütunları — hairline bölücülər fx-kpi + fx-kpi-dən gəlir */

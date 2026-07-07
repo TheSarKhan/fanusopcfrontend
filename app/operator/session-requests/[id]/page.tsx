@@ -6,20 +6,24 @@ import { operatorApi, type PackageDto, type Psychologist, type SessionRequest } 
 import { getStoredUser } from "@/lib/auth";
 import DatePicker from "@/components/DatePicker";
 import { toast as uiToast } from "@/components/Toast";
+import { confirmDialog } from "@/components/ConfirmDialog";
+import ErrorState from "@/components/ErrorState";
+import { Skeleton } from "@/components/Skeleton";
+import { IconAlert, IconCheck, IconChevronLeft } from "../icons";
 
-const STATUS_BADGE: Record<string, { label: string; bg: string; color: string }> = {
-  NEW:       { label: "Yeni",        bg: "#FEF3C7", color: "#92400E" },
-  IN_REVIEW: { label: "Baxılır",     bg: "#DBEAFE", color: "#1E40AF" },
-  CONVERTED: { label: "Çevrilib",    bg: "#D1FAE5", color: "#065F46" },
-  CANCELLED: { label: "Ləğv edilib", bg: "#FEE2E2", color: "#991B1B" },
+const STATUS_PILL: Record<string, { label: string; className: string }> = {
+  NEW: { label: "Yeni", className: "fx-pill--pending" },
+  IN_REVIEW: { label: "Baxılır", className: "fx-pill--info" },
+  CONVERTED: { label: "Çevrilib", className: "fx-pill--paid" },
+  CANCELLED: { label: "Ləğv edilib", className: "fx-pill--cancelled" },
 };
 
 function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
   if (value == null || value === "") return null;
   return (
-    <div style={{ display: "flex", gap: 12, padding: "8px 0", borderBottom: "1px solid #F3F4F6" }}>
-      <span style={{ minWidth: 160, color: "#6B7280", fontSize: 13 }}>{label}</span>
-      <span style={{ fontSize: 13, color: "#111827", fontWeight: 500 }}>{value}</span>
+    <div style={{ display: "flex", gap: 12, padding: "8px 0", borderBottom: "1px solid var(--hairline)" }}>
+      <span className="fx-muted" style={{ minWidth: 160, fontSize: 13 }}>{label}</span>
+      <span style={{ fontSize: 13, color: "var(--oxford)", fontWeight: 500 }}>{value}</span>
     </div>
   );
 }
@@ -31,6 +35,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
 
   const [req, setReq] = useState<SessionRequest | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [claimBusy, setClaimBusy] = useState(false);
   const [psychologists, setPsychologists] = useState<Psychologist[]>([]);
 
@@ -40,6 +45,8 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   const [note, setNote] = useState("");
   const [converting, setConverting] = useState(false);
   const [convertError, setConvertError] = useState("");
+  // Pasient telefonda bu psixoloqu özü istəyibsə komissiyasız/azaldılmış faiz tətbiq olunur.
+  const [convertPatientChoseDirectly, setConvertPatientChoseDirectly] = useState(false);
 
   // Paket sat
   const [pkgOpen, setPkgOpen] = useState(false);
@@ -51,14 +58,17 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   const [pkgPrice, setPkgPrice] = useState("");
   const [sellingPkg, setSellingPkg] = useState(false);
   const [pkgError, setPkgError] = useState("");
+  const [pkgPatientChoseDirectly, setPkgPatientChoseDirectly] = useState(false);
 
   const [cancelBusy, setCancelBusy] = useState(false);
 
   const load = useCallback(() => {
-    operatorApi.getSessionRequest(Number(id)).then(data => {
-      setReq(data);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    setLoading(true);
+    setError(false);
+    operatorApi.getSessionRequest(Number(id))
+      .then(data => setReq(data))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
@@ -72,10 +82,37 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
       .catch(() => setCatalog([]));
   }, [pkgOpen, pkgMode, psyId]);
 
-  if (loading) return <div style={{ padding: 32, color: "#6B7280" }}>Yüklənir...</div>;
-  if (!req) return <div style={{ padding: 32, color: "#991B1B" }}>Müraciət tapılmadı.</div>;
+  if (loading) return (
+    <div style={{ maxWidth: 900 }}>
+      <Skeleton width={220} height={24} />
+      <div className="fx-card fx-card__pad" style={{ marginTop: 24 }}>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} width={`${70 - i * 6}%`} height={14} style={{ marginTop: i === 0 ? 0 : 14 }} />
+        ))}
+      </div>
+      <div className="fx-card fx-card__pad" style={{ marginTop: 16 }}>
+        <Skeleton width="40%" height={13} />
+        <Skeleton width="90%" height={13} style={{ marginTop: 12 }} />
+      </div>
+    </div>
+  );
+  if (error) return (
+    <div style={{ maxWidth: 900 }}>
+      <ErrorState
+        title="Müraciət yüklənmədi"
+        sub="Bağlantı problemi ola bilər. Yenidən cəhd edin və ya siyahıya qayıdın."
+        onRetry={load}
+        action={
+          <button type="button" className="fx-btn fx-btn--ghost" onClick={() => router.push("/operator/session-requests")}>
+            Siyahıya qayıt
+          </button>
+        }
+      />
+    </div>
+  );
+  if (!req) return <div style={{ padding: 32, color: "var(--error)" }}>Müraciət tapılmadı.</div>;
 
-  const badge = STATUS_BADGE[req.status] ?? { label: req.status, bg: "#F3F4F6", color: "#374151" };
+  const badge = STATUS_PILL[req.status] ?? { label: req.status, className: "fx-pill--neutral" };
   const mine = me != null && req.claimedByUserId === me.userId;
   const unclaimed = req.claimedByUserId == null;
   const claimedByOther = !unclaimed && !mine;
@@ -99,8 +136,14 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
       .finally(() => setClaimBusy(false));
   };
 
-  const cancel = () => {
-    if (!window.confirm("Müraciəti ləğv etmək istədiyinizə əminsiniz?")) return;
+  const cancel = async () => {
+    const ok = await confirmDialog({
+      title: "Müraciəti ləğv et",
+      message: "Bu müraciəti ləğv etmək istədiyinizə əminsiniz? Sonra “Bərpa et” ilə geri qaytara bilərsiniz.",
+      confirmLabel: "Ləğv et",
+      danger: true,
+    });
+    if (!ok) return;
     setCancelBusy(true);
     operatorApi.updateSessionRequestStatus(req.id, { status: "CANCELLED" })
       .then(() => { uiToast("Müraciət ləğv edildi", "success"); load(); })
@@ -116,6 +159,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
     try {
       const updated = await operatorApi.convertSessionRequestToAppointment(req.id, {
         psychologistId: Number(psyId), startAt, note: note.trim() || undefined,
+        patientChoseDirectly: convertPatientChoseDirectly,
       });
       setReq(updated);
       uiToast("Randevu yaradıldı", "success");
@@ -139,8 +183,8 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
     try {
       const updated = await operatorApi.convertSessionRequestToPackage(req.id,
         pkgMode === "catalog"
-          ? { sessionPackageId: Number(catalogId) }
-          : { psychologistId: Number(psyId), packageName: pkgName.trim() || undefined, sessionCount: Number(pkgSessions), price: Number(pkgPrice) });
+          ? { sessionPackageId: Number(catalogId), patientChoseDirectly: pkgPatientChoseDirectly }
+          : { psychologistId: Number(psyId), packageName: pkgName.trim() || undefined, sessionCount: Number(pkgSessions), price: Number(pkgPrice), patientChoseDirectly: pkgPatientChoseDirectly });
       setReq(updated);
       uiToast("Paket satıldı", "success");
     } catch (e) {
@@ -151,219 +195,234 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   };
 
   return (
-    <div style={{ padding: "28px 32px", maxWidth: 900 }}>
+    <div style={{ maxWidth: 900 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
-        <button onClick={() => router.push("/operator/session-requests")}
-          style={{ background: "none", border: "none", cursor: "pointer", color: "#52718F", fontSize: 13, padding: 0 }}>
-          ← Geri
+        <button type="button" className="fx-btn fx-btn--quiet fx-btn--sm" onClick={() => router.push("/operator/session-requests")}>
+          <IconChevronLeft className="fx-icon--sm" />
+          Geri
         </button>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0B1A35" }}>Müraciət #{req.id}</h1>
-        <span style={{ background: badge.bg, color: badge.color, borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 600 }}>
-          {badge.label}
-        </span>
-        {req.priority && (
-          <span style={{ background: "#FEF3C7", color: "#92400E", borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700, border: "1px solid #FCD34D" }}>
-            Prioritet
-          </span>
-        )}
+        <h1 className="fx-h1">Müraciət #{req.id}</h1>
+        <span className={`fx-pill ${badge.className}`}>{badge.label}</span>
+        {req.priority && <span className="fx-pill fx-pill--pending">Prioritet</span>}
       </div>
 
       {claimedByOther && (
-        <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 12, padding: "14px 18px", marginBottom: 20, fontSize: 13.5, color: "#1E40AF", fontWeight: 600 }}>
-          Bu müraciəti hazırda {req.claimedByName} aparır — yalnız o çevirmə/ləğv edə bilər.
+        <div className="fx-banner fx-banner--info" style={{ marginBottom: 20 }}>
+          Bu müraciəti hazırda <strong>{req.claimedByName}</strong> aparır — yalnız o çevirmə/ləğv edə bilər.
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: unclaimed || claimedByOther || isConverted || isCancelled ? "1fr" : "1fr 380px", gap: 24, alignItems: "start" }}>
-        <div>
-          <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 600, color: "#0B1A35", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Müraciət məlumatları
-            </h2>
-            <InfoRow label="Ad Soyad" value={req.name} />
-            <InfoRow label="Telefon" value={req.phone} />
-            <InfoRow label="E-poçt" value={req.email} />
-            <InfoRow label="Yaş" value={req.age} />
-            <InfoRow label="Büdcə" value={req.budget} />
-            <InfoRow label="Göndərildi" value={new Date(req.createdAt).toLocaleString("az-AZ")} />
+      <div style={{ display: "grid", gridTemplateColumns: unclaimed || claimedByOther || isConverted || isCancelled ? "1fr" : "1.6fr 1fr", gap: 24, alignItems: "start" }}>
+        <div className="fx-stack">
+          <div className="fx-card">
+            <div className="fx-card__head"><span className="fx-card-title">Müraciət məlumatları</span></div>
+            <div className="fx-card__pad">
+              <InfoRow label="Ad Soyad" value={req.name} />
+              <InfoRow label="Telefon" value={req.phone} />
+              <InfoRow label="E-poçt" value={req.email} />
+              <InfoRow label="Yaş" value={req.age} />
+              <InfoRow label="Büdcə" value={req.budget} />
+              <InfoRow label="Göndərildi" value={new Date(req.createdAt).toLocaleString("az-AZ")} />
+            </div>
           </div>
 
-          <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
-            <h2 style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 600, color: "#0B1A35", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Müraciətin səbəbi
-            </h2>
-            <p style={{ margin: 0, fontSize: 14, color: "#111827", lineHeight: 1.6 }}>{req.reason}</p>
+          <div className="fx-card">
+            <div className="fx-card__head"><span className="fx-card-title">Müraciətin səbəbi</span></div>
+            <div className="fx-card__pad">
+              <p style={{ margin: 0, fontSize: 14, color: "var(--oxford)", lineHeight: 1.6 }}>{req.reason}</p>
+            </div>
           </div>
 
           {(req.preferredDate || req.preferredTime || req.notes) && (
-            <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px", marginBottom: 20 }}>
-              <h2 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 600, color: "#0B1A35", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                Əlavə məlumat
-              </h2>
-              <InfoRow label="Üstünlük verilən tarix" value={req.preferredDate} />
-              <InfoRow label="Üstünlük verilən saat" value={req.preferredTime} />
-              {req.notes && (
-                <div style={{ marginTop: 12, fontSize: 13, color: "#374151", lineHeight: 1.6 }}>
-                  <span style={{ color: "#6B7280" }}>Əlavə qeydlər: </span>{req.notes}
-                </div>
-              )}
+            <div className="fx-card">
+              <div className="fx-card__head"><span className="fx-card-title">Əlavə məlumat</span></div>
+              <div className="fx-card__pad">
+                <InfoRow label="Üstünlük verilən tarix" value={req.preferredDate} />
+                <InfoRow label="Üstünlük verilən saat" value={req.preferredTime} />
+                {req.notes && (
+                  <div style={{ marginTop: 12, fontSize: 13, color: "var(--oxford-80)", lineHeight: 1.6 }}>
+                    <span className="fx-muted">Əlavə qeydlər: </span>{req.notes}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
           {isConverted && (
-            <div style={{ background: "#D1FAE5", border: "1px solid #6EE7B7", borderRadius: 12, padding: "20px 24px" }}>
-              <h2 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 600, color: "#065F46", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                Çevrilib
-              </h2>
-              {req.convertedAppointmentId && (
-                <button onClick={() => router.push(`/operator/appointments/${req.convertedAppointmentId}`)}
-                  style={{ background: "#065F46", color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", marginRight: 10 }}>
-                  Randevuya bax
-                </button>
-              )}
-              {req.convertedPatientId && (
-                <button onClick={() => router.push(`/operator/customers/${req.convertedPatientId}`)}
-                  style={{ background: "#fff", color: "#065F46", border: "1px solid #6EE7B7", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                  Müştəri profilinə bax
-                </button>
-              )}
+            <div className="fx-card" style={{ background: "var(--sage-bg)", borderColor: "rgba(74,155,127,.35)" }}>
+              <div className="fx-card__pad">
+                <div className="fx-label" style={{ color: "#2E6B54", marginBottom: 16 }}>Çevrilib</div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {req.convertedAppointmentId && (
+                    <button type="button" className="fx-btn" style={{ background: "var(--sage)", borderColor: "var(--sage)", color: "#fff" }}
+                      onClick={() => router.push(`/operator/appointments/${req.convertedAppointmentId}`)}>
+                      Randevuya bax
+                    </button>
+                  )}
+                  {req.convertedPatientId && (
+                    <button type="button" className="fx-btn fx-btn--ghost" style={{ borderColor: "rgba(74,155,127,.35)", color: "#2E6B54" }}
+                      onClick={() => router.push(`/operator/customers/${req.convertedPatientId}`)}>
+                      Müştəri profilinə bax
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
           {isCancelled && (
-            <div style={{ background: "#FEE2E2", border: "1px solid #FECACA", borderRadius: 12, padding: "16px 20px" }}>
-              <p style={{ margin: 0, fontSize: 13, color: "#991B1B", fontWeight: 500 }}>Bu müraciət ləğv edilib.</p>
-              {mine && (
-                <button onClick={() => operatorApi.updateSessionRequestStatus(req.id, { status: "IN_REVIEW" }).then(load)}
-                  style={{ marginTop: 10, padding: "7px 14px", background: "#fff", color: "#374151", border: "1px solid #D1D5DB", borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
-                  Bərpa et
-                </button>
-              )}
+            <div className="fx-card fx-card--error" style={{ background: "var(--rose-bg)" }}>
+              <div className="fx-card__pad">
+                <p style={{ margin: 0, fontSize: 13, color: "var(--rose)", fontWeight: 500 }}>Bu müraciət ləğv edilib.</p>
+                {mine && (
+                  <button type="button" className="fx-btn fx-btn--ghost fx-btn--sm" style={{ marginTop: 10 }}
+                    onClick={() => operatorApi.updateSessionRequestStatus(req.id, { status: "IN_REVIEW" }).then(load)}>
+                    Bərpa et
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
 
         {unclaimed && (
-          <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px" }}>
-            <p style={{ margin: "0 0 14px", fontSize: 13, color: "#6B7280" }}>
+          <div className="fx-card fx-card__pad">
+            <p className="fx-muted" style={{ margin: "0 0 14px", fontSize: 13 }}>
               Bu müraciət hələ heç kimə aid deyil. Götürsəniz yalnız siz görəcəksiniz.
             </p>
-            <button onClick={claim} disabled={claimBusy}
-              style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "#047857", color: "#fff", border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 700, cursor: claimBusy ? "wait" : "pointer", opacity: claimBusy ? 0.6 : 1 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+            <button type="button" disabled={claimBusy} onClick={claim}
+              className="fx-btn" style={{ width: "100%", background: "var(--sage)", borderColor: "var(--sage)", color: "#fff", cursor: claimBusy ? "wait" : "pointer", opacity: claimBusy ? 0.6 : 1 }}>
+              <IconCheck className="fx-icon--md" />
               Götür
             </button>
           </div>
         )}
 
         {canAct && !req.email && (
-          <div style={{ background: "#FEF3C7", border: "1px solid #FCD34D", borderRadius: 12, padding: "16px 20px" }}>
-            <p style={{ margin: 0, fontSize: 13, color: "#92400E", fontWeight: 600 }}>
-              Bu müraciətdə email yoxdur. Pasiyent hesabı yaratmaq üçün email tələb olunur —
-              zəng edib email öyrənin, sonra çevirməyə davam edin.
-            </p>
+          <div className="fx-alert">
+            <IconAlert />
+            <div>
+              <div className="fx-alert__title">Email tələb olunur</div>
+              <div className="fx-alert__text">
+                Bu müraciətdə email yoxdur. Pasiyent hesabı yaratmaq üçün email tələb olunur —
+                zəng edib email öyrənin, sonra çevirməyə davam edin.
+              </div>
+            </div>
           </div>
         )}
 
         {canAct && req.email && (
-          <div>
-            <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px", marginBottom: 16 }}>
-              <h2 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 600, color: "#0B1A35", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                Randevuya çevir
-              </h2>
-              {convertError && (
-                <div style={{ background: "#FEE2E2", color: "#991B1B", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 12 }}>{convertError}</div>
-              )}
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>Psixoloq *</label>
-              <select value={psyId} onChange={e => setPsyId(e.target.value === "" ? "" : Number(e.target.value))}
-                style={{ width: "100%", padding: "8px 10px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 13, marginBottom: 12, boxSizing: "border-box" }}>
-                <option value="">Psixoloq seçin...</option>
-                {psychologists.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+          <div className="fx-stack">
+            <div className="fx-card">
+              <div className="fx-card__head"><span className="fx-card-title">Randevuya çevir</span></div>
+              <div className="fx-card__pad">
+                {convertError && (
+                  <div className="fx-error-text" style={{ marginBottom: 12 }}><IconAlert className="fx-icon--sm" />{convertError}</div>
+                )}
+                <div className="fx-field" style={{ marginBottom: 12 }}>
+                  <label className="fx-label">Psixoloq *</label>
+                  <select className="fx-select" value={psyId} onChange={e => setPsyId(e.target.value === "" ? "" : Number(e.target.value))}>
+                    <option value="">Psixoloq seçin...</option>
+                    {psychologists.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
 
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>Seans tarixi/saatı *</label>
-              <DatePicker value={startAt} onChange={setStartAt} placeholder="gg.aa.iiii ss:dd" theme="light" withTime style={{ width: "100%", marginBottom: 12 }} />
+                <div className="fx-field" style={{ marginBottom: 12 }}>
+                  <label className="fx-label">Seans tarixi/saatı *</label>
+                  <DatePicker value={startAt} onChange={setStartAt} placeholder="gg.aa.iiii ss:dd" theme="light" withTime />
+                </div>
 
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>Qeyd</label>
-              <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
-                placeholder="Daxili qeyd (istifadəçiyə göstərilmir)"
-                style={{ width: "100%", padding: "8px 10px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 13, resize: "vertical", boxSizing: "border-box", marginBottom: 14 }} />
+                <div className="fx-field" style={{ marginBottom: 14 }}>
+                  <label className="fx-label">Qeyd</label>
+                  <textarea className="fx-textarea" value={note} onChange={e => setNote(e.target.value)} rows={2}
+                    placeholder="Daxili qeyd (istifadəçiyə göstərilmir)" />
+                </div>
 
-              <button onClick={convertToAppointment} disabled={converting}
-                style={{ width: "100%", padding: "10px 0", background: "#5A4FC8", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: converting ? "not-allowed" : "pointer", opacity: converting ? 0.7 : 1 }}>
-                {converting ? "Göndərilir..." : "Randevu yarat"}
-              </button>
-              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#9CA3AF", textAlign: "center" }}>
-                {req.email ? "Yeni hesab yaransa pasiyentə şifrə təyini üçün email göndəriləcək." : "Email yoxdur — hesab yaransa dəvət göndərilməyəcək."}
-              </p>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 14, cursor: "pointer" }}>
+                  <input type="checkbox" className="fx-checkbox" checked={convertPatientChoseDirectly}
+                    onChange={e => setConvertPatientChoseDirectly(e.target.checked)} style={{ marginTop: 1 }} />
+                  <span className="fx-muted" style={{ fontSize: 12.5, lineHeight: 1.4 }}>
+                    Pasient telefonda bu psixoloqu özü istəyib (komissiyasız/azaldılmış faiz tətbiq olunur)
+                  </span>
+                </label>
+
+                <button type="button" disabled={converting} onClick={convertToAppointment}
+                  className="fx-btn fx-btn--primary" style={{ width: "100%" }}>
+                  {converting ? "Göndərilir..." : "Randevu yarat"}
+                </button>
+                <p className="fx-muted" style={{ margin: "8px 0 0", fontSize: 11, textAlign: "center" }}>
+                  {req.email ? "Yeni hesab yaransa pasiyentə şifrə təyini üçün email göndəriləcək." : "Email yoxdur — hesab yaransa dəvət göndərilməyəcək."}
+                </p>
+              </div>
             </div>
 
-            <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px", marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: pkgOpen ? 16 : 0 }}>
-                <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#0B1A35", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Paket sat
-                </h2>
-                <button onClick={() => setPkgOpen(o => !o)} style={{ background: "none", border: "none", color: "#5A4FC8", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+            <div className="fx-card">
+              <div className="fx-card__head">
+                <span className="fx-card-title">Paket sat</span>
+                <button type="button" className="fx-btn fx-btn--quiet fx-btn--sm" onClick={() => setPkgOpen(o => !o)}>
                   {pkgOpen ? "Bağla" : "Aç"}
                 </button>
               </div>
               {pkgOpen && (
-                <>
+                <div className="fx-card__pad">
                   {pkgError && (
-                    <div style={{ background: "#FEE2E2", color: "#991B1B", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 12 }}>{pkgError}</div>
+                    <div className="fx-error-text" style={{ marginBottom: 12 }}><IconAlert className="fx-icon--sm" />{pkgError}</div>
                   )}
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 4 }}>Psixoloq *</label>
-                  <select value={psyId} onChange={e => setPsyId(e.target.value === "" ? "" : Number(e.target.value))}
-                    style={{ width: "100%", padding: "8px 10px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 13, marginBottom: 12, boxSizing: "border-box" }}>
-                    <option value="">Psixoloq seçin...</option>
-                    {psychologists.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
+                  <div className="fx-field" style={{ marginBottom: 12 }}>
+                    <label className="fx-label">Psixoloq *</label>
+                    <select className="fx-select" value={psyId} onChange={e => setPsyId(e.target.value === "" ? "" : Number(e.target.value))}>
+                      <option value="">Psixoloq seçin...</option>
+                      {psychologists.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
 
-                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                    <button onClick={() => setPkgMode("catalog")}
-                      style={{ flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: pkgMode === "catalog" ? "1px solid #5A4FC8" : "1px solid #D1D5DB", background: pkgMode === "catalog" ? "#EEF2FF" : "#fff", color: pkgMode === "catalog" ? "#5A4FC8" : "#374151" }}>
+                  <div className="fx-segmented" style={{ width: "100%", marginBottom: 12 }}>
+                    <button type="button" style={{ flex: 1 }} className={pkgMode === "catalog" ? "fx-seg--active" : ""} onClick={() => setPkgMode("catalog")}>
                       Kataloqdan
                     </button>
-                    <button onClick={() => setPkgMode("custom")}
-                      style={{ flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: "pointer", border: pkgMode === "custom" ? "1px solid #5A4FC8" : "1px solid #D1D5DB", background: pkgMode === "custom" ? "#EEF2FF" : "#fff", color: pkgMode === "custom" ? "#5A4FC8" : "#374151" }}>
+                    <button type="button" style={{ flex: 1 }} className={pkgMode === "custom" ? "fx-seg--active" : ""} onClick={() => setPkgMode("custom")}>
                       Xüsusi
                     </button>
                   </div>
 
                   {pkgMode === "catalog" ? (
-                    <select value={catalogId} onChange={e => setCatalogId(e.target.value === "" ? "" : Number(e.target.value))}
-                      style={{ width: "100%", padding: "8px 10px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 13, marginBottom: 12, boxSizing: "border-box" }}>
-                      <option value="">Paket seçin...</option>
-                      {catalog.map(p => <option key={p.id} value={p.id}>{p.name} — {p.sessionCount} seans — {p.packagePrice} AZN</option>)}
-                    </select>
+                    <div className="fx-field" style={{ marginBottom: 12 }}>
+                      <select className="fx-select" value={catalogId} onChange={e => setCatalogId(e.target.value === "" ? "" : Number(e.target.value))}>
+                        <option value="">Paket seçin...</option>
+                        {catalog.map(p => <option key={p.id} value={p.id}>{p.name} — {p.sessionCount} seans — {p.packagePrice} AZN</option>)}
+                      </select>
+                    </div>
                   ) : (
-                    <>
-                      <input type="text" value={pkgName} onChange={e => setPkgName(e.target.value)} placeholder="Paket adı (opsional)"
-                        style={{ width: "100%", padding: "8px 10px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 13, marginBottom: 8, boxSizing: "border-box" }} />
-                      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                        <input type="number" min={1} value={pkgSessions} onChange={e => setPkgSessions(e.target.value)} placeholder="Seans sayı"
-                          style={{ flex: 1, padding: "8px 10px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 13, boxSizing: "border-box" }} />
-                        <input type="number" min={0} value={pkgPrice} onChange={e => setPkgPrice(e.target.value)} placeholder="Qiymət (AZN)"
-                          style={{ flex: 1, padding: "8px 10px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 13, boxSizing: "border-box" }} />
+                    <div className="fx-stack" style={{ gap: 8, marginBottom: 12 }}>
+                      <input className="fx-input" type="text" value={pkgName} onChange={e => setPkgName(e.target.value)} placeholder="Paket adı (opsional)" />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input className="fx-input" type="number" min={1} value={pkgSessions} onChange={e => setPkgSessions(e.target.value)} placeholder="Seans sayı" />
+                        <input className="fx-input" type="number" min={0} value={pkgPrice} onChange={e => setPkgPrice(e.target.value)} placeholder="Qiymət (AZN)" />
                       </div>
-                    </>
+                    </div>
                   )}
 
-                  <button onClick={sellPackage} disabled={sellingPkg}
-                    style={{ width: "100%", padding: "10px 0", background: "#B45309", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: sellingPkg ? "not-allowed" : "pointer", opacity: sellingPkg ? 0.7 : 1 }}>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12, cursor: "pointer" }}>
+                    <input type="checkbox" className="fx-checkbox" checked={pkgPatientChoseDirectly}
+                      onChange={e => setPkgPatientChoseDirectly(e.target.checked)} style={{ marginTop: 1 }} />
+                    <span className="fx-muted" style={{ fontSize: 12.5, lineHeight: 1.4 }}>
+                      Pasient telefonda bu psixoloqu özü istəyib (komissiyasız/azaldılmış faiz tətbiq olunur)
+                    </span>
+                  </label>
+
+                  <button type="button" disabled={sellingPkg} onClick={sellPackage}
+                    className="fx-btn" style={{ width: "100%", background: "var(--lilac)", borderColor: "var(--lilac)", color: "#fff" }}>
                     {sellingPkg ? "Göndərilir..." : "Paketi sat"}
                   </button>
-                </>
+                </div>
               )}
             </div>
 
-            <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "20px 24px", display: "flex", gap: 10 }}>
-              <button onClick={release} disabled={claimBusy}
-                style={{ flex: 1, padding: "9px 0", background: "#fff", color: "#374151", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: claimBusy ? "not-allowed" : "pointer" }}>
+            <div className="fx-card fx-card__pad" style={{ display: "flex", gap: 10 }}>
+              <button type="button" disabled={claimBusy} onClick={release} className="fx-btn fx-btn--ghost" style={{ flex: 1 }}>
                 Hovuza buraxdır
               </button>
-              <button onClick={cancel} disabled={cancelBusy}
-                style={{ flex: 1, padding: "9px 0", background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: cancelBusy ? "not-allowed" : "pointer" }}>
+              <button type="button" disabled={cancelBusy} onClick={cancel} className="fx-btn fx-btn--danger-ghost" style={{ flex: 1 }}>
                 Ləğv et
               </button>
             </div>

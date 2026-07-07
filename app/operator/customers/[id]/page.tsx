@@ -1,20 +1,23 @@
 "use client";
 
-// Modul H — operator müştəri profili (360° görünüş). Yalnız oxunan.
+// Modul H — operator müştəri profili (360° görünüş, Fanus UI Kit).
 // Pasiyentin qeydiyyatı, seans bölgüsü, ödənişlər, paketlər, test nəticələri,
-// rəylər və fəaliyyət lenti bir səhifədə. Modul G məxfi sahələri açıq işarələnir.
+// rəylər, qayğı paneli, operator qeydləri (CRM) və fəaliyyət jurnalı bir səhifədə.
+// Modul G məxfi sahələri (təcili əlaqə/ünvan) açıq işarələnir.
 
-import { use, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { use, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { operatorApi, type CustomerProfile, type Psychologist, type PackageDto, type AvailableSlot } from "@/lib/api";
+import { operatorApi, type CustomerProfile, type CustomerNote, type Psychologist, type PackageDto, type AvailableSlot, type IntroEligibility } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { isoToAzLocal, azFormatDate, azFormatTime, azLocalToISO } from "@/lib/datetime";
-import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import DatePicker from "@/components/DatePicker";
 import OnBehalfBookingModal from "@/components/OnBehalfBookingModal";
+import { Icon } from "../icons";
 
+// ─── Köməkçilər ──────────────────────────────────────────────────────────────
+const MONTHS_AZ = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avqust", "sentyabr", "oktyabr", "noyabr", "dekabr"];
 function pad2(n: number) { return String(n).padStart(2, "0"); }
 function fmtDate(iso?: string | null) {
   if (!iso) return "—";
@@ -28,6 +31,38 @@ function fmtDateTime(iso?: string | null) {
   if (Number.isNaN(d.getTime())) return "—";
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
+/** Jurnal/sətir tarixləri üçün "5 iyul" tipli qısa format. */
+function fmtShort(iso?: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return `${d.getDate()} ${MONTHS_AZ[d.getMonth()]}`;
+}
+function fmtShortTime(iso?: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return `${fmtShort(iso)}, ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+function monthsSince(iso?: string | null): number {
+  if (!iso) return 0;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 0;
+  const now = new Date();
+  return Math.max(0, (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth()));
+}
+function daysSince(iso?: string | null): number | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.floor((Date.now() - d.getTime()) / 86_400_000);
+}
+const fmtNum = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+function initialsOf(name?: string | null): string {
+  if (!name) return "?";
+  return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
+}
+function avatarVariant(id: number) { return (Math.abs(id) % 4) + 1; }
 /** datetime-local stringinə dəqiqə əlavə edir, yenə datetime-local formatı qaytarır. */
 function addMinutes(local: string, mins: number): string {
   const d = new Date(local);
@@ -38,47 +73,50 @@ function addMinutes(local: string, mins: number): string {
 function dateOnly(d: Date): string { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
 
 const STATUS_LABEL: Record<string, string> = {
-  PENDING: "Gözlənilir",
-  NEW: "Yeni",
-  REJECTED: "Yenidən təyin",
-  IN_REVIEW: "Operatorda",
-  ASSIGNED: "Təyin edilib",
-  CONFIRMED: "Təsdiqlənib",
-  AWAITING_CONFIRMATION: "Təsdiq gözlənir",
-  DISPUTED: "Mübahisəli",
-  COMPLETED: "Tamamlanıb",
-  CANCELLED: "Ləğv edilib",
-  CANCEL_REQUESTED: "Ləğv gözlənir",
-  PAID: "Ödənilib",
-  PARTIALLY_REFUNDED: "Qismi qaytarılıb",
-  REFUNDED: "Geri qaytarılıb",
-  ACTIVE: "Aktiv",
-  EXPIRED: "Bitib",
-  PUBLISHED: "Dərc edilib",
-  HIDDEN: "Gizli",
+  PENDING: "Gözlənilir", NEW: "Yeni", REJECTED: "Yenidən təyin", IN_REVIEW: "Operatorda",
+  ASSIGNED: "Təyin edilib", CONFIRMED: "Təsdiqlənib", AWAITING_CONFIRMATION: "Təsdiq gözlənir",
+  DISPUTED: "Mübahisəli", COMPLETED: "Tamamlanıb", CANCELLED: "Ləğv edilib", CANCEL_REQUESTED: "Ləğv gözlənir",
+  PAID: "Ödənilib", PARTIALLY_REFUNDED: "Qismi qaytarılıb", REFUNDED: "Geri qaytarılıb",
+  ACTIVE: "Aktiv", EXPIRED: "Bitib", PUBLISHED: "Dərc edilib", HIDDEN: "Gizli",
 };
-function statusLabel(s: string): string {
-  return STATUS_LABEL[s] ?? s;
-}
+function statusLabel(s: string): string { return STATUS_LABEL[s] ?? s; }
 
 const FLAG_LABEL: Record<string, string> = {
-  HIGH_NO_SHOW: "Yüksək no-show",
-  HIGH_LATE_CANCEL: "Yüksək gec ləğv",
-  HIGH_REJECT: "Yüksək rədd",
+  HIGH_NO_SHOW: "Yüksək no-show", HIGH_LATE_CANCEL: "Yüksək gec ləğv", HIGH_REJECT: "Yüksək rədd",
+};
+const ACTIVITY_LABEL: Record<string, string> = {
+  AUDIT: "Audit", SUPPORT: "Dəstək", APPOINTMENT: "Randevu", TEST: "Test",
 };
 
-const ACTIVITY_LABEL: Record<string, { text: string; tone: "brand" | "good" | "warn" | "neutral" }> = {
-  AUDIT: { text: "Audit", tone: "neutral" },
-  SUPPORT: { text: "Dəstək", tone: "warn" },
-  APPOINTMENT: { text: "Randevu", tone: "brand" },
-  TEST: { text: "Test", tone: "good" },
+const PILL_CLASS: Record<string, string> = {
+  PENDING: "fx-pill--pending", PAID: "fx-pill--paid", PARTIALLY_REFUNDED: "fx-pill--partial",
+  REFUNDED: "fx-pill--refunded", CANCELLED: "fx-pill--cancelled",
 };
+function pillClass(status: string) { return PILL_CLASS[status] ?? "fx-pill--neutral"; }
+
+const PKG_TEXT: Record<string, { label: string; color: string }> = {
+  ACTIVE: { label: "Aktiv", color: "var(--sage)" },
+  EXHAUSTED: { label: "Tamamlanıb", color: "var(--oxford-60)" },
+  EXPIRED: { label: "Vaxtı keçib", color: "var(--amber)" },
+  CANCELLED: { label: "Ləğv", color: "var(--rose)" },
+};
+
+type DotTone = "seans" | "pay" | "pkg" | "test" | "care" | "sys";
+const DOT: Record<DotTone, { bg: string; ring: string }> = {
+  seans: { bg: "var(--brand)", ring: "var(--brand-100)" },
+  pay: { bg: "var(--sage)", ring: "var(--sage-bg)" },
+  pkg: { bg: "var(--lilac)", ring: "var(--lilac-bg)" },
+  test: { bg: "var(--amber)", ring: "var(--amber-bg)" },
+  care: { bg: "var(--rose)", ring: "var(--rose-bg)" },
+  sys: { bg: "var(--oxford-60)", ring: "var(--status-cancelled-bg)" },
+};
+interface JEvent { key: string; title: string; detail: string; at: string; dot: DotTone }
+
+const UPCOMING_STATUSES = new Set(["ASSIGNED", "CONFIRMED", "AWAITING_CONFIRMATION"]);
 
 export default function OperatorCustomerProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  // Next.js 16 — route params artıq Promise-dir, React `use()` ilə açılır.
   const { id: idStr } = use(params);
   const patientId = Number(idStr);
-  const { t } = useT();
 
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,7 +126,18 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
   const [sellMode, setSellMode] = useState<"catalog" | "custom" | "single">("catalog");
   const [bookOpen, setBookOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [introStatus, setIntroStatus] = useState<IntroEligibility | null>(null);
+  const [grantingIntro, setGrantingIntro] = useState(false);
   const [schedulePkg, setSchedulePkg] = useState<CustomerProfile["packages"][number] | null>(null);
+
+  const [notes, setNotes] = useState<CustomerNote[]>([]);
+  const [notesLoading, setNotesLoading] = useState(true);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
+  const noteRef = useRef<HTMLTextAreaElement | null>(null);
+  // "İndi" anını render-dən kənarda (state initializer-də) təsbit edirik ki,
+  // useMemo daxilində Date.now() birbaşa çağırılmasın (React saflıq qaydası).
+  const [nowTs] = useState(() => Date.now());
 
   useEffect(() => {
     if (!Number.isFinite(patientId)) { setError(true); setLoading(false); return; }
@@ -101,6 +150,41 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [patientId, reloadKey]);
+
+  useEffect(() => {
+    if (!Number.isFinite(patientId)) return;
+    let alive = true;
+    setNotesLoading(true);
+    operatorApi.customerNotes(patientId)
+      .then(list => { if (alive) setNotes(list); })
+      .catch(() => { if (alive) setNotes([]); })
+      .finally(() => { if (alive) setNotesLoading(false); });
+    return () => { alive = false; };
+  }, [patientId]);
+
+  useEffect(() => {
+    if (!Number.isFinite(patientId)) return;
+    let alive = true;
+    operatorApi.freeIntroStatus(patientId)
+      .then(s => { if (alive) setIntroStatus(s); })
+      .catch(() => { if (alive) setIntroStatus(null); });
+    return () => { alive = false; };
+  }, [patientId, reloadKey]);
+
+  const toggleIntroGrant = async () => {
+    if (grantingIntro) return;
+    const nextAllowed = !introStatus?.hasGrant;
+    setGrantingIntro(true);
+    try {
+      const s = await operatorApi.setFreeIntroPermission(patientId, nextAllowed);
+      setIntroStatus(s);
+      toast(nextAllowed ? "2-ci pulsuz tanışlığa icazə verildi" : "İcazə geri alındı", "success");
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setGrantingIntro(false);
+    }
+  };
 
   const toggleBlock = async () => {
     const h = profile?.history;
@@ -122,25 +206,156 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
     }
   };
 
+  const submitNote = async () => {
+    const text = noteDraft.trim();
+    if (!text) { toast("Qeyd boşdur", "error"); return; }
+    setAddingNote(true);
+    try {
+      const n = await operatorApi.addCustomerNote(patientId, text);
+      setNotes(prev => [n, ...prev]);
+      setNoteDraft("");
+      toast("Qeyd əlavə edildi", "success");
+    } catch (e) {
+      toast((e as Error).message || "Qeyd əlavə edilmədi", "error");
+    } finally {
+      setAddingNote(false);
+    }
+  };
+
+  // ── Törənmiş dəyərlər (yalnız profile mövcud olanda) ──────────────────────
+  const derived = useMemo(() => {
+    if (!profile) return null;
+    const h = profile.history;
+
+    const paidLike = profile.payments.filter(p => p.status === "PAID" || p.status === "PARTIALLY_REFUNDED");
+    const ltv = paidLike.reduce((a, p) => a + (p.amount - (p.refundedAmount ?? 0)), 0);
+    const avgSession = profile.completedCount > 0 ? Math.round(ltv / profile.completedCount) : null;
+    const pendingBalance = profile.payments.filter(p => p.status === "PENDING").reduce((a, p) => a + p.amount, 0);
+
+    const activePkgs = profile.packages.filter(p => p.status === "ACTIVE");
+    const pkgRemaining = activePkgs.reduce((a, p) => a + p.remaining, 0);
+    const pkgTotal = activePkgs.reduce((a, p) => a + p.total, 0);
+
+    const upcoming = profile.appointments
+      .filter(a => a.startAt && new Date(a.startAt).getTime() > nowTs && UPCOMING_STATUSES.has(a.status))
+      .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
+    const nextSession = upcoming[0] ?? null;
+
+    const events: JEvent[] = [];
+    for (const p of profile.payments) {
+      const at = p.paidAt ?? p.createdAt ?? null;
+      if (at) {
+        const link = p.patientPackageId != null ? "Paket ödənişi" : p.appointmentId != null ? `Seans #${p.appointmentId}` : "—";
+        events.push({
+          key: `pay-${p.id}`,
+          title: p.status === "PENDING" ? `Ödəniş gözləyir — ${fmtNum(p.amount)} AZN (${p.method || "—"})` : `Ödəniş — ${fmtNum(p.amount)} AZN (${p.method || "—"})`,
+          detail: link, at, dot: "pay",
+        });
+      }
+      const refunded = p.refundedAmount ?? 0;
+      if (refunded > 0) {
+        events.push({
+          key: `ref-${p.id}`,
+          title: `İadə — ${fmtNum(refunded)} AZN`,
+          detail: p.statusNote ? `«${p.statusNote}»` : "Geri qaytarma icra edildi",
+          at: at ?? new Date().toISOString(), dot: "care",
+        });
+      }
+    }
+    for (const pkg of profile.packages) {
+      if (pkg.purchasedAt) {
+        events.push({
+          key: `pkg-${pkg.id}`,
+          title: `Paket alışı — ${pkg.packageName}`,
+          detail: [pkg.psychologistName, pkg.pricePaid != null ? formatAzn(pkg.pricePaid) : null].filter(Boolean).join(" · ") || "—",
+          at: pkg.purchasedAt, dot: "pkg",
+        });
+      }
+    }
+    for (const tr of profile.testResults) {
+      if (tr.submittedAt) {
+        events.push({
+          key: `test-${tr.assignmentId}`,
+          title: `Test tamamlandı — ${tr.testTitle}`,
+          detail: [tr.totalScore != null && tr.maxScore != null ? `${tr.totalScore}/${tr.maxScore}` : null, tr.scaleLabel].filter(Boolean).join(" · ") || "—",
+          at: tr.submittedAt, dot: "test",
+        });
+      }
+    }
+    for (const r of profile.reviewsGiven) {
+      if (r.createdAt) {
+        events.push({
+          key: `rev-${r.id}`,
+          title: `Rəy verildi — ${r.rating} ulduz`,
+          detail: [r.psychologistName, r.comment ? `«${r.comment}»` : null].filter(Boolean).join(" · ") || "—",
+          at: r.createdAt, dot: "seans",
+        });
+      }
+    }
+    for (const ev of profile.activity) {
+      const tone: DotTone = ev.type === "SUPPORT" ? "care" : ev.type === "APPOINTMENT" ? "seans" : ev.type === "TEST" ? "test" : "sys";
+      events.push({
+        key: `act-${ev.at}-${ev.action ?? ""}`,
+        title: ev.action || ACTIVITY_LABEL[ev.type] || ev.type,
+        detail: ev.summary ?? "—",
+        at: ev.at, dot: tone,
+      });
+    }
+    if (h.registeredAt) events.push({ key: "reg", title: "Platformada qeydiyyat", detail: "—", at: h.registeredAt, dot: "sys" });
+    events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+
+    const careDetail = h.autoFlag === "HIGH_NO_SHOW"
+      ? `${h.noShowCount} dəfə seansa gəlməyib. Sistem avtomatik nişan qoyub.`
+      : h.autoFlag === "HIGH_LATE_CANCEL"
+      ? `${h.lateCancelCount} dəfə gec ləğv edib. Sistem avtomatik nişan qoyub.`
+      : h.autoFlag === "HIGH_REJECT"
+      ? `${h.rejectedCount} təyinatı rədd edib. Sistem avtomatik nişan qoyub.`
+      : "";
+    const careTip = h.autoFlag === "HIGH_NO_SHOW"
+      ? `Tövsiyə: ${h.noShowCount} no-show — növbəti seansdan bir gün əvvəl təsdiq zəngi edin.`
+      : h.autoFlag === "HIGH_LATE_CANCEL"
+      ? `Tövsiyə: ${h.lateCancelCount} gec ləğv — seans xatırlatmasını daha erkən göndərin.`
+      : h.autoFlag === "HIGH_REJECT"
+      ? `Tövsiyə: ${h.rejectedCount} rədd — uyğun psixoloq təklifini yenidən nəzərdən keçirin.`
+      : "";
+
+    return { ltv, avgSession, pendingBalance, pkgRemaining, pkgTotal, nextSession, events, careDetail, careTip };
+  }, [profile, nowTs]);
+
   if (loading) {
-    return <div className="op-loading">{t("common.loading")}</div>;
-  }
-  if (error || !profile) {
     return (
-      <div className="op-error">
-        Müştəri profili yüklənmədi.{" "}
-        <Link href="/operator/customers" style={{ color: "inherit", textDecoration: "underline" }}>
-          Axtarışa qayıt
-        </Link>
+      <div className="fx-page" style={{ minHeight: "auto", padding: 0 }}>
+        <Cust360Skeleton />
+      </div>
+    );
+  }
+  if (error || !profile || !derived) {
+    return (
+      <div className="fx-page" style={{ minHeight: "auto", padding: 0 }}>
+        <div className="fx-card fx-card--error" style={{ padding: "20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center" }}>
+          <Icon name="alert" className="fx-icon fx-icon--xl" style={{ color: "var(--rose)" }} />
+          <div style={{ fontSize: 13, fontWeight: 700 }}>Profil yüklənmədi</div>
+          <div style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>Serverlə əlaqə kəsildi. Bir az sonra yenidən yoxlayın</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <button type="button" className="fx-btn fx-btn--ghost fx-btn--sm" onClick={() => setReloadKey(k => k + 1)}>
+              <Icon name="refresh" className="fx-icon fx-icon--sm" />Yenidən cəhd et
+            </button>
+            <Link href="/operator/customers" className="fx-btn fx-btn--ghost fx-btn--sm">Axtarışa qayıt</Link>
+          </div>
+        </div>
       </div>
     );
   }
 
   const h = profile.history;
-  const totalAppointments = h.totalAppointments;
+  const av = avatarVariant(patientId);
+  const lastLoginDays = daysSince(profile.lastLogin);
+  const months = monthsSince(h.registeredAt);
 
   return (
-    <div className="op-analytics">
+    <div className="fx-page" style={{ minHeight: "auto", padding: 0 }}>
+      <style>{CUST_CSS}</style>
+
       {sellOpen && (
         <SellPackageModal
           patientId={patientId}
@@ -165,369 +380,462 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
           onDone={() => { setBookOpen(false); setReloadKey(k => k + 1); toast("Randevu yaradıldı", "success"); }}
         />
       )}
-      <header className="op-analytics__head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h1>{h.name}</h1>
-          <p>Müştəri profili · #{patientId}</p>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={() => setBookOpen(true)}
-            style={{ padding: "8px 14px", border: "none", borderRadius: 10, background: "var(--brand)", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-            + Randevu yarat
-          </button>
-          <button onClick={toggleBlock} disabled={blocking}
-            style={{ padding: "8px 14px", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer", border: h.blocked ? "1px solid #A7F3D0" : "1px solid #FECACA", background: "#fff", color: h.blocked ? "#065F46" : "#991B1B" }}>
-            {h.blocked ? "Bloku aç" : "Blokla"}
-          </button>
-          <Link href="/operator/customers" className="op-kpi" style={{ flex: "0 0 auto", padding: "8px 14px", textDecoration: "none", fontSize: 13, fontWeight: 600, color: "var(--oxford)" }}>
-            ← Axtarış
-          </Link>
-        </div>
-      </header>
 
-      {/* (a) Şəxsi / qeydiyyat kartı */}
-      <div className="op-card">
-        <div className="op-card__head">
-          <div>
-            <h2>Şəxsi məlumat</h2>
-            <p>Qeydiyyat və əlaqə</p>
-          </div>
-          {h.autoFlag && (
-            <span className="op-card__count" data-tone="danger" style={{ background: "#FEE2E2", color: "#991B1B" }}>
-              ⚑ {FLAG_LABEL[h.autoFlag] ?? h.autoFlag}
-            </span>
-          )}
-        </div>
-        <div className="op-card__body">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-            <Field label="Ad, soyad" value={h.name} />
-            <Field label="Email" value={h.email ?? "—"} />
-            <Field label="Telefon" value={h.phone ?? "—"} />
-            <Field label="Qeydiyyat tarixi" value={fmtDate(h.registeredAt)} />
-            <Field label="Son giriş" value={fmtDateTime(profile.lastLogin)} />
-            <Field
-              label="Status"
-              value={h.blocked ? "Bloklu" : "Aktiv"}
-              valueColor={h.blocked ? "#991B1B" : "#065F46"}
-            />
-          </div>
+      {/* Breadcrumb */}
+      <div className="fx-breadcrumb" style={{ marginBottom: 18 }}>
+        <Link href="/operator/customers">Müştərilər</Link>
+        <Icon name="chevron-right" className="fx-icon" style={{ width: 12, height: 12 }} />
+        <span className="fx-current">{h.name}</span>
+      </div>
 
-          {h.blocked && h.blockReason && (
-            <div style={{ marginTop: 10, fontSize: 12, color: "#991B1B" }}>Blok səbəbi: {h.blockReason}</div>
-          )}
-
-          {/* Modul G — məxfi təcili əlaqə + ünvan */}
-          <div style={{ marginTop: 14, padding: "12px 14px", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#92400E", textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 8 }}>
-              Məxfi · yalnız təcili hallar üçün
+      {/* 1) HERO */}
+      <div className="fx-card fx-card--lg cust-hero" style={{ marginBottom: 14 }}>
+        <div style={{ flex: "1.3 1 420px", display: "flex", gap: 20, padding: "26px 30px", alignItems: "center" }}>
+          <span className={`fx-avatar fx-avatar--lg fx-avatar--${av}`}>{initialsOf(h.name)}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 9, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <h1 className="fx-h2">{h.name}</h1>
+              {h.blocked && <span className="fx-pill fx-pill--refunded">Bloklanıb</span>}
+              {h.autoFlag && (
+                <span className="fx-pill" style={{ background: "var(--status-pending-bg)", color: "var(--status-pending-fg)" }}>
+                  <Icon name="alert" className="fx-icon fx-icon--sm" />Diqqət — {FLAG_LABEL[h.autoFlag] ?? h.autoFlag}
+                </span>
+              )}
+              {months > 0 && <span className="fx-pill fx-pill--info fx-num">Üzv: {months} aydır</span>}
+              {introStatus && (
+                <span className="fx-pill fx-pill--info">
+                  Tanışlıq: {introStatus.usedCount === 0 ? "1 pulsuz haqqı var"
+                    : introStatus.hasGrant ? "2-ci pulsuz haqqı verilib"
+                    : "haqqı bitib"}
+                </span>
+              )}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-              <Field label="Təcili əlaqə (ad)" value={h.emergencyContactName ?? "—"} />
-              <Field label="Təcili əlaqə (telefon)" value={h.emergencyContactPhone ?? "—"} />
-              <Field label="Yaxınlıq dərəcəsi" value={h.emergencyContactRelation ?? "—"} />
-              <Field label="Yaşayış ünvanı" value={h.residentialAddress ?? "—"} />
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              {h.phone && <span className="fx-chip fx-num"><Icon name="phone" className="fx-icon fx-icon--sm" />{h.phone}</span>}
+              {h.email && <span className="fx-chip"><Icon name="mail" className="fx-icon fx-icon--sm" />{h.email}</span>}
+              <span style={{ fontSize: 12, color: "var(--oxford-60)" }}>Qeydiyyat: {fmtDate(h.registeredAt)}</span>
             </div>
+          </div>
+        </div>
+        <div className="fx-kpi-row cust-hero-kpis" style={{ flex: "1.4 1 420px", gridTemplateColumns: "repeat(4,1fr)", borderLeft: "1px solid var(--hairline)" }}>
+          <div className="fx-kpi">
+            <span className="fx-label">Ümumi xərc</span>
+            <span className="fx-kpi__value--sm fx-num">{fmtNum(derived.ltv)} <span className="fx-kpi__unit">AZN</span></span>
+            <span style={{ fontSize: 11.5, color: "var(--sage)", fontWeight: 600 }}>LTV</span>
+          </div>
+          <div className="fx-kpi">
+            <span className="fx-label">Tamamlanmış</span>
+            <span className="fx-kpi__value--sm fx-num">{profile.completedCount}</span>
+            <span className="fx-kpi__meta">seans · {profile.activeCount} aktiv</span>
+          </div>
+          <div className="fx-kpi">
+            <span className="fx-label">Paket balansı</span>
+            <span className="fx-kpi__value--sm fx-num">{derived.pkgTotal > 0 ? <>{derived.pkgRemaining} <span className="fx-kpi__unit">/ {derived.pkgTotal}</span></> : "—"}</span>
+            <span className="fx-kpi__meta">{derived.pkgTotal > 0 ? "seans qalıb" : "aktiv paket yoxdur"}</span>
+          </div>
+          <div className="fx-kpi">
+            <span className="fx-label">Son giriş</span>
+            <span className="fx-kpi__value--sm fx-num">{lastLoginDays == null ? "—" : lastLoginDays <= 0 ? "Bu gün" : <>{lastLoginDays} <span className="fx-kpi__unit">gün</span></>}</span>
+            <span className="fx-kpi__meta">{profile.lastLogin ? `əvvəl · ${fmtDate(profile.lastLogin)}` : "heç vaxt"}</span>
           </div>
         </div>
       </div>
 
-      {/* (b) Seans bölgüsü KPI lenti */}
-      <div className="op-kpis">
-        <KpiBox label="Cəmi randevu" value={totalAppointments} tone="brand" />
-        <KpiBox label="Aktiv" value={profile.activeCount} tone="warn" />
-        <KpiBox label="Tamamlanıb" value={profile.completedCount} tone="good" />
-        <KpiBox label="Ləğv edilib" value={profile.cancelledCount} tone="neutral" />
-        <KpiBox label="No-show" value={h.noShowCount} tone={h.noShowCount >= 3 ? "danger" : "neutral"} />
-        <KpiBox label="Gec ləğv" value={h.lateCancelCount} tone={h.lateCancelCount >= 5 ? "danger" : "neutral"} />
+      {/* 2) TEZ ƏMƏLİYYATLAR */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <button type="button" className="fx-btn fx-btn--primary" onClick={() => { setSellMode("single"); setSellOpen(true); }}>
+          <Icon name="calendar-plus" />Seans sat
+        </button>
+        <button type="button" className="fx-btn fx-btn--ghost" onClick={() => { setSellMode("catalog"); setSellOpen(true); }}>
+          <Icon name="package" />Paket sat
+        </button>
+        {h.phone && (
+          <button type="button" className="fx-btn fx-btn--ghost" onClick={() => window.location.assign(`tel:${h.phone!.replace(/\s/g, "")}`)}>
+            <Icon name="phone" />Zəng
+          </button>
+        )}
+        {h.phone && (
+          <button type="button" className="fx-btn fx-btn--ghost" onClick={() => window.open(`https://wa.me/${h.phone!.replace(/[^\d]/g, "")}`, "_blank", "noopener")}>
+            <Icon name="message" />WhatsApp
+          </button>
+        )}
+        <button type="button" className="fx-btn fx-btn--ghost" onClick={() => noteRef.current?.focus()}>
+          <Icon name="edit" />Qeyd əlavə et
+        </button>
+        <button type="button" className="fx-btn fx-btn--ghost" onClick={() => setBookOpen(true)}>
+          <Icon name="calendar-plus" />Randevu yarat
+        </button>
+        {derived.nextSession && (
+          <div className="fx-flex" style={{ background: "var(--surface)", border: "1px solid var(--hairline)", borderRadius: 10, padding: "8px 14px", fontSize: 12.5, color: "var(--oxford-80)" }}>
+            <Icon name="clock" style={{ color: "var(--brand)" }} />
+            <span>Növbəti seans: <b className="fx-num">{fmtShortTime(derived.nextSession.startAt)}</b>{derived.nextSession.psychologistName ? ` · ${derived.nextSession.psychologistName}` : ""}</span>
+          </div>
+        )}
+        <span className="fx-spacer" />
+        {introStatus && introStatus.usedCount >= 1 && (
+          <button type="button" onClick={toggleIntroGrant} disabled={grantingIntro} className="fx-btn fx-btn--ghost">
+            <Icon name="calendar-plus" />
+            {grantingIntro ? "…" : introStatus.hasGrant ? "2-ci pulsuz icazəni geri al" : "2-ci pulsuz seansa icazə ver"}
+          </button>
+        )}
+        <button type="button" onClick={toggleBlock} disabled={blocking} className="fx-btn fx-btn--ghost"
+          style={h.blocked ? undefined : { borderColor: "rgba(201,125,125,.4)", color: "var(--rose)" }}>
+          <Icon name="block" />{blocking ? "…" : h.blocked ? "Bloku aç" : "Blokla"}
+        </button>
       </div>
 
-      {/* (c) Ödəniş tarixçəsi */}
-      <div className="op-card">
-        <div className="op-card__head">
-          <div><h2>Ödəniş tarixçəsi</h2><p>Bütün ödənişlər</p></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={() => { setSellMode("single"); setSellOpen(true); }}
-              style={{ padding: "7px 14px", border: "none", borderRadius: 10, background: "var(--brand)", color: "#fff", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
-              + Tək seans sat
-            </button>
-            <span className="op-card__count">{profile.payments.length}</span>
+      {/* 3) ƏSAS GÖVDƏ */}
+      <div className="cust-body">
+        {/* SOL SÜTUN */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* Müştəri jurnalı */}
+          <div className="fx-card" style={{ padding: "22px 26px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
+              <span className="fx-card-title">Müştəri jurnalı</span>
+              <div style={{ display: "flex", gap: 12, fontSize: 11, color: "var(--oxford-60)", flexWrap: "wrap" }}>
+                <LegendDot tone="seans" label="Seans" />
+                <LegendDot tone="pay" label="Ödəniş" />
+                <LegendDot tone="pkg" label="Paket" />
+                <LegendDot tone="test" label="Test" />
+                <LegendDot tone="care" label="Qayğı" />
+              </div>
+            </div>
+            {derived.events.length === 0 ? (
+              <EmptyBlock icon="clock" title="Hələ fəaliyyət yoxdur" sub="Seans, ödəniş və digər hadisələr burada görünəcək" />
+            ) : (
+              <div className="fx-timeline">
+                {derived.events.map((ev, i) => (
+                  <div key={ev.key} className="fx-tl-item">
+                    <div className="fx-tl-rail">
+                      <span className="fx-tl-dot" style={{ background: DOT[ev.dot].bg, borderColor: DOT[ev.dot].ring }} />
+                      {i < derived.events.length - 1 && <span className="fx-tl-line" />}
+                    </div>
+                    <div className="fx-tl-body">
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+                        <span className="fx-tl-title">{ev.title}</span>
+                        <span className="fx-tl-meta" style={{ whiteSpace: "nowrap" }}>{fmtShort(ev.at)}</span>
+                      </div>
+                      <span style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{ev.detail}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-        <div className="op-card__body">
-          {profile.payments.length === 0 ? (
-            <div className="op-empty">Ödəniş qeydi yoxdur</div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={tableStyle}>
-                <thead>
-                  <tr>
-                    <Th>Məbləğ</Th>
-                    <Th>Status</Th>
-                    <Th>Üsul</Th>
-                    <Th>Tip</Th>
-                    <Th>Tarix</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {profile.payments.map(p => {
-                    const refunded = p.refundedAmount ?? 0;
+
+          {/* Maliyyə */}
+          <div className="fx-card" style={{ overflow: "hidden" }}>
+            <div className="fx-card-title" style={{ padding: "20px 26px 0" }}>Maliyyə</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", padding: "16px 26px", borderBottom: "1px solid var(--hairline)" }}>
+              <FinStat label="Ümumi xərc" value={`${fmtNum(derived.ltv)} AZN`} />
+              <FinStat label="Orta seans dəyəri" value={derived.avgSession != null ? `${fmtNum(derived.avgSession)} AZN` : "—"} border />
+              <FinStat label="Gözləyən qalıq" value={`${fmtNum(derived.pendingBalance)} AZN`} color={derived.pendingBalance > 0 ? "var(--amber)" : undefined} border />
+            </div>
+            {profile.payments.length === 0 ? (
+              <EmptyBlock icon="card" title="Ödəniş qeydi yoxdur" sub="Seans/paket satışından ödənişlər burada görünəcək" bare />
+            ) : (
+              [...profile.payments].sort((a, b) => new Date(b.paidAt ?? b.createdAt ?? 0).getTime() - new Date(a.paidAt ?? a.createdAt ?? 0).getTime()).map(p => (
+                <div key={p.id} className="cust-hoverrow" style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 26px", borderBottom: "1px solid var(--hairline)", fontSize: 13, flexWrap: "wrap" }}>
+                  <span className="fx-num" style={{ color: "var(--oxford-60)", minWidth: 64 }}>{fmtShort(p.paidAt ?? p.createdAt)}</span>
+                  <span className="fx-num" style={{ fontWeight: 700, minWidth: 90 }}>{fmtNum(p.amount)} AZN</span>
+                  <span style={{ color: "var(--oxford-60)" }}>{p.method || "—"}</span>
+                  <span style={{ color: "var(--oxford-60)", fontSize: 12 }}>{p.patientPackageId != null ? "Paket" : p.appointmentId != null ? `Seans #${p.appointmentId}` : (p.statusNote ? `«${p.statusNote}»` : "—")}</span>
+                  <span className="fx-spacer" />
+                  <span className={`fx-pill ${pillClass(p.status)}`}>{statusLabel(p.status)}</span>
+                </div>
+              ))
+            )}
+            <div style={{ padding: "18px 26px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <div className="fx-section-label">Paketlər</div>
+              {profile.packages.length === 0 ? (
+                <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Paket yoxdur</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {profile.packages.map(pkg => {
+                    const pay = profile.payments.find(pm => pm.patientPackageId === pkg.id);
+                    const paid = pay?.status === "PAID";
+                    const used = Math.max(0, pkg.total - pkg.remaining);
+                    const pct = pkg.total > 0 ? Math.round((used / pkg.total) * 100) : 0;
+                    const done = pkg.status === "EXHAUSTED";
+                    const txt = PKG_TEXT[pkg.status] ?? PKG_TEXT.ACTIVE;
                     return (
-                      <tr key={p.id}>
-                        <Td>
-                          <strong style={{ color: "var(--oxford)" }}>{formatAzn(p.amount)}</strong>
-                          {refunded > 0 && <div style={{ fontSize: 11, color: "#9A3412", fontWeight: 600 }}>−{formatAzn(refunded)} qaytarıldı</div>}
-                        </Td>
-                        <Td>
-                          <StatusPill status={p.status} />
-                          {p.statusNote && <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 2, fontStyle: "italic", maxWidth: 220 }}>«{p.statusNote}»</div>}
-                        </Td>
-                        <Td>{p.method || "—"}</Td>
-                        <Td>{p.patientPackageId != null ? "Paket" : "Tək seans"}</Td>
-                        <Td>{fmtDateTime(p.paidAt ?? p.createdAt)}</Td>
-                      </tr>
+                      <div key={pkg.id} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13, gap: 10, flexWrap: "wrap" }}>
+                          <span style={{ fontWeight: 600 }}>{pkg.packageName} <span style={{ fontWeight: 400, color: "var(--oxford-60)" }}>
+                            {[pkg.psychologistName, pkg.pricePaid != null ? formatAzn(pkg.pricePaid) : null].filter(Boolean).map(s => ` · ${s}`).join("")}
+                          </span></span>
+                          <span className="fx-num" style={{ fontSize: 12, fontWeight: 600, color: "var(--brand-600)" }}>{pkg.remaining} / {pkg.total} qalıb</span>
+                        </div>
+                        <div className="fx-progress">
+                          <div className={`fx-progress__fill${done ? " fx-progress__fill--sage" : ""}`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, color: "var(--oxford-60)", flexWrap: "wrap", gap: 8 }} className="fx-num">
+                          <span>{used} istifadə olunub</span>
+                          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontWeight: 600, color: txt.color }}>{txt.label}</span>
+                            <span className={`fx-pill ${paid ? "fx-pill--paid" : "fx-pill--pending"}`}>
+                              <Icon name={paid ? "check" : "clock"} className="fx-icon fx-icon--sm" style={{ width: 11, height: 11 }} />
+                              {paid ? "Ödənildi" : "Ödəniş gözlənir"}
+                            </span>
+                          </span>
+                        </div>
+                        {pkg.status === "ACTIVE" && pkg.remaining > 0 && pkg.psychologistId != null && (
+                          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                            <button type="button" onClick={() => setSchedulePkg(pkg)} className="fx-btn fx-btn--ghost fx-btn--sm">
+                              <Icon name="calendar-plus" className="fx-icon fx-icon--sm" />Seans planla
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* (d) Paketlər */}
-      <div className="op-card">
-        <div className="op-card__head">
-          <div><h2>Paketlər</h2><p>Alınmış seans paketləri</p></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={() => { setSellMode("catalog"); setSellOpen(true); }}
-              style={{ padding: "7px 14px", border: "none", borderRadius: 10, background: "var(--brand)", color: "#fff", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
-              + Paket sat
-            </button>
-            <span className="op-card__count">{profile.packages.length}</span>
+          {/* Test nəticələri */}
+          <div className="fx-card" style={{ padding: "20px 26px", display: "flex", flexDirection: "column", gap: 16 }}>
+            <span className="fx-card-title">Test nəticələri</span>
+            {profile.testResults.length === 0 ? (
+              <EmptyBlock icon="check-square" title="Test nəticəsi yoxdur" sub="Müştəriyə test göndərəndə nəticələr burada görünəcək" bare />
+            ) : (
+              profile.testResults.map((tr, i) => (
+                <div key={tr.assignmentId} style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: i < profile.testResults.length - 1 ? 16 : 0, borderBottom: i < profile.testResults.length - 1 ? "1px solid var(--hairline)" : "none" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 600 }}>{tr.testTitle}</span>
+                    <span className="fx-num" style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>{tr.submittedAt ? fmtShort(tr.submittedAt) : statusLabel(tr.status)}</span>
+                  </div>
+                  {tr.totalScore != null && tr.maxScore != null ? (
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span className="fx-num" style={{ fontSize: 16, fontWeight: 800 }}>{tr.totalScore} <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>/ {tr.maxScore}{tr.percentage != null ? ` · ${Math.round(tr.percentage)}%` : ""}</span></span>
+                        {tr.scaleLabel && <span className="fx-pill fx-pill--neutral">{tr.scaleLabel}</span>}
+                      </div>
+                      <div className="fx-progress" style={{ maxWidth: 320 }}>
+                        <div className="fx-progress__fill--soft" style={{ width: `${Math.round(tr.percentage ?? 0)}%`, background: "var(--brand-300)", borderRadius: "inherit" }} />
+                      </div>
+                      <span style={{ fontSize: 12, color: "var(--oxford-60)" }}>Nəticə psixoloqla növbəti seansda müzakirə üçün nəzərdə tutulub</span>
+                    </>
+                  ) : (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                      <span style={{ fontSize: 12, color: "var(--oxford-60)" }}>Müştəriyə göndərilib, cavab gözlənilir</span>
+                      <span className="fx-pill fx-pill--pending">{statusLabel(tr.status)}</span>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Verilmiş rəylər */}
+          <div className="fx-card" style={{ padding: "20px 26px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <span className="fx-card-title">Verilmiş rəylər</span>
+            {profile.reviewsGiven.length === 0 ? (
+              <EmptyBlock icon="star" title="Rəy yoxdur" sub="Müştərinin verdiyi rəylər burada görünəcək" bare />
+            ) : (
+              profile.reviewsGiven.map((r, i) => (
+                <div key={r.id} style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: i < profile.reviewsGiven.length - 1 ? 12 : 0, borderBottom: i < profile.reviewsGiven.length - 1 ? "1px solid var(--hairline)" : "none" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>{r.psychologistName ?? "—"}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span className="fx-stars" aria-label={`${Math.round(r.rating)} / 5`}>
+                        {[1, 2, 3, 4, 5].map(n => (
+                          <svg key={n} viewBox="0 0 24 24" className={n <= Math.round(r.rating) ? undefined : "fx-star--off"}>
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                          </svg>
+                        ))}
+                      </span>
+                      <span className={`fx-pill ${r.status === "PUBLISHED" ? "fx-pill--paid" : "fx-pill--cancelled"}`}>{statusLabel(r.status)}</span>
+                    </div>
+                  </div>
+                  {r.comment && <span style={{ fontSize: 13, color: "var(--oxford-80)", background: "var(--surface-muted)", border: "1px solid var(--hairline)", borderRadius: 8, padding: "10px 14px" }}>«{r.comment}»</span>}
+                  {r.createdAt && <span className="fx-num" style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>{fmtDate(r.createdAt)}</span>}
+                </div>
+              ))
+            )}
           </div>
         </div>
-        <div className="op-card__body">
-          {profile.packages.length === 0 ? (
-            <div className="op-empty">Paket yoxdur</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {profile.packages.map(pkg => {
-                const st = PKG_STATUS[pkg.status] ?? PKG_STATUS.ACTIVE;
-                const pay = profile.payments.find(pm => pm.patientPackageId === pkg.id);
-                const paid = pay?.status === "PAID";
-                const used = Math.max(0, pkg.total - pkg.remaining);
-                const pct = pkg.total > 0 ? Math.round((used / pkg.total) * 100) : 0;
-                const done = pkg.status === "EXHAUSTED";
-                return (
-                  <div key={pkg.id} style={{ border: "1px solid #EDF1F8", borderRadius: 12, padding: 15 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 9 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{pkg.packageName}</span>
-                        <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>{st.label}</span>
-                      </div>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: paid ? "#D1FAE5" : "#FEF3C7", color: paid ? "#065F46" : "#92400E", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>
-                        {paid
-                          ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 6L9 17l-5-5" /></svg>
-                          : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>}
-                        {paid ? "Ödənildi" : "Ödəniş gözlənir"}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 11 }}>
-                      {pkg.remaining}/{pkg.total} qalıb{pkg.psychologistName ? ` · ${pkg.psychologistName}` : ""}{pkg.pricePaid != null ? ` · ${formatAzn(pkg.pricePaid)}` : ""}{pkg.purchasedAt ? ` · alınıb ${fmtDate(pkg.purchasedAt)}` : ""}
-                    </div>
-                    <div style={{ height: 8, background: done ? "#D1FAE5" : "#E4ECFA", borderRadius: 999, overflow: "hidden" }}>
-                      <div style={{ width: `${pct}%`, height: "100%", background: done ? "#10B981" : "linear-gradient(90deg,#1051B7,#3A74D6)", borderRadius: 999 }} />
-                    </div>
-                    {pkg.status === "ACTIVE" && pkg.remaining > 0 && pkg.psychologistId != null && (
-                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 11 }}>
-                        <button type="button" onClick={() => setSchedulePkg(pkg)}
-                          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", border: "1px solid var(--brand)", borderRadius: 9, background: "#fff", color: "var(--brand-700)", fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" /></svg>
-                          Seans planla
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* (e) Test nəticələri */}
-      <div className="op-card">
-        <div className="op-card__head">
-          <div><h2>Test nəticələri</h2><p>Psixoloji test nəticələri</p></div>
-          <span className="op-card__count">{profile.testResults.length}</span>
-        </div>
-        <div className="op-card__body">
-          {profile.testResults.length === 0 ? (
-            <div className="op-empty">Test nəticəsi yoxdur</div>
-          ) : (
-            <div className="op-list">
-              {profile.testResults.map(tr => (
-                <div key={tr.assignmentId} className="op-row">
-                  <div className="op-row__main">
-                    <div className="op-row__name">
-                      {tr.testTitle}
-                      <span className="op-row__badge" data-tone="good" style={{ marginLeft: 6 }}>
-                        {statusLabel(tr.status)}
-                      </span>
-                    </div>
-                    <div className="op-row__meta">
-                      {tr.totalScore != null && tr.maxScore != null && (
-                        <span>Bal: {tr.totalScore} / {tr.maxScore}</span>
-                      )}
-                      {tr.percentage != null && <span>· {Math.round(tr.percentage)}%</span>}
-                      {tr.scaleLabel && <span>· {tr.scaleLabel}</span>}
-                      {tr.submittedAt && <span>· {fmtDate(tr.submittedAt)}</span>}
-                    </div>
-                  </div>
+        {/* SAĞ SÜTUN */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* Qayğı paneli */}
+          <div className="fx-card" style={{ overflow: "hidden" }}>
+            <div className="fx-card-title" style={{ padding: "18px 22px", borderBottom: "1px solid var(--hairline)" }}>Qayğı paneli</div>
+            {h.autoFlag && (
+              <div className="fx-alert" style={{ margin: "16px 22px 0" }}>
+                <Icon name="alert" className="fx-icon fx-icon--md" />
+                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  <span className="fx-alert__title">{FLAG_LABEL[h.autoFlag] ?? h.autoFlag} göstəricisi</span>
+                  <span className="fx-alert__text">{derived.careDetail}</span>
                 </div>
-              ))}
+              </div>
+            )}
+            <div style={{ padding: "16px 22px", display: "flex", flexDirection: "column", gap: 9, fontSize: 13 }}>
+              <CareRow label="Gəlmədi (no-show)" value={h.noShowCount} warn={h.noShowCount >= 2} />
+              <CareRow label="Gec ləğv" value={h.lateCancelCount} warn={h.lateCancelCount >= 3} />
+              <CareRow label="Rədd edilmiş" value={h.rejectedCount} />
+              <CareRow label="Ləğv edilmiş" value={h.cancelledCount} />
             </div>
-          )}
-        </div>
-      </div>
+            {h.autoFlag && (
+              <div style={{ margin: "0 22px 18px", borderTop: "1px solid var(--hairline)", paddingTop: 12, display: "flex", gap: 9, fontSize: 12, color: "var(--oxford-80)", lineHeight: 1.5 }}>
+                <Icon name="info" className="fx-icon fx-icon--sm" style={{ color: "var(--brand)", flexShrink: 0, marginTop: 1 }} />
+                <span>{derived.careTip}</span>
+              </div>
+            )}
+          </div>
 
-      {/* (f) Verilmiş rəylər */}
-      <div className="op-card">
-        <div className="op-card__head">
-          <div><h2>Verilmiş rəylər</h2><p>Müştərinin yazdığı rəylər</p></div>
-          <span className="op-card__count">{profile.reviewsGiven.length}</span>
-        </div>
-        <div className="op-card__body">
-          {profile.reviewsGiven.length === 0 ? (
-            <div className="op-empty">Rəy yoxdur</div>
-          ) : (
-            <div className="op-list">
-              {profile.reviewsGiven.map(r => (
-                <div key={r.id} className="op-row">
-                  <div className="op-row__main">
-                    <div className="op-row__name">
-                      {r.psychologistName ?? "—"}
-                      <span style={{ marginLeft: 8, color: "#F59E0B", fontWeight: 700, letterSpacing: 1 }}>
-                        {"★".repeat(Math.max(0, Math.min(5, Math.round(r.rating))))}
-                        <span style={{ color: "#D1D5DB" }}>
-                          {"★".repeat(Math.max(0, 5 - Math.min(5, Math.round(r.rating))))}
-                        </span>
-                      </span>
-                      <span className="op-row__badge" data-tone="neutral" style={{ marginLeft: 6 }}>
-                        {statusLabel(r.status)}
-                      </span>
-                    </div>
-                    <div className="op-row__meta">
-                      {r.comment && <span>«{r.comment}»</span>}
-                      {r.createdAt && <span>· {fmtDate(r.createdAt)}</span>}
-                    </div>
-                  </div>
+          {/* Operator qeydləri */}
+          <div className="fx-card" style={{ overflow: "hidden" }}>
+            <div style={{ padding: "18px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--hairline)" }}>
+              <span className="fx-card-title">Operator qeydləri</span>
+              <span className="fx-pill fx-pill--count fx-num">{notes.length}</span>
+            </div>
+            {notesLoading ? (
+              <div style={{ padding: "14px 22px", display: "flex", flexDirection: "column", gap: 10 }}>
+                <div className="fx-skeleton" style={{ height: 11, width: "80%" }} />
+                <div className="fx-skeleton" style={{ height: 9, width: "40%" }} />
+              </div>
+            ) : notes.length === 0 ? (
+              <div style={{ padding: "14px 22px", fontSize: 12.5, color: "var(--oxford-60)" }}>Hələ qeyd yoxdur</div>
+            ) : (
+              notes.map(n => (
+                <div key={n.id} style={{ padding: "14px 22px", borderBottom: "1px solid var(--hairline)", display: "flex", flexDirection: "column", gap: 5 }}>
+                  <span style={{ fontSize: 13, color: "var(--oxford-80)", lineHeight: 1.5 }}>{n.text}</span>
+                  <span className="fx-num" style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>{n.authorName ?? "Operator"} · {fmtDate(n.createdAt)}</span>
                 </div>
-              ))}
+              ))
+            )}
+            <div style={{ padding: "16px 22px", display: "flex", flexDirection: "column", gap: 10 }}>
+              <textarea ref={noteRef} className="fx-textarea" rows={3} value={noteDraft} onChange={e => setNoteDraft(e.target.value)}
+                placeholder="Zəng, izləmə və ya müşahidə qeydi yazın…" />
+              <button type="button" onClick={submitNote} disabled={addingNote} className="fx-btn fx-btn--primary fx-btn--sm" style={{ alignSelf: "flex-end" }}>
+                {addingNote ? "Əlavə edilir…" : "Qeyd əlavə et"}
+              </button>
             </div>
-          )}
+          </div>
+
+          {/* Təcili əlaqə + ünvan */}
+          <div className="fx-card fx-card__pad" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <span className="fx-card-title">Təcili əlaqə və ünvan</span>
+            {h.emergencyContactName ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span className="fx-avatar fx-avatar--2">{initialsOf(h.emergencyContactName)}</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>
+                    {h.emergencyContactName}
+                    {h.emergencyContactRelation && <span style={{ fontWeight: 400, color: "var(--oxford-60)" }}> · {h.emergencyContactRelation}</span>}
+                  </span>
+                  <span className="fx-num" style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{h.emergencyContactPhone ?? "—"}</span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Təcili əlaqə qeyd edilməyib</div>
+            )}
+            {h.residentialAddress && (
+              <div style={{ borderTop: "1px solid var(--hairline)", paddingTop: 12, display: "flex", gap: 9, fontSize: 12.5, color: "var(--oxford-80)" }}>
+                <Icon name="map-pin" className="fx-icon fx-icon--sm" style={{ color: "var(--oxford-60)", flexShrink: 0, marginTop: 1 }} />
+                <span>{h.residentialAddress}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* (g) Fəaliyyət lenti */}
-      <div className="op-card">
-        <div className="op-card__head">
-          <div><h2>Fəaliyyət lenti</h2><p>Hesab üzrə son hadisələr</p></div>
-          <span className="op-card__count">{profile.activity.length}</span>
+/* ─── Kiçik building block-lar ────────────────────────────────────────────── */
+
+function LegendDot({ tone, label }: { tone: DotTone; label: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+      <span style={{ width: 8, height: 8, borderRadius: "50%", background: DOT[tone].bg }} />{label}
+    </span>
+  );
+}
+
+function FinStat({ label, value, color, border }: { label: string; value: string; color?: string; border?: boolean }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, borderLeft: border ? "1px solid var(--hairline)" : undefined, paddingLeft: border ? 20 : undefined }}>
+      <span className="fx-label">{label}</span>
+      <span className="fx-num" style={{ fontSize: 18, fontWeight: 800, color }}>{value}</span>
+    </div>
+  );
+}
+
+function CareRow({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <span style={{ color: "var(--oxford-60)" }}>{label}</span>
+      <span className="fx-num" style={{ fontWeight: 700, color: warn ? "var(--status-pending-fg)" : undefined }}>{value}</span>
+    </div>
+  );
+}
+
+function EmptyBlock({ icon, title, sub, bare }: { icon: Parameters<typeof Icon>[0]["name"]; title: string; sub: string; bare?: boolean }) {
+  return (
+    <div className={bare ? "" : "fx-card--empty"} style={bare ? { padding: "24px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center" } : undefined}>
+      <Icon name={icon} className="fx-icon fx-icon--xl" style={{ color: "var(--brand-300)" }} />
+      <div style={{ fontSize: 13, fontWeight: 700 }}>{title}</div>
+      <div style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>{sub}</div>
+    </div>
+  );
+}
+
+function Cust360Skeleton() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className="fx-card fx-card--lg" style={{ display: "flex", padding: "26px 30px", gap: 20, alignItems: "center" }}>
+        <div className="fx-skeleton fx-skeleton--circle" style={{ width: 72, height: 72 }} />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="fx-skeleton" style={{ height: 20, width: "35%" }} />
+          <div className="fx-skeleton" style={{ height: 12, width: "55%" }} />
         </div>
-        <div className="op-card__body">
-          {profile.activity.length === 0 ? (
-            <div className="op-empty">Fəaliyyət qeydi yoxdur</div>
-          ) : (
-            <div className="op-list">
-              {profile.activity.map((ev, i) => {
-                const meta = ACTIVITY_LABEL[ev.type] ?? { text: ev.type, tone: "neutral" as const };
-                return (
-                  <div key={`${ev.at}-${i}`} className="op-row">
-                    <div className="op-row__main">
-                      <div className="op-row__name">
-                        <span className="op-row__badge" data-tone={meta.tone}>{meta.text}</span>
-                        {ev.action && <span style={{ marginLeft: 8, fontWeight: 600 }}>{ev.action}</span>}
-                      </div>
-                      <div className="op-row__meta">
-                        {ev.summary && <span>{ev.summary}</span>}
-                        <span>· {fmtDateTime(ev.at)}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+      </div>
+      <div className="cust-body">
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="fx-card" style={{ padding: 24 }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{ display: "flex", gap: 14, marginTop: i ? 18 : 0 }}>
+                <div className="fx-skeleton fx-skeleton--circle" style={{ width: 11, height: 11, marginTop: 3 }} />
+                <div style={{ flex: 1 }}>
+                  <div className="fx-skeleton" style={{ height: 12, width: "60%" }} />
+                  <div className="fx-skeleton" style={{ height: 9, width: "40%", marginTop: 7 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="fx-card" style={{ padding: 20 }}>
+            <div className="fx-skeleton" style={{ height: 12, width: "50%" }} />
+            <div className="fx-skeleton" style={{ height: 40, width: "100%", marginTop: 14 }} />
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/* ─── Building blocks ────────────────────────────────────────────────────── */
+/* ─── Paket satışı modalı (operator) — dəyişməz, mövcud satış məntiqi ───────── */
 
-function Field({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
-  return (
-    <div>
-      <div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.2 }}>{label}</div>
-      <div style={{ fontSize: 13.5, color: valueColor ?? "var(--oxford)", fontWeight: 600, marginTop: 2, wordBreak: "break-word" }}>{value}</div>
-    </div>
-  );
-}
-
-function KpiBox({ label, value, tone }: { label: string; value: number; tone: "brand" | "good" | "warn" | "danger" | "neutral" }) {
-  return (
-    <div className="op-kpi" data-tone={tone}>
-      <div className="op-kpi__label">{label}</div>
-      <div className="op-kpi__value" data-tone={tone}>{value}</div>
-    </div>
-  );
-}
-
-const tableStyle: React.CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  fontSize: 13,
-};
-function Th({ children }: { children: React.ReactNode }) {
-  return (
-    <th style={{ textAlign: "left", padding: "8px 10px", fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: 0.3, borderBottom: "1px solid #EFF2F7" }}>
-      {children}
-    </th>
-  );
-}
-function Td({ children }: { children: React.ReactNode }) {
-  return (
-    <td style={{ padding: "9px 10px", color: "var(--oxford)", borderBottom: "1px solid #F4F6FA", verticalAlign: "middle" }}>
-      {children}
-    </td>
-  );
-}
-
-/* ─── Paket status + avatar köməkçiləri ──────────────────────────────────── */
-const PKG_STATUS: Record<string, { label: string; bg: string; color: string }> = {
-  ACTIVE:    { label: "Aktiv",       bg: "#D1FAE5", color: "#065F46" },
-  EXHAUSTED: { label: "Tamamlanıb",  bg: "#F3F4F6", color: "#374151" },
-  EXPIRED:   { label: "Vaxtı keçib", bg: "#FEF3C7", color: "#92400E" },
-  CANCELLED: { label: "Ləğv",        bg: "#FEE2E2", color: "#991B1B" },
-};
 const SELL_TINTS = [
   { bg: "#E0EBFA", fg: "#1E3A8A" }, { bg: "#D1FAE5", fg: "#065F46" },
   { bg: "#FEF3C7", fg: "#92400E" }, { bg: "#FCE7F3", fg: "#9D174D" },
   { bg: "#EDE9FE", fg: "#5B21B6" }, { bg: "#CCFBF1", fg: "#115E59" },
 ];
 function sellTint(name?: string | null) {
-  const s = name ?? "?"; let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return SELL_TINTS[h % SELL_TINTS.length];
+  const s = name ?? "?"; let hh = 0;
+  for (let i = 0; i < s.length; i++) hh = (hh * 31 + s.charCodeAt(i)) >>> 0;
+  return SELL_TINTS[hh % SELL_TINTS.length];
 }
 function sellInitials(name?: string | null) {
   if (!name) return "?";
   return name.split(" ").filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
 }
-
-/* ─── Paket satışı modalı (operator) ─────────────────────────────────────── */
 
 function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone }: {
   patientId: number;
@@ -555,17 +863,17 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
   const [manualOpen, setManualOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Pasient bu psixoloqu özü seçib müraciət edibsə komissiyasız/azaldılmış faiz tətbiq olunur.
+  const [patientChoseDirectly, setPatientChoseDirectly] = useState(false);
 
   useEffect(() => { operatorApi.listPsychologists().then(setPsys).catch(() => {}); }, []);
 
-  // Tək seans rejimi: seçilmiş psixoloqun fərdi seans qiymətini avtomatik doldur (redaktə oluna bilir).
   useEffect(() => {
     if (mode !== "single" || psyId == null) return;
     const p = psys.find(x => x.id === psyId);
     if (p && p.individualPrice != null) setSinglePrice(String(p.individualPrice));
   }, [psyId, mode, psys]);
 
-  // Tək seans rejimi: psixoloqun boş saatlarını (yaxın 3 həftə) yüklə.
   useEffect(() => {
     if (mode !== "single" || psyId == null) { setSlots([]); return; }
     setSlotsLoading(true);
@@ -575,7 +883,6 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
       .then(setSlots).catch(() => setSlots([])).finally(() => setSlotsLoading(false));
   }, [mode, psyId]);
 
-  // Psixoloq dəyişəndə vaxt seçimini sıfırla.
   useEffect(() => { setSingleStart(""); setSingleEnd(""); }, [psyId]);
 
   const groupedSlots = useMemo(() => {
@@ -598,8 +905,6 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
       .finally(() => setLoadingCat(false));
   }, [psyId]);
 
-  // Tək seansın müddəti — seçilmiş psixoloqun CARİ standart müddəti (backend
-  // onsuz da endAt-ı bundan hesablayır; burada preview/label yanlış olmasın).
   const selPsy = psys.find(p => p.id === psyId) ?? null;
   const sessionMin = selPsy?.defaultSessionMinutes ?? 50;
 
@@ -607,7 +912,6 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
     setErr(null);
     if (!psyId) { setErr("Psixoloq seçin"); return; }
 
-    // Tək seans — paketsiz, birbaşa PENDING ödəniş.
     if (mode === "single") {
       const p = Number(singlePrice);
       if (!Number.isFinite(p) || p < 0) { setErr("Qiymət düzgün deyil"); return; }
@@ -616,6 +920,7 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
       try {
         await operatorApi.sellSingleSession(patientId, {
           psychologistId: psyId, price: p, startAt: singleStart, endAt: singleEnd || addMinutes(singleStart, sessionMin),
+          patientChoseDirectly,
         });
         onDone(singleName.trim() || "Tək seans", true);
       } catch (e) {
@@ -625,7 +930,6 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
       return;
     }
 
-    // Paket — kataloq və ya xüsusi.
     let payload: Parameters<typeof operatorApi.sellPackage>[1];
     let displayName: string;
     if (mode === "catalog") {
@@ -641,7 +945,7 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
     }
     setSaving(true);
     try {
-      await operatorApi.sellPackage(patientId, payload);
+      await operatorApi.sellPackage(patientId, { ...payload, patientChoseDirectly });
       onDone(displayName, false);
     } catch (e) {
       setErr((e as Error).message);
@@ -649,7 +953,6 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
     }
   };
 
-  // Seçim xülasəsi
   const selCat = catalog.find(c => c.id === catalogId) ?? null;
   let summaryName = "—", summaryMeta = "";
   let hasSelection = false;
@@ -681,7 +984,6 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
     <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(10,26,51,.45)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "28px 20px", overflowY: "auto" }}>
       <style>{`@keyframes opSheet{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}`}</style>
       <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, background: "#fff", borderRadius: 16, boxShadow: "0 24px 70px rgba(8,47,109,.3)", overflow: "hidden", margin: "auto", animation: "opSheet .22s ease" }}>
-        {/* header */}
         <div style={{ padding: "18px 22px", borderBottom: "1px solid #F0F4FA", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
           <div>
             <div style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)" }}>Satış</div>
@@ -692,7 +994,6 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
           </button>
         </div>
 
-        {/* body */}
         <div style={{ padding: "18px 22px", maxHeight: "62vh", overflowY: "auto" }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 9 }}>Psixoloq</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18, maxHeight: 232, overflowY: "auto" }}>
@@ -716,7 +1017,6 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
             })}
           </div>
 
-          {/* rejim tabs */}
           <div style={{ display: "flex", gap: 4, background: "#F0F4FA", borderRadius: 10, padding: 3, marginBottom: 16 }}>
             <button type="button" onClick={() => setMode("catalog")} style={seg(mode === "catalog")}>Kataloq paketi</button>
             <button type="button" onClick={() => setMode("custom")} style={seg(mode === "custom")}>Xüsusi paket</button>
@@ -755,7 +1055,6 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
             )
           ) : mode === "single" ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {/* Boş saatlar — pasiyent kimi seçim */}
               <div>
                 <div style={fLab}>Seans vaxtı — boş saatlardan seçin *</div>
                 {!psyId ? (
@@ -812,8 +1111,14 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
             </div>
           )}
 
-          {/* xülasə */}
-          <div style={{ marginTop: 18, background: "#F2F6FD", border: "1px solid #D6E2F7", borderRadius: 12, padding: "14px 16px" }}>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 9, marginTop: 16, cursor: "pointer" }}>
+            <input type="checkbox" checked={patientChoseDirectly} onChange={e => setPatientChoseDirectly(e.target.checked)} style={{ width: 16, height: 16, marginTop: 1, flex: "none" }} />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford)", lineHeight: 1.4 }}>
+              Pasient bu psixoloqu özü seçib müraciət edib <span style={{ color: "var(--oxford-60)", fontWeight: 500 }}>(komissiyasız/azaldılmış faiz tətbiq olunur)</span>
+            </span>
+          </label>
+
+          <div style={{ marginTop: 12, background: "#F2F6FD", border: "1px solid #D6E2F7", borderRadius: 12, padding: "14px 16px" }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 9 }}>Seçim xülasəsi</div>
             {hasSelection ? (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
@@ -833,7 +1138,6 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
           {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 14 }}>{err}</div>}
         </div>
 
-        {/* footer */}
         <div style={{ display: "flex", gap: 10, padding: "16px 22px", borderTop: "1px solid #F0F4FA" }}>
           <button onClick={onClose} style={{ flex: "none", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "12px 20px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
           <button onClick={submit} disabled={saving} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: 12, fontSize: 14.5, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1, boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
@@ -845,7 +1149,7 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
   );
 }
 
-/* ─── Operator paket seansı planlama modalı ──────────────────────────────── */
+/* ─── Operator paket seansı planlama modalı — dəyişməz ───────────────────── */
 
 function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
   patientId: number;
@@ -893,7 +1197,6 @@ function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
     } catch (e) { setErr((e as Error).message); setSaving(false); }
   };
 
-  const fieldS: CSSProperties = { width: "100%", padding: "10px 12px", borderRadius: 9, border: "1px solid #D6E2F7", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" };
   const labS: CSSProperties = { display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 5 };
 
   return (
@@ -974,14 +1277,10 @@ function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
   );
 }
 
-function StatusPill({ status }: { status: string }) {
-  const ok = status === "PAID" || status === "COMPLETED" || status === "CONFIRMED" || status === "ACTIVE";
-  const bad = status === "CANCELLED" || status === "FAILED" || status === "REJECTED" || status === "EXPIRED" || status === "REFUNDED";
-  const bg = ok ? "#D1FAE5" : bad ? "#FEE2E2" : "#FEF3C7";
-  const fg = ok ? "#065F46" : bad ? "#991B1B" : "#92400E";
-  return (
-    <span style={{ display: "inline-block", padding: "2px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: bg, color: fg }}>
-      {statusLabel(status)}
-    </span>
-  );
-}
+const CUST_CSS = `
+.cust-hero{display:flex;overflow:hidden;flex-wrap:wrap}
+.cust-body{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start}
+.cust-hoverrow{transition:background .12s}
+.cust-hoverrow:hover{background:var(--surface-muted)}
+@media(max-width:900px){.cust-body{grid-template-columns:1fr}}
+`;

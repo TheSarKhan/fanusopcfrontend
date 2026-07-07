@@ -13,7 +13,7 @@ import { psychologistApi, type AppointmentDetail } from "@/lib/api";
 import {
   pad2, fmtTime, avatarColor, initialsOf, STATUS, NO_SHOW_REPORT_WINDOW_MS,
   PSY_APPT_STYLE, IMsg, IAlert, IUser, ISearch,
-  PackageBadge, RowMenu, type MenuItem, DisputeModal, OutcomeModal,
+  PackageBadge, IntroBadge, RowMenu, type MenuItem, DisputeModal, OutcomeModal,
 } from "../shared";
 
 const CANCEL_REASON_LABEL: Record<string, string> = {
@@ -242,6 +242,7 @@ function HistoryCard({
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
         <span className="psy-card__badge" style={{ background: status.bg, color: status.color }}>{status.label}</span>
         {a.patientPackageId != null && <PackageBadge name={a.packageName} />}
+        {a.sessionKind === "INTRO" && <IntroBadge />}
       </div>
 
       {cancelReason && (

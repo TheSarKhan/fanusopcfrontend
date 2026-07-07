@@ -54,6 +54,9 @@ export default function AdminFinancePage() {
 function OverviewSection() {
   const [commission, setCommission] = useState<number | null>(null);
   const [input, setInput] = useState("");
+  const [directCommission, setDirectCommission] = useState<number | null>(null);
+  const [directInput, setDirectInput] = useState("");
+  const [directBusy, setDirectBusy] = useState(false);
   const [summary, setSummary] = useState<FinanceSummary | null>(null);
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -62,6 +65,10 @@ function OverviewSection() {
     adminApi.getCommission().then(c => {
       setCommission(c.globalPercent);
       setInput(c.globalPercent != null ? String(c.globalPercent) : "");
+    }).catch(() => {});
+    adminApi.getDirectCommission().then(c => {
+      setDirectCommission(c.globalPercent);
+      setDirectInput(c.globalPercent != null ? String(c.globalPercent) : "");
     }).catch(() => {});
     adminApi.financeSummary().then(setSummary).catch(() => {}).finally(() => setLoaded(true));
   }, []);
@@ -76,6 +83,18 @@ function OverviewSection() {
       alert("Komissiya faizi yeniləndi — bundan sonrakı ödəniş təsdiqlərində tətbiq olunacaq");
     } catch (e) { alert((e as Error).message); }
     finally { setBusy(false); }
+  };
+
+  const saveDirect = async () => {
+    const val = Number(directInput);
+    if (!Number.isFinite(val) || val < 0 || val > 100) { alert("Faiz 0-100 aralığında olmalıdır"); return; }
+    setDirectBusy(true);
+    try {
+      const c = await adminApi.setDirectCommission(val);
+      setDirectCommission(c.globalPercent);
+      alert("Birbaşa müraciət faizi yeniləndi — bundan sonrakı ödəniş təsdiqlərində tətbiq olunacaq");
+    } catch (e) { alert((e as Error).message); }
+    finally { setDirectBusy(false); }
   };
 
   return (
@@ -104,6 +123,30 @@ function OverviewSection() {
         </div>
       </div>
 
+      <div className="card" style={{ padding: 20, marginBottom: 16 }}>
+        <h3 style={{ margin: "0 0 6px", fontSize: 15 }}>Birbaşa müraciət faizi</h3>
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--muted)" }}>
+          Pasient psixoloqu özü seçib müraciət edəndə (platforma yönləndirməyib) tətbiq olunan faiz.
+          Təyin edilməyibsə 0% (komissiyasız) tətbiq olunur.
+        </p>
+        <div className="row" style={{ gap: 10, alignItems: "center" }}>
+          <input
+            type="number" min={0} max={100} step="0.5"
+            value={directInput}
+            onChange={e => setDirectInput(e.target.value)}
+            placeholder="məs. 0"
+            style={{ width: 120, padding: "8px 12px", border: "1px solid var(--line)", borderRadius: 10, fontSize: 14 }}
+          />
+          <span style={{ fontSize: 14, color: "var(--muted)" }}>%</span>
+          <button className="btn primary" onClick={saveDirect} disabled={directBusy}>
+            {directBusy ? "Saxlanılır…" : "Yadda saxla"}
+          </button>
+          {directCommission == null && (
+            <span className="pill gold">Hələ təyin olunmayıb — 0% tətbiq olunur</span>
+          )}
+        </div>
+      </div>
+
       <div className="card" style={{ padding: 20 }}>
         <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>Gəlir icmalı (cari ay)</h3>
         {!loaded ? (
@@ -111,6 +154,8 @@ function OverviewSection() {
         ) : summary ? (
           <div className="row" style={{ gap: 24, flexWrap: "wrap" }}>
             <Metric label="Komissiya gəliri" value={`${summary.commissionRevenue} AZN`} />
+            <Metric label="— Birbaşa müraciətdən" value={`${summary.directCommissionRevenue} AZN`} />
+            <Metric label="— Yönləndirilmiş müraciətdən" value={`${summary.platformMatchedCommissionRevenue} AZN`} />
             <Metric label="Aktiv abunə" value={String(summary.activeSubscriptions)} />
             <Metric label="Abunə gəliri (aylıq ekv.)" value={`${summary.subscriptionMonthlyRevenue} AZN`} />
             <Metric label="Cəmi" value={`${summary.totalRevenue} AZN`} />

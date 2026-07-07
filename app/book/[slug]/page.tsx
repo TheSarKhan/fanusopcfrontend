@@ -14,6 +14,7 @@ import {
   type BasketResult,
   type Psychologist,
   type PackageSummary,
+  type IntroEligibility,
 } from "@/lib/api";
 import { buildPanelUrl, getStoredUser } from "@/lib/auth";
 import { withSlugs } from "@/lib/slug";
@@ -119,6 +120,11 @@ export default function BookPsychologistPage() {
   const [selectedPackage, setSelectedPackage] = useState<PackageSummary | null>(null);
   const [chooseLater, setChooseLater] = useState(false);
 
+  // Pulsuz tanışlıq (INTRO, 15 dəq) görüşü — hər pasient platforma üzrə 1 pulsuz
+  // haqqa malikdir; 2-ci yalnız operator icazə versə.
+  const [sessionKind, setSessionKind] = useState<"STANDARD" | "INTRO">("STANDARD");
+  const [introEligibility, setIntroEligibility] = useState<IntroEligibility | null>(null);
+
   // Repeat accelerator (B1-2)
   const [repeatOpenFor, setRepeatOpenFor] = useState<string | null>(null);
   const [repeatStep, setRepeatStep] = useState<7 | 14>(7);
@@ -136,6 +142,10 @@ export default function BookPsychologistPage() {
   useEffect(() => {
     setAppointmentsUrl(`${buildPanelUrl("PATIENT")}/appointments`);
     setPackagesUrl(`${buildPanelUrl("PATIENT")}/packages`);
+  }, []);
+
+  useEffect(() => {
+    patientApi.introEligibility().then(setIntroEligibility).catch(() => {});
   }, []);
 
   // Parse extend-mode query params once (client-only page).
@@ -333,6 +343,10 @@ export default function BookPsychologistPage() {
       setError(t("book.basketUnresolved"));
       return;
     }
+    if (sessionKind === "INTRO" && okItems.length >= 2) {
+      setError("Tanışlıq görüşü üçün yalnız bir vaxt seçilə bilər");
+      return;
+    }
     // Modul A — paket alışı (tək seans branch-i aşağıda dəyişməz qalır)
     if (mode === "PACKAGE" && selectedPackage) {
       if (!chooseLater && okItems.length !== selectedPackage.sessionCount) {
@@ -385,6 +399,7 @@ export default function BookPsychologistPage() {
           note: note.trim(),
           requestedPsychologistId: psychologist.id,
           requestedStartAt: okItems.length === 1 ? okItems[0].startAt : null,
+          sessionKind: sessionKind === "INTRO" ? "INTRO" : undefined,
         });
         setResult({
           seriesId: null,
@@ -392,6 +407,11 @@ export default function BookPsychologistPage() {
           createdSlots: okItems.map(b => b.startAt),
           conflicts: [],
         });
+        // Pulsuz tanışlıq uğurla bron olundu — eligibility server-tərəfdə dəyişdi
+        // (1-ci istifadə olundu / 2-ci qrant istehlak oldu), UI vəziyyətini təzələ.
+        if (sessionKind === "INTRO") {
+          patientApi.introEligibility().then(setIntroEligibility).catch(() => {});
+        }
       }
     } catch (err) {
       setError((err as Error).message || "Müraciət göndərilərkən xəta baş verdi");
@@ -461,7 +481,7 @@ export default function BookPsychologistPage() {
 
   /* ── SUCCESS SCREEN ─────────────────────────────────────────────────────── */
   if (result) {
-    const sessionMin = psychologist?.defaultSessionMinutes ?? 50;
+    const sessionMin = sessionKind === "INTRO" ? 15 : (psychologist?.defaultSessionMinutes ?? 50);
     const handleIcsExport = () => {
       if (!psychologist || result.createdSlots.length === 0) return;
       downloadIcsMulti(result.createdSlots.map((slot, i) => {
@@ -578,6 +598,7 @@ export default function BookPsychologistPage() {
 
   const typeSummary = mode === "PACKAGE" && selectedPackage
     ? selectedPackage.name
+    : sessionKind === "INTRO" ? "Tanışlıq görüşü (pulsuz)"
     : okItems.length > 1 ? "Çoxlu seans" : "Tək seans";
 
   const timeDone = (mode === "PACKAGE" && chooseLater) ? true : okItems.length > 0;
@@ -633,7 +654,7 @@ export default function BookPsychologistPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 12.5, fontWeight: 600, color: "var(--oxford-60)" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                    Seans müddəti: {psychologist.defaultSessionMinutes ?? 50} dəq
+                    Seans müddəti: {sessionKind === "INTRO" ? 15 : (psychologist.defaultSessionMinutes ?? 50)} dəq
                   </span>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" /></svg>
@@ -654,11 +675,20 @@ export default function BookPsychologistPage() {
                   <SectionHead n={1} title={t("pkg.chooseType")} />
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
                     <TypeCard
-                      selected={mode === "SINGLE"}
+                      selected={mode === "SINGLE" && sessionKind === "STANDARD"}
                       label={t("pkg.single")}
                       note="Bir dəfəlik seans"
-                      onClick={() => { setMode("SINGLE"); setSelectedPackage(null); setChooseLater(false); }}
+                      onClick={() => { setMode("SINGLE"); setSelectedPackage(null); setChooseLater(false); setSessionKind("STANDARD"); }}
                     />
+                    {introEligibility?.eligible && (
+                      <TypeCard
+                        selected={mode === "SINGLE" && sessionKind === "INTRO"}
+                        badge="Pulsuz"
+                        label="Tanışlıq görüşü"
+                        note="15 dəq · Pulsuz"
+                        onClick={() => { setMode("SINGLE"); setSelectedPackage(null); setChooseLater(false); setSessionKind("INTRO"); }}
+                      />
+                    )}
                     {psychologist.packages?.map(pkg => {
                       const picked = mode === "PACKAGE" && selectedPackage?.id === pkg.id;
                       return (
@@ -668,7 +698,7 @@ export default function BookPsychologistPage() {
                           selected={picked}
                           label={pkg.name}
                           note={`${pkg.sessionCount} seans daxildir`}
-                          onClick={() => { setMode("PACKAGE"); setSelectedPackage(pkg); }}
+                          onClick={() => { setMode("PACKAGE"); setSelectedPackage(pkg); setSessionKind("STANDARD"); }}
                         />
                       );
                     })}
@@ -731,7 +761,7 @@ export default function BookPsychologistPage() {
                       </div>
 
                       {(() => {
-                        const sessionMin = psychologist.defaultSessionMinutes ?? 50;
+                        const sessionMin = sessionKind === "INTRO" ? 15 : (psychologist.defaultSessionMinutes ?? 50);
                         const byTod: Record<"morning" | "afternoon" | "evening", AvailableSlot[]> = { morning: [], afternoon: [], evening: [] };
                         for (const s of activeSlots) byTod[timeOfDay(s.startAt)].push(s);
                         const groups = (["morning", "afternoon", "evening"] as const).filter(g => byTod[g].length > 0);
@@ -940,10 +970,11 @@ function SectionHead({ n, title }: { n: number; title: string }) {
 }
 
 function TypeCard({
-  selected, isPkg, label, note, onClick,
+  selected, isPkg, badge, label, note, onClick,
 }: {
   selected: boolean;
   isPkg?: boolean;
+  badge?: string;
   label: string;
   note: string;
   onClick: () => void;
@@ -951,8 +982,8 @@ function TypeCard({
   return (
     <button type="button" onClick={onClick} aria-pressed={selected}
       style={{ position: "relative", textAlign: "left", background: selected ? "var(--brand-50)" : "#fff", border: `1.5px solid ${selected ? "var(--brand)" : "#E1E9F5"}`, borderRadius: 13, padding: 16, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", gap: 6 }}>
-      {isPkg && (
-        <span style={{ alignSelf: "flex-start", background: "var(--brand-100)", color: "var(--brand-700)", fontSize: 10, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", padding: "3px 8px", borderRadius: 6 }}>Paket</span>
+      {(isPkg || badge) && (
+        <span style={{ alignSelf: "flex-start", background: "var(--brand-100)", color: "var(--brand-700)", fontSize: 10, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", padding: "3px 8px", borderRadius: 6 }}>{badge ?? "Paket"}</span>
       )}
       <span style={{ position: "absolute", top: 14, right: 14, width: 20, height: 20, borderRadius: "50%", border: `2px solid ${selected ? "var(--brand)" : "#CBD5E6"}`, background: selected ? "var(--brand)" : "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: selected ? 1 : 0 }}><path d="M20 6L9 17l-5-5" /></svg>

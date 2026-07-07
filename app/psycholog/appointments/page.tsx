@@ -31,7 +31,7 @@ import {
   MONTHS_AZ, pad2, fmtTime, isSameDay, relativeDayLabel, timeUntil,
   initialsOf, avatarColor, STATUS, NO_SHOW_REPORT_WINDOW_MS, PSY_APPT_STYLE,
   IClock, IMsg, ICal, IAlert, IRefresh, ICheck, IUser, IX, IOpen,
-  PackageBadge, Empty, PsyJoinButton, gcalHrefFor,
+  PackageBadge, IntroBadge, Empty, PsyJoinButton, gcalHrefFor,
   RowMenu, type MenuItem, DisputeModal, OutcomeModal,
 } from "./shared";
 
@@ -447,6 +447,7 @@ function NextHero({ appt, now, client }: { appt: AppointmentDetail | null; now: 
           <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", marginBottom: 3 }}>
             <span style={{ fontSize: 18, fontWeight: 700 }}>{appt.patientName ?? "Pasiyent"}</span>
             {appt.patientPackageId != null && <PackageBadge name={appt.packageName} />}
+            {appt.sessionKind === "INTRO" && <IntroBadge />}
           </div>
           <div style={{ fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 600 }}>{relativeDayLabel(start, now)} · {fmtTime(start)}{appt.endAt ? ` – ${fmtTime(new Date(appt.endAt))}` : ""}{sessionNumber ? ` · ${azOrdinal(sessionNumber)} seans` : ""}</div>
         </div>
@@ -575,6 +576,7 @@ function SessionCard({
         <span className="psy-card__badge" style={{ background: status.bg, color: status.color }}>{status.label}</span>
         {isNext && <span className="psy-card__chip psy-card__chip--next">Növbəti</span>}
         {a.patientPackageId != null && <PackageBadge name={a.packageName} />}
+        {a.sessionKind === "INTRO" && <IntroBadge />}
       </div>
 
       {/* Gözləmə vəziyyətləri */}
@@ -650,6 +652,7 @@ function SessionDetailModal({
             {sessionNumber != null && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1 }}>{azOrdinal(sessionNumber)} seans</div>}
           </div>
           <span className="psy-card__badge" style={{ background: status.bg, color: status.color, flex: "none" }}>{status.label}</span>
+          {a.sessionKind === "INTRO" && <IntroBadge />}
           <button type="button" aria-label="Bağla" onClick={onClose}
             style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "var(--oxford-60)", border: "none", borderRadius: 8, cursor: "pointer", flex: "none" }}>
             <IX s={16} />

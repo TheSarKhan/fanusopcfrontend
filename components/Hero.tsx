@@ -142,15 +142,15 @@ export default function Hero() {
           background: #F0FDF4; border-radius: 999px; padding: 4px 10px;
         }
 
-        /* ── Photo ── */
+        /* ── Illustration ── */
         .fanus-hart {
-          position: relative; width: 100%; aspect-ratio: 4 / 3;
+          position: relative; width: 100%; aspect-ratio: 3 / 2;
           border-radius: 24px; overflow: hidden;
           animation: heroFloat 6s ease-in-out infinite;
         }
         .fanus-hart__img {
           display: block; width: 100%; height: 100%;
-          object-fit: cover; object-position: center 30%;
+          object-fit: cover; object-position: center;
           user-select: none;
         }
 

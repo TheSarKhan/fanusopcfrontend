@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+html,body{margin:0;padding:0;background:#F7F9FC;}
+*{box-sizing:border-box;}
+a{color:#1051B7;text-decoration:none;}
+a:hover{color:#0B3F90;text-decoration:underline;}
+input::placeholder{color:#5C6B85;opacity:.65;}
+@keyframes shimmer{0%{background-position:-400px 0;}100%{background-position:400px 0;}}
+@keyframes toastIn{from{transform:translateY(14px);opacity:0;}to{transform:none;opacity:1;}}
+@keyframes drawerIn{from{transform:translateX(40px);opacity:0;}to{transform:none;opacity:1;}}
+</style>
+</helmet>
+
+<div style="min-height:100vh; background:#F7F9FC; font-family:system-ui,-apple-system,'Segoe UI',sans-serif; color:#0A1A33; padding:32px 40px 64px 40px;" data-screen-label="Ödənişlər modulu">
+
+  <!-- ============ SƏHIFƏ BAŞLIĞI ============ -->
+  <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:24px;">
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <h1 style="margin:0; font-family:Georgia,'Times New Roman',serif; font-weight:500; letter-spacing:-.01em; font-size:30px; color:#0A1A33;">Ödənişlər</h1>
+      <div style="font-size:13px; color:#5C6B85;">Maliyyə əməliyyatları · Bazar ertəsi, 7 iyul 2026</div>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button onClick="{{ onExport }}" style="display:flex; align-items:center; gap:8px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>
+        Export
+      </button>
+      <button onClick="{{ onNew }}" style="display:flex; align-items:center; gap:8px; background:#1051B7; border:1px solid #1051B7; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#FFFFFF; cursor:pointer; font-family:inherit; box-shadow:0 1px 3px rgba(0,33,71,.06);" style-hover="background:#0B3F90;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+        Yeni ödəniş
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ 1) MALİYYƏ NƏBZİ — KPI ============ -->
+  <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:20px; box-shadow:0 1px 3px rgba(0,33,71,.06); display:grid; grid-template-columns:repeat(4,1fr); margin-bottom:16px;">
+    <div style="padding:22px 26px; display:flex; flex-direction:column; gap:6px;">
+      <div style="font-size:12px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.06em;">Bu gün yığılan</div>
+      <div style="font-size:28px; font-weight:800; font-variant-numeric:tabular-nums; color:#0A1A33;">350 <span style="font-size:15px; font-weight:600; color:#5C6B85;">AZN</span></div>
+      <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:#5C6B85;">
+        <span style="display:inline-flex; align-items:center; gap:3px; color:#4A9B7F; font-weight:600;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M8 7h9v9"></path></svg>12%</span>
+        dünənlə müqayisədə · 2 ödəniş
+      </div>
+    </div>
+    <div style="padding:22px 26px; display:flex; flex-direction:column; gap:6px; border-left:1px solid #E9EEF5;">
+      <div style="font-size:12px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.06em;">Bu ay gəlir</div>
+      <div style="font-size:28px; font-weight:800; font-variant-numeric:tabular-nums; color:#0A1A33;">1 340 <span style="font-size:15px; font-weight:600; color:#5C6B85;">AZN</span></div>
+      <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:#5C6B85;">
+        <span style="display:inline-flex; align-items:center; gap:3px; color:#4A9B7F; font-weight:600;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M8 7h9v9"></path></svg>18%</span>
+        keçən aya nisbətən · 5 ödəniş
+      </div>
+    </div>
+    <div style="padding:22px 26px; display:flex; flex-direction:column; gap:6px; border-left:1px solid #E9EEF5;">
+      <div style="font-size:12px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.06em;">Gözləyən məbləğ</div>
+      <div style="font-size:28px; font-weight:800; font-variant-numeric:tabular-nums; color:#0A1A33;">{{ pendingSumFmt }} <span style="font-size:15px; font-weight:600; color:#5C6B85;">AZN</span></div>
+      <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:#5C6B85;">
+        <span style="color:#C97D2E; font-weight:600;">{{ overdueCount }} gecikmiş</span> · {{ pendingCount }} ödəniş
+      </div>
+    </div>
+    <div style="padding:22px 26px; display:flex; flex-direction:column; gap:6px; border-left:1px solid #E9EEF5;">
+      <div style="font-size:12px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.06em;">Geri qaytarılan</div>
+      <div style="font-size:28px; font-weight:800; font-variant-numeric:tabular-nums; color:#0A1A33;">300 <span style="font-size:15px; font-weight:600; color:#5C6B85;">AZN</span></div>
+      <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:#5C6B85;">
+        <span style="display:inline-flex; align-items:center; gap:3px; color:#5C6B85; font-weight:600;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7L7 17"></path><path d="M16 17H7V8"></path></svg>4%</span>
+        bu ay · 3 əməliyyat
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI: qrafiklər sırası -->
+  <div style="display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+
+    <!-- Gəlir dinamikası -->
+    <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); padding:20px 24px; display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline;">
+        <div style="font-size:13px; font-weight:600; color:#2B3C5A;">Bu ay gəlir dinamikası</div>
+        <div style="font-size:11.5px; color:#5C6B85;">Son 14 gün</div>
+      </div>
+      <svg viewBox="0 0 322 76" style="width:100%; height:76px;" preserveAspectRatio="none">
+        <line x1="0" y1="70" x2="322" y2="70" stroke="#E9EEF5" stroke-width="1"></line>
+        <rect x="2" y="48" width="14" height="22" rx="3" fill="#B9DACB"></rect>
+        <rect x="25" y="40" width="14" height="30" rx="3" fill="#B9DACB"></rect>
+        <rect x="48" y="44" width="14" height="26" rx="3" fill="#B9DACB"></rect>
+        <rect x="71" y="32" width="14" height="38" rx="3" fill="#B9DACB"></rect>
+        <rect x="94" y="52" width="14" height="18" rx="3" fill="#B9DACB"></rect>
+        <rect x="117" y="58" width="14" height="12" rx="3" fill="#B9DACB"></rect>
+        <rect x="140" y="36" width="14" height="34" rx="3" fill="#B9DACB"></rect>
+        <rect x="163" y="28" width="14" height="42" rx="3" fill="#9CCBB5"></rect>
+        <rect x="186" y="34" width="14" height="36" rx="3" fill="#9CCBB5"></rect>
+        <rect x="209" y="22" width="14" height="48" rx="3" fill="#9CCBB5"></rect>
+        <rect x="232" y="42" width="14" height="28" rx="3" fill="#9CCBB5"></rect>
+        <rect x="255" y="30" width="14" height="40" rx="3" fill="#6FB395"></rect>
+        <rect x="278" y="18" width="14" height="52" rx="3" fill="#6FB395"></rect>
+        <rect x="301" y="12" width="14" height="58" rx="3" fill="#4A9B7F"></rect>
+      </svg>
+      <div style="display:flex; justify-content:space-between; font-size:11px; color:#5C6B85; font-variant-numeric:tabular-nums;">
+        <span>24 iyun</span><span>30 iyun</span><span>7 iyul</span>
+      </div>
+    </div>
+
+    <!-- Üsul bölgüsü -->
+    <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); padding:20px 24px; display:flex; flex-direction:column; gap:12px;">
+      <div style="font-size:13px; font-weight:600; color:#2B3C5A;">Ödəniş üsulu bölgüsü</div>
+      <div style="display:flex; align-items:center; gap:18px;">
+        <svg width="92" height="92" viewBox="0 0 92 92">
+          <g transform="rotate(-90 46 46)">
+            <circle cx="46" cy="46" r="34" fill="none" stroke="#F2F6FD" stroke-width="12"></circle>
+            <circle cx="46" cy="46" r="34" fill="none" stroke="#1051B7" stroke-width="12" stroke-dasharray="98.3 213.6" stroke-dashoffset="0"></circle>
+            <circle cx="46" cy="46" r="34" fill="none" stroke="#5089E0" stroke-width="12" stroke-dasharray="85.4 213.6" stroke-dashoffset="-98.3"></circle>
+            <circle cx="46" cy="46" r="34" fill="none" stroke="#C3D6F6" stroke-width="12" stroke-dasharray="29.9 213.6" stroke-dashoffset="-183.7"></circle>
+          </g>
+          <text x="46" y="43" text-anchor="middle" font-size="13" font-weight="800" fill="#0A1A33" style="font-variant-numeric:tabular-nums;">2 050</text>
+          <text x="46" y="57" text-anchor="middle" font-size="9" fill="#5C6B85">AZN</text>
+        </svg>
+        <div style="display:flex; flex-direction:column; gap:8px; font-size:12.5px; flex:1;">
+          <div style="display:flex; align-items:center; gap:8px;"><span style="width:9px; height:9px; border-radius:3px; background:#1051B7;"></span><span style="color:#2B3C5A; flex:1;">Kart</span><span style="font-weight:700; font-variant-numeric:tabular-nums;">46%</span></div>
+          <div style="display:flex; align-items:center; gap:8px;"><span style="width:9px; height:9px; border-radius:3px; background:#5089E0;"></span><span style="color:#2B3C5A; flex:1;">Köçürmə</span><span style="font-weight:700; font-variant-numeric:tabular-nums;">40%</span></div>
+          <div style="display:flex; align-items:center; gap:8px;"><span style="width:9px; height:9px; border-radius:3px; background:#C3D6F6;"></span><span style="color:#2B3C5A; flex:1;">Nağd</span><span style="font-weight:700; font-variant-numeric:tabular-nums;">14%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Yığım dərəcəsi -->
+    <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); padding:20px 24px; display:flex; flex-direction:column; gap:12px;">
+      <div style="font-size:13px; font-weight:600; color:#2B3C5A;">Yığım dərəcəsi</div>
+      <div style="display:flex; align-items:baseline; gap:8px;">
+        <span style="font-size:28px; font-weight:800; font-variant-numeric:tabular-nums;">{{ collectionRate }}%</span>
+        <span style="font-size:12px; color:#5C6B85;">ödənilən / ümumi</span>
+      </div>
+      <div style="height:10px; border-radius:6px; background:#E4ECFA; overflow:hidden;">
+        <div style="height:100%; border-radius:6px; background:#1051B7; width:{{ collectionRatePct }};"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:12px; color:#5C6B85; font-variant-numeric:tabular-nums;">
+        <span><span style="color:#1051B7; font-weight:700;">1 340 AZN</span> ödənilib</span>
+        <span><span style="color:#C97D2E; font-weight:700;">{{ pendingSumFmt }} AZN</span> gözləyir</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 2) DİQQƏT TƏLƏB EDƏN ============ -->
+  <sc-if value="{{ hasAttention }}" hint-placeholder-val="{{ true }}">
+  <div style="background:#FFFFFF; border:1px solid rgba(201,125,46,.35); border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); margin-bottom:16px; overflow:hidden;">
+    <div style="height:3px; background:#C97D2E; opacity:.8;"></div>
+    <div style="display:flex; align-items:center; gap:12px; padding:16px 24px; border-bottom:1px solid #E9EEF5;">
+      <span style="display:inline-flex; width:32px; height:32px; border-radius:10px; background:#FEF3C7; color:#92400E; align-items:center; justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+      </span>
+      <div style="flex:1; display:flex; flex-direction:column; gap:1px;">
+        <div style="font-size:14.5px; font-weight:700; color:#0A1A33;">Diqqət tələb edən ödənişlər</div>
+        <div style="font-size:12.5px; color:#5C6B85; font-variant-numeric:tabular-nums;">{{ pendingCount }} ödəniş · {{ pendingSumFmt }} AZN yığılmayıb</div>
+      </div>
+      <div style="font-size:11.5px; color:#92400E; background:#FEF3C7; border-radius:999px; padding:4px 12px; font-weight:600; font-variant-numeric:tabular-nums;">{{ overdueCount }} gecikmiş (24+ saat)</div>
+    </div>
+    <sc-for list="{{ attnRows }}" as="r" hint-placeholder-count="4">
+      <div style="display:flex; align-items:center; gap:14px; padding:13px 24px; border-top:1px solid #E9EEF5;" style-hover="background:#F7F9FC;">
+        <div style="width:34px; height:34px; border-radius:50%; background:{{ r.avBg }}; color:{{ r.avFg }}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0;">{{ r.initials }}</div>
+        <div style="display:flex; flex-direction:column; gap:1px; min-width:170px;">
+          <span style="font-size:13.5px; font-weight:600;">{{ r.name }}</span>
+          <span style="font-size:11.5px; color:#5C6B85;">{{ r.link }}</span>
+        </div>
+        <span style="font-size:11.5px; font-weight:600; border-radius:999px; padding:3px 10px; background:{{ r.ageBg }}; color:{{ r.ageFg }}; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ r.ageLabel }}</span>
+        <div style="flex:1;"></div>
+        <span style="font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; min-width:80px; text-align:right;">{{ r.amountFmt }} <span style="font-size:11.5px; font-weight:600; color:#5C6B85;">AZN</span></span>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button onClick="{{ r.view }}" style="display:flex; align-items:center; gap:6px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit; white-space:nowrap;" style-hover="background:#F2F6FD;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            Pasiyentə bax
+          </button>
+          <button onClick="{{ r.call }}" style="display:flex; align-items:center; gap:6px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            Zəng
+          </button>
+          <sc-if value="{{ r.notReminded }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ r.remind }}" style="display:flex; align-items:center; gap:6px; background:#FEF3C7; border:1px solid rgba(201,125,46,.3); border-radius:8px; padding:6px 11px; font-size:12px; font-weight:600; color:#92400E; cursor:pointer; font-family:inherit; white-space:nowrap;" style-hover="background:#FDEBB0;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+              WhatsApp ilə xatırlat
+            </button>
+          </sc-if>
+          <sc-if value="{{ r.reminded }}" hint-placeholder-val="{{ false }}">
+            <span style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:#4A9B7F; padding:6px 11px; white-space:nowrap;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+              Xatırladıldı
+            </span>
+          </sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+  </sc-if>
+
+  <!-- ============ 3+4) ALƏTLƏR + SİYAHI ============ -->
+  <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); margin-bottom:24px; overflow:hidden;">
+
+    <!-- Tablar -->
+    <div style="display:flex; align-items:center; gap:6px; padding:14px 20px 0 20px;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+        <button onClick="{{ t.go }}" style="display:flex; align-items:center; gap:8px; background:{{ t.bg }}; color:{{ t.fg }}; border:none; border-bottom:2px solid {{ t.bd }}; border-radius:8px 8px 0 0; padding:10px 16px 12px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;">
+          {{ t.label }}
+          <span style="font-size:11px; font-weight:700; border-radius:999px; padding:1px 8px; background:{{ t.cBg }}; color:{{ t.cFg }}; font-variant-numeric:tabular-nums;">{{ t.count }}</span>
+        </button>
+      </sc-for>
+    </div>
+    <div style="height:1px; background:#E9EEF5;"></div>
+
+    <!-- Filtr zolağı -->
+    <div style="display:flex; align-items:center; gap:10px; padding:14px 20px; flex-wrap:wrap; border-bottom:1px solid #E9EEF5;">
+      <div style="display:flex; align-items:center; gap:8px; background:#F7F9FC; border:1px solid #E9EEF5; border-radius:8px; padding:8px 12px; flex:1; min-width:200px; max-width:300px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.35-4.35"></path></svg>
+        <input onInput="{{ onSearch }}" placeholder="Ad və ya telefon üzrə axtar" style="border:none; outline:none; background:transparent; font-size:13px; font-family:inherit; color:#0A1A33; width:100%;">
+      </div>
+      <select onChange="{{ onMethod }}" style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:8px 10px; font-size:12.5px; font-weight:600; color:#2B3C5A; font-family:inherit; cursor:pointer;">
+        <option value="all">Bütün üsullar</option>
+        <option value="Kart">Kart</option>
+        <option value="Nağd">Nağd</option>
+        <option value="Köçürmə">Köçürmə</option>
+      </select>
+      <select onChange="{{ onPsych }}" style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:8px 10px; font-size:12.5px; font-weight:600; color:#2B3C5A; font-family:inherit; cursor:pointer;">
+        <option value="all">Bütün psixoloqlar</option>
+        <option>Dr. Lalə Həsənova</option>
+        <option>Dr. Kamran Musayev</option>
+        <option>Dr. Aysel Qasımova</option>
+      </select>
+      <button style="display:flex; align-items:center; gap:7px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:8px 12px; font-size:12.5px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit; font-variant-numeric:tabular-nums;" style-hover="background:#F2F6FD;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path></svg>
+        1 iyul – 7 iyul
+      </button>
+      <button style="display:flex; align-items:center; gap:7px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:8px 12px; font-size:12.5px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 21v-7"></path><path d="M4 10V3"></path><path d="M12 21v-9"></path><path d="M12 8V3"></path><path d="M20 21v-5"></path><path d="M20 12V3"></path><path d="M1 14h6"></path><path d="M9 8h6"></path><path d="M17 16h6"></path></svg>
+        Məbləğ
+      </button>
+      <select onChange="{{ onSort }}" style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:8px 10px; font-size:12.5px; font-weight:600; color:#2B3C5A; font-family:inherit; cursor:pointer;">
+        <option value="date">Ən yeni</option>
+        <option value="amount-desc">Məbləğ: çoxdan aza</option>
+        <option value="amount-asc">Məbləğ: azdan çoxa</option>
+      </select>
+      <div style="flex:1;"></div>
+      <button onClick="{{ onMine }}" style="display:flex; align-items:center; gap:8px; background:{{ mineBg }}; border:1px solid {{ mineBd }}; border-radius:999px; padding:7px 14px; font-size:12.5px; font-weight:600; color:{{ mineFg }}; cursor:pointer; font-family:inherit;">
+        <span style="width:8px; height:8px; border-radius:50%; background:{{ mineDot }};"></span>
+        Mənim
+      </button>
+    </div>
+
+    <!-- Siyahı -->
+    <sc-for list="{{ rows }}" as="row" hint-placeholder-count="5">
+      <div onClick="{{ row.open }}" style="display:flex; align-items:center; gap:14px; padding:{{ rowPad }}; border-top:1px solid #E9EEF5; cursor:pointer;" style-hover="background:#F7F9FC;">
+        <input type="checkbox" checked="{{ row.selected }}" onChange="{{ row.toggle }}" onClick="{{ stop }}" style="width:16px; height:16px; accent-color:#1051B7; cursor:pointer; flex-shrink:0;">
+        <div style="width:38px; height:38px; border-radius:50%; background:{{ row.avBg }}; color:{{ row.avFg }}; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0;">{{ row.initials }}</div>
+        <div style="display:flex; flex-direction:column; gap:2px; min-width:210px;">
+          <span style="font-size:14px; font-weight:600;">{{ row.name }}</span>
+          <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:#5C6B85;">
+            <sc-if value="{{ row.mCard }}" hint-placeholder-val="{{ true }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg></sc-if>
+            <sc-if value="{{ row.mCash }}" hint-placeholder-val="{{ false }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="2.5"></circle></svg></sc-if>
+            <sc-if value="{{ row.mTrans }}" hint-placeholder-val="{{ false }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"></path><path d="M21 7H9"></path><path d="M7 21l-4-4 4-4"></path><path d="M3 17h12"></path></svg></sc-if>
+            <span>{{ row.method }}</span>
+            <span style="color:#C3D6F6;">·</span>
+            <span style="font-variant-numeric:tabular-nums;">{{ row.dateLabel }}</span>
+            <span style="color:#C3D6F6;">·</span>
+            <span>{{ row.link }}</span>
+          </div>
+          <sc-if value="{{ row.hasNote }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:11.5px; color:#9A3412; font-style:italic;">"{{ row.statusNote }}"</span>
+          </sc-if>
+        </div>
+        <span style="font-size:11.5px; font-weight:600; border-radius:999px; padding:4px 11px; background:{{ row.pillBg }}; color:{{ row.pillFg }}; white-space:nowrap;">{{ row.pillLabel }}</span>
+        <div style="flex:1;"></div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px; min-width:130px;">
+          <span style="font-size:17px; font-weight:700; font-variant-numeric:tabular-nums;">{{ row.amountFmt }} <span style="font-size:12px; font-weight:600; color:#5C6B85;">AZN</span></span>
+          <sc-if value="{{ row.hasRefund }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:11.5px; color:#9A3412; font-variant-numeric:tabular-nums;">qaytarılıb {{ row.refFmt }} · qalıq {{ row.remFmt }}</span>
+          </sc-if>
+          <sc-if value="{{ row.hasCommission }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:11.5px; color:#5C6B85; font-variant-numeric:tabular-nums;">komissiya {{ row.commFmt }} AZN</span>
+          </sc-if>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; min-width:196px; justify-content:flex-end;">
+          <sc-if value="{{ row.canPay }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ row.pay }}" style="background:#1051B7; border:1px solid #1051B7; border-radius:8px; padding:7px 13px; font-size:12px; font-weight:600; color:#FFFFFF; cursor:pointer; font-family:inherit;" style-hover="background:#0B3F90;">Ödənildi</button>
+            <button onClick="{{ row.cancel }}" style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:7px 13px; font-size:12px; font-weight:600; color:#5C6B85; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">Ləğv</button>
+          </sc-if>
+          <sc-if value="{{ row.canRefund }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ row.refund }}" style="background:#FFFFFF; border:1px solid rgba(201,125,125,.4); border-radius:8px; padding:7px 13px; font-size:12px; font-weight:600; color:#C97D7D; cursor:pointer; font-family:inherit;" style-hover="background:#FDF5F5;">İadə</button>
+          </sc-if>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C3D6F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+        </div>
+      </div>
+    </sc-for>
+    <sc-if value="{{ noRows }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:48px; display:flex; flex-direction:column; align-items:center; gap:10px; border-top:1px solid #E9EEF5;">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#88AEEC" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+        <div style="font-size:14px; font-weight:600; color:#2B3C5A;">Nəticə tapılmadı</div>
+        <div style="font-size:12.5px; color:#5C6B85;">Axtarış və ya filtr şərtlərini dəyişin</div>
+      </div>
+    </sc-if>
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; border-top:1px solid #E9EEF5; font-size:12px; color:#5C6B85; font-variant-numeric:tabular-nums;">
+      <span>{{ rowCount }} nəticə göstərilir</span>
+      <span>Cəm: <span style="font-weight:700; color:#0A1A33;">{{ rowSumFmt }} AZN</span></span>
+    </div>
+  </div>
+
+  <!-- ============ 6) KOMİSSİYA / PAYOUT ============ -->
+  <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:16px; margin-bottom:32px;">
+    <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); overflow:hidden;">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 24px; border-bottom:1px solid #E9EEF5;">
+        <div style="display:flex; flex-direction:column; gap:1px;">
+          <div style="font-size:14px; font-weight:700;">Psixoloq üzrə bu ay</div>
+          <div style="font-size:12px; color:#5C6B85;">Komissiya dərəcəsi: {{ ratePct }} platforma payı</div>
+        </div>
+        <a href="#" style="font-size:12.5px; font-weight:600;">Payout hesabatı</a>
+      </div>
+      <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; gap:0; padding:10px 24px; font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid #E9EEF5;">
+        <span>Psixoloq</span><span style="text-align:right;">Gəlir</span><span style="text-align:right;">Platforma</span><span style="text-align:right;">Ödəniləcək</span>
+      </div>
+      <sc-for list="{{ payouts }}" as="p" hint-placeholder-count="3">
+        <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; align-items:center; padding:13px 24px; border-top:1px solid #E9EEF5; font-size:13px;" style-hover="background:#F7F9FC;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:30px; height:30px; border-radius:50%; background:{{ p.avBg }}; color:{{ p.avFg }}; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">{{ p.initials }}</div>
+            <div style="display:flex; flex-direction:column;">
+              <span style="font-weight:600;">{{ p.name }}</span>
+              <span style="font-size:11.5px; color:#5C6B85; font-variant-numeric:tabular-nums;">{{ p.sessions }} ödəniş</span>
+            </div>
+          </div>
+          <span style="text-align:right; font-variant-numeric:tabular-nums; font-weight:600;">{{ p.grossFmt }}</span>
+          <span style="text-align:right; font-variant-numeric:tabular-nums; color:#5C6B85;">{{ p.commFmt }}</span>
+          <span style="text-align:right; font-variant-numeric:tabular-nums; font-weight:700; color:#4A9B7F;">{{ p.netFmt }}</span>
+        </div>
+      </sc-for>
+      <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; padding:13px 24px; border-top:1px solid #E9EEF5; font-size:13px; font-weight:700; background:#F7F9FC; font-variant-numeric:tabular-nums;">
+        <span>Cəm</span>
+        <span style="text-align:right;">{{ totGrossFmt }}</span>
+        <span style="text-align:right; color:#5C6B85;">{{ totCommFmt }}</span>
+        <span style="text-align:right; color:#4A9B7F;">{{ totNetFmt }}</span>
+      </div>
+    </div>
+
+    <!-- Platforma komissiyası xülasəsi -->
+    <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); padding:20px 24px; display:flex; flex-direction:column; gap:14px;">
+      <div style="font-size:14px; font-weight:700;">Komissiya bölgüsü — bu ay</div>
+      <div style="display:flex; align-items:baseline; gap:8px;">
+        <span style="font-size:26px; font-weight:800; font-variant-numeric:tabular-nums;">{{ totCommFmt }}</span>
+        <span style="font-size:13px; color:#5C6B85;">AZN platforma payı</span>
+      </div>
+      <div style="display:flex; height:12px; border-radius:6px; overflow:hidden;">
+        <div style="background:#1051B7; width:{{ ratePct }};"></div>
+        <div style="background:#E4ECFA; flex:1;"></div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px; font-size:12.5px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:9px; height:9px; border-radius:3px; background:#1051B7;"></span>
+          <span style="color:#2B3C5A; flex:1;">Platforma payı ({{ ratePct }})</span>
+          <span style="font-weight:700; font-variant-numeric:tabular-nums;">{{ totCommFmt }} AZN</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:9px; height:9px; border-radius:3px; background:#E4ECFA;"></span>
+          <span style="color:#2B3C5A; flex:1;">Psixoloqlara ödəniləcək</span>
+          <span style="font-weight:700; font-variant-numeric:tabular-nums;">{{ totNetFmt }} AZN</span>
+        </div>
+      </div>
+      <div style="border-top:1px solid #E9EEF5; padding-top:14px; display:flex; align-items:center; gap:10px; font-size:12px; color:#5C6B85;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path></svg>
+        Növbəti payout: 15 iyul 2026
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ HALLAR (nümunə kartlar) ============ -->
+  <sc-if value="{{ showStates }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex; flex-direction:column; gap:12px;">
+    <div style="font-size:11.5px; font-weight:700; color:#5C6B85; text-transform:uppercase; letter-spacing:.08em;">İnterfeys halları</div>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px;">
+
+      <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; gap:12px;">
+        <div style="font-size:12px; font-weight:600; color:#5C6B85;">Yüklənmə</div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:36px; height:36px; border-radius:50%; background:linear-gradient(90deg,#EEF2F8 25%,#F7F9FC 50%,#EEF2F8 75%); background-size:400px 100%; animation:shimmer 1.4s infinite linear;"></div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+            <div style="height:11px; border-radius:6px; width:70%; background:linear-gradient(90deg,#EEF2F8 25%,#F7F9FC 50%,#EEF2F8 75%); background-size:400px 100%; animation:shimmer 1.4s infinite linear;"></div>
+            <div style="height:9px; border-radius:6px; width:45%; background:linear-gradient(90deg,#EEF2F8 25%,#F7F9FC 50%,#EEF2F8 75%); background-size:400px 100%; animation:shimmer 1.4s infinite linear;"></div>
+          </div>
+        </div>
+        <div style="height:11px; border-radius:6px; width:88%; background:linear-gradient(90deg,#EEF2F8 25%,#F7F9FC 50%,#EEF2F8 75%); background-size:400px 100%; animation:shimmer 1.4s infinite linear;"></div>
+        <div style="height:11px; border-radius:6px; width:60%; background:linear-gradient(90deg,#EEF2F8 25%,#F7F9FC 50%,#EEF2F8 75%); background-size:400px 100%; animation:shimmer 1.4s infinite linear;"></div>
+      </div>
+
+      <div style="background:#FFFFFF; border:1.5px dashed #C3D6F6; border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; text-align:center;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#88AEEC" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+        <div style="font-size:13px; font-weight:700; color:#0A1A33;">Hələ ödəniş yoxdur</div>
+        <div style="font-size:11.5px; color:#5C6B85;">Yeni seans təsdiqlənəndə ödənişlər burada görünəcək</div>
+        <button style="margin-top:4px; background:#1051B7; border:none; border-radius:8px; padding:7px 14px; font-size:12px; font-weight:600; color:#FFFFFF; cursor:pointer; font-family:inherit;" style-hover="background:#0B3F90;">Yeni ödəniş əlavə et</button>
+      </div>
+
+      <div style="background:#FFFFFF; border:1px solid rgba(201,125,125,.45); border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; text-align:center;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#C97D7D" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+        <div style="font-size:13px; font-weight:700; color:#0A1A33;">Məlumatlar yüklənmədi</div>
+        <div style="font-size:11.5px; color:#5C6B85;">Serverlə əlaqə kəsildi. Bir az sonra yenidən yoxlayın</div>
+        <button style="margin-top:4px; display:flex; align-items:center; gap:7px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:7px 14px; font-size:12px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          Yenidən cəhd et
+        </button>
+      </div>
+
+      <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; gap:10px;">
+        <div style="font-size:12px; font-weight:600; color:#5C6B85;">Bildirişlər (toast)</div>
+        <div style="display:flex; align-items:center; gap:10px; background:#059669; color:#FFFFFF; border-radius:10px; padding:10px 14px; font-size:12.5px; font-weight:600; box-shadow:0 4px 12px rgba(0,33,71,.06);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+          Ödəniş təsdiqləndi
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; background:#DC2626; color:#FFFFFF; border-radius:10px; padding:10px 14px; font-size:12.5px; font-weight:600; box-shadow:0 4px 12px rgba(0,33,71,.06);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>
+          Əməliyyat alınmadı
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ============ TOPLU ƏMƏLİYYAT PANELİ ============ -->
+  <sc-if value="{{ hasSelection }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; bottom:26px; left:50%; transform:translateX(-50%); background:#0A1A33; color:#FFFFFF; border-radius:14px; box-shadow:0 12px 32px rgba(0,33,71,.25); display:flex; align-items:center; gap:14px; padding:12px 18px; z-index:60; animation:toastIn .22s ease;">
+      <span style="font-size:13px; font-weight:600; font-variant-numeric:tabular-nums;">{{ selCount }} seçildi</span>
+      <span style="width:1px; height:20px; background:rgba(255,255,255,.2);"></span>
+      <button onClick="{{ bulkPay }}" style="background:#1051B7; border:none; border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600; color:#FFFFFF; cursor:pointer; font-family:inherit;" style-hover="background:#2A6BD0;">Toplu ödənildi</button>
+      <button onClick="{{ bulkExport }}" style="display:flex; align-items:center; gap:7px; background:transparent; border:1px solid rgba(255,255,255,.25); border-radius:8px; padding:8px 14px; font-size:12.5px; font-weight:600; color:#FFFFFF; cursor:pointer; font-family:inherit;" style-hover="background:rgba(255,255,255,.08);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>
+        Export
+      </button>
+      <button onClick="{{ clearSel }}" style="background:transparent; border:none; color:rgba(255,255,255,.6); cursor:pointer; display:flex; padding:4px;" style-hover="color:#FFFFFF;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>
+      </button>
+    </div>
+  </sc-if>
+
+  <!-- ============ 5) DETAL DRAWER ============ -->
+  <sc-if value="{{ drawerOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeDrawer }}" style="position:fixed; inset:0; background:rgba(8,23,48,.5); z-index:80;"></div>
+    <div style="position:fixed; top:0; right:0; bottom:0; width:460px; max-width:92vw; background:#FFFFFF; z-index:81; box-shadow:0 12px 32px rgba(0,33,71,.18); display:flex; flex-direction:column; animation:drawerIn .25s ease; overflow-y:auto;" data-screen-label="Ödəniş detalı">
+      <div style="display:flex; align-items:flex-start; gap:14px; padding:24px 26px; border-bottom:1px solid #E9EEF5;">
+        <div style="width:44px; height:44px; border-radius:50%; background:{{ sel.avBg }}; color:{{ sel.avFg }}; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; flex-shrink:0;">{{ sel.initials }}</div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
+          <div style="font-family:Georgia,'Times New Roman',serif; font-weight:500; font-size:19px; letter-spacing:-.01em;">{{ sel.name }}</div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:20px; font-weight:800; font-variant-numeric:tabular-nums;">{{ sel.amountFmt }} <span style="font-size:13px; font-weight:600; color:#5C6B85;">AZN</span></span>
+            <span style="font-size:11.5px; font-weight:600; border-radius:999px; padding:4px 11px; background:{{ sel.pillBg }}; color:{{ sel.pillFg }};">{{ sel.pillLabel }}</span>
+          </div>
+        </div>
+        <button onClick="{{ closeDrawer }}" style="background:transparent; border:none; color:#5C6B85; cursor:pointer; padding:6px; display:flex; border-radius:8px;" style-hover="background:#F2F6FD;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px 20px; padding:20px 26px; border-bottom:1px solid #E9EEF5; font-size:13px;">
+        <div style="display:flex; flex-direction:column; gap:2px;"><span style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em;">Üsul</span><span style="font-weight:600;">{{ sel.method }}</span></div>
+        <div style="display:flex; flex-direction:column; gap:2px;"><span style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em;">Yaradılıb</span><span style="font-weight:600; font-variant-numeric:tabular-nums;">{{ sel.createdAt }}</span></div>
+        <div style="display:flex; flex-direction:column; gap:2px;"><span style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em;">Operator</span><span style="font-weight:600;">{{ sel.claimedBy }}</span></div>
+        <div style="display:flex; flex-direction:column; gap:2px;"><span style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em;">Bağlı</span><a href="#" style="font-weight:600;">{{ sel.link }}</a></div>
+        <div style="display:flex; flex-direction:column; gap:2px;"><span style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em;">Psixoloq</span><span style="font-weight:600;">{{ sel.psychologist }}</span></div>
+        <div style="display:flex; flex-direction:column; gap:2px;"><span style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em;">Telefon</span><span style="font-weight:600; font-variant-numeric:tabular-nums;">{{ sel.phone }}</span></div>
+      </div>
+
+      <!-- Audit izi -->
+      <div style="padding:20px 26px; border-bottom:1px solid #E9EEF5;">
+        <div style="font-size:12px; font-weight:700; color:#5C6B85; text-transform:uppercase; letter-spacing:.06em; margin-bottom:14px;">Audit izi</div>
+        <div style="display:flex; flex-direction:column;">
+          <sc-for list="{{ selTimeline }}" as="ev" hint-placeholder-count="2">
+            <div style="display:flex; gap:14px;">
+              <div style="display:flex; flex-direction:column; align-items:center;">
+                <span style="width:11px; height:11px; border-radius:50%; background:{{ ev.dot }}; border:2.5px solid {{ ev.ring }}; flex-shrink:0; margin-top:3px;"></span>
+                <sc-if value="{{ ev.notLast }}" hint-placeholder-val="{{ true }}"><span style="width:1.5px; flex:1; background:#E9EEF5; margin:4px 0;"></span></sc-if>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px; padding-bottom:18px;">
+                <span style="font-size:13px; font-weight:700;">{{ ev.title }}</span>
+                <span style="font-size:12px; color:#5C6B85; font-variant-numeric:tabular-nums;">{{ ev.who }} · {{ ev.time }}</span>
+                <sc-if value="{{ ev.hasNote }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:12px; color:#2B3C5A; background:#F7F9FC; border:1px solid #E9EEF5; border-radius:8px; padding:6px 10px; margin-top:4px;">"{{ ev.note }}"</span>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Komissiya -->
+      <div style="padding:20px 26px; border-bottom:1px solid #E9EEF5;">
+        <div style="font-size:12px; font-weight:700; color:#5C6B85; text-transform:uppercase; letter-spacing:.06em; margin-bottom:14px;">Komissiya bölgüsü</div>
+        <div style="display:flex; height:12px; border-radius:6px; overflow:hidden; margin-bottom:12px;">
+          <div style="background:#1051B7; width:{{ ratePct }};"></div>
+          <div style="background:#E4ECFA; flex:1;"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:9px; font-size:13px; font-variant-numeric:tabular-nums;">
+          <div style="display:flex; justify-content:space-between;"><span style="color:#5C6B85;">Ümumi məbləğ</span><span style="font-weight:700;">{{ sel.amountFmt }} AZN</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="display:flex; align-items:center; gap:7px; color:#5C6B85;"><span style="width:8px; height:8px; border-radius:2.5px; background:#1051B7;"></span>Platforma payı ({{ ratePct }})</span><span style="font-weight:600;">{{ sel.commFmt }} AZN</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="display:flex; align-items:center; gap:7px; color:#5C6B85;"><span style="width:8px; height:8px; border-radius:2.5px; background:#E4ECFA;"></span>Psixoloq payı — {{ sel.psychologist }}</span><span style="font-weight:700; color:#4A9B7F;">{{ sel.netFmt }} AZN</span></div>
+        </div>
+      </div>
+
+      <!-- Əlaqə -->
+      <div style="padding:20px 26px; display:flex; gap:10px;">
+        <button style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:10px; font-size:13px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+          Zəng et
+        </button>
+        <button style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:10px; font-size:13px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+          WhatsApp yaz
+        </button>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ TƏSDİQ MODALI ============ -->
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; inset:0; background:rgba(8,23,48,.5); z-index:100; display:flex; align-items:center; justify-content:center;">
+      <div style="background:#FFFFFF; border-radius:20px; box-shadow:0 12px 32px rgba(0,33,71,.18); width:400px; max-width:92vw; padding:26px 28px; display:flex; flex-direction:column; gap:14px; animation:toastIn .2s ease;">
+        <div style="width:40px; height:40px; border-radius:12px; background:#E4ECFA; color:#1051B7; display:flex; align-items:center; justify-content:center;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+        </div>
+        <div style="font-family:Georgia,'Times New Roman',serif; font-weight:500; font-size:19px; letter-spacing:-.01em;">Ödənişi təsdiqlə</div>
+        <div style="font-size:13.5px; color:#5C6B85; line-height:1.55;">{{ modalText }}</div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:6px;">
+          <button onClick="{{ modalCancel }}" style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">İmtina</button>
+          <button onClick="{{ modalConfirm }}" style="background:#1051B7; border:1px solid #1051B7; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#FFFFFF; cursor:pointer; font-family:inherit;" style-hover="background:#0B3F90;">Təsdiqlə</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ İADƏ MODALI ============ -->
+  <sc-if value="{{ refundOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; inset:0; background:rgba(8,23,48,.5); z-index:100; display:flex; align-items:center; justify-content:center;">
+      <div style="background:#FFFFFF; border-radius:20px; box-shadow:0 12px 32px rgba(0,33,71,.18); width:400px; max-width:92vw; padding:26px 28px; display:flex; flex-direction:column; gap:14px; animation:toastIn .2s ease;">
+        <div style="width:40px; height:40px; border-radius:12px; background:#FDF0F0; color:#C97D7D; display:flex; align-items:center; justify-content:center;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"></path><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+        </div>
+        <div style="font-family:Georgia,'Times New Roman',serif; font-weight:500; font-size:19px; letter-spacing:-.01em;">Geri qaytarma</div>
+        <div style="font-size:13.5px; color:#5C6B85; line-height:1.55;">{{ refundText }}</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em;">Səbəb (audit izinə yazılacaq)</label>
+          <input onInput="{{ refundNoteInput }}" placeholder="Məs.: Pasiyent imtina etdi" style="border:1px solid #E9EEF5; border-radius:8px; padding:9px 12px; font-size:13px; font-family:inherit; color:#0A1A33; outline:none; background:#F7F9FC;">
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:6px;">
+          <button onClick="{{ refundCancel }}" style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">İmtina</button>
+          <button onClick="{{ refundConfirm }}" style="background:#C97D7D; border:1px solid #C97D7D; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#FFFFFF; cursor:pointer; font-family:inherit;" style-hover="background:#B56A6A;">Geri qaytar</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ TOAST ============ -->
+  <sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; right:26px; bottom:26px; z-index:120; display:flex; align-items:center; gap:10px; background:{{ toastBg }}; color:#FFFFFF; border-radius:12px; padding:12px 18px; font-size:13px; font-weight:600; box-shadow:0 12px 32px rgba(0,33,71,.2); animation:toastIn .25s ease;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+      {{ toastMsg }}
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;commissionRate&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:20,&quot;min&quot;:10,&quot;max&quot;:30,&quot;step&quot;:1,&quot;unit&quot;:&quot;%&quot;,&quot;section&quot;:&quot;Maliyyə&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;compact&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;section&quot;:&quot;Görünüş&quot;,&quot;tsType&quot;:&quot;boolean&quot;},&quot;showStates&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;section&quot;:&quot;Görünüş&quot;,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = {
+    tab: 'pending',
+    search: '',
+    method: 'all',
+    psych: 'all',
+    sort: 'date',
+    mine: false,
+    selected: {},
+    reminded: {},
+    drawerId: null,
+    modalId: null,
+    refundId: null,
+    refundNote: '',
+    toast: null,
+    payments: [
+      { id: 1, name: 'Aygün Məmmədova', amount: 80, method: 'Kart', status: 'PENDING', ageH: 2, createdAt: '7 iyul, 12:40', link: 'Seans #4821', claimedBy: 'Nərgiz Quliyeva', psychologist: 'Dr. Lalə Həsənova', phone: '+994 50 312 45 67' },
+      { id: 2, name: 'Rəşad Əliyev', amount: 450, method: 'Köçürmə', status: 'PENDING', ageH: 6, createdAt: '7 iyul, 08:15', link: 'Paket: 6 seans', claimedBy: 'Orxan Balayev', psychologist: 'Dr. Kamran Musayev', phone: '+994 55 728 90 12' },
+      { id: 3, name: 'Günel Rəhimova', amount: 60, method: 'Nağd', status: 'PENDING', ageH: 21, createdAt: '6 iyul, 17:30', link: 'Seans #4809', claimedBy: 'Nərgiz Quliyeva', psychologist: 'Dr. Lalə Həsənova', phone: '+994 70 456 78 90' },
+      { id: 4, name: 'Tural Səfərov', amount: 120, method: 'Kart', status: 'PENDING', ageH: 33, createdAt: '6 iyul, 05:10', link: 'Seans #4795', claimedBy: 'Orxan Balayev', psychologist: 'Dr. Aysel Qasımova', phone: '+994 51 234 56 78' },
+      { id: 5, name: 'Nigar Hüseynova', amount: 150, method: 'Kart', status: 'PAID', createdAt: '5 iyul, 10:20', paidAt: '5 iyul, 10:24', link: 'Seans #4780', claimedBy: 'Nərgiz Quliyeva', psychologist: 'Dr. Lalə Həsənova', phone: '+994 50 111 22 33' },
+      { id: 6, name: 'Elçin Quliyev', amount: 600, method: 'Köçürmə', status: 'PAID', createdAt: '4 iyul, 14:05', paidAt: '4 iyul, 16:40', link: 'Paket: 8 seans', claimedBy: 'Orxan Balayev', psychologist: 'Dr. Kamran Musayev', phone: '+994 55 444 55 66' },
+      { id: 7, name: 'Leyla Abbasova', amount: 90, method: 'Nağd', status: 'PAID', createdAt: '4 iyul, 09:30', paidAt: '4 iyul, 09:32', link: 'Seans #4771', claimedBy: 'Nərgiz Quliyeva', psychologist: 'Dr. Lalə Həsənova', phone: '+994 70 777 88 99' },
+      { id: 8, name: 'Orxan Nəbiyev', amount: 200, method: 'Kart', status: 'PAID', createdAt: '3 iyul, 11:45', paidAt: '3 iyul, 11:47', link: 'Seans #4762', claimedBy: 'Orxan Balayev', psychologist: 'Dr. Aysel Qasımova', phone: '+994 51 999 00 11' },
+      { id: 9, name: 'Fidan Cəfərova', amount: 300, method: 'Kart', status: 'PARTIALLY_REFUNDED', createdAt: '2 iyul, 15:00', paidAt: '2 iyul, 15:03', refundedAt: '3 iyul, 10:15', refundedAmount: 100, statusNote: 'Bir seans ləğv edildi — qismi iadə', link: 'Paket: 4 seans', claimedBy: 'Nərgiz Quliyeva', psychologist: 'Dr. Kamran Musayev', phone: '+994 50 222 33 44' },
+      { id: 10, name: 'Səbinə Vəliyeva', amount: 120, method: 'Kart', status: 'REFUNDED', createdAt: '1 iyul, 13:20', paidAt: '1 iyul, 13:22', refundedAt: '2 iyul, 09:40', refundedAmount: 120, statusNote: 'Pasiyent imtina etdi', link: 'Seans #4740', claimedBy: 'Orxan Balayev', psychologist: 'Dr. Aysel Qasımova', phone: '+994 55 333 44 55' },
+      { id: 11, name: 'Ramin Hacıyev', amount: 80, method: 'Köçürmə', status: 'REFUNDED', createdAt: '30 iyun, 16:10', paidAt: '30 iyun, 18:00', refundedAt: '1 iyul, 11:05', refundedAmount: 80, statusNote: 'Texniki xəta — ikili ödəniş', link: 'Seans #4733', claimedBy: 'Nərgiz Quliyeva', psychologist: 'Dr. Lalə Həsənova', phone: '+994 70 555 66 77' },
+      { id: 12, name: 'Ayşən Kərimova', amount: 60, method: 'Nağd', status: 'CANCELLED', createdAt: '29 iyun, 12:00', statusNote: 'Seans baş tutmadı', link: 'Seans #4721', claimedBy: 'Orxan Balayev', psychologist: 'Dr. Aysel Qasımova', phone: '+994 51 666 77 88' },
+      { id: 13, name: 'Vüsal Məmmədli', amount: 240, method: 'Köçürmə', status: 'CANCELLED', createdAt: '28 iyun, 10:30', statusNote: 'Pasiyent tərəfindən ləğv', link: 'Paket: 3 seans', claimedBy: 'Nərgiz Quliyeva', psychologist: 'Dr. Kamran Musayev', phone: '+994 50 888 99 00' }
+    ]
+  };
+
+  fmt(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+
+  showToast(msg, bg) {
+    clearTimeout(this._toastTimer);
+    this.setState({ toast: { msg, bg: bg || '#059669' } });
+    this._toastTimer = setTimeout(() => this.setState({ toast: null }), 2600);
+  }
+
+  renderVals() {
+    const S = this.state;
+    const rate = (this.props.commissionRate ?? 20) / 100;
+    const OPERATOR = 'Nərgiz Quliyeva';
+    const PILL = {
+      PENDING: { label: 'Gözləyir', bg: '#FEF3C7', fg: '#92400E' },
+      PAID: { label: 'Ödənilib', bg: '#D1FAE5', fg: '#065F46' },
+      PARTIALLY_REFUNDED: { label: 'Qismi qaytarılıb', bg: '#FFEDD5', fg: '#9A3412' },
+      REFUNDED: { label: 'Geri qaytarılıb', bg: '#FEE2E2', fg: '#991B1B' },
+      CANCELLED: { label: 'Ləğv edilib', bg: '#F3F4F6', fg: '#374151' }
+    };
+    const AV = [
+      { bg: '#E4ECFA', fg: '#0B3F90' }, { bg: '#E5F1EC', fg: '#2E6B54' },
+      { bg: '#F4EFFB', fg: '#5F4FA0' }, { bg: '#FBF0E3', fg: '#8F5A22' }
+    ];
+    const initials = n => n.split(' ').map(w => w[0]).slice(0, 2).join('');
+    const av = p => AV[p.id % AV.length];
+
+    const GROUPS = {
+      pending: ['PENDING'],
+      paid: ['PAID', 'PARTIALLY_REFUNDED'],
+      refunded: ['REFUNDED'],
+      cancelled: ['CANCELLED']
+    };
+    const counts = {};
+    Object.keys(GROUPS).forEach(k => {
+      counts[k] = S.payments.filter(p => GROUPS[k].includes(p.status)).length;
+    });
+
+    const pending = S.payments.filter(p => p.status === 'PENDING');
+    const pendingSum = pending.reduce((a, p) => a + p.amount, 0);
+    const overdue = pending.filter(p => p.ageH >= 24);
+    const paidSum = 1340;
+    const collectionRate = Math.round(paidSum / (paidSum + pendingSum) * 100);
+
+    // filtered list
+    let rowsData = S.payments.filter(p => GROUPS[S.tab].includes(p.status));
+    if (S.search) {
+      const q = S.search.toLowerCase();
+      rowsData = rowsData.filter(p => p.name.toLowerCase().includes(q) || (p.phone || '').replace(/\s/g, '').includes(q.replace(/\s/g, '')));
+    }
+    if (S.method !== 'all') rowsData = rowsData.filter(p => p.method === S.method);
+    if (S.psych !== 'all') rowsData = rowsData.filter(p => p.psychologist === S.psych);
+    if (S.mine) rowsData = rowsData.filter(p => p.claimedBy === OPERATOR);
+    if (S.sort === 'amount-desc') rowsData = [...rowsData].sort((a, b) => b.amount - a.amount);
+    else if (S.sort === 'amount-asc') rowsData = [...rowsData].sort((a, b) => a.amount - b.amount);
+
+    const decorate = p => {
+      const pill = PILL[p.status];
+      const a = av(p);
+      const comm = Math.round(p.amount * rate);
+      return {
+        ...p,
+        initials: initials(p.name), avBg: a.bg, avFg: a.fg,
+        pillLabel: pill.label, pillBg: pill.bg, pillFg: pill.fg,
+        amountFmt: this.fmt(p.amount),
+        dateLabel: p.createdAt,
+        mCard: p.method === 'Kart', mCash: p.method === 'Nağd', mTrans: p.method === 'Köçürmə',
+        hasRefund: p.status === 'PARTIALLY_REFUNDED',
+        hasNote: !!p.statusNote && (p.status === 'REFUNDED' || p.status === 'CANCELLED'),
+        refFmt: this.fmt(p.refundedAmount || 0),
+        remFmt: this.fmt(p.amount - (p.refundedAmount || 0)),
+        hasCommission: (p.status === 'PAID') ,
+        commFmt: this.fmt(comm),
+        netFmt: this.fmt(p.amount - comm),
+        canPay: p.status === 'PENDING',
+        canRefund: p.status === 'PAID' || p.status === 'PARTIALLY_REFUNDED',
+        selected: !!S.selected[p.id],
+        toggle: e => { e.stopPropagation(); const sel = { ...this.state.selected }; sel[p.id] ? delete sel[p.id] : sel[p.id] = true; this.setState({ selected: sel }); },
+        open: () => this.setState({ drawerId: p.id }),
+        pay: e => { e.stopPropagation(); this.setState({ modalId: p.id }); },
+        cancel: e => { e.stopPropagation(); this.showToast(p.name + ' — ödəniş ləğv edildi', '#DC2626'); },
+        refund: e => { e.stopPropagation(); this.setState({ refundId: p.id, refundNote: '' }); }
+      };
+    };
+
+    const rows = rowsData.map(decorate);
+    const rowSum = rowsData.reduce((a, p) => a + p.amount, 0);
+
+    // attention rows
+    const attnRows = [...pending].sort((a, b) => b.ageH - a.ageH).map(p => {
+      const d = decorate(p);
+      let ageBg = '#F2F6FD', ageFg = '#2B3C5A';
+      if (p.ageH >= 48) { ageBg = '#FEE2E2'; ageFg = '#991B1B'; }
+      else if (p.ageH >= 24) { ageBg = '#FEF3C7'; ageFg = '#92400E'; }
+      return {
+        ...d, ageBg, ageFg,
+        ageLabel: p.ageH + ' saat gözləyir',
+        reminded: !!S.reminded[p.id], notReminded: !S.reminded[p.id],
+        view: e => { e.stopPropagation(); this.showToast(p.name + ' — pasiyent kartı açılır'); },
+        call: e => { e.stopPropagation(); this.showToast(p.name + ' — zəng başladıldı'); },
+        remind: e => { e.stopPropagation(); const r = { ...this.state.reminded, [p.id]: true }; this.setState({ reminded: r }); this.showToast('WhatsApp xatırlatması göndərildi'); }
+      };
+    });
+
+    // tabs
+    const TABS = [
+      { key: 'pending', label: 'Gözləyir' },
+      { key: 'paid', label: 'Ödənilmiş' },
+      { key: 'refunded', label: 'Geri qaytarılmış' },
+      { key: 'cancelled', label: 'Ləğv edilmiş' }
+    ];
+    const tabs = TABS.map(t => {
+      const active = S.tab === t.key;
+      return {
+        ...t, count: counts[t.key],
+        bg: active ? '#F2F6FD' : 'transparent',
+        fg: active ? '#1051B7' : '#5C6B85',
+        bd: active ? '#1051B7' : 'transparent',
+        cBg: active ? '#1051B7' : '#E9EEF5',
+        cFg: active ? '#FFFFFF' : '#5C6B85',
+        go: () => this.setState({ tab: t.key, selected: {} })
+      };
+    });
+
+    // payouts (paid this month, net of refunds)
+    const byPsych = {};
+    S.payments.filter(p => p.status === 'PAID' || p.status === 'PARTIALLY_REFUNDED').forEach(p => {
+      const net = p.amount - (p.refundedAmount || 0);
+      if (!byPsych[p.psychologist]) byPsych[p.psychologist] = { gross: 0, n: 0 };
+      byPsych[p.psychologist].gross += net;
+      byPsych[p.psychologist].n += 1;
+    });
+    let totGross = 0, totComm = 0;
+    const payouts = Object.keys(byPsych).map((name, i) => {
+      const g = byPsych[name].gross;
+      const c = Math.round(g * rate);
+      totGross += g; totComm += c;
+      const a = AV[i % AV.length];
+      return {
+        name, sessions: byPsych[name].n,
+        initials: initials(name.replace('Dr. ', '')), avBg: a.bg, avFg: a.fg,
+        grossFmt: this.fmt(g), commFmt: this.fmt(c), netFmt: this.fmt(g - c)
+      };
+    });
+
+    // drawer
+    const selRaw = S.payments.find(p => p.id === S.drawerId);
+    let sel = null, selTimeline = [];
+    if (selRaw) {
+      sel = decorate(selRaw);
+      const ev = [];
+      ev.push({ title: 'Yaradıldı', who: selRaw.claimedBy, time: selRaw.createdAt, dot: '#88AEEC', ring: '#E4ECFA' });
+      if (selRaw.paidAt) ev.push({ title: 'Təsdiqləndi — ödənilib', who: selRaw.claimedBy, time: selRaw.paidAt, dot: '#4A9B7F', ring: '#E5F1EC' });
+      if (selRaw.status === 'PARTIALLY_REFUNDED') ev.push({ title: 'Qismi qaytarıldı — ' + this.fmt(selRaw.refundedAmount) + ' AZN', who: selRaw.claimedBy, time: selRaw.refundedAt, note: selRaw.statusNote, dot: '#C97D2E', ring: '#FBF0E3' });
+      if (selRaw.status === 'REFUNDED') ev.push({ title: 'Tam geri qaytarıldı', who: selRaw.claimedBy, time: selRaw.refundedAt, note: selRaw.statusNote, dot: '#C97D7D', ring: '#FDF0F0' });
+      if (selRaw.status === 'CANCELLED') ev.push({ title: 'Ləğv edildi', who: selRaw.claimedBy, time: selRaw.createdAt, note: selRaw.statusNote, dot: '#5C6B85', ring: '#F3F4F6' });
+      selTimeline = ev.map((e, i) => ({ ...e, hasNote: !!e.note, notLast: i < ev.length - 1 }));
+    }
+
+    // modal
+    const modalRaw = S.payments.find(p => p.id === S.modalId);
+    const selIds = Object.keys(S.selected);
+
+    return {
+      // KPI
+      pendingSumFmt: this.fmt(pendingSum),
+      pendingCount: pending.length,
+      overdueCount: overdue.length,
+      collectionRate,
+      collectionRatePct: collectionRate + '%',
+      ratePct: Math.round(rate * 100) + '%',
+      payouts,
+      totGrossFmt: this.fmt(totGross),
+      totCommFmt: this.fmt(totComm),
+      totNetFmt: this.fmt(totGross - totComm),
+      // attention
+      hasAttention: pending.length > 0,
+      attnRows,
+      // toolbar
+      tabs,
+      onSearch: e => this.setState({ search: e.target.value }),
+      onMethod: e => this.setState({ method: e.target.value }),
+      onPsych: e => this.setState({ psych: e.target.value === 'Bütün psixoloqlar' ? 'all' : e.target.value }),
+      onSort: e => this.setState({ sort: e.target.value }),
+      onMine: () => this.setState({ mine: !S.mine }),
+      mineBg: S.mine ? '#E4ECFA' : '#FFFFFF',
+      mineBd: S.mine ? '#88AEEC' : '#E9EEF5',
+      mineFg: S.mine ? '#0B3F90' : '#5C6B85',
+      mineDot: S.mine ? '#1051B7' : '#C3D6F6',
+      onExport: () => this.showToast('CSV export hazırlanır'),
+      onNew: () => this.showToast('Yeni ödəniş formu açılır'),
+      // list
+      rows,
+      rowPad: (this.props.compact ?? false) ? '10px 20px' : '15px 20px',
+      noRows: rows.length === 0,
+      rowCount: rows.length,
+      rowSumFmt: this.fmt(rowSum),
+      stop: e => e.stopPropagation(),
+      // bulk
+      hasSelection: selIds.length > 0,
+      selCount: selIds.length,
+      clearSel: () => this.setState({ selected: {} }),
+      bulkPay: () => {
+        const payments = this.state.payments.map(p => S.selected[p.id] && p.status === 'PENDING' ? { ...p, status: 'PAID', paidAt: '7 iyul, indi' } : p);
+        this.setState({ payments, selected: {} });
+        this.showToast(selIds.length + ' ödəniş təsdiqləndi');
+      },
+      bulkExport: () => this.showToast(selIds.length + ' sətir export edildi'),
+      // drawer
+      drawerOpen: !!sel,
+      sel: sel || {},
+      selTimeline,
+      closeDrawer: () => this.setState({ drawerId: null }),
+      // modal
+      modalOpen: !!modalRaw,
+      modalText: modalRaw ? modalRaw.name + ' üçün ' + this.fmt(modalRaw.amount) + ' AZN (' + modalRaw.method + ') ödənişini təsdiqləmək istəyirsiniz? Bu əməliyyat audit izinə yazılacaq.' : '',
+      modalCancel: () => this.setState({ modalId: null }),
+      modalConfirm: () => {
+        const p = modalRaw;
+        const payments = this.state.payments.map(x => x.id === p.id ? { ...x, status: 'PAID', paidAt: '7 iyul, indi' } : x);
+        this.setState({ payments, modalId: null });
+        this.showToast(p.name + ' — ödəniş təsdiqləndi');
+      },
+      // refund modal
+      refundOpen: !!S.payments.find(p => p.id === S.refundId),
+      refundText: (() => {
+        const p = S.payments.find(x => x.id === S.refundId);
+        if (!p) return '';
+        const rem = p.amount - (p.refundedAmount || 0);
+        return p.name + ' üçün ' + this.fmt(rem) + ' AZN (' + p.method + ') geri qaytarılacaq. Ödəniş "Geri qaytarılmış" qrupuna keçəcək.';
+      })(),
+      refundNoteInput: e => this.setState({ refundNote: e.target.value }),
+      refundCancel: () => this.setState({ refundId: null }),
+      refundConfirm: () => {
+        const p = S.payments.find(x => x.id === S.refundId);
+        if (!p) return;
+        const payments = this.state.payments.map(x => x.id === p.id ? { ...x, status: 'REFUNDED', refundedAmount: x.amount, refundedAt: '7 iyul, indi', statusNote: this.state.refundNote || 'Operator tərəfindən iadə edildi' } : x);
+        this.setState({ payments, refundId: null });
+        this.showToast(p.name + ' — geri qaytarma icra edildi');
+      },
+      // toast
+      toastOn: !!S.toast,
+      toastMsg: S.toast ? S.toast.msg : '',
+      toastBg: S.toast ? S.toast.bg : '#059669',
+      // tweaks
+      showStates: this.props.showStates ?? true
+    };
+  }
+}
+</script>
+</body>
+</html>

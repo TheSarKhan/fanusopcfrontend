@@ -15,12 +15,12 @@ import {
   operatorApi,
   type AppointmentDetail,
 } from "@/lib/api";
-import { getStoredUser } from "@/lib/auth";
 import { subscribeNotifications, subscribeOperatorClaims } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDateTime } from "@/lib/datetime";
 import { statusMeta, isPoolEligible } from "@/lib/appointmentStatus";
 import { toast as uiToast } from "@/components/Toast";
+import ErrorState from "@/components/ErrorState";
 
 function normalizePhone(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -49,11 +49,24 @@ function initialsOf(name?: string | null) {
   if (!name) return "—";
   return name.split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "—";
 }
-
-const shimmerCss = `
-  @keyframes poolShimmer { 0% { background-position: -340px 0 } 100% { background-position: 340px 0 } }
-  .pool-skel { background: linear-gradient(90deg,#EEF2F9 25%,#E2E9F4 37%,#EEF2F9 63%); background-size: 680px 100%; animation: poolShimmer 1.4s infinite linear; }
-`;
+// Avatar rəng variantı (--1..--4) sabit seçilir — eyni pasiyent həmişə eyni ton.
+function avatarVariant(seed: string | number): number {
+  const s = String(seed);
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h + s.charCodeAt(i)) % 4;
+  return h + 1;
+}
+// Yalnız görünüş: status etiketi statusMeta-dan gəlir, rəng fx-pill sinfindən.
+function statusPill(status?: string | null): string {
+  switch (status) {
+    case "CONFIRMED": return "fx-pill--paid";
+    case "CANCELLED":
+    case "DISPUTED": return "fx-pill--refunded";
+    case "COMPLETED": return "fx-pill--cancelled";
+    case "ASSIGNED": return "fx-pill--info";
+    default: return "fx-pill--pending"; // PENDING / NEW / REJECTED / IN_REVIEW ...
+  }
+}
 
 export default function OperatorPoolPage() {
   const { t } = useT();
@@ -61,12 +74,15 @@ export default function OperatorPoolPage() {
 
   const [appts, setAppts] = useState<AppointmentDetail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
-    operatorApi.listPoolAppointments().catch(() => [] as AppointmentDetail[])
+    setError(false);
+    operatorApi.listPoolAppointments()
       .then(setAppts)
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -149,16 +165,14 @@ export default function OperatorPoolPage() {
 
   return (
     <div style={{ width: "100%" }}>
-      <style>{shimmerCss}</style>
-
       {/* HEADER */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 24 }}>
         <div>
-          <h1 style={{ margin: "0 0 6px", fontSize: 26, fontWeight: 800, letterSpacing: "-.02em", color: "var(--oxford)" }}>{t("staff.opPoolTitle")}</h1>
-          <p style={{ margin: 0, fontSize: 14.5, color: "var(--oxford-60)", fontWeight: 500 }}>{t("staff.opPoolSub")}</p>
+          <h1 className="fx-h1" style={{ marginBottom: 6 }}>{t("staff.opPoolTitle")}</h1>
+          <p className="fx-subtitle" style={{ margin: 0 }}>{t("staff.opPoolSub")}</p>
         </div>
-        <button onClick={load} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 16px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+        <button type="button" onClick={load} className="fx-btn fx-btn--ghost">
+          <IconRefresh />
           Yenilə
         </button>
       </div>
@@ -167,13 +181,19 @@ export default function OperatorPoolPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
           {Array.from({ length: 4 }).map((_, i) => <PoolSkeleton key={i} />)}
         </div>
+      ) : error ? (
+        <ErrorState
+          title="Müraciət sırası yüklənmədi"
+          sub="Bağlantı və ya server problemi ola bilər. Yenidən cəhd edin."
+          onRetry={load}
+        />
       ) : total === 0 ? (
-        <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "60px 24px", textAlign: "center" }}>
-          <div style={{ width: 64, height: 64, borderRadius: 18, background: "#ECFDF5", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 18, color: "#047857" }}>
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4L12 14.01l-3-3" /></svg>
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "var(--oxford)", marginBottom: 7 }}>{t("staff.opPoolEmpty")}</div>
-          <div style={{ fontSize: 14, color: "var(--oxford-60)", fontWeight: 500 }}>Yeni müraciət gələndə burada görünəcək.</div>
+        <div className="fx-card--empty" style={{ padding: "56px 24px" }}>
+          <span style={{ width: 56, height: 56, borderRadius: 16, background: "var(--brand-50)", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "var(--brand)" }}>
+            <IconInbox />
+          </span>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{t("staff.opPoolEmpty")}</div>
+          <div style={{ fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>Yeni müraciət gələndə burada görünəcək.</div>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
@@ -201,11 +221,18 @@ export default function OperatorPoolPage() {
   );
 }
 
-function ContactBtn({ href, target, label, children }: { href: string; target?: string; label: string; children: React.ReactNode }) {
+function ContactBtn({ href, target, label, variant = "ghost", children }: {
+  href: string;
+  target?: string;
+  label: string;
+  variant?: "ghost" | "warn-ghost";
+  children: React.ReactNode;
+}) {
   return (
     <a href={href} target={target} rel={target ? "noopener noreferrer" : undefined} title={label}
       onClick={e => e.stopPropagation()}
-      style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#F8FAFD", color: "var(--brand-700)", border: "1px solid #EDF1F8", borderRadius: 8, padding: "6px 11px", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+      className={`fx-btn fx-btn--${variant} fx-btn--sm`}
+      style={{ textDecoration: "none" }}>
       {children}{label}
     </a>
   );
@@ -222,27 +249,24 @@ function PoolApptCard({
   const { t } = useT();
   const meta = statusMeta(a.status);
   const phone = normalizePhone(a.patientPhone);
-  // Rədd edilib yenidən təyin gözləyən müraciət kəhrəba, təzə müraciət yaşıl.
-  const accent = a.status === "REJECTED" ? "#B45309" : "#047857";
 
   return (
     <div role="button" tabIndex={0} data-pool-appt={a.id} onClick={onOpen} onKeyDown={e => { if (e.key === "Enter") onOpen(); }}
-      style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", borderLeft: `3px solid ${accent}`, padding: 18, display: "flex", flexDirection: "column", cursor: "pointer" }}>
+      className="fx-card"
+      style={{ padding: 18, display: "flex", flexDirection: "column", cursor: "pointer" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ background: "#ECFDF5", color: "#047857", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>Seans</span>
-          <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", letterSpacing: ".02em" }}>#FNS-{String(a.id).padStart(4, "0")}</span>
+          <span className="fx-pill fx-pill--info">Seans</span>
+          <span className="fx-num" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford-60)", letterSpacing: ".02em" }}>#FNS-{String(a.id).padStart(4, "0")}</span>
         </div>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: meta.bg, color: meta.fg, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: meta.fg }} />{meta.label}
-        </span>
+        <span className={`fx-pill ${statusPill(a.status)}`}>{meta.label}</span>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 13 }}>
-        <span style={{ width: 40, height: 40, borderRadius: 11, background: "var(--brand-700)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none" }}>{initialsOf(a.patientName)}</span>
+        <span className={`fx-avatar fx-avatar--${avatarVariant(a.patientId ?? a.id)}`}>{initialsOf(a.patientName)}</span>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{a.patientName ?? "—"}</div>
-          <div style={{ fontSize: 12.5, color: "#9DB0CC", fontWeight: 600 }}>{timeAgo(a.createdAt) || `${fmtDt(a.createdAt)} yaradılıb`}</div>
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>{timeAgo(a.createdAt) || `${fmtDt(a.createdAt)} yaradılıb`}</div>
         </div>
       </div>
 
@@ -250,46 +274,40 @@ function PoolApptCard({
         <div style={{ display: "flex", gap: 7, marginBottom: 13, flexWrap: "wrap" }}>
           {phone && (
             <>
-              <ContactBtn href={`tel:${phone}`} label="Zəng">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
-              </ContactBtn>
-              <ContactBtn href={whatsappLink(phone)} target="_blank" label="WhatsApp">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
-              </ContactBtn>
+              <ContactBtn href={`tel:${phone}`} label="Zəng"><IconPhone /></ContactBtn>
+              <ContactBtn href={whatsappLink(phone)} target="_blank" label="WhatsApp" variant="warn-ghost"><IconChat /></ContactBtn>
             </>
           )}
           {a.patientEmail && (
-            <ContactBtn href={`mailto:${a.patientEmail}`} label="Email">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="M22 7l-10 5L2 7" /></svg>
-            </ContactBtn>
+            <ContactBtn href={`mailto:${a.patientEmail}`} label="Email"><IconMail /></ContactBtn>
           )}
         </div>
       )}
 
       {a.note && (
-        <div style={{ display: "flex", gap: 9, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "11px 13px", marginBottom: 13 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#047857" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-          <span style={{ fontSize: 13.5, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, lineHeight: 1.45 }}>«{a.note}»</span>
+        <div style={{ display: "flex", gap: 9, background: "var(--surface-muted)", border: "1px solid var(--hairline)", borderRadius: 8, padding: "11px 13px", marginBottom: 13 }}>
+          <span style={{ color: "var(--oxford-60)", flex: "none", marginTop: 1, display: "inline-flex" }}><IconMessage /></span>
+          <span style={{ fontSize: 13.5, color: "var(--oxford-80)", fontStyle: "italic", fontWeight: 500, lineHeight: 1.45 }}>«{a.note}»</span>
         </div>
       )}
 
       {a.requestedPsychologistName ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, color: "var(--brand-700)", marginBottom: 15 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+          <IconUser />
           <span>Tövsiyə olunan: {a.requestedPsychologistName}{a.requestedStartAt && ` · ${fmtDt(a.requestedStartAt)}`}</span>
         </div>
       ) : (
-        <div style={{ fontSize: 12.5, fontStyle: "italic", color: "#9DB0CC", fontWeight: 500, marginBottom: 15 }}>Psixoloq seçilməyib — operator təyin edəcək</div>
+        <div style={{ fontSize: 12.5, fontStyle: "italic", color: "var(--oxford-60)", fontWeight: 500, marginBottom: 15 }}>Psixoloq seçilməyib — operator təyin edəcək</div>
       )}
 
       <div style={{ display: "flex", gap: 9, marginTop: "auto" }}>
-        <button onClick={e => { e.stopPropagation(); onTake(); }} disabled={busy}
-          style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: accent, color: "#fff", border: "none", borderRadius: 10, padding: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1, boxShadow: `0 4px 12px ${accent}3d` }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+        <button type="button" onClick={e => { e.stopPropagation(); onTake(); }} disabled={busy}
+          className="fx-btn fx-btn--primary" style={{ flex: 1 }}>
+          <IconCheck />
           {t("staff.opTake")}
         </button>
-        <button onClick={e => { e.stopPropagation(); onOpen(); }}
-          style={{ flex: "none", background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 14px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+        <button type="button" onClick={e => { e.stopPropagation(); onOpen(); }}
+          className="fx-btn fx-btn--ghost" style={{ flex: "none" }}>
           {t("staff.opOpenTicket")}
         </button>
       </div>
@@ -297,11 +315,11 @@ function PoolApptCard({
   );
 }
 
-const PKG_STATUS: Record<string, { label: string; bg: string; color: string }> = {
-  ACTIVE:    { label: "Aktiv",       bg: "#D1FAE5", color: "#065F46" },
-  EXHAUSTED: { label: "Tamamlanıb",  bg: "#F3F4F6", color: "#374151" },
-  EXPIRED:   { label: "Vaxtı keçib", bg: "#FEF3C7", color: "#92400E" },
-  CANCELLED: { label: "Ləğv",        bg: "#FEE2E2", color: "#991B1B" },
+const PKG_STATUS: Record<string, { label: string; pill: string }> = {
+  ACTIVE:    { label: "Aktiv",       pill: "fx-pill--paid" },
+  EXHAUSTED: { label: "Tamamlanıb",  pill: "fx-pill--cancelled" },
+  EXPIRED:   { label: "Vaxtı keçib", pill: "fx-pill--pending" },
+  CANCELLED: { label: "Ləğv",        pill: "fx-pill--refunded" },
 };
 
 /** Paket müraciəti — SEANS deyil, öz biznes məntiqi olan ayrıca müraciət növüdür:
@@ -330,39 +348,38 @@ function PoolPackageCard({
 
   return (
     <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={e => { if (e.key === "Enter") onOpen(); }}
-      style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", borderLeft: "3px solid #B45309", padding: 18, display: "flex", flexDirection: "column", cursor: "pointer" }}>
+      className="fx-card"
+      style={{ padding: 18, display: "flex", flexDirection: "column", cursor: "pointer" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ background: "#FEF3C7", color: "#B45309", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>Paket müraciəti</span>
-          <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", letterSpacing: ".02em" }}>#PKG-{String(first.patientPackageId).padStart(4, "0")}</span>
+          <span className="fx-pill" style={{ background: "var(--lilac-bg)", color: "var(--lilac)" }}>Paket müraciəti</span>
+          <span className="fx-num" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford-60)", letterSpacing: ".02em" }}>#PKG-{String(first.patientPackageId).padStart(4, "0")}</span>
         </div>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: st.color }} />{st.label}
-        </span>
+        <span className={`fx-pill ${st.pill}`}>{st.label}</span>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 13 }}>
-        <span style={{ width: 42, height: 42, borderRadius: 12, background: "#FEF3C7", color: "#B45309", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></svg>
+        <span style={{ width: 42, height: 42, borderRadius: 12, background: "var(--lilac-bg)", color: "var(--lilac)", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+          <IconPackage />
         </span>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{first.packageName ?? "Paket"}</div>
-          <div style={{ fontSize: 12.5, color: "#9DB0CC", fontWeight: 600 }}>{timeAgo(first.createdAt) || `${fmtDt(first.createdAt)} yaradılıb`}</div>
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>{timeAgo(first.createdAt) || `${fmtDt(first.createdAt)} yaradılıb`}</div>
         </div>
       </div>
 
-      <div style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "11px 13px", marginBottom: 13 }}>
+      <div style={{ background: "var(--surface-muted)", border: "1px solid var(--hairline)", borderRadius: 10, padding: "11px 13px", marginBottom: 13 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford)" }}>İstifadə olunub: {used}/{total}</span>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: "#B45309" }}>{remaining} qalıb</span>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford)" }}>İstifadə olunub: <span className="fx-num">{used}/{total}</span></span>
+          <span className="fx-num" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--brand-700)" }}>{remaining} qalıb</span>
         </div>
-        <div style={{ height: 6, background: "#EEF2F7", borderRadius: 999, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${pct}%`, background: "#B45309", borderRadius: 999 }} />
+        <div className="fx-progress">
+          <div className="fx-progress__fill" style={{ width: `${pct}%` }} />
         </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 13 }}>
-        <span style={{ width: 40, height: 40, borderRadius: 11, background: "var(--brand-700)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none" }}>{initialsOf(first.patientName)}</span>
+        <span className={`fx-avatar fx-avatar--${avatarVariant(first.patientId ?? first.id)}`}>{initialsOf(first.patientName)}</span>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{first.patientName ?? "—"}</div>
           <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>Pasiyent</div>
@@ -373,30 +390,24 @@ function PoolPackageCard({
         <div style={{ display: "flex", gap: 7, marginBottom: 15, flexWrap: "wrap" }}>
           {phone && (
             <>
-              <ContactBtn href={`tel:${phone}`} label="Zəng">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
-              </ContactBtn>
-              <ContactBtn href={whatsappLink(phone)} target="_blank" label="WhatsApp">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
-              </ContactBtn>
+              <ContactBtn href={`tel:${phone}`} label="Zəng"><IconPhone /></ContactBtn>
+              <ContactBtn href={whatsappLink(phone)} target="_blank" label="WhatsApp" variant="warn-ghost"><IconChat /></ContactBtn>
             </>
           )}
           {first.patientEmail && (
-            <ContactBtn href={`mailto:${first.patientEmail}`} label="Email">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="M22 7l-10 5L2 7" /></svg>
-            </ContactBtn>
+            <ContactBtn href={`mailto:${first.patientEmail}`} label="Email"><IconMail /></ContactBtn>
           )}
         </div>
       )}
 
       <div style={{ display: "flex", gap: 9, marginTop: "auto" }}>
-        <button onClick={e => { e.stopPropagation(); onTake(); }} disabled={busy}
-          style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "#B45309", color: "#fff", border: "none", borderRadius: 10, padding: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1, boxShadow: "0 4px 12px rgba(180,83,9,.24)" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+        <button type="button" onClick={e => { e.stopPropagation(); onTake(); }} disabled={busy}
+          className="fx-btn fx-btn--primary" style={{ flex: 1 }}>
+          <IconCheck />
           {t("staff.opTake")}
         </button>
-        <button onClick={e => { e.stopPropagation(); onOpen(); }}
-          style={{ flex: "none", background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 14px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+        <button type="button" onClick={e => { e.stopPropagation(); onOpen(); }}
+          className="fx-btn fx-btn--ghost" style={{ flex: "none" }}>
           Müştəri profili
         </button>
       </div>
@@ -406,23 +417,88 @@ function PoolPackageCard({
 
 function PoolSkeleton() {
   return (
-    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", borderLeft: "3px solid #E2E9F4", padding: 18 }}>
+    <div className="fx-card" style={{ padding: 18 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-        <div className="pool-skel" style={{ width: 90, height: 14, borderRadius: 6 }} />
-        <div className="pool-skel" style={{ width: 54, height: 20, borderRadius: 999 }} />
+        <div className="fx-skeleton" style={{ width: 90, height: 14 }} />
+        <div className="fx-skeleton" style={{ width: 54, height: 20, borderRadius: 999 }} />
       </div>
       <div style={{ display: "flex", gap: 11, marginBottom: 14 }}>
-        <div className="pool-skel" style={{ width: 40, height: 40, borderRadius: 11 }} />
+        <div className="fx-skeleton fx-skeleton--circle" style={{ width: 40, height: 40 }} />
         <div style={{ flex: 1, paddingTop: 3 }}>
-          <div className="pool-skel" style={{ width: "60%", height: 14, borderRadius: 6, marginBottom: 8 }} />
-          <div className="pool-skel" style={{ width: "35%", height: 11, borderRadius: 6 }} />
+          <div className="fx-skeleton" style={{ width: "60%", height: 14, marginBottom: 8 }} />
+          <div className="fx-skeleton" style={{ width: "35%", height: 11 }} />
         </div>
       </div>
-      <div className="pool-skel" style={{ width: "100%", height: 42, borderRadius: 10, marginBottom: 14 }} />
+      <div className="fx-skeleton" style={{ width: "100%", height: 42, borderRadius: 10, marginBottom: 14 }} />
       <div style={{ display: "flex", gap: 9 }}>
-        <div className="pool-skel" style={{ flex: 1, height: 42, borderRadius: 10 }} />
-        <div className="pool-skel" style={{ width: 84, height: 42, borderRadius: 10 }} />
+        <div className="fx-skeleton" style={{ flex: 1, height: 42, borderRadius: 10 }} />
+        <div className="fx-skeleton" style={{ width: 84, height: 42, borderRadius: 10 }} />
       </div>
     </div>
+  );
+}
+
+/* ---------- İkonlar (inline SVG, icons.svg-dən) ---------- */
+function IconRefresh() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 4v6h-6" /><path d="M1 20v-6h6" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" /><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+    </svg>
+  );
+}
+function IconCheck() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  );
+}
+function IconPhone() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  );
+}
+function IconChat() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    </svg>
+  );
+}
+function IconMail() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><path d="M22 6l-10 7L2 6" />
+    </svg>
+  );
+}
+function IconMessage() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    </svg>
+  );
+}
+function IconUser() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+function IconPackage() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 8v13H3V8" /><path d="M1 3h22v5H1z" /><path d="M10 12h4" />
+    </svg>
+  );
+}
+function IconInbox() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+    </svg>
   );
 }

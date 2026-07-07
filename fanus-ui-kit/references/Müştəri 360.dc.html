@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+html,body{margin:0;padding:0;background:#F7F9FC;}
+*{box-sizing:border-box;}
+a{color:#1051B7;text-decoration:none;}
+a:hover{color:#0B3F90;text-decoration:underline;}
+input::placeholder,textarea::placeholder{color:#5C6B85;opacity:.65;}
+@keyframes shimmer{0%{background-position:-400px 0;}100%{background-position:400px 0;}}
+@keyframes toastIn{from{transform:translateY(14px);opacity:0;}to{transform:none;opacity:1;}}
+</style>
+</helmet>
+
+<div style="min-height:100vh; background:#F7F9FC; font-family:system-ui,-apple-system,'Segoe UI',sans-serif; color:#0A1A33; padding:32px 40px 64px 40px;" data-screen-label="Müştəri 360 profili">
+
+  <!-- Breadcrumb -->
+  <div style="display:flex; align-items:center; gap:8px; font-size:12.5px; color:#5C6B85; margin-bottom:18px;">
+    <a href="#">Müştərilər</a>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#C3D6F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+    <span style="font-weight:600; color:#2B3C5A;">Nərmin Əliyeva</span>
+  </div>
+
+  <!-- ============ 1) 360 HERO ============ -->
+  <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:20px; box-shadow:0 1px 3px rgba(0,33,71,.06); display:flex; margin-bottom:14px; overflow:hidden;">
+    <div style="flex:1.3; display:flex; gap:20px; padding:26px 30px; align-items:center;">
+      <div style="width:72px; height:72px; border-radius:50%; background:#E4ECFA; color:#0B3F90; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:700; flex-shrink:0;">NƏ</div>
+      <div style="display:flex; flex-direction:column; gap:9px;">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <h1 style="margin:0; font-family:Georgia,'Times New Roman',serif; font-weight:500; letter-spacing:-.01em; font-size:26px;">Nərmin Əliyeva</h1>
+          <sc-if value="{{ isBlocked }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:11.5px; font-weight:600; border-radius:999px; padding:4px 12px; background:#FEE2E2; color:#991B1B;">Bloklanıb</span>
+          </sc-if>
+          <sc-if value="{{ flagged }}" hint-placeholder-val="{{ true }}">
+            <span style="display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; border-radius:999px; padding:4px 12px; background:#FEF3C7; color:#92400E;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+              Diqqət — yüksək no-show
+            </span>
+          </sc-if>
+          <span style="font-size:11.5px; font-weight:600; border-radius:999px; padding:4px 12px; background:#F2F6FD; color:#0B3F90;">Üzv: 4 aydır</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span style="display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:#2B3C5A; background:#F7F9FC; border:1px solid #E9EEF5; border-radius:999px; padding:6px 13px; font-variant-numeric:tabular-nums;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            +994 50 447 21 09
+          </span>
+          <span style="display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:#2B3C5A; background:#F7F9FC; border:1px solid #E9EEF5; border-radius:999px; padding:6px 13px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><path d="M22 6l-10 7L2 6"></path></svg>
+            nermin.aliyeva@mail.az
+          </span>
+          <span style="font-size:12px; color:#5C6B85;">Qeydiyyat: 10 mart 2026</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); flex:1.4; border-left:1px solid #E9EEF5;">
+      <div style="padding:24px 20px; display:flex; flex-direction:column; gap:4px; justify-content:center;">
+        <span style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.06em;">Ümumi xərc</span>
+        <span style="font-size:23px; font-weight:800; font-variant-numeric:tabular-nums;">1 290 <span style="font-size:13px; font-weight:600; color:#5C6B85;">AZN</span></span>
+        <span style="font-size:11.5px; color:#4A9B7F; font-weight:600;">LTV</span>
+      </div>
+      <div style="padding:24px 20px; display:flex; flex-direction:column; gap:4px; justify-content:center; border-left:1px solid #E9EEF5;">
+        <span style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.06em;">Tamamlanmış</span>
+        <span style="font-size:23px; font-weight:800; font-variant-numeric:tabular-nums;">12</span>
+        <span style="font-size:11.5px; color:#5C6B85;">seans · 1 aktiv</span>
+      </div>
+      <div style="padding:24px 20px; display:flex; flex-direction:column; gap:4px; justify-content:center; border-left:1px solid #E9EEF5;">
+        <span style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.06em;">Paket balansı</span>
+        <span style="font-size:23px; font-weight:800; font-variant-numeric:tabular-nums;">4 <span style="font-size:14px; font-weight:600; color:#5C6B85;">/ 10</span></span>
+        <span style="font-size:11.5px; color:#5C6B85;">seans qalıb</span>
+      </div>
+      <div style="padding:24px 20px; display:flex; flex-direction:column; gap:4px; justify-content:center; border-left:1px solid #E9EEF5;">
+        <span style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.06em;">Son giriş</span>
+        <span style="font-size:23px; font-weight:800; font-variant-numeric:tabular-nums;">2 <span style="font-size:14px; font-weight:600; color:#5C6B85;">gün</span></span>
+        <span style="font-size:11.5px; color:#5C6B85;">əvvəl · 5 iyul</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 2) TEZ ƏMƏLİYYATLAR ============ -->
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+    <button onClick="{{ openSell }}" style="display:flex; align-items:center; gap:8px; background:#1051B7; border:1px solid #1051B7; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#FFFFFF; cursor:pointer; font-family:inherit; box-shadow:0 1px 3px rgba(0,33,71,.06);" style-hover="background:#0B3F90;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path><path d="M12 14v4"></path><path d="M10 16h4"></path></svg>
+      Seans sat
+    </button>
+    <button onClick="{{ sellPackage }}" style="display:flex; align-items:center; gap:8px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>
+      Paket sat
+    </button>
+    <button onClick="{{ doCall }}" style="display:flex; align-items:center; gap:8px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+      Zəng
+    </button>
+    <button onClick="{{ doWhatsapp }}" style="display:flex; align-items:center; gap:8px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+      WhatsApp
+    </button>
+    <button onClick="{{ focusNote }}" style="display:flex; align-items:center; gap:8px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+      Qeyd əlavə et
+    </button>
+    <div style="display:flex; align-items:center; gap:10px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:10px; padding:8px 14px; font-size:12.5px; color:#2B3C5A;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1051B7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+      <span>Növbəti seans: <span style="font-weight:700; font-variant-numeric:tabular-nums;">9 iyul, 14:00</span> · Dr. Lalə Həsənova</span>
+    </div>
+    <div style="flex:1;"></div>
+    <button onClick="{{ askBlock }}" style="display:flex; align-items:center; gap:8px; background:#FFFFFF; border:1px solid {{ blockBd }}; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:{{ blockFg }}; cursor:pointer; font-family:inherit;" style-hover="background:#FDF5F5;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M4.93 4.93l14.14 14.14"></path></svg>
+      {{ blockLabel }}
+    </button>
+  </div>
+
+  <!-- ============ 3) ƏSAS GÖVDƏ ============ -->
+  <div style="display:grid; grid-template-columns:1.6fr 1fr; gap:16px; align-items:start;">
+
+    <!-- SOL SÜTUN -->
+    <div style="display:flex; flex-direction:column; gap:16px;">
+
+      <!-- Müştəri jurnalı -->
+      <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); padding:22px 26px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+          <div style="font-size:14.5px; font-weight:700;">Müştəri jurnalı</div>
+          <div style="display:flex; gap:12px; font-size:11px; color:#5C6B85; flex-wrap:wrap;">
+            <span style="display:inline-flex; align-items:center; gap:5px;"><span style="width:8px; height:8px; border-radius:50%; background:#1051B7;"></span>Seans</span>
+            <span style="display:inline-flex; align-items:center; gap:5px;"><span style="width:8px; height:8px; border-radius:50%; background:#4A9B7F;"></span>Ödəniş</span>
+            <span style="display:inline-flex; align-items:center; gap:5px;"><span style="width:8px; height:8px; border-radius:50%; background:#8C7DC9;"></span>Paket</span>
+            <span style="display:inline-flex; align-items:center; gap:5px;"><span style="width:8px; height:8px; border-radius:50%; background:#C97D2E;"></span>Test</span>
+            <span style="display:inline-flex; align-items:center; gap:5px;"><span style="width:8px; height:8px; border-radius:50%; background:#C97D7D;"></span>Qayğı</span>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column;">
+          <sc-for list="{{ journal }}" as="ev" hint-placeholder-count="6">
+            <div style="display:flex; gap:14px;">
+              <div style="display:flex; flex-direction:column; align-items:center;">
+                <span style="width:11px; height:11px; border-radius:50%; background:{{ ev.dot }}; border:2.5px solid {{ ev.ring }}; flex-shrink:0; margin-top:3px;"></span>
+                <sc-if value="{{ ev.notLast }}" hint-placeholder-val="{{ true }}"><span style="width:1.5px; flex:1; background:#E9EEF5; margin:4px 0;"></span></sc-if>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px; padding-bottom:18px; flex:1;">
+                <div style="display:flex; justify-content:space-between; gap:12px; align-items:baseline;">
+                  <span style="font-size:13.5px; font-weight:600;">{{ ev.title }}</span>
+                  <span style="font-size:11.5px; color:#5C6B85; font-variant-numeric:tabular-nums; white-space:nowrap;">{{ ev.time }}</span>
+                </div>
+                <span style="font-size:12.5px; color:#5C6B85;">{{ ev.detail }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Maliyyə -->
+      <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); overflow:hidden;">
+        <div style="padding:20px 26px 0 26px; font-size:14.5px; font-weight:700;">Maliyyə</div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); padding:16px 26px; gap:0; border-bottom:1px solid #E9EEF5;">
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <span style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em;">Ümumi xərc</span>
+            <span style="font-size:18px; font-weight:800; font-variant-numeric:tabular-nums;">1 290 AZN</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:2px; border-left:1px solid #E9EEF5; padding-left:20px;">
+            <span style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em;">Orta seans dəyəri</span>
+            <span style="font-size:18px; font-weight:800; font-variant-numeric:tabular-nums;">86 AZN</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:2px; border-left:1px solid #E9EEF5; padding-left:20px;">
+            <span style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em;">Gözləyən qalıq</span>
+            <span style="font-size:18px; font-weight:800; font-variant-numeric:tabular-nums; color:#C97D2E;">80 AZN</span>
+          </div>
+        </div>
+        <sc-for list="{{ payments }}" as="p" hint-placeholder-count="4">
+          <div style="display:flex; align-items:center; gap:14px; padding:12px 26px; border-bottom:1px solid #E9EEF5; font-size:13px;" style-hover="background:#F7F9FC;">
+            <span style="color:#5C6B85; font-variant-numeric:tabular-nums; min-width:64px;">{{ p.date }}</span>
+            <span style="font-weight:700; font-variant-numeric:tabular-nums; min-width:80px;">{{ p.amount }} AZN</span>
+            <span style="color:#5C6B85;">{{ p.method }}</span>
+            <span style="color:#5C6B85; font-size:12px;">{{ p.note }}</span>
+            <div style="flex:1;"></div>
+            <span style="font-size:11.5px; font-weight:600; border-radius:999px; padding:3px 11px; background:{{ p.pillBg }}; color:{{ p.pillFg }};">{{ p.pillLabel }}</span>
+          </div>
+        </sc-for>
+        <div style="padding:18px 26px; display:flex; flex-direction:column; gap:14px;">
+          <div style="font-size:12px; font-weight:700; color:#5C6B85; text-transform:uppercase; letter-spacing:.06em;">Paketlər</div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; font-size:13px;">
+              <span style="font-weight:600;">10 seanslıq paket <span style="font-weight:400; color:#5C6B85;">· Dr. Lalə Həsənova · 300 AZN</span></span>
+              <span style="font-size:12px; font-weight:600; color:#0B3F90; font-variant-numeric:tabular-nums;">4 / 10 qalıb</span>
+            </div>
+            <div style="display:flex; height:9px; border-radius:5px; overflow:hidden; background:#E4ECFA;">
+              <div style="background:#1051B7; width:60%;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:11.5px; color:#5C6B85; font-variant-numeric:tabular-nums;">
+              <span>6 istifadə olunub</span><span style="color:#4A9B7F; font-weight:600;">Aktiv</span>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; font-size:13px;">
+              <span style="font-weight:600; color:#5C6B85;">5 seanslıq paket <span style="font-weight:400;">· Dr. Kamran Musayev · 190 AZN</span></span>
+              <span style="font-size:12px; font-weight:600; color:#5C6B85; font-variant-numeric:tabular-nums;">0 / 5 qalıb</span>
+            </div>
+            <div style="display:flex; height:9px; border-radius:5px; overflow:hidden; background:#E4ECFA;">
+              <div style="background:#C3D6F6; width:100%;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:11.5px; color:#5C6B85; font-variant-numeric:tabular-nums;">
+              <span>5 istifadə olunub</span><span>Tamamlanıb</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Testlər -->
+      <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); padding:20px 26px; display:flex; flex-direction:column; gap:16px;">
+        <div style="font-size:14.5px; font-weight:700;">Test nəticələri</div>
+        <div style="display:flex; flex-direction:column; gap:10px; padding-bottom:16px; border-bottom:1px solid #E9EEF5;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px;">
+            <span style="font-size:13.5px; font-weight:600;">Anksiyete şkalası (GAD-7)</span>
+            <span style="font-size:11.5px; color:#5C6B85; font-variant-numeric:tabular-nums;">4 gün öncə</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:16px; font-weight:800; font-variant-numeric:tabular-nums;">11 <span style="font-size:12px; font-weight:600; color:#5C6B85;">/ 21 · 52%</span></span>
+            <span style="font-size:11.5px; font-weight:600; border-radius:999px; padding:3px 11px; background:#F2F6FD; color:#2B3C5A;">Orta səviyyə</span>
+          </div>
+          <div style="display:flex; height:8px; border-radius:5px; overflow:hidden; background:#E4ECFA; max-width:320px;">
+            <div style="background:#88AEEC; width:52%;"></div>
+          </div>
+          <span style="font-size:12px; color:#5C6B85;">Nəticə psixoloqla növbəti seansda müzakirə üçün nəzərdə tutulub</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <span style="font-size:13.5px; font-weight:600;">Depressiya şkalası (PHQ-9)</span>
+            <span style="font-size:12px; color:#5C6B85;">Müştəriyə göndərilib, cavab gözlənilir</span>
+          </div>
+          <span style="font-size:11.5px; font-weight:600; border-radius:999px; padding:3px 11px; background:#FEF3C7; color:#92400E;">Gözləyir</span>
+        </div>
+      </div>
+
+      <!-- Rəylər -->
+      <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); padding:20px 26px; display:flex; flex-direction:column; gap:12px;">
+        <div style="font-size:14.5px; font-weight:700;">Verilmiş rəylər</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <span style="font-size:13px; font-weight:600;">Dr. Lalə Həsənova</span>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="display:inline-flex; gap:2px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#C97D2E" stroke="#C97D2E" stroke-width="1.4" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#C97D2E" stroke="#C97D2E" stroke-width="1.4" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#C97D2E" stroke="#C97D2E" stroke-width="1.4" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#C97D2E" stroke="#C97D2E" stroke-width="1.4" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#C97D2E" stroke="#C97D2E" stroke-width="1.4" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+              </span>
+              <span style="font-size:11.5px; font-weight:600; border-radius:999px; padding:3px 11px; background:#D1FAE5; color:#065F46;">Dərc olunub</span>
+            </div>
+          </div>
+          <span style="font-size:13px; color:#2B3C5A; background:#F7F9FC; border:1px solid #E9EEF5; border-radius:8px; padding:10px 14px;">"Çox kömək etdi, təşəkkürlər"</span>
+          <span style="font-size:11.5px; color:#5C6B85; font-variant-numeric:tabular-nums;">15 iyun 2026</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAĞ SÜTUN -->
+    <div style="display:flex; flex-direction:column; gap:16px;">
+
+      <!-- Qayğı paneli -->
+      <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); overflow:hidden;">
+        <div style="padding:18px 22px; font-size:14.5px; font-weight:700; border-bottom:1px solid #E9EEF5;">Qayğı paneli</div>
+        <sc-if value="{{ flagged }}" hint-placeholder-val="{{ true }}">
+          <div style="margin:16px 22px 0 22px; background:#FFFBEB; border:1px solid rgba(201,125,46,.3); border-radius:12px; padding:12px 14px; display:flex; gap:10px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+            <div style="display:flex; flex-direction:column; gap:3px;">
+              <span style="font-size:12.5px; font-weight:700; color:#92400E;">Yüksək no-show göstəricisi</span>
+              <span style="font-size:12px; color:#2B3C5A; line-height:1.5;">Son 2 ayda 2 seansa gəlməyib. Sistem avtomatik nişan qoyub.</span>
+            </div>
+          </div>
+        </sc-if>
+        <div style="padding:16px 22px; display:flex; flex-direction:column; gap:9px; font-size:13px; font-variant-numeric:tabular-nums;">
+          <div style="display:flex; justify-content:space-between;"><span style="color:#5C6B85;">Gəlmədi (no-show)</span><span style="font-weight:700; color:#92400E;">2</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:#5C6B85;">Gec ləğv</span><span style="font-weight:700;">1</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:#5C6B85;">Rədd edilmiş</span><span style="font-weight:700;">0</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:#5C6B85;">Ləğv edilmiş</span><span style="font-weight:700;">2</span></div>
+        </div>
+        <div style="margin:0 22px 18px 22px; border-top:1px solid #E9EEF5; padding-top:12px; display:flex; gap:9px; font-size:12px; color:#2B3C5A; line-height:1.5;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1051B7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+        <span>Tövsiyə: 2 no-show — növbəti seansdan bir gün əvvəl təsdiq zəngi edin.</span>
+        </div>
+      </div>
+
+      <!-- Operator qeydləri -->
+      <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); overflow:hidden;">
+        <div style="padding:18px 22px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #E9EEF5;">
+          <span style="font-size:14.5px; font-weight:700;">Operator qeydləri</span>
+          <span style="font-size:11px; font-weight:700; border-radius:999px; padding:2px 9px; background:#E4ECFA; color:#0B3F90; font-variant-numeric:tabular-nums;">{{ noteCount }}</span>
+        </div>
+        <sc-for list="{{ notes }}" as="n" hint-placeholder-count="2">
+          <div style="padding:14px 22px; border-bottom:1px solid #E9EEF5; display:flex; flex-direction:column; gap:5px;">
+            <span style="font-size:13px; color:#2B3C5A; line-height:1.5;">{{ n.text }}</span>
+            <span style="font-size:11.5px; color:#5C6B85; font-variant-numeric:tabular-nums;">{{ n.author }} · {{ n.date }}</span>
+          </div>
+        </sc-for>
+        <div style="padding:16px 22px; display:flex; flex-direction:column; gap:10px;">
+          <textarea id="note-input" onInput="{{ onNoteInput }}" value="{{ noteDraft }}" placeholder="Zəng, izləmə və ya müşahidə qeydi yazın…" rows="3" style="border:1px solid #E9EEF5; border-radius:10px; padding:10px 13px; font-size:13px; font-family:inherit; color:#0A1A33; outline:none; background:#F7F9FC; resize:vertical; width:100%;"></textarea>
+          <button onClick="{{ addNote }}" style="align-self:flex-end; background:#1051B7; border:1px solid #1051B7; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:600; color:#FFFFFF; cursor:pointer; font-family:inherit;" style-hover="background:#0B3F90;">Qeyd əlavə et</button>
+        </div>
+      </div>
+
+      <!-- Təcili əlaqə -->
+      <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; box-shadow:0 1px 3px rgba(0,33,71,.06); padding:18px 22px; display:flex; flex-direction:column; gap:14px;">
+        <div style="font-size:14.5px; font-weight:700;">Təcili əlaqə və ünvan</div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:36px; height:36px; border-radius:50%; background:#E5F1EC; color:#2E6B54; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0;">RƏ</div>
+          <div style="display:flex; flex-direction:column; gap:1px;">
+            <span style="font-size:13px; font-weight:600;">Rəşad Əliyev <span style="font-weight:400; color:#5C6B85;">· qardaş</span></span>
+            <span style="font-size:12.5px; color:#5C6B85; font-variant-numeric:tabular-nums;">+994 55 210 33 44</span>
+          </div>
+        </div>
+        <div style="border-top:1px solid #E9EEF5; padding-top:12px; display:flex; gap:9px; font-size:12.5px; color:#2B3C5A;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          <span>Bakı, Nəsimi rayonu, C. Cabbarlı küç. 44</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ HALLAR ============ -->
+  <sc-if value="{{ showStates }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex; flex-direction:column; gap:12px; margin-top:28px;">
+    <div style="font-size:11.5px; font-weight:700; color:#5C6B85; text-transform:uppercase; letter-spacing:.08em;">İnterfeys halları</div>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px;">
+      <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; gap:12px;">
+        <div style="font-size:12px; font-weight:600; color:#5C6B85;">Yüklənmə</div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:44px; height:44px; border-radius:50%; background:linear-gradient(90deg,#EEF2F8 25%,#F7F9FC 50%,#EEF2F8 75%); background-size:400px 100%; animation:shimmer 1.4s infinite linear;"></div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+            <div style="height:12px; border-radius:6px; width:65%; background:linear-gradient(90deg,#EEF2F8 25%,#F7F9FC 50%,#EEF2F8 75%); background-size:400px 100%; animation:shimmer 1.4s infinite linear;"></div>
+            <div style="height:9px; border-radius:6px; width:42%; background:linear-gradient(90deg,#EEF2F8 25%,#F7F9FC 50%,#EEF2F8 75%); background-size:400px 100%; animation:shimmer 1.4s infinite linear;"></div>
+          </div>
+        </div>
+        <div style="height:10px; border-radius:6px; width:90%; background:linear-gradient(90deg,#EEF2F8 25%,#F7F9FC 50%,#EEF2F8 75%); background-size:400px 100%; animation:shimmer 1.4s infinite linear;"></div>
+        <div style="height:10px; border-radius:6px; width:58%; background:linear-gradient(90deg,#EEF2F8 25%,#F7F9FC 50%,#EEF2F8 75%); background-size:400px 100%; animation:shimmer 1.4s infinite linear;"></div>
+      </div>
+      <div style="background:#FFFFFF; border:1.5px dashed #C3D6F6; border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; text-align:center;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#88AEEC" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        <div style="font-size:13px; font-weight:700;">Test nəticəsi yoxdur</div>
+        <div style="font-size:11.5px; color:#5C6B85;">Müştəriyə test göndərəndə nəticələr burada görünəcək</div>
+        <button style="margin-top:4px; background:#1051B7; border:none; border-radius:8px; padding:7px 14px; font-size:12px; font-weight:600; color:#FFFFFF; cursor:pointer; font-family:inherit;" style-hover="background:#0B3F90;">Test göndər</button>
+      </div>
+      <div style="background:#FFFFFF; border:1px solid rgba(201,125,125,.45); border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; text-align:center;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C97D7D" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+        <div style="font-size:13px; font-weight:700;">Profil yüklənmədi</div>
+        <div style="font-size:11.5px; color:#5C6B85;">Serverlə əlaqə kəsildi. Bir az sonra yenidən yoxlayın</div>
+        <button style="margin-top:4px; display:flex; align-items:center; gap:7px; background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:7px 14px; font-size:12px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          Yenidən cəhd et
+        </button>
+      </div>
+      <div style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:16px; padding:18px 20px; display:flex; flex-direction:column; gap:10px;">
+        <div style="font-size:12px; font-weight:600; color:#5C6B85;">Bildirişlər (toast)</div>
+        <div style="display:flex; align-items:center; gap:10px; background:#059669; color:#FFFFFF; border-radius:10px; padding:10px 14px; font-size:12.5px; font-weight:600;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+          Qeyd əlavə edildi
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; background:#DC2626; color:#FFFFFF; border-radius:10px; padding:10px 14px; font-size:12.5px; font-weight:600;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>
+          Əməliyyat alınmadı
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ============ SEANS SAT MODALI ============ -->
+  <sc-if value="{{ sellOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; inset:0; background:rgba(8,23,48,.5); z-index:100; display:flex; align-items:center; justify-content:center;">
+      <div style="background:#FFFFFF; border-radius:20px; box-shadow:0 12px 32px rgba(0,33,71,.18); width:420px; max-width:92vw; padding:26px 28px; display:flex; flex-direction:column; gap:16px; animation:toastIn .2s ease;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font-family:Georgia,'Times New Roman',serif; font-weight:500; font-size:19px; letter-spacing:-.01em;">Seans sat</div>
+            <div style="font-size:12.5px; color:#5C6B85;">Nərmin Əliyeva üçün yeni seans</div>
+          </div>
+          <button onClick="{{ closeSell }}" style="background:transparent; border:none; color:#5C6B85; cursor:pointer; padding:4px; display:flex;" style-hover="color:#0A1A33;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18"></path><path d="M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em;">Psixoloq</label>
+          <select style="border:1px solid #E9EEF5; border-radius:8px; padding:10px 12px; font-size:13px; font-family:inherit; color:#0A1A33; background:#F7F9FC; outline:none;">
+            <option>Dr. Lalə Həsənova</option>
+            <option>Dr. Kamran Musayev</option>
+            <option>Dr. Aysel Qasımova</option>
+          </select>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em;">Tarix və saat</label>
+            <input value="9 iyul, 14:00" style="border:1px solid #E9EEF5; border-radius:8px; padding:10px 12px; font-size:13px; font-family:inherit; color:#0A1A33; background:#F7F9FC; outline:none; font-variant-numeric:tabular-nums;">
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label style="font-size:11px; font-weight:600; color:#5C6B85; text-transform:uppercase; letter-spacing:.05em;">Məbləğ (AZN)</label>
+            <input value="80" style="border:1px solid #E9EEF5; border-radius:8px; padding:10px 12px; font-size:13px; font-family:inherit; color:#0A1A33; background:#F7F9FC; outline:none; font-variant-numeric:tabular-nums;">
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:9px; background:#F2F6FD; border-radius:10px; padding:10px 13px; font-size:12px; color:#0B3F90;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+          Aktiv paketdə 4 seans qalıb — paketdən istifadə etmək olar
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button onClick="{{ closeSell }}" style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">İmtina</button>
+          <button onClick="{{ confirmSell }}" style="background:#1051B7; border:1px solid #1051B7; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#FFFFFF; cursor:pointer; font-family:inherit;" style-hover="background:#0B3F90;">Seans yarat</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ BLOK MODALI ============ -->
+  <sc-if value="{{ blockModalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; inset:0; background:rgba(8,23,48,.5); z-index:100; display:flex; align-items:center; justify-content:center;">
+      <div style="background:#FFFFFF; border-radius:20px; box-shadow:0 12px 32px rgba(0,33,71,.18); width:400px; max-width:92vw; padding:26px 28px; display:flex; flex-direction:column; gap:14px; animation:toastIn .2s ease;">
+        <div style="width:40px; height:40px; border-radius:12px; background:#FDF0F0; color:#C97D7D; display:flex; align-items:center; justify-content:center;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M4.93 4.93l14.14 14.14"></path></svg>
+        </div>
+        <div style="font-family:Georgia,'Times New Roman',serif; font-weight:500; font-size:19px; letter-spacing:-.01em;">{{ blockModalTitle }}</div>
+        <div style="font-size:13.5px; color:#5C6B85; line-height:1.55;">{{ blockModalText }}</div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:6px;">
+          <button onClick="{{ blockCancel }}" style="background:#FFFFFF; border:1px solid #E9EEF5; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#2B3C5A; cursor:pointer; font-family:inherit;" style-hover="background:#F2F6FD;">İmtina</button>
+          <button onClick="{{ blockConfirm }}" style="background:#C97D7D; border:1px solid #C97D7D; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; color:#FFFFFF; cursor:pointer; font-family:inherit;" style-hover="background:#B56A6A;">{{ blockLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ TOAST ============ -->
+  <sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed; right:26px; bottom:26px; z-index:120; display:flex; align-items:center; gap:10px; background:{{ toastBg }}; color:#FFFFFF; border-radius:12px; padding:12px 18px; font-size:13px; font-weight:600; box-shadow:0 12px 32px rgba(0,33,71,.2); animation:toastIn .25s ease;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+      {{ toastMsg }}
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;flagged&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;section&quot;:&quot;Qayğı&quot;,&quot;tsType&quot;:&quot;boolean&quot;},&quot;showStates&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;section&quot;:&quot;Görünüş&quot;,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = {
+    blocked: false,
+    sellOpen: false,
+    blockModalOpen: false,
+    toast: null,
+    noteDraft: '',
+    notes: [
+      { text: 'Zəng etdim, növbəti həftə üçün seans istəyir — Dr. Lalə uyğundur.', author: 'Nərgiz Quliyeva', date: '3 iyul 2026' },
+      { text: 'No-show oldu, xatırlatma göndərildi.', author: 'Orxan Balayev', date: '28 iyun 2026' }
+    ]
+  };
+
+  showToast(msg, bg) {
+    clearTimeout(this._toastTimer);
+    this.setState({ toast: { msg, bg: bg || '#059669' } });
+    this._toastTimer = setTimeout(() => this.setState({ toast: null }), 2600);
+  }
+
+  renderVals() {
+    const S = this.state;
+    const C = { seans: '#1051B7', pay: '#4A9B7F', pkg: '#8C7DC9', test: '#C97D2E', care: '#C97D7D', sys: '#5C6B85' };
+    const R = { seans: '#E4ECFA', pay: '#E5F1EC', pkg: '#F4EFFB', test: '#FBF0E3', care: '#FDF0F0', sys: '#F3F4F6' };
+
+    const journalRaw = [
+      { t: 'pay', title: 'Ödəniş gözləyir — 80 AZN (Nağd)', detail: 'Seans #4821 üçün, operator: Nərgiz Quliyeva', time: 'Bu gün' },
+      { t: 'pay', title: 'Ödəniş — 150 AZN (Kart)', detail: 'Seans #4780, dərhal təsdiqləndi', time: '5 iyul' },
+      { t: 'seans', title: 'Seans tamamlandı', detail: 'Dr. Lalə Həsənova · paketdən istifadə (6/10)', time: '4 iyul' },
+      { t: 'care', title: 'İadə — 120 AZN', detail: '"Seans baş tutmadı" · operator: Orxan Balayev', time: '2 iyul' },
+      { t: 'care', title: 'Seansa gəlmədi (no-show)', detail: 'Xatırlatma göndərildi, operator qeydi yaradıldı', time: '28 iyun' },
+      { t: 'test', title: 'Test tamamlandı — GAD-7', detail: '11/21 · orta səviyyə · psixoloqla müzakirə planlaşdırılıb', time: '25 iyun' },
+      { t: 'pkg', title: 'Paket alışı — 10 seanslıq', detail: 'Dr. Lalə Həsənova · 300 AZN (Kart)', time: '20 iyun' },
+      { t: 'seans', title: 'Rəy verildi — 5 ulduz', detail: '"Çox kömək etdi, təşəkkürlər" · Dr. Lalə Həsənova', time: '15 iyun' },
+      { t: 'sys', title: 'Platformada qeydiyyat', detail: 'Mobil tətbiq vasitəsilə', time: '10 mart' }
+    ];
+    const journal = journalRaw.map((e, i) => ({
+      ...e, dot: C[e.t], ring: R[e.t], notLast: i < journalRaw.length - 1
+    }));
+
+    const PILL = {
+      PENDING: { label: 'Gözləyir', bg: '#FEF3C7', fg: '#92400E' },
+      PAID: { label: 'Ödənilib', bg: '#D1FAE5', fg: '#065F46' },
+      REFUNDED: { label: 'Geri qaytarılıb', bg: '#FEE2E2', fg: '#991B1B' }
+    };
+    const payments = [
+      { date: 'Bu gün', amount: '80', method: 'Nağd', note: 'Seans #4821', st: 'PENDING' },
+      { date: '5 iyul', amount: '150', method: 'Kart', note: 'Seans #4780', st: 'PAID' },
+      { date: '2 iyul', amount: '120', method: 'Kart', note: '"Seans baş tutmadı"', st: 'REFUNDED' },
+      { date: '20 iyun', amount: '300', method: 'Kart', note: '10 seanslıq paket', st: 'PAID' }
+    ].map(p => ({ ...p, pillLabel: PILL[p.st].label, pillBg: PILL[p.st].bg, pillFg: PILL[p.st].fg }));
+
+    return {
+      journal,
+      payments,
+      flagged: this.props.flagged ?? true,
+      isBlocked: S.blocked,
+      // quick actions
+      openSell: () => this.setState({ sellOpen: true }),
+      closeSell: () => this.setState({ sellOpen: false }),
+      confirmSell: () => { this.setState({ sellOpen: false }); this.showToast('Seans yaradıldı — 9 iyul, 14:00'); },
+      sellPackage: () => this.showToast('Paket satışı formu açılır'),
+      doCall: () => this.showToast('Zəng başladıldı — +994 50 447 21 09'),
+      doWhatsapp: () => this.showToast('WhatsApp söhbəti açılır'),
+      focusNote: () => { const el = document.getElementById('note-input'); if (el) el.focus(); },
+      sellOpen: S.sellOpen,
+      // block
+      blockLabel: S.blocked ? 'Bloku aç' : 'Blokla',
+      blockBd: S.blocked ? '#E9EEF5' : 'rgba(201,125,125,.4)',
+      blockFg: S.blocked ? '#5C6B85' : '#C97D7D',
+      askBlock: () => this.setState({ blockModalOpen: true }),
+      blockModalOpen: S.blockModalOpen,
+      blockModalTitle: S.blocked ? 'Bloku aç' : 'Müştərini blokla',
+      blockModalText: S.blocked
+        ? 'Nərmin Əliyevanın bloku açılacaq — yenidən seans sifariş edə biləcək.'
+        : 'Nərmin Əliyeva bloklanacaq — yeni seans sifariş edə bilməyəcək. Bu əməliyyat audit izinə yazılır.',
+      blockCancel: () => this.setState({ blockModalOpen: false }),
+      blockConfirm: () => {
+        const b = !S.blocked;
+        this.setState({ blocked: b, blockModalOpen: false });
+        this.showToast(b ? 'Müştəri bloklandı' : 'Blok açıldı', b ? '#DC2626' : '#059669');
+      },
+      // notes
+      notes: S.notes,
+      noteCount: S.notes.length,
+      noteDraft: S.noteDraft,
+      onNoteInput: e => this.setState({ noteDraft: e.target.value }),
+      addNote: () => {
+        const t = S.noteDraft.trim();
+        if (!t) { this.showToast('Qeyd boşdur', '#DC2626'); return; }
+        this.setState({
+          notes: [{ text: t, author: 'Nərgiz Quliyeva', date: '7 iyul 2026' }, ...S.notes],
+          noteDraft: ''
+        });
+        this.showToast('Qeyd əlavə edildi');
+      },
+      // toast
+      toastOn: !!S.toast,
+      toastMsg: S.toast ? S.toast.msg : '',
+      toastBg: S.toast ? S.toast.bg : '#059669',
+      showStates: this.props.showStates ?? true
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -15,6 +15,32 @@ import { SkeletonGrid } from "@/components/Skeleton";
 import EmptyState, { CalendarGlyph } from "@/components/EmptyState";
 import { toast } from "@/components/Toast";
 
+// ─── İkonlar (inline SVG — icons.svg#i-*-dən; emoji qadağandır) ────────────────
+const IconRefresh = () => (
+  <svg className="fx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M23 4v6h-6" /><path d="M1 20v-6h6" />
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" /><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+  </svg>
+);
+const IconClock = () => (
+  <svg className="fx-icon fx-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+  </svg>
+);
+const IconSend = () => (
+  <svg className="fx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4z" />
+  </svg>
+);
+const IconArrowRight = () => (
+  <svg className="fx-icon fx-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M5 12h14" /><path d="M12 5l7 7-7 7" />
+  </svg>
+);
+
+const initialsOf = (name?: string | null) =>
+  (name ?? "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+
 function untilLabel(iso?: string | null): string {
   if (!iso) return "";
   const ms = new Date(iso).getTime() - Date.now();
@@ -53,16 +79,16 @@ export default function OperatorMeetingLinksPage() {
     setItems(prev => prev.map(x => (x.id === a.id ? a : x)));
 
   return (
-    <div>
-      <div className="flex items-start justify-between mb-6">
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
         <div>
-          <h1 className="text-2xl font-bold text-[#1A2535]">Görüş linkləri</h1>
-          <p className="text-[#52718F] text-sm mt-1">
+          <h1 className="fx-h1">Görüş linkləri</h1>
+          <p className="fx-subtitle" style={{ margin: "6px 0 0" }}>
             Yaxınlaşan, görüş linki hələ göndərilməmiş seanslar. Linki əlavə edib göndərin.
           </p>
         </div>
-        <button onClick={load} className="px-4 py-2 text-sm rounded-xl border border-[#E5E7EB] bg-white text-[#1A2535]">
-          Yenilə
+        <button type="button" onClick={load} className="fx-btn fx-btn--ghost">
+          <IconRefresh /> Yenilə
         </button>
       </div>
 
@@ -72,7 +98,7 @@ export default function OperatorMeetingLinksPage() {
         <EmptyState icon={<CalendarGlyph />} title="Gözləyən görüş linki yoxdur"
           sub="Bütün yaxınlaşan seanslara link göndərilib." />
       ) : (
-        <div className="op-appt-grid">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12, alignItems: "stretch" }}>
           {items.map(a => (
             <MeetingLinkCard key={a.id} a={a} onSent={() => onSent(a.id)} onUpdated={onUpdated} />
           ))}
@@ -90,6 +116,7 @@ function MeetingLinkCard({ a, onSent, onUpdated }: {
   const [value, setValue] = useState(a.meetingLink ?? "");
   const [busy, setBusy] = useState(false);
   const hasLink = !!a.meetingLink;
+  const av = (Math.abs(a.id) % 4) + 1;
 
   const saveAndSend = async () => {
     const link = value.trim();
@@ -124,45 +151,65 @@ function MeetingLinkCard({ a, onSent, onUpdated }: {
     }
   };
 
+  const busyStyle = { opacity: busy ? 0.6 : 1, cursor: busy ? "default" : "pointer" };
+
   return (
-    <div className="op-appt">
-      <div className="op-appt__chips">
-        <span className="op-appt__id">#FNS-{String(a.id).padStart(4, "0")}</span>
+    <div className="fx-card" style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <span className="fx-num" style={{ fontSize: "var(--text-micro)", fontWeight: 600, color: "var(--oxford-60)" }}>
+          #FNS-{String(a.id).padStart(4, "0")}
+        </span>
         {hasLink && (
-          <span className="op-appt__status" style={{ background: "#FEF3C7", color: "#92400E" }}>
-            Link var · göndərilməyib
+          <span className="fx-pill fx-pill--pending">
+            <IconClock /> Link var · göndərilməyib
           </span>
         )}
       </div>
 
-      <div className="op-appt__name">{a.patientName ?? "—"}</div>
-      <div className="op-appt__assign">
-        {a.psychologistName && <><strong>{a.psychologistName}</strong> · </>}
-        {a.startAt ? azFormatDateTime(a.startAt) : "—"} <span style={{ color: "var(--brand-700)", fontWeight: 600 }}>· {untilLabel(a.startAt)}</span>
+      <div style={{ display: "flex", gap: 11, alignItems: "center" }}>
+        <span className={`fx-avatar fx-avatar--${av} fx-avatar--sm`} aria-hidden>{initialsOf(a.patientName)}</span>
+        <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", letterSpacing: "-.01em", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {a.patientName ?? "—"}
+          </div>
+          <div className="fx-row__meta">
+            {a.psychologistName && <><span style={{ fontWeight: 600, color: "var(--oxford-80)" }}>{a.psychologistName}</span><span className="fx-sep">·</span></>}
+            <span className="fx-num">{a.startAt ? azFormatDateTime(a.startAt) : "—"}</span>
+          </div>
+        </div>
       </div>
 
-      <label style={{ fontSize: 11.5, fontWeight: 600, color: "#52718F", marginTop: 4 }}>Görüş linki (Zoom / Meet / Jitsi)</label>
-      <input
-        type="url"
-        value={value}
-        onChange={e => setValue(e.target.value)}
-        placeholder="https://…"
-        onClick={e => e.stopPropagation()}
-        style={{ width: "100%", padding: 9, borderRadius: 9, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" }}
-      />
+      {a.startAt && (
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--text-caption)", fontWeight: 600, color: "var(--brand-600)" }}>
+          <IconClock /> {untilLabel(a.startAt)}
+        </div>
+      )}
 
-      <div className="op-appt__actions" style={{ flexDirection: "row", gap: 8 }}>
-        <button onClick={saveAndSend} disabled={busy} className="op-appt__btn op-appt__btn--primary">
-          {busy ? "…" : "Əlavə et və göndər"}
+      <div className="fx-field">
+        <label className="fx-label">Görüş linki</label>
+        <input
+          type="url"
+          className="fx-input"
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          placeholder="https://…"
+          onClick={e => e.stopPropagation()}
+        />
+        <span className="fx-help">Zoom, Google Meet və ya Jitsi linki · https:// ilə başlamalıdır</span>
+      </div>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="button" onClick={saveAndSend} disabled={busy} className="fx-btn fx-btn--primary" style={{ flex: 1, ...busyStyle }}>
+          <IconSend /> Əlavə et və göndər
         </button>
-        <button onClick={saveOnly} disabled={busy} className="op-appt__btn op-appt__btn--ghost" style={{ width: "auto" }}>
+        <button type="button" onClick={saveOnly} disabled={busy} className="fx-btn fx-btn--ghost" style={busyStyle}>
           Yalnız saxla
         </button>
       </div>
 
       <Link href={`/operator/appointments/${a.id}`} onClick={e => e.stopPropagation()}
-        style={{ fontSize: 11.5, color: "#52718F", textDecoration: "none", marginTop: 2 }}>
-        Müraciətə bax →
+        style={{ marginTop: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: "var(--text-caption)", color: "var(--oxford-60)", textDecoration: "none", fontWeight: 600 }}>
+        Müraciətə bax <IconArrowRight />
       </Link>
     </div>
   );

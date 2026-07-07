@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="components.css">
+<style>
+html,body{margin:0;background:#F7F9FC;}
+</style>
+</helmet>
+
+<div class="fx-body fx-page" data-screen-label="UI Kit">
+
+  <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:32px;">
+    <h1 class="fx-h1">Fanus UI Kit</h1>
+    <div class="fx-subtitle">Operator paneli üçün vahid dizayn sistemi · tokens.css + components.css · bütün ikonlar inline SVG</div>
+  </div>
+
+  <!-- RƏNGLƏR -->
+  <div class="fx-section-label" style="margin-bottom:12px;">Rənglər — tokenlər</div>
+  <div class="fx-card" style="padding:20px 24px; margin-bottom:28px; display:flex; flex-direction:column; gap:16px;">
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#082F6D;"></div><span style="font-size:10.5px; color:#5C6B85;">brand-700</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#0B3F90;"></div><span style="font-size:10.5px; color:#5C6B85;">brand-600</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#1051B7; outline:2px solid #C3D6F6; outline-offset:2px;"></div><span style="font-size:10.5px; font-weight:700; color:#0A1A33;">brand</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#2A6BD0;"></div><span style="font-size:10.5px; color:#5C6B85;">brand-500</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#5089E0;"></div><span style="font-size:10.5px; color:#5C6B85;">brand-400</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#88AEEC;"></div><span style="font-size:10.5px; color:#5C6B85;">brand-300</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#C3D6F6;"></div><span style="font-size:10.5px; color:#5C6B85;">brand-200</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#E4ECFA;"></div><span style="font-size:10.5px; color:#5C6B85;">brand-100</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#F2F6FD; border:1px solid #E9EEF5;"></div><span style="font-size:10.5px; color:#5C6B85;">brand-50</span></div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#0A1A33;"></div><span style="font-size:10.5px; color:#5C6B85;">oxford</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#2B3C5A;"></div><span style="font-size:10.5px; color:#5C6B85;">oxford-80</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#5C6B85;"></div><span style="font-size:10.5px; color:#5C6B85;">oxford-60</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#4A9B7F;"></div><span style="font-size:10.5px; color:#5C6B85;">sage</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#C97D2E;"></div><span style="font-size:10.5px; color:#5C6B85;">amber</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#C97D7D;"></div><span style="font-size:10.5px; color:#5C6B85;">rose</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#8C7DC9;"></div><span style="font-size:10.5px; color:#5C6B85;">lilac</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#F7F9FC; border:1px solid #E9EEF5;"></div><span style="font-size:10.5px; color:#5C6B85;">bg</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#FFFFFF; border:1px solid #E9EEF5;"></div><span style="font-size:10.5px; color:#5C6B85;">surface</span></div>
+      <div style="display:flex; flex-direction:column; gap:5px; align-items:center;"><div style="width:56px; height:40px; border-radius:8px; background:#E9EEF5;"></div><span style="font-size:10.5px; color:#5C6B85;">hairline</span></div>
+    </div>
+  </div>
+
+  <!-- TİPOQRAFİYA -->
+  <div class="fx-section-label" style="margin-bottom:12px;">Tipoqrafiya</div>
+  <div class="fx-card" style="padding:24px; margin-bottom:28px; display:flex; flex-direction:column; gap:14px;">
+    <h1 class="fx-h1" style="margin:0;">Səhifə başlığı — serif 30px <span style="font-size:12px; color:#5C6B85; font-family:system-ui;">.fx-h1</span></h1>
+    <h2 class="fx-h2" style="margin:0;">Hero başlıq — serif 26px <span style="font-size:12px; color:#5C6B85; font-family:system-ui;">.fx-h2</span></h2>
+    <h3 class="fx-h3" style="margin:0;">Modal başlığı — serif 19px <span style="font-size:12px; color:#5C6B85; font-family:system-ui;">.fx-h3</span></h3>
+    <div class="fx-card-title">Kart başlığı 14.5px / 700 — .fx-card-title</div>
+    <div style="font-size:13px;">Gövdə mətni 13px / 400 — əsas oxford rəngi</div>
+    <div class="fx-subtitle">İkinci dərəcəli mətn 13px — oxford-60 (.fx-subtitle)</div>
+    <div class="fx-label">Uppercase etiket 11px — .fx-label</div>
+    <div class="fx-kpi__value fx-num">1 340 <span class="fx-kpi__unit">AZN</span> <span style="font-size:12px; font-weight:400; color:#5C6B85;">— KPI rəqəmi: sans 800 + tabular-nums (.fx-kpi__value)</span></div>
+  </div>
+
+  <!-- DÜYMƏLƏR -->
+  <div class="fx-section-label" style="margin-bottom:12px;">Düymələr</div>
+  <div class="fx-card" style="padding:24px; margin-bottom:28px; display:flex; flex-direction:column; gap:16px;">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <button class="fx-btn fx-btn--primary"><svg class="fx-icon"><use href="icons.svg#i-plus"></use></svg>Yeni ödəniş</button>
+      <button class="fx-btn fx-btn--ghost"><svg class="fx-icon"><use href="icons.svg#i-download"></use></svg>Export</button>
+      <button class="fx-btn fx-btn--danger">Geri qaytar</button>
+      <button class="fx-btn fx-btn--danger-ghost">İadə</button>
+      <button class="fx-btn fx-btn--warn-ghost"><svg class="fx-icon"><use href="icons.svg#i-message"></use></svg>WhatsApp ilə xatırlat</button>
+      <button class="fx-btn fx-btn--quiet">Sakit düymə</button>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <button class="fx-btn fx-btn--primary fx-btn--sm">Ödənildi</button>
+      <button class="fx-btn fx-btn--ghost fx-btn--sm"><svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-phone"></use></svg>Zəng</button>
+      <button class="fx-btn fx-btn--ghost fx-btn--sm"><svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-eye"></use></svg>Pasiyentə bax</button>
+      <button class="fx-btn fx-btn--danger-ghost fx-btn--sm">Ləğv</button>
+      <span style="font-size:12px; color:#5C6B85;">— sətir içi ölçü (--sm)</span>
+    </div>
+  </div>
+
+  <!-- ROZETLƏR -->
+  <div class="fx-section-label" style="margin-bottom:12px;">Status rozetləri</div>
+  <div class="fx-card" style="padding:24px; margin-bottom:28px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+    <span class="fx-pill fx-pill--pending">Gözləyir</span>
+    <span class="fx-pill fx-pill--paid">Ödənilib</span>
+    <span class="fx-pill fx-pill--partial">Qismi qaytarılıb</span>
+    <span class="fx-pill fx-pill--refunded">Geri qaytarılıb</span>
+    <span class="fx-pill fx-pill--cancelled">Ləğv edilib</span>
+    <span class="fx-pill fx-pill--info">Üzv: 4 aydır</span>
+    <span class="fx-pill fx-pill--neutral">Orta səviyyə</span>
+    <span class="fx-pill fx-pill--pending"><svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-alert"></use></svg>Diqqət — yüksək no-show</span>
+    <span class="fx-pill fx-pill--count">12</span>
+    <span class="fx-pill fx-pill--count fx-pill--count-active">4</span>
+  </div>
+
+  <!-- KPI -->
+  <div class="fx-section-label" style="margin-bottom:12px;">KPI paneli</div>
+  <div class="fx-card fx-card--lg fx-kpi-row" style="grid-template-columns:repeat(4,1fr); margin-bottom:28px;">
+    <div class="fx-kpi">
+      <span class="fx-label">Bu gün yığılan</span>
+      <span class="fx-kpi__value fx-num">350 <span class="fx-kpi__unit">AZN</span></span>
+      <span class="fx-kpi__meta"><span class="fx-trend fx-trend--up"><svg style="width:11px;height:11px;"><use href="icons.svg#i-trend-up"></use></svg>12%</span> dünənlə müqayisədə</span>
+    </div>
+    <div class="fx-kpi">
+      <span class="fx-label">Bu ay gəlir</span>
+      <span class="fx-kpi__value fx-num">1 340 <span class="fx-kpi__unit">AZN</span></span>
+      <span class="fx-kpi__meta"><span class="fx-trend fx-trend--up"><svg style="width:11px;height:11px;"><use href="icons.svg#i-trend-up"></use></svg>18%</span> keçən aya nisbətən</span>
+    </div>
+    <div class="fx-kpi">
+      <span class="fx-label">Gözləyən məbləğ</span>
+      <span class="fx-kpi__value fx-num">710 <span class="fx-kpi__unit">AZN</span></span>
+      <span class="fx-kpi__meta"><span class="fx-trend fx-trend--warn">1 gecikmiş</span> · 4 ödəniş</span>
+    </div>
+    <div class="fx-kpi">
+      <span class="fx-label">Geri qaytarılan</span>
+      <span class="fx-kpi__value fx-num">300 <span class="fx-kpi__unit">AZN</span></span>
+      <span class="fx-kpi__meta"><span class="fx-trend fx-trend--down"><svg style="width:11px;height:11px;"><use href="icons.svg#i-trend-down"></use></svg>4%</span> bu ay</span>
+    </div>
+  </div>
+
+  <!-- AVATAR + ÇİPLƏR -->
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px;">
+    <div>
+      <div class="fx-section-label" style="margin-bottom:12px;">Avatarlar</div>
+      <div class="fx-card" style="padding:24px; display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+        <span class="fx-avatar fx-avatar--lg fx-avatar--1">NƏ</span>
+        <span class="fx-avatar fx-avatar--md fx-avatar--2">RƏ</span>
+        <span class="fx-avatar fx-avatar--1">AM</span>
+        <span class="fx-avatar fx-avatar--2">GR</span>
+        <span class="fx-avatar fx-avatar--3">TS</span>
+        <span class="fx-avatar fx-avatar--4">FC</span>
+        <span class="fx-avatar fx-avatar--sm fx-avatar--3">LH</span>
+        <span style="font-size:12px; color:#5C6B85;">4 rəng variantı · id % 4</span>
+      </div>
+    </div>
+    <div>
+      <div class="fx-section-label" style="margin-bottom:12px;">Çiplər və keçidlər</div>
+      <div class="fx-card" style="padding:24px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <span class="fx-chip"><svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-phone"></use></svg>+994 50 447 21 09</span>
+        <span class="fx-chip"><svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-mail"></use></svg>nermin.aliyeva@mail.az</span>
+        <button class="fx-toggle-chip"><span class="fx-dot"></span>Mənim</button>
+        <button class="fx-toggle-chip fx-toggle-chip--active"><span class="fx-dot"></span>Mənim</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLAR + FORMLAR -->
+  <div class="fx-section-label" style="margin-bottom:12px;">Tablar və filtr zolağı</div>
+  <div class="fx-card" style="margin-bottom:28px; overflow:hidden;">
+    <div class="fx-tabs" style="padding:14px 20px 0;">
+      <button class="fx-tab fx-tab--active">Gözləyir <span class="fx-pill fx-pill--count fx-pill--count-active">4</span></button>
+      <button class="fx-tab">Ödənilmiş <span class="fx-pill fx-pill--count">5</span></button>
+      <button class="fx-tab">Geri qaytarılmış <span class="fx-pill fx-pill--count">2</span></button>
+      <button class="fx-tab">Ləğv edilmiş <span class="fx-pill fx-pill--count">2</span></button>
+    </div>
+    <hr class="fx-hairline" style="margin:0;">
+    <div style="display:flex; align-items:center; gap:10px; padding:14px 20px; flex-wrap:wrap;">
+      <div class="fx-search" style="flex:1; min-width:200px; max-width:300px;">
+        <svg class="fx-icon"><use href="icons.svg#i-search"></use></svg>
+        <input placeholder="Ad və ya telefon üzrə axtar">
+      </div>
+      <select class="fx-select fx-select--inline"><option>Bütün üsullar</option></select>
+      <button class="fx-btn fx-btn--ghost fx-btn--sm fx-num"><svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-calendar"></use></svg>1 iyul – 7 iyul</button>
+      <button class="fx-btn fx-btn--ghost fx-btn--sm"><svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-sliders"></use></svg>Məbləğ</button>
+    </div>
+  </div>
+
+  <!-- SƏTİR -->
+  <div class="fx-section-label" style="margin-bottom:12px;">Siyahı sətri</div>
+  <div class="fx-card" style="margin-bottom:28px; overflow:hidden;">
+    <div class="fx-row" style="border-top:none;">
+      <input type="checkbox" class="fx-checkbox">
+      <span class="fx-avatar fx-avatar--2">RƏ</span>
+      <div style="display:flex; flex-direction:column; gap:2px; min-width:210px;">
+        <span class="fx-row__title">Rəşad Əliyev</span>
+        <div class="fx-row__meta">
+          <svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-transfer"></use></svg>
+          <span>Köçürmə</span><span class="fx-sep">·</span>
+          <span class="fx-num">7 iyul, 08:15</span><span class="fx-sep">·</span>
+          <span>Paket: 6 seans</span>
+        </div>
+      </div>
+      <span class="fx-pill fx-pill--pending">Gözləyir</span>
+      <span class="fx-spacer"></span>
+      <span class="fx-row__amount fx-num">450 <small>AZN</small></span>
+      <button class="fx-btn fx-btn--primary fx-btn--sm">Ödənildi</button>
+      <button class="fx-btn fx-btn--ghost fx-btn--sm">Ləğv</button>
+      <svg class="fx-icon" style="color:#C3D6F6;"><use href="icons.svg#i-chevron-right"></use></svg>
+    </div>
+    <div class="fx-row">
+      <input type="checkbox" class="fx-checkbox">
+      <span class="fx-avatar fx-avatar--4">FC</span>
+      <div style="display:flex; flex-direction:column; gap:2px; min-width:210px;">
+        <span class="fx-row__title">Fidan Cəfərova</span>
+        <div class="fx-row__meta">
+          <svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-card"></use></svg>
+          <span>Kart</span><span class="fx-sep">·</span>
+          <span class="fx-num">2 iyul, 15:00</span><span class="fx-sep">·</span>
+          <span>Paket: 4 seans</span>
+        </div>
+      </div>
+      <span class="fx-pill fx-pill--partial">Qismi qaytarılıb</span>
+      <span class="fx-spacer"></span>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
+        <span class="fx-row__amount fx-num">300 <small>AZN</small></span>
+        <span style="font-size:11.5px; color:#9A3412;" class="fx-num">qaytarılıb 100 · qalıq 200</span>
+      </div>
+      <button class="fx-btn fx-btn--danger-ghost fx-btn--sm">İadə</button>
+      <svg class="fx-icon" style="color:#C3D6F6;"><use href="icons.svg#i-chevron-right"></use></svg>
+    </div>
+  </div>
+
+  <!-- TIMELINE + PROGRESS -->
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px;">
+    <div>
+      <div class="fx-section-label" style="margin-bottom:12px;">Timeline (audit izi / jurnal)</div>
+      <div class="fx-card" style="padding:24px;">
+        <div class="fx-timeline">
+          <div class="fx-tl-item">
+            <div class="fx-tl-rail"><span class="fx-tl-dot fx-tl-dot--soft"></span><span class="fx-tl-line"></span></div>
+            <div class="fx-tl-body">
+              <span class="fx-tl-title">Yaradıldı</span>
+              <span class="fx-tl-meta">Nərgiz Quliyeva · 2 iyul, 15:00</span>
+            </div>
+          </div>
+          <div class="fx-tl-item">
+            <div class="fx-tl-rail"><span class="fx-tl-dot fx-tl-dot--sage"></span><span class="fx-tl-line"></span></div>
+            <div class="fx-tl-body">
+              <span class="fx-tl-title">Təsdiqləndi — ödənilib</span>
+              <span class="fx-tl-meta">Nərgiz Quliyeva · 2 iyul, 15:03</span>
+            </div>
+          </div>
+          <div class="fx-tl-item">
+            <div class="fx-tl-rail"><span class="fx-tl-dot fx-tl-dot--amber"></span></div>
+            <div class="fx-tl-body" style="padding-bottom:0;">
+              <span class="fx-tl-title">Qismi qaytarıldı — 100 AZN</span>
+              <span class="fx-tl-meta">Nərgiz Quliyeva · 3 iyul, 10:15</span>
+              <span class="fx-tl-note">"Bir seans ləğv edildi — qismi iadə"</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="fx-section-label" style="margin-bottom:12px;">Progress və balans</div>
+      <div class="fx-card" style="padding:24px; display:flex; flex-direction:column; gap:18px;">
+        <div class="fx-stack" style="gap:8px;">
+          <div style="display:flex; justify-content:space-between; font-size:13px;">
+            <span style="font-weight:600;">10 seanslıq paket</span>
+            <span class="fx-num" style="font-size:12px; font-weight:600; color:#0B3F90;">4 / 10 qalıb</span>
+          </div>
+          <div class="fx-progress"><div class="fx-progress__fill" style="width:60%;"></div></div>
+        </div>
+        <div class="fx-stack" style="gap:8px;">
+          <div style="display:flex; justify-content:space-between; font-size:13px;">
+            <span style="font-weight:600;">Yığım dərəcəsi</span>
+            <span class="fx-num" style="font-size:12px; font-weight:600;">65%</span>
+          </div>
+          <div class="fx-progress fx-progress--lg"><div class="fx-progress__fill" style="width:65%;"></div></div>
+        </div>
+        <div class="fx-alert">
+          <svg class="fx-icon fx-icon--md"><use href="icons.svg#i-alert"></use></svg>
+          <div>
+            <div class="fx-alert__title">Yüksək no-show göstəricisi</div>
+            <div class="fx-alert__text">Son 2 ayda 2 seansa gəlməyib. Sistem avtomatik nişan qoyub.</div>
+          </div>
+        </div>
+        <div class="fx-info">
+          <svg class="fx-icon"><use href="icons.svg#i-info"></use></svg>
+          Aktiv paketdə 4 seans qalıb — paketdən istifadə etmək olar
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL + TOAST -->
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px;">
+    <div>
+      <div class="fx-section-label" style="margin-bottom:12px;">Modal (statik nümunə)</div>
+      <div style="background:#EDF1F7; border-radius:16px; padding:24px; display:flex; justify-content:center;">
+        <div class="fx-modal" style="animation:none; box-shadow:0 4px 12px rgba(0,33,71,.1);">
+          <div class="fx-modal__icon fx-modal__icon--brand">
+            <svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-check"></use></svg>
+          </div>
+          <h3 class="fx-h3">Ödənişi təsdiqlə</h3>
+          <div class="fx-modal__text">Rəşad Əliyev üçün 450 AZN (Köçürmə) ödənişini təsdiqləmək istəyirsiniz? Bu əməliyyat audit izinə yazılacaq.</div>
+          <div class="fx-modal__actions">
+            <button class="fx-btn fx-btn--ghost">İmtina</button>
+            <button class="fx-btn fx-btn--primary">Təsdiqlə</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="fx-section-label" style="margin-bottom:12px;">Toast və toplu əməliyyat</div>
+      <div class="fx-card" style="padding:24px; display:flex; flex-direction:column; gap:12px; align-items:flex-start;">
+        <div class="fx-toast fx-toast--success fx-toast--inline">
+          <svg class="fx-icon"><use href="icons.svg#i-check"></use></svg>
+          Ödəniş təsdiqləndi
+        </div>
+        <div class="fx-toast fx-toast--error fx-toast--inline">
+          <svg class="fx-icon"><use href="icons.svg#i-x"></use></svg>
+          Əməliyyat alınmadı
+        </div>
+        <div class="fx-bulkbar" style="position:static; transform:none; animation:none;">
+          <span class="fx-num" style="font-size:13px; font-weight:600;">3 seçildi</span>
+          <span class="fx-bulkbar__divider"></span>
+          <button class="fx-btn fx-btn--primary fx-btn--sm" style="background:#1051B7;">Toplu ödənildi</button>
+          <button class="fx-btn fx-btn--dark-outline fx-btn--sm"><svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-download"></use></svg>Export</button>
+          <svg class="fx-icon" style="color:rgba(255,255,255,.6);"><use href="icons.svg#i-x"></use></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HALLAR -->
+  <div class="fx-section-label" style="margin-bottom:12px;">Hallar — yüklənmə / boş / xəta</div>
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:28px;">
+    <div class="fx-card" style="padding:20px; display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="fx-skeleton fx-skeleton--circle" style="width:38px; height:38px;"></div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+          <div class="fx-skeleton" style="height:11px; width:70%;"></div>
+          <div class="fx-skeleton" style="height:9px; width:45%;"></div>
+        </div>
+      </div>
+      <div class="fx-skeleton" style="height:11px; width:88%;"></div>
+      <div class="fx-skeleton" style="height:11px; width:60%;"></div>
+    </div>
+    <div class="fx-card--empty">
+      <svg class="fx-icon fx-icon--xl" style="color:#88AEEC;"><use href="icons.svg#i-inbox"></use></svg>
+      <div style="font-size:13px; font-weight:700;">Hələ ödəniş yoxdur</div>
+      <div style="font-size:11.5px; color:#5C6B85;">Yeni seans təsdiqlənəndə burada görünəcək</div>
+      <button class="fx-btn fx-btn--primary fx-btn--sm" style="margin-top:4px;">Yeni ödəniş əlavə et</button>
+    </div>
+    <div class="fx-card fx-card--error" style="padding:20px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; text-align:center;">
+      <svg class="fx-icon fx-icon--xl" style="color:#C97D7D;"><use href="icons.svg#i-alert"></use></svg>
+      <div style="font-size:13px; font-weight:700;">Məlumatlar yüklənmədi</div>
+      <div style="font-size:11.5px; color:#5C6B85;">Serverlə əlaqə kəsildi</div>
+      <button class="fx-btn fx-btn--ghost fx-btn--sm" style="margin-top:4px;"><svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-refresh"></use></svg>Yenidən cəhd et</button>
+    </div>
+  </div>
+
+  <!-- NAVİQASİYA -->
+  <div class="fx-section-label" style="margin-bottom:12px;">Naviqasiya — sidebar + topbar</div>
+  <div class="fx-card" style="margin-bottom:28px; overflow:hidden; display:flex;">
+    <div class="fx-sidebar" style="min-height:0; border-radius:0;">
+      <div class="fx-sidebar__brand">fanus</div>
+      <button class="fx-nav-item"><svg class="fx-icon"><use href="icons.svg#i-home"></use></svg>İdarə paneli</button>
+      <button class="fx-nav-item"><svg class="fx-icon"><use href="icons.svg#i-calendar"></use></svg>Seanslar</button>
+      <button class="fx-nav-item fx-nav-item--active"><svg class="fx-icon"><use href="icons.svg#i-card"></use></svg>Ödənişlər <span class="fx-pill fx-pill--count fx-pill--count-active fx-nav-item__count">4</span></button>
+      <button class="fx-nav-item"><svg class="fx-icon"><use href="icons.svg#i-users"></use></svg>Müştərilər</button>
+      <button class="fx-nav-item"><svg class="fx-icon"><use href="icons.svg#i-heart"></use></svg>Psixoloqlar</button>
+      <div class="fx-nav-section">Sistem</div>
+      <button class="fx-nav-item"><svg class="fx-icon"><use href="icons.svg#i-bar-chart"></use></svg>Hesabatlar</button>
+      <button class="fx-nav-item"><svg class="fx-icon"><use href="icons.svg#i-settings"></use></svg>Tənzimləmələr</button>
+      <button class="fx-nav-item"><svg class="fx-icon"><use href="icons.svg#i-logout"></use></svg>Çıxış</button>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; background:#F7F9FC;">
+      <div class="fx-topbar">
+        <div class="fx-search" style="max-width:320px; flex:1;">
+          <svg class="fx-icon"><use href="icons.svg#i-search"></use></svg>
+          <input placeholder="Platformada axtar">
+        </div>
+        <span class="fx-spacer"></span>
+        <button class="fx-iconbtn"><svg class="fx-icon fx-icon--md"><use href="icons.svg#i-bell"></use></svg><span class="fx-badge-dot"></span></button>
+        <div class="fx-flex" style="gap:9px;">
+          <span class="fx-avatar fx-avatar--sm fx-avatar--1">NQ</span>
+          <div style="display:flex; flex-direction:column;">
+            <span style="font-size:12.5px; font-weight:600;">Nərgiz Quliyeva</span>
+            <span style="font-size:11px; color:#5C6B85;">Operator</span>
+          </div>
+          <svg class="fx-icon fx-icon--sm" style="color:#5C6B85;"><use href="icons.svg#i-chevron-down"></use></svg>
+        </div>
+      </div>
+      <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px;">
+        <div class="fx-breadcrumb">
+          <a href="#">Müştərilər</a>
+          <svg><use href="icons.svg#i-chevron-right"></use></svg>
+          <span class="fx-current">Nərmin Əliyeva</span>
+        </div>
+        <div class="fx-skeleton" style="height:56px; border-radius:12px; animation:none; background:#EEF2F8;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CƏDVƏL -->
+  <div class="fx-section-label" style="margin-bottom:12px;">Cədvəl (klassik)</div>
+  <div class="fx-card" style="margin-bottom:28px; overflow:hidden;">
+    <table class="fx-table">
+      <thead>
+        <tr><th>Psixoloq</th><th>İxtisas</th><th>Status</th><th style="text-align:right;">Bu ay seans</th><th style="text-align:right;">Gəlir</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="fx-flex" style="gap:10px;"><span class="fx-avatar fx-avatar--sm fx-avatar--1">LH</span><span style="font-weight:600;">Dr. Lalə Həsənova</span></div></td>
+          <td class="fx-muted">Kliniki psixoloq</td>
+          <td><span class="fx-pill fx-pill--paid">Aktiv</span></td>
+          <td class="fx-td-num">18</td>
+          <td class="fx-td-num">1 440 AZN</td>
+          <td style="text-align:right;"><button class="fx-iconbtn"><svg class="fx-icon"><use href="icons.svg#i-more-h"></use></svg></button></td>
+        </tr>
+        <tr>
+          <td><div class="fx-flex" style="gap:10px;"><span class="fx-avatar fx-avatar--sm fx-avatar--2">KM</span><span style="font-weight:600;">Dr. Kamran Musayev</span></div></td>
+          <td class="fx-muted">Ailə terapevti</td>
+          <td><span class="fx-pill fx-pill--paid">Aktiv</span></td>
+          <td class="fx-td-num">14</td>
+          <td class="fx-td-num">2 100 AZN</td>
+          <td style="text-align:right;"><button class="fx-iconbtn"><svg class="fx-icon"><use href="icons.svg#i-more-h"></use></svg></button></td>
+        </tr>
+        <tr>
+          <td><div class="fx-flex" style="gap:10px;"><span class="fx-avatar fx-avatar--sm fx-avatar--3">AQ</span><span style="font-weight:600;">Dr. Aysel Qasımova</span></div></td>
+          <td class="fx-muted">Uşaq psixoloqu</td>
+          <td><span class="fx-pill fx-pill--cancelled">Məzuniyyətdə</span></td>
+          <td class="fx-td-num">6</td>
+          <td class="fx-td-num">480 AZN</td>
+          <td style="text-align:right;"><button class="fx-iconbtn"><svg class="fx-icon"><use href="icons.svg#i-more-h"></use></svg></button></td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
+      <span class="fx-muted fx-num" style="font-size:12px;">1–3 / 24 nəticə</span>
+      <div class="fx-pagination">
+        <button class="fx-page-btn" disabled><svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-chevron-left"></use></svg></button>
+        <button class="fx-page-btn fx-page-btn--active">1</button>
+        <button class="fx-page-btn">2</button>
+        <button class="fx-page-btn">3</button>
+        <span class="fx-muted" style="padding:0 4px;">…</span>
+        <button class="fx-page-btn">8</button>
+        <button class="fx-page-btn"><svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-chevron-right"></use></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORM DƏSTİ -->
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px;">
+    <div>
+      <div class="fx-section-label" style="margin-bottom:12px;">Form dəsti</div>
+      <div class="fx-card" style="padding:24px; display:flex; flex-direction:column; gap:16px;">
+        <div class="fx-field">
+          <label class="fx-label">Ad, soyad</label>
+          <input class="fx-input" value="Nərmin Əliyeva">
+          <span class="fx-help">Rəsmi sənədlərdəki kimi yazın</span>
+        </div>
+        <div class="fx-field">
+          <label class="fx-label">Telefon</label>
+          <input class="fx-input fx-input--error" value="+994 50 44">
+          <span class="fx-error-text"><svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-alert"></use></svg>Telefon nömrəsi natamamdır</span>
+        </div>
+        <div style="display:flex; gap:20px; flex-wrap:wrap;">
+          <label class="fx-choice"><input type="radio" name="m" class="fx-radio" checked="checked"> Kart</label>
+          <label class="fx-choice"><input type="radio" name="m" class="fx-radio"> Nağd</label>
+          <label class="fx-choice"><input type="radio" name="m" class="fx-radio"> Köçürmə</label>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <label class="fx-switch"><input type="checkbox" checked="checked"><span class="fx-switch__track"></span></label>
+          <span style="font-size:13px;">SMS xatırlatmaları aktivdir</span>
+        </div>
+        <div class="fx-dropzone">
+          <svg class="fx-icon fx-icon--xl"><use href="icons.svg#i-upload"></use></svg>
+          <span style="font-size:13px; font-weight:600;">Sənədi bura atın və ya seçin</span>
+          <span style="font-size:11.5px; color:#5C6B85;">PDF, JPG — maks. 10 MB</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div>
+        <div class="fx-section-label" style="margin-bottom:12px;">Menyu, stepper, segmented</div>
+        <div class="fx-card" style="padding:24px; display:flex; flex-direction:column; gap:20px;">
+          <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap;">
+            <div class="fx-menu">
+              <button class="fx-menu-item"><svg class="fx-icon"><use href="icons.svg#i-eye"></use></svg>Profilə bax</button>
+              <button class="fx-menu-item"><svg class="fx-icon"><use href="icons.svg#i-edit"></use></svg>Redaktə et</button>
+              <button class="fx-menu-item"><svg class="fx-icon"><use href="icons.svg#i-download"></use></svg>Export</button>
+              <div class="fx-menu-divider"></div>
+              <button class="fx-menu-item fx-menu-item--danger"><svg class="fx-icon"><use href="icons.svg#i-trash"></use></svg>Sil</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:18px; flex:1; min-width:220px;">
+              <div class="fx-stepper">
+                <div class="fx-step fx-step--done"><span class="fx-step__dot"><svg class="fx-icon fx-icon--sm"><use href="icons.svg#i-check"></use></svg></span><span class="fx-step__label">Müştəri</span></div>
+                <span class="fx-step-line fx-step-line--done"></span>
+                <div class="fx-step fx-step--active"><span class="fx-step__dot">2</span><span class="fx-step__label">Seans</span></div>
+                <span class="fx-step-line"></span>
+                <div class="fx-step"><span class="fx-step__dot">3</span><span class="fx-step__label">Ödəniş</span></div>
+              </div>
+              <div class="fx-segmented">
+                <button>Gün</button>
+                <button class="fx-seg--active">Həftə</button>
+                <button>Ay</button>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <span class="fx-tag">Anksiyete<button><svg style="width:9px;height:9px;"><use href="icons.svg#i-x"></use></svg></button></span>
+                <span class="fx-tag">Ailə terapiyası<button><svg style="width:9px;height:9px;"><use href="icons.svg#i-x"></use></svg></button></span>
+              </div>
+              <div class="fx-tooltip">Komissiya platformanın payıdır — default 20%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="fx-section-label" style="margin-bottom:12px;">Bannerlər</div>
+        <div class="fx-card" style="padding:24px; display:flex; flex-direction:column; gap:10px;">
+          <div class="fx-banner fx-banner--info"><svg class="fx-icon fx-icon--md"><use href="icons.svg#i-info"></use></svg>Sabah 02:00–04:00 arası planlı texniki iş aparılacaq.</div>
+          <div class="fx-banner fx-banner--warn"><svg class="fx-icon fx-icon--md"><use href="icons.svg#i-alert"></use></svg>4 ödəniş 24 saatdan çoxdur gözləyir — yığım axınına baxın.</div>
+          <div class="fx-banner fx-banner--success"><svg class="fx-icon fx-icon--md"><use href="icons.svg#i-check"></use></svg>Payout hesabatı uğurla göndərildi.</div>
+          <div class="fx-banner fx-banner--error"><svg class="fx-icon fx-icon--md"><use href="icons.svg#i-alert"></use></svg>Ödəniş şlüzü ilə əlaqə kəsilib — kart ödənişləri müvəqqəti dayandırılıb.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- İKONLAR -->
+  <div class="fx-section-label" style="margin-bottom:12px;">İkonlar — icons.svg sprite</div>
+  <div class="fx-card" style="padding:24px; display:grid; grid-template-columns:repeat(8,1fr); gap:18px; margin-bottom:28px;">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-search"></use></svg><span style="font-size:10px; color:#5C6B85;">search</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-card"></use></svg><span style="font-size:10px; color:#5C6B85;">card</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-cash"></use></svg><span style="font-size:10px; color:#5C6B85;">cash</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-transfer"></use></svg><span style="font-size:10px; color:#5C6B85;">transfer</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-phone"></use></svg><span style="font-size:10px; color:#5C6B85;">phone</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-message"></use></svg><span style="font-size:10px; color:#5C6B85;">message</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-mail"></use></svg><span style="font-size:10px; color:#5C6B85;">mail</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-eye"></use></svg><span style="font-size:10px; color:#5C6B85;">eye</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-check"></use></svg><span style="font-size:10px; color:#5C6B85;">check</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-x"></use></svg><span style="font-size:10px; color:#5C6B85;">x</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-download"></use></svg><span style="font-size:10px; color:#5C6B85;">download</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-plus"></use></svg><span style="font-size:10px; color:#5C6B85;">plus</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-calendar"></use></svg><span style="font-size:10px; color:#5C6B85;">calendar</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-calendar-plus"></use></svg><span style="font-size:10px; color:#5C6B85;">calendar-plus</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-sliders"></use></svg><span style="font-size:10px; color:#5C6B85;">sliders</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-alert"></use></svg><span style="font-size:10px; color:#5C6B85;">alert</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-refresh"></use></svg><span style="font-size:10px; color:#5C6B85;">refresh</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-refund"></use></svg><span style="font-size:10px; color:#5C6B85;">refund</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-chevron-right"></use></svg><span style="font-size:10px; color:#5C6B85;">chevron-right</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-trend-up"></use></svg><span style="font-size:10px; color:#5C6B85;">trend-up</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-trend-down"></use></svg><span style="font-size:10px; color:#5C6B85;">trend-down</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-clock"></use></svg><span style="font-size:10px; color:#5C6B85;">clock</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-edit"></use></svg><span style="font-size:10px; color:#5C6B85;">edit</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-info"></use></svg><span style="font-size:10px; color:#5C6B85;">info</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-block"></use></svg><span style="font-size:10px; color:#5C6B85;">block</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-inbox"></use></svg><span style="font-size:10px; color:#5C6B85;">inbox</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-package"></use></svg><span style="font-size:10px; color:#5C6B85;">package</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-map-pin"></use></svg><span style="font-size:10px; color:#5C6B85;">map-pin</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg" style="fill:#C97D2E; stroke:#C97D2E; stroke-width:1.4;"><use href="icons.svg#i-star"></use></svg><span style="font-size:10px; color:#5C6B85;">star</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-check-square"></use></svg><span style="font-size:10px; color:#5C6B85;">check-square</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-external"></use></svg><span style="font-size:10px; color:#5C6B85;">external</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-user"></use></svg><span style="font-size:10px; color:#5C6B85;">user</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-users"></use></svg><span style="font-size:10px; color:#5C6B85;">users</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-bell"></use></svg><span style="font-size:10px; color:#5C6B85;">bell</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-home"></use></svg><span style="font-size:10px; color:#5C6B85;">home</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-settings"></use></svg><span style="font-size:10px; color:#5C6B85;">settings</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-logout"></use></svg><span style="font-size:10px; color:#5C6B85;">logout</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-more-h"></use></svg><span style="font-size:10px; color:#5C6B85;">more-h</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-trash"></use></svg><span style="font-size:10px; color:#5C6B85;">trash</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-upload"></use></svg><span style="font-size:10px; color:#5C6B85;">upload</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-lock"></use></svg><span style="font-size:10px; color:#5C6B85;">lock</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-file-text"></use></svg><span style="font-size:10px; color:#5C6B85;">file-text</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-bar-chart"></use></svg><span style="font-size:10px; color:#5C6B85;">bar-chart</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-chevron-down"></use></svg><span style="font-size:10px; color:#5C6B85;">chevron-down</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-chevron-left"></use></svg><span style="font-size:10px; color:#5C6B85;">chevron-left</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-arrow-right"></use></svg><span style="font-size:10px; color:#5C6B85;">arrow-right</span></div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><svg class="fx-icon fx-icon--lg"><use href="icons.svg#i-heart"></use></svg><span style="font-size:10px; color:#5C6B85;">heart</span></div>
+  </div>
+
+  <div class="fx-subtitle" style="padding-bottom:24px;">Tam modul nümunələri: <a href="references/Ödənişlər.dc.html">Ödənişlər</a> · <a href="references/Müştəri 360.dc.html">Müştəri 360</a> · İnteqrasiya qaydaları: README.md</div>
+
+</div>
+</x-dc>
+</body>
+</html>

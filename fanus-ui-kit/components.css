@@ -1,0 +1,523 @@
+/* ============================================================
+   FANUS UI KIT — KOMPONENTLƏR
+   Prefiks: .fx-
+   tokens.css-dən sonra yüklənməlidir.
+   ============================================================ */
+
+/* ---------- Baza ---------- */
+.fx-body {
+  margin: 0;
+  background: var(--bg);
+  font-family: var(--font-sans);
+  color: var(--oxford);
+  font-size: var(--text-body);
+  -webkit-font-smoothing: antialiased;
+}
+.fx-body *, .fx-body *::before, .fx-body *::after { box-sizing: border-box; }
+.fx-body a { color: var(--brand); text-decoration: none; }
+.fx-body a:hover { color: var(--brand-600); text-decoration: underline; }
+.fx-num { font-variant-numeric: tabular-nums; }
+
+/* Səhifə konteyner (sidebar-dan sonrakı məzmun sahəsi) */
+.fx-page { min-height: 100vh; padding: var(--page-pad-y) var(--page-pad-x) 64px; }
+
+/* ---------- Tipoqrafiya ---------- */
+.fx-h1 { margin: 0; font-family: var(--font-serif); font-weight: 500; letter-spacing: -.01em; font-size: var(--text-h1); color: var(--oxford); }
+.fx-h2 { margin: 0; font-family: var(--font-serif); font-weight: 500; letter-spacing: -.01em; font-size: var(--text-h2); color: var(--oxford); }
+.fx-h3 { margin: 0; font-family: var(--font-serif); font-weight: 500; letter-spacing: -.01em; font-size: var(--text-h3); color: var(--oxford); }
+.fx-card-title { font-size: 14.5px; font-weight: 700; color: var(--oxford); }
+.fx-subtitle { font-size: var(--text-body); color: var(--oxford-60); }
+.fx-label { font-size: var(--text-label); font-weight: 600; color: var(--oxford-60); text-transform: uppercase; letter-spacing: .05em; }
+.fx-section-label { font-size: var(--text-micro); font-weight: 700; color: var(--oxford-60); text-transform: uppercase; letter-spacing: .08em; }
+.fx-muted { color: var(--oxford-60); }
+
+/* ---------- İkonlar ---------- */
+/* Bütün ikonlar inline SVG: fill=none, stroke=currentColor,
+   stroke-width 1.6–2, stroke-linecap/linejoin round. EMOJİ QADAĞANDIR. */
+.fx-icon { width: 14px; height: 14px; flex-shrink: 0; }
+.fx-icon--sm { width: 13px; height: 13px; }
+.fx-icon--md { width: 16px; height: 16px; }
+.fx-icon--lg { width: 20px; height: 20px; }
+.fx-icon--xl { width: 28px; height: 28px; }
+
+/* ---------- Düymələr ---------- */
+.fx-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: var(--radius-btn); padding: 9px 16px;
+  font-size: var(--text-body); font-weight: 600; font-family: var(--font-sans);
+  cursor: pointer; border: 1px solid transparent;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+  white-space: nowrap;
+}
+.fx-btn--primary { background: var(--brand); border-color: var(--brand); color: #fff; box-shadow: var(--shadow-sm); }
+.fx-btn--primary:hover { background: var(--brand-600); }
+.fx-btn--ghost { background: var(--surface); border-color: var(--hairline); color: var(--oxford-80); }
+.fx-btn--ghost:hover { background: var(--bg-blue); }
+.fx-btn--danger { background: var(--rose); border-color: var(--rose); color: #fff; }
+.fx-btn--danger:hover { background: var(--rose-hover); }
+.fx-btn--danger-ghost { background: var(--surface); border-color: rgba(201,125,125,.4); color: var(--rose); }
+.fx-btn--danger-ghost:hover { background: #FDF5F5; }
+.fx-btn--warn-ghost { background: var(--status-pending-bg); border-color: rgba(201,125,46,.3); color: var(--status-pending-fg); }
+.fx-btn--warn-ghost:hover { background: #FDEBB0; }
+.fx-btn--quiet { background: transparent; border-color: transparent; color: var(--oxford-60); }
+.fx-btn--quiet:hover { background: var(--bg-blue); color: var(--oxford); }
+.fx-btn--sm { padding: 6px 11px; font-size: var(--text-caption); }
+.fx-btn--dark-outline { background: transparent; border-color: rgba(255,255,255,.25); color: #fff; } /* bulkbar içində */
+.fx-btn--dark-outline:hover { background: rgba(255,255,255,.08); }
+
+/* ---------- Rozetlər (pill) ---------- */
+.fx-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--text-micro); font-weight: 600;
+  border-radius: var(--radius-chip); padding: 4px 11px; white-space: nowrap;
+}
+.fx-pill--pending   { background: var(--status-pending-bg);   color: var(--status-pending-fg); }
+.fx-pill--paid      { background: var(--status-paid-bg);      color: var(--status-paid-fg); }
+.fx-pill--partial   { background: var(--status-partial-bg);   color: var(--status-partial-fg); }
+.fx-pill--refunded  { background: var(--status-refunded-bg);  color: var(--status-refunded-fg); }
+.fx-pill--cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-fg); }
+.fx-pill--info      { background: var(--bg-blue);             color: var(--brand-600); }
+.fx-pill--neutral   { background: var(--bg-blue);             color: var(--oxford-80); }
+.fx-pill--count     { padding: 1px 8px; font-size: 11px; font-weight: 700; background: var(--hairline); color: var(--oxford-60); }
+.fx-pill--count-active { background: var(--brand); color: #fff; }
+
+/* ---------- Kartlar ---------- */
+.fx-card { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--radius-card); box-shadow: var(--shadow-sm); }
+.fx-card--lg { border-radius: var(--radius-lg); }
+.fx-card__pad { padding: 20px 24px; }
+.fx-card__head { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; border-bottom: 1px solid var(--hairline); }
+
+/* Diqqət kartı (amber üst zolaq) */
+.fx-card--attention { border-color: rgba(201,125,46,.35); overflow: hidden; }
+.fx-card--attention::before { content: ''; display: block; height: 3px; background: var(--amber); opacity: .8; }
+
+/* Xəta kartı */
+.fx-card--error { border-color: rgba(201,125,125,.45); }
+
+/* Boş vəziyyət kartı */
+.fx-card--empty {
+  background: var(--surface); border: 1.5px dashed var(--brand-200); border-radius: var(--radius-card);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; text-align: center; padding: 24px 20px;
+}
+
+/* ---------- KPI ---------- */
+.fx-kpi-row { display: grid; } /* grid-template-columns səhifədə təyin olunur */
+.fx-kpi { padding: 22px 26px; display: flex; flex-direction: column; gap: 6px; }
+.fx-kpi + .fx-kpi { border-left: 1px solid var(--hairline); }
+.fx-kpi__value { font-size: var(--text-kpi); font-weight: 800; font-variant-numeric: tabular-nums; color: var(--oxford); }
+.fx-kpi__value--sm { font-size: var(--text-kpi-sm); }
+.fx-kpi__unit { font-size: 15px; font-weight: 600; color: var(--oxford-60); }
+.fx-kpi__meta { display: flex; align-items: center; gap: 6px; font-size: var(--text-caption); color: var(--oxford-60); }
+.fx-trend { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; }
+.fx-trend--up { color: var(--sage); }
+.fx-trend--down { color: var(--oxford-60); }
+.fx-trend--warn { color: var(--amber); }
+
+/* ---------- Avatar (baş hərflər) ---------- */
+.fx-avatar {
+  border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; flex-shrink: 0; user-select: none;
+  width: 38px; height: 38px; font-size: 13px;
+}
+.fx-avatar--sm { width: 30px; height: 30px; font-size: 11px; }
+.fx-avatar--md { width: 44px; height: 44px; font-size: 15px; }
+.fx-avatar--lg { width: 72px; height: 72px; font-size: 24px; }
+/* Rəng variantları — id % 4 ilə seçilir */
+.fx-avatar--1 { background: var(--brand-100); color: var(--brand-600); }
+.fx-avatar--2 { background: var(--sage-bg); color: #2E6B54; }
+.fx-avatar--3 { background: var(--lilac-bg); color: #5F4FA0; }
+.fx-avatar--4 { background: var(--amber-bg); color: #8F5A22; }
+
+/* ---------- Form elementləri ---------- */
+.fx-input, .fx-select, .fx-textarea {
+  border: 1px solid var(--hairline); border-radius: var(--radius-input);
+  padding: 9px 12px; font-size: var(--text-body); font-family: var(--font-sans);
+  color: var(--oxford); background: var(--surface-muted); outline: none; width: 100%;
+}
+.fx-input:focus, .fx-select:focus, .fx-textarea:focus { border-color: var(--brand-300); background: var(--surface); }
+.fx-input::placeholder, .fx-textarea::placeholder { color: var(--oxford-60); opacity: .65; }
+.fx-textarea { resize: vertical; line-height: 1.5; }
+.fx-select--inline { width: auto; background: var(--surface); font-size: 12.5px; font-weight: 600; color: var(--oxford-80); cursor: pointer; padding: 8px 10px; }
+.fx-checkbox { width: 16px; height: 16px; accent-color: var(--brand); cursor: pointer; flex-shrink: 0; }
+.fx-field { display: flex; flex-direction: column; gap: 6px; }
+
+/* Axtarış sahəsi */
+.fx-search {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface-muted); border: 1px solid var(--hairline);
+  border-radius: var(--radius-input); padding: 8px 12px;
+}
+.fx-search input { border: none; outline: none; background: transparent; font-size: var(--text-body); font-family: var(--font-sans); color: var(--oxford); width: 100%; }
+.fx-search svg { color: var(--oxford-60); }
+
+/* ---------- Tablar ---------- */
+.fx-tabs { display: flex; align-items: center; gap: 6px; }
+.fx-tab {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: transparent; color: var(--oxford-60);
+  border: none; border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0;
+  padding: 10px 16px 12px; font-size: var(--text-body); font-weight: 600;
+  cursor: pointer; font-family: var(--font-sans);
+}
+.fx-tab:hover { color: var(--oxford-80); }
+.fx-tab--active { background: var(--bg-blue); color: var(--brand); border-bottom-color: var(--brand); }
+
+/* ---------- Çiplər ---------- */
+/* Əlaqə çipi (telefon, email) */
+.fx-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12.5px; color: var(--oxford-80);
+  background: var(--surface-muted); border: 1px solid var(--hairline);
+  border-radius: var(--radius-chip); padding: 6px 13px;
+}
+.fx-chip svg { color: var(--oxford-60); }
+/* Toggle çip ("Mənim" filtri) */
+.fx-toggle-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--hairline);
+  border-radius: var(--radius-chip); padding: 7px 14px;
+  font-size: 12.5px; font-weight: 600; color: var(--oxford-60);
+  cursor: pointer; font-family: var(--font-sans);
+}
+.fx-toggle-chip .fx-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand-200); }
+.fx-toggle-chip--active { background: var(--brand-100); border-color: var(--brand-300); color: var(--brand-600); }
+.fx-toggle-chip--active .fx-dot { background: var(--brand); }
+
+/* ---------- Siyahı sətirləri ---------- */
+.fx-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 15px 20px; border-top: 1px solid var(--hairline);
+  cursor: pointer; transition: background .12s ease;
+}
+.fx-row:hover { background: var(--surface-muted); }
+.fx-row--static { cursor: default; }
+.fx-row__title { font-size: var(--text-body-lg); font-weight: 600; }
+.fx-row__meta { display: flex; align-items: center; gap: 6px; font-size: var(--text-caption); color: var(--oxford-60); }
+.fx-row__meta .fx-sep { color: var(--brand-200); }
+.fx-row__amount { font-size: var(--text-amount); font-weight: 700; font-variant-numeric: tabular-nums; }
+.fx-row__amount small { font-size: var(--text-caption); font-weight: 600; color: var(--oxford-60); }
+
+/* Cədvəl başlığı (grid layout ilə) */
+.fx-table-head {
+  display: grid; padding: 10px 24px;
+  font-size: var(--text-label); font-weight: 600; color: var(--oxford-60);
+  text-transform: uppercase; letter-spacing: .05em;
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* ---------- Timeline (audit izi / jurnal) ---------- */
+.fx-timeline { display: flex; flex-direction: column; }
+.fx-tl-item { display: flex; gap: 14px; }
+.fx-tl-rail { display: flex; flex-direction: column; align-items: center; }
+.fx-tl-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; border: 2.5px solid; }
+.fx-tl-dot--brand { background: var(--brand);     border-color: var(--brand-100); }
+.fx-tl-dot--soft  { background: var(--brand-300); border-color: var(--brand-100); }
+.fx-tl-dot--sage  { background: var(--sage);      border-color: var(--sage-bg); }
+.fx-tl-dot--amber { background: var(--amber);     border-color: var(--amber-bg); }
+.fx-tl-dot--rose  { background: var(--rose);      border-color: var(--rose-bg); }
+.fx-tl-dot--lilac { background: var(--lilac);     border-color: var(--lilac-bg); }
+.fx-tl-dot--muted { background: var(--oxford-60); border-color: var(--status-cancelled-bg); }
+.fx-tl-line { width: 1.5px; flex: 1; background: var(--hairline); margin: 4px 0; }
+.fx-tl-body { display: flex; flex-direction: column; gap: 2px; padding-bottom: 18px; flex: 1; }
+.fx-tl-title { font-size: 13.5px; font-weight: 600; }
+.fx-tl-meta { font-size: var(--text-caption); color: var(--oxford-60); font-variant-numeric: tabular-nums; }
+.fx-tl-note {
+  font-size: var(--text-caption); color: var(--oxford-80);
+  background: var(--surface-muted); border: 1px solid var(--hairline);
+  border-radius: 8px; padding: 6px 10px; margin-top: 4px;
+}
+
+/* ---------- Progress / meter ---------- */
+.fx-progress { display: flex; height: 9px; border-radius: 5px; overflow: hidden; background: var(--brand-100); }
+.fx-progress--lg { height: 12px; border-radius: 6px; }
+.fx-progress__fill { background: var(--brand); border-radius: inherit; }
+.fx-progress__fill--soft { background: var(--brand-200); }
+.fx-progress__fill--sage { background: var(--sage); }
+
+/* ---------- Skeleton (yüklənmə) ---------- */
+@keyframes fx-shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+.fx-skeleton {
+  border-radius: 6px;
+  background: linear-gradient(90deg, #EEF2F8 25%, #F7F9FC 50%, #EEF2F8 75%);
+  background-size: 400px 100%;
+  animation: fx-shimmer 1.4s infinite linear;
+}
+.fx-skeleton--circle { border-radius: 50%; }
+
+/* ---------- Overlay / Modal / Drawer ---------- */
+@keyframes fx-pop { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes fx-slide { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.fx-overlay { position: fixed; inset: 0; background: var(--overlay); z-index: 100; }
+.fx-overlay--center { display: flex; align-items: center; justify-content: center; }
+
+.fx-modal {
+  background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-float);
+  width: var(--modal-w); max-width: 92vw; padding: 26px 28px;
+  display: flex; flex-direction: column; gap: 14px;
+  animation: fx-pop .2s ease;
+}
+.fx-modal__icon {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.fx-modal__icon--brand { background: var(--brand-100); color: var(--brand); }
+.fx-modal__icon--rose { background: var(--rose-bg); color: var(--rose); }
+.fx-modal__icon--amber { background: var(--amber-bg); color: var(--amber); }
+.fx-modal__text { font-size: 13.5px; color: var(--oxford-60); line-height: 1.55; }
+.fx-modal__actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+
+.fx-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: var(--drawer-w); max-width: 92vw;
+  background: var(--surface); z-index: 101;
+  box-shadow: var(--shadow-float);
+  display: flex; flex-direction: column;
+  animation: fx-slide .25s ease; overflow-y: auto;
+}
+.fx-drawer__section { padding: 20px 26px; border-bottom: 1px solid var(--hairline); }
+
+/* ---------- Toast ---------- */
+.fx-toast {
+  position: fixed; right: 26px; bottom: 26px; z-index: 120;
+  display: flex; align-items: center; gap: 10px;
+  color: #fff; border-radius: 12px; padding: 12px 18px;
+  font-size: var(--text-body); font-weight: 600;
+  box-shadow: 0 12px 32px rgba(0,33,71,.2);
+  animation: fx-pop .25s ease;
+}
+.fx-toast--success { background: var(--success); }
+.fx-toast--error { background: var(--error); }
+/* Statik nümunə üçün (position olmadan) */
+.fx-toast--inline { position: static; }
+
+/* ---------- Toplu əməliyyat paneli ---------- */
+.fx-bulkbar {
+  position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%);
+  background: var(--oxford); color: #fff;
+  border-radius: 14px; box-shadow: 0 12px 32px rgba(0,33,71,.25);
+  display: flex; align-items: center; gap: 14px; padding: 12px 18px; z-index: 60;
+  animation: fx-pop .22s ease;
+}
+.fx-bulkbar__divider { width: 1px; height: 20px; background: rgba(255,255,255,.2); }
+
+/* ---------- Xəbərdarlıq bloku (qayğı paneli) ---------- */
+.fx-alert {
+  background: #FFFBEB; border: 1px solid rgba(201,125,46,.3);
+  border-radius: 12px; padding: 12px 14px; display: flex; gap: 10px;
+}
+.fx-alert svg { color: var(--status-pending-fg); flex-shrink: 0; margin-top: 1px; }
+.fx-alert__title { font-size: 12.5px; font-weight: 700; color: var(--status-pending-fg); }
+.fx-alert__text { font-size: var(--text-caption); color: var(--oxford-80); line-height: 1.5; }
+
+/* Məlumat zolağı (info strip) */
+.fx-info {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--bg-blue); border-radius: 10px; padding: 10px 13px;
+  font-size: var(--text-caption); color: var(--brand-600);
+}
+.fx-info svg { flex-shrink: 0; }
+
+/* ---------- Ulduz reytinq ---------- */
+.fx-stars { display: inline-flex; gap: 2px; }
+.fx-stars svg { width: 14px; height: 14px; fill: var(--amber); stroke: var(--amber); stroke-width: 1.4; }
+.fx-stars svg.fx-star--off { fill: var(--hairline); stroke: var(--brand-200); }
+
+/* ============================================================
+   PLATFORMA-GENELİ KOMPONENTLƏR
+   ============================================================ */
+
+/* ---------- Sidebar naviqasiya (260px) ---------- */
+.fx-sidebar {
+  width: var(--sidebar-w); min-height: 100vh;
+  background: var(--surface); border-right: 1px solid var(--hairline);
+  display: flex; flex-direction: column; padding: 20px 12px; gap: 2px;
+}
+.fx-sidebar__brand {
+  font-family: var(--font-serif); font-weight: 500; font-size: 20px;
+  letter-spacing: -.01em; color: var(--oxford); padding: 4px 12px 18px;
+}
+.fx-nav-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 12px; border-radius: 10px;
+  font-size: var(--text-body); font-weight: 500; color: var(--oxford-60);
+  cursor: pointer; border: none; background: transparent; font-family: var(--font-sans);
+  text-align: left; width: 100%;
+}
+.fx-nav-item:hover { background: var(--surface-muted); color: var(--oxford-80); }
+.fx-nav-item--active { background: var(--bg-blue); color: var(--brand-600); font-weight: 600; }
+.fx-nav-item__count { margin-left: auto; }
+.fx-nav-section { font-size: 10.5px; font-weight: 700; color: var(--oxford-60); opacity: .7; text-transform: uppercase; letter-spacing: .08em; padding: 16px 12px 6px; }
+
+/* ---------- Topbar ---------- */
+.fx-topbar {
+  height: 64px; background: var(--surface); border-bottom: 1px solid var(--hairline);
+  display: flex; align-items: center; gap: 16px; padding: 0 24px;
+}
+.fx-iconbtn {
+  position: relative; width: 36px; height: 36px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: none; color: var(--oxford-60); cursor: pointer;
+}
+.fx-iconbtn:hover { background: var(--bg-blue); color: var(--oxford); }
+.fx-badge-dot {
+  position: absolute; top: 7px; right: 7px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--error); border: 2px solid var(--surface);
+}
+
+/* ---------- Breadcrumb ---------- */
+.fx-breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--oxford-60); }
+.fx-breadcrumb svg { color: var(--brand-200); width: 12px; height: 12px; }
+.fx-breadcrumb .fx-current { font-weight: 600; color: var(--oxford-80); }
+
+/* ---------- Cədvəl (klassik) ---------- */
+.fx-table { width: 100%; border-collapse: collapse; font-size: var(--text-body); }
+.fx-table th {
+  text-align: left; padding: 10px 16px;
+  font-size: var(--text-label); font-weight: 600; color: var(--oxford-60);
+  text-transform: uppercase; letter-spacing: .05em;
+  border-bottom: 1px solid var(--hairline); white-space: nowrap;
+}
+.fx-table td { padding: 13px 16px; border-bottom: 1px solid var(--hairline); vertical-align: middle; }
+.fx-table tbody tr { transition: background .12s ease; }
+.fx-table tbody tr:hover { background: var(--surface-muted); }
+.fx-table .fx-td-num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* ---------- Pagination ---------- */
+.fx-pagination { display: flex; align-items: center; gap: 6px; }
+.fx-page-btn {
+  min-width: 32px; height: 32px; padding: 0 8px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface); border: 1px solid var(--hairline);
+  font-size: var(--text-caption); font-weight: 600; color: var(--oxford-80);
+  cursor: pointer; font-family: var(--font-sans); font-variant-numeric: tabular-nums;
+}
+.fx-page-btn:hover { background: var(--bg-blue); }
+.fx-page-btn--active { background: var(--brand); border-color: var(--brand); color: #fff; }
+.fx-page-btn:disabled { opacity: .4; cursor: default; }
+
+/* ---------- Dropdown menyu ---------- */
+.fx-menu {
+  background: var(--surface); border: 1px solid var(--hairline);
+  border-radius: 12px; box-shadow: var(--shadow-lg);
+  padding: 6px; min-width: 190px; display: flex; flex-direction: column; gap: 1px;
+}
+.fx-menu-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 11px; border-radius: 8px;
+  font-size: var(--text-body); font-weight: 500; color: var(--oxford-80);
+  cursor: pointer; border: none; background: transparent; font-family: var(--font-sans);
+  text-align: left; width: 100%;
+}
+.fx-menu-item:hover { background: var(--surface-muted); }
+.fx-menu-item--danger { color: var(--rose); }
+.fx-menu-item--danger:hover { background: #FDF5F5; }
+.fx-menu-divider { height: 1px; background: var(--hairline); margin: 5px 6px; }
+
+/* ---------- Switch ---------- */
+.fx-switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+.fx-switch input { opacity: 0; width: 0; height: 0; }
+.fx-switch__track {
+  position: absolute; inset: 0; border-radius: 999px;
+  background: var(--brand-200); transition: background .18s ease; cursor: pointer;
+}
+.fx-switch__track::before {
+  content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; top: 3px; left: 3px; transition: transform .18s ease;
+  box-shadow: var(--shadow-sm);
+}
+.fx-switch input:checked + .fx-switch__track { background: var(--brand); }
+.fx-switch input:checked + .fx-switch__track::before { transform: translateX(18px); }
+
+/* ---------- Radio ---------- */
+.fx-radio { width: 16px; height: 16px; accent-color: var(--brand); cursor: pointer; }
+.fx-choice { display: flex; align-items: center; gap: 9px; font-size: var(--text-body); cursor: pointer; }
+
+/* ---------- Form vəziyyətləri ---------- */
+.fx-input--error, .fx-select--error, .fx-textarea--error { border-color: rgba(220,38,38,.5); background: #FEF7F7; }
+.fx-help { font-size: var(--text-caption); color: var(--oxford-60); }
+.fx-error-text { display: flex; align-items: center; gap: 6px; font-size: var(--text-caption); color: var(--error); font-weight: 500; }
+
+/* ---------- Tooltip (statik bubble) ---------- */
+.fx-tooltip {
+  display: inline-block; background: var(--oxford); color: #fff;
+  font-size: var(--text-caption); font-weight: 500; line-height: 1.4;
+  border-radius: 8px; padding: 7px 11px; max-width: 240px;
+  box-shadow: var(--shadow-md); position: relative;
+}
+.fx-tooltip::after {
+  content: ''; position: absolute; top: 100%; left: 18px;
+  border: 5px solid transparent; border-top-color: var(--oxford);
+}
+
+/* ---------- Banner (səhifə bildirişi) ---------- */
+.fx-banner {
+  display: flex; align-items: flex-start; gap: 11px;
+  border-radius: 12px; padding: 13px 16px; font-size: var(--text-body); line-height: 1.5;
+  border: 1px solid;
+}
+.fx-banner svg { flex-shrink: 0; margin-top: 1px; }
+.fx-banner--info    { background: var(--bg-blue);  border-color: var(--brand-200);          color: var(--brand-600); }
+.fx-banner--warn    { background: #FFFBEB;         border-color: rgba(201,125,46,.3);       color: var(--status-pending-fg); }
+.fx-banner--error   { background: #FEF7F7;         border-color: rgba(220,38,38,.3);        color: #991B1B; }
+.fx-banner--success { background: var(--sage-bg);  border-color: rgba(74,155,127,.35);      color: #2E6B54; }
+
+/* ---------- Stepper (wizard) ---------- */
+.fx-stepper { display: flex; align-items: center; gap: 0; }
+.fx-step { display: flex; align-items: center; gap: 9px; }
+.fx-step__dot {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: var(--text-caption); font-weight: 700; font-variant-numeric: tabular-nums;
+  background: var(--surface); border: 1.5px solid var(--hairline); color: var(--oxford-60);
+}
+.fx-step--done .fx-step__dot { background: var(--brand-100); border-color: var(--brand-100); color: var(--brand-600); }
+.fx-step--active .fx-step__dot { background: var(--brand); border-color: var(--brand); color: #fff; }
+.fx-step__label { font-size: var(--text-caption); font-weight: 600; color: var(--oxford-60); }
+.fx-step--active .fx-step__label { color: var(--oxford); }
+.fx-step-line { width: 36px; height: 1.5px; background: var(--hairline); margin: 0 10px; }
+.fx-step-line--done { background: var(--brand-200); }
+
+/* ---------- Segmented control ---------- */
+.fx-segmented {
+  display: inline-flex; gap: 2px; background: var(--surface-muted);
+  border: 1px solid var(--hairline); border-radius: 10px; padding: 3px;
+}
+.fx-segmented button {
+  border: none; background: transparent; border-radius: 8px;
+  padding: 6px 14px; font-size: 12.5px; font-weight: 600; color: var(--oxford-60);
+  cursor: pointer; font-family: var(--font-sans);
+}
+.fx-segmented button:hover { color: var(--oxford-80); }
+.fx-segmented button.fx-seg--active { background: var(--surface); color: var(--brand-600); box-shadow: var(--shadow-sm); }
+
+/* ---------- Tag (silinə bilən) ---------- */
+.fx-tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--brand-100); color: var(--brand-600);
+  border-radius: var(--radius-chip); padding: 4px 6px 4px 12px;
+  font-size: var(--text-caption); font-weight: 600;
+}
+.fx-tag button {
+  width: 16px; height: 16px; border-radius: 50%; border: none;
+  background: rgba(11,63,144,.12); color: var(--brand-600);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+}
+.fx-tag button:hover { background: rgba(11,63,144,.22); }
+
+/* ---------- Fayl yükləmə (dropzone) ---------- */
+.fx-dropzone {
+  border: 1.5px dashed var(--brand-200); border-radius: var(--radius-card);
+  background: var(--brand-50); padding: 26px 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  text-align: center; cursor: pointer; transition: border-color .15s ease;
+}
+.fx-dropzone:hover { border-color: var(--brand-300); }
+.fx-dropzone svg { color: var(--brand-400); }
+
+/* ---------- Köməkçilər ---------- */
+.fx-hairline { height: 1px; background: var(--hairline); border: none; }
+.fx-flex { display: flex; align-items: center; gap: 10px; }
+.fx-stack { display: flex; flex-direction: column; gap: 10px; }
+.fx-spacer { flex: 1; }

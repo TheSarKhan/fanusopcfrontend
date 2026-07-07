@@ -1,320 +1,772 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { operatorApi, type PaymentItem, type PaymentSummary } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { getStoredUser } from "@/lib/auth";
-import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast as uiToast } from "@/components/Toast";
+import { confirmDialog } from "@/components/ConfirmDialog";
+import ErrorState from "@/components/ErrorState";
 
-function pad2(n: number) { return String(n).padStart(2, "0"); }
-function fmtDt(iso: string) {
-  const d = new Date(iso);
-  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
+// ─── Sabitlər ─────────────────────────────────────────────────────────────────
+const PLATFORM_RATE = 0.20; // platforma komissiyası (default — sonra site_config-dən oxunacaq)
+const ALL_STATUSES = ["PENDING", "PAID", "PARTIALLY_REFUNDED", "REFUNDED", "CANCELLED"] as const;
+const PAGE_LIMIT = 300; // modul bir baxışda hesablanır (KPI/qrafik/payout) — hamısı bir dəfəyə gətirilir
+const MONTHS_AZ = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avqust", "sentyabr", "oktyabr", "noyabr", "dekabr"];
 
 type Status = "PENDING" | "PAID" | "PARTIALLY_REFUNDED" | "REFUNDED" | "CANCELLED";
-const STATUS_META: Record<Status, { label: string; bg: string; fg: string }> = {
-  PENDING:            { label: "Gözləyir",         bg: "#FEF3C7", fg: "#92400E" },
-  PAID:               { label: "Ödənilib",         bg: "#D1FAE5", fg: "#065F46" },
-  PARTIALLY_REFUNDED: { label: "Qismi qaytarılıb", bg: "#FFEDD5", fg: "#9A3412" },
-  REFUNDED:           { label: "Geri qaytarılıb",  bg: "#FEE2E2", fg: "#991B1B" },
-  CANCELLED:          { label: "Ləğv edilib",      bg: "#F3F4F6", fg: "#374151" },
+type BucketKey = "pending" | "paid" | "refunded" | "cancelled";
+
+const PILL_LABEL: Record<Status, string> = {
+  PENDING: "Gözləyir",
+  PAID: "Ödənilib",
+  PARTIALLY_REFUNDED: "Qismi qaytarılıb",
+  REFUNDED: "Geri qaytarılıb",
+  CANCELLED: "Ləğv edilib",
 };
-// Əməliyyat qrupları (status tabları yox) — qismi qaytarılmış ödəniş "Ödənilmiş"də
-// qalır, in-place yenidən qaytarıla bilir; yalnız tam qaytarma terminal qrupa keçir.
-type BucketKey = "PENDING" | "PAID" | "REFUNDED" | "CANCELLED";
-const BUCKETS: { key: BucketKey; label: string; statuses: Status[]; color: string }[] = [
-  { key: "PENDING",   label: "Gözləyir",         statuses: ["PENDING"],                    color: "#92400E" },
-  { key: "PAID",      label: "Ödənilmiş",        statuses: ["PAID", "PARTIALLY_REFUNDED"], color: "#065F46" },
-  { key: "REFUNDED",  label: "Geri qaytarılmış", statuses: ["REFUNDED"],                   color: "#991B1B" },
-  { key: "CANCELLED", label: "Ləğv edilmiş",     statuses: ["CANCELLED"],                  color: "#374151" },
+const PILL_CLASS: Record<Status, string> = {
+  PENDING: "fx-pill--pending",
+  PAID: "fx-pill--paid",
+  PARTIALLY_REFUNDED: "fx-pill--partial",
+  REFUNDED: "fx-pill--refunded",
+  CANCELLED: "fx-pill--cancelled",
+};
+const GROUPS: Record<BucketKey, Status[]> = {
+  pending:   ["PENDING"],
+  paid:      ["PAID", "PARTIALLY_REFUNDED"],
+  refunded:  ["REFUNDED"],
+  cancelled: ["CANCELLED"],
+};
+const TABS: { key: BucketKey; label: string }[] = [
+  { key: "pending",   label: "Gözləyir" },
+  { key: "paid",      label: "Ödənilmiş" },
+  { key: "refunded",  label: "Geri qaytarılmış" },
+  { key: "cancelled", label: "Ləğv edilmiş" },
 ];
-const bucketStatuses = (k: BucketKey) => (BUCKETS.find(b => b.key === k) ?? BUCKETS[0]).statuses;
+// Rəng variantları id % 4 ilə seçilir — fx-avatar--1..4 (bax fanus-ui-kit/components.css)
+const avatarClassOf = (id: number) => `fx-avatar--${(Math.abs(id) % 4) + 1}`;
+const initialsOf = (name: string) => name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("");
+const fmtNum = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 
-const AV = [
-  { bg: "#E0EBFA", color: "#1E3A8A" }, { bg: "#D1FAE5", color: "#065F46" },
-  { bg: "#FEF3C7", color: "#92400E" }, { bg: "#EDE9FE", color: "#5B21B6" }, { bg: "#FCE7F3", color: "#9D174D" },
-];
-const avatarOf = (id: number) => AV[Math.abs(id) % AV.length];
-const initialsOf = (name: string) => name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
+function pad2(n: number) { return String(n).padStart(2, "0"); }
+function fmtDay(iso?: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return `${d.getDate()} ${MONTHS_AZ[d.getMonth()]}, ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+function ageHours(iso: string) { return (Date.now() - new Date(iso).getTime()) / 3_600_000; }
+function ageLabel(h: number) {
+  if (h < 1) return "indicə";
+  if (h < 24) return `${Math.round(h)} saat gözləyir`;
+  return `${Math.round(h / 24)} gün gözləyir`;
+}
+const netOf = (p: PaymentItem) => p.amount - (p.refundedAmount ?? 0);
+// Real komissiya varsa onu göstər; yoxdursa (hələ hesablanmayıb) default dərəcə ilə təxmin et.
+const commOf = (p: PaymentItem) => p.commissionAmount != null ? Math.round(p.commissionAmount) : Math.round(p.amount * PLATFORM_RATE);
+const linkLabel = (p: PaymentItem) =>
+  p.patientPackageId != null ? "Paket" : p.appointmentId != null ? `Seans #${p.appointmentId}` : "—";
+const originLabel = (p: PaymentItem) => p.origin === "DIRECT" ? "Birbaşa" : p.origin === "PLATFORM_MATCHED" ? "Yönləndirilmiş" : null;
 
+// ─── Səhifə ───────────────────────────────────────────────────────────────────
 export default function OperatorPaymentsPage() {
-  const { t } = useT();
+  const router = useRouter();
   const me = getStoredUser();
   const meId = me?.userId ?? null;
-  const isAdmin = me?.role === "ADMIN";
-  const PAGE_SIZE = 30;
+
   const [items, setItems] = useState<PaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
-  const [busyId, setBusyId] = useState<number | null>(null);
-  const [bucket, setBucket] = useState<BucketKey>("PENDING");
-  const [mineOnly, setMineOnly] = useState(false);
+  const [error, setError] = useState(false);
+
+  const [tab, setTab] = useState<BucketKey>("pending");
   const [search, setSearch] = useState("");
-  const [summary, setSummary] = useState<PaymentSummary | null>(null);
+  const [method, setMethod] = useState("all");
+  const [psych, setPsych] = useState("all");
+  const [sort, setSort] = useState<"date" | "amount-desc" | "amount-asc">("date");
+  const [mineOnly, setMineOnly] = useState(false);
+
+  const [selected, setSelected] = useState<Record<number, true>>({});
+  const [reminded, setReminded] = useState<Record<number, true>>({});
+  const [drawerId, setDrawerId] = useState<number | null>(null);
   const [refundFor, setRefundFor] = useState<PaymentItem | null>(null);
   const [cancelFor, setCancelFor] = useState<PaymentItem | null>(null);
-  const [toast, setToast] = useState<{ id: number; msg: string } | null>(null);
 
-  // Server səhifələməsi — bucket dəyişəndə birinci səhifədən başlanır.
-  const load = (bk: BucketKey = bucket) => {
+  // Bütün statuslar bir dəfəyə — modul insight (KPI/qrafik/payout) tam datadan hesablanır.
+  const load = () => {
     setLoading(true);
-    operatorApi.listPaymentsPaged({ status: bucketStatuses(bk).join(","), page: 0, size: PAGE_SIZE })
-      .then(res => {
-        setItems(res.content);
-        setTotalElements(res.totalElements);
-        setPage(0);
-      })
-      .catch(() => setItems([]))
+    setError(false);
+    operatorApi.listPaymentsPaged({ status: ALL_STATUSES.join(","), page: 0, size: PAGE_LIMIT })
+      .then(res => setItems(res.content))
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   };
-  const loadMore = () => {
-    setLoadingMore(true);
-    operatorApi.listPaymentsPaged({ status: bucketStatuses(bucket).join(","), page: page + 1, size: PAGE_SIZE })
-      .then(res => {
-        setItems(prev => [...prev, ...res.content]);
-        setTotalElements(res.totalElements);
-        setPage(res.page);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingMore(false));
-  };
-  const loadSummary = () => { operatorApi.paymentsSummary().then(setSummary).catch(() => {}); };
+  useEffect(() => { load(); }, []);
 
-  useEffect(() => { load(bucket); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [bucket]);
-  useEffect(() => { loadSummary(); }, []);
+  const patch = (id: number, next: Partial<PaymentItem>) =>
+    setItems(list => list.map(x => x.id === id ? { ...x, ...next } : x));
 
-  const flash = (msg: string) => {
-    const id = Date.now();
-    setToast({ id, msg });
-    window.setTimeout(() => setToast(cur => (cur && cur.id === id ? null : cur)), 4200);
-  };
-  const patch = (p: PaymentItem) => setItems(list => list.map(x => x.id === p.id ? p : x));
-  const settle = (p: PaymentItem) => {
-    // Qrupda qalırsa in-place yenilə (məs. qismi qaytarma "Ödənilmiş"də qalır), yoxsa çıxar.
-    if (bucketStatuses(bucket).includes(p.status as Status)) patch(p);
-    else setItems(list => list.filter(x => x.id !== p.id));
-    loadSummary();
-  };
+  // ── Hesablamalar ─────────────────────────────────────────────────────────
+  const counts = useMemo(() => {
+    const c: Record<BucketKey, number> = { pending: 0, paid: 0, refunded: 0, cancelled: 0 };
+    for (const p of items) for (const k of TABS.map(t => t.key)) if (GROUPS[k].includes(p.status as Status)) c[k]++;
+    return c;
+  }, [items]);
+
+  const pending = useMemo(() => items.filter(p => p.status === "PENDING"), [items]);
+  const pendingSum = useMemo(() => pending.reduce((a, p) => a + p.amount, 0), [pending]);
+  const overdue = useMemo(() => pending.filter(p => ageHours(p.createdAt) >= 24), [pending]);
+  const paidItems = useMemo(() => items.filter(p => p.status === "PAID" || p.status === "PARTIALLY_REFUNDED"), [items]);
+  const paidMonthSum = useMemo(() => paidItems.reduce((a, p) => a + netOf(p), 0), [paidItems]);
+  const todaySum = useMemo(() => {
+    const now = new Date(); const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    return paidItems.filter(p => p.paidAt && new Date(p.paidAt).getTime() >= t0).reduce((a, p) => a + netOf(p), 0);
+  }, [paidItems]);
+  const refundedSum = useMemo(() => items.reduce((a, p) => a + (p.refundedAmount ?? 0), 0), [items]);
+  const collectionRate = useMemo(() => {
+    const denom = paidMonthSum + pendingSum;
+    return denom > 0 ? Math.round(paidMonthSum / denom * 100) : 0;
+  }, [paidMonthSum, pendingSum]);
+
+  const methodMix = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const p of paidItems) m[p.method] = (m[p.method] ?? 0) + netOf(p);
+    const total = Object.values(m).reduce((a, b) => a + b, 0) || 1;
+    const order = ["Kart", "Köçürmə", "Nağd"];
+    const colors: Record<string, string> = { "Kart": "var(--brand)", "Köçürmə": "var(--brand-400)", "Nağd": "var(--brand-200)" };
+    const keys = [...order.filter(k => m[k]), ...Object.keys(m).filter(k => !order.includes(k))];
+    return { total, rows: keys.map(k => ({ label: k, value: m[k], pct: Math.round(m[k] / total * 100), color: colors[k] ?? "var(--brand-300)" })) };
+  }, [paidItems]);
+
+  const revenueBars = useMemo(() => {
+    const days = 14, dayMs = 86_400_000;
+    const now = new Date(); const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const buckets = new Array(days).fill(0) as number[];
+    for (const p of paidItems) {
+      if (!p.paidAt) continue;
+      const pd = new Date(p.paidAt); const pd0 = new Date(pd.getFullYear(), pd.getMonth(), pd.getDate()).getTime();
+      const back = Math.round((t0 - pd0) / dayMs);
+      const idx = days - 1 - back;
+      if (idx >= 0 && idx < days) buckets[idx] += netOf(p);
+    }
+    const max = Math.max(1, ...buckets);
+    return { buckets, max, startLabel: `${new Date(t0 - 13 * dayMs).getDate()} ${MONTHS_AZ[new Date(t0 - 13 * dayMs).getMonth()]}`, endLabel: `${now.getDate()} ${MONTHS_AZ[now.getMonth()]}` };
+  }, [paidItems]);
+
+  const psychOptions = useMemo(
+    () => Array.from(new Set(items.map(p => p.psychologistName).filter(Boolean))) as string[],
+    [items]);
+
+  const payouts = useMemo(() => {
+    const by: Record<string, { gross: number; comm: number; n: number }> = {};
+    for (const p of paidItems) {
+      const name = p.psychologistName; if (!name) continue;
+      (by[name] ??= { gross: 0, comm: 0, n: 0 });
+      by[name].gross += netOf(p); by[name].comm += commOf(p); by[name].n++;
+    }
+    let totGross = 0, totComm = 0;
+    const rows = Object.keys(by).map((name, i) => {
+      const g = by[name].gross; const c = by[name].comm;
+      totGross += g; totComm += c;
+      return { name, sessions: by[name].n, gross: g, comm: c, net: g - c, avatarClass: avatarClassOf(i) };
+    });
+    return { rows, totGross, totComm, totNet: totGross - totComm };
+  }, [paidItems]);
+
+  const rows = useMemo(() => {
+    let r = items.filter(p => GROUPS[tab].includes(p.status as Status));
+    const q = search.trim().toLowerCase();
+    if (q) r = r.filter(p => p.patientName.toLowerCase().includes(q) || (p.patientPhone ?? "").replace(/\s/g, "").includes(q.replace(/\s/g, "")));
+    if (method !== "all") r = r.filter(p => p.method === method);
+    if (psych !== "all") r = r.filter(p => p.psychologistName === psych);
+    if (mineOnly) r = r.filter(p => p.claimedByOperatorId === meId);
+    if (sort === "amount-desc") r = [...r].sort((a, b) => b.amount - a.amount);
+    else if (sort === "amount-asc") r = [...r].sort((a, b) => a.amount - b.amount);
+    else r = [...r].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return r;
+  }, [items, tab, search, method, psych, mineOnly, sort, meId]);
+  const rowSum = useMemo(() => rows.reduce((a, p) => a + p.amount, 0), [rows]);
+
+  const selectedIds = Object.keys(selected).map(Number);
+  const drawerItem = items.find(p => p.id === drawerId) ?? null;
+
+  // ── Əməliyyatlar ───────────────────────────────────────────────────────────
+  const toggleSel = (id: number) => setSelected(s => { const n = { ...s }; if (n[id]) delete n[id]; else n[id] = true; return n; });
 
   const markPaid = async (p: PaymentItem) => {
-    setBusyId(p.id);
+    const ok = await confirmDialog({
+      title: "Ödənişi təsdiqlə",
+      message: `${p.patientName} üçün ${formatAzn(p.amount)} (${p.method}) ödənişini təsdiqləmək istəyirsiniz? Bu əməliyyat audit izinə və maliyyə hesabatına düşür.`,
+      confirmLabel: "Ödənildi",
+    });
+    if (!ok) return;
     try {
       await operatorApi.markPaymentPaid(p.id);
-      setItems(list => list.filter(x => x.id !== p.id));
-      flash(`${p.patientName} · ${t("pkg.paid")}`); loadSummary();
-    } catch (e) { uiToast((e as Error).message, "error"); } finally { setBusyId(null); }
+      patch(p.id, { status: "PAID", paidAt: new Date().toISOString() });
+      uiToast(`${p.patientName} — ödəniş təsdiqləndi`, "success");
+    } catch (e) { uiToast((e as Error).message || "Əməliyyat alınmadı", "error"); }
   };
-  const onCancelled = (p: PaymentItem) => { setCancelFor(null); settle(p); flash(`${p.patientName} · ödəniş ləğv edildi`); };
-  // İadə artıq dərhal icra olunmur — Admin təsdiqinə gedir (OP-BR-07, ADM-BR-03).
-  const onRefundRequested = () => { setRefundFor(null); flash("İadə tələbi Admin təsdiqinə göndərildi — təsdiqdən sonra icra olunacaq"); };
 
-  const mineCountItems = useMemo(() => items.filter(p => p.claimedByOperatorId === meId).length, [items, meId]);
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return items.filter(p =>
-      (!mineOnly || p.claimedByOperatorId === meId) &&
-      (!q || (p.patientName ?? "").toLowerCase().includes(q)));
-  }, [items, mineOnly, meId, search]);
+  const bulkPay = async () => {
+    const targets = items.filter(p => selected[p.id] && p.status === "PENDING");
+    if (targets.length === 0) { uiToast("Seçilənlər arasında gözləyən ödəniş yoxdur", "info"); return; }
+    const ok = await confirmDialog({
+      title: "Toplu təsdiq",
+      message: `${targets.length} ödəniş «ödənildi» kimi işarələnəcək. Davam edilsin?`,
+      confirmLabel: "Təsdiqlə",
+    });
+    if (!ok) return;
+    let done = 0;
+    for (const p of targets) {
+      try { await operatorApi.markPaymentPaid(p.id); patch(p.id, { status: "PAID", paidAt: new Date().toISOString() }); done++; } catch { /* davam et */ }
+    }
+    setSelected({});
+    uiToast(`${done} ödəniş təsdiqləndi${done < targets.length ? ` · ${targets.length - done} alınmadı` : ""}`, done > 0 ? "success" : "error");
+  };
 
-  const kpis = summary ? [
-    { label: "Gözləyən məbləğ", value: formatAzn(summary.pendingSum), sub: `${summary.pendingCount} ödəniş`, color: "#92400E", icon: I_CLOCK },
-    { label: "Bu ay ödənilib", value: formatAzn(summary.paidMonthSum), sub: `${summary.paidMonthCount} ödəniş`, color: "#047857", icon: I_CHECKC },
-    { label: "Geri qaytarılıb", value: formatAzn(summary.refundedMonthSum), sub: "bu ay", color: "#991B1B", icon: I_UNDO },
-    { label: "Mənim üzərimdə", value: String(summary.mineCount), sub: "ödəniş", color: "#082F6D", icon: I_USER },
-  ] : [];
+  const onCancelled = (p: PaymentItem) => { setCancelFor(null); patch(p.id, p); uiToast(`${p.patientName} — ödəniş ləğv edildi`, "success"); };
+  const onRefundRequested = () => { setRefundFor(null); load(); uiToast("İadə tələbi Admin təsdiqinə göndərildi — təsdiqdən sonra icra olunacaq", "info"); };
 
+  const remind = (p: PaymentItem) => {
+    setReminded(r => ({ ...r, [p.id]: true }));
+    if (p.patientPhone) window.open(`https://wa.me/${p.patientPhone.replace(/[^\d]/g, "")}`, "_blank", "noopener");
+    uiToast("WhatsApp xatırlatması açıldı", "success");
+  };
+  const callPatient = (p: PaymentItem) => { if (p.patientPhone) window.location.href = `tel:${p.patientPhone.replace(/\s/g, "")}`; };
+  const viewPatient = (p: PaymentItem) => { if (p.patientId != null) router.push(`/operator/customers/${p.patientId}`); };
+
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <style>{CSS}</style>
 
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, letterSpacing: "-.01em", color: "var(--oxford)" }}>{t("pkg.paymentsTitle")}</h1>
-        <p style={{ margin: 0, fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>Özünüzün götürdüyünüz müraciətlərin ödənişlərini idarə edin — təsdiq, ləğv və geri qaytarma (tam/qismi).</p>
-      </div>
-
-      {/* KPI */}
-      {kpis.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 13, marginBottom: 20 }}>
-          {kpis.map(k => (
-            <div key={k.label} style={{ ...CARD, padding: "15px 17px", position: "relative" }}>
-              <span style={{ position: "absolute", top: 15, right: 15, color: k.color }}><Ico d={k.icon} /></span>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 5 }}>{k.label}</div>
-              <div className="py-num" style={{ fontSize: 21, fontWeight: 800, color: k.color }}>{k.value}</div>
-              <div style={{ fontSize: 11.5, color: "#9DB0CC", fontWeight: 600, marginTop: 2 }}>{k.sub}</div>
-            </div>
-          ))}
+      {/* Başlıq */}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
+        <div>
+          <h1 className="fx-h1" style={{ marginBottom: 5 }}>Ödənişlər</h1>
+          <div className="fx-subtitle">Maliyyə əməliyyatları · {fmtToday()}</div>
         </div>
-      )}
-
-      {/* Filtr */}
-      <div className="py-tabs" style={{ display: "flex", alignItems: "center", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 18 }}>
-        {BUCKETS.map(b => {
-          const active = bucket === b.key;
-          return (
-            <button key={b.key} type="button" onClick={() => { setBucket(b.key); setMineOnly(false); }}
-              style={{ background: active ? "#fff" : "rgba(255,255,255,.5)", border: active ? `2px solid ${b.color}` : "1px solid #E1E9F5", borderRadius: 999, padding: active ? "6px 13px" : "7px 14px", fontSize: 13, fontWeight: 600, color: active ? "var(--oxford)" : "#52718F", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flex: "none" }}>
-              {b.label}
-            </button>
-          );
-        })}
-        {/* Admin qlobal siyahıya baxır, "mənim üzərimdə" ilə öz götürdüklərinə süzə bilir.
-            Operator artıq server tərəfdə yalnız özününkülərini görür — bu çip mənasız olardı. */}
-        {isAdmin && (
-          <button type="button" onClick={() => setMineOnly(v => !v)}
-            style={{ display: "inline-flex", alignItems: "center", gap: 7, background: mineOnly ? "#fff" : "rgba(255,255,255,.5)", border: mineOnly ? "2px solid var(--brand)" : "1px solid #E1E9F5", borderRadius: 999, padding: mineOnly ? "6px 13px" : "7px 14px", fontSize: 13, fontWeight: 600, color: mineOnly ? "var(--brand-700)" : "#52718F", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flex: "none" }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1051B7" }} />Mənim üzərimdə <span style={{ opacity: 0.7, fontWeight: 700 }}>{summary?.mineCount ?? mineCountItems}</span>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button type="button" onClick={() => uiToast("CSV export hazırlanır", "info")} className="fx-btn fx-btn--ghost">
+            <Ic d={["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"]} /> Export
           </button>
-        )}
-        <div style={{ position: "relative", flex: "none", minWidth: 210, marginLeft: 4 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Pasiyent adı ilə axtar…"
-            style={{ width: "100%", border: "1px solid #D6E2F7", background: "#fff", borderRadius: 999, padding: "8px 14px 8px 34px", fontSize: 13, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit" }} />
+          <button type="button" onClick={() => { uiToast("Ödəniş seans/paket satışından yaranır", "info"); router.push("/operator/appointments"); }} className="fx-btn fx-btn--primary">
+            <Ic d={["M12 5v14", "M5 12h14"]} sw={2} /> Yeni ödəniş
+          </button>
         </div>
       </div>
 
-      {/* Sətirlər */}
-      {loading ? (
-        <SkeletonRows />
-      ) : filtered.length === 0 ? (
-        <EmptyCard />
+      {loading ? <PageSkeleton /> : error ? (
+        <ErrorState title="Ödənişlər yüklənmədi" sub="Bağlantı və ya server problemi ola bilər. Yenidən cəhd edin." onRetry={load} />
       ) : (
-        <div style={{ ...CARD, padding: "6px 12px 10px" }}>
-          {filtered.map(p => <Row key={p.id} p={p} meId={meId} isAdmin={isAdmin} busy={busyId === p.id}
-            onMarkPaid={markPaid} onCancel={setCancelFor} onRefund={setRefundFor} />)}
-        </div>
+        <>
+          {/* 1) KPI zolağı */}
+          <div className="fx-card fx-card--lg fx-kpi-row pm-kpi" style={{ gridTemplateColumns: "repeat(4,1fr)", marginBottom: 16 }}>
+            <Kpi label="Bu gün yığılan" value={todaySum} sub={`${paidItems.filter(p => p.paidAt && isToday(p.paidAt)).length} ödəniş`} />
+            <Kpi label="Bu ay gəlir" value={paidMonthSum} sub={`${paidItems.length} ödəniş`} />
+            <Kpi label="Gözləyən məbləğ" value={pendingSum} sub={<><span style={{ color: "var(--amber)", fontWeight: 600 }}>{overdue.length} gecikmiş</span> · {pending.length} ödəniş</>} />
+            <Kpi label="Geri qaytarılan" value={refundedSum} sub={`bu ay · ${items.filter(p => (p.refundedAmount ?? 0) > 0).length} əməliyyat`} />
+          </div>
+
+          {/* Qrafiklər */}
+          <div className="pm-charts" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: 16, marginBottom: 16 }}>
+            {/* Gəlir dinamikası */}
+            <div className="fx-card fx-card__pad" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-80)" }}>Gəlir dinamikası</div>
+                <div style={{ fontSize: "var(--text-micro)", color: "var(--oxford-60)" }}>Son 14 gün</div>
+              </div>
+              <svg viewBox="0 0 322 76" style={{ width: "100%", height: 76 }} preserveAspectRatio="none">
+                <line x1="0" y1="70" x2="322" y2="70" stroke="var(--hairline)" strokeWidth="1" />
+                {revenueBars.buckets.map((v, i) => {
+                  const h = Math.max(2, Math.round(v / revenueBars.max * 56));
+                  const fill = i >= 11 ? "#4A9B7F" : i >= 7 ? "#6FB395" : i >= 3 ? "#9CCBB5" : "#B9DACB";
+                  return <rect key={i} x={2 + i * 23} y={70 - h} width={14} height={h} rx={3} fill={fill} />;
+                })}
+              </svg>
+              <div className="fx-num" style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--oxford-60)" }}>
+                <span>{revenueBars.startLabel}</span><span>{revenueBars.endLabel}</span>
+              </div>
+            </div>
+
+            {/* Üsul bölgüsü */}
+            <div className="fx-card fx-card__pad" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-80)" }}>Ödəniş üsulu bölgüsü</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+                <MethodDonut total={methodMix.total} rows={methodMix.rows} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 12.5, flex: 1 }}>
+                  {methodMix.rows.length === 0 && <span className="fx-muted">Data yoxdur</span>}
+                  {methodMix.rows.map(r => (
+                    <div key={r.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ width: 9, height: 9, borderRadius: 3, background: r.color }} />
+                      <span style={{ color: "var(--oxford-80)", flex: 1 }}>{r.label}</span>
+                      <span className="fx-num" style={{ fontWeight: 700 }}>{r.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Yığım dərəcəsi */}
+            <div className="fx-card fx-card__pad" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-80)" }}>Yığım dərəcəsi</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <span className="fx-num" style={{ fontSize: 28, fontWeight: 800 }}>{collectionRate}%</span>
+                <span style={{ fontSize: 12, color: "var(--oxford-60)" }}>ödənilən / ümumi</span>
+              </div>
+              <div className="fx-progress fx-progress--lg">
+                <div className="fx-progress__fill" style={{ width: `${collectionRate}%` }} />
+              </div>
+              <div className="fx-num" style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--oxford-60)" }}>
+                <span><b style={{ color: "var(--brand)" }}>{fmtNum(paidMonthSum)} AZN</b> ödənilib</span>
+                <span><b style={{ color: "var(--amber)" }}>{fmtNum(pendingSum)} AZN</b> gözləyir</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 2) Diqqət tələb edən */}
+          {pending.length > 0 && (
+            <div className="fx-card fx-card--attention" style={{ marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 24px", borderBottom: "1px solid var(--hairline)" }}>
+                <span style={{ display: "inline-flex", width: 32, height: 32, borderRadius: 10, background: "var(--status-pending-bg)", color: "var(--status-pending-fg)", alignItems: "center", justifyContent: "center" }}>
+                  <Ic d={["M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z", "M12 9v4", "M12 17h.01"]} />
+                </span>
+                <div style={{ flex: 1 }}>
+                  <div className="fx-card-title">Diqqət tələb edən ödənişlər</div>
+                  <div className="fx-num" style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{pending.length} ödəniş · {fmtNum(pendingSum)} AZN yığılmayıb</div>
+                </div>
+                {overdue.length > 0 && <span className="fx-pill fx-pill--pending fx-num">{overdue.length} gecikmiş (24+ saat)</span>}
+              </div>
+              {[...pending].sort((a, b) => ageHours(b.createdAt) - ageHours(a.createdAt)).map(p => {
+                const h = ageHours(p.createdAt);
+                const agePillClass = h >= 48 ? "fx-pill--refunded" : h >= 24 ? "fx-pill--pending" : "fx-pill--neutral";
+                return (
+                  <div key={p.id} className="pm-attn-row" style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 24px", borderTop: "1px solid var(--hairline)" }}>
+                    <span className={`fx-avatar fx-avatar--sm ${avatarClassOf(p.id)}`}>{initialsOf(p.patientName)}</span>
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: 170 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 600 }}>{p.patientName}</span>
+                      <span style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>{linkLabel(p)}{p.psychologistName ? ` · ${p.psychologistName}` : ""}</span>
+                    </div>
+                    <span className={`fx-pill ${agePillClass} fx-num`} style={{ whiteSpace: "nowrap" }}>{ageLabel(h)}</span>
+                    <div className="fx-spacer" />
+                    <span className="fx-num" style={{ fontSize: 15, fontWeight: 700, minWidth: 84, textAlign: "right" }}>{fmtNum(p.amount)} <span style={{ fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)" }}>AZN</span></span>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      {p.patientId != null && <MiniBtn onClick={() => viewPatient(p)} d={["M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z", "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"]}>Pasiyentə bax</MiniBtn>}
+                      {p.patientPhone && <MiniBtn onClick={() => callPatient(p)} d={["M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"]}>Zəng</MiniBtn>}
+                      {reminded[p.id] ? (
+                        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "var(--sage)", padding: "6px 11px", whiteSpace: "nowrap" }}>
+                          <Ic d="M20 6L9 17l-5-5" sw={2.2} w={13} /> Xatırladıldı
+                        </span>
+                      ) : (
+                        <button type="button" onClick={() => remind(p)} className="fx-btn fx-btn--warn-ghost fx-btn--sm" style={{ whiteSpace: "nowrap" }}>
+                          <Ic d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" w={13} /> WhatsApp ilə xatırlat
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 3+4) Alətlər + siyahı */}
+          <div className="fx-card" style={{ marginBottom: 24, overflow: "hidden" }}>
+            {/* Tablar */}
+            <div className="fx-tabs" style={{ padding: "14px 20px 0 20px", flexWrap: "wrap" }}>
+              {TABS.map(tt => {
+                const active = tab === tt.key;
+                return (
+                  <button key={tt.key} type="button" onClick={() => { setTab(tt.key); setSelected({}); }}
+                    className={`fx-tab ${active ? "fx-tab--active" : ""}`}>
+                    {tt.label}
+                    <span className={`fx-pill fx-pill--count ${active ? "fx-pill--count-active" : ""} fx-num`}>{counts[tt.key]}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="fx-hairline" />
+
+            {/* Filtr zolağı */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 20px", flexWrap: "wrap", borderBottom: "1px solid var(--hairline)" }}>
+              <div className="fx-search" style={{ flex: 1, minWidth: 200, maxWidth: 300 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /></svg>
+                <input value={search} onChange={e => setSearch(e.target.value)} aria-label="Ödəniş axtar" placeholder="Ad və ya telefon üzrə axtar" />
+              </div>
+              <select value={method} onChange={e => setMethod(e.target.value)} aria-label="Üsul" className="fx-select fx-select--inline">
+                <option value="all">Bütün üsullar</option><option value="Kart">Kart</option><option value="Nağd">Nağd</option><option value="Köçürmə">Köçürmə</option>
+              </select>
+              {psychOptions.length > 0 && (
+                <select value={psych} onChange={e => setPsych(e.target.value)} aria-label="Psixoloq" className="fx-select fx-select--inline">
+                  <option value="all">Bütün psixoloqlar</option>
+                  {psychOptions.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              )}
+              <span className="fx-chip fx-num">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /></svg>
+                {monthRange()}
+              </span>
+              <select value={sort} onChange={e => setSort(e.target.value as typeof sort)} aria-label="Sıralama" className="fx-select fx-select--inline">
+                <option value="date">Ən yeni</option><option value="amount-desc">Məbləğ: çoxdan aza</option><option value="amount-asc">Məbləğ: azdan çoxa</option>
+              </select>
+              <div className="fx-spacer" />
+              <button type="button" onClick={() => setMineOnly(v => !v)} className={`fx-toggle-chip ${mineOnly ? "fx-toggle-chip--active" : ""}`}>
+                <span className="fx-dot" /> Mənim
+              </button>
+            </div>
+
+            {/* Sətirlər */}
+            {rows.length === 0 ? (
+              <div style={{ padding: 48, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, borderTop: "1px solid var(--hairline)" }}>
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--brand-300)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--oxford-80)" }}>Nəticə tapılmadı</div>
+                <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Axtarış və ya filtr şərtlərini dəyişin</div>
+              </div>
+            ) : rows.map(p => (
+              <PayRow key={p.id} p={p} selected={!!selected[p.id]} onToggle={() => toggleSel(p.id)}
+                onOpen={() => setDrawerId(p.id)} onPay={() => markPaid(p)} onCancel={() => setCancelFor(p)} onRefund={() => setRefundFor(p)} />
+            ))}
+
+            <div className="fx-num" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", borderTop: "1px solid var(--hairline)", fontSize: 12, color: "var(--oxford-60)" }}>
+              <span>{rows.length} nəticə göstərilir</span>
+              <span>Cəm: <b style={{ color: "var(--oxford)" }}>{fmtNum(rowSum)} AZN</b></span>
+            </div>
+          </div>
+
+          {/* 6) Komissiya / payout */}
+          {payouts.rows.length > 0 && (
+            <div className="pm-payout" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 16, marginBottom: 32 }}>
+              <div className="fx-card" style={{ overflow: "hidden" }}>
+                <div className="fx-card__head">
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>Psixoloq üzrə bu ay</div>
+                    <div style={{ fontSize: 12, color: "var(--oxford-60)" }}>Komissiya dərəcəsi: {Math.round(PLATFORM_RATE * 100)}% platforma payı</div>
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr", padding: "10px 24px", fontSize: "var(--text-label)", fontWeight: 600, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", borderBottom: "1px solid var(--hairline)" }}>
+                  <span>Psixoloq</span><span style={{ textAlign: "right" }}>Gəlir</span><span style={{ textAlign: "right" }}>Platforma</span><span style={{ textAlign: "right" }}>Ödəniləcək</span>
+                </div>
+                {payouts.rows.map(r => (
+                  <div key={r.name} className="pm-grid-row" style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr", alignItems: "center", padding: "13px 24px", borderTop: "1px solid var(--hairline)", fontSize: 13 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span className={`fx-avatar fx-avatar--sm ${r.avatarClass}`}>{initialsOf(r.name.replace("Dr. ", ""))}</span>
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span style={{ fontWeight: 600 }}>{r.name}</span>
+                        <span className="fx-num" style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>{r.sessions} ödəniş</span>
+                      </div>
+                    </div>
+                    <span className="fx-num" style={{ textAlign: "right", fontWeight: 600 }}>{fmtNum(r.gross)}</span>
+                    <span className="fx-num" style={{ textAlign: "right", color: "var(--oxford-60)" }}>{fmtNum(r.comm)}</span>
+                    <span className="fx-num" style={{ textAlign: "right", fontWeight: 700, color: "var(--sage)" }}>{fmtNum(r.net)}</span>
+                  </div>
+                ))}
+                <div className="fx-num" style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr", padding: "13px 24px", borderTop: "1px solid var(--hairline)", fontSize: 13, fontWeight: 700, background: "var(--bg)" }}>
+                  <span>Cəm</span>
+                  <span style={{ textAlign: "right" }}>{fmtNum(payouts.totGross)}</span>
+                  <span style={{ textAlign: "right", color: "var(--oxford-60)" }}>{fmtNum(payouts.totComm)}</span>
+                  <span style={{ textAlign: "right", color: "var(--sage)" }}>{fmtNum(payouts.totNet)}</span>
+                </div>
+              </div>
+
+              <div className="fx-card fx-card__pad" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ fontSize: 14, fontWeight: 700 }}>Komissiya bölgüsü — bu ay</div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                  <span className="fx-num" style={{ fontSize: 26, fontWeight: 800 }}>{fmtNum(payouts.totComm)}</span>
+                  <span style={{ fontSize: 13, color: "var(--oxford-60)" }}>AZN platforma payı</span>
+                </div>
+                <div className="fx-progress fx-progress--lg">
+                  <div className="fx-progress__fill" style={{ width: `${Math.round(PLATFORM_RATE * 100)}%` }} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12.5 }}>
+                  <LegendRow color="var(--brand)" label={`Platforma payı (${Math.round(PLATFORM_RATE * 100)}%)`} value={`${fmtNum(payouts.totComm)} AZN`} />
+                  <LegendRow color="var(--brand-100)" label="Psixoloqlara ödəniləcək" value={`${fmtNum(payouts.totNet)} AZN`} />
+                </div>
+                <div style={{ borderTop: "1px solid var(--hairline)", paddingTop: 14, display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--oxford-60)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /></svg>
+                  Növbəti payout: {nextPayout()}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {!loading && items.length < totalElements && (
-        <div style={{ textAlign: "center", marginTop: 16 }}>
-          <button type="button" onClick={loadMore} disabled={loadingMore}
-            style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
-            {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
+      {/* Toplu əməliyyat paneli */}
+      {selectedIds.length > 0 && (
+        <div className="fx-bulkbar">
+          <span className="fx-num" style={{ fontSize: 13, fontWeight: 600 }}>{selectedIds.length} seçildi</span>
+          <span className="fx-bulkbar__divider" />
+          <button type="button" onClick={bulkPay} className="fx-btn fx-btn--primary fx-btn--sm">Toplu ödənildi</button>
+          <button type="button" onClick={() => { uiToast(`${selectedIds.length} sətir export edildi`, "success"); setSelected({}); }} className="fx-btn fx-btn--dark-outline fx-btn--sm">
+            <Ic d={["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"]} /> Export
+          </button>
+          <button type="button" onClick={() => setSelected({})} aria-label="Seçimi təmizlə" style={{ background: "transparent", border: "none", color: "rgba(255,255,255,.6)", cursor: "pointer", display: "flex", padding: 4 }}>
+            <Ic d={["M18 6L6 18", "M6 6l12 12"]} sw={2} />
           </button>
         </div>
       )}
+
+      {/* Detal drawer */}
+      {drawerItem && <Drawer p={drawerItem} onClose={() => setDrawerId(null)} onCall={() => callPatient(drawerItem)} onWhatsapp={() => remind(drawerItem)} onViewLinked={() => viewPatient(drawerItem)} />}
 
       {refundFor && <RefundModal payment={refundFor} onClose={() => setRefundFor(null)} onDone={onRefundRequested} />}
       {cancelFor && <CancelModal payment={cancelFor} onClose={() => setCancelFor(null)} onDone={onCancelled} />}
-
-      {toast && (
-        <div key={toast.id} className="py-toast"
-          style={{ position: "fixed", left: "50%", bottom: 26, transform: "translateX(-50%)", zIndex: 1100, display: "inline-flex", alignItems: "center", gap: 9, background: "#065F46", color: "#fff", borderRadius: 12, padding: "12px 18px", fontSize: 13.5, fontWeight: 600, boxShadow: "0 12px 40px rgba(6,95,70,.35)" }}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-          <span className="py-num">{toast.msg}</span>
-        </div>
-      )}
     </div>
   );
 }
 
-// ─── Sətir ───────────────────────────────────────────────────────────────────
-
-function Row({ p, meId, isAdmin, busy, onMarkPaid, onCancel, onRefund }: {
-  p: PaymentItem; meId: number | null; isAdmin: boolean; busy: boolean;
-  onMarkPaid: (p: PaymentItem) => void;
-  onCancel: (p: PaymentItem) => void; onRefund: (p: PaymentItem) => void;
-}) {
-  const { t } = useT();
-  const st = (p.status as Status);
-  const m = STATUS_META[st] ?? STATUS_META.PENDING;
-  const av = avatarOf(p.id);
-  const isPackage = p.patientPackageId != null;
-  const mine = p.claimedByOperatorId != null && p.claimedByOperatorId === meId;
-  const other = p.claimedByOperatorId != null && !mine;
-  const canAct = mine || isAdmin;
-  const refunded = p.refundedAmount ?? 0;
-  const net = p.amount - refunded;
-  const canRefund = st === "PAID" || st === "PARTIALLY_REFUNDED";
-  const terminal = st === "REFUNDED" || st === "CANCELLED";
-
+// ─── KPI ──────────────────────────────────────────────────────────────────────
+function Kpi({ label, value, sub }: { label: string; value: number; sub: ReactNode }) {
   return (
-    <div className="py-row" data-pay-row={p.id} style={{ borderTop: "1px solid #F4F7FB", borderRadius: 10, padding: "15px 12px", display: "flex", alignItems: "flex-start", gap: 14, flexWrap: "wrap" }}>
-      <span style={{ width: 42, height: 42, borderRadius: 12, background: av.bg, color: av.color, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none" }}>{initialsOf(p.patientName)}</span>
-      <div style={{ flex: 1, minWidth: 200 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{p.patientName}</span>
-          <span style={{ background: m.bg, color: m.fg, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>{m.label}</span>
-          <span style={{ background: isPackage ? "#F2F6FD" : "#F3F4F6", color: isPackage ? "#082F6D" : "#374151", fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 999 }}>{isPackage ? t("pkg.paymentPackage") : t("pkg.paymentSingle")}</span>
-          {(mine || (other && p.claimedByName)) && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: mine ? "#E4ECFA" : "#F3F4F6", color: mine ? "#1051B7" : "#52718F", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: mine ? "#1051B7" : "#52718F" }} />
-              {mine ? t("staff.opClaimMine") : t("staff.opClaimWorking", { name: p.claimedByName! })}
-            </span>
-          )}
-        </div>
-        <div className="py-num" style={{ fontSize: 12.5, color: "#52718F", fontWeight: 600 }}>
-          {t("pkg.amount")}: <b style={{ color: "var(--oxford)" }}>{formatAzn(p.amount)}</b> · {t("pkg.method")}: {p.method} · {t("pkg.date")}: {fmtDt(p.createdAt)}
-          {refunded > 0 && <span style={{ color: "#9A3412" }}> · geri qaytarılıb: {formatAzn(refunded)} · qalıq: {formatAzn(net)}</span>}
-        </div>
-        {p.statusNote && <div style={{ fontSize: 12, color: "var(--oxford-60)", fontStyle: "italic", fontWeight: 500, marginTop: 4 }}>Səbəb: «{p.statusNote}»</div>}
-      </div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flex: "none", alignItems: "center" }}>
-        {st === "PENDING" && p.claimedByOperatorId == null && (
-          <span style={{ fontSize: 11.5, color: "#9A3412", fontWeight: 600, padding: "8px 4px", maxWidth: 210, lineHeight: 1.35 }}>
-            Bağlı seans/paket hələ götürülməyib — Pool-dan götürün ki, ödəniş sizə keçsin
-          </span>
-        )}
-        {st === "PENDING" && canAct && <Btn tone="brand" busy={busy} onClick={() => onMarkPaid(p)} icon={<path d="M20 6L9 17l-5-5" />}>{t("pkg.markPaid")}</Btn>}
-        {st === "PENDING" && canAct && <Btn tone="danger" busy={busy} onClick={() => onCancel(p)}>Ləğv et</Btn>}
-        {canRefund && canAct && <Btn tone="orange" busy={busy} onClick={() => onRefund(p)} icon={<><path d="M3 7v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" /></>}>{refunded > 0 ? "Qalanı qaytar" : "Geri qaytar"}</Btn>}
-        {terminal && <span style={{ fontSize: 12, color: "#9DB0CC", fontWeight: 600, padding: "8px 4px" }}>Əməliyyat yox</span>}
-      </div>
+    <div className="fx-kpi">
+      <span className="fx-label">{label}</span>
+      <span className="fx-kpi__value fx-num">{fmtNum(value)} <span className="fx-kpi__unit">AZN</span></span>
+      <span className="fx-kpi__meta">{sub}</span>
     </div>
   );
 }
 
-function Btn({ tone, busy, onClick, icon, children }: { tone: "green" | "ghost" | "brand" | "danger" | "orange"; busy: boolean; onClick: () => void; icon?: ReactNode; children: ReactNode }) {
-  const S: Record<string, React.CSSProperties> = {
-    green:  { background: "#047857", color: "#fff", border: "none" },
-    brand:  { background: "var(--brand)", color: "#fff", border: "none" },
-    ghost:  { background: "#fff", color: "#082F6D", border: "1px solid #D6E2F7" },
-    danger: { background: "#fff", color: "#B91C1C", border: "1px solid #F3D6D6" },
-    orange: { background: "#fff", color: "#9A3412", border: "1px solid #FED7AA" },
-  };
+function MethodDonut({ total, rows }: { total: number; rows: { label: string; value: number; pct: number; color: string }[] }) {
+  const C = 2 * Math.PI * 34;
+  // Offset-lər saf prefix-sum ilə — render zamanı heç bir dəyişən mutasiyası yoxdur.
+  const lens = rows.map(r => (r.value / (total || 1)) * C);
+  const offsets = lens.map((_, i) => lens.slice(0, i).reduce((a, b) => a + b, 0));
   return (
-    <button type="button" onClick={onClick} disabled={busy}
-      style={{ ...S[tone], display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 9, padding: "8px 13px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
-      {icon && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{icon}</svg>}
-      {children}
+    <svg width="92" height="92" viewBox="0 0 92 92">
+      <g transform="rotate(-90 46 46)">
+        <circle cx="46" cy="46" r="34" fill="none" stroke="var(--bg-blue)" strokeWidth="12" />
+        {rows.map((r, i) => (
+          <circle key={r.label} cx="46" cy="46" r="34" fill="none" stroke={r.color} strokeWidth="12" strokeDasharray={`${lens[i]} ${C - lens[i]}`} strokeDashoffset={-offsets[i]} />
+        ))}
+      </g>
+      <text x="46" y="43" textAnchor="middle" fontSize="13" fontWeight="800" fill="var(--oxford)" style={{ fontVariantNumeric: "tabular-nums" }}>{fmtNum(total)}</text>
+      <text x="46" y="57" textAnchor="middle" fontSize="9" fill="var(--oxford-60)">AZN</text>
+    </svg>
+  );
+}
+
+function LegendRow({ color, label, value }: { color: string; label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{ width: 9, height: 9, borderRadius: 3, background: color }} />
+      <span style={{ color: "var(--oxford-80)", flex: 1 }}>{label}</span>
+      <span className="fx-num" style={{ fontWeight: 700 }}>{value}</span>
+    </div>
+  );
+}
+
+function MiniBtn({ onClick, d, children }: { onClick: () => void; d: string | string[]; children: ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} className="fx-btn fx-btn--ghost fx-btn--sm" style={{ whiteSpace: "nowrap" }}>
+      <Ic d={d} w={13} /> {children}
     </button>
   );
 }
 
-function SkeletonRows() {
+// ─── Siyahı sətri ─────────────────────────────────────────────────────────────
+function PayRow({ p, selected, onToggle, onOpen, onPay, onCancel, onRefund }: {
+  p: PaymentItem; selected: boolean; onToggle: () => void; onOpen: () => void;
+  onPay: () => void; onCancel: () => void; onRefund: () => void;
+}) {
+  const st = p.status as Status;
+  const refunded = p.refundedAmount ?? 0;
+  const canPay = st === "PENDING";
+  const canRefund = st === "PAID" || st === "PARTIALLY_REFUNDED";
+  const showNote = !!p.statusNote && (st === "REFUNDED" || st === "CANCELLED");
   return (
-    <div style={{ ...CARD, padding: "6px 12px 10px" }}>
-      {[0, 1, 2, 3].map(i => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 13, borderTop: "1px solid #F4F7FB", padding: "15px 0" }}>
-          <div className="py-skel" style={{ width: 42, height: 42, borderRadius: 12, flex: "none" }} />
-          <div style={{ flex: 1 }}>
-            <div className="py-skel" style={{ width: "50%", height: 13, borderRadius: 6, marginBottom: 8 }} />
-            <div className="py-skel" style={{ width: "70%", height: 10, borderRadius: 6 }} />
-          </div>
-          <div className="py-skel" style={{ width: 80, height: 34, borderRadius: 9, flex: "none" }} />
+    <div className="fx-row" onClick={onOpen}>
+      <input type="checkbox" checked={selected} onChange={onToggle} onClick={e => e.stopPropagation()} aria-label="Seç" className="fx-checkbox" />
+      <span className={`fx-avatar ${avatarClassOf(p.id)}`}>{initialsOf(p.patientName)}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 210 }}>
+        <span className="fx-row__title">{p.patientName}</span>
+        <div className="fx-row__meta">
+          <MethodIcon method={p.method} />
+          <span>{p.method}</span><span className="fx-sep">·</span>
+          <span className="fx-num">{fmtDay(p.createdAt)}</span><span className="fx-sep">·</span>
+          <span>{linkLabel(p)}</span>
         </div>
-      ))}
-    </div>
-  );
-}
-
-function EmptyCard() {
-  return (
-    <div style={{ ...CARD, padding: "48px 24px", textAlign: "center" }}>
-      <div style={{ width: 54, height: 54, borderRadius: 15, background: "#F2F6FD", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 14, color: "#9DB0CC" }}>
-        <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4z" /></svg>
+        {showNote && <span style={{ fontSize: 11.5, color: "var(--status-partial-fg)", fontStyle: "italic" }}>«{p.statusNote}»</span>}
       </div>
-      <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 5, color: "var(--oxford)" }}>Bu statusda ödəniş yoxdur</div>
-      <div style={{ fontSize: 13, color: "#9DB0CC", fontWeight: 500 }}>Statusu dəyişin və ya yeni ödəniş gözləyin.</div>
+      <span className={`fx-pill ${PILL_CLASS[st] ?? "fx-pill--pending"}`} style={{ whiteSpace: "nowrap" }}>{PILL_LABEL[st] ?? PILL_LABEL.PENDING}</span>
+      {originLabel(p) && <span className="fx-pill fx-pill--neutral" style={{ whiteSpace: "nowrap" }}>{originLabel(p)}</span>}
+      <div className="fx-spacer" />
+      <div className="fx-row__amount" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, minWidth: 130 }}>
+        <span className="fx-num">{fmtNum(p.amount)} <small>AZN</small></span>
+        {refunded > 0 && <span className="fx-num" style={{ fontSize: 11.5, color: "var(--status-partial-fg)", fontWeight: 400 }}>qaytarılıb {fmtNum(refunded)} · qalıq {fmtNum(p.amount - refunded)}</span>}
+        {st === "PAID" && <span className="fx-num" style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 400 }}>komissiya {fmtNum(commOf(p))} AZN</span>}
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 196, justifyContent: "flex-end" }} onClick={e => e.stopPropagation()}>
+        {canPay && <button type="button" onClick={onPay} className="fx-btn fx-btn--primary fx-btn--sm">Ödənildi</button>}
+        {canPay && <button type="button" onClick={onCancel} className="fx-btn fx-btn--ghost fx-btn--sm">Ləğv</button>}
+        {canRefund && <button type="button" onClick={onRefund} className="fx-btn fx-btn--danger-ghost fx-btn--sm">İadə</button>}
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand-200)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+      </div>
     </div>
   );
 }
 
-// ─── Geri qaytarma modalı ─────────────────────────────────────────────────────
+function MethodIcon({ method }: { method: string }) {
+  if (method === "Nağd") return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></svg>;
+  if (method === "Köçürmə") return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3l4 4-4 4" /><path d="M21 7H9" /><path d="M7 21l-4-4 4-4" /><path d="M3 17h12" /></svg>;
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>;
+}
 
+// ─── Detal drawer ─────────────────────────────────────────────────────────────
+type TlKind = "soft" | "sage" | "amber" | "rose" | "muted";
+function Drawer({ p, onClose, onCall, onWhatsapp, onViewLinked }: { p: PaymentItem; onClose: () => void; onCall: () => void; onWhatsapp: () => void; onViewLinked: () => void }) {
+  const st = p.status as Status;
+  const comm = commOf(p);
+  const origin = originLabel(p);
+  const timeline: { title: string; who: string; time?: string | null; note?: string | null; kind: TlKind }[] = [];
+  timeline.push({ title: "Yaradıldı", who: p.claimedByName ?? "Operator", time: p.createdAt, kind: "soft" });
+  if (p.paidAt) timeline.push({ title: "Təsdiqləndi — ödənilib", who: p.claimedByName ?? "Operator", time: p.paidAt, kind: "sage" });
+  if (st === "PARTIALLY_REFUNDED") timeline.push({ title: `Qismi qaytarıldı — ${fmtNum(p.refundedAmount ?? 0)} AZN`, who: p.claimedByName ?? "Operator", time: null, note: p.statusNote, kind: "amber" });
+  if (st === "REFUNDED") timeline.push({ title: "Tam geri qaytarıldı", who: p.claimedByName ?? "Operator", time: null, note: p.statusNote, kind: "rose" });
+  if (st === "CANCELLED") timeline.push({ title: "Ləğv edildi", who: p.claimedByName ?? "Operator", time: p.createdAt, note: p.statusNote, kind: "muted" });
+
+  return (
+    <>
+      <div onClick={onClose} className="fx-overlay" />
+      <div className="fx-drawer">
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "24px 26px", borderBottom: "1px solid var(--hairline)" }}>
+          <span className={`fx-avatar fx-avatar--md ${avatarClassOf(p.id)}`}>{initialsOf(p.patientName)}</span>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 5 }}>
+            <div className="fx-h3">{p.patientName}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span className="fx-num" style={{ fontSize: 20, fontWeight: 800 }}>{fmtNum(p.amount)} <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>AZN</span></span>
+              <span className={`fx-pill ${PILL_CLASS[st] ?? "fx-pill--pending"}`}>{PILL_LABEL[st] ?? PILL_LABEL.PENDING}</span>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Bağla" className="fx-iconbtn">
+            <Ic d={["M18 6L6 18", "M6 6l12 12"]} sw={2} w={18} />
+          </button>
+        </div>
+
+        <div className="fx-drawer__section" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", fontSize: 13 }}>
+          <Meta label="Üsul" value={p.method} />
+          <Meta label="Yaradılıb" value={fmtDay(p.createdAt)} />
+          <Meta label="Operator" value={p.claimedByName ?? "—"} />
+          <Meta label="Bağlı" value={linkLabel(p)} onClick={p.patientId != null ? onViewLinked : undefined} />
+          {p.psychologistName && <Meta label="Psixoloq" value={p.psychologistName} />}
+          {origin && <Meta label="Mənbə" value={origin} />}
+          {p.patientPhone && <Meta label="Telefon" value={p.patientPhone} />}
+        </div>
+
+        {/* Audit izi */}
+        <div className="fx-drawer__section">
+          <div className="fx-section-label" style={{ marginBottom: 14 }}>Audit izi</div>
+          <div className="fx-timeline">
+            {timeline.map((ev, i) => (
+              <div key={i} className="fx-tl-item">
+                <div className="fx-tl-rail">
+                  <span className={`fx-tl-dot fx-tl-dot--${ev.kind}`} />
+                  {i < timeline.length - 1 && <span className="fx-tl-line" />}
+                </div>
+                <div className="fx-tl-body">
+                  <span className="fx-tl-title">{ev.title}</span>
+                  <span className="fx-tl-meta">{ev.who}{ev.time ? ` · ${fmtDay(ev.time)}` : ""}</span>
+                  {ev.note && <span className="fx-tl-note">«{ev.note}»</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Komissiya */}
+        <div className="fx-drawer__section">
+          <div className="fx-section-label" style={{ marginBottom: 14 }}>Komissiya bölgüsü</div>
+          <div className="fx-progress fx-progress--lg" style={{ marginBottom: 12 }}>
+            <div className="fx-progress__fill" style={{ width: `${Math.round(PLATFORM_RATE * 100)}%` }} />
+          </div>
+          <div className="fx-num" style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 13 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--oxford-60)" }}>Ümumi məbləğ</span><b>{fmtNum(p.amount)} AZN</b></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--oxford-60)" }}><span style={{ width: 8, height: 8, borderRadius: 2.5, background: "var(--brand)" }} />Platforma payı ({Math.round(PLATFORM_RATE * 100)}%)</span><span style={{ fontWeight: 600 }}>{fmtNum(comm)} AZN</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--oxford-60)" }}><span style={{ width: 8, height: 8, borderRadius: 2.5, background: "var(--brand-100)" }} />Psixoloq payı{p.psychologistName ? ` — ${p.psychologistName}` : ""}</span><b style={{ color: "var(--sage)" }}>{fmtNum(p.amount - comm)} AZN</b></div>
+          </div>
+        </div>
+
+        {/* Əlaqə */}
+        {(p.patientPhone) && (
+          <div style={{ padding: "20px 26px", display: "flex", gap: 10 }}>
+            <button type="button" onClick={onCall} className="fx-btn fx-btn--ghost" style={{ flex: 1 }}>
+              <Ic d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" w={14} /> Zəng et
+            </button>
+            <button type="button" onClick={onWhatsapp} className="fx-btn fx-btn--ghost" style={{ flex: 1 }}>
+              <Ic d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" w={14} /> WhatsApp yaz
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+function Meta({ label, value, onClick }: { label: string; value: string; onClick?: () => void }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <span className="fx-label">{label}</span>
+      {onClick
+        ? <button type="button" onClick={onClick} className="fx-num" style={{ fontWeight: 600, color: "var(--brand)", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit", fontSize: 13, textAlign: "left" }}>{value}</button>
+        : <span className="fx-num" style={{ fontWeight: 600 }}>{value}</span>}
+    </div>
+  );
+}
+
+function PageSkeleton() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className="fx-card fx-card--lg" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)" }}>
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} style={{ padding: "22px 26px", borderLeft: i ? "1px solid var(--hairline)" : "none" }}>
+            <div className="fx-skeleton" style={{ width: 90, height: 11 }} />
+            <div className="fx-skeleton" style={{ width: 110, height: 26, marginTop: 12 }} />
+            <div className="fx-skeleton" style={{ width: 70, height: 11, marginTop: 10 }} />
+          </div>
+        ))}
+      </div>
+      <div className="fx-card" style={{ padding: "6px 12px 10px" }}>
+        {[0, 1, 2, 3, 4].map(i => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 13, borderTop: i ? "1px solid var(--hairline)" : "none", padding: "15px 8px" }}>
+            <div className="fx-skeleton fx-skeleton--circle" style={{ width: 38, height: 38 }} />
+            <div style={{ flex: 1 }}>
+              <div className="fx-skeleton" style={{ width: "45%", height: 13 }} />
+              <div className="fx-skeleton" style={{ width: "65%", height: 10, marginTop: 8 }} />
+            </div>
+            <div className="fx-skeleton" style={{ width: 80, height: 30 }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Kiçik ikon köməkçisi ─────────────────────────────────────────────────────
+function Ic({ d, w = 15, sw = 1.8 }: { d: string | string[]; w?: number; sw?: number }) {
+  const paths = Array.isArray(d) ? d : [d];
+  return <svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">{paths.map((p, i) => <path key={i} d={p} />)}</svg>;
+}
+
+// ─── Tarix köməkçiləri ────────────────────────────────────────────────────────
+function fmtToday() {
+  const days = ["Bazar", "Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə"];
+  const d = new Date();
+  return `${days[d.getDay()]}, ${d.getDate()} ${MONTHS_AZ[d.getMonth()]} ${d.getFullYear()}`;
+}
+function isToday(iso: string) {
+  const d = new Date(iso); const n = new Date();
+  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+}
+function monthRange() {
+  const n = new Date();
+  const last = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
+  return `1 – ${last} ${MONTHS_AZ[n.getMonth()]}`;
+}
+function nextPayout() {
+  const n = new Date();
+  let mo = n.getMonth(), yr = n.getFullYear();
+  if (n.getDate() >= 15) { mo++; if (mo > 11) { mo = 0; yr++; } }
+  return `15 ${MONTHS_AZ[mo]} ${yr}`;
+}
+
+// ─── Geri qaytarma / ləğv modalları ───────────────────────────────────────────
 function RefundModal({ payment, onClose, onDone }: { payment: PaymentItem; onClose: () => void; onDone: () => void }) {
   const remaining = payment.amount - (payment.refundedAmount ?? 0);
   const [amount, setAmount] = useState(String(remaining));
@@ -334,21 +786,25 @@ function RefundModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
   };
 
   return (
-    <Sheet title="İadə tələbi" sub={`${payment.patientName} · ödəniş ${formatAzn(payment.amount)} · qalıq ${formatAzn(remaining)}`} onClose={onClose}>
-      <Field label="Geri qaytarılacaq məbləğ (₼)">
-        <input type="number" min={0} step="0.01" max={remaining} value={amount} onChange={e => setAmount(e.target.value)} style={{ ...INPUT, fontSize: 15 }} autoFocus />
-      </Field>
-      <div style={{ display: "flex", gap: 8, marginTop: -2 }}>
-        <button type="button" onClick={() => setAmount(String(remaining))} style={{ background: "#FFF7ED", color: "#9A3412", border: "1px solid #FED7AA", borderRadius: 999, padding: "6px 13px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Tam ({formatAzn(remaining)})</button>
-        <button type="button" onClick={() => setAmount(String(Math.round(remaining / 2 * 100) / 100))} style={{ background: "#fff", color: "#5C6B85", border: "1px solid #D6E2F7", borderRadius: 999, padding: "6px 13px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Yarısı</button>
+    <ModalShell icon="rose" iconD={["M1 4v6h6", "M3.51 15a9 9 0 1 0 2.13-9.36L1 10"]} title="İadə tələbi" onClose={onClose}>
+      <div className="fx-modal__text">{payment.patientName} · ödəniş {formatAzn(payment.amount)} · qalıq {formatAzn(remaining)}</div>
+      <ModalField label="Geri qaytarılacaq məbləğ (₼)">
+        <input type="number" min={0} step="0.01" max={remaining} value={amount} onChange={e => setAmount(e.target.value)} className="fx-input" style={{ fontSize: 15 }} autoFocus />
+      </ModalField>
+      <div style={{ display: "flex", gap: 8, marginTop: -4 }}>
+        <button type="button" onClick={() => setAmount(String(remaining))} className="fx-btn fx-btn--warn-ghost fx-btn--sm">Tam ({formatAzn(remaining)})</button>
+        <button type="button" onClick={() => setAmount(String(Math.round(remaining / 2 * 100) / 100))} className="fx-btn fx-btn--ghost fx-btn--sm">Yarısı</button>
       </div>
-      <Field label="Səbəb (məcburi)">
-        <textarea rows={2} value={reason} onChange={e => setReason(e.target.value)} placeholder="Geri qaytarma səbəbi…" style={{ ...INPUT, resize: "vertical", lineHeight: 1.5 }} />
-      </Field>
-      <InfoBox tone="brand">Bütün iadələr (tam və qismi) Admin təsdiqindən keçir — tələb təsdiqlənəndə icra olunacaq.{payment.patientPackageId != null && " Paket ödənişidirsə icra zamanı qalan seanslar bağlanacaq."}</InfoBox>
-      {err && <ErrBox>{err}</ErrBox>}
-      <Footer onClose={onClose} onSubmit={submit} disabled={!ready || busy} label={busy ? "Göndərilir…" : `${formatAzn(amtOk ? amt : 0)} üçün tələb göndər`} />
-    </Sheet>
+      <ModalField label="Səbəb (məcburi)">
+        <textarea rows={2} value={reason} onChange={e => setReason(e.target.value)} placeholder="Geri qaytarma səbəbi…" className="fx-textarea" />
+      </ModalField>
+      <div className="fx-banner fx-banner--info">
+        <Ic d={["M12 16v-4", "M12 8h.01"]} sw={2} w={14} />
+        <span>Bütün iadələr (tam və qismi) Admin təsdiqindən keçir — tələb təsdiqlənəndə icra olunacaq.{payment.patientPackageId != null && " Paket ödənişidirsə icra zamanı qalan seanslar bağlanacaq."}</span>
+      </div>
+      {err && <ModalError>{err}</ModalError>}
+      <ModalFooter onClose={onClose} onSubmit={submit} disabled={!ready || busy} label={busy ? "Göndərilir…" : `${formatAzn(amtOk ? amt : 0)} üçün tələb göndər`} />
+    </ModalShell>
   );
 }
 
@@ -366,82 +822,58 @@ function CancelModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
   };
 
   return (
-    <Sheet title="Ödənişi ləğv et" sub={`${payment.patientName} · ${formatAzn(payment.amount)} · gözləyən ödəniş`} onClose={onClose}>
-      <Field label="Ləğv səbəbi (məcburi)">
-        <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)} placeholder="Ləğv səbəbi…" style={{ ...INPUT, resize: "vertical", lineHeight: 1.5 }} autoFocus />
-      </Field>
-      {payment.patientPackageId != null && <InfoBox tone="warn">Paket ödənişidir — paket də ləğv olunacaq (qalan seanslar bağlanır).</InfoBox>}
-      {err && <ErrBox>{err}</ErrBox>}
-      <Footer onClose={onClose} onSubmit={submit} disabled={!ready || busy} label={busy ? "Göndərilir…" : "Ödənişi ləğv et"} />
-    </Sheet>
+    <ModalShell icon="rose" iconD={["M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z", "M12 9v4", "M12 17h.01"]} title="Ödənişi ləğv et" onClose={onClose}>
+      <div className="fx-modal__text">{payment.patientName} · {formatAzn(payment.amount)} · gözləyən ödəniş</div>
+      <ModalField label="Ləğv səbəbi (məcburi)">
+        <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)} placeholder="Ləğv səbəbi…" className="fx-textarea" autoFocus />
+      </ModalField>
+      {payment.patientPackageId != null && (
+        <div className="fx-banner fx-banner--warn">
+          <Ic d={["M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z", "M12 9v4", "M12 17h.01"]} sw={2} w={14} />
+          <span>Paket ödənişidir — paket də ləğv olunacaq (qalan seanslar bağlanır).</span>
+        </div>
+      )}
+      {err && <ModalError>{err}</ModalError>}
+      <ModalFooter onClose={onClose} onSubmit={submit} disabled={!ready || busy} label={busy ? "Göndərilir…" : "Ödənişi ləğv et"} />
+    </ModalShell>
   );
 }
 
-// ─── UI köməkçiləri ───────────────────────────────────────────────────────────
-
-const CARD: React.CSSProperties = { background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8" };
-const INPUT: React.CSSProperties = { width: "100%", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 13px", fontSize: 13.5, fontWeight: 600, color: "var(--oxford)", fontFamily: "inherit", boxSizing: "border-box" };
-
-function Sheet({ title, sub, onClose, children }: { title: string; sub: string; onClose: () => void; children: ReactNode }) {
+function ModalShell({ icon, iconD, title, onClose, children }: { icon: "rose" | "brand" | "amber"; iconD: string | string[]; title: string; onClose: () => void; children: ReactNode }) {
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(10,26,51,.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="py-sheet" style={{ width: "100%", maxWidth: 460, background: "#fff", borderRadius: 16, boxShadow: "0 24px 70px rgba(8,47,109,.3)", overflow: "hidden" }}>
-        <div style={{ padding: "18px 22px", borderBottom: "1px solid #F0F4FA", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)" }}>{title}</div>
-            <div className="py-num" style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 3 }}>{sub}</div>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Bağla" style={{ width: 30, height: 30, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA", border: "none", borderRadius: 8, cursor: "pointer", flex: "none" }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
-          </button>
+    <div className="fx-overlay fx-overlay--center" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} className="fx-modal">
+        <div className={`fx-modal__icon fx-modal__icon--${icon}`}>
+          <Ic d={iconD} w={19} />
         </div>
-        <div style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: 12 }}>{children}</div>
+        <h3 className="fx-h3">{title}</h3>
+        {children}
       </div>
     </div>
   );
 }
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return <label style={{ display: "block" }}><span style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 6 }}>{label}</span>{children}</label>;
+function ModalField({ label, children }: { label: string; children: ReactNode }) {
+  return <label className="fx-field">{label && <span className="fx-label" style={{ textTransform: "none", letterSpacing: 0 }}>{label}</span>}{children}</label>;
 }
-function InfoBox({ tone, children }: { tone: "brand" | "warn"; children: ReactNode }) {
-  const s = tone === "warn" ? { bg: "#FFFBEB", bd: "#FDE68A", fg: "#92400E" } : { bg: "#F2F6FD", bd: "#E4ECFA", fg: "#082F6D" };
+function ModalError({ children }: { children: ReactNode }) {
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: s.bg, border: `1px solid ${s.bd}`, borderRadius: 10, padding: "10px 12px", fontSize: 12, color: s.fg, fontWeight: 600, lineHeight: 1.45 }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg>
+    <div className="fx-banner fx-banner--error">
+      <Ic d={["M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z", "M12 9v4", "M12 17h.01"]} sw={2} w={14} />
       <span>{children}</span>
     </div>
   );
 }
-function ErrBox({ children }: { children: ReactNode }) {
-  return <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12 }}>{children}</div>;
-}
-function Footer({ onClose, onSubmit, disabled, label }: { onClose: () => void; onSubmit: () => void; disabled: boolean; label: string }) {
+function ModalFooter({ onClose, onSubmit, disabled, label }: { onClose: () => void; onSubmit: () => void; disabled: boolean; label: string }) {
   return (
-    <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 2 }}>
-      <button type="button" onClick={onClose} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 18px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
-      <button type="button" onClick={onSubmit} disabled={disabled}
-        style={{ flex: 1, background: disabled ? "#9DB0CC" : "#B91C1C", color: "#fff", border: "none", borderRadius: 10, padding: 12, fontSize: 14.5, fontWeight: 700, fontFamily: "inherit", cursor: disabled ? "default" : "pointer" }}>{label}</button>
+    <div className="fx-modal__actions">
+      <button type="button" onClick={onClose} className="fx-btn fx-btn--ghost">İmtina</button>
+      <button type="button" onClick={onSubmit} disabled={disabled} className="fx-btn fx-btn--danger" style={{ opacity: disabled ? .5 : 1, cursor: disabled ? "default" : "pointer" }}>{label}</button>
     </div>
   );
 }
 
-function Ico({ d }: { d: ReactNode }) {
-  return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
-}
-const I_CLOCK = <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>;
-const I_CHECKC = <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4L12 14.01l-3-3" /></>;
-const I_UNDO = <><path d="M3 7v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" /></>;
-const I_USER = <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>;
-
 const CSS = `
-.py-num{font-variant-numeric:tabular-nums}
-.py-tabs::-webkit-scrollbar{height:0}
-.py-row{transition:background .14s}
-.py-row:hover{background:#F2F6FD}
-@keyframes pyShim{0%{background-position:-320px 0}100%{background-position:320px 0}}
-.py-skel{background:linear-gradient(90deg,#EEF2F9 25%,#E2E9F4 37%,#EEF2F9 63%);background-size:640px 100%;animation:pyShim 1.4s infinite linear}
-@keyframes pySheet{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.py-sheet{animation:pySheet .2s ease}
-@keyframes pyToast{0%{opacity:0;transform:translateX(-50%) translateY(12px)}12%{opacity:1;transform:translateX(-50%) translateY(0)}88%{opacity:1}100%{opacity:0}}
-.py-toast{animation:pyToast 4s ease forwards}
+.pm-attn-row:hover{background:var(--surface-muted)}
+.pm-grid-row:hover{background:var(--surface-muted)}
+@media(max-width:1100px){.pm-kpi{grid-template-columns:repeat(2,1fr)!important}.pm-charts{grid-template-columns:1fr!important}.pm-payout{grid-template-columns:1fr!important}}
 `;

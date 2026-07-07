@@ -518,6 +518,10 @@ export interface AppointmentDetail {
   paymentStatus?: string | null;
   // Ödəniş məbləği (tək seans). 0 = qəbul olunub, lakin operator hələ məbləği təyin etməyib.
   paymentAmount?: number | null;
+  // Rezervasiya mənbəyi ('DIRECT' | 'PLATFORM_MATCHED') — komissiya fərqləndirməsi.
+  origin?: string | null;
+  // Seans növü: 'STANDARD' | 'INTRO' (15 dəq, pulsuz tanışlıq görüşü).
+  sessionKind?: string | null;
 }
 
 // Modul B: operator panelində link tarixçəsinin bir sətri
@@ -1542,6 +1546,10 @@ export const adminApi = {
   getCommission: () => authedRequest<{ globalPercent: number | null }>("GET", "/admin/finance/commission"),
   setCommission: (percent: number) =>
     authedRequest<{ globalPercent: number | null }>("PUT", "/admin/finance/commission", { percent }),
+  /** Pasientin özü müraciət etdiyi (DIRECT) rezervasiyalar üçün faiz — default 0%. */
+  getDirectCommission: () => authedRequest<{ globalPercent: number | null }>("GET", "/admin/finance/direct-commission"),
+  setDirectCommission: (percent: number) =>
+    authedRequest<{ globalPercent: number | null }>("PUT", "/admin/finance/direct-commission", { percent }),
   setPsychologistCommission: (psychologistId: number, percent: number | null) =>
     authedRequest<void>("PUT", `/admin/finance/psychologists/${psychologistId}/commission`, { percent }),
   payoutBalances: () => authedRequest<PayoutBalance[]>("GET", "/admin/finance/payouts/balances"),
@@ -1656,6 +1664,8 @@ export interface PsySubscriptionItem {
 
 export interface FinanceSummary {
   commissionRevenue: number;
+  directCommissionRevenue: number;
+  platformMatchedCommissionRevenue: number;
   activeSubscriptions: number;
   subscriptionMonthlyRevenue: number;
   totalRevenue: number;
@@ -1684,6 +1694,15 @@ export interface PatientBookingPayload {
   note: string;
   requestedPsychologistId?: number | null;
   requestedStartAt?: string | null; // ISO
+  sessionKind?: "STANDARD" | "INTRO" | null;
+}
+
+// Pulsuz tanışlıq (INTRO, 15 dəq) görüşü haqqı.
+export interface IntroEligibility {
+  eligible: boolean;
+  usedCount: number;
+  hasGrant: boolean;
+  reason?: string | null;
 }
 
 // Modul G — pasiyentin təcili əlaqə + yaşayış ünvanı (decrypt olunmuş, sahib üçün)
@@ -1707,6 +1726,8 @@ export interface PatientPackageItem {
   pricePaid: number;
   currency: string;
   purchasedAt: string;
+  /** 'DIRECT' | 'PLATFORM_MATCHED' — komissiya fərqləndirməsi üçün mənbə. */
+  origin?: string | null;
 }
 
 // Modul A — manual ödəniş qeydi (operator paneli)
@@ -1731,6 +1752,13 @@ export interface PaymentItem {
   statusNote?: string | null;
   // Bağlı seans/paket operator sahibliyindədir → ödəniş tək başına pool-a buraxıla bilməz.
   linkedOwned?: boolean;
+  // Ödənişlər modulunun zəngin görünüşü üçün zənginləşdirmə sahələri (backend DTO doldurur).
+  // Boş gəlsə UI bu sahələri sakit gizlədir.
+  psychologistName?: string | null;
+  patientPhone?: string | null;
+  commissionAmount?: number | null;
+  /** 'DIRECT' | 'PLATFORM_MATCHED' — komissiya fərqləndirməsi üçün mənbə. */
+  origin?: string | null;
 }
 
 export interface PaymentSummary {
@@ -1776,6 +1804,8 @@ export const patientApi = {
     authedRequest<Paged<AppointmentDetail>>("GET", `/patient/appointments/paged${pagedQuery(opts)}`),
   book: (data: PatientBookingPayload) =>
     authedRequest<AppointmentDetail>("POST", "/patient/appointments", data),
+  introEligibility: () =>
+    authedRequest<IntroEligibility>("GET", "/patient/intro-eligibility"),
   cancel: (id: number, reasonCode: string, reasonText?: string) =>
     authedRequest<AppointmentDetail>("POST", `/patient/appointments/${id}/cancel`, { reasonCode, reasonText }),
   // Modul G — öz təcili əlaqə + ünvan məlumatı
@@ -3065,6 +3095,13 @@ export interface CustomerProfile {
   reviewsGiven: { id: number; psychologistName?: string | null; rating: number; comment?: string | null; status: string; createdAt?: string | null }[];
   activity: { type: "AUDIT" | "SUPPORT" | "APPOINTMENT" | "TEST"; action?: string | null; summary?: string | null; at: string }[];
 }
+/** Operator müştəri qeydi — zəng/izləmə/müşahidə (Müştəri 360 "Operator qeydləri"). */
+export interface CustomerNote {
+  id: number;
+  text: string;
+  authorName?: string | null;
+  createdAt: string;
+}
 export interface OperatorPsychologistStat {
   psychologistId: number;
   name: string;
@@ -3180,6 +3217,7 @@ export const operatorApi = {
     sessionCount?: number | null;
     price?: number | null;
     currency?: string | null;
+    patientChoseDirectly?: boolean;
   }) => authedRequest<PatientPackageItem>("POST", `/operator/patients/${patientId}/packages`, data),
   // Operator tək seans satışı (paketsiz) → seans bron + PENDING ödəniş (seansa bağlı)
   sellSingleSession: (patientId: number, data: {
@@ -3189,6 +3227,7 @@ export const operatorApi = {
     endAt: string;
     currency?: string | null;
     note?: string | null;
+    patientChoseDirectly?: boolean;
   }) => authedRequest<{ paymentId: number; amount: number; currency: string; status: string }>(
     "POST", `/operator/patients/${patientId}/single-session`, data),
   // Operator paket seansını pasiyent adına planlayır (balansdan sərf → CONFIRMED seans)
@@ -3290,6 +3329,10 @@ export const operatorApi = {
     authedRequest<CustomerProfile>("GET", `/operator/customers/${patientId}`),
   customerActivity: (patientId: number) =>
     authedRequest<CustomerProfile["activity"]>("GET", `/operator/customers/${patientId}/activity`),
+  customerNotes: (patientId: number) =>
+    authedRequest<CustomerNote[]>("GET", `/operator/customers/${patientId}/notes`),
+  addCustomerNote: (patientId: number, text: string) =>
+    authedRequest<CustomerNote>("POST", `/operator/customers/${patientId}/notes`, { text }),
   psychologistStats: (id: number) =>
     authedRequest<OperatorPsychologistStat>("GET", `/operator/psychologists/${id}/stats`),
   analyticsSessions: (period: AnalyticsPeriod = "daily") =>
@@ -3322,9 +3365,16 @@ export const operatorApi = {
     authedRequest<{ patientId: number }>("POST", "/operator/patients", data),
   createOnBehalf: (data: {
     patientId: number; psychologistId: number; startAt: string; endAt: string; note?: string;
-    patientPackageId?: number | null;
+    patientPackageId?: number | null; patientChoseDirectly?: boolean;
+    sessionKind?: "STANDARD" | "INTRO" | null;
   }) =>
     authedRequest<AppointmentDetail>("POST", "/operator/appointments/on-behalf", data),
+
+  // ─── Pulsuz tanışlıq (INTRO) görüşü — 2-ci seans icazəsi ─────────────────
+  freeIntroStatus: (patientId: number) =>
+    authedRequest<IntroEligibility>("GET", `/operator/patients/${patientId}/free-intro-status`),
+  setFreeIntroPermission: (patientId: number, allowed: boolean) =>
+    authedRequest<IntroEligibility>("PUT", `/operator/patients/${patientId}/free-intro-permission`, { allowed }),
 
   // ─── Seans müraciətləri ───────────────────────────────────────────────────
   listSessionRequests: (status?: string) =>
@@ -3352,10 +3402,12 @@ export const operatorApi = {
     authedRequest<SessionRequestClaimState>("POST", `/operator/session-requests/${id}/release`),
   convertSessionRequestToAppointment: (id: number, data: {
     psychologistId: number; startAt: string; endAt?: string | null; note?: string | null;
+    patientChoseDirectly?: boolean;
   }) => authedRequest<SessionRequest>("POST", `/operator/session-requests/${id}/convert-to-appointment`, data),
   convertSessionRequestToPackage: (id: number, data: {
     sessionPackageId?: number | null; psychologistId?: number | null; packageName?: string | null;
     sessionCount?: number | null; price?: number | null; currency?: string | null;
+    patientChoseDirectly?: boolean;
   }) => authedRequest<SessionRequest>("POST", `/operator/session-requests/${id}/convert-to-package`, data),
 
   // ─── Tələblər modulu: Rəy Silmə Tələbləri (Operator BRD §10) ──────────────

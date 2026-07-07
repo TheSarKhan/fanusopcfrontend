@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState, type CSSProperties } from "react";
-import { operatorApi, type OperatorSearchHit, type PackageDto } from "@/lib/api";
+import { operatorApi, type OperatorSearchHit, type PackageDto, type IntroEligibility } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 
 export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId, presetPatientLabel }: {
@@ -36,6 +36,11 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Pasient bu psixoloqu özü seçib müraciət edibsə komissiyasız/azaldılmış faiz tətbiq olunur.
+  const [patientChoseDirectly, setPatientChoseDirectly] = useState(false);
+  // Pulsuz tanışlıq (INTRO, 15 dəq) görüşü — yalnız pasiyent məlum olduqda yoxlanır.
+  const [introStatus, setIntroStatus] = useState<IntroEligibility | null>(null);
+  const [sessionKind, setSessionKind] = useState<"STANDARD" | "INTRO">("STANDARD");
   // Opsional paket satışı
   const [sellPkg, setSellPkg] = useState(false);
   const [pkgMode, setPkgMode] = useState<"catalog" | "custom">("catalog");
@@ -46,6 +51,12 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
   const [pkgPrice, setPkgPrice] = useState("");
 
   useEffect(() => { operatorApi.listPsychologists().then(setPsys).catch(() => {}); }, []);
+  useEffect(() => {
+    setIntroStatus(null);
+    setSessionKind("STANDARD");
+    if (!patientId) return;
+    operatorApi.freeIntroStatus(patientId).then(setIntroStatus).catch(() => {});
+  }, [patientId]);
   useEffect(() => {
     setCatalog([]); setCatalogId(null);
     if (!sellPkg || !psyId) return;
@@ -66,9 +77,9 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
   const onStart = (v: string) => {
     setStartAt(v);
     if (v && !endAt) {
-      // Seçilmiş psixoloqun standart seans müddəti — server də eyni dəyərdən
-      // hesablayır (createOnBehalf), ona görə göstərilən önizləmə də ona uyğun olmalıdır.
-      const sessionMin = psys.find(p => p.id === psyId)?.defaultSessionMinutes || 50;
+      // Seçilmiş psixoloqun standart seans müddəti (və ya INTRO üçün sabit 15 dəq) —
+      // server də eyni dəyərdən hesablayır (createOnBehalf), önizləmə ona uyğun olmalıdır.
+      const sessionMin = sessionKind === "INTRO" ? 15 : (psys.find(p => p.id === psyId)?.defaultSessionMinutes || 50);
       const d = new Date(v); d.setMinutes(d.getMinutes() + sessionMin);
       const p = (n: number) => String(n).padStart(2, "0");
       setEndAt(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`);
@@ -79,6 +90,7 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
     setErr(null);
     if (!psyId) { setErr("Psixoloq seçin"); return; }
     if (!startAt || !endAt) { setErr("Başlanğıc və bitiş vaxtını seçin"); return; }
+    if (sessionKind === "INTRO" && sellPkg) { setErr("Tanışlıq görüşü paketlə birgə satıla bilməz"); return; }
     setSaving(true);
     try {
       let pid = patientId;
@@ -94,18 +106,22 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
       if (sellPkg) {
         if (pkgMode === "catalog") {
           if (!catalogId) { setErr("Kataloqdan paket seçin"); setSaving(false); return; }
-          const sold = await operatorApi.sellPackage(pid, { sessionPackageId: catalogId });
+          const sold = await operatorApi.sellPackage(pid, { sessionPackageId: catalogId, patientChoseDirectly });
           packageId = sold.id;
         } else {
           const s = Number(pkgSessions), p = Number(pkgPrice);
           if (!Number.isFinite(s) || s < 1) { setErr("Paket: seans sayı düzgün deyil"); setSaving(false); return; }
           if (!Number.isFinite(p) || p < 0) { setErr("Paket: qiymət düzgün deyil"); setSaving(false); return; }
-          const sold = await operatorApi.sellPackage(pid, { psychologistId: psyId, packageName: pkgName.trim() || undefined, sessionCount: s, price: p });
+          const sold = await operatorApi.sellPackage(pid, { psychologistId: psyId, packageName: pkgName.trim() || undefined, sessionCount: s, price: p, patientChoseDirectly });
           packageId = sold.id;
         }
       }
 
-      await operatorApi.createOnBehalf({ patientId: pid, psychologistId: psyId, startAt, endAt, note: note.trim() || undefined, patientPackageId: packageId });
+      await operatorApi.createOnBehalf({
+        patientId: pid, psychologistId: psyId, startAt, endAt, note: note.trim() || undefined,
+        patientPackageId: packageId, patientChoseDirectly,
+        sessionKind: sessionKind === "INTRO" ? "INTRO" : undefined,
+      });
       onDone();
     } catch (e) { setErr((e as Error).message); setSaving(false); }
   };
@@ -163,6 +179,27 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
             {psys.map(p => <option key={p.id} value={p.id}>{p.name ?? `Psixoloq #${p.id}`}</option>)}
           </select>
 
+          {introStatus?.eligible && (
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer", border: "1px solid #E5E7EB", borderRadius: 10, padding: 12 }}>
+              <input type="checkbox" checked={sessionKind === "INTRO"}
+                onChange={e => {
+                  const intro = e.target.checked;
+                  setSessionKind(intro ? "INTRO" : "STANDARD");
+                  if (intro) setSellPkg(false);
+                  if (startAt) {
+                    const sessionMin = intro ? 15 : (psys.find(p => p.id === psyId)?.defaultSessionMinutes || 50);
+                    const d = new Date(startAt); d.setMinutes(d.getMinutes() + sessionMin);
+                    const p = (n: number) => String(n).padStart(2, "0");
+                    setEndAt(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`);
+                  }
+                }}
+                style={{ width: 16, height: 16, marginTop: 1 }} />
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: "#1A2535", lineHeight: 1.4 }}>
+                Pulsuz tanışlıq görüşü <span style={{ color: "#52718F", fontWeight: 500 }}>(15 dəq, ödənişsiz{introStatus.usedCount === 1 ? " — 2-ci pulsuz seans, əməliyyatdan sonra icazə söndürülür" : ""})</span>
+              </span>
+            </label>
+          )}
+
           {/* Opsional paket satışı */}
           <div style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: 12 }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#1A2535", cursor: "pointer" }}>
@@ -210,6 +247,13 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
           </div>
 
           <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Qeyd (məcburi deyil)" style={{ ...inp, fontFamily: "inherit", resize: "vertical" }} />
+
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer" }}>
+            <input type="checkbox" checked={patientChoseDirectly} onChange={e => setPatientChoseDirectly(e.target.checked)} style={{ width: 16, height: 16, marginTop: 1 }} />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: "#1A2535", lineHeight: 1.4 }}>
+              Pasient bu psixoloqu özü seçib müraciət edib <span style={{ color: "#52718F", fontWeight: 500 }}>(komissiyasız/azaldılmış faiz tətbiq olunur)</span>
+            </span>
+          </label>
 
           {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12 }}>{err}</div>}
 

@@ -1,4 +1,8 @@
 ﻿@import "tailwindcss";
+/* Fanus UI Kit — platforma-geneli tokenlər + komponentlər (source of truth).
+   .fx-* sinifləri və --* tokenlər buradan gəlir; mövcud stillərlə yan-yana yaşayır. */
+@import "../fanus-ui-kit/tokens.css";
+@import "../fanus-ui-kit/components.css";
 
 /* ===== DESIGN TOKENS ===== */
 /* Brend əsas rəngi: Fanus mavisi #1051B7 (--brand). */
@@ -6141,6 +6145,14 @@
 .ui-empty__title { font-size: 15px; font-weight: 700; color: var(--oxford); }
 .ui-empty__sub { font-size: 13px; color: var(--oxford-60); margin: 6px auto 0; max-width: 420px; line-height: 1.5; }
 .ui-empty__action { margin-top: 16px; }
+
+.ui-error { background: #fff; border: 1px solid #FBD5D5; border-radius: 14px; padding: 44px 24px; text-align: center; }
+.ui-error__icon { width: 40px; height: 40px; margin: 0 auto 12px; color: #DC2626; opacity: 0.85; }
+.ui-error__title { font-size: 15px; font-weight: 700; color: var(--oxford); }
+.ui-error__sub { font-size: 13px; color: var(--oxford-60); margin: 6px auto 0; max-width: 420px; line-height: 1.5; }
+.ui-error__actions { display: flex; gap: 8px; justify-content: center; align-items: center; margin-top: 18px; flex-wrap: wrap; }
+.ui-error__retry { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; background: var(--brand); color: #fff; border: 1px solid transparent; }
+.ui-error__retry:hover { background: var(--brand-600); }
 
 .ui-toast-host { position: fixed; right: 16px; bottom: 16px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; max-width: min(360px, calc(100vw - 32px)); }
 .ui-toast { padding: 11px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; color: #fff; box-shadow: 0 8px 24px rgba(8, 23, 48, 0.18); animation: uiToastIn 0.18s ease-out; }

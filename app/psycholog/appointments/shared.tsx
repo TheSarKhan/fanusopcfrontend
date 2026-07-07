@@ -120,6 +120,15 @@ export function PackageBadge({ name }: { name?: string | null }) {
   );
 }
 
+/* Pulsuz tanışlıq (INTRO, 15 dəq) görüşünü adi seans siyahılarında fərqləndirən nişan. */
+export function IntroBadge() {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#D1FAE5", color: "#065F46", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>
+      Tanışlıq · Pulsuz
+    </span>
+  );
+}
+
 export function Empty({ msg }: { msg: string }) {
   return (
     <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "48px 24px", textAlign: "center", animation: "gorFade .25s ease" }}>

@@ -21,7 +21,7 @@ import JoinSessionButton from "@/components/JoinSessionButton";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import {
   STATUS, PKG_STATUS, PA_STYLE,
-  PackageBadge, IconClock, IconX, Section, Empty,
+  PackageBadge, IntroBadge, IconClock, IconX, Section, Empty,
   initialsOf, pad2,
 } from "./shared";
 
@@ -551,6 +551,11 @@ function NextSessionHero({
                 Paket{appt.packageName ? ` · ${appt.packageName}` : ""}
               </span>
             )}
+            {appt.sessionKind === "INTRO" && (
+              <span style={{ background: "#D1FAE5", color: "#065F46", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999, whiteSpace: "nowrap" }}>
+                Tanışlıq · Pulsuz
+              </span>
+            )}
           </div>
           {appt.note && (
             <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "rgba(255,255,255,.6)", border: "1px solid #D6E2F7", borderRadius: 11, padding: "10px 13px", maxWidth: 520 }}>
@@ -837,6 +842,7 @@ function AgendaRow({
         <span className="psy-card__badge" style={{ background: status.bg, color: status.color }}>{status.label}</span>
         {isNext && <span className="psy-card__chip psy-card__chip--next">Növbəti</span>}
         {a.patientPackageId != null && <PackageBadge name={a.packageName} />}
+        {a.sessionKind === "INTRO" && <IntroBadge />}
       </div>
 
       {/* Gözləmə vəziyyətləri */}
@@ -1019,6 +1025,7 @@ function SessionDetailModal({
             {sessionNumber != null && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1 }}>{azOrdinal(sessionNumber)} seans</div>}
           </div>
           <span className="psy-card__badge" style={{ background: status.bg, color: status.color, flex: "none" }}>{status.label}</span>
+          {a.sessionKind === "INTRO" && <IntroBadge />}
           <button type="button" aria-label="Bağla" onClick={onClose}
             style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "var(--oxford-60)", border: "none", borderRadius: 8, cursor: "pointer", flex: "none" }}>
             <IconX />

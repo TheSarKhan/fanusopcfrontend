@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { operatorApi, type ReviewDeletionRequestItem } from "@/lib/api";
+import { toast } from "@/components/Toast";
+import EmptyState from "@/components/EmptyState";
+import ErrorState from "@/components/ErrorState";
+import { Skeleton } from "@/components/Skeleton";
 
 /**
  * Tələblər modulu (Operator BRD §10) — seans/paketdən kənar inzibati tələblər.
@@ -11,11 +15,17 @@ import { operatorApi, type ReviewDeletionRequestItem } from "@/lib/api";
 
 type Tab = "PENDING" | "APPROVED" | "REJECTED" | "ALL";
 
-const TAB_META: Record<Tab, { label: string; color: string }> = {
-  PENDING:  { label: "Gözləmədə",   color: "#B45309" },
-  APPROVED: { label: "Təsdiqlənib", color: "#065F46" },
-  REJECTED: { label: "Rədd edilib", color: "#991B1B" },
-  ALL:      { label: "Hamısı",      color: "#0B1A35" },
+const TAB_LABEL: Record<Tab, string> = {
+  PENDING: "Gözləmədə",
+  APPROVED: "Təsdiqlənib",
+  REJECTED: "Rədd edilib",
+  ALL: "Hamısı",
+};
+
+const STATUS_PILL: Record<Exclude<Tab, "ALL">, { cls: string; label: string }> = {
+  PENDING: { cls: "fx-pill--pending", label: "Gözləmədə" },
+  APPROVED: { cls: "fx-pill--paid", label: "Təsdiqlənib" },
+  REJECTED: { cls: "fx-pill--refunded", label: "Rədd edilib" },
 };
 
 function fmt(iso?: string | null) {
@@ -23,11 +33,35 @@ function fmt(iso?: string | null) {
   return new Date(iso).toLocaleString("az-AZ");
 }
 
+function IconCheck() {
+  return (
+    <svg className="fx-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  );
+}
+
+function IconX() {
+  return (
+    <svg className="fx-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+    </svg>
+  );
+}
+
+function IconDownload() {
+  return (
+    <svg className="fx-icon--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" />
+    </svg>
+  );
+}
+
 function Stars({ value }: { value: number }) {
   return (
-    <span style={{ display: "inline-flex", gap: 2 }}>
+    <span className="fx-stars">
       {[1, 2, 3, 4, 5].map(n => (
-        <svg key={n} width={13} height={13} viewBox="0 0 24 24" fill={n <= value ? "#C97D2E" : "#E4ECFA"}>
+        <svg key={n} viewBox="0 0 24 24" className={n <= value ? undefined : "fx-star--off"}>
           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
         </svg>
       ))}
@@ -43,21 +77,26 @@ export default function OperatorRequestsPage() {
   const [page, setPage] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [tab, setTab] = useState<Tab>("PENDING");
+  const [error, setError] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [reportFrom, setReportFrom] = useState("");
   const [reportTo, setReportTo] = useState("");
   const [exporting, setExporting] = useState<"xlsx" | "pdf" | null>(null);
+  // Qərar modalı — prompt() əvəzinə: opsional qeyd üçün textarea.
+  const [decision, setDecision] = useState<{ id: number; action: "approve" | "reject" } | null>(null);
+  const [decisionNote, setDecisionNote] = useState("");
 
   // Server səhifələməsi: aktiv tabın statusu sorğuya ötürülür, tab dəyişəndə sıfırlanır.
   const load = useCallback(() => {
     setLoading(true);
+    setError(false);
     operatorApi.listReviewDeletionRequestsPaged({ status: tab === "ALL" ? undefined : tab, page: 0, size: PAGE_SIZE })
       .then(res => {
         setItems(res.content);
         setTotalElements(res.totalElements);
         setPage(0);
       })
-      .catch(() => setItems([]))
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [tab]);
 
@@ -84,18 +123,25 @@ export default function OperatorRequestsPage() {
 
   const hasMore = items.length < totalElements;
 
-  const decide = async (id: number, action: "approve" | "reject") => {
-    const note = prompt(action === "approve"
-      ? "Təsdiq qeydi (opsional) — rəy sistemdən silinəcək:"
-      : "Rədd səbəbi (opsional) — rəy dəyişmədən qalacaq:") ?? undefined;
+  const openDecision = (id: number, action: "approve" | "reject") => {
+    setDecisionNote("");
+    setDecision({ id, action });
+  };
+
+  const submitDecision = async () => {
+    if (!decision) return;
+    const { id, action } = decision;
+    const note = decisionNote.trim() || undefined;
     setBusyId(id);
     try {
       const updated = action === "approve"
         ? await operatorApi.approveReviewDeletion(id, note)
         : await operatorApi.rejectReviewDeletion(id, note);
       setItems(prev => prev.map(r => r.id === id ? updated : r));
+      toast(action === "approve" ? "Rəy silindi" : "Tələb rədd edildi", "success");
+      setDecision(null);
     } catch (e) {
-      alert((e as Error).message);
+      toast((e as Error).message || "Əməliyyat alınmadı", "error");
     } finally {
       setBusyId(null);
     }
@@ -105,89 +151,67 @@ export default function OperatorRequestsPage() {
     setExporting(format);
     try {
       await operatorApi.downloadReport(format, reportFrom || undefined, reportTo || undefined);
+      toast("Hesabat yükləndi", "success");
     } catch (e) {
-      alert((e as Error).message);
+      toast((e as Error).message || "Hesabat yüklənmədi", "error");
     } finally {
       setExporting(null);
     }
   };
 
   return (
-    <div style={{ padding: "28px 32px", maxWidth: 1100 }}>
+    <div className="fx-page" style={{ maxWidth: 1100 }}>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0B1A35" }}>Tələblər</h1>
-        <p style={{ margin: "4px 0 0", fontSize: 14, color: "#52718F" }}>
+        <h1 className="fx-h1">Tələblər</h1>
+        <p className="fx-subtitle" style={{ margin: "4px 0 0" }}>
           Psixoloqlardan gələn Rəy Silmə Tələbləri. Təsdiq etdikdə rəy ictimai profildən qaldırılır.
         </p>
       </div>
 
       {/* Hesabat exportu */}
-      <div style={{
-        background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12,
-        padding: "16px 20px", marginBottom: 24,
-        display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap",
-      }}>
+      <div className="fx-card fx-card__pad" style={{ marginBottom: 24, display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#0B1A35", marginBottom: 8 }}>
-            Fəaliyyət hesabatım
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <label style={{ fontSize: 12, color: "#52718F" }}>
-              Başlanğıc{" "}
-              <input type="date" value={reportFrom} onChange={e => setReportFrom(e.target.value)}
-                style={{ padding: "6px 8px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 12 }} />
+          <div className="fx-card-title" style={{ marginBottom: 8 }}>Fəaliyyət hesabatım</div>
+          <div className="fx-flex">
+            <label className="fx-field" style={{ gap: 4 }}>
+              <span className="fx-label">Başlanğıc</span>
+              <input type="date" className="fx-input" value={reportFrom} onChange={e => setReportFrom(e.target.value)}
+                style={{ width: "auto" }} />
             </label>
-            <label style={{ fontSize: 12, color: "#52718F" }}>
-              Son{" "}
-              <input type="date" value={reportTo} onChange={e => setReportTo(e.target.value)}
-                style={{ padding: "6px 8px", border: "1px solid #D1D5DB", borderRadius: 8, fontSize: 12 }} />
+            <label className="fx-field" style={{ gap: 4 }}>
+              <span className="fx-label">Son</span>
+              <input type="date" className="fx-input" value={reportTo} onChange={e => setReportTo(e.target.value)}
+                style={{ width: "auto" }} />
             </label>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => exportReport("xlsx")} disabled={exporting !== null}
-            style={{
-              padding: "9px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-              background: "#065F46", color: "#fff", border: "none",
-              cursor: exporting ? "wait" : "pointer", opacity: exporting === "pdf" ? 0.6 : 1,
-            }}>
+        <div className="fx-flex">
+          <button type="button" className="fx-btn fx-btn--ghost" onClick={() => exportReport("xlsx")} disabled={exporting !== null}
+            style={{ opacity: exporting === "pdf" ? 0.6 : 1, cursor: exporting ? "wait" : "pointer" }}>
+            <IconDownload />
             {exporting === "xlsx" ? "Hazırlanır…" : "Excel yüklə"}
           </button>
-          <button onClick={() => exportReport("pdf")} disabled={exporting !== null}
-            style={{
-              padding: "9px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-              background: "#991B1B", color: "#fff", border: "none",
-              cursor: exporting ? "wait" : "pointer", opacity: exporting === "xlsx" ? 0.6 : 1,
-            }}>
+          <button type="button" className="fx-btn fx-btn--ghost" onClick={() => exportReport("pdf")} disabled={exporting !== null}
+            style={{ opacity: exporting === "xlsx" ? 0.6 : 1, cursor: exporting ? "wait" : "pointer" }}>
+            <IconDownload />
             {exporting === "pdf" ? "Hazırlanır…" : "PDF yüklə"}
           </button>
         </div>
-        <p style={{ margin: 0, fontSize: 12, color: "#8AAABF", flexBasis: "100%" }}>
+        <p className="fx-muted" style={{ margin: 0, fontSize: "var(--text-caption)", flexBasis: "100%" }}>
           Hesabat yalnız sizə aid məlumatları əhatə edir: götürdüyünüz seanslar, təsdiqlədiyiniz ödənişlər, cəmi qazanc.
           Tarix seçilməzsə cari ay götürülür.
         </p>
       </div>
 
       {/* Tabs — say yalnız aktiv tabda göstərilir (server cəmi) */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "1px solid #E5E7EB" }}>
-        {(Object.keys(TAB_META) as Tab[]).map(t => {
+      <div className="fx-tabs" style={{ marginBottom: 16, borderBottom: "1px solid var(--hairline)" }}>
+        {(Object.keys(TAB_LABEL) as Tab[]).map(t => {
           const active = tab === t;
           return (
-            <button key={t} onClick={() => setTab(t)}
-              style={{
-                padding: "8px 14px", border: "none", background: "none", cursor: "pointer",
-                fontSize: 13, fontWeight: active ? 600 : 400,
-                color: active ? TAB_META[t].color : "#6B7280",
-                borderBottom: active ? `2px solid ${TAB_META[t].color}` : "2px solid transparent",
-                marginBottom: -1, display: "flex", alignItems: "center", gap: 6,
-              }}>
-              {TAB_META[t].label}
+            <button key={t} type="button" className={`fx-tab${active ? " fx-tab--active" : ""}`} onClick={() => setTab(t)}>
+              {TAB_LABEL[t]}
               {active && !loading && totalElements > 0 && (
-                <span style={{
-                  background: TAB_META[t].color,
-                  color: "#fff",
-                  borderRadius: 10, padding: "1px 6px", fontSize: 11, fontWeight: 600,
-                }}>{totalElements}</span>
+                <span className="fx-pill fx-pill--count-active">{totalElements}</span>
               )}
             </button>
           );
@@ -195,77 +219,84 @@ export default function OperatorRequestsPage() {
       </div>
 
       {loading ? (
-        <p style={{ color: "#6B7280", fontSize: 14 }}>Yüklənir...</p>
-      ) : visible.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "48px 0", color: "#6B7280", fontSize: 14 }}>
-          Bu kateqoriyada tələb yoxdur.
+        <div className="fx-stack">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="fx-card fx-card__pad">
+              <Skeleton width={180} height={14} />
+              <Skeleton width="100%" height={54} radius={8} style={{ marginTop: 12 }} />
+              <Skeleton width={220} height={32} radius={8} style={{ marginTop: 12 }} />
+            </div>
+          ))}
         </div>
+      ) : error ? (
+        <ErrorState
+          title="Tələblər yüklənmədi"
+          sub="Bağlantı və ya server problemi ola bilər. Yenidən cəhd edin."
+          onRetry={load}
+        />
+      ) : visible.length === 0 ? (
+        <EmptyState
+          icon={
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 15l2 2 4-4" />
+            </svg>
+          }
+          title="Tələb yoxdur"
+          sub={tab === "PENDING" ? "Gözləyən rəy silmə tələbi yoxdur. Psixoloq tələb göndərdikdə burada görünəcək." : "Bu kateqoriyada tələb yoxdur."}
+        />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="fx-stack">
           {visible.map(r => {
-            const badge = TAB_META[r.status as Tab] ?? TAB_META.ALL;
+            const badge = STATUS_PILL[r.status];
             const busy = busyId === r.id;
             return (
-              <div key={r.id} style={{
-                background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "18px 22px",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: "#0B1A35" }}>
-                    {r.psychologistName}
-                  </span>
-                  <span style={{
-                    background: "#F3F4F6", color: badge.color,
-                    borderRadius: 6, padding: "2px 10px", fontSize: 11, fontWeight: 700,
-                  }}>{badge.label}</span>
-                  <span style={{ fontSize: 12, color: "#9CA3AF", marginLeft: "auto" }}>
+              <div key={r.id} className="fx-card fx-card__pad">
+                <div className="fx-flex" style={{ marginBottom: 10, flexWrap: "wrap" }}>
+                  <span className="fx-row__title">{r.psychologistName}</span>
+                  <span className={`fx-pill ${badge.cls}`}>{badge.label}</span>
+                  <span className="fx-muted fx-num" style={{ fontSize: "var(--text-caption)", marginLeft: "auto" }}>
                     #{r.id} · {fmt(r.createdAt)}
                   </span>
                 </div>
 
                 {/* Silinməsi istənilən rəy */}
                 <div style={{
-                  background: "#F8FAFC", border: "1px solid #EEF2F7",
+                  background: "var(--surface-muted)", border: "1px solid var(--hairline)",
                   borderRadius: 8, padding: "12px 14px", marginBottom: 10,
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <div className="fx-flex" style={{ marginBottom: 6 }}>
                     <Stars value={r.reviewRating} />
                     {r.patientName && (
-                      <span style={{ fontSize: 12, color: "#52718F" }}>
+                      <span className="fx-muted" style={{ fontSize: "var(--text-caption)" }}>
                         Müəllif: {r.patientName} (daxili — ictimai göstərilmir)
                       </span>
                     )}
                   </div>
-                  <p style={{ margin: 0, fontSize: 13, color: "#374151", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                  <p style={{ margin: 0, fontSize: "var(--text-body)", color: "var(--oxford-80)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
                     {r.reviewComment}
                   </p>
                 </div>
 
-                <div style={{ fontSize: 13, color: "#374151", marginBottom: 10 }}>
-                  <span style={{ color: "#6B7280", fontWeight: 600 }}>Psixoloqun səbəbi: </span>
+                <div style={{ fontSize: "var(--text-body)", color: "var(--oxford-80)", marginBottom: 10 }}>
+                  <span className="fx-muted" style={{ fontWeight: 600 }}>Psixoloqun səbəbi: </span>
                   {r.reason}
                 </div>
 
                 {r.status === "PENDING" ? (
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => decide(r.id, "approve")} disabled={busy}
-                      style={{
-                        padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-                        background: "#065F46", color: "#fff", border: "none",
-                        cursor: busy ? "wait" : "pointer",
-                      }}>
+                  <div className="fx-flex">
+                    <button type="button" className="fx-btn fx-btn--primary fx-btn--sm" onClick={() => openDecision(r.id, "approve")} disabled={busy}
+                      style={{ cursor: busy ? "wait" : "pointer" }}>
+                      <IconCheck />
                       Təsdiqlə (rəyi sil)
                     </button>
-                    <button onClick={() => decide(r.id, "reject")} disabled={busy}
-                      style={{
-                        padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-                        background: "#fff", color: "#991B1B", border: "1px solid #FECACA",
-                        cursor: busy ? "wait" : "pointer",
-                      }}>
+                    <button type="button" className="fx-btn fx-btn--danger-ghost fx-btn--sm" onClick={() => openDecision(r.id, "reject")} disabled={busy}
+                      style={{ cursor: busy ? "wait" : "pointer" }}>
+                      <IconX />
                       Rədd et (rəy qalır)
                     </button>
                   </div>
                 ) : (
-                  <div style={{ fontSize: 12, color: "#52718F" }}>
+                  <div className="fx-muted" style={{ fontSize: "var(--text-caption)" }}>
                     Qərar: {fmt(r.decidedAt)}{r.decisionNote ? ` · ${r.decisionNote}` : ""}
                   </div>
                 )}
@@ -277,10 +308,63 @@ export default function OperatorRequestsPage() {
 
       {!loading && hasMore && (
         <div style={{ textAlign: "center", marginTop: 16 }}>
-          <button type="button" onClick={loadMore} disabled={loadingMore}
-            style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
+          <button type="button" className="fx-btn fx-btn--ghost" onClick={loadMore} disabled={loadingMore}
+            style={{ cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
             {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
           </button>
+        </div>
+      )}
+
+      {decision && (
+        <div className="fx-overlay fx-overlay--center" onClick={() => busyId == null && setDecision(null)}>
+          <div className="fx-modal" role="dialog" aria-modal="true" aria-label={decision.action === "approve" ? "Rəyi sil" : "Tələbi rədd et"} onClick={e => e.stopPropagation()}>
+            <div className={`fx-modal__icon fx-modal__icon--${decision.action === "approve" ? "brand" : "rose"}`}>
+              {decision.action === "approve" ? (
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              ) : (
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+                </svg>
+              )}
+            </div>
+            <h3 className="fx-h3">
+              {decision.action === "approve" ? "Rəyi sil" : "Tələbi rədd et"}
+            </h3>
+            <p className="fx-modal__text">
+              {decision.action === "approve"
+                ? "Təsdiqlədikdə rəy ictimai profildən silinəcək. İstəsəniz qeyd əlavə edin."
+                : "Rədd etdikdə rəy dəyişmədən qalacaq. İstəsəniz səbəb yazın."}
+            </p>
+            <div className="fx-field">
+              <label className="fx-label" htmlFor="decision-note">
+                Qeyd (opsional)
+              </label>
+              <textarea
+                id="decision-note"
+                className="fx-textarea"
+                value={decisionNote}
+                onChange={e => setDecisionNote(e.target.value)}
+                rows={3}
+                autoFocus
+                placeholder={decision.action === "approve" ? "Məs. qaydalara zidd məzmun" : "Məs. rəy əsaslıdır, silinmir"}
+              />
+            </div>
+            <div className="fx-modal__actions">
+              <button type="button" className="fx-btn fx-btn--ghost" onClick={() => setDecision(null)} disabled={busyId != null}>
+                Ləğv
+              </button>
+              <button
+                type="button"
+                className={`fx-btn ${decision.action === "approve" ? "fx-btn--primary" : "fx-btn--danger"}`}
+                onClick={submitDecision}
+                disabled={busyId != null}
+              >
+                {busyId != null ? "Göndərilir…" : decision.action === "approve" ? "Təsdiqlə və sil" : "Rədd et"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

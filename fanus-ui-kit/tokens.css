@@ -1,0 +1,104 @@
+/* ============================================================
+   FANUS UI KIT — DESIGN TOKENS
+   fanusopc.com operator paneli üçün vahid dizayn tokenləri.
+   Bütün komponentlər yalnız bu dəyərlərdən istifadə etməlidir.
+   ============================================================ */
+
+:root {
+  /* ---------- Brend / Mavi ---------- */
+  --brand: #1051B7;
+  --brand-700: #082F6D;
+  --brand-600: #0B3F90;
+  --brand-500: #2A6BD0;
+  --brand-400: #5089E0;
+  --brand-300: #88AEEC;
+  --brand-200: #C3D6F6;
+  --brand-100: #E4ECFA;
+  --brand-50: #F2F6FD;
+
+  /* ---------- Mətn (Oxford ink) ---------- */
+  --oxford: #0A1A33;        /* əsas mətn */
+  --oxford-90: #1A2B4D;
+  --oxford-80: #2B3C5A;     /* güclü ikinci dərəcəli */
+  --oxford-60: #5C6B85;     /* ikinci dərəcəli mətn, etiketlər */
+  --oxford-20: #C3D6F6;
+  --oxford-10: #E4ECFA;
+
+  /* ---------- Aksent (yalnız məna daşıyanda) ---------- */
+  --sage: #4A9B7F;          /* müsbət / gəlir */
+  --sage-bg: #E5F1EC;
+  --amber: #C97D2E;         /* xəbərdarlıq / gecikmə */
+  --amber-bg: #FBF0E3;
+  --rose: #C97D7D;          /* risk / iadə / ləğv aksiyası */
+  --rose-bg: #FDF0F0;
+  --rose-hover: #B56A6A;
+  --lilac: #8C7DC9;         /* paket / məhsul */
+  --lilac-bg: #F4EFFB;
+
+  /* ---------- Semantik (toast / kritik) ---------- */
+  --success: #059669;
+  --error: #DC2626;
+
+  /* ---------- Status rozetləri ---------- */
+  --status-pending-bg: #FEF3C7;   --status-pending-fg: #92400E;
+  --status-paid-bg: #D1FAE5;      --status-paid-fg: #065F46;
+  --status-partial-bg: #FFEDD5;   --status-partial-fg: #9A3412;
+  --status-refunded-bg: #FEE2E2;  --status-refunded-fg: #991B1B;
+  --status-cancelled-bg: #F3F4F6; --status-cancelled-fg: #374151;
+
+  /* ---------- Fon / Səth ---------- */
+  --bg: #F7F9FC;            /* səhifə fonu */
+  --bg-blue: #F2F6FD;       /* alternativ fon, hover */
+  --surface: #FFFFFF;       /* kartlar */
+  --surface-muted: #F7F9FC; /* input fonu, sətir hover */
+  --hairline: #E9EEF5;      /* bütün sərhədlər */
+  --overlay: rgba(8, 23, 48, .5);
+
+  /* ---------- Kölgələr ---------- */
+  --shadow-sm: 0 1px 3px rgba(0, 33, 71, .06);
+  --shadow-md: 0 4px 12px rgba(0, 33, 71, .06);
+  --shadow-lg: 0 12px 32px rgba(0, 33, 71, .08);
+  --shadow-float: 0 12px 32px rgba(0, 33, 71, .18);  /* modal / drawer */
+
+  /* ---------- Radius ---------- */
+  --radius-btn: 8px;
+  --radius-input: 8px;
+  --radius-chip: 999px;
+  --radius-card: 16px;
+  --radius-lg: 20px;
+
+  /* ---------- Tipoqrafiya ---------- */
+  /* Başlıqlar serif; istehsalda Playfair Display (500) yüklənə bilər */
+  --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  /* Mətn sans; istehsalda Poppins (400/600/700) yüklənə bilər */
+  --font-sans: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --text-h1: 30px;          /* səhifə başlığı (serif, 500) */
+  --text-h2: 26px;          /* hero başlıq (serif, 500) */
+  --text-h3: 19px;          /* modal / drawer başlıq (serif, 500) */
+  --text-kpi: 28px;         /* KPI rəqəmi (sans, 800) */
+  --text-kpi-sm: 23px;
+  --text-amount: 17px;      /* sətirdə məbləğ (700) */
+  --text-body: 13px;
+  --text-body-lg: 14px;
+  --text-caption: 12px;
+  --text-micro: 11.5px;
+  --text-label: 11px;       /* uppercase etiket */
+
+  /* ---------- Boşluq şkalası ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  /* ---------- Layout ---------- */
+  --sidebar-w: 260px;
+  --page-pad-x: 40px;
+  --page-pad-y: 32px;
+  --drawer-w: 460px;
+  --modal-w: 400px;
+}

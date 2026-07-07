@@ -18,7 +18,7 @@ import {
 import { azFormatDate, hoursSince } from "@/lib/datetime";
 import ReviewModal from "../ReviewModal";
 import SessionFeedbackModal from "@/components/SessionFeedbackModal";
-import { STATUS, PA_STYLE, PackageBadge } from "../shared";
+import { STATUS, PA_STYLE, PackageBadge, IntroBadge } from "../shared";
 
 const MONTHS_AZ_FULL = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
 const PAGE_SIZE = 30;
@@ -235,6 +235,7 @@ function HistoryRow({
         <span style={{ flex: 1, minWidth: 150, fontSize: 14, color: "var(--oxford-60)", fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
           {a.psychologistName ?? "Psixoloq"}
           {a.patientPackageId != null && <PackageBadge name={a.packageName} />}
+          {a.sessionKind === "INTRO" && <IntroBadge />}
         </span>
         <span style={{ background: status.bg, color: status.color, fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>{status.label}</span>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

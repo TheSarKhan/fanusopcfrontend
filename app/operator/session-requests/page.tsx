@@ -11,21 +11,24 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { operatorApi, type SessionRequest } from "@/lib/api";
 import { toast as uiToast } from "@/components/Toast";
+import EmptyState from "@/components/EmptyState";
+import { Skeleton } from "@/components/Skeleton";
+import { IconAlert, IconCheck, IconChevronRight, IconClock, IconInbox, IconMail, IconPhone, IconSearch } from "./icons";
 
 type Tab = "POOL" | "MINE" | "CONVERTED" | "CANCELLED";
 
-const TAB_META: Record<Tab, { label: string; color: string }> = {
-  POOL:      { label: "Hovuz",         color: "#047857" },
-  MINE:      { label: "Mənim",         color: "#1E40AF" },
-  CONVERTED: { label: "Çevrilmiş",     color: "#065F46" },
-  CANCELLED: { label: "Ləğv edilmiş",  color: "#991B1B" },
+const TAB_META: Record<Tab, { label: string }> = {
+  POOL: { label: "Hovuz" },
+  MINE: { label: "Mənim" },
+  CONVERTED: { label: "Çevrilmiş" },
+  CANCELLED: { label: "Ləğv edilmiş" },
 };
 
-const STATUS_BADGE: Record<string, { label: string; bg: string; color: string }> = {
-  NEW:       { label: "Yeni",        bg: "#FEF3C7", color: "#92400E" },
-  IN_REVIEW: { label: "Baxılır",     bg: "#DBEAFE", color: "#1E40AF" },
-  CONVERTED: { label: "Çevrilib",    bg: "#D1FAE5", color: "#065F46" },
-  CANCELLED: { label: "Ləğv edilib", bg: "#FEE2E2", color: "#991B1B" },
+const STATUS_PILL: Record<string, { label: string; className: string }> = {
+  NEW: { label: "Yeni", className: "fx-pill--pending" },
+  IN_REVIEW: { label: "Baxılır", className: "fx-pill--info" },
+  CONVERTED: { label: "Çevrilib", className: "fx-pill--paid" },
+  CANCELLED: { label: "Ləğv edilib", className: "fx-pill--cancelled" },
 };
 
 const PAGE_SIZE = 30;
@@ -114,145 +117,138 @@ export default function SessionRequestsPage() {
   };
 
   return (
-    <div style={{ padding: "28px 32px", maxWidth: 1100 }}>
+    <div style={{ maxWidth: 1100 }}>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0B1A35" }}>Müraciətlər</h1>
-        <p style={{ margin: "4px 0 0", fontSize: 14, color: "#52718F" }}>
+        <h1 className="fx-h1">Müraciətlər</h1>
+        <p className="fx-subtitle" style={{ margin: "6px 0 0", maxWidth: 640 }}>
           Saytdan gələn anonim seans müraciətləri. Hovuzdan götürün, uyğunlaşsanız randevuya
           çevirin və ya paket satın — müraciət sizə aid qalır, başqa operator görmür.
         </p>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "1px solid #E5E7EB" }}>
-        {(Object.keys(TAB_META) as Tab[]).map(t => {
-          const active = tab === t;
-          return (
-            <button key={t} onClick={() => setTab(t)}
-              style={{
-                padding: "8px 14px", border: "none", background: "none", cursor: "pointer",
-                fontSize: 13, fontWeight: active ? 600 : 400,
-                color: active ? TAB_META[t].color : "#6B7280",
-                borderBottom: active ? `2px solid ${TAB_META[t].color}` : "2px solid transparent",
-                marginBottom: -1, display: "flex", alignItems: "center", gap: 6,
-              }}>
-              {TAB_META[t].label}
-              {active && !loading && totalElements > 0 && (
-                <span style={{
-                  background: TAB_META[t].color, color: "#fff",
-                  borderRadius: 10, padding: "1px 6px", fontSize: 11, fontWeight: 600,
-                }}>{totalElements}</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Search */}
-      <div style={{ marginBottom: 16 }}>
-        <input
-          type="text"
-          placeholder="Ad, telefon, e-poçt və ya səbəb axtarın..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{
-            width: "100%", boxSizing: "border-box",
-            padding: "8px 12px", border: "1px solid #D1D5DB",
-            borderRadius: 8, fontSize: 13, color: "#111", outline: "none",
-          }}
-        />
-      </div>
-
-      {error && (
-        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", borderRadius: 12, padding: "13px 16px", marginBottom: 16, fontSize: 13.5, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <span>Müraciətlər yüklənərkən xəta baş verdi: {error}</span>
-          <button type="button" onClick={() => setReloadNonce(n => n + 1)} style={{ background: "#fff", color: "#991B1B", border: "1px solid #FECACA", borderRadius: 8, padding: "6px 12px", fontSize: 12.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", flex: "none" }}>
-            Yenidən cəhd et
-          </button>
-        </div>
-      )}
-
-      {loading ? (
-        <p style={{ color: "#6B7280", fontSize: 14 }}>Yüklənir...</p>
-      ) : filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "48px 0", color: "#6B7280", fontSize: 14 }}>
-          {tab === "POOL" ? "Hovuzda müraciət yoxdur." : "Bu kateqoriyada müraciət tapılmadı."}
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {filtered.map(req => {
-            const badge = STATUS_BADGE[req.status] ?? { label: req.status, bg: "#F3F4F6", color: "#374151" };
-            const busy = busyId === req.id;
+      <div className="fx-card" style={{ overflow: "hidden", marginBottom: 20 }}>
+        {/* Tablar */}
+        <div className="fx-tabs" style={{ padding: "14px 20px 0" }}>
+          {(Object.keys(TAB_META) as Tab[]).map(t => {
+            const active = tab === t;
             return (
-              <div
-                key={req.id}
-                onClick={() => router.push(`/operator/session-requests/${req.id}`)}
-                style={{
-                  background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10,
-                  borderLeft: req.priority ? "3px solid #B45309" : "1px solid #E5E7EB",
-                  padding: "16px 20px", cursor: "pointer",
-                  display: "grid", gridTemplateColumns: "1fr auto", gap: "8px 16px",
-                  alignItems: "start", transition: "box-shadow 0.15s",
-                }}
-                onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,.08)")}
-                onMouseLeave={e => (e.currentTarget.style.boxShadow = "none")}
-              >
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-                    <span style={{ fontWeight: 600, fontSize: 14, color: "#0B1A35" }}>{req.name}</span>
-                    <span style={{ background: badge.bg, color: badge.color, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{badge.label}</span>
-                    {req.priority && (
-                      <span style={{ background: "#FEF3C7", color: "#92400E", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700, border: "1px solid #FCD34D" }}>
-                        Prioritet
-                      </span>
-                    )}
-                    {tab === "POOL" && req.claimedByName && (
-                      <span style={{ fontSize: 12, color: "#9CA3AF" }}>· {req.claimedByName} baxır</span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 13, color: "#374151", marginBottom: 4 }}>
-                    <span style={{ marginRight: 12 }}>{req.phone}</span>
-                    {req.email && <span style={{ color: "#52718F" }}>{req.email}</span>}
-                    {req.age && <span style={{ marginLeft: 12, color: "#52718F" }}>{req.age} yaş</span>}
-                  </div>
-                  <div style={{ fontSize: 13, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 620 }}>
-                    {req.reason}
-                  </div>
-                  {req.preferredDate && (
-                    <div style={{ fontSize: 12, color: "#52718F", marginTop: 4 }}>
-                      Üstünlük verilən: {req.preferredDate}{req.preferredTime ? ` saat ${req.preferredTime}` : ""}
-                    </div>
-                  )}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-                  <div style={{ textAlign: "right", fontSize: 12, color: "#9CA3AF", whiteSpace: "nowrap" }}>
-                    #{req.id}<br />{timeAgo(req.createdAt)}
-                  </div>
-                  {tab === "POOL" && (
-                    <button onClick={e => { e.stopPropagation(); take(req.id); }} disabled={busy}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        background: "#047857", color: "#fff", border: "none", borderRadius: 8,
-                        padding: "8px 14px", fontSize: 13, fontWeight: 700, fontFamily: "inherit",
-                        cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1,
-                        boxShadow: "0 4px 12px rgba(4,120,87,.24)",
-                      }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-                      Götür
-                    </button>
-                  )}
-                </div>
-              </div>
+              <button key={t} type="button" onClick={() => setTab(t)}
+                className={`fx-tab${active ? " fx-tab--active" : ""}`}>
+                {TAB_META[t].label}
+                {active && !loading && totalElements > 0 && (
+                  <span className="fx-pill fx-pill--count-active">{totalElements}</span>
+                )}
+              </button>
             );
           })}
         </div>
-      )}
+        <div className="fx-hairline" />
+
+        {/* Axtarış */}
+        <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--hairline)" }}>
+          <div className="fx-search" style={{ maxWidth: 360 }}>
+            <IconSearch />
+            <input
+              type="text"
+              aria-label="Müraciət axtar"
+              placeholder="Ad, telefon, e-poçt və ya səbəb axtarın..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {error && (
+          <div style={{ padding: "16px 20px" }}>
+            <div className="fx-banner fx-banner--error">
+              <IconAlert />
+              <div style={{ flex: 1 }}>Müraciətlər yüklənərkən xəta baş verdi: {error}</div>
+              <button type="button" className="fx-btn fx-btn--ghost fx-btn--sm" onClick={() => setReloadNonce(n => n + 1)}>
+                Yenidən cəhd et
+              </button>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="fx-row fx-row--static" style={{ justifyContent: "space-between" }}>
+                <div style={{ flex: 1 }}>
+                  <Skeleton width={160} height={14} />
+                  <Skeleton width={220} height={12} style={{ marginTop: 9 }} />
+                  <Skeleton width="70%" height={12} style={{ marginTop: 8 }} />
+                </div>
+                <Skeleton width={70} height={32} radius={8} />
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: "12px 20px 28px" }}>
+            <EmptyState
+              icon={<IconInbox />}
+              title={search.trim() ? "Axtarışa uyğun müraciət yoxdur" : tab === "POOL" ? "Hovuz boşdur" : "Bu kateqoriyada müraciət yoxdur"}
+              sub={search.trim() ? "Başqa ad, telefon və ya açar söz yoxlayın." : tab === "POOL" ? "Saytdan yeni seans müraciəti gəldikdə burada görünəcək." : "Müraciət götürdükcə və ya çevirdikcə bu siyahı dolacaq."}
+            />
+          </div>
+        ) : (
+          <div>
+            {filtered.map(req => {
+              const badge = STATUS_PILL[req.status] ?? { label: req.status, className: "fx-pill--neutral" };
+              const busy = busyId === req.id;
+              return (
+                <div key={req.id} className="fx-row" onClick={() => router.push(`/operator/session-requests/${req.id}`)}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                      <span className="fx-row__title">{req.name}</span>
+                      <span className={`fx-pill ${badge.className}`}>{badge.label}</span>
+                      {req.priority && <span className="fx-pill fx-pill--pending">Prioritet</span>}
+                      {tab === "POOL" && req.claimedByName && (
+                        <span className="fx-muted" style={{ fontSize: 12 }}>· {req.claimedByName} baxır</span>
+                      )}
+                    </div>
+                    <div className="fx-row__meta" style={{ marginBottom: 4 }}>
+                      <IconPhone className="fx-icon--sm" /><span>{req.phone}</span>
+                      {req.email && (<><span className="fx-sep">·</span><IconMail className="fx-icon--sm" /><span>{req.email}</span></>)}
+                      {req.age && (<><span className="fx-sep">·</span><span>{req.age} yaş</span></>)}
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--oxford-80)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 620 }}>
+                      {req.reason}
+                    </div>
+                    {req.preferredDate && (
+                      <div className="fx-row__meta" style={{ marginTop: 4 }}>
+                        <IconClock className="fx-icon--sm" />
+                        <span>Üstünlük verilən: {req.preferredDate}{req.preferredTime ? ` saat ${req.preferredTime}` : ""}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                    <div className="fx-muted fx-num" style={{ fontSize: 12, textAlign: "right", whiteSpace: "nowrap" }}>
+                      #{req.id}<br />{timeAgo(req.createdAt)}
+                    </div>
+                    {tab === "POOL" ? (
+                      <button type="button" disabled={busy}
+                        onClick={e => { e.stopPropagation(); take(req.id); }}
+                        className="fx-btn fx-btn--sm"
+                        style={{ background: "var(--sage)", borderColor: "var(--sage)", color: "#fff", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1 }}>
+                        <IconCheck className="fx-icon--sm" />
+                        Götür
+                      </button>
+                    ) : (
+                      <IconChevronRight className="fx-icon" />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {!loading && hasMore && (
-        <div style={{ textAlign: "center", marginTop: 16 }}>
-          <button type="button" onClick={loadMore} disabled={loadingMore}
-            style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
-            {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
+        <div style={{ textAlign: "center" }}>
+          <button type="button" className="fx-btn fx-btn--ghost" onClick={loadMore} disabled={loadingMore} style={{ opacity: loadingMore ? 0.7 : 1 }}>
+            Daha çox göstər (+{Math.min(PAGE_SIZE, totalElements - items.length)})
           </button>
         </div>
       )}

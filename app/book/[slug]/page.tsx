@@ -679,6 +679,7 @@ export default function BookPsychologistPage() {
   const pkgNeedsSlots = mode === "PACKAGE" && !!selectedPackage && !chooseLater;
   const pkgSlotsOk = !pkgNeedsSlots || okItems.length === (selectedPackage?.sessionCount ?? 0);
   const blockers: string[] = [];
+  if (!introPromptAnswered && !extendCtx) blockers.push("Əvvəlcə seans növünü seçin");
   if (!noteOk) blockers.push("Mövzu üçün ən azı 5 simvol yazın");
   if (conflictItems.length > 0) blockers.push(t("book.basketUnresolved"));
   if (extendCtx && okItems.length === 0) blockers.push(t("book.basketEmpty"));
@@ -694,10 +695,12 @@ export default function BookPsychologistPage() {
         ? t("book.basketSubmitN", { n: okItems.length })
         : t("book.submitCta");
 
-  const typeSummary = mode === "PACKAGE" && selectedPackage
-    ? selectedPackage.name
-    : sessionKind === "INTRO" ? "Tanışlıq görüşü (pulsuz)"
-    : okItems.length > 1 ? "Çoxlu seans" : "Tək seans";
+  const typeSummary = !introPromptAnswered && !extendCtx
+    ? "Seçilməyib"
+    : mode === "PACKAGE" && selectedPackage
+      ? selectedPackage.name
+      : sessionKind === "INTRO" ? "Tanışlıq görüşü (pulsuz)"
+      : okItems.length > 1 ? "Çoxlu seans" : "Tək seans";
 
   const timeDone = (mode === "PACKAGE" && chooseLater) ? true : okItems.length > 0;
   const timeLabel = (mode === "PACKAGE" && chooseLater)
@@ -843,8 +846,9 @@ export default function BookPsychologistPage() {
                 </div>
               )}
 
-              {/* C) TIME PICKER (step 2) + D) BASKET */}
-              {showPicker && (
+              {/* C) TIME PICKER (step 2) + D) BASKET — seans növü seçilənə (və ya
+                  seriya-uzatma olana) qədər gizli, addımlar sıra ilə açılsın. */}
+              {showPicker && (introPromptAnswered || extendCtx) && (
                 <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 20 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
                     <SectionHead n={2} title={t("book.timeSection")} />
@@ -1043,28 +1047,30 @@ export default function BookPsychologistPage() {
                 </div>
               )}
 
-              {/* E) NOTE (step 3) */}
-              <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 20 }}>
-                <SectionHead n={3} title={t("book.noteSection")} />
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-                  {NOTE_TEMPLATES.map(tpl => (
-                    <button key={tpl.key} type="button" onClick={() => setNote(note ? note + "\n\n" + tpl.body : tpl.body)}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--brand-50)", color: "var(--brand-700)", border: "1px solid var(--brand-100)", borderRadius: 999, padding: "7px 13px", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-                      {tpl.label}
-                    </button>
-                  ))}
+              {/* E) NOTE (step 3) — eynilə seans növü seçilənə qədər gizli */}
+              {(introPromptAnswered || extendCtx) && (
+                <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 20 }}>
+                  <SectionHead n={3} title={t("book.noteSection")} />
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                    {NOTE_TEMPLATES.map(tpl => (
+                      <button key={tpl.key} type="button" onClick={() => setNote(note ? note + "\n\n" + tpl.body : tpl.body)}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--brand-50)", color: "var(--brand-700)", border: "1px solid var(--brand-100)", borderRadius: 999, padding: "7px 13px", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                        {tpl.label}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea rows={4} placeholder={t("book.notePlaceholder")} value={note} onChange={e => setNote(e.target.value)}
+                    style={{ width: "100%", border: "1px solid #D6E2F7", background: "#fff", borderRadius: 11, padding: 13, fontSize: 14, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", resize: "vertical", lineHeight: 1.55, boxSizing: "border-box" }} />
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8 }}>
+                    <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500 }}>{extendCtx ? t("book.extendNoteHint") : t("book.noteHint")}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: noteOk ? "#065F46" : "var(--oxford-60)" }}>
+                      {noteOk && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+                      {noteOk ? "kifayətdir" : `${note.trim().length} / minimum 5`}
+                    </span>
+                  </div>
                 </div>
-                <textarea rows={4} placeholder={t("book.notePlaceholder")} value={note} onChange={e => setNote(e.target.value)}
-                  style={{ width: "100%", border: "1px solid #D6E2F7", background: "#fff", borderRadius: 11, padding: 13, fontSize: 14, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", resize: "vertical", lineHeight: 1.55, boxSizing: "border-box" }} />
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8 }}>
-                  <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500 }}>{extendCtx ? t("book.extendNoteHint") : t("book.noteHint")}</span>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: noteOk ? "#065F46" : "var(--oxford-60)" }}>
-                    {noteOk && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
-                    {noteOk ? "kifayətdir" : `${note.trim().length} / minimum 5`}
-                  </span>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* ===== RIGHT: STICKY SUMMARY ===== */}

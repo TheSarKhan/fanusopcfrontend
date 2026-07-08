@@ -316,10 +316,10 @@ export default function BookPsychologistPage() {
     setBasket(prev => {
       const hit = prev.find(b => b.startAt === s.startAt);
       if (hit) return prev.filter(b => b.startAt !== s.startAt);
-      // Tanışlıq (INTRO) görüşü yalnız 1 vaxtla göndərilə bilər — yeni seçim
-      // basketə əlavə olunmur, əvəzinə köhnəni əvəz edir ki, submit düyməsi
-      // heç vaxt bacarılmayacaq "N seans" vəziyyətinə düşməsin.
-      if (sessionKind === "INTRO") return [{ kind: "ok", startAt: s.startAt }];
+      // Tək seans (STANDARD və ya INTRO) yalnız 1 vaxtla göndərilə bilər — yeni
+      // seçim basketə əlavə olunmur, əvəzinə köhnəni əvəz edir. Çoxlu-vaxt basket
+      // yalnız paket alışında (N seans lazımdır) və seriya-uzatmada qalır.
+      if (!extendCtx && mode === "SINGLE") return [{ kind: "ok", startAt: s.startAt }];
       return sortBasket([...prev, { kind: "ok", startAt: s.startAt }]);
     });
   };

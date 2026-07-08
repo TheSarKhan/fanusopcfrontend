@@ -142,8 +142,8 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
           {test.questions.map((q, qi) => {
             const selected = answers[q.id];
             return (
-              <fieldset key={q.id} className="pgoal-card" style={{ border: "1px solid var(--brand-100)" }}>
-                <legend style={{ fontWeight: 600, color: "var(--oxford)", fontSize: 14, marginBottom: 10, padding: 0 }}>
+              <fieldset key={q.id} className="pgoal-card" style={{ border: "1px solid var(--brand-100)", minWidth: 0 }}>
+                <legend style={{ fontWeight: 600, color: "var(--oxford)", fontSize: 14, marginBottom: 10, padding: 0, width: "100%", boxSizing: "border-box", overflowWrap: "break-word" }}>
                   {qi + 1}. {stripLeadingNumber(q.text)}
                 </legend>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

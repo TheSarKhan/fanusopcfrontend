@@ -74,7 +74,14 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
       setCrisisDetected(!!res?.crisisDetected);
       setSuccess(true);
     } catch (err: any) {
-      setError(err?.message ?? "Müraciət göndərilmədi. Yenidən cəhd edin.");
+      // Brauzerin fetch() TypeError-u ("Failed to fetch" və s.) şəbəkə/CORS
+      // səviyyəsində baş verir və backend-dən gələn oxunaqlı mesajdan fərqli
+      // olaraq istifadəçi üçün mənasızdır — əvəzinə izah edici mesaj göstəririk.
+      setError(
+        err instanceof TypeError
+          ? "Serverlə əlaqə qurula bilmədi. İnternet bağlantınızı yoxlayıb yenidən cəhd edin."
+          : (err?.message || "Müraciət göndərilmədi. Yenidən cəhd edin.")
+      );
     } finally {
       setSending(false);
     }

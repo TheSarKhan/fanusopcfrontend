@@ -1165,6 +1165,7 @@ function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
   const [end, setEnd] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [psy, setPsy] = useState<Psychologist | null>(null);
 
   useEffect(() => {
     setSlotsLoading(true);
@@ -1173,6 +1174,17 @@ function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
     operatorApi.availability(psyId, dateOnly(today), dateOnly(to))
       .then(setSlots).catch(() => setSlots([])).finally(() => setSlotsLoading(false));
   }, [psyId]);
+
+  useEffect(() => {
+    operatorApi.listPsychologists()
+      .then(list => setPsy(list.find(p => p.id === psyId) ?? null))
+      .catch(() => setPsy(null));
+  }, [psyId]);
+
+  // Psixoloqun öz seans müddəti — əl ilə daxiletmədə bitmə vaxtını təxmin etmək üçün.
+  // Sabit 50 dəq hardcode edilsəydi, 60 dəq işləyən psixoloqlar üçün operator
+  // görünüşü ilə pasiyent/psixoloq görünüşü arasında uyğunsuzluq yaranırdı.
+  const defaultDurationMin = psy?.defaultSessionMinutes ?? 50;
 
   const groupedSlots = useMemo(() => {
     const map = new Map<string, AvailableSlot[]>();
@@ -1244,7 +1256,7 @@ function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
               <label style={{ display: "block" }}>
                 <span style={labS}>Başlama vaxtı</span>
-                <DatePicker withTime theme="light" size="sm" value={start} onChange={v => { setStart(v); if (!end) setEnd(addMinutes(v, 50)); }} style={{ width: "100%" }} />
+                <DatePicker withTime theme="light" size="sm" value={start} onChange={v => { setStart(v); if (!end) setEnd(addMinutes(v, defaultDurationMin)); }} style={{ width: "100%" }} />
               </label>
               <label style={{ display: "block" }}>
                 <span style={labS}>Bitmə vaxtı</span>

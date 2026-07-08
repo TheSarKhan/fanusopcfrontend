@@ -884,7 +884,9 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     const match = slots.find(s => new Date(s.startAt).getTime() === reqMs);
     if (match) { setPickedSlots([match.startAt]); return; }
     const psy = psychologists.find(p => p.id === psyId);
-    const minutes = psy?.defaultSessionMinutes && psy.defaultSessionMinutes > 0 ? psy.defaultSessionMinutes : 50;
+    const minutes = appointment.sessionKind === "INTRO"
+      ? 15
+      : (psy?.defaultSessionMinutes && psy.defaultSessionMinutes > 0 ? psy.defaultSessionMinutes : 50);
     const seedEnd = (appointment.startAt && appointment.endAt) ? appointment.endAt : new Date(reqMs + minutes * 60_000).toISOString();
     setManualStart(isoToAzLocal(seedStart));
     setManualEnd(isoToAzLocal(seedEnd));
@@ -1051,6 +1053,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
       )}
 
       {(() => {
+        if (appointment.sessionKind === "INTRO") return null; // pulsuz tanışlıq — 15 dəq sabitdir, psixoloqun standartı ilə müqayisə olunmur
         if (!appointment.startAt || !appointment.endAt || !selectedPsy?.defaultSessionMinutes) return null;
         const storedMin = Math.round((new Date(appointment.endAt).getTime() - new Date(appointment.startAt).getTime()) / 60_000);
         if (storedMin === selectedPsy.defaultSessionMinutes) return null;

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { meApi, patientApi, revalidatePsychologistsCache, type AccountStatus, type EmergencyContact, type MeProfile } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import AvatarCropModal from "@/components/AvatarCropModal";
 
 const ROLE_LABEL: Record<string, string> = {
   PATIENT: "Pasiyent",
@@ -172,26 +173,31 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  const onSelectFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     setErr(null);
     const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file after a cancelled crop
     if (!file) return;
     if (!file.type.startsWith("image/")) { setErr("Yalnız şəkil faylı seçə bilərsiniz"); return; }
     if (file.size > 5 * 1024 * 1024) { setErr("Şəkil ölçüsü 5MB-dan böyük ola bilməz"); return; }
+    setPendingFile(file);
+  };
+
+  const onCropped = async (croppedFile: File) => {
     setUploading(true);
     try {
-      const { url } = await meApi.uploadPhoto(file);
+      const { url } = await meApi.uploadPhoto(croppedFile);
       onChanged({ ...me, photoUrl: url });
       window.dispatchEvent(new CustomEvent("profilePhotoChanged", { detail: { photoUrl: url } }));
       // The psychologist's photo also lives on their public /psychologists/[slug]
       // page, which Next.js caches — ping it so the change shows up immediately
       // instead of waiting for the passive revalidate window.
       if (me.role === "PSYCHOLOGIST") revalidatePsychologistsCache();
-    } catch (e) { setErr((e as Error).message || "Yükləmə uğursuz oldu"); }
-    finally {
+      setPendingFile(null);
+    } finally {
       setUploading(false);
-      if (inputRef.current) inputRef.current.value = "";
     }
   };
 
@@ -286,6 +292,13 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
         />
       </div>
       {err && <div className="uprof-hero-err">{err}</div>}
+      {pendingFile && (
+        <AvatarCropModal
+          file={pendingFile}
+          onCancel={() => setPendingFile(null)}
+          onCropped={onCropped}
+        />
+      )}
     </section>
   );
 }

@@ -7347,6 +7347,32 @@
   font-size: 13px; font-weight: 500;
 }
 
+/* ── Avatar crop modal ─────────────────────────────────────────────── */
+.avcrop-modal { max-width: 380px; text-align: center; }
+.avcrop-viewport {
+  position: relative;
+  margin: 4px auto 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #0A1A33;
+  cursor: grab;
+  touch-action: none;
+}
+.avcrop-viewport:active { cursor: grabbing; }
+.avcrop-viewport img { user-select: none; pointer-events: none; }
+.avcrop-mask {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 9999px rgba(10, 26, 51, 0.68);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+}
+.avcrop-zoom {
+  display: flex; align-items: center; gap: 10px;
+  margin: 16px 0 4px; color: var(--oxford-60); font-size: 15px;
+}
+.avcrop-zoom input[type="range"] { flex: 1; accent-color: var(--brand); }
+
 /* ── 2-col main grid ────────────────────────────────────────────────── */
 .uprof-grid {
   display: grid;

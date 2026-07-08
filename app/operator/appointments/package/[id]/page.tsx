@@ -302,6 +302,11 @@ function AddPackageSessionModal({ sessions, onClose, onDone }: {
     return Array.from(map.entries());
   }, [slots]);
 
+  // Psixoloqun öz seans müddəti — əl ilə daxiletmədə bitmə vaxtını təxmin etmək üçün.
+  // Sabit 50 dəq hardcode edilsəydi, 60 dəq işləyən psixoloqlar üçün operator
+  // görünüşü ilə pasiyent/psixoloq görünüşü arasında uyğunsuzluq yaranırdı.
+  const defaultDurationMin = psychologists.find(p => p.id === psyId)?.defaultSessionMinutes ?? 50;
+
   const submit = async () => {
     setErr(null);
     if (psyId == null) { setErr("Psixoloq seçin"); return; }
@@ -392,7 +397,7 @@ function AddPackageSessionModal({ sessions, onClose, onDone }: {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
               <label style={{ display: "block" }}>
                 <span style={fieldLab}>Başlama vaxtı</span>
-                <DatePicker withTime theme="light" size="sm" value={start} onChange={v => { setStart(v); if (!end) setEnd(addMinutesLocal(v, 50)); }} style={{ width: "100%" }} />
+                <DatePicker withTime theme="light" size="sm" value={start} onChange={v => { setStart(v); if (!end) setEnd(addMinutesLocal(v, defaultDurationMin)); }} style={{ width: "100%" }} />
               </label>
               <label style={{ display: "block" }}>
                 <span style={fieldLab}>Bitmə vaxtı</span>

@@ -792,46 +792,53 @@ export default function BookPsychologistPage() {
                     </div>
                   )}
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
-                    <TypeCard
-                      selected={mode === "SINGLE" && sessionKind === "STANDARD"}
-                      label={t("pkg.single")}
-                      note="Bir dəfəlik seans"
-                      onClick={chooseStandardSingle}
-                    />
-                    {introEligibility?.eligible && (
-                      <TypeCard
-                        selected={mode === "SINGLE" && sessionKind === "INTRO"}
-                        badge="Pulsuz"
-                        label="Tanışlıq görüşü"
-                        note="15 dəq · Pulsuz"
-                        onClick={chooseIntro}
-                      />
-                    )}
-                    {psychologist.packages?.map(pkg => {
-                      const picked = mode === "PACKAGE" && selectedPackage?.id === pkg.id;
-                      return (
+                  {/* Pulsuz tanışlıq sualı cavablanana qədər növ seçimi gizlədilir — istifadəçi
+                      əvvəlcə "istəyirsiniz?" sualına cavab verməyə məcburdur. Uyğun deyilsə
+                      (artıq istifadə edib və ya hələ yüklənməyibsə) seçim birbaşa göstərilir. */}
+                  {(!introEligibility?.eligible || introPromptAnswered) && (
+                    <>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
                         <TypeCard
-                          key={pkg.id}
-                          isPkg
-                          selected={picked}
-                          label={pkg.name}
-                          note={`${pkg.sessionCount} seans daxildir`}
-                          onClick={() => choosePackage(pkg)}
+                          selected={mode === "SINGLE" && sessionKind === "STANDARD"}
+                          label={t("pkg.single")}
+                          note="Bir dəfəlik seans"
+                          onClick={chooseStandardSingle}
                         />
-                      );
-                    })}
-                  </div>
-
-                  {mode === "PACKAGE" && selectedPackage && (
-                    <div style={{ marginTop: 16, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 12, padding: 14 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--brand-700)", marginBottom: 10 }}>Vaxtları nə vaxt seçmək istəyirsiniz?</div>
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        <WhenCard active={!chooseLater} title={t("pkg.pickNNow")} sub="Bütün seansları planlayın" onClick={() => setChooseLater(false)} />
-                        <WhenCard active={chooseLater} title={t("pkg.chooseLater")} sub="Paketi al, vaxtı sonra təyin et" onClick={() => setChooseLater(true)} />
+                        {introEligibility?.eligible && (
+                          <TypeCard
+                            selected={mode === "SINGLE" && sessionKind === "INTRO"}
+                            badge="Pulsuz"
+                            label="Tanışlıq görüşü"
+                            note="15 dəq · Pulsuz"
+                            onClick={chooseIntro}
+                          />
+                        )}
+                        {psychologist.packages?.map(pkg => {
+                          const picked = mode === "PACKAGE" && selectedPackage?.id === pkg.id;
+                          return (
+                            <TypeCard
+                              key={pkg.id}
+                              isPkg
+                              selected={picked}
+                              label={pkg.name}
+                              note={`${pkg.sessionCount} seans daxildir`}
+                              onClick={() => choosePackage(pkg)}
+                            />
+                          );
+                        })}
                       </div>
-                      <p style={{ fontSize: 12, color: "var(--oxford-60)", margin: "10px 0 0" }}>{t("pkg.pendingNote")}</p>
-                    </div>
+
+                      {mode === "PACKAGE" && selectedPackage && (
+                        <div style={{ marginTop: 16, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 12, padding: 14 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--brand-700)", marginBottom: 10 }}>Vaxtları nə vaxt seçmək istəyirsiniz?</div>
+                          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                            <WhenCard active={!chooseLater} title={t("pkg.pickNNow")} sub="Bütün seansları planlayın" onClick={() => setChooseLater(false)} />
+                            <WhenCard active={chooseLater} title={t("pkg.chooseLater")} sub="Paketi al, vaxtı sonra təyin et" onClick={() => setChooseLater(true)} />
+                          </div>
+                          <p style={{ fontSize: 12, color: "var(--oxford-60)", margin: "10px 0 0" }}>{t("pkg.pendingNote")}</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}

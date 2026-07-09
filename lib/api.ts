@@ -20,6 +20,30 @@ function localeHeaders(): Record<string, string> {
   return { "Accept-Language": readLocaleCookie() };
 }
 
+/** Serverlə əlaqə qurulmadıqda göstəriləcək lokallaşmış mesaj (locale cookie-yə görə). */
+function connectionErrorMessage(): string {
+  switch (readLocaleCookie()) {
+    case "en": return "Could not reach the server. Check your internet connection and try again.";
+    case "ru": return "Не удалось связаться с сервером. Проверьте подключение к интернету и попробуйте снова.";
+    default:   return "Serverlə əlaqə qurulmadı. İnternet bağlantınızı yoxlayıb bir azdan yenidən cəhd edin.";
+  }
+}
+
+/** fetch üçün nazik örtük. Server sönülü, internet yoxdur, DNS/CORS kimi ŞƏBƏKƏ
+ *  səviyyəsində uğursuzluqda fetch xam `TypeError: Failed to fetch` atır — bu mətn
+ *  birbaşa istifadəçiyə (məs. login formuna) düşür. Burada həmin TypeError-i tutub
+ *  anlaşıqlı, lokallaşmış mesaja çeviririk. HTTP cavab (4xx/5xx) qayıdan hallar
+ *  TOXUNULMUR — onları çağıran kod öz mesajı ilə idarə edir. */
+async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (e) {
+    // fetch yalnız şəbəkə səviyyəsində rejection atır — bu həmişə TypeError-dır.
+    if (e instanceof TypeError) throw new Error(connectionErrorMessage());
+    throw e;
+  }
+}
+
 async function get<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...opts,

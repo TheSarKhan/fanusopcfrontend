@@ -63,6 +63,31 @@ function smallBtn(color: string, bg: string): React.CSSProperties {
 const PAGE_SIZE = 30;
 const EMPTY_ASSIGN_PAGE: Paged<TestAssignment> = { content: [], totalElements: 0, totalPages: 0, page: 0, size: PAGE_SIZE };
 
+/** Panel subdomenləri — public test linki bunların HEÇ birində deyil, kök domendə olmalıdır. */
+const PANEL_SUBS = new Set(["patient", "psycholog", "operator", "admin"]);
+
+/** Cari host-dan panel subdomenini (məs. psycholog.khansoft.az → khansoft.az) soyaraq
+ *  public (kök domen) origin-i qaytarır. Public test səhifəsi (/test/{token}) yalnız kök
+ *  domendə xidmət olunur; subdomen-də proxy onu /psycholog/... -ə yönləndirib 404 verər. */
+function publicOrigin(): string {
+  const { protocol, hostname, port } = window.location;
+  const parts = hostname.split(".");
+  if (parts.length > 1 && PANEL_SUBS.has(parts[0])) parts.shift();
+  const portStr = port ? `:${port}` : "";
+  return `${protocol}//${parts.join(".")}${portStr}`;
+}
+
+/** Backend-dən gələn linki — nisbi yol və ya (subdomenli də ola bilən) tam URL — həmişə
+ *  public kök domen üzərində mütləq URL-ə çevirir. Yolu saxlayır, yalnız host-u dəyişir. */
+function toPublicUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    return `${publicOrigin()}${u.pathname}${u.search}${u.hash}`;
+  } catch {
+    return `${publicOrigin()}${url.startsWith("/") ? "" : "/"}${url}`;
+  }
+}
+
 export default function PsychologTestsPage() {
   const [tests, setTests] = useState<PsyTestSummary[]>([]);
   const [myTests, setMyTests] = useState<PsyTestSummary[]>([]);
@@ -135,7 +160,7 @@ export default function PsychologTestsPage() {
     setLinkBusy(test.id);
     try {
       const res = await psychologistApi.createTestLink({ testId: test.id });
-      setLinks(prev => ({ ...prev, [test.id]: { url: res.url, token: res.token } }));
+      setLinks(prev => ({ ...prev, [test.id]: { url: toPublicUrl(res.url), token: res.token } }));
       // Refresh assignments so the new public link appears in the table.
       reloadAssignments();
     } catch (e) {
@@ -147,8 +172,8 @@ export default function PsychologTestsPage() {
 
   const copyLink = async (testId: number, url: string) => {
     try {
-      const full = url.startsWith("http") ? url : `${window.location.origin}${url}`;
-      await navigator.clipboard.writeText(full);
+      // `url` artıq toPublicUrl ilə kök domenə normallaşdırılıb.
+      await navigator.clipboard.writeText(url);
       setCopied(testId);
       setTimeout(() => setCopied(c => (c === testId ? null : c)), 1800);
     } catch {

@@ -73,16 +73,39 @@ export function azFormat(input: string | Date, opts: Intl.DateTimeFormatOptions 
   return toInstant(input).toLocaleString("az-AZ", { timeZone: "Asia/Baku", ...opts });
 }
 
+/**
+ * Asia/Baku divar-saatının rəqəm hissələrini locale-dən ASILI OLMADAN çıxarır.
+ * `toLocaleString("az-AZ", …)` bəzi runtime-larda (ICU az-AZ datası yoxdursa)
+ * tarixi ISO "2026-07-13" kimi qaytarırdı — ona görə formatı əl ilə qururuq.
+ * `formatToParts` yalnız rəqəm dəyərlərini verir, sıralama bizim əlimizdədir.
+ */
+function azNumericParts(input: string | Date): { d: string; mo: string; y: string; hh: string; mm: string } {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Baku",
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(toInstant(input));
+  const get = (t: string) => parts.find(p => p.type === t)?.value ?? "";
+  // en-GB hour12:false gecəyarını bəzən "24" verir — 00-a normallaşdırırıq.
+  const hh = get("hour") === "24" ? "00" : get("hour");
+  return { d: get("day"), mo: get("month"), y: get("year"), hh, mm: get("minute") };
+}
+
+/** Tarix — həmişə gg.aa.iiii (məs. 13.07.2026), locale-dən asılı deyil. */
 export function azFormatDate(input: string | Date) {
-  return azFormat(input, { day: "2-digit", month: "2-digit", year: "numeric" });
+  const p = azNumericParts(input);
+  return `${p.d}.${p.mo}.${p.y}`;
 }
 
 export function azFormatTime(input: string | Date) {
-  return azFormat(input, { hour: "2-digit", minute: "2-digit", hour12: false });
+  const p = azNumericParts(input);
+  return `${p.hh}:${p.mm}`;
 }
 
+/** Tarix + saat — gg.aa.iiii ss:dd (məs. 13.07.2026 12:00). */
 export function azFormatDateTime(input: string | Date) {
-  return azFormat(input, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+  const p = azNumericParts(input);
+  return `${p.d}.${p.mo}.${p.y} ${p.hh}:${p.mm}`;
 }
 
 export function azFormatWeekday(input: string | Date) {

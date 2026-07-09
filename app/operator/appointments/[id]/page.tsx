@@ -986,7 +986,9 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   const chosenSlots = pickedSlots.length > 0
     ? pickedSlots.map(st => {
         const slot = slots.find(x => x.startAt === st);
-        return { key: st, label: slot ? `${azFormatDate(slot.startAt)} · ${azFormatTime(slot.startAt)}` : st, onRemove: () => toggleSlot(st) };
+        // Tam aralığı göstər (başlama – bitmə) ki, operator seansın neçə dəqiqə
+        // olduğunu birbaşa görsün — məs. 90 dəq seans üçün "10:00 – 11:30".
+        return { key: st, label: slot ? `${azFormatDate(slot.startAt)} · ${azFormatTime(slot.startAt)} – ${azFormatTime(slot.endAt)}` : st, onRemove: () => toggleSlot(st) };
       })
     : (manualStart && manualEnd
         ? [{ key: "manual", label: `${azFormatDate(azLocalToISO(manualStart))} · ${azFormatTime(azLocalToISO(manualStart))} – ${azFormatTime(azLocalToISO(manualEnd))}`, onRemove: () => { setManualStart(""); setManualEnd(""); } }]
@@ -1219,7 +1221,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                                 border: active ? "1.5px solid var(--brand)" : disabled ? "1.5px solid #E5E7EB" : isRequested ? "1.5px solid #047857" : "1.5px solid #D6E2F7",
                                 background: active ? "#E4ECFA" : disabled ? "#F3F4F6" : isRequested ? "#ECFDF5" : "#fff",
                                 color: active ? "#082F6D" : disabled ? "#C0C9D6" : isRequested ? "#047857" : "var(--oxford)" }}>
-                              {azFormatTime(s.startAt)}
+                              {azFormatTime(s.startAt)} – {azFormatTime(s.endAt)}
                               {maxSlots > 1 && active && (
                                 <span style={{ position: "absolute", top: -7, right: -7, width: 18, height: 18, background: "var(--brand)", color: "#fff", border: "2px solid #fff", borderRadius: "50%", fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{order}</span>
                               )}

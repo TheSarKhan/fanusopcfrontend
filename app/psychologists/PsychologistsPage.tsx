@@ -355,7 +355,7 @@ function PsyCard({ p }: { p: Item }) {
           display: block;
         }
         .pp-card__initials {
-          font-family: var(--font-playfair), serif;
+          font-family: var(--font-poppins), sans-serif;
           font-size: 28px; font-weight: 600; color: var(--fanus-primary);
         }
 

@@ -40,7 +40,7 @@ export default function StatsPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A2535]" style={{ fontFamily: "var(--font-playfair, serif)" }}>Statistika</h1>
+          <h1 className="text-2xl font-bold text-[#1A2535]" style={{ fontFamily: "var(--font-poppins, sans-serif)" }}>Statistika</h1>
           <p className="text-[#52718F] text-sm mt-1">{items.length} göstərici</p>
         </div>
         <button onClick={() => setModal({ open: true, item: { ...EMPTY } })}
@@ -54,7 +54,7 @@ export default function StatsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {items.map(s => (
             <div key={s.id} className="bg-white rounded-2xl p-5 text-center" style={{ border: "1px solid #E4EDF6" }}>
-              <p className="text-4xl font-bold text-[#2A57B0] mb-1" style={{ fontFamily: "var(--font-playfair, serif)" }}>
+              <p className="text-4xl font-bold text-[#2A57B0] mb-1" style={{ fontFamily: "var(--font-poppins, sans-serif)" }}>
                 {s.statValue}{s.suffix}
               </p>
               <p className="font-semibold text-[#1A2535] text-sm">{s.label}</p>

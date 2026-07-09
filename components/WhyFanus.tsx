@@ -32,7 +32,7 @@ export default function WhyFanus() {
 
       <style>{`
         .fanus-why { padding: 96px 0; position: relative; }
-        .fanus-why__head { max-width: 720px; margin: 0 0 48px; }
+        .fanus-why__head { max-width: 720px; margin: 0 auto 48px; text-align: center; }
         .fanus-why__head h2 {
           margin: 0;
           font-family: var(--font-poppins), system-ui, sans-serif;
@@ -44,19 +44,9 @@ export default function WhyFanus() {
         .fanus-why-card {
           display: flex; flex-direction: column; align-items: center; text-align: center;
           padding: 34px 26px 30px;
-          background: #fff;
-          border: 1px solid var(--fanus-line, #E8EEF6);
-          border-radius: 20px;
-          transition: border-color .2s ease, box-shadow .25s ease, transform .25s ease;
-        }
-        .fanus-why-card:hover {
-          transform: translateY(-3px);
-          border-color: rgba(16,81,183,.28);
-          box-shadow: 0 14px 34px rgba(16,81,183,.08);
         }
         .fanus-why-card__icon {
-          width: 60px; height: 60px; border-radius: 16px;
-          background: #EAF2FD;
+          width: 60px; height: 60px;
           display: inline-flex; align-items: center; justify-content: center;
           margin-bottom: 20px;
         }

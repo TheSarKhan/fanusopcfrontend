@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Deco from "@/components/Deco";
 import { getBlogPosts, getPsychologists, trackFunnelEvent, type BlogPost, type Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
@@ -17,8 +18,6 @@ export const MOOD_COLORS: Record<MoodId, string> = {
   angry:   "#1051B7",
   mixed:   "#0B3F90",
   lonely:  "#1A3B7A",
-  hopeful: "#3D70C8",
-  happy:   "#1051B7",
 };
 
 export function MoodIcon({ id, size = 30 }: { id: MoodId; size?: number }) {
@@ -30,15 +29,157 @@ export function MoodIcon({ id, size = 30 }: { id: MoodId; size?: number }) {
     case "angry": return <svg {...p}><path d="M17 3 L7 18 L14 18 L11 29 L23 13 L16 13 L19 3 Z" fill="currentColor" opacity=".18"/><path d="M17 3 L7 18 L14 18 L11 29 L23 13 L16 13 L19 3 Z"/></svg>;
     case "mixed": return <svg {...p}><circle cx="12" cy="16" r="7" fill="currentColor" opacity=".18"/><circle cx="20" cy="16" r="7" fill="currentColor" opacity=".18"/><circle cx="12" cy="16" r="7"/><circle cx="20" cy="16" r="7"/></svg>;
     case "lonely": return <svg {...p}><path d="M5 26 Q16 14 27 26" opacity=".4"/><circle cx="16" cy="14" r="3.2" fill="currentColor" opacity=".18"/><circle cx="16" cy="14" r="3.2"/><path d="M11 26 Q16 19 21 26"/></svg>;
-    case "hopeful": return <svg {...p}><circle cx="16" cy="18" r="5" fill="currentColor" opacity=".22"/><circle cx="16" cy="18" r="5"/><path d="M4 24 L28 24"/><path d="M16 9 L16 6 M9 12 L7 10 M23 12 L25 10 M5 18 L3 18 M27 18 L29 18"/></svg>;
-    case "happy": return <svg {...p}><path d="M6 20 Q16 8 26 20" fill="currentColor" opacity=".18"/><path d="M6 20 Q16 8 26 20"/><circle cx="11" cy="15" r="1.4" fill="currentColor"/><circle cx="21" cy="15" r="1.4" fill="currentColor"/></svg>;
   }
 }
 
-export default function MoodCheckIn() {
+/** Generic (non-mood-specific) smiley used on the collapsed hero trigger chip. */
+function TriggerIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+      <circle cx="9" cy="9.5" r="1" fill="currentColor" />
+      <circle cx="15" cy="9.5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+/* Chip visuals shared between the standalone section and the compact (hero-embedded) variant. */
+const MOOD_CHIP_CSS = `
+  .fanus-mood-chip {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 22px 16px; background: white;
+    border-radius: 18px; border: 1px solid var(--fanus-line);
+    transition: all .25s ease; overflow: hidden; cursor: pointer;
+    font-family: inherit;
+  }
+  .fanus-mood-chip:hover {
+    transform: translateY(-3px);
+    border-color: var(--mood-color);
+    box-shadow: 0 12px 30px rgba(16,81,183,.1);
+  }
+  .fanus-mood-chip.is-on {
+    background: var(--mood-color); color: white; border-color: var(--mood-color);
+  }
+  .fanus-mood-chip__icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 52px; height: 52px; border-radius: 14px;
+    background: var(--fanus-primary-50);
+    transition: all .25s ease;
+  }
+  .fanus-mood-chip:hover .fanus-mood-chip__icon {
+    background: white; box-shadow: 0 0 0 2px var(--mood-color);
+  }
+  .fanus-mood-chip.is-on .fanus-mood-chip__icon {
+    background: rgba(255,255,255,.18); color: white !important; box-shadow: none;
+  }
+  .fanus-mood-chip__label { font-size: 14px; font-weight: 600; color: var(--fanus-ink); }
+  .fanus-mood-chip.is-on .fanus-mood-chip__label { color: white; }
+  .fanus-mood-chip__ring {
+    position: absolute; inset: -2px; border-radius: 18px;
+    border: 2px solid var(--mood-color); opacity: 0;
+    transition: opacity .2s;
+  }
+  .fanus-mood-chip:hover .fanus-mood-chip__ring { opacity: .25; }
+`;
+
+/* Compact = embedded in the Hero, over the video — a slim head + a horizontally scrollable chip row. */
+const MOOD_COMPACT_CSS = `
+  .fanus-mood--compact {
+    display: flex; align-items: center; gap: 22px;
+  }
+  .fanus-mood--compact .fanus-mood__head { max-width: 230px; margin: 0; flex-shrink: 0; }
+  .fanus-mood--compact .fanus-mood__head h2 {
+    font-family: var(--font-poppins), system-ui, sans-serif;
+    font-size: 16px; font-weight: 700; line-height: 1.25;
+    margin: 0 0 4px;
+  }
+  .fanus-mood--compact .fanus-mood__head p { font-size: 12px; line-height: 1.4; margin: 0; }
+  .fanus-mood--compact .fanus-mood__chips {
+    display: flex; flex-wrap: nowrap; gap: 10px;
+    overflow-x: auto; margin: 0; max-width: none;
+    scrollbar-width: none;
+  }
+  .fanus-mood--compact .fanus-mood__chips::-webkit-scrollbar { display: none; }
+  .fanus-mood--compact .fanus-mood-chip {
+    flex: 0 0 82px; padding: 12px 6px; border-radius: 14px; gap: 6px;
+  }
+  .fanus-mood--compact .fanus-mood-chip__icon { width: 36px; height: 36px; border-radius: 10px; }
+  .fanus-mood--compact .fanus-mood-chip__label { font-size: 11px; text-align: center; line-height: 1.2; }
+
+  @media (max-width: 640px) {
+    .fanus-mood--compact { flex-direction: column; align-items: stretch; gap: 12px; }
+    .fanus-mood--compact .fanus-mood__head { max-width: 100%; }
+  }
+`;
+
+/* Trigger = a small floating chip (e.g. over a video/image card) that opens the normal mood popup on tap — it never resizes itself. */
+const MOOD_TRIGGER_CSS = `
+  .fanus-mood-trigger {
+    position: absolute; left: 16px; bottom: 16px; z-index: 1;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,.96); backdrop-filter: blur(6px);
+    border: none; border-radius: 14px; padding: 10px 14px;
+    box-shadow: 0 10px 28px rgba(10,26,51,.18);
+    font-family: inherit; font-size: 13px; font-weight: 700; color: var(--fanus-ink);
+    cursor: pointer; text-align: left; line-height: 1.3;
+    max-width: calc(100% - 32px);
+  }
+  .fanus-mood-trigger__icon {
+    flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--fanus-primary-50); color: var(--fanus-primary);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* Picker popup — same chrome as the suggestions popup (MOOD_MODAL_CHROME_CSS): centered backdrop, fixed card. */
+  .fanus-mood-picker-modal { max-width: 600px; padding: 32px 32px 28px; }
+  .fanus-mood-picker-body .fanus-mood__head { max-width: 100%; margin: 0 0 24px; }
+  .fanus-mood-picker-body .fanus-mood__head h2 {
+    font-family: var(--font-poppins), system-ui, sans-serif;
+    font-size: 22px; font-weight: 700; margin: 0 0 6px; color: var(--fanus-ink);
+  }
+  .fanus-mood-picker-body .fanus-mood__head p { font-size: 14px; color: var(--fanus-ink-3); margin: 0; }
+  .fanus-mood-picker-body .fanus-mood__chips {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px; max-width: none; margin: 0;
+  }
+  @media (max-width: 520px) {
+    .fanus-mood-picker-body .fanus-mood__chips { grid-template-columns: repeat(2, 1fr); }
+  }
+`;
+
+/* Shared "normal popup" chrome — centered backdrop + white card — used by every mood popup (picker and suggestions alike). */
+const MOOD_MODAL_CHROME_CSS = `
+  .fanus-mm-backdrop {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(8,47,109,.5); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; animation: fadeIn .2s ease;
+  }
+  .fanus-mm-modal {
+    background: white; border-radius: 24px;
+    width: 100%; max-width: 760px; max-height: 92vh; overflow: auto;
+    box-shadow: 0 40px 80px rgba(0,0,0,.3);
+    animation: slideUp .3s ease; position: relative;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .fanus-mm-close {
+    position: absolute; top: 16px; right: 16px;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--fanus-bg); color: var(--fanus-ink-2);
+    display: inline-flex; align-items: center; justify-content: center;
+    z-index: 2; border: none; cursor: pointer;
+  }
+  .fanus-mm-close:hover { background: var(--fanus-primary-100); color: var(--fanus-primary); }
+`;
+
+export default function MoodCheckIn({ compact = false, trigger = false }: { compact?: boolean; trigger?: boolean } = {}) {
   const { t } = useT();
   const [selected, setSelected] = useState<Mood | null>(null);
   const [open, setOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const MOODS: Mood[] = [
     { id: "anxious", label: t("mood.moodAnxious"), color: MOOD_COLORS.anxious },
@@ -47,17 +188,88 @@ export default function MoodCheckIn() {
     { id: "angry",   label: t("mood.moodAngry"),   color: MOOD_COLORS.angry },
     { id: "mixed",   label: t("mood.moodMixed"),   color: MOOD_COLORS.mixed },
     { id: "lonely",  label: t("mood.moodLonely"),  color: MOOD_COLORS.lonely },
-    { id: "hopeful", label: t("mood.moodHopeful"), color: MOOD_COLORS.hopeful },
-    { id: "happy",   label: t("mood.moodHappy"),   color: MOOD_COLORS.happy },
   ];
 
   const onPick = (m: Mood) => {
     setSelected(m);
+    setPickerOpen(false);
     trackFunnelEvent("MOOD_SELECTED", m.id); // GAP-08: conversion counter
     setTimeout(() => setOpen(true), 250);
   };
 
-  return (
+  const chips = (
+    <div className="fanus-mood__chips">
+      {MOODS.map((m) => (
+        <button
+          key={m.id}
+          className={`fanus-mood-chip ${selected?.id === m.id ? "is-on" : ""}`}
+          onClick={() => onPick(m)}
+          style={{ ["--mood-color" as string]: m.color }}
+        >
+          <span className="fanus-mood-chip__icon" style={{ color: m.color }}>
+            <MoodIcon id={m.id} size={compact ? 24 : 32} />
+          </span>
+          <span className="fanus-mood-chip__label">{m.label}</span>
+          <span className="fanus-mood-chip__ring" aria-hidden />
+        </button>
+      ))}
+    </div>
+  );
+
+  const modal = open && selected && (
+    <MoodModal mood={selected} onClose={() => { setOpen(false); setSelected(null); }} />
+  );
+
+  if (trigger) {
+    return (
+      <>
+        <button type="button" className="fanus-mood-trigger" onClick={() => setPickerOpen(true)}>
+          <span className="fanus-mood-trigger__icon"><TriggerIcon size={18} /></span>
+          <span>{t("mood.title")}</span>
+        </button>
+
+        {pickerOpen && createPortal(
+          <div className="fanus-mm-backdrop" onClick={() => setPickerOpen(false)}>
+            <div className="fanus-mm-modal fanus-mood-picker-modal" onClick={(e) => e.stopPropagation()}>
+              <button type="button" className="fanus-mm-close" onClick={() => setPickerOpen(false)} aria-label={t("common.close")}>
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+              <div className="fanus-mood-picker-body">
+                <div className="fanus-mood__head">
+                  <h2>{t("mood.title")}</h2>
+                  <p>{t("mood.sub")}</p>
+                </div>
+                {chips}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {modal}
+        <style>{`${MOOD_CHIP_CSS}${MOOD_MODAL_CHROME_CSS}${MOOD_TRIGGER_CSS}`}</style>
+      </>
+    );
+  }
+
+  const body = (
+    <>
+      <div className="fanus-mood__head">
+        <h2>{t("mood.title")}</h2>
+        <p>{t("mood.sub")}</p>
+      </div>
+
+      {chips}
+    </>
+  );
+
+  return compact ? (
+    <div className="fanus-mood fanus-mood--compact">
+      {body}
+      {modal}
+      <style>{`${MOOD_CHIP_CSS}${MOOD_COMPACT_CSS}`}</style>
+    </div>
+  ) : (
     <section className="fanus-mood" id="mood">
       <Deco type="blob-1" style={{ top: 60, left: "-3%", width: 280, opacity: .55 }} anim="drift" />
       <Deco type="circles-mix" style={{ top: 120, right: "-2%", width: 260, opacity: .65 }} />
@@ -66,32 +278,10 @@ export default function MoodCheckIn() {
         <div className="fanus-mood__glow" />
       </div>
       <div className="fanus-container">
-        <div className="fanus-mood__head">
-          <h2>{t("mood.title")}</h2>
-          <p>{t("mood.sub")}</p>
-        </div>
-
-        <div className="fanus-mood__chips">
-          {MOODS.map((m) => (
-            <button
-              key={m.id}
-              className={`fanus-mood-chip ${selected?.id === m.id ? "is-on" : ""}`}
-              onClick={() => onPick(m)}
-              style={{ ["--mood-color" as string]: m.color }}
-            >
-              <span className="fanus-mood-chip__icon" style={{ color: m.color }}>
-                <MoodIcon id={m.id} size={32} />
-              </span>
-              <span className="fanus-mood-chip__label">{m.label}</span>
-              <span className="fanus-mood-chip__ring" aria-hidden />
-            </button>
-          ))}
-        </div>
+        {body}
       </div>
 
-      {open && selected && (
-        <MoodModal mood={selected} onClose={() => { setOpen(false); setSelected(null); }} />
-      )}
+      {modal}
 
       <style>{`
         .fanus-mood { padding: 100px 0; position: relative; overflow: hidden; }
@@ -115,42 +305,8 @@ export default function MoodCheckIn() {
           display: grid; grid-template-columns: repeat(4, 1fr);
           gap: 14px; max-width: 880px; margin: 0 auto;
         }
-        .fanus-mood-chip {
-          position: relative;
-          display: flex; flex-direction: column; align-items: center; gap: 8px;
-          padding: 22px 16px; background: white;
-          border-radius: 18px; border: 1px solid var(--fanus-line);
-          transition: all .25s ease; overflow: hidden; cursor: pointer;
-          font-family: inherit;
-        }
-        .fanus-mood-chip:hover {
-          transform: translateY(-3px);
-          border-color: var(--mood-color);
-          box-shadow: 0 12px 30px rgba(16,81,183,.1);
-        }
-        .fanus-mood-chip.is-on {
-          background: var(--mood-color); color: white; border-color: var(--mood-color);
-        }
-        .fanus-mood-chip__icon {
-          display: inline-flex; align-items: center; justify-content: center;
-          width: 52px; height: 52px; border-radius: 14px;
-          background: var(--fanus-primary-50);
-          transition: all .25s ease;
-        }
-        .fanus-mood-chip:hover .fanus-mood-chip__icon {
-          background: white; box-shadow: 0 0 0 2px var(--mood-color);
-        }
-        .fanus-mood-chip.is-on .fanus-mood-chip__icon {
-          background: rgba(255,255,255,.18); color: white !important; box-shadow: none;
-        }
-        .fanus-mood-chip__label { font-size: 14px; font-weight: 600; }
-        .fanus-mood-chip__ring {
-          position: absolute; inset: -2px; border-radius: 18px;
-          border: 2px solid var(--mood-color); opacity: 0;
-          transition: opacity .2s;
-        }
-        .fanus-mood-chip:hover .fanus-mood-chip__ring { opacity: .25; }
         @media (max-width: 720px) { .fanus-mood__chips { grid-template-columns: repeat(2, 1fr); } }
+        ${MOOD_CHIP_CSS}
       `}</style>
     </section>
   );
@@ -198,18 +354,16 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
     return [...inCat, ...rest].slice(0, 3);
   }, [posts, cat]);
 
-  const MESSAGE_KEYS: Record<MoodId, "mood.msgAnxious" | "mood.msgSad" | "mood.msgTired" | "mood.msgAngry" | "mood.msgMixed" | "mood.msgLonely" | "mood.msgHopeful" | "mood.msgHappy"> = {
+  const MESSAGE_KEYS: Record<MoodId, "mood.msgAnxious" | "mood.msgSad" | "mood.msgTired" | "mood.msgAngry" | "mood.msgMixed" | "mood.msgLonely"> = {
     anxious: "mood.msgAnxious",
     sad:     "mood.msgSad",
     tired:   "mood.msgTired",
     angry:   "mood.msgAngry",
     mixed:   "mood.msgMixed",
     lonely:  "mood.msgLonely",
-    hopeful: "mood.msgHopeful",
-    happy:   "mood.msgHappy",
   };
 
-  return (
+  return createPortal(
     <div className="fanus-mm-backdrop" onClick={onClose}>
       <div className="fanus-mm-modal" onClick={(e) => e.stopPropagation()}>
         <button className="fanus-mm-close" onClick={onClose} aria-label={t("common.close")}>
@@ -295,28 +449,7 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
       </div>
 
       <style>{`
-        .fanus-mm-backdrop {
-          position: fixed; inset: 0; z-index: 100;
-          background: rgba(8,47,109,.5); backdrop-filter: blur(8px);
-          display: flex; align-items: center; justify-content: center;
-          padding: 20px; animation: fadeIn .2s ease;
-        }
-        .fanus-mm-modal {
-          background: white; border-radius: 24px;
-          width: 100%; max-width: 760px; max-height: 92vh; overflow: auto;
-          box-shadow: 0 40px 80px rgba(0,0,0,.3);
-          animation: slideUp .3s ease; position: relative;
-        }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        .fanus-mm-close {
-          position: absolute; top: 16px; right: 16px;
-          width: 36px; height: 36px; border-radius: 50%;
-          background: var(--fanus-bg); color: var(--fanus-ink-2);
-          display: inline-flex; align-items: center; justify-content: center;
-          z-index: 2; border: none; cursor: pointer;
-        }
-        .fanus-mm-close:hover { background: var(--fanus-primary-100); color: var(--fanus-primary); }
+        ${MOOD_MODAL_CHROME_CSS}
         .fanus-mm-head {
           padding: 36px 36px 28px;
           background: linear-gradient(180deg, #F2F6FD, white);
@@ -382,6 +515,7 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
           .fanus-mm-foot .fanus-btn { width: 100%; }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 }

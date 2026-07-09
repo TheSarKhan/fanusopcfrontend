@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { buildPanelUrl, getStoredUser } from "@/lib/auth";
 import { tryGetMe } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -10,9 +11,14 @@ import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function Navbar() {
   const { t } = useT();
+  const pathname = usePathname();
+  const isHome = pathname === "/";
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [panelUrl, setPanelUrl] = useState<string | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+  // Şəffaf/ağ variant yalnız tablet+ ekranlarda: mobildə hero adi ağ-fonlu mətn bloku ilə başlayır.
+  const light = isHome && !scrolled && isDesktop;
 
   const navLinks = [
     { label: t("nav.about"),         href: "/about" },
@@ -37,6 +43,14 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    const mql = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktop(mql.matches);
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
     // Optimistic: render panel link from the cached user record immediately…
     const cached = getStoredUser();
     if (cached?.role) setPanelUrl(buildPanelUrl(cached.role));
@@ -54,11 +68,11 @@ export default function Navbar() {
   const isLoggedIn = panelUrl !== null;
 
   return (
-    <header className={`fanus-nav ${scrolled ? "is-scrolled" : ""}`}>
+    <header className={`fanus-nav ${scrolled ? "is-scrolled" : ""} ${light ? "fanus-nav--light" : ""}`}>
       <div className="fanus-container fanus-nav__inner">
         <Link href="/" className="fanus-nav__brand" aria-label="Fanus">
           <span className="fanus-nav__mark">
-            <Image src="/images/logos/logo-blue.png" alt="" width={56} height={40} priority />
+            <Image src={light ? "/images/logos/logo-white.png" : "/images/logos/logo-blue.png"} alt="" width={56} height={40} priority />
           </span>
           <span className="fanus-nav__type">
             <span className="fanus-nav__type-name">FANUS</span>
@@ -138,6 +152,21 @@ export default function Navbar() {
           -webkit-backdrop-filter: blur(16px) saturate(1.3);
           border-bottom-color: var(--fanus-line);
           box-shadow: 0 2px 16px rgba(10,26,51,.07);
+        }
+
+        /* ── Light (transparent-over-hero) variant — homepage, not scrolled.
+           Yalnız tablet/desktopda: mobildə hero adi ağ-fonlu mətn bloku ilə başlayır. ── */
+        @media (min-width: 768px) {
+          .fanus-nav--light .fanus-nav__type-name { color: #fff; }
+          .fanus-nav--light .fanus-nav__type-sub { color: rgba(255,255,255,.75); }
+          .fanus-nav--light .fanus-nav__link { color: rgba(255,255,255,.92); }
+          .fanus-nav--light .fanus-nav__link:hover { color: #fff; }
+          .fanus-nav--light .fanus-nav__glow { background: rgba(255,255,255,.16); }
+          .fanus-nav--light .fanus-nav__login { color: #fff; border-color: rgba(255,255,255,.5); }
+          .fanus-nav--light .fanus-nav__login:hover { color: #fff; border-color: #fff; }
+          .fanus-nav--light .fanus-nav__menu { color: #fff; }
+          .fanus-nav--light .lsw__btn { color: #fff; border-color: rgba(255,255,255,.5); }
+          .fanus-nav--light .lsw__btn:hover { background: rgba(255,255,255,.14); border-color: #fff; }
         }
 
         /* ── Inner ── */

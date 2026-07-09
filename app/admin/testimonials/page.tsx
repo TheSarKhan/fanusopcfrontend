@@ -43,7 +43,7 @@ export default function TestimonialsPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A2535]" style={{ fontFamily: "var(--font-playfair, serif)" }}>Müştəri rəyləri</h1>
+          <h1 className="text-2xl font-bold text-[#1A2535]" style={{ fontFamily: "var(--font-poppins, sans-serif)" }}>Müştəri rəyləri</h1>
           <p className="text-[#52718F] text-sm mt-1">{items.length} rəy</p>
         </div>
         <button onClick={() => setModal({ open: true, item: { ...EMPTY } })}

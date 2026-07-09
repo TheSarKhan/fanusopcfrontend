@@ -8,7 +8,7 @@
 
 export type Cat = "all" | "anxiety" | "trauma" | "family" | "depression" | "youth" | "addiction";
 
-export type MoodId = "anxious" | "sad" | "tired" | "angry" | "mixed" | "lonely" | "hopeful" | "happy";
+export type MoodId = "anxious" | "sad" | "tired" | "angry" | "mixed" | "lonely";
 
 /** Which specialization category fits each mood. "all" = no filter. */
 export const MOOD_TO_CAT: Record<MoodId, Cat> = {
@@ -18,8 +18,6 @@ export const MOOD_TO_CAT: Record<MoodId, Cat> = {
   angry:   "addiction",    // impulse-control expertise
   mixed:   "anxiety",
   lonely:  "family",       // relationship-focused therapists
-  hopeful: "all",
-  happy:   "all",
 };
 
 /** Categorize a psychologist by their free-text specializations. */

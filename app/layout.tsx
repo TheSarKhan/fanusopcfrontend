@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Poppins, Playfair_Display } from "next/font/google";
+import { Poppins } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 import SiteChrome from "@/components/SiteChrome";
@@ -13,13 +13,6 @@ const poppins = Poppins({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
   variable: "--font-poppins",
-  display: "swap",
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-playfair",
   display: "swap",
 });
 
@@ -51,7 +44,7 @@ export default async function RootLayout({
   const isPanel = subdomain !== null && PANEL_SUBDOMAINS.has(subdomain);
 
   return (
-    <html lang="az" className={`${poppins.variable} ${playfair.variable}`} suppressHydrationWarning>
+    <html lang="az" className={poppins.variable} suppressHydrationWarning>
       <body className="min-h-screen flex flex-col" suppressHydrationWarning>
         <LocaleProvider>
           {isPanel ? (

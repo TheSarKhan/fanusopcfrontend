@@ -9,7 +9,6 @@ export default function ServicesPage() {
     <div className="fanus-root">
       <ServicesHero />
       <ServicesPrograms />
-      <ServicesMatch />
     </div>
   );
 }
@@ -182,43 +181,6 @@ function ServicesPrograms() {
             flex: 0 0 100%;
             max-width: 100%;
           }
-        }
-      `}</style>
-    </section>
-  );
-}
-
-function ServicesMatch() {
-  const { t } = useT();
-  return (
-    <section className="svc-match">
-      <Deco type="circles-mix" style={{ top: 30, right: "6%", width: 220, opacity: .55 }} />
-      <Deco type="target" style={{ bottom: 30, left: "8%", width: 130, opacity: .55 }} anim="drift" />
-
-      <div className="fanus-container">
-        <div className="svc-head">
-          <h2>Sizə uyğun psixoloqu birlikdə tapaq</h2>
-          <p>Yazdığınızı oxuyub uyğun mütəxəssisi qısa müddətdə təklif edirik. İlk 15 dəqiqəlik tanışlıq pulsuzdur.</p>
-          <div className="svc-match__cta">
-            <Link href="/psychologists" className="fanus-btn fanus-btn-primary">
-              {t("psyList.seeAll")} <Arrow />
-            </Link>
-            <Link href="/register" className="fanus-btn fanus-btn-ghost">{t("nav.register")}</Link>
-          </div>
-        </div>
-      </div>
-
-      <style>{`
-        .svc-match {
-          padding: 90px 0;
-          background: linear-gradient(180deg, var(--fanus-bg) 0%, var(--fanus-primary-50) 100%);
-          position: relative; overflow: hidden;
-        }
-        .svc-match > .fanus-container { position: relative; z-index: 1; }
-        .svc-match .svc-head { margin: 0 auto; }
-        .svc-match__cta {
-          display: flex; justify-content: center; gap: 12px;
-          margin-top: 28px; flex-wrap: wrap;
         }
       `}</style>
     </section>

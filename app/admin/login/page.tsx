@@ -45,7 +45,7 @@ export default function AdminLoginPage() {
           >
             F
           </div>
-          <h1 className="text-2xl font-bold text-[#1A2535]" style={{ fontFamily: "var(--font-playfair, serif)" }}>
+          <h1 className="text-2xl font-bold text-[#1A2535]" style={{ fontFamily: "var(--font-poppins, sans-serif)" }}>
             Admin Panel
           </h1>
           <p className="text-sm text-[#52718F] mt-1">Fanus idarəetmə sistemi</p>

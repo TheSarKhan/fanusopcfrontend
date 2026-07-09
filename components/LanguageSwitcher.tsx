@@ -72,6 +72,8 @@ export default function LanguageSwitcher({ variant = "default" }: { variant?: "d
     if (getStoredUser()) meApi.setLocale(l).catch(() => {});
   };
 
+  const CurrentFlag = FLAGS[locale];
+
   return (
     <div className={`lsw${variant === "compact" ? " lsw--compact" : ""}`} ref={ref}>
       <button
@@ -81,6 +83,7 @@ export default function LanguageSwitcher({ variant = "default" }: { variant?: "d
         aria-expanded={open}
         type="button"
       >
+        <CurrentFlag />
         <span className="lsw__code">{LABELS[locale]}</span>
         <svg className={`lsw__chevron${open ? " is-open" : ""}`} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M6 9l6 6 6-6" />
@@ -111,15 +114,15 @@ export default function LanguageSwitcher({ variant = "default" }: { variant?: "d
       <style>{`
         .lsw { position: relative; }
         .lsw__btn {
-          display: inline-flex; align-items: center; gap: 7px;
-          padding: 7px 11px; border-radius: 999px;
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 9px 18px; border-radius: 999px;
           background: transparent; border: 1px solid var(--fanus-line);
           color: var(--fanus-ink); cursor: pointer;
           transition: background .15s, border-color .15s;
-          white-space: nowrap;
+          white-space: nowrap; font-weight: 600;
         }
         .lsw__btn:hover { background: var(--fanus-primary-50); border-color: var(--fanus-primary-300); }
-        .lsw__code { font-size: 13px; font-weight: 600; }
+        .lsw__code { font-size: 14px; font-weight: 600; }
         .lsw__chevron { transition: transform .2s; flex-shrink: 0; color: var(--fanus-ink-3); }
         .lsw__chevron.is-open { transform: rotate(180deg); }
 

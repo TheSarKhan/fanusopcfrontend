@@ -75,14 +75,14 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
       <style>{`
         .fanus-psyc { padding: 100px 0; position: relative; overflow: hidden; }
         .fanus-psyc > .fanus-container { position: relative; z-index: 1; }
-        .fanus-psyc__head { margin-bottom: 48px; }
+        .fanus-psyc__head { margin-bottom: 48px; text-align: center; }
         .fanus-psyc__head h2 {
           font-family: var(--font-poppins), system-ui, sans-serif;
           font-size: clamp(30px, 3.6vw, 48px); font-weight: 700;
           letter-spacing: -0.025em; line-height: 1.1; color: var(--fanus-ink);
           margin: 0;
         }
-        .fanus-psyc__lead { margin-top: 12px; max-width: 540px; font-size: 17px; color: var(--fanus-ink-3); }
+        .fanus-psyc__lead { margin: 12px auto 0; max-width: 540px; font-size: 17px; color: var(--fanus-ink-3); }
         .fanus-psyc__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
         @media (max-width: 980px) { .fanus-psyc__grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 640px) { .fanus-psyc__grid { grid-template-columns: 1fr; } }
@@ -98,11 +98,14 @@ function PsyCard({ p }: { p: CardItem }) {
   const ratingNum = parseFloat(p.rating);
   const filledStars = isFinite(ratingNum) ? Math.round(ratingNum) : 0;
   const hasSessions = p.sessions && p.sessions !== "0" && p.sessions !== "—";
+  const sessionLabel = p.displayedSessionCount != null && p.displayedSessionCount > 0
+    ? (p.statsSource === "FANUS_PLATFORM"
+        ? `${t("psyStats.fanusSessions")}: ${p.displayedSessionCount}`
+        : `${t("psyStats.priorSessions")}: ${p.displayedSessionCount}`)
+    : (hasSessions ? t("psyList.sessionsCount", { count: p.sessions }) : null);
 
   return (
     <article className="pp-card">
-      <div className="pp-card__accent" />
-
       <Link href={`/psychologists/${p.slug}`} className="pp-card__head" aria-label={`${p.name} profili`}>
         <div className="pp-card__photo">
           {p.photoUrl ? (
@@ -125,8 +128,8 @@ function PsyCard({ p }: { p: CardItem }) {
             <div className="pp-card__rating">
               <Stars value={filledStars} />
               <strong>{p.rating}</strong>
-              {hasSessions && <span className="pp-card__rating-sep">·</span>}
-              {hasSessions && <span className="pp-card__rating-sub">{t("psyList.sessionsCount", { count: p.sessions })}</span>}
+              {sessionLabel && <span className="pp-card__rating-sep">·</span>}
+              {sessionLabel && <span className="pp-card__rating-sub">{sessionLabel}</span>}
             </div>
           )}
         </div>
@@ -134,11 +137,11 @@ function PsyCard({ p }: { p: CardItem }) {
 
       {p.specs.length > 0 && (
         <div className="pp-card__tags">
-          {p.specs.slice(0, 3).map((s, i) => (
+          {p.specs.slice(0, 2).map((s, i) => (
             <span key={i} className="pp-tag">{s}</span>
           ))}
-          {p.specs.length > 3 && (
-            <span className="pp-tag pp-tag--ghost">+{p.specs.length - 3}</span>
+          {p.specs.length > 2 && (
+            <span className="pp-tag pp-tag--ghost">+{p.specs.length - 2}</span>
           )}
         </div>
       )}
@@ -148,16 +151,6 @@ function PsyCard({ p }: { p: CardItem }) {
         <li><ClockIcon /> {p.exp} {t("psyList.yearsExp")}</li>
         <li><HourIcon /> {t("psyList.minutes", { n: p.sessionMinutes })}</li>
       </ul>
-
-      {p.displayedSessionCount != null && p.displayedSessionCount > 0 && (
-        <div className="pp-card__stats">
-          <span className="pp-tag pp-tag--stats">
-            {p.statsSource === "FANUS_PLATFORM"
-              ? `${t("psyStats.fanusSessions")}: ${p.displayedSessionCount}`
-              : `${t("psyStats.priorSessions")}: ${p.displayedSessionCount}`}
-          </span>
-        </div>
-      )}
 
       <div className="pp-card__foot">
         <Link href={`/psychologists/${p.slug}`} className="pp-btn pp-btn--ghost">
@@ -177,26 +170,11 @@ function PsyCard({ p }: { p: CardItem }) {
           padding: 22px 22px 18px;
           display: flex; flex-direction: column; gap: 14px;
           overflow: hidden;
-          transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
-        }
-        .pp-card::before {
-          content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px;
-          background: linear-gradient(90deg, transparent, currentColor, transparent);
-          color: var(--fanus-primary-200);
-          opacity: 0; transition: opacity .25s ease;
+          transition: border-color .2s ease, box-shadow .2s ease;
         }
         .pp-card:hover {
-          transform: translateY(-4px);
           border-color: var(--fanus-primary-200);
-          box-shadow: 0 22px 50px rgba(16,81,183,.10);
-        }
-        .pp-card:hover::before { opacity: 1; }
-
-        .pp-card__accent {
-          position: absolute; top: -60px; right: -60px;
-          width: 180px; height: 180px; border-radius: 50%;
-          background: linear-gradient(135deg, var(--fanus-primary-50), var(--fanus-primary-100));
-          opacity: .55; pointer-events: none; filter: blur(12px);
+          box-shadow: 0 12px 30px rgba(16,81,183,.08);
         }
 
         .pp-card__head {
@@ -219,7 +197,7 @@ function PsyCard({ p }: { p: CardItem }) {
           display: block;
         }
         .pp-card__initials {
-          font-family: var(--font-playfair), serif;
+          font-family: var(--font-poppins), sans-serif;
           font-size: 28px; font-weight: 600; color: var(--fanus-primary);
         }
 
@@ -257,12 +235,12 @@ function PsyCard({ p }: { p: CardItem }) {
         .pp-card__rating-sub { color: var(--fanus-ink-3); }
 
         .pp-card__tags {
-          display: flex; flex-wrap: wrap; gap: 6px;
-          position: relative; z-index: 1;
+          display: flex; flex-wrap: nowrap; overflow: hidden; gap: 6px;
         }
         .pp-tag {
+          flex-shrink: 0;
           font-size: 11.5px; padding: 4px 10px; border-radius: 999px;
-          font-weight: 600; letter-spacing: .01em;
+          font-weight: 600; letter-spacing: .01em; white-space: nowrap;
           background: var(--fanus-primary-50);
           color: var(--fanus-primary);
         }
@@ -273,24 +251,13 @@ function PsyCard({ p }: { p: CardItem }) {
 
         .pp-card__meta {
           list-style: none; padding: 0; margin: 0;
-          display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px;
-          position: relative; z-index: 1;
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 10px;
         }
         .pp-card__meta li {
           display: inline-flex; align-items: center; gap: 6px;
           font-size: 12px; color: var(--fanus-ink-3);
         }
         .pp-card__meta li :first-child { color: var(--fanus-primary); flex-shrink: 0; }
-
-        .pp-card__stats {
-          display: flex; flex-wrap: wrap; gap: 6px;
-          position: relative; z-index: 1;
-        }
-        .pp-tag--stats {
-          background: var(--fanus-bg);
-          color: var(--fanus-ink);
-          border: 1px solid var(--fanus-line);
-        }
 
         .pp-card__foot {
           margin-top: auto; display: grid;

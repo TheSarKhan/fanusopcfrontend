@@ -68,10 +68,9 @@
   --radius-lg: 20px;
 
   /* ---------- Tipoqrafiya ---------- */
-  /* Başlıqlar serif; istehsalda Playfair Display (500) yüklənə bilər */
-  --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
-  /* Mətn sans; istehsalda Poppins (400/600/700) yüklənə bilər */
-  --font-sans: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Bütün başlıq və mətn Poppins-dir — sayt boyu tək font */
+  --font-sans: var(--font-poppins, 'Poppins'), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: var(--font-sans);
 
   --text-h1: 30px;          /* səhifə başlığı (serif, 500) */
   --text-h2: 26px;          /* hero başlıq (serif, 500) */

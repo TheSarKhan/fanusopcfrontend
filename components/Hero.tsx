@@ -4,162 +4,208 @@ import { useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import SessionRequestModal from "@/components/SessionRequestModal";
+import MoodCheckIn from "@/components/MoodCheckIn";
 
 export default function Hero() {
   const { t } = useT();
   const [modalOpen, setModalOpen] = useState(false);
 
+  const heroTitle = t("home.heroTitle");
+  const heroSub = t("home.heroSub");
+  const heroCta = t("home.heroCta");
+
   return (
-    <section className="fanus-hero" id="hero">
-      <div className="fanus-hero__bg" aria-hidden>
-        <svg viewBox="0 0 1440 700" preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
-          <defs>
-            <linearGradient id="heroBg" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stopColor="#F2F6FD" />
-              <stop offset="100%" stopColor="#E4ECFA" />
-            </linearGradient>
-          </defs>
-          <rect width="1440" height="700" fill="url(#heroBg)" />
-          {Array.from({ length: 36 }).map((_, i) => (
-            <circle key={i} cx={50 + (i % 12) * 120} cy={80 + Math.floor(i / 12) * 180} r="2" fill="#1051B7" opacity=".06" />
-          ))}
-        </svg>
+    <section id="hero">
+      {/* ── Desktop/tablet: tam-ekran video arxa fonu ── */}
+      <div className="fanus-hero fanus-hero--full">
+        <video
+          className="fanus-hero__video"
+          src="/videos/hero-session.mp4"
+          poster="/videos/hero-session-poster.jpg"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          aria-hidden
+        />
+        <div className="fanus-hero__scrim" aria-hidden />
+
+        <div className="fanus-container fanus-hero__inner">
+          <div className="fanus-hero__copy fanus-hero__copy--light">
+            <h1><span className="fanus-hero__hl">{heroTitle}</span></h1>
+            <p className="fanus-hero__lead fanus-hero__lead--light">{heroSub}</p>
+
+            <div className="fanus-hero__cta">
+              <Link href="/psychologists" className="fanus-btn fanus-btn-primary fanus-btn-lg">
+                {heroCta}
+              </Link>
+              <button
+                type="button"
+                onClick={() => setModalOpen(true)}
+                className="fanus-btn fanus-btn-ghost fanus-btn-lg fanus-hero__ghost"
+              >
+                Seans üçün müraciət et
+              </button>
+            </div>
+          </div>
+
+          <div className="fanus-hero__mood">
+            <MoodCheckIn compact />
+          </div>
+        </div>
       </div>
 
-      {/* ── Main two-column content ── */}
-      <div className="fanus-container fanus-hero__inner">
-        <div className="fanus-hero__copy">
-          <h1><span className="fanus-hero__hl">{t("home.heroTitle")}</span></h1>
-          <p className="fanus-hero__lead">{t("home.heroSub")}</p>
+      {/* ── Mobil: adi mətn bloku + altında video/şəkil kartı (üzərində üzən çip) ── */}
+      <div className="fanus-hero fanus-hero--stacked">
+        <div className="fanus-container">
+          <div className="fanus-hero__copy">
+            <h1><span className="fanus-hero__hl fanus-hero__hl--dark">{heroTitle}</span></h1>
+            <p className="fanus-hero__lead">{heroSub}</p>
 
-          <div className="fanus-hero__cta">
-            <Link href="/psychologists" className="fanus-btn fanus-btn-primary fanus-btn-lg">
-              {t("home.heroCta")}
-            </Link>
-            <button type="button" onClick={() => setModalOpen(true)} className="fanus-btn fanus-btn-ghost fanus-btn-lg">
-              Seans üçün müraciət et
-            </button>
+            <div className="fanus-hero__cta">
+              <Link href="/psychologists" className="fanus-btn fanus-btn-primary fanus-btn-lg">
+                {heroCta}
+              </Link>
+              <button type="button" onClick={() => setModalOpen(true)} className="fanus-btn fanus-btn-ghost fanus-btn-lg">
+                Seans üçün müraciət et
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="fanus-hero__art">
-          <div className="fanus-hart">
-            <img
-              src="/images/hero-main.webp"
-              alt="Onlayn video seansda psixoloq və klient — Fanus"
-              className="fanus-hart__img"
-              draggable={false}
-            />
-          </div>
+        <div className="fanus-hero__card">
+          <video
+            className="fanus-hero__card-img"
+            src="/videos/hero-session.mp4"
+            poster="/videos/hero-session-poster.jpg"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            aria-hidden
+          />
+          <MoodCheckIn trigger />
         </div>
       </div>
 
       <SessionRequestModal open={modalOpen} onClose={() => setModalOpen(false)} />
 
       <style>{`
-        @keyframes heroFloat { 0%,100%{transform:translateY(0)}    50%{transform:translateY(-7px)} }
-        @keyframes fcFloatA  { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-8px) rotate(-2deg)} }
-        @keyframes fcFloatB  { 0%,100%{transform:translateY(0) rotate(1.5deg)} 50%{transform:translateY(-6px) rotate(1.5deg)} }
+        .fanus-hero--full { display: none; }
 
-        .fanus-hero {
-          position: relative;
-          min-height: 640px;
-          display: flex; flex-direction: column;
-          padding-top: 14px;
-          overflow: hidden;
-        }
-        .fanus-hero__bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-
-        /* Content grid — grows to fill available space */
-        .fanus-hero__inner {
-          position: relative; z-index: 1;
-          display: grid; grid-template-columns: 1fr 1.15fr;
-          gap: 60px; align-items: center;
-          flex: 1; padding-bottom: 40px;
-        }
-
-        /* ── Copy ── */
-        .fanus-hero__copy h1 {
-          margin: 0 0 18px;
+        /* ══════════ Mobil: stacked ══════════ */
+        .fanus-hero--stacked { padding: 24px 0 48px; }
+        .fanus-hero--stacked .fanus-hero__copy { max-width: 100%; margin-bottom: 28px; }
+        .fanus-hero--stacked .fanus-hero__copy h1 {
+          margin: 0 0 14px;
           font-family: var(--font-poppins), system-ui, sans-serif;
-          font-size: clamp(36px, 4.4vw, 60px);
-          line-height: 1.06; letter-spacing: -0.025em;
+          font-size: clamp(30px, 8vw, 40px);
+          line-height: 1.1; letter-spacing: -0.02em;
           color: #0B1A35; font-weight: 800;
-        }
-        .fanus-hero__hl { color: var(--fanus-primary); }
-        .fanus-hero__lead {
-          font-size: 17px; line-height: 1.65; color: var(--fanus-ink-2);
-          max-width: 440px; margin: 0;
           text-wrap: balance;
         }
-        .fanus-hero__cta { display: flex; gap: 14px; margin: 28px 0 24px; flex-wrap: wrap; align-items: center; }
-        .fanus-hero__cta .fanus-btn-primary { box-shadow: none; }
-        .fanus-hero__cta .fanus-btn-primary:hover { box-shadow: none; }
-        .fanus-hero__cta .fanus-btn-ghost { border-color: var(--fanus-ink-3); }
-        .fanus-hero__cta .fanus-btn-ghost:hover { border-color: var(--fanus-primary); }
-
-        /* ── Art + floating cards ── */
-        .fanus-hero__art { position: relative; }
-        .h-fc {
-          position: absolute; z-index: 3;
-          background: #fff; border-radius: 18px; padding: 13px 15px;
-          box-shadow: 0 10px 40px rgba(16,81,183,.14);
-          border: 1px solid rgba(16,81,183,.07);
-          pointer-events: none;
+        .fanus-hero__hl--dark { color: var(--fanus-primary); }
+        .fanus-hero--stacked .fanus-hero__lead {
+          font-size: 16px; line-height: 1.6; color: var(--fanus-ink-2);
+          max-width: 100%; margin: 0;
         }
-        .h-fc--match {
-          top: 6%; left: -24px; width: 210px;
-          display: flex; gap: 10px; align-items: flex-start;
-          animation: fcFloatA 7s ease-in-out infinite;
-        }
-        .h-fc--session {
-          bottom: 8%; right: -12px; width: 180px;
-          animation: fcFloatB 8s ease-in-out infinite 1.4s;
-        }
-        .h-fc__check-wrap {
-          width: 26px; height: 26px; border-radius: 50%; background: var(--fanus-primary);
-          display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
-        }
-        .h-fc__content { flex: 1; min-width: 0; }
-        .h-fc__top-label { font-size: 11px; font-weight: 600; color: var(--fanus-ink-3); margin: 0 0 7px; text-transform: uppercase; letter-spacing: .04em; }
-        .h-fc__user { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
-        .h-fc__avatar {
-          width: 30px; height: 30px; border-radius: 50%;
-          background: linear-gradient(135deg,#1051B7,#082F6D);
-          color: #fff; font-size: 11px; font-weight: 700;
-          display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-        }
-        .h-fc__name { font-size: 13px; font-weight: 700; color: var(--fanus-ink); margin: 0; }
-        .h-fc__role { font-size: 11px; color: var(--fanus-ink-3); margin: 1px 0 0; }
-        .h-fc__stars { display: flex; align-items: center; gap: 2px; }
-        .h-fc__stars span { font-size: 11px; font-weight: 700; color: var(--fanus-ink); margin-left: 4px; }
-        .h-fc__session-head { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
-        .h-fc__session-head .h-fc__top-label { margin: 0; }
-        .h-fc__session-time { font-size: 17px; font-weight: 800; color: var(--fanus-ink); margin: 0 0 8px; letter-spacing: -.02em; font-family: var(--font-poppins), system-ui, sans-serif; }
-        .h-fc__confirmed {
-          display: inline-flex; align-items: center; gap: 5px;
-          font-size: 12px; font-weight: 600; color: #16A34A;
-          background: #F0FDF4; border-radius: 999px; padding: 4px 10px;
+        .fanus-hero--stacked .fanus-hero__cta { display: flex; gap: 10px; margin: 22px 0 0; flex-wrap: nowrap; align-items: stretch; }
+        .fanus-hero--stacked .fanus-hero__cta .fanus-btn {
+          flex: 1 1 0; min-width: 0;
+          white-space: normal; text-align: center;
+          padding: 14px 12px; font-size: 13.5px;
         }
 
-        /* ── Illustration ── */
-        .fanus-hart {
-          position: relative; width: 100%; aspect-ratio: 3 / 2;
-          border-radius: 24px; overflow: hidden;
-          animation: heroFloat 6s ease-in-out infinite;
+        .fanus-hero__card {
+          position: relative; width: 100%; aspect-ratio: 16 / 9;
+          margin: 0;
         }
-        .fanus-hart__img {
-          display: block; width: 100%; height: 100%;
-          object-fit: cover; object-position: center;
-          user-select: none;
+        .fanus-hero__card-img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+
+        /* ══════════ Tablet/Desktop: tam-ekran video ══════════ */
+        @media (min-width: 768px) {
+          .fanus-hero--stacked { display: none; }
+          .fanus-hero--full {
+            display: flex;
+            position: relative;
+            min-height: 100svh;
+            min-height: 100vh;
+            align-items: flex-end;
+            overflow: hidden;
+          }
+
+          .fanus-hero__video {
+            position: absolute; inset: 0; z-index: 0;
+            width: 100%; height: 100%;
+            object-fit: cover; object-position: center;
+          }
+
+          .fanus-hero__scrim {
+            position: absolute; inset: 0; z-index: 1;
+            background:
+              linear-gradient(90deg, rgba(6,14,28,.85) 0%, rgba(6,14,28,.58) 36%, rgba(6,14,28,.18) 64%, rgba(6,14,28,0) 82%),
+              linear-gradient(0deg, rgba(6,14,28,.6) 0%, rgba(6,14,28,0) 42%);
+          }
+
+          .fanus-hero__inner {
+            position: relative; z-index: 2;
+            width: 100%;
+            padding: 140px 0 90px;
+          }
+
+          .fanus-hero__copy--light { max-width: 620px; }
+          .fanus-hero__copy--light h1 {
+            margin: 0 0 18px;
+            font-family: var(--font-poppins), system-ui, sans-serif;
+            font-size: clamp(36px, 4.6vw, 62px);
+            line-height: 1.07; letter-spacing: -0.025em;
+            color: #fff; font-weight: 800;
+            text-wrap: balance;
+          }
+          .fanus-hero__hl { color: #9DC3FB; }
+          .fanus-hero__lead--light {
+            font-size: 18px; line-height: 1.65; color: rgba(255,255,255,.86);
+            max-width: 460px; margin: 0;
+            text-wrap: balance;
+          }
+
+          .fanus-hero--full .fanus-hero__cta { display: flex; gap: 14px; margin: 30px 0 0; flex-wrap: wrap; align-items: center; }
+          .fanus-hero--full .fanus-hero__cta .fanus-btn-primary { box-shadow: 0 12px 30px rgba(0,0,0,.3); }
+          .fanus-hero__ghost {
+            color: #fff; border-color: rgba(255,255,255,.55);
+            background: rgba(255,255,255,.08);
+            backdrop-filter: blur(4px);
+          }
+          .fanus-hero__ghost:hover { border-color: #fff; color: #fff; background: rgba(255,255,255,.18); }
+
+          .fanus-hero__mood {
+            margin-top: 36px; width: fit-content; max-width: 100%;
+            background: rgba(255,255,255,.10);
+            border: 1px solid rgba(255,255,255,.2);
+            backdrop-filter: blur(12px);
+            border-radius: 20px; padding: 18px 22px;
+          }
+          .fanus-hero__mood .fanus-mood__head h2 { color: #fff; }
+          .fanus-hero__mood .fanus-mood__head p { color: rgba(255,255,255,.75); }
+
+          /* Glass chips instead of solid white — matches the frosted panel + ghost button look. */
+          .fanus-hero__mood .fanus-mood-chip {
+            background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2);
+          }
+          .fanus-hero__mood .fanus-mood-chip:hover {
+            background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.4);
+            box-shadow: none;
+          }
+          .fanus-hero__mood .fanus-mood-chip__icon { background: rgba(255,255,255,.14); }
+          .fanus-hero__mood .fanus-mood-chip:hover .fanus-mood-chip__icon { background: rgba(255,255,255,.22); box-shadow: none; }
+          .fanus-hero__mood .fanus-mood-chip__label { color: #fff; }
+          .fanus-hero__mood .fanus-mood-chip__ring { display: none; }
         }
 
-        /* ── Responsive ── */
-        @media (max-width: 1100px) { .fanus-hero__inner { gap: 40px; } }
-        @media (max-width: 980px) {
-          .fanus-hero { padding-top: 32px; }
-          .fanus-hero__inner { grid-template-columns: 1fr; gap: 32px; padding-bottom: 32px; }
-          .h-fc { display: none; }
+        @media (min-width: 768px) and (max-width: 980px) {
+          .fanus-hero__inner { padding: 96px 0 56px; }
         }
       `}</style>
     </section>

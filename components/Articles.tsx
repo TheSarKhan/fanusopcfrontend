@@ -69,14 +69,14 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
       <style>{`
         .fanus-art { padding: 100px 0; background: var(--fanus-paper); position: relative; overflow: hidden; }
         .fanus-art > .fanus-container { position: relative; z-index: 1; }
-        .fanus-art__head { margin-bottom: 48px; }
+        .fanus-art__head { margin-bottom: 48px; text-align: center; }
         .fanus-art__head h2 {
           font-family: var(--font-poppins), system-ui, sans-serif;
           font-size: clamp(30px, 3.6vw, 48px); font-weight: 700;
           letter-spacing: -0.025em; line-height: 1.1; color: var(--fanus-ink);
           margin: 0;
         }
-        .fanus-art__lead { margin-top: 12px; max-width: 540px; font-size: 17px; color: var(--fanus-ink-3); }
+        .fanus-art__lead { margin: 12px auto 0; max-width: 540px; font-size: 17px; color: var(--fanus-ink-3); }
         .fanus-art__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
         .fanus-art__foot { display: flex; justify-content: center; margin-top: 40px; }
         .fanus-art-card {

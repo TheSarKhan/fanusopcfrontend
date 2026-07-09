@@ -115,7 +115,7 @@ export default function Testimonials({ testimonials }: { testimonials?: Testimon
         }
 
         /* ── Heading ── */
-        .tst-top { margin-bottom: 32px; }
+        .tst-top { margin-bottom: 32px; text-align: center; }
         .tst-heading {
           font-family: var(--font-poppins), system-ui, sans-serif;
           font-size: clamp(26px, 3vw, 40px);
@@ -128,7 +128,8 @@ export default function Testimonials({ testimonials }: { testimonials?: Testimon
         .tst-sub {
           font-size: 15px;
           color: var(--fanus-ink-3);
-          margin: 0;
+          margin: 0 auto;
+          max-width: 560px;
         }
 
         /* ── Trust bar ── */

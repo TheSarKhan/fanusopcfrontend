@@ -32,7 +32,7 @@ export default function ConfigPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#1A2535]" style={{ fontFamily: "var(--font-playfair, serif)" }}>Konfiqurasiya</h1>
+        <h1 className="text-2xl font-bold text-[#1A2535]" style={{ fontFamily: "var(--font-poppins, sans-serif)" }}>Konfiqurasiya</h1>
         <p className="text-[#52718F] text-sm mt-1">Saytın əlaqə məlumatlarını idarə edin</p>
       </div>
 

@@ -147,7 +147,7 @@ function TiltCard({ item, visible, delay }: { item: typeof JOURNEY[0]; visible: 
           marginBottom: 8, display: "block",
         }}>{item.phase}</span>
 
-        <h3 style={{ fontSize: "0.97rem", fontWeight: 700, color: "#0F1C2E", marginBottom: 10, fontFamily: "var(--font-playfair, serif)" }}>{item.title}</h3>
+        <h3 style={{ fontSize: "0.97rem", fontWeight: 700, color: "#0F1C2E", marginBottom: 10, fontFamily: "var(--font-poppins, sans-serif)" }}>{item.title}</h3>
         <p style={{ fontSize: "0.82rem", color: "#5A7490", lineHeight: 1.65, fontStyle: "italic" }}>"{item.quote}"</p>
       </div>
     </div>
@@ -195,7 +195,7 @@ export default function About() {
           <p className="section-label">Haqqımızda</p>
           <h2
             className="text-3xl sm:text-[2.4rem] font-bold leading-tight mb-5"
-            style={{ fontFamily: "var(--font-playfair, serif)", color: "#1A2535" }}
+            style={{ fontFamily: "var(--font-poppins, sans-serif)", color: "#1A2535" }}
           >
             Fanus — işığı olan bir yer
           </h2>

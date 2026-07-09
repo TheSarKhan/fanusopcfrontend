@@ -7,9 +7,9 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 export default function HowItWorks() {
   const { t } = useT();
   const STEPS = [
-    { n: 1, title: t("how.step1Title"), text: t("how.step1Text"), img: "/images/how/step1.webp" },
-    { n: 2, title: t("how.step2Title"), text: t("how.step2Text"), img: "/images/how/step2.webp" },
-    { n: 3, title: t("how.step3Title"), text: t("how.step3Text"), img: "/images/how/step3.webp" },
+    { n: 1, title: t("how.step1Title"), text: t("how.step1Text"), img: "/images/how/step1.jpg" },
+    { n: 2, title: t("how.step2Title"), text: t("how.step2Text"), img: "/images/how/step2.jpg" },
+    { n: 3, title: t("how.step3Title"), text: t("how.step3Text"), img: "/images/how/step3.jpg" },
   ];
   const [active, setActive] = useState(0);
 
@@ -55,7 +55,8 @@ export default function HowItWorks() {
 
       <style>{`
         .fanus-how { padding: 96px 0; background: #fff; position: relative; }
-        .fanus-how__head { max-width: 720px; margin: 0 0 48px; }
+        .fanus-how .fanus-container { max-width: 1100px; }
+        .fanus-how__head { max-width: 720px; margin: 0 auto 48px; text-align: center; }
         .fanus-how__head h2 {
           margin: 0;
           font-family: var(--font-poppins), system-ui, sans-serif;

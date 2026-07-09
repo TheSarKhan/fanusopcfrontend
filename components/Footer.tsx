@@ -28,7 +28,7 @@ export default function Footer() {
     { title: t("footer2.columnResources"), links: [
       { label: t("footer2.linkArticles"), href: "/blog" },
       { label: t("footer2.linkPodcast"),  href: "/blog" },
-      { label: t("footer2.linkMoodTest"), href: "/#mood" },
+      { label: t("footer2.linkMoodTest"), href: "/#hero" },
       { label: t("footer2.linkGlossary"), href: "/blog" },
       { label: t("footer2.linkFaq"),      href: "/#faq" },
     ] },
@@ -60,8 +60,8 @@ export default function Footer() {
           </div>
 
           <div className="fanus-ftr__socials">
-            {["Instagram", "LinkedIn", "YouTube", "Telegram"].map((s) => (
-              <a key={s} href="#" className="fanus-ftr__social" aria-label={s}>{s[0]}</a>
+            {SOCIALS.map(({ label, Icon }) => (
+              <a key={label} href="#" className="fanus-ftr__social" aria-label={label}><Icon /></a>
             ))}
           </div>
         </div>
@@ -85,11 +85,6 @@ export default function Footer() {
             <button type="submit" aria-label={t("common.submit")}><SendIcon /></button>
           </form>
         </div>
-      </div>
-
-      {/* Böhran/təcili yardım — bütün səhifələrdə daimi (SAYT-FR-17) */}
-      <div className="fanus-container fanus-ftr__crisis" role="note">
-        <strong>{t("footer2.crisisTitle")}:</strong> {t("footer2.crisisText")}
       </div>
 
       <div className="fanus-container fanus-ftr__bottom">
@@ -154,7 +149,7 @@ export default function Footer() {
           width: 36px; height: 36px; border-radius: 50%;
           background: white; border: 1px solid var(--fanus-line);
           display: inline-flex; align-items: center; justify-content: center;
-          color: var(--fanus-primary); font-size: 13px; font-weight: 700;
+          color: var(--fanus-primary);
           transition: all .2s;
         }
         .fanus-ftr__social:hover { background: var(--fanus-primary); border-color: var(--fanus-primary); color: white; }
@@ -189,12 +184,6 @@ export default function Footer() {
         }
         .fanus-ftr__lang { display: inline-flex; align-items: center; gap: 6px; color: var(--fanus-ink-3); font-size: 12px; margin-top: 16px; }
 
-        .fanus-ftr__crisis {
-          padding: 14px 28px;
-          border-top: 1px solid var(--fanus-line);
-          background: #FFF7E6;
-          color: #7A4E00; font-size: 13px; line-height: 1.5;
-        }
         .fanus-ftr__bottom {
           display: flex; align-items: center; justify-content: space-between;
           padding: 24px 28px;
@@ -225,3 +214,13 @@ function PhoneIcon() { return <svg width="16" height="16" fill="none" stroke="cu
 function MailIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>; }
 function PinIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s7-6 7-12a7 7 0 00-14 0c0 6 7 12 7 12z" /><circle cx="12" cy="9" r="2.5" /></svg>; }
 function SendIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M21 3L3 10l7 3 3 7 8-17z" /><path d="M10 13l7-7" /></svg>; }
+function InstagramIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4.2" /><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none" /></svg>; }
+function LinkedInIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" /><line x1="7.5" y1="10.5" x2="7.5" y2="16.5" /><circle cx="7.5" cy="7" r="0.6" fill="currentColor" stroke="none" /><path d="M11.5 16.5v-6" /><path d="M11.5 13c0-1.7 1-2.8 2.3-2.8 1.4 0 2.2 1.1 2.2 2.8v3.5" /></svg>; }
+function YoutubeIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="4" /><path d="M10.3 9.3l5 2.7-5 2.7z" fill="currentColor" stroke="none" /></svg>; }
+
+const SOCIALS = [
+  { label: "Instagram", Icon: InstagramIcon },
+  { label: "LinkedIn",  Icon: LinkedInIcon },
+  { label: "YouTube",   Icon: YoutubeIcon },
+  { label: "Telegram",  Icon: SendIcon },
+];

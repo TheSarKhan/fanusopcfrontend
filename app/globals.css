@@ -44,8 +44,8 @@
   --shadow-lg: 0 12px 32px rgba(0, 33, 71, 0.08), 0 4px 8px rgba(0, 33, 71, 0.04);
   --shadow-xl: 0 24px 56px rgba(0, 33, 71, 0.10), 0 8px 16px rgba(0, 33, 71, 0.06);
 
-  --serif: var(--font-playfair, 'Playfair Display'), 'Times New Roman', serif;
   --sans: var(--font-poppins, 'Poppins'), -apple-system, BlinkMacSystemFont, sans-serif;
+  --serif: var(--sans);
 
   --r-btn: 8px;
   --r-card: 16px;
@@ -10198,7 +10198,7 @@ a.contact-chip:hover {
   --fanus-shadow-sm: 0 1px 2px rgba(10,26,51,.04), 0 2px 6px rgba(10,26,51,.04);
   --fanus-shadow-md: 0 4px 12px rgba(10,26,51,.06), 0 12px 32px rgba(10,26,51,.07);
   --fanus-shadow-lg: 0 24px 60px rgba(10,26,51,.12), 0 4px 12px rgba(10,26,51,.05);
-  --fanus-serif: var(--font-playfair), 'Playfair Display', Georgia, serif;
+  --fanus-serif: var(--sans);
 }
 
 .fanus-root { color: var(--fanus-ink); }

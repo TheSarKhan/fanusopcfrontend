@@ -35,7 +35,9 @@ export default function Hero() {
           <div className="fanus-hero__copy fanus-hero__copy--light">
             <h1><span className="fanus-hero__hl">{heroTitle}</span></h1>
             <p className="fanus-hero__lead fanus-hero__lead--light">{heroSub}</p>
+          </div>
 
+          <div className="fanus-hero__bottom">
             <div className="fanus-hero__cta">
               <Link href="/psychologists" className="fanus-btn fanus-btn-primary fanus-btn-lg">
                 {heroCta}
@@ -48,10 +50,10 @@ export default function Hero() {
                 Seans üçün müraciət et
               </button>
             </div>
-          </div>
 
-          <div className="fanus-hero__mood">
-            <MoodCheckIn compact />
+            <div className="fanus-hero__mood">
+              <MoodCheckIn compact />
+            </div>
           </div>
         </div>
       </div>
@@ -132,7 +134,6 @@ export default function Hero() {
             position: relative;
             min-height: 100svh;
             min-height: 100vh;
-            align-items: flex-end;
             overflow: hidden;
           }
 
@@ -149,13 +150,20 @@ export default function Hero() {
               linear-gradient(0deg, rgba(6,14,28,.6) 0%, rgba(6,14,28,0) 42%);
           }
 
+          /* Konteyner tam hündürlüyü tutur; içində flex sütun — başlıq/CTA bloku
+             ortada (margin:auto), mood paneli isə aşağıda sabit qalır. */
           .fanus-hero__inner {
             position: relative; z-index: 2;
+            align-self: stretch;
             width: 100%;
-            padding: 140px 0 90px;
+            display: flex; flex-direction: column;
+            padding-top: 120px; padding-bottom: 48px;
           }
 
-          .fanus-hero__copy--light { max-width: 620px; }
+          .fanus-hero__copy--light {
+            margin: auto 0;
+            max-width: 620px;
+          }
           .fanus-hero__copy--light h1 {
             margin: 0 0 18px;
             font-family: var(--font-poppins), system-ui, sans-serif;
@@ -171,7 +179,9 @@ export default function Hero() {
             text-wrap: balance;
           }
 
-          .fanus-hero--full .fanus-hero__cta { display: flex; gap: 14px; margin: 30px 0 0; flex-wrap: wrap; align-items: center; }
+          /* Aşağı qrup: düymələr + mood paneli, birlikdə hero-nun altında. */
+          .fanus-hero__bottom { display: flex; flex-direction: column; gap: 20px; align-items: flex-start; }
+          .fanus-hero--full .fanus-hero__cta { display: flex; gap: 14px; margin: 0; flex-wrap: wrap; align-items: center; }
           .fanus-hero--full .fanus-hero__cta .fanus-btn-primary { box-shadow: 0 12px 30px rgba(0,0,0,.3); }
           .fanus-hero__ghost {
             color: #fff; border-color: rgba(255,255,255,.55);
@@ -181,7 +191,7 @@ export default function Hero() {
           .fanus-hero__ghost:hover { border-color: #fff; color: #fff; background: rgba(255,255,255,.18); }
 
           .fanus-hero__mood {
-            margin-top: 36px; width: fit-content; max-width: 100%;
+            width: fit-content; max-width: 100%; margin: 0;
             background: rgba(255,255,255,.10);
             border: 1px solid rgba(255,255,255,.2);
             backdrop-filter: blur(12px);
@@ -205,7 +215,7 @@ export default function Hero() {
         }
 
         @media (min-width: 768px) and (max-width: 980px) {
-          .fanus-hero__inner { padding: 96px 0 56px; }
+          .fanus-hero__inner { padding-top: 96px; padding-bottom: 36px; }
         }
       `}</style>
     </section>

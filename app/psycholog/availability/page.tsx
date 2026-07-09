@@ -27,6 +27,10 @@ function diffMinutes(start: string, end: string): number {
   return (eh * 60 + em) - (sh * 60 + sm);
 }
 
+function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
+  return aStart < bEnd && bStart < aEnd;
+}
+
 function fmtHours(min: number): string {
   if (min <= 0) return "0 saat";
   const h = Math.floor(min / 60);
@@ -266,6 +270,7 @@ export default function PsychologistAvailabilityPage() {
       {slotModal && (
         <AddSlotModal
           initialDay={slotModal.day}
+          existingSlots={slots}
           onClose={() => setSlotModal(null)}
           onCreated={onSlotCreated}
         />
@@ -609,8 +614,9 @@ function VacationsCard({ vacations, onAdd, onCancel }: {
 
 /* ─── Add slot modal ──────────────────────────────────────────────────────── */
 
-function AddSlotModal({ initialDay, onClose, onCreated }: {
+function AddSlotModal({ initialDay, existingSlots, onClose, onCreated }: {
   initialDay: number | null;
+  existingSlots: TimeSlot[];
   onClose: () => void;
   onCreated: (created: TimeSlot[]) => void;
 }) {
@@ -630,6 +636,18 @@ function AddSlotModal({ initialDay, onClose, onCreated }: {
   const submit = async () => {
     if (days.length === 0) { setErr("Ən azı bir gün seçin"); return; }
     if (start >= end) { setErr("Başlama vaxtı bitişdən əvvəl olmalıdır"); return; }
+
+    const conflictDay = days.find(day =>
+      existingSlots.some(s =>
+        s.dayOfWeek === day && rangesOverlap(start, end, trimSeconds(s.startTime), trimSeconds(s.endTime))
+      )
+    );
+    if (conflictDay != null) {
+      const dayLabel = WEEKDAYS_AZ.find(d => d.iso === conflictDay)?.label ?? "";
+      setErr(`${dayLabel} günü üçün bu vaxt aralığı artıq mövcud olan bir vaxt aralığı ilə üst-üstə düşür`);
+      return;
+    }
+
     setSaving(true); setErr(null);
     try {
       const created: TimeSlot[] = [];

@@ -24,7 +24,6 @@ export default function ShareBar({ title }: { title: string }) {
 
   return (
     <div className="bl-share-bar">
-      <span className="bl-share-label">Paylaş:</span>
       <button className="bl-share-btn" onClick={copy}>
         {copied ? "Kopyalandı!" : "Keçidi kopyala"}
       </button>

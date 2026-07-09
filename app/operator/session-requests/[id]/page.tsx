@@ -18,6 +18,11 @@ const STATUS_PILL: Record<string, { label: string; className: string }> = {
   CANCELLED: { label: "Ləğv edilib", className: "fx-pill--cancelled" },
 };
 
+function fmtSchedule(dateIso: string, time?: string | null) {
+  const d = new Date(dateIso).toLocaleDateString("az-AZ", { day: "2-digit", month: "long", year: "numeric" });
+  return time ? `${d}, saat ${time}` : d;
+}
+
 function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
   if (value == null || value === "") return null;
   return (
@@ -120,6 +125,15 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   const isCancelled = req.status === "CANCELLED";
   const canAct = mine && !isConverted && !isCancelled;
 
+  // Operatora cari mərhələni + növbəti addımı bir cümlə ilə izah edir (şəffaflıq).
+  const statusHint =
+    isConverted ? "Bu müraciət randevuya / paketə çevrilib — nəticə aşağıda göstərilir."
+    : isCancelled ? "Bu müraciət ləğv edilib. İstəsəniz aşağıdan bərpa edə bilərsiniz."
+    : unclaimed ? "Hovuzda — hələ heç kim götürməyib. Növbəti addım: “Götür”."
+    : claimedByOther ? `Hazırda ${req.claimedByName ?? "başqa operator"} aparır — yalnız o çevirə/ləğv edə bilər.`
+    : !req.email ? "Sizdədir — çevirmək üçün əvvəlcə pasiyentdən e-poçt alın."
+    : "Sizdədir — pasiyentlə əlaqə saxlayıb randevuya çevirin və ya paket satın.";
+
   const claim = () => {
     setClaimBusy(true);
     operatorApi.claimSessionRequest(req.id)
@@ -196,7 +210,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
 
   return (
     <div style={{ maxWidth: 900 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
         <button type="button" className="fx-btn fx-btn--quiet fx-btn--sm" onClick={() => router.push("/operator/session-requests")}>
           <IconChevronLeft className="fx-icon--sm" />
           Geri
@@ -205,6 +219,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
         <span className={`fx-pill ${badge.className}`}>{badge.label}</span>
         {req.priority && <span className="fx-pill fx-pill--pending">Prioritet</span>}
       </div>
+      <p className="fx-subtitle" style={{ margin: "0 0 24px", fontSize: 13, maxWidth: 640 }}>{statusHint}</p>
 
       {claimedByOther && (
         <div className="fx-banner fx-banner--info" style={{ marginBottom: 20 }}>
@@ -251,7 +266,14 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
           {isConverted && (
             <div className="fx-card" style={{ background: "var(--sage-bg)", borderColor: "rgba(74,155,127,.35)" }}>
               <div className="fx-card__pad">
-                <div className="fx-label" style={{ color: "#2E6B54", marginBottom: 16 }}>Çevrilib</div>
+                <div className="fx-label" style={{ color: "#2E6B54", marginBottom: 12 }}>Çevrilib — nəticə</div>
+                {(req.assignedPsychologistName || req.scheduledDate || req.sessionPackage) && (
+                  <div style={{ marginBottom: 16 }}>
+                    <InfoRow label="Təyin olunan psixoloq" value={req.assignedPsychologistName} />
+                    {req.scheduledDate && <InfoRow label="Seans vaxtı" value={fmtSchedule(req.scheduledDate, req.scheduledTime)} />}
+                    <InfoRow label="Paket" value={req.sessionPackage} />
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   {req.convertedAppointmentId && (
                     <button type="button" className="fx-btn" style={{ background: "var(--sage)", borderColor: "var(--sage)", color: "#fff" }}

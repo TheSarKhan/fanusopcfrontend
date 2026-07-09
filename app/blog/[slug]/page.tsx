@@ -62,91 +62,96 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   return (
     <>
       <ReadingProgressBar />
-      <main className="bl-detail-page">
+      <main className="art-detail">
 
-        {/* Header */}
-        <div className="bl-detail-header">
-          <div className="bl-detail-header-inner">
-            <div style={{ marginBottom: 16 }}>
+        {/* Başlıq zolağı — tam en */}
+        <header className="art-detail__head">
+          <div className="fanus-container">
+            <div className="art-crumb-wrap">
               <Breadcrumb bare items={[{ label: "Bloq", href: "/blog" }, { label: post.title }]} />
             </div>
-            <div className="bl-detail-category">
-              <span
-                className="bl-detail-cat-tag"
-                style={{ background: post.categoryBg, color: post.categoryColor }}
-              >
+            <div className="art-meta">
+              <span className="art-cat" style={{ background: post.categoryBg, color: post.categoryColor }}>
                 {post.category}
               </span>
-              <span className="bl-detail-read-time">{post.readTimeMinutes} dəq oxu</span>
+              <span className="art-meta__dot" aria-hidden />
+              <span className="art-meta__read">{post.readTimeMinutes} dəq oxu</span>
             </div>
-            <h1 className="bl-detail-title">{post.title}</h1>
-            {post.excerpt && (
-              <p className="bl-detail-excerpt">{post.excerpt}</p>
-            )}
-            <div className="bl-detail-author">
-              <div
-                className="bl-detail-avatar"
-                style={{ background: "var(--brand)" }}
-              >
+            <h1 className="art-title">{post.title}</h1>
+            {post.excerpt && <p className="art-lead">{post.excerpt}</p>}
+            <div className="art-author">
+              <div className="art-author__avatar">
                 {(post.authorName ?? "F").charAt(0).toUpperCase()}
               </div>
               <div>
-                <div className="bl-detail-author-name">{post.authorName ?? "Fanus Redaksiyası"}</div>
-                <div className="bl-detail-author-date">{formatDate(post.publishedDate)}</div>
+                <div className="art-author__name">{post.authorName ?? "Fanus Redaksiyası"}</div>
+                <div className="art-author__role">{formatDate(post.publishedDate)}</div>
               </div>
             </div>
-            <ShareBar title={post.title} />
           </div>
-        </div>
+        </header>
 
-        {/* Cover image */}
+        {/* Cover şəkli — tam konteyner eni */}
         {post.coverImageUrl && (
-          <div className="bl-detail-cover">
+          <div className="fanus-container art-cover">
             { }
-            <img src={post.coverImageUrl} alt={post.title} />
+            <img className="art-cover__img" src={post.coverImageUrl} alt={post.title} />
           </div>
         )}
 
-        {/* Article content */}
-        <article className="bl-detail-article">
-          {post.content ? (
-            <div
-              className="article-content"
-              dangerouslySetInnerHTML={{ __html: post.content }}
-            />
-          ) : (
-            <p style={{ color: "#8AAABF", fontStyle: "italic" }}>Məzmun mövcud deyil.</p>
-          )}
+        {/* Gövdə — məqalə + yan panel */}
+        <div className="fanus-container art-layout">
+          <article className="art-main">
+            {post.content ? (
+              <div
+                className="article-content"
+                dangerouslySetInnerHTML={{ __html: post.content }}
+              />
+            ) : (
+              <p style={{ color: "var(--fanus-ink-3)", fontStyle: "italic" }}>Məzmun mövcud deyil.</p>
+            )}
 
-          {/* Attachments */}
-          {post.attachments && post.attachments.length > 0 && (
-            <div className="bl-detail-attachments">
-              <h3>Əlavə materiallar</h3>
-              <div className="bl-detail-att-list">
-                {post.attachments.map(att => (
-                  <a
-                    key={att.id}
-                    href={att.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bl-detail-att-link"
-                  >
-                    <AttachmentIcon type={att.fileType} />
-                    <span className="bl-detail-att-name">{att.fileName}</span>
-                    <span className="bl-detail-att-open">Aç</span>
-                  </a>
-                ))}
+            {/* Əlavə materiallar */}
+            {post.attachments && post.attachments.length > 0 && (
+              <div className="art-attach">
+                <h3>Əlavə materiallar</h3>
+                <div className="art-attach__list">
+                  {post.attachments.map(att => (
+                    <a
+                      key={att.id}
+                      href={att.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="art-attach__link"
+                    >
+                      <AttachmentIcon type={att.fileType} />
+                      <span className="art-attach__name">{att.fileName}</span>
+                      <span className="art-attach__open">Aç</span>
+                    </a>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </article>
+            )}
 
-        {/* Back link */}
-        <div className="bl-detail-back">
-          <Link href="/blog">← Bütün məqalələr</Link>
+            <div className="art-back">
+              <Link href="/blog">← Bütün məqalələr</Link>
+            </div>
+          </article>
+
+          <aside className="art-side">
+            <div className="art-card">
+              <div className="art-card__label">Bu məqaləni paylaş</div>
+              <ShareBar title={post.title} />
+            </div>
+            <div className="art-card art-cta">
+              <div className="art-cta__title">Peşəkar dəstəyə ehtiyacınız var?</div>
+              <div className="art-cta__text">Fanus psixoloqları ilə onlayn seans üçün müraciət edin.</div>
+              <Link href="/psychologists" className="fanus-btn fanus-btn-light">Psixoloq seç</Link>
+            </div>
+          </aside>
         </div>
 
-        {/* Related posts */}
+        {/* Əlaqəli məqalələr */}
         <RelatedPosts posts={related} />
 
       </main>

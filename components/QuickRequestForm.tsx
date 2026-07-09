@@ -26,6 +26,14 @@ const BUDGET_OPTIONS = [
   "Danışıq əsasında",
 ];
 
+// Göndərişdən sonra istifadəçiyə prosesin şəffaflığı üçün göstərilir (müraciət → operator →
+// psixoloq təyinatı → seans). Operator hovuz/claim/çevirmə axını ilə uyğundur.
+const NEXT_STEPS = [
+  "Operatorumuz müraciətinizi nəzərdən keçirir.",
+  "Sizinlə əlaqə saxlayıb ehtiyacınıza uyğun psixoloqu təklif edirik.",
+  "Psixoloq və seans vaxtı təsdiqlənir — seansınız planlanır.",
+];
+
 export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
   const [form, setForm] = useState(INITIAL);
   const [sending, setSending] = useState(false);
@@ -102,9 +110,40 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
         <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: "#065F46" }}>
           Müraciətiniz qəbul edildi!
         </h3>
-        <p style={{ margin: "0 0 24px", fontSize: 14, color: "#374151" }}>
-          Ən qısa zamanda operator komandamız sizinlə əlaqə saxlayacaq.
-          {form.email && " Təsdiq e-poçtu göndərildi."}
+        <p style={{ margin: "0 0 20px", fontSize: 14, color: "#374151" }}>
+          Müraciətiniz operator komandamıza çatdı. Bundan sonra proses belə davam edir:
+        </p>
+
+        {/* Növbəti addımlar — prosesin şəffaflığı */}
+        <div style={{
+          background: "#F5F3FF", border: "1px solid #E5E0FA",
+          borderRadius: 12, padding: "16px 18px", marginBottom: 14, textAlign: "left",
+        }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, color: "#5A4FC8",
+            letterSpacing: ".04em", textTransform: "uppercase", marginBottom: 12,
+          }}>
+            Növbəti addımlar
+          </div>
+          {NEXT_STEPS.map((step, i) => (
+            <div key={i} style={{
+              display: "flex", gap: 12, alignItems: "flex-start",
+              marginBottom: i === NEXT_STEPS.length - 1 ? 0 : 12,
+            }}>
+              <span style={{
+                flexShrink: 0, width: 24, height: 24, borderRadius: "50%",
+                background: "#5A4FC8", color: "#fff", fontSize: 13, fontWeight: 700,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>{i + 1}</span>
+              <span style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.5, paddingTop: 1 }}>{step}</span>
+            </div>
+          ))}
+        </div>
+
+        <p style={{ margin: "0 0 24px", fontSize: 12.5, color: "#6B7280", lineHeight: 1.5 }}>
+          {form.email
+            ? "Prosesin gedişatı və psixoloq təyinatı barədə e-poçtunuza bildiriş göndəriləcək."
+            : "Qeyd etdiyiniz telefon nömrəsi ilə sizinlə əlaqə saxlanılacaq."}
         </p>
         {crisisDetected && (
           <div style={{

@@ -221,6 +221,12 @@ export default function SessionRequestsPage() {
                         <span>Üstünlük verilən: {req.preferredDate}{req.preferredTime ? ` saat ${req.preferredTime}` : ""}</span>
                       </div>
                     )}
+                    {req.assignedPsychologistName && (
+                      <div className="fx-row__meta" style={{ marginTop: 4 }}>
+                        <span className="fx-muted">Psixoloq:</span>
+                        <span style={{ color: "var(--oxford-80)" }}>{req.assignedPsychologistName}</span>
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
                     <div className="fx-muted fx-num" style={{ fontSize: 12, textAlign: "right", whiteSpace: "nowrap" }}>

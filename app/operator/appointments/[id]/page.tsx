@@ -884,7 +884,14 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     const match = slots.find(s => new Date(s.startAt).getTime() === reqMs);
     if (match) { setPickedSlots([match.startAt]); return; }
     const psy = psychologists.find(p => p.id === psyId);
-    const minutes = appointment.sessionKind === "INTRO"
+    const isIntro = appointment.sessionKind === "INTRO";
+    // Standart seans müddəti psixoloqdan gəlir (defaultSessionMinutes). Psixoloq
+    // siyahısı HƏLƏ yüklənməyibsə (psychologists boşdur) səhv 50 dəq fallback ilə
+    // seed ETMƏ — çünki aşağıdakı `manualStart` guard-ı yanlış aralığı (məs. 10:00–10:50)
+    // dondurur və pasiyent tərəfi (məs. 90 dəq) ilə uyğunsuz görünür. Siyahı gəldikdə
+    // effekt yenidən işə düşür (psychologists dependency-dir) və düzgün müddətlə seed edir.
+    if (!isIntro && psychologists.length === 0) return;
+    const minutes = isIntro
       ? 15
       : (psy?.defaultSessionMinutes && psy.defaultSessionMinutes > 0 ? psy.defaultSessionMinutes : 50);
     const seedEnd = (appointment.startAt && appointment.endAt) ? appointment.endAt : new Date(reqMs + minutes * 60_000).toISOString();

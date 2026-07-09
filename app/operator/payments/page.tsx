@@ -46,7 +46,7 @@ const TABS: { key: BucketKey; label: string }[] = [
 ];
 // Rəng variantları id % 4 ilə seçilir — fx-avatar--1..4 (bax fanus-ui-kit/components.css)
 const avatarClassOf = (id: number) => `fx-avatar--${(Math.abs(id) % 4) + 1}`;
-const initialsOf = (name: string) => name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("");
+const initialsOf = (name?: string | null) => (name ?? "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("");
 const fmtNum = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 
 function pad2(n: number) { return String(n).padStart(2, "0"); }
@@ -175,7 +175,7 @@ export default function OperatorPaymentsPage() {
   const rows = useMemo(() => {
     let r = items.filter(p => GROUPS[tab].includes(p.status as Status));
     const q = search.trim().toLowerCase();
-    if (q) r = r.filter(p => p.patientName.toLowerCase().includes(q) || (p.patientPhone ?? "").replace(/\s/g, "").includes(q.replace(/\s/g, "")));
+    if (q) r = r.filter(p => (p.patientName ?? "").toLowerCase().includes(q) || (p.patientPhone ?? "").replace(/\s/g, "").includes(q.replace(/\s/g, "")));
     if (method !== "all") r = r.filter(p => p.method === method);
     if (psych !== "all") r = r.filter(p => p.psychologistName === psych);
     if (mineOnly) r = r.filter(p => p.claimedByOperatorId === meId);

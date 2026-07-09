@@ -1,54 +1,33 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import Deco from "@/components/Deco";
+import Breadcrumb from "@/components/Breadcrumb";
+import SessionRequestModal from "@/components/SessionRequestModal";
 import type { Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
-import { deriveCategory, type Cat } from "@/lib/moodMap";
 import { useT } from "@/lib/i18n/LocaleProvider";
-import type { MessageKey } from "@/lib/i18n/messages";
-
-const FILTER_KEYS: { id: Cat; key: MessageKey }[] = [
-  { id: "all",        key: "psyList.filterAll" },
-  { id: "anxiety",    key: "psyList.filterAnxiety" },
-  { id: "trauma",     key: "psyList.filterTrauma" },
-  { id: "family",     key: "psyList.filterFamily" },
-  { id: "depression", key: "psyList.filterDepression" },
-  { id: "youth",      key: "psyList.filterYouth" },
-  { id: "addiction",  key: "psyList.filterAddiction" },
-];
 
 interface Item {
   id: number;
   slug: string;
   name: string;
   title: string;
-  specs: string[];
-  exp: number;
-  rating: string;
-  sessions: string;
-  lang: string;
-  sessionMinutes: number;
-  cat: Cat;
+  bio?: string;
   photoUrl?: string;
-  accentColor: string;
-  bgColor: string;
-  statsSource?: "FANUS_PLATFORM" | "PRIOR_EXPERIENCE";
-  displayedSessionCount?: number;
 }
 
 const FALLBACK_BASE: Omit<Item, "slug">[] = [
-  { id: 1, name: "Aysel Məmmədova", title: "Klinik psixoloq", specs: ["Narahatlıq", "OKD", "Panik"],     exp: 8,  rating: "4.9", sessions: "210", lang: "AZ · RU",      sessionMinutes: 50, cat: "anxiety",    accentColor: "#3B6FA5", bgColor: "#EEF4FB" },
-  { id: 2, name: "Rəşad Quliyev",   title: "Travma terapevti",  specs: ["Travma", "TSSP"],                exp: 11, rating: "4.8", sessions: "315", lang: "AZ · EN",      sessionMinutes: 50, cat: "trauma",     accentColor: "var(--brand)", bgColor: "#EFEDFB" },
-  { id: 3, name: "Lalə Hüseynova",  title: "Ailə terapevti",    specs: ["Münasibətlər", "Ailə"],          exp: 6,  rating: "4.7", sessions: "140", lang: "AZ",           sessionMinutes: 50, cat: "family",     accentColor: "#C97D2E", bgColor: "#FBF1E5" },
-  { id: 4, name: "Elnur Səfərov",   title: "Klinik psixoloq",   specs: ["Depressiya", "Burnout"],         exp: 9,  rating: "4.9", sessions: "260", lang: "AZ · RU",      sessionMinutes: 50, cat: "depression", accentColor: "#2F7A5C", bgColor: "#E9F5EF" },
-  { id: 5, name: "Nigar Kazımova",  title: "Uşaq psixoloqu",    specs: ["Yeniyetmə", "Valideyn"],         exp: 7,  rating: "4.8", sessions: "180", lang: "AZ",           sessionMinutes: 50, cat: "youth",      accentColor: "#3B6FA5", bgColor: "#EEF4FB" },
-  { id: 6, name: "Tural Babayev",   title: "Asılılıq mütəxəssisi", specs: ["Asılılıq", "İmpuls"],         exp: 10, rating: "4.7", sessions: "240", lang: "AZ · RU",      sessionMinutes: 50, cat: "addiction",  accentColor: "var(--brand)", bgColor: "#EFEDFB" },
-  { id: 7, name: "Səbinə Əliyeva",  title: "Klinik psixoloq",   specs: ["Narahatlıq", "Stress"],          exp: 5,  rating: "4.8", sessions: "120", lang: "AZ · EN",      sessionMinutes: 50, cat: "anxiety",    accentColor: "#3B6FA5", bgColor: "#EEF4FB" },
-  { id: 8, name: "Cavid Rəhimli",   title: "Travma terapevti",  specs: ["Travma", "Yas", "EMDR"],         exp: 12, rating: "5.0", sessions: "390", lang: "AZ · RU · EN", sessionMinutes: 50, cat: "trauma",     accentColor: "var(--brand)", bgColor: "#EFEDFB" },
-  { id: 9, name: "Günel Həsənli",   title: "Cütlük terapevti",  specs: ["Cütlük", "Boşanma"],             exp: 8,  rating: "4.9", sessions: "200", lang: "AZ",           sessionMinutes: 50, cat: "family",     accentColor: "#C97D2E", bgColor: "#FBF1E5" },
+  { id: 1, name: "Aysel Məmmədova", title: "Klinik psixoloq",      bio: "Narahatlıq, panik atak və OKD sahəsində 8 illik təcrübə. Koqnitiv-davranış terapiyası üzərində ixtisaslaşıb." },
+  { id: 2, name: "Rəşad Quliyev",   title: "Travma terapevti",     bio: "Travma və TSSP mövzusunda 11 il təcrübə. EMDR metodundan istifadə edərək təhlükəsiz, addım-addım proses təklif edir." },
+  { id: 3, name: "Lalə Hüseynova",  title: "Ailə terapevti",       bio: "Cütlük və ailə münasibətləri üzrə 6 illik təcrübə. Ünsiyyət və etibarın bərpası mövzusunda dəstək verir." },
+  { id: 4, name: "Elnur Səfərov",   title: "Klinik psixoloq",      bio: "Depressiya və tükənmişlik (burnout) sahəsində 9 il təcrübə. Real həyat vərdişlərinə əsaslanan yanaşma tətbiq edir." },
+  { id: 5, name: "Nigar Kazımova",  title: "Uşaq psixoloqu",       bio: "Yeniyetmələr və valideyn-övlad münasibətləri üzrə 7 illik təcrübə. Ailələrlə yaxın əməkdaşlıqda çalışır." },
+  { id: 6, name: "Tural Babayev",   title: "Asılılıq mütəxəssisi", bio: "Asılılıq və impuls-nəzarəti sahəsində 10 il təcrübə. Davamlı bərpa planı və dəstək sistemi qurur." },
+  { id: 7, name: "Səbinə Əliyeva",  title: "Klinik psixoloq",      bio: "Narahatlıq və stress idarəetməsi üzrə 5 illik təcrübə. Praktik, addım-addım metodlarla işləyir." },
+  { id: 8, name: "Cavid Rəhimli",   title: "Travma terapevti",     bio: "Travma, yas və EMDR üzrə 12 illik təcrübə. Ağır həyat hadisələrindən sonra bərpa prosesinə dəstək olur." },
+  { id: 9, name: "Günel Həsənli",   title: "Cütlük terapevti",     bio: "Cütlük terapiyası və boşanma prosesi üzrə 8 illik təcrübə. Hər iki tərəfin eşidildiyi mühit yaradır." },
 ];
 const FALLBACK: Item[] = withSlugs(FALLBACK_BASE);
 
@@ -57,60 +36,45 @@ function getInitials(name: string) {
 }
 
 export default function PsychologistsPage({ psychologists }: { psychologists?: Psychologist[] }) {
-  // GAP-08: the mood check-in's "Uyğununu tap" CTA deep-links ?filter=<cat>.
-  const searchParams = useSearchParams();
-  const VALID_CATS: Cat[] = ["all", "anxiety", "trauma", "family", "depression", "youth", "addiction"];
-  const initialFilter = (() => {
-    const q = searchParams.get("filter");
-    return q && (VALID_CATS as string[]).includes(q) ? (q as Cat) : "all";
-  })();
-  const [filter, setFilter] = useState<Cat>(initialFilter);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const items: Item[] = useMemo(() => {
     if (!psychologists || psychologists.length === 0) return FALLBACK;
-    const mapped = psychologists.map((p) => {
-      const specs = (p.specializations || []).slice(0, 4);
-      return {
-        id: p.id,
-        name: p.name,
-        title: p.title,
-        specs,
-        exp: parseInt(p.experience ?? "5", 10) || 5,
-        rating: p.rating ?? "—",
-        sessions: p.sessionsCount ?? "0",
-        lang: (p.languages || "AZ").split(",").map((l) => l.trim()).filter(Boolean).join(" · ") || "AZ",
-        sessionMinutes: p.defaultSessionMinutes ?? 50,
-        cat: deriveCategory(specs),
-        photoUrl: p.photoUrl?.trim() || undefined,
-        accentColor: p.accentColor || "#1051B7",
-        bgColor: p.bgColor || "#F2F6FD",
-        statsSource: p.statsSource,
-        displayedSessionCount: p.displayedSessionCount,
-      };
-    });
-    // Re-derive slugs from this list (handles collisions correctly within visible set)
+    const mapped = psychologists.map((p) => ({
+      id: p.id,
+      name: p.name,
+      title: p.title,
+      bio: p.bio,
+      photoUrl: p.photoUrl?.trim() || undefined,
+    }));
     return withSlugs(mapped);
   }, [psychologists]);
 
-  const visible = filter === "all" ? items : items.filter((p) => p.cat === filter);
-
   return (
     <div className="fanus-root">
-      <PsycHero />
-      <PsycFilters active={filter} onChange={setFilter} />
-      <PsycList items={visible} />
-      <PsycCTA />
+      <Breadcrumb items={[{ label: "Psixoloqlar" }]} />
+      <PsycHero onApply={() => setModalOpen(true)} />
+      <PsycList items={items} />
+      <SessionRequestModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
   );
 }
 
-function PsycHero() {
+function PsycHero({ onApply }: { onApply: () => void }) {
   const { t } = useT();
   return (
     <section className="pp-hero">
       <div className="fanus-container pp-hero__inner">
         <h1>{t("psyList.title")}</h1>
         <p className="pp-hero__lead">{t("psyList.lead")}</p>
+        <div className="pp-hero__cta">
+          <button type="button" className="fanus-btn fanus-btn-primary fanus-btn-lg" onClick={onApply}>
+            Bizə müraciət et
+          </button>
+          <a href="#list" className="fanus-btn fanus-btn-ghost fanus-btn-lg">
+            Psixoloqlarımıza bax
+          </a>
+        </div>
       </div>
 
       <style>{`
@@ -126,53 +90,13 @@ function PsycHero() {
           font-size: 17px; color: var(--fanus-ink-3); line-height: 1.6;
           max-width: 600px; margin: 0 auto;
         }
+        .pp-hero__cta {
+          display: flex; justify-content: center; gap: 12px;
+          margin-top: 28px; flex-wrap: wrap;
+        }
         @media (max-width: 640px) { .pp-hero { padding: 48px 0 20px; } }
       `}</style>
     </section>
-  );
-}
-
-function PsycFilters({ active, onChange }: { active: Cat; onChange: (c: Cat) => void }) {
-  const { t } = useT();
-  return (
-    <div className="pp-filters">
-      <div className="fanus-container pp-filters__inner">
-        <div className="pp-filters__chips">
-          {FILTER_KEYS.map((f) => (
-            <button
-              key={f.id}
-              className={`pp-chip ${active === f.id ? "is-active" : ""}`}
-              onClick={() => onChange(f.id)}
-            >
-              {t(f.key)}
-            </button>
-          ))}
-        </div>
-      </div>
-      <style>{`
-        .pp-filters {
-          padding: 16px 0; border-bottom: 1px solid var(--fanus-line);
-          background: white; position: sticky; top: 70px; z-index: 10;
-        }
-        .pp-filters__inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-        .pp-filters__chips { display: flex; flex-wrap: wrap; gap: 8px; }
-        .pp-chip {
-          padding: 8px 16px; border-radius: 999px;
-          font-size: 13.5px; font-weight: 500; color: var(--fanus-ink-2);
-          background: var(--fanus-bg); border: 1px solid var(--fanus-line);
-          cursor: pointer; transition: all .2s; font-family: inherit;
-        }
-        .pp-chip:hover { border-color: var(--fanus-primary-300); color: var(--fanus-primary); }
-        .pp-chip.is-active { background: var(--fanus-primary); color: white; border-color: var(--fanus-primary); }
-        .pp-filters__tools { display: flex; gap: 8px; }
-        .pp-select {
-          font-family: inherit; font-size: 13.5px;
-          padding: 8px 14px; border-radius: 999px;
-          border: 1px solid var(--fanus-line); background: var(--fanus-bg);
-          color: var(--fanus-ink-2); cursor: pointer;
-        }
-      `}</style>
-    </div>
   );
 }
 
@@ -190,25 +114,16 @@ function PsycList({ items }: { items: Item[] }) {
         <div className="pp-grid">
           {items.map((p) => <PsyCard key={p.id} p={p} />)}
         </div>
-
-        {items.length === 0 && (
-          <div className="pp-empty">
-            <p>Bu filtrə uyğun nəticə tapılmadı.</p>
-          </div>
-        )}
       </div>
 
       <style>{`
-        .pp-list { padding: 56px 0 110px; position: relative; overflow: hidden; }
+        .pp-list { padding: 56px 0 110px; position: relative; overflow: hidden; scroll-margin-top: 104px; }
         .pp-list > .fanus-container { position: relative; z-index: 1; }
-        .pp-list__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; gap: 16px; flex-wrap: wrap; }
+        .pp-list__head { margin-bottom: 28px; }
         .pp-list__count { font-size: 14px; color: var(--fanus-ink-3); }
         .pp-list__count strong { color: var(--fanus-ink); font-weight: 700; }
-        .pp-list__sort { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--fanus-ink-3); }
 
         .pp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
-
-        .pp-empty { text-align: center; padding: 60px 0; color: var(--fanus-ink-3); }
 
         @media (max-width: 980px) { .pp-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 640px) { .pp-grid { grid-template-columns: 1fr; } }
@@ -220,318 +135,89 @@ function PsycList({ items }: { items: Item[] }) {
 function PsyCard({ p }: { p: Item }) {
   const { t } = useT();
   const initials = getInitials(p.name);
-  const ratingNum = parseFloat(p.rating);
-  const filledStars = isFinite(ratingNum) ? Math.round(ratingNum) : 0;
-  const hasSessions = p.sessions && p.sessions !== "0" && p.sessions !== "—";
-  const showStatsCount = p.displayedSessionCount != null && p.displayedSessionCount > 0;
-  const statsLabel = p.statsSource === "FANUS_PLATFORM"
-    ? t("psyStats.fanusSessions")
-    : t("psyStats.priorSessions");
 
   return (
     <article className="pp-card">
-      <div className="pp-card__accent" />
-
-      <Link href={`/psychologists/${p.slug ?? p.id}`} className="pp-card__head" aria-label={`${p.name} profili`}>
-        <div className="pp-card__photo">
+      <div className="pp-card__head">
+        <Link href={`/psychologists/${p.slug ?? p.id}`} className="pp-card__photo" aria-label={`${p.name} profili`}>
           {p.photoUrl ? (
-             
             <img src={p.photoUrl} alt={p.name} />
           ) : (
             <span className="pp-card__initials">{initials}</span>
           )}
-        </div>
-
+        </Link>
         <div className="pp-card__head-body">
-          <div className="pp-card__name-row">
+          <Link href={`/psychologists/${p.slug ?? p.id}`}>
             <h3 className="pp-card__name">{p.name}</h3>
-            <span
-              className="pp-card__verified"
-              title="Doğrulanmış psixoloq"
-              aria-label="Doğrulanmış psixoloq"
-            >
-              <ShieldIcon />
-            </span>
-          </div>
+          </Link>
           <p className="pp-card__title">{p.title}</p>
-          {filledStars > 0 && (
-            <div className="pp-card__rating">
-              <Stars value={filledStars} />
-              <strong>{p.rating}</strong>
-              {hasSessions && <span className="pp-card__rating-sep">·</span>}
-              {hasSessions && <span className="pp-card__rating-sub">{t("psyList.sessionsCount", { count: p.sessions })}</span>}
-            </div>
-          )}
-          {showStatsCount && (
-            <div className="pp-card__stats">
-              <strong>{p.displayedSessionCount}</strong>
-              <span className="pp-card__stats-label">{statsLabel}</span>
-            </div>
-          )}
         </div>
-      </Link>
-
-      {p.specs.length > 0 && (
-        <div className="pp-card__tags">
-          {p.specs.slice(0, 3).map((s, i) => (
-            <span key={i} className="pp-tag">{s}</span>
-          ))}
-          {p.specs.length > 3 && (
-            <span className="pp-tag pp-tag--ghost">+{p.specs.length - 3}</span>
-          )}
-        </div>
-      )}
-
-      <ul className="pp-card__meta">
-        <li><GlobeIcon /> {p.lang}</li>
-        <li><ClockIcon /> {p.exp} {t("psyList.yearsExp")}</li>
-        <li><HourIcon /> {t("psyList.minutes", { n: p.sessionMinutes })}</li>
-      </ul>
-
-      <div className="pp-card__foot">
-        <Link
-          href={`/psychologists/${p.slug ?? p.id}`}
-          className="pp-btn pp-btn--ghost"
-        >
-          {t("psyList.profile")}
-          <ArrowRight />
-        </Link>
-        <Link
-          href={`/book/${p.slug ?? p.id}`}
-          className="pp-btn pp-btn--primary"
-        >
-          <CalIcon /> {t("psyList.bookCta")}
-        </Link>
       </div>
+
+      {p.bio && <p className="pp-card__bio">{p.bio}</p>}
+
+      <Link href={`/psychologists/${p.slug ?? p.id}`} className="pp-btn pp-btn--ghost">
+        {t("psyList.profile")}
+      </Link>
 
       <style>{`
         .pp-card {
-          position: relative;
           background: white;
           border: 1px solid var(--fanus-line);
-          border-radius: 22px;
-          padding: 22px 22px 18px;
-          display: flex; flex-direction: column; gap: 14px;
-          overflow: hidden;
-          transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
-        }
-        .pp-card::before {
-          content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px;
-          background: linear-gradient(90deg, transparent, currentColor, transparent);
-          color: var(--fanus-primary-200);
-          opacity: 0; transition: opacity .25s ease;
+          border-radius: 20px;
+          padding: 24px;
+          display: flex; flex-direction: column; gap: 16px;
+          transition: border-color .2s ease, box-shadow .2s ease;
         }
         .pp-card:hover {
-          transform: translateY(-4px);
           border-color: var(--fanus-primary-200);
-          box-shadow: 0 22px 50px rgba(16,81,183,.10);
-        }
-        .pp-card:hover::before { opacity: 1; }
-
-        .pp-card__accent {
-          position: absolute; top: -60px; right: -60px;
-          width: 180px; height: 180px; border-radius: 50%;
-          background: linear-gradient(135deg, var(--fanus-primary-50), var(--fanus-primary-100));
-          opacity: .55; pointer-events: none; filter: blur(12px);
+          box-shadow: 0 12px 30px rgba(16,81,183,.08);
         }
 
-        .pp-card__head {
-          display: flex; gap: 14px; align-items: flex-start;
-          text-decoration: none; color: inherit;
-          position: relative; z-index: 1;
-        }
-        .pp-card__head:hover .pp-card__name { color: var(--fanus-primary); }
+        .pp-card__head { display: flex; gap: 14px; align-items: center; }
 
         .pp-card__photo {
-          position: relative; flex-shrink: 0;
-          width: 76px; height: 76px; border-radius: 18px;
+          flex-shrink: 0;
+          width: 68px; height: 68px; border-radius: 50%;
           overflow: hidden;
           display: flex; align-items: center; justify-content: center;
           background: var(--fanus-primary-50);
-          box-shadow: 0 6px 18px rgba(16,81,183,.10);
+          box-shadow: 0 0 0 4px var(--fanus-primary-50);
         }
-        .pp-card__photo img {
-          width: 100%; height: 100%; object-fit: cover; object-position: top;
-          display: block;
-        }
+        .pp-card__photo img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
         .pp-card__initials {
           font-family: var(--font-poppins), sans-serif;
-          font-size: 28px; font-weight: 600; color: var(--fanus-primary);
+          font-size: 22px; font-weight: 600; color: var(--fanus-primary);
         }
 
-        .pp-card__head-body { flex: 1; min-width: 0; }
-        .pp-card__name-row {
-          display: flex; align-items: center; gap: 6px;
-          margin: 2px 0 4px;
-        }
-        .pp-card__verified {
-          display: inline-flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-          width: 18px; height: 18px;
-          color: var(--fanus-primary);
-        }
+        .pp-card__head-body { min-width: 0; }
         .pp-card__name {
-          font-size: 17px; line-height: 1.2;
-          margin: 0; font-weight: 700;
-          color: var(--fanus-ink);
-          transition: color .2s ease;
-          overflow: hidden; text-overflow: ellipsis;
-          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-          min-width: 0;
+          font-size: 17px; line-height: 1.25; margin: 0; font-weight: 700;
+          color: var(--fanus-ink); transition: color .2s ease;
         }
-        .pp-card__title {
-          font-size: 13px; color: var(--fanus-ink-3);
-          margin: 0 0 8px;
-          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .pp-card__rating {
-          display: inline-flex; align-items: center; gap: 6px;
-          font-size: 12.5px; color: var(--fanus-ink-3);
-        }
-        .pp-card__rating strong { color: var(--fanus-ink); font-weight: 700; }
-        .pp-card__rating-sep { opacity: .5; }
-        .pp-card__rating-sub { color: var(--fanus-ink-3); }
+        .pp-card__head-body a:hover .pp-card__name { color: var(--fanus-primary); }
+        .pp-card__title { font-size: 13.5px; font-weight: 600; color: var(--fanus-primary); margin: 3px 0 0; }
 
-        .pp-card__stats {
-          display: inline-flex; align-items: center; gap: 6px;
-          margin-top: 4px;
-          font-size: 12.5px; color: var(--fanus-ink-3);
-        }
-        .pp-card__stats strong { color: var(--fanus-ink); font-weight: 700; }
-        .pp-card__stats-label { color: var(--fanus-ink-3); }
-
-        .pp-card__tags {
-          display: flex; flex-wrap: wrap; gap: 6px;
-          position: relative; z-index: 1;
-        }
-        .pp-tag {
-          font-size: 11.5px; padding: 4px 10px; border-radius: 999px;
-          font-weight: 600; letter-spacing: .01em;
-          background: var(--fanus-primary-50);
-          color: var(--fanus-primary);
-        }
-        .pp-tag--ghost {
-          background: var(--fanus-bg) !important;
-          color: var(--fanus-ink-3) !important;
+        .pp-card__bio {
+          font-size: 14px; line-height: 1.6; color: var(--fanus-ink-2);
+          margin: 0;
+          display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+          overflow: hidden;
         }
 
-        .pp-card__meta {
-          list-style: none; padding: 0; margin: 0;
-          display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px;
-          position: relative; z-index: 1;
-        }
-        .pp-card__meta li {
-          display: inline-flex; align-items: center; gap: 6px;
-          font-size: 12px; color: var(--fanus-ink-3);
-        }
-        .pp-card__meta li :first-child { color: var(--fanus-primary); flex-shrink: 0; }
-
-        .pp-card__foot {
-          margin-top: auto; display: grid;
-          grid-template-columns: 1fr auto;
-          gap: 8px; padding-top: 14px;
-          border-top: 1px dashed var(--fanus-line);
-          position: relative; z-index: 1;
-        }
         .pp-btn {
+          align-self: flex-start; margin-top: auto;
           display: inline-flex; align-items: center; justify-content: center;
-          gap: 6px;
-          height: 40px; padding: 0 16px; border-radius: 12px;
-          font-size: 13px; font-weight: 600;
+          height: 38px; padding: 0 18px; border-radius: 999px;
+          font-size: 13.5px; font-weight: 600;
           font-family: inherit; cursor: pointer;
-          text-decoration: none;
-          border: 1px solid transparent;
-          transition: transform .2s ease, box-shadow .2s ease, background .2s ease, color .2s ease;
-          white-space: nowrap;
+          text-decoration: none; border: 1px solid var(--fanus-line);
+          background: var(--fanus-bg); color: var(--fanus-ink);
+          transition: border-color .2s, color .2s, background .2s;
         }
-        .pp-btn--ghost {
-          background: var(--fanus-bg);
-          color: var(--fanus-ink);
-          border-color: var(--fanus-line);
-        }
-        .pp-btn--ghost:hover {
-          background: white;
-          border-color: var(--fanus-primary-300);
-          color: var(--fanus-primary);
-        }
-        .pp-btn--primary {
-          background: var(--fanus-primary);
-          color: white;
-        }
-        .pp-btn--primary:hover {
-          background: var(--fanus-primary-600, #0B3F90);
-          transform: translateY(-1px);
-          box-shadow: 0 8px 18px rgba(16,81,183,.22);
-        }
-
-        @media (max-width: 420px) {
-          .pp-card__foot { grid-template-columns: 1fr; }
-        }
+        .pp-btn:hover { background: white; border-color: var(--fanus-primary-300); color: var(--fanus-primary); }
       `}</style>
     </article>
   );
 }
 
-function Stars({ value }: { value: number }) {
-  return (
-    <span style={{ display: "inline-flex", gap: 1 }} aria-label={`${value} ulduz`}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <svg key={n} width="12" height="12" viewBox="0 0 24 24"
-             fill={n <= value ? "#C97D2E" : "#E4ECFA"}>
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-        </svg>
-      ))}
-    </span>
-  );
-}
-
-function PsycCTA() {
-  const { t } = useT();
-  return (
-    <section className="pp-cta">
-      <Deco type="circles-mix" style={{ top: 30, right: "6%", width: 220, opacity: .55 }} />
-      <Deco type="target" style={{ bottom: 30, left: "8%", width: 130, opacity: .55 }} anim="drift" />
-      <div className="fanus-container">
-        <div className="pp-cta__head">
-          <h2>{t("home.heroTitle")}</h2>
-          <p>{t("psyList.matchCtaSub")}</p>
-          <div className="pp-cta__btns">
-            <Link href="/register" className="fanus-btn fanus-btn-primary">
-              {t("how.cta")} <ArrowRight />
-            </Link>
-            <Link href="/xidmetler" className="fanus-btn fanus-btn-ghost">{t("services.eyebrow")}</Link>
-          </div>
-        </div>
-      </div>
-      <style>{`
-        .pp-cta {
-          padding: 90px 0;
-          background: linear-gradient(180deg, var(--fanus-bg) 0%, var(--fanus-primary-50) 100%);
-          position: relative; overflow: hidden;
-        }
-        .pp-cta > .fanus-container { position: relative; z-index: 1; }
-        .pp-cta__head { text-align: center; max-width: 760px; margin: 0 auto; }
-        .pp-cta__head .fanus-eyebrow { justify-content: center; }
-        .pp-cta__head h2 {
-          font-family: var(--font-poppins), system-ui, sans-serif;
-          font-size: clamp(30px, 3.6vw, 48px); font-weight: 700;
-          letter-spacing: -0.025em; line-height: 1.1; color: var(--fanus-ink);
-          margin: 16px 0 14px;
-        }
-        .pp-cta__head p { font-size: 17px; color: var(--fanus-ink-3); margin: 0; }
-        .pp-cta__btns {
-          display: flex; justify-content: center; gap: 12px;
-          margin-top: 28px; flex-wrap: wrap;
-        }
-      `}</style>
-    </section>
-  );
-}
-
-function ArrowRight() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.4" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>; }
-function GlobeIcon() { return <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18" /></svg>; }
-function MonitorIcon() { return <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="13" rx="2" /><path d="M8 21h8M12 17v4" /></svg>; }
-function ClockIcon() { return <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>; }
-function HourIcon() { return <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 22h14M5 2h14M17 22v-4.18a2 2 0 00-.59-1.41L13 13l3.41-3.41A2 2 0 0017 8.18V4M7 22v-4.18a2 2 0 01.59-1.41L11 13 7.59 9.59A2 2 0 017 8.18V4" /></svg>; }
-function ShieldIcon({ size = 16 }: { size?: number }) { return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></svg>; }
-function CalIcon() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18" /></svg>; }

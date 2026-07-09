@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { submitContactMessage } from "@/lib/api";
 import { useScrollReveal } from "@/lib/useScrollReveal";
+import Breadcrumb from "@/components/Breadcrumb";
 
 const WHATSAPP_NUMBER = "994502017164";
 
@@ -113,6 +114,9 @@ export default function ContactPage() {
   return (
     <section ref={ref} className="contact-section" style={{ minHeight: "calc(100vh - 200px)" }}>
       <div className="container">
+        <div style={{ marginBottom: 8 }}>
+          <Breadcrumb bare items={[{ label: "Əlaqə" }]} />
+        </div>
 
         <div
           className="contact-header"

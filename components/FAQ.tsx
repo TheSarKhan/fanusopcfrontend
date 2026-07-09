@@ -53,7 +53,7 @@ export default function FAQ({ faqs }: { faqs?: Faq[] }) {
       </div>
 
       <style>{`
-        .fanus-faq { padding: 100px 0; position: relative; overflow: hidden; }
+        .fanus-faq { padding: 68px 0; position: relative; overflow: hidden; }
         .fanus-faq > .fanus-container { position: relative; z-index: 1; }
         .fanus-faq__container { display: grid; grid-template-columns: 1fr 1.4fr; gap: 56px; align-items: flex-start; }
         .fanus-faq__left { position: sticky; top: 100px; }

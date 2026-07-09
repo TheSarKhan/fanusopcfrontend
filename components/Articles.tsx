@@ -67,7 +67,7 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
       </div>
 
       <style>{`
-        .fanus-art { padding: 100px 0; background: var(--fanus-paper); position: relative; overflow: hidden; }
+        .fanus-art { padding: 68px 0; background: var(--fanus-paper); position: relative; overflow: hidden; }
         .fanus-art > .fanus-container { position: relative; z-index: 1; }
         .fanus-art__head { margin-bottom: 48px; text-align: center; }
         .fanus-art__head h2 {

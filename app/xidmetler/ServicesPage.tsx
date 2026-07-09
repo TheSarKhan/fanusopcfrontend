@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import Deco from "@/components/Deco";
+import Breadcrumb from "@/components/Breadcrumb";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function ServicesPage() {
   return (
     <div className="fanus-root">
+      <Breadcrumb items={[{ label: "Xidmətlər" }]} />
       <ServicesHero />
       <ServicesPrograms />
     </div>
@@ -87,11 +89,6 @@ function ServicesPrograms() {
       <Deco type="blob-1" style={{ bottom: 80, left: "-4%", width: 280, opacity: .5 }} anim="drift" />
 
       <div className="fanus-container">
-        <div className="svc-head">
-          <h2>{t("services.programsTitle")}</h2>
-          <p>{t("services.programsSub")}</p>
-        </div>
-
         <div className="svc-prog__grid">
           {PROGRAMS.map((p, i) => (
             <article key={i} className="svc-card">
@@ -118,15 +115,6 @@ function ServicesPrograms() {
       <style>{`
         .svc-prog { padding: 110px 0; position: relative; overflow: hidden; }
         .svc-prog > .fanus-container { position: relative; z-index: 1; }
-        .svc-head { text-align: center; max-width: 760px; margin: 0 auto 56px; }
-        .svc-head .fanus-eyebrow { justify-content: center; }
-        .svc-head h2 {
-          font-family: var(--font-poppins), system-ui, sans-serif;
-          font-size: clamp(30px, 3.6vw, 48px); font-weight: 700;
-          letter-spacing: -0.025em; line-height: 1.1; color: var(--fanus-ink);
-          margin: 16px 0 14px;
-        }
-        .svc-head p { font-size: 17px; color: var(--fanus-ink-3); margin: 0; }
         .svc-prog__grid {
           display: flex;
           flex-wrap: wrap;

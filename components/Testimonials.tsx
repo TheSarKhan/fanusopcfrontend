@@ -109,7 +109,7 @@ export default function Testimonials({ testimonials }: { testimonials?: Testimon
         }
 
         .tst-section {
-          padding: 96px 0 100px;
+          padding: 64px 0 68px;
           background: #fff;
           overflow: hidden;
         }
@@ -221,7 +221,7 @@ export default function Testimonials({ testimonials }: { testimonials?: Testimon
 
         /* ── Responsive ── */
         @media (max-width: 700px) {
-          .tst-section { padding: 64px 0 72px; }
+          .tst-section { padding: 48px 0 56px; }
           .tst-trust { flex-wrap: wrap; gap: 20px; }
           .tst-trust__item { flex-direction: column; align-items: center; gap: 4px; }
           .tst-trust__sep { display: none; }

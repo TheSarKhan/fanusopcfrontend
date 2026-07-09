@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import Deco from "@/components/Deco";
+import Breadcrumb from "@/components/Breadcrumb";
 import type { BlogPost } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -86,39 +87,31 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
     });
   }, [posts]);
 
-  const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Cat>("all");
   const [sortBy, setSortBy] = useState<SortBy>("new");
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const result = items.filter((a) => {
-      const matchCat = filter === "all" || a.cat === filter;
-      const matchSearch = !q || (a.title + " " + a.excerpt + " " + a.tag).toLowerCase().includes(q);
-      return matchCat && matchSearch;
-    });
+    const result = filter === "all" ? items : items.filter((a) => a.cat === filter);
     if (sortBy === "quick") {
       return [...result].sort((a, b) => a.readMinutes - b.readMinutes);
     }
     return [...result].sort((a, b) => b.publishedAt - a.publishedAt);
-  }, [items, filter, search, sortBy]);
+  }, [items, filter, sortBy]);
 
   const activeFilterLabel =
     filter === "all" ? null : FILTERS.find((f) => f.id === filter)?.label ?? null;
-  const hasActiveQuery = filter !== "all" || search.trim().length > 0;
-  const resetFilters = () => { setFilter("all"); setSearch(""); };
+  const resetFilters = () => setFilter("all");
 
   return (
     <div className="fanus-root">
-      <ArtHero search={search} setSearch={setSearch} />
+      <Breadcrumb items={[{ label: "Bloq" }]} />
+      <ArtHero />
       <ArtFilters active={filter} onChange={setFilter} />
       <ArtList
         items={filtered}
         sortBy={sortBy}
         setSortBy={setSortBy}
         activeFilterLabel={activeFilterLabel}
-        searchTerm={search.trim()}
-        hasActiveQuery={hasActiveQuery}
         onReset={resetFilters}
       />
       <ArtNewsletter />
@@ -126,131 +119,29 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
   );
 }
 
-function ArtHero({ search, setSearch }: { search: string; setSearch: (v: string) => void }) {
+function ArtHero() {
   const { t } = useT();
   return (
     <section className="ap-hero">
-      <Deco type="wave-top" style={{ top: -20, left: "-4%", width: 520, opacity: .55 }} anim="drift" />
-      <Deco type="sphere-blue" style={{ top: "65%", left: "8%", width: 44, opacity: .8 }} anim="floatY" />
-
-      <div className="ap-hero__bg" aria-hidden>
-        <svg viewBox="0 0 1440 600" preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
-          <defs>
-            <linearGradient id="apHeroBg" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stopColor="#F2F6FD" />
-              <stop offset="100%" stopColor="#E4ECFA" />
-            </linearGradient>
-          </defs>
-          <rect width="1440" height="600" fill="url(#apHeroBg)" />
-        </svg>
-      </div>
-
       <div className="fanus-container ap-hero__inner">
-        <div className="ap-hero__copy">
-          <h1>{t("articles.title")}</h1>
-          <p className="ap-hero__lead">{t("articles.lead")}</p>
-
-          <div className="ap-search">
-            <SparkleIcon />
-            <input
-              type="text"
-              placeholder={t("common.search")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {search && (
-              <button className="ap-search__clear" onClick={() => setSearch("")} aria-label={t("common.close")}>
-                <CloseIcon />
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="ap-hero__visual" aria-hidden>
-          <div className="ap-hero__glow ap-hero__glow--1" />
-          <div className="ap-hero__glow ap-hero__glow--2" />
-          { }
-          <img
-            src="/images/hero-meqaleler.png"
-            alt="Fanus məqalələri"
-            className="ap-hero__img"
-            draggable={false}
-          />
-        </div>
+        <h1>{t("articles.title")}</h1>
+        <p className="ap-hero__lead">{t("articles.lead")}</p>
       </div>
 
       <style>{`
-        .ap-hero { position: relative; padding: 56px 0 80px; overflow: hidden; }
-        .ap-hero__bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-        .ap-hero__inner {
-          position: relative; z-index: 1;
-          display: grid; grid-template-columns: 1.05fr 1fr;
-          gap: 48px; align-items: center;
-          min-height: 460px;
-        }
-        .ap-hero__copy { min-width: 0; }
+        .ap-hero { padding: 72px 0 28px; text-align: center; }
+        .ap-hero__inner { max-width: 720px; margin: 0 auto; }
         .ap-hero h1 {
-          margin: 18px 0 18px;
+          margin: 0 0 16px;
           font-family: var(--font-poppins), system-ui, sans-serif;
-          font-size: clamp(34px, 4.8vw, 60px); font-weight: 800;
-          letter-spacing: -0.035em; line-height: 1.1; color: var(--fanus-ink);
+          font-size: clamp(32px, 4.6vw, 54px); font-weight: 800;
+          letter-spacing: -0.03em; line-height: 1.1; color: var(--fanus-ink);
         }
-        .ap-hero__lead { font-size: 17px; color: var(--fanus-ink-3); line-height: 1.6; max-width: 540px; margin: 0; }
-        .ap-search {
-          margin-top: 32px; max-width: 520px;
-          display: flex; align-items: center; gap: 12px;
-          background: white; border: 1px solid var(--fanus-line);
-          border-radius: 999px; padding: 14px 22px;
-          box-shadow: 0 10px 28px rgba(16,81,183,.08);
+        .ap-hero__lead {
+          font-size: 17px; color: var(--fanus-ink-3); line-height: 1.6;
+          max-width: 600px; margin: 0 auto;
         }
-        .ap-search input {
-          flex: 1; border: none; outline: none; background: transparent;
-          font-family: inherit; font-size: 15px; color: var(--fanus-ink);
-        }
-        .ap-search input::placeholder { color: var(--fanus-ink-3); }
-        .ap-search__clear {
-          width: 26px; height: 26px; border-radius: 50%;
-          background: var(--fanus-primary-50); color: var(--fanus-primary);
-          display: inline-flex; align-items: center; justify-content: center;
-          border: none; cursor: pointer;
-        }
-
-        .ap-hero__visual {
-          position: relative;
-          width: 100%; aspect-ratio: 16/12; min-height: 380px;
-        }
-        .ap-hero__img {
-          position: absolute; inset: 0;
-          width: 100%; height: 100%;
-          object-fit: contain;
-          z-index: 2;
-          animation: apHeroFloat 6s ease-in-out infinite;
-          user-select: none;
-        }
-        @keyframes apHeroFloat {
-          0%, 100% { transform: translateY(0); }
-          50%      { transform: translateY(-8px); }
-        }
-        .ap-hero__glow { position: absolute; border-radius: 50%; pointer-events: none; filter: blur(40px); z-index: 1; }
-        .ap-hero__glow--1 {
-          top: -6%; right: 6%; width: 240px; height: 240px;
-          background: radial-gradient(circle, rgba(245,185,70,.28), transparent 65%);
-          animation: apHeroFlicker 3.5s ease-in-out infinite;
-        }
-        .ap-hero__glow--2 {
-          bottom: -8%; left: 4%; width: 280px; height: 280px;
-          background: radial-gradient(circle, rgba(16,81,183,.22), transparent 65%);
-          animation: apHeroFlicker 4.5s ease-in-out infinite -2s;
-        }
-        @keyframes apHeroFlicker {
-          0%, 100% { opacity: .9; transform: scale(1); }
-          50%      { opacity: .55; transform: scale(1.08); }
-        }
-
-        @media (max-width: 980px) {
-          .ap-hero__inner { grid-template-columns: 1fr; gap: 32px; min-height: auto; }
-          .ap-hero__visual { min-height: 280px; aspect-ratio: 16/9; max-width: 540px; margin: 0 auto; }
-        }
+        @media (max-width: 640px) { .ap-hero { padding: 48px 0 20px; } }
       `}</style>
     </section>
   );
@@ -296,16 +187,12 @@ function ArtList({
   sortBy,
   setSortBy,
   activeFilterLabel,
-  searchTerm,
-  hasActiveQuery,
   onReset,
 }: {
   items: Item[];
   sortBy: SortBy;
   setSortBy: (s: SortBy) => void;
   activeFilterLabel: string | null;
-  searchTerm: string;
-  hasActiveQuery: boolean;
   onReset: () => void;
 }) {
   return (
@@ -318,18 +205,11 @@ function ArtList({
             <div className="ap-list__count">
               <strong>{items.length}</strong> məqalə
             </div>
-            {(activeFilterLabel || searchTerm) && (
+            {activeFilterLabel && (
               <div className="ap-list__active">
-                {activeFilterLabel && (
-                  <span className="ap-list__chip">
-                    {activeFilterLabel}
-                  </span>
-                )}
-                {searchTerm && (
-                  <span className="ap-list__chip">
-                    “{searchTerm}”
-                  </span>
-                )}
+                <span className="ap-list__chip">
+                  {activeFilterLabel}
+                </span>
                 <button className="ap-list__reset" onClick={onReset}>
                   Filtri sıfırla
                 </button>
@@ -350,8 +230,8 @@ function ArtList({
           <div className="ap-empty">
             <div className="ap-empty__icon"><SparkleIcon /></div>
             <h3>Heç bir məqalə tapılmadı</h3>
-            <p>Bu filtrə uyğun nəticə yoxdur. Başqa kateqoriya seçin və ya axtarışı dəyişin.</p>
-            {hasActiveQuery && (
+            <p>Bu filtrə uyğun nəticə yoxdur. Başqa kateqoriya seçin.</p>
+            {activeFilterLabel && (
               <button className="fanus-btn fanus-btn-light fanus-btn-sm" onClick={onReset}>
                 Hamısını göstər
               </button>
@@ -637,5 +517,4 @@ function ArtCover({ type, color }: { type: Illu; color: string }) {
 }
 
 function Arrow() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.4" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>; }
-function CloseIcon() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>; }
 function SparkleIcon() { return <svg width="16" height="16" fill="none" stroke="var(--fanus-primary)" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v6M12 15v6M3 12h6M15 12h6M5.5 5.5l4 4M14.5 14.5l4 4M18.5 5.5l-4 4M9.5 14.5l-4 4" /></svg>; }

@@ -31,7 +31,7 @@ export default function WhyFanus() {
       </div>
 
       <style>{`
-        .fanus-why { padding: 96px 0; position: relative; }
+        .fanus-why { padding: 64px 0; position: relative; }
         .fanus-why__head { max-width: 720px; margin: 0 auto 48px; text-align: center; }
         .fanus-why__head h2 {
           margin: 0;

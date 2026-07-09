@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useScrollReveal } from "@/lib/useScrollReveal";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import Breadcrumb from "@/components/Breadcrumb";
 
 // Bütün dəyər kartları əsas brend rəngi (#1051B7) və tonlarında.
 const VALUES = [
@@ -139,6 +140,7 @@ export default function AboutPage() {
   const { t } = useT();
   return (
     <div className="fanus-root">
+      <Breadcrumb items={[{ label: "Haqqımızda" }]} />
       {/* Hero */}
       <section className="ap-hero abt-hero">
         <div className="ap-hero-blob ap-hero-blob-1" />

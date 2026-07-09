@@ -54,7 +54,7 @@ export default function HowItWorks() {
       </div>
 
       <style>{`
-        .fanus-how { padding: 96px 0; background: #fff; position: relative; }
+        .fanus-how { padding: 64px 0; background: #fff; position: relative; }
         .fanus-how .fanus-container { max-width: 1100px; }
         .fanus-how__head { max-width: 720px; margin: 0 auto 48px; text-align: center; }
         .fanus-how__head h2 {

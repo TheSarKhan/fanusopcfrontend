@@ -9,6 +9,7 @@ import {
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import BookingCta from "./BookingCta";
+import Breadcrumb from "@/components/Breadcrumb";
 
 function getInitials(name: string) {
   return name.split(" ").filter((w) => w.length > 1).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -138,10 +139,9 @@ export default async function PsychologistProfilePage(
       <style>{layoutCss}</style>
       <div className="ppx-app" style={{ width: "100%", padding: "24px 32px 56px", maxWidth: "min(1360px, 94vw)", margin: "0 auto" }}>
 
-        <a href="/psychologists" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 18, textDecoration: "none" }}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-          Psixoloqlara qayıt
-        </a>
+        <div style={{ marginBottom: 18 }}>
+          <Breadcrumb bare items={[{ label: "Psixoloqlar", href: "/psychologists" }, { label: psychologist.name }]} />
+        </div>
 
         <div className="ppx-grid">
 

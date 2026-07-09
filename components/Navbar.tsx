@@ -21,7 +21,6 @@ export default function Navbar() {
   const light = isHome && !scrolled && isDesktop;
 
   const navLinks = [
-    { label: t("nav.about"),         href: "/about" },
     { label: t("nav.services"),      href: "/xidmetler" },
     { label: t("nav.psychologists"), href: "/psychologists" },
     { label: t("nav.blog"),          href: "/blog" },

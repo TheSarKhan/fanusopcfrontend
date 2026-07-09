@@ -73,7 +73,7 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
       </div>
 
       <style>{`
-        .fanus-psyc { padding: 100px 0; position: relative; overflow: hidden; }
+        .fanus-psyc { padding: 68px 0; position: relative; overflow: hidden; }
         .fanus-psyc > .fanus-container { position: relative; z-index: 1; }
         .fanus-psyc__head { margin-bottom: 48px; text-align: center; }
         .fanus-psyc__head h2 {

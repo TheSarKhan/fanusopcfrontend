@@ -10049,7 +10049,7 @@
 }
 .contact-title {
   font-size: clamp(1.9rem, 3.5vw, 2.5rem);
-  font-weight: 700; color: var(--oxford);
+  font-weight: 800; color: var(--oxford);
   line-height: 1.2; margin-bottom: 1rem;
 }
 .contact-sub {

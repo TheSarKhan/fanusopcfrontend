@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import ReadingProgressBar from "@/app/blog/components/ReadingProgressBar";
 import ShareBar from "@/app/blog/components/ShareBar";
 import RelatedPosts from "@/app/blog/components/RelatedPosts";
+import Breadcrumb from "@/components/Breadcrumb";
 
 function formatDate(dateStr?: string | null) {
   if (!dateStr) return "";
@@ -66,6 +67,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         {/* Header */}
         <div className="bl-detail-header">
           <div className="bl-detail-header-inner">
+            <div style={{ marginBottom: 16 }}>
+              <Breadcrumb bare items={[{ label: "Bloq", href: "/blog" }, { label: post.title }]} />
+            </div>
             <div className="bl-detail-category">
               <span
                 className="bl-detail-cat-tag"

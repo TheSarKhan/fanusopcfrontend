@@ -199,33 +199,21 @@ export default function OperatorCustomersPage() {
   const callPatient = (phone: string) => { const p = normalizePhone(phone); if (p) window.location.assign(`tel:${p}`); };
   const whatsapp = (phone: string) => { const p = normalizePhone(phone); if (p) window.open(`https://wa.me/${p.replace(/^\+/, "").replace(/[^\d]/g, "")}`, "_blank", "noopener"); };
 
-  const listBody: ReactNode = (() => {
-    if (searching) {
-      if (loading) return <SkeletonRows />;
-      if (!hits || hits.length === 0)
-        return <NoResults query={term} />;
-      return hits.map(h => (
+  // Boş/yüklənmə halları cədvəldən kənarda göstərilir (psychologists səhifəsi ilə eyni qayda) —
+  // cədvəl yalnız göstəriləcək sətir olduqda render olunur.
+  const isEmpty = searching ? (!loading && (!hits || hits.length === 0)) : (recent !== null && filteredRecents.length === 0);
+  const isLoading = searching ? loading : recent === null;
+
+  const tableRows: ReactNode = searching
+    ? (hits ?? []).map(h => (
         <HitRow key={h.id} id={h.id} name={h.title} contact={h.subtitle || "—"} onOpen={() => goProfile(h.id)} />
+      ))
+    : filteredRecents.map(r => (
+        <CustomerRow key={r.id} r={r} onOpen={() => goProfile(r.id)} onCall={() => r.phone && callPatient(r.phone)} onWa={() => r.phone && whatsapp(r.phone)} />
       ));
-    }
-    if (recent === null) return <SkeletonRows />;
-    if (filteredRecents.length === 0)
-      return (
-        <div className="fx-card--empty" style={{ border: "none", padding: "48px 20px" }}>
-          <Icon name="users" className="fx-icon fx-icon--xl" style={{ color: "var(--brand-300)" }} />
-          <div style={{ fontSize: 13, fontWeight: 700 }}>{tab === "all" ? "Hələ müştəri yoxdur" : "Bu seqmentdə müştəri yoxdur"}</div>
-          <div style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>Yeni müştəri əlavə edin və ya axtarışdan istifadə edin</div>
-          <button type="button" onClick={() => setNewOpen(true)} className="fx-btn fx-btn--primary fx-btn--sm" style={{ marginTop: 4 }}>Yeni müştəri</button>
-        </div>
-      );
-    return filteredRecents.map(r => (
-      <CustomerRow key={r.id} r={r} onOpen={() => goProfile(r.id)} onCall={() => r.phone && callPatient(r.phone)} onWa={() => r.phone && whatsapp(r.phone)} />
-    ));
-  })();
 
   return (
     <div className="fx-page" style={{ minHeight: "auto", padding: 0 }}>
-      <style>{QA_CSS}</style>
       {/* Başlıq */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, marginBottom: 24, flexWrap: "wrap" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -273,15 +261,38 @@ export default function OperatorCustomersPage() {
               {psychOptions.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           )}
-          <span className="fx-spacer" />
-          <select value={sort} onChange={e => setSort(e.target.value as typeof sort)} aria-label="Sıralama" className="fx-select fx-select--inline">
-            <option value="activity">Son fəaliyyət</option>
-            <option value="name">Ad A–Z</option>
-          </select>
         </div>
 
         {/* Sətirlər / hallar */}
-        {listBody}
+        {isLoading ? (
+          <SkeletonRows />
+        ) : isEmpty ? (
+          searching ? <NoResults query={term} /> : (
+            <div className="fx-card--empty" style={{ border: "none", padding: "48px 20px" }}>
+              <Icon name="users" className="fx-icon fx-icon--xl" style={{ color: "var(--brand-300)" }} />
+              <div style={{ fontSize: 13, fontWeight: 700 }}>{tab === "all" ? "Hələ müştəri yoxdur" : "Bu seqmentdə müştəri yoxdur"}</div>
+              <div style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>Yeni müştəri əlavə edin və ya axtarışdan istifadə edin</div>
+              <button type="button" onClick={() => setNewOpen(true)} className="fx-btn fx-btn--primary fx-btn--sm" style={{ marginTop: 4 }}>Yeni müştəri</button>
+            </div>
+          )
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table className="fx-table">
+              <thead>
+                <tr>
+                  <th onClick={() => setSort("name")} style={{ cursor: "pointer" }}>Müştəri {sort === "name" && "↑"}</th>
+                  <th>Əlaqə</th>
+                  <th onClick={() => setSort("activity")} style={{ cursor: "pointer" }}>Son fəaliyyət {sort === "activity" && "↓"}</th>
+                  <th>Psixoloq</th>
+                  <th>Paket</th>
+                  <th>Bayraq</th>
+                  <th style={{ width: 150 }} />
+                </tr>
+              </thead>
+              <tbody>{tableRows}</tbody>
+            </table>
+          </div>
+        )}
 
         {/* Alt sətir */}
         {!searching && recent !== null && filteredRecents.length > 0 && (
@@ -310,47 +321,55 @@ function Kpi({ label, value, meta, color }: { label: string; value: number; meta
 function CustomerRow({ r, onOpen, onCall, onWa }: { r: RecentCustomer; onOpen: () => void; onCall: () => void; onWa: () => void }) {
   const tone = LAST_TONE[r.lastTone];
   return (
-    <div onClick={onOpen} className="fx-row cust-row" style={{ position: "relative", borderTop: "none", borderBottom: "1px solid var(--hairline)" }}>
-      <span className={`fx-avatar fx-avatar--${avatarVariant(r.id)}`} style={r.flag ? { boxShadow: "0 0 0 2px var(--surface), 0 0 0 3.5px rgba(201,125,125,.55)" } : undefined}>{initialsOf(r.name)}</span>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 230 }}>
-        <span className="fx-row__title">{r.name}</span>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {r.phone && <span className="fx-chip fx-num" style={{ padding: "3px 10px", fontSize: 11.5 }}><Icon name="phone" className="fx-icon fx-icon--sm" style={{ width: 11, height: 11 }} />{r.phone}</span>}
-          {r.email && <span className="fx-chip" style={{ padding: "3px 10px", fontSize: 11.5 }}><Icon name="mail" className="fx-icon fx-icon--sm" style={{ width: 11, height: 11 }} />{r.email}</span>}
+    <tr onClick={onOpen} style={{ cursor: "pointer" }}>
+      <td>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span className={`fx-avatar fx-avatar--${avatarVariant(r.id)}`} style={r.flag ? { boxShadow: "0 0 0 2px var(--surface), 0 0 0 3.5px rgba(201,125,125,.55)" } : undefined}>{initialsOf(r.name)}</span>
+          <span className="fx-row__title">{r.name}</span>
         </div>
-      </div>
-      <span className="fx-spacer" />
-      {r.phone && (
-        <div className="cust-qa" onClick={e => e.stopPropagation()}>
-          <button type="button" onClick={onCall} className="fx-btn fx-btn--ghost fx-btn--sm"><Icon name="phone" className="fx-icon fx-icon--sm" />Zəng</button>
-          <button type="button" onClick={onWa} className="fx-btn fx-btn--ghost fx-btn--sm"><Icon name="message" className="fx-icon fx-icon--sm" />WhatsApp</button>
-          <button type="button" onClick={onOpen} className="fx-btn fx-btn--ghost fx-btn--sm"><Icon name="eye" className="fx-icon fx-icon--sm" />Profilə bax</button>
+      </td>
+      <td>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {r.phone && <span className="fx-muted fx-num" style={{ fontSize: 12.5, display: "inline-flex", alignItems: "center", gap: 5 }}><Icon name="phone" className="fx-icon fx-icon--sm" style={{ width: 11, height: 11 }} />{r.phone}</span>}
+          {r.email && <span className="fx-muted" style={{ fontSize: 12.5, display: "inline-flex", alignItems: "center", gap: 5 }}><Icon name="mail" className="fx-icon fx-icon--sm" style={{ width: 11, height: 11 }} />{r.email}</span>}
+          {!r.phone && !r.email && <span className="fx-muted">—</span>}
         </div>
-      )}
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-        <span className="fx-pill fx-num" style={{ background: tone.bg, color: tone.fg }}>{r.lastLabel}</span>
-        {r.hasUpcoming && <span className="fx-pill" style={{ background: "var(--sage-bg)", color: "#2E6B54" }}><Icon name="calendar" className="fx-icon fx-icon--sm" style={{ width: 11, height: 11 }} />Yaxın seans</span>}
-        {r.pkg && <span className="fx-pill" style={{ background: "var(--lilac-bg)", color: "#5F4FA0" }}>{r.pkg}</span>}
-        {r.psych && <span className="fx-pill fx-pill--neutral">{r.psych}</span>}
-        {r.flag && <span className="fx-pill fx-pill--refunded">{r.flag}</span>}
-      </div>
-      <Icon name="chevron-right" className="fx-icon" style={{ color: "var(--brand-200)" }} />
-    </div>
+      </td>
+      <td><span className="fx-pill fx-num" style={{ background: tone.bg, color: tone.fg }}>{r.lastLabel}</span></td>
+      <td>{r.psych ? <span className="fx-pill fx-pill--neutral">{r.psych}</span> : <span className="fx-muted">—</span>}</td>
+      <td>{r.pkg ? <span className="fx-pill" style={{ background: "var(--lilac-bg)", color: "#5F4FA0" }}>{r.pkg}</span> : <span className="fx-muted">—</span>}</td>
+      <td>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {r.hasUpcoming && <span className="fx-pill" style={{ background: "var(--sage-bg)", color: "#2E6B54" }}>Yaxın seans</span>}
+          {r.flag && <span className="fx-pill fx-pill--refunded">{r.flag}</span>}
+          {!r.hasUpcoming && !r.flag && <span className="fx-muted">—</span>}
+        </div>
+      </td>
+      <td onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", gap: 6 }}>
+          {r.phone && <button type="button" onClick={onCall} title="Zəng" className="fx-btn fx-btn--ghost fx-btn--sm"><Icon name="phone" className="fx-icon fx-icon--sm" /></button>}
+          {r.phone && <button type="button" onClick={onWa} title="WhatsApp" className="fx-btn fx-btn--ghost fx-btn--sm"><Icon name="message" className="fx-icon fx-icon--sm" /></button>}
+          <button type="button" onClick={onOpen} title="Profilə bax" className="fx-btn fx-btn--ghost fx-btn--sm"><Icon name="eye" className="fx-icon fx-icon--sm" /></button>
+        </div>
+      </td>
+    </tr>
   );
 }
 
 function HitRow({ id, name, contact, onOpen }: { id: number; name: string; contact: string; onOpen: () => void }) {
   return (
-    <div onClick={onOpen} className="fx-row" style={{ borderTop: "none", borderBottom: "1px solid var(--hairline)" }}>
-      <span className={`fx-avatar fx-avatar--${avatarVariant(id)}`}>{initialsOf(name)}</span>
-      <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 230 }}>
-        <span className="fx-row__title">{name}</span>
-        <span className="fx-muted" style={{ fontSize: 12.5 }}>{contact}</span>
-      </div>
-      <span className="fx-spacer" />
-      <button type="button" onClick={e => { e.stopPropagation(); onOpen(); }} className="fx-btn fx-btn--ghost fx-btn--sm"><Icon name="eye" className="fx-icon fx-icon--sm" />Profilə bax</button>
-      <Icon name="chevron-right" className="fx-icon" style={{ color: "var(--brand-200)" }} />
-    </div>
+    <tr onClick={onOpen} style={{ cursor: "pointer" }}>
+      <td>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span className={`fx-avatar fx-avatar--${avatarVariant(id)}`}>{initialsOf(name)}</span>
+          <span className="fx-row__title">{name}</span>
+        </div>
+      </td>
+      <td colSpan={5} className="fx-muted" style={{ fontSize: 12.5 }}>{contact}</td>
+      <td onClick={e => e.stopPropagation()}>
+        <button type="button" onClick={onOpen} className="fx-btn fx-btn--ghost fx-btn--sm"><Icon name="eye" className="fx-icon fx-icon--sm" />Profilə bax</button>
+      </td>
+    </tr>
   );
 }
 
@@ -434,9 +453,3 @@ function CreatePatientModal({ onClose, onCreated }: { onClose: () => void; onCre
     </div>
   );
 }
-
-// Hover tez-əməliyyat paneli (dizayndakı .dir-qa) — sətir üstünə gələndə açılır.
-const QA_CSS = `
-.cust-qa{position:absolute; right:48px; top:50%; transform:translateY(-50%); display:flex; gap:8px; align-items:center; opacity:0; pointer-events:none; transition:opacity .15s ease; background:linear-gradient(90deg, rgba(247,249,252,0), var(--bg) 16%); padding:8px 0 8px 32px;}
-.cust-row:hover .cust-qa{opacity:1; pointer-events:auto;}
-`;

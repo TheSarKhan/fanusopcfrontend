@@ -2385,6 +2385,18 @@
   padding: 28px 32px;
 }
 
+/* Panel pages cap their root wrapper at a readable width (style={{ maxWidth }})
+ * but never centered it — on wide screens the block just sat flush-left,
+ * leaving a lopsided dead gap on the right. Center only the page's own root
+ * wrapper (a direct child of .ps-content), not narrower elements nested
+ * inside it (form fields, badges, etc. also use inline max-width). */
+@media (min-width: 981px) {
+  .ps-content > div[style*="max-width"] {
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
 /* ── Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 980px) {
   .ps-side {

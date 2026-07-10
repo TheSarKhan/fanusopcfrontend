@@ -8,6 +8,7 @@ import {
   type AppointmentDetail,
   type CancellationRole,
 } from "@/lib/api";
+import { azFormatDateTime } from "@/lib/datetime";
 
 const LATE_WINDOW_HOURS = 24;
 
@@ -74,7 +75,7 @@ export default function CancelModal({ appointment, role, mode = "cancel", onClos
             <p className="cm-sub">
               {role === "PATIENT" ? appointment.psychologistName : appointment.patientName}
               {appointment.startAt && (
-                <span> · {new Date(appointment.startAt).toLocaleString("az-AZ", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                <span> · {azFormatDateTime(appointment.startAt)}</span>
               )}
             </p>
           ) : null}

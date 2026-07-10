@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { psychologistApi, type GoogleCalendarStatus } from "@/lib/api";
+import { azFormatDateTime } from "@/lib/datetime";
 
 /** Self-contained card that lets a psychologist connect/disconnect their
  *  Google Calendar. Read-only when GOOGLE_CLIENT_ID is unset on the backend. */
@@ -178,7 +179,7 @@ function Connected({
           </div>
           <div style={{ fontSize: 11, color: "#047857", marginTop: 2 }}>
             {status.lastSyncAt
-              ? `Son sinxronizasiya · ${new Date(status.lastSyncAt).toLocaleString("az-AZ")}`
+              ? `Son sinxronizasiya · ${azFormatDateTime(status.lastSyncAt)}`
               : "Aktiv"}
           </div>
         </div>

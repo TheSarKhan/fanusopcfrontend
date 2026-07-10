@@ -8,6 +8,7 @@ import {
   type HomeworkLabelColor, type HomeworkPriority,
 } from "@/lib/api";
 import HomeworkLabelChip, { labelColors } from "./HomeworkLabelChip";
+import { azFormatDate, azFormatDateTime } from "@/lib/datetime";
 
 type Role = "PSYCHOLOGIST" | "PATIENT";
 
@@ -19,11 +20,7 @@ function formatFileSize(bytes?: number | null): string {
 }
 
 function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString("az-AZ", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
+  return azFormatDateTime(iso);
 }
 
 const ACTION_LABEL: Record<string, string> = {
@@ -208,7 +205,7 @@ export default function HomeworkDetailModal({
             </h2>
             <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>
               {homework.patientName} · {formatDateTime(homework.createdAt)}
-              {homework.dueDate && <> · son tarix: {homework.dueDate}</>}
+              {homework.dueDate && <> · son tarix: {azFormatDate(homework.dueDate)}</>}
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

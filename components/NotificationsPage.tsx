@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { notificationsApi, type NotificationItem } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
-import { humanizeDates } from "@/lib/datetime";
+import { humanizeDates, azFormatDate } from "@/lib/datetime";
 
 type IconName =
   | "calendar" | "check" | "refresh" | "x" | "clock" | "hourglass" | "check2"
@@ -46,7 +46,7 @@ function timeAgo(iso: string, now: Date = new Date()): string {
   if (h < 24) return `${h} saat əvvəl`;
   const d = Math.floor(h / 24);
   if (d < 7) return `${d} gün əvvəl`;
-  return new Date(iso).toLocaleDateString("az-AZ", { day: "2-digit", month: "short", year: "numeric" });
+  return azFormatDate(iso);
 }
 
 function groupByDay(items: NotificationItem[]): Array<{ label: string; items: NotificationItem[] }> {
@@ -61,7 +61,7 @@ function groupByDay(items: NotificationItem[]): Array<{ label: string; items: No
     let label: string;
     if (sameDay(d, today)) label = "Bu gün";
     else if (sameDay(d, yesterday)) label = "Dünən";
-    else label = d.toLocaleDateString("az-AZ", { day: "2-digit", month: "long", year: "numeric" });
+    else label = azFormatDate(d);
     if (!groups.has(label)) groups.set(label, []);
     groups.get(label)!.push(it);
   }

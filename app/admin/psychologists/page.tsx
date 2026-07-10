@@ -10,6 +10,7 @@ import {
   type PriceChangeLogItem,
 } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
+import { azFormatDate } from "@/lib/datetime";
 import { IconSearch, IconPlus, IconDownload, IconChevron } from "../_components/icons";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -978,7 +979,7 @@ function FanusPricingSection({ psyId, initialType }: { psyId: number; initialTyp
                   {h.changedByRole === "ADMIN" ? t("pricing.roleAdmin") : t("pricing.rolePsychologist")}
                 </span>
                 <span style={{ color: "#8AAABF", textAlign: "right" }}>
-                  {new Date(h.createdAt).toLocaleDateString("az-AZ")}
+                  {azFormatDate(h.createdAt)}
                 </span>
               </div>
             ))}

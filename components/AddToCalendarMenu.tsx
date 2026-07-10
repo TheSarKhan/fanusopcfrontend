@@ -1,6 +1,6 @@
 "use client";
 
-import { downloadIcs, googleCalendarUrl } from "@/lib/calendar";
+import { googleCalendarUrl } from "@/lib/calendar";
 import type { AppointmentDetail } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { appUrl } from "@/lib/appUrl";
@@ -56,14 +56,6 @@ export default function AddToCalendarMenu({
         <CalIcon />
         {triggerLabel ?? t("calendar.addGoogle")}
       </a>
-      <button
-        type="button"
-        className="atc-secondary"
-        onClick={() => downloadIcs(ev)}
-        title={t("calendar.icsHint")}
-      >
-        {t("calendar.downloadIcs")}
-      </button>
     </span>
   );
 }

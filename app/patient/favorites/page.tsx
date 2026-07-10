@@ -76,13 +76,25 @@ export default function PatientFavoritesPage() {
                   <span key={s} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 999, background: "var(--brand-50)", color: "var(--brand-700)", fontWeight: 600, border: "1px solid var(--brand-100)" }}>{s}</span>
                 ))}
               </div>
-              <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
+              <div style={{ display: "flex", gap: 8, marginTop: "auto", alignItems: "center" }}>
                 <a href={`/patient/book/${p.slug}`} style={{ flex: 1, textAlign: "center", background: "var(--brand)", color: "#fff", padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
                   {t("staff.patFavRebook")}
                 </a>
-                <button onClick={() => remove(p.id)}
-                  style={{ padding: "8px 12px", border: "1px solid #FECACA", color: "#991B1B", background: "#fff", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>
-                  {t("common.delete")}
+                <button
+                  type="button"
+                  onClick={() => remove(p.id)}
+                  aria-label={t("staff.patFavRemove")}
+                  title={t("staff.patFavRemove")}
+                  style={{
+                    flex: "0 0 auto",
+                    width: 36, height: 36, borderRadius: "50%",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    border: "1px solid #FECACA", background: "#fff",
+                    cursor: "pointer", padding: 0,
+                  }}>
+                  <svg width={18} height={18} viewBox="0 0 24 24" fill="#DC2626" stroke="#DC2626" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                  </svg>
                 </button>
               </div>
             </div>

@@ -142,10 +142,17 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
           {test.questions.map((q, qi) => {
             const selected = answers[q.id];
             return (
-              <fieldset key={q.id} className="pgoal-card" style={{ border: "1px solid var(--brand-100)", minWidth: 0 }}>
-                <legend style={{ fontWeight: 600, color: "var(--oxford)", fontSize: 14, marginBottom: 10, padding: 0, width: "100%", boxSizing: "border-box", overflowWrap: "break-word" }}>
+              <div
+                key={q.id}
+                role="radiogroup"
+                aria-labelledby={`q-title-${q.id}`}
+                className="pgoal-card"
+                style={{ border: "1px solid var(--brand-100)", minWidth: 0 }}>
+                <div
+                  id={`q-title-${q.id}`}
+                  style={{ fontWeight: 600, color: "var(--oxford)", fontSize: 14, marginBottom: 10, overflowWrap: "break-word" }}>
                   {qi + 1}. {stripLeadingNumber(q.text)}
-                </legend>
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {q.options.map(opt => {
                     const isSel = selected === opt.id;
@@ -163,6 +170,7 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
                           cursor: "pointer",
                           fontSize: 13.5,
                           color: "var(--oxford)",
+                          minWidth: 0,
                         }}>
                         <input
                           type="radio"
@@ -170,14 +178,14 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
                           value={opt.id}
                           checked={isSel}
                           onChange={() => select(q.id, opt.id)}
-                          style={{ accentColor: "var(--brand)" }}
+                          style={{ accentColor: "var(--brand)", flex: "0 0 auto" }}
                         />
-                        <span>{opt.label}</span>
+                        <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{opt.label}</span>
                       </label>
                     );
                   })}
                 </div>
-              </fieldset>
+              </div>
             );
           })}
         </div>

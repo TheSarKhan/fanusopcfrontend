@@ -292,17 +292,19 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
         {questions.map((q, idx) => {
           const selected = answers[q.id];
           return (
-            <fieldset
+            <div
               key={q.id}
+              role="radiogroup"
+              aria-labelledby={`q-title-${q.id}`}
               style={{
                 ...card,
                 marginBottom: 14,
                 border: `1px solid ${BORDER}`,
                 padding: "20px 22px",
+                minWidth: 0,
               }}
             >
-              <legend style={{ padding: 0 }} />
-              <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
+              <div id={`q-title-${q.id}`} style={{ display: "flex", gap: 12, marginBottom: 14, minWidth: 0 }}>
                 <span
                   style={{
                     flex: "0 0 auto",
@@ -320,7 +322,7 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
                 >
                   {idx + 1}
                 </span>
-                <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: INK, lineHeight: 1.5, paddingTop: 3 }}>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: INK, lineHeight: 1.5, paddingTop: 3, minWidth: 0, overflowWrap: "anywhere" }}>
                   {stripLeadingNumber(q.text)}
                 </p>
               </div>
@@ -341,6 +343,7 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
                         borderRadius: 10,
                         cursor: "pointer",
                         transition: "border-color .15s, background .15s",
+                        minWidth: 0,
                       }}
                     >
                       <input
@@ -351,12 +354,12 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
                         onChange={() => pick(q.id, opt.id)}
                         style={{ accentColor: BRAND, width: 18, height: 18, flex: "0 0 auto" }}
                       />
-                      <span style={{ fontSize: 15, color: INK, lineHeight: 1.4 }}>{opt.label}</span>
+                      <span style={{ fontSize: 15, color: INK, lineHeight: 1.4, minWidth: 0, overflowWrap: "anywhere" }}>{opt.label}</span>
                     </label>
                   );
                 })}
               </div>
-            </fieldset>
+            </div>
           );
         })}
 

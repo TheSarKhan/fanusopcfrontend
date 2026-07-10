@@ -18,6 +18,7 @@ import {
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast as uiToast } from "@/components/Toast";
+import { azFormatDateTime } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
 
 const fmtMin = (m: number | null) => m == null ? "—" : m < 60 ? `${Math.round(m)} dəq` : (() => { const h = Math.floor(m / 60); const r = Math.round(m - h * 60); return r > 0 ? `${h} s ${r} dəq` : `${h} s`; })();
@@ -462,7 +463,7 @@ function CrisisRow({ c, acking, onAck }: { c: OperatorCrisisCheckIn; acking: boo
           <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{c.patientName}</span>
           {c.riskLevel && <span style={{ background: "#FEE2E2", color: "#991B1B", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{c.riskLevel === "CRITICAL" ? "Kritik" : c.riskLevel === "HIGH" ? "Yüksək" : c.riskLevel}</span>}
         </div>
-        <div style={{ fontSize: 12, color: "var(--oxford-60)", fontStyle: "italic", fontWeight: 500, marginTop: 3 }}>{c.note ? `«${c.note.length > 90 ? c.note.slice(0, 90) + "…" : c.note}» · ` : ""}{new Date(c.createdAt).toLocaleString("az-AZ")}</div>
+        <div style={{ fontSize: 12, color: "var(--oxford-60)", fontStyle: "italic", fontWeight: 500, marginTop: 3 }}>{c.note ? `«${c.note.length > 90 ? c.note.slice(0, 90) + "…" : c.note}» · ` : ""}{azFormatDateTime(c.createdAt)}</div>
       </div>
       <div style={{ display: "flex", gap: 7, flex: "none" }}>
         {c.patientPhone && <a href={`tel:${c.patientPhone}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#fff", color: "#047857", border: "1px solid #A7F3D0", fontSize: 11.5, fontWeight: 600, padding: "6px 11px", borderRadius: 9, textDecoration: "none" }}>Zəng</a>}

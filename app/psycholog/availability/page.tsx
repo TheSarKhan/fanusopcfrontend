@@ -6,6 +6,7 @@ import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
 import RescheduleComposeModal from "@/components/RescheduleComposeModal";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { azFormatDateTime } from "@/lib/datetime";
 
 const WEEKDAYS_AZ = [
   { iso: 1, label: "Bazar ertəsi", short: "B.e" },
@@ -888,7 +889,7 @@ function AddVacationModal({ onClose, onCreated }: {
                       {a.patientName ?? "Pasient"}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--oxford-60)" }}>
-                      {a.startAt ? new Date(a.startAt).toLocaleString("az-AZ") : "—"} · {a.status}
+                      {a.startAt ? azFormatDateTime(a.startAt) : "—"} · {a.status}
                     </div>
                   </div>
                   {resolved ? (

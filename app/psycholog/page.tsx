@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
 import { formatAzn } from "@/lib/money";
+import { azFormatDate } from "@/lib/datetime";
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   PENDING:   { label: "Yeni",        color: "#92400E", bg: "#FEF3C7" },
@@ -678,7 +679,7 @@ function DailyChart({ data }: { data: { date: string; count: number }[] }) {
             <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <div style={{ flex: 1, width: "100%", display: "flex", alignItems: "flex-end" }}>
                 <div
-                  title={`${d.date}: ${d.count} seans`}
+                  title={`${azFormatDate(d.date)}: ${d.count} seans`}
                   style={{
                     width: "100%",
                     background: isToday

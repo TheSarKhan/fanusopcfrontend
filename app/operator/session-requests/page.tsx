@@ -13,6 +13,7 @@ import { operatorApi, type SessionRequest } from "@/lib/api";
 import { toast as uiToast } from "@/components/Toast";
 import EmptyState from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
+import { azFormatDate } from "@/lib/datetime";
 import { IconAlert, IconCheck, IconChevronRight, IconClock, IconInbox, IconMail, IconPhone, IconSearch } from "./icons";
 
 type Tab = "POOL" | "MINE" | "CONVERTED" | "CANCELLED";
@@ -20,14 +21,14 @@ type Tab = "POOL" | "MINE" | "CONVERTED" | "CANCELLED";
 const TAB_META: Record<Tab, { label: string }> = {
   POOL: { label: "Hovuz" },
   MINE: { label: "Mənim" },
-  CONVERTED: { label: "Çevrilmiş" },
+  CONVERTED: { label: "Qəbul edilmiş" },
   CANCELLED: { label: "Ləğv edilmiş" },
 };
 
 const STATUS_PILL: Record<string, { label: string; className: string }> = {
   NEW: { label: "Yeni", className: "fx-pill--pending" },
   IN_REVIEW: { label: "Baxılır", className: "fx-pill--info" },
-  CONVERTED: { label: "Çevrilib", className: "fx-pill--paid" },
+  CONVERTED: { label: "Qəbul edildi", className: "fx-pill--paid" },
   CANCELLED: { label: "Ləğv edilib", className: "fx-pill--cancelled" },
 };
 
@@ -218,7 +219,7 @@ export default function SessionRequestsPage() {
                     {req.preferredDate && (
                       <div className="fx-row__meta" style={{ marginTop: 4 }}>
                         <IconClock className="fx-icon--sm" />
-                        <span>Üstünlük verilən: {req.preferredDate}{req.preferredTime ? ` saat ${req.preferredTime}` : ""}</span>
+                        <span>Üstünlük verilən: {azFormatDate(req.preferredDate)}{req.preferredTime ? ` saat ${req.preferredTime}` : ""}</span>
                       </div>
                     )}
                     {req.assignedPsychologistName && (

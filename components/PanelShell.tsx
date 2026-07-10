@@ -66,6 +66,20 @@ export default function PanelShell({
   const [loggingOut, setLoggingOut] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Restore the collapsed preference after mount (avoids SSR/client mismatch).
+  useEffect(() => {
+    if (localStorage.getItem("ps_sidebar_collapsed") === "1") setCollapsed(true);
+  }, []);
+
+  const toggleCollapsed = () => {
+    setCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem("ps_sidebar_collapsed", next ? "1" : "0");
+      return next;
+    });
+  };
 
   // The stored auth record carries no avatar, so pull the current photo from /me
   // once on mount. Keeps the sidebar avatar in sync for every panel role.
@@ -103,10 +117,21 @@ export default function PanelShell({
         <div className="ps-overlay" onClick={() => setMobileOpen(false)} aria-hidden />
       )}
 
-      <aside className={`ps-side ${mobileOpen ? "is-open" : ""}`}>
+      <aside className={`ps-side ${mobileOpen ? "is-open" : ""} ${collapsed ? "is-collapsed" : ""}`}>
+        <button
+          type="button"
+          className="ps-side__toggle"
+          aria-label={collapsed ? "Sidebar-ı aç" : "Sidebar-ı bağla"}
+          onClick={toggleCollapsed}
+        >
+          <PanelIcon name="chevron" size={13} stroke={2.4} style={{ transform: collapsed ? undefined : "rotate(180deg)" }} />
+        </button>
+
         <div className="ps-side__brand">
           <Link href={homeHref} className="ps-side__brand-link" aria-label="Fanus">
-            <span className="ps-side__logo">F</span>
+            <span className="ps-side__logo">
+              <Image src="/images/logos/logo-black.png" alt="" width={52} height={52} priority />
+            </span>
             <div>
               <div className="ps-side__name">Fanus</div>
               <div className="ps-side__role">{brandLabel}</div>

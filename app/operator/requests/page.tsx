@@ -6,6 +6,7 @@ import { toast } from "@/components/Toast";
 import EmptyState from "@/components/EmptyState";
 import ErrorState from "@/components/ErrorState";
 import { Skeleton } from "@/components/Skeleton";
+import { azFormatDateTime } from "@/lib/datetime";
 
 /**
  * Tələblər modulu (Operator BRD §10) — seans/paketdən kənar inzibati tələblər.
@@ -30,7 +31,7 @@ const STATUS_PILL: Record<Exclude<Tab, "ALL">, { cls: string; label: string }> =
 
 function fmt(iso?: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString("az-AZ");
+  return azFormatDateTime(iso);
 }
 
 function IconCheck() {

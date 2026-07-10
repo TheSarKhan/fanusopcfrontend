@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { operatorApi, type PackageDto, type Psychologist, type SessionRequest } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
+import { azFormatDate, azFormatDateTime } from "@/lib/datetime";
 import DatePicker from "@/components/DatePicker";
 import { toast as uiToast } from "@/components/Toast";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -14,12 +15,14 @@ import { IconAlert, IconCheck, IconChevronLeft } from "../icons";
 const STATUS_PILL: Record<string, { label: string; className: string }> = {
   NEW: { label: "Yeni", className: "fx-pill--pending" },
   IN_REVIEW: { label: "Baxılır", className: "fx-pill--info" },
-  CONVERTED: { label: "Çevrilib", className: "fx-pill--paid" },
+  CONVERTED: { label: "Qəbul edildi", className: "fx-pill--paid" },
   CANCELLED: { label: "Ləğv edilib", className: "fx-pill--cancelled" },
 };
 
 function fmtSchedule(dateIso: string, time?: string | null) {
-  const d = new Date(dateIso).toLocaleDateString("az-AZ", { day: "2-digit", month: "long", year: "numeric" });
+  // gg.aa.iiii — locale-dən asılı deyil (az-AZ ICU datası olmayan runtime-larda
+  // toLocaleDateString month:"long" tarixi "2026 M07 12" kimi ISO-fallback verirdi).
+  const d = azFormatDate(dateIso);
   return time ? `${d}, saat ${time}` : d;
 }
 
@@ -127,7 +130,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
 
   // Operatora cari mərhələni + növbəti addımı bir cümlə ilə izah edir (şəffaflıq).
   const statusHint =
-    isConverted ? "Bu müraciət randevuya / paketə çevrilib — nəticə aşağıda göstərilir."
+    isConverted ? "Bu müraciət qəbul edilib (randevu / paket) — nəticə aşağıda göstərilir."
     : isCancelled ? "Bu müraciət ləğv edilib. İstəsəniz aşağıdan bərpa edə bilərsiniz."
     : unclaimed ? "Hovuzda — hələ heç kim götürməyib. Növbəti addım: “Götür”."
     : claimedByOther ? `Hazırda ${req.claimedByName ?? "başqa operator"} aparır — yalnız o çevirə/ləğv edə bilər.`
@@ -237,7 +240,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
               <InfoRow label="E-poçt" value={req.email} />
               <InfoRow label="Yaş" value={req.age} />
               <InfoRow label="Büdcə" value={req.budget} />
-              <InfoRow label="Göndərildi" value={new Date(req.createdAt).toLocaleString("az-AZ")} />
+              <InfoRow label="Göndərildi" value={azFormatDateTime(req.createdAt)} />
             </div>
           </div>
 
@@ -252,7 +255,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
             <div className="fx-card">
               <div className="fx-card__head"><span className="fx-card-title">Əlavə məlumat</span></div>
               <div className="fx-card__pad">
-                <InfoRow label="Üstünlük verilən tarix" value={req.preferredDate} />
+                <InfoRow label="Üstünlük verilən tarix" value={req.preferredDate ? azFormatDate(req.preferredDate) : req.preferredDate} />
                 <InfoRow label="Üstünlük verilən saat" value={req.preferredTime} />
                 {req.notes && (
                   <div style={{ marginTop: 12, fontSize: 13, color: "var(--oxford-80)", lineHeight: 1.6 }}>
@@ -266,7 +269,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
           {isConverted && (
             <div className="fx-card" style={{ background: "var(--sage-bg)", borderColor: "rgba(74,155,127,.35)" }}>
               <div className="fx-card__pad">
-                <div className="fx-label" style={{ color: "#2E6B54", marginBottom: 12 }}>Çevrilib — nəticə</div>
+                <div className="fx-label" style={{ color: "#2E6B54", marginBottom: 12 }}>Qəbul edildi — nəticə</div>
                 {(req.assignedPsychologistName || req.scheduledDate || req.sessionPackage) && (
                   <div style={{ marginBottom: 16 }}>
                     <InfoRow label="Təyin olunan psixoloq" value={req.assignedPsychologistName} />

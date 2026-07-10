@@ -18,6 +18,7 @@ import {
   type PatientTagColor,
 } from "@/lib/api";
 import { FEATURE_GOALS } from "@/lib/features";
+import { azFormatDate } from "@/lib/datetime";
 import { toast } from "@/components/Toast";
 import { confirmDialog } from "@/components/ConfirmDialog";
 
@@ -764,7 +765,7 @@ function CrisisHistoryCard({ items }: { items: CrisisCheckIn[] }) {
         {dots.map((d, i) => (
           <circle key={i} cx={d.x} cy={d.y} r="3"
             fill={d.mood <= 2 ? "#DC2626" : d.mood === 3 ? "#F59E0B" : "#10B981"}>
-            <title>{`${d.mood}/5 · ${new Date(d.ts).toLocaleDateString("az-AZ")}`}</title>
+            <title>{`${d.mood}/5 · ${azFormatDate(d.ts)}`}</title>
           </circle>
         ))}
       </svg>
@@ -1358,9 +1359,9 @@ function MoodTrendChart({ points }: { points: { date: string; score: number }[] 
         </svg>
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, fontSize: 11.5, color: "#9DB0CC", fontWeight: 600 }}>
-        <span>{new Date(first.date).toLocaleDateString("az-AZ", { day: "2-digit", month: "short" })}</span>
+        <span>{azFormatDate(first.date)}</span>
         <span>{points.length} qeyd</span>
-        <span>{new Date(last.date).toLocaleDateString("az-AZ", { day: "2-digit", month: "short" })}</span>
+        <span>{azFormatDate(last.date)}</span>
       </div>
     </div>
   );

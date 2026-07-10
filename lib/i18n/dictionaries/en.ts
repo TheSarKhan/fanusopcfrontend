@@ -252,7 +252,7 @@ export const en: typeof az = {
   appt: {
     pageTitle: "My sessions",
     pageSub: "Track your sessions and confirm after each one",
-    newCta: "+ New booking",
+    newCta: "New booking",
     sectionToday: "Today",
     sectionWeek: "This week",
     sectionAwaiting: "Awaiting confirmation",
@@ -700,6 +700,7 @@ export const en: typeof az = {
     patFavEmptySub: "Tap the heart on a therapist card to save them.",
     patFavBrowse: "Browse therapists",
     patFavRebook: "Re-book",
+    patFavRemove: "Remove from favorites",
     patHwTitle: "My homework",
     patHwSub: "Track tasks given by your therapist",
     patHwEmpty: "No homework yet",

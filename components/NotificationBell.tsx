@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { notificationsApi, type NotificationItem } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
-import { humanizeDates } from "@/lib/datetime";
+import { humanizeDates, azFormatDate } from "@/lib/datetime";
 
 function timeAgo(iso: string): string {
   const diff = Math.max(0, Date.now() - new Date(iso).getTime());
@@ -16,7 +16,7 @@ function timeAgo(iso: string): string {
   if (h < 24) return `${h} saat əvvəl`;
   const d = Math.floor(h / 24);
   if (d < 7) return `${d} gün əvvəl`;
-  return new Date(iso).toLocaleDateString("az-AZ");
+  return azFormatDate(iso);
 }
 
 export default function NotificationBell() {

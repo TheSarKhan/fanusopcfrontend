@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { psychologistApi, type AppointmentDetail, type GoogleCalendarStatus, type GoogleExternalEvent } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { azFormatDateTime } from "@/lib/datetime";
 
 const DAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"]; // Mon..Sun
 
@@ -1022,7 +1023,7 @@ function GoogleStatusBanner({
             <> · <strong style={{ color: "#B45309" }}>{conflictCount} konflikt</strong></>
           )}
           {status.lastSyncAt && (
-            <> · son sinxron {new Date(status.lastSyncAt).toLocaleString("az-AZ")}</>
+            <> · son sinxron {azFormatDateTime(status.lastSyncAt)}</>
           )}
         </div>
       </div>

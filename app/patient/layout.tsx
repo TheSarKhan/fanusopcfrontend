@@ -77,10 +77,10 @@ function PatientShell({ children }: { children: React.ReactNode }) {
 
   return (
     <PanelShell
-      brandLabel={t("nav.myAccount")}
+      brandLabel={t("pkg.patient")}
       homeHref="/patient"
       navItems={nav}
-      user={{ name, initials, role: t("nav.myAccount") }}
+      user={{ name, initials, role: t("pkg.patient") }}
       searchPlaceholder={t("common.search")}
     >
       <RiskBanner level={risk} />

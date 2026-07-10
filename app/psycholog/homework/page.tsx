@@ -10,6 +10,7 @@ import HomeworkDetailModal from "@/components/HomeworkDetailModal";
 import HomeworkCreateModal from "@/components/HomeworkCreateModal";
 import HomeworkLabelChip, { LABEL_COLOR_LIST, labelColors } from "@/components/HomeworkLabelChip";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { azFormatDate } from "@/lib/datetime";
 
 const PRIORITY_COLOR: Record<HomeworkPriority, string> = {
   LOW: "#10B981", MEDIUM: "#F59E0B", HIGH: "#DC2626",
@@ -664,7 +665,7 @@ function PsyHomeworkRow({ h, onOpen, onDelete }: {
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)", marginBottom: 4 }}>{h.title}</div>
           <div style={{ fontSize: 11.5, color: "var(--oxford-60)", display: "flex", gap: 12, flexWrap: "wrap" }}>
-            {h.dueDate && <span>Son tarix: {h.dueDate}</span>}
+            {h.dueDate && <span>Son tarix: {azFormatDate(h.dueDate)}</span>}
             <span>Yaradılıb {formatTimeAgo(h.createdAt)}</span>
             {h.completedAt && (
               <span>Statusu dəyişib {formatTimeAgo(h.completedAt)}</span>

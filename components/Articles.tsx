@@ -3,18 +3,18 @@
 import Link from "next/link";
 import type { BlogPost } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { azFormatDate } from "@/lib/datetime";
 
 const COLORS = ["#5089E0", "#1051B7", "#0B3F90", "#2A6BD0"];
 
 export default function Articles({ posts }: { posts?: BlogPost[] }) {
-  const { t, locale } = useT();
-  const dateLocale = locale === "ru" ? "ru-RU" : locale === "en" ? "en-GB" : "az-AZ";
+  const { t } = useT();
   const data = (posts && posts.length > 0)
     ? posts.slice(0, 4).map((p, i) => ({
         slug: p.slug,
         tag: p.category,
         title: p.title,
-        date: new Date(p.publishedDate).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" }),
+        date: azFormatDate(p.publishedDate),
         read: t("articles.minutes", { n: p.readTimeMinutes }),
         bg: p.categoryBg || COLORS[i % COLORS.length],
         fg: p.categoryColor || "#fff",

@@ -255,7 +255,7 @@ export const ru: typeof az = {
   appt: {
     pageTitle: "Мои сессии",
     pageSub: "Отслеживайте свои сессии и подтверждайте после встречи",
-    newCta: "+ Новая запись",
+    newCta: "Новая запись",
     sectionToday: "Сегодня",
     sectionWeek: "На этой неделе",
     sectionAwaiting: "Ожидает подтверждения",
@@ -703,6 +703,7 @@ export const ru: typeof az = {
     patFavEmptySub: "Кликните на сердечко на карточке психолога, чтобы добавить в избранное.",
     patFavBrowse: "К психологам",
     patFavRebook: "Записаться снова",
+    patFavRemove: "Удалить из избранного",
     patHwTitle: "Мои задания",
     patHwSub: "Отслеживайте задания от вашего психолога",
     patHwEmpty: "Заданий пока нет",

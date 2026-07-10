@@ -5,6 +5,7 @@ import { patientApi, type Homework, type HomeworkPriority, type HomeworkStatus }
 import HomeworkDetailModal from "@/components/HomeworkDetailModal";
 import HomeworkLabelChip from "@/components/HomeworkLabelChip";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { azFormatDate } from "@/lib/datetime";
 
 const COLUMNS: { status: HomeworkStatus; label: string; tone: string; hint: string }[] = [
   { status: "PENDING",     label: "Gözləyir",   tone: "#F59E0B", hint: "Hələ başlamadıqların" },
@@ -288,7 +289,7 @@ function KanbanCard({
             background: overdue ? "#FEE2E2" : "var(--brand-50)",
             color: overdue ? "#991B1B" : "var(--brand-700)",
           }}>
-            {h.dueDate}
+            {azFormatDate(h.dueDate)}
           </span>
         )}
         {h.checklistTotal > 0 && (

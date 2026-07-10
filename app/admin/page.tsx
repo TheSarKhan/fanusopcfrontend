@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { azFormatDate, azFormatWeekday } from "@/lib/datetime";
 import {
   adminApi,
   operatorApi,
@@ -258,7 +259,7 @@ export default function AdminDashboard() {
 
   const dateString = useMemo(() => {
     const d = new Date();
-    return d.toLocaleDateString("az-AZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    return `${azFormatWeekday(d)}, ${azFormatDate(d)}`;
   }, []);
 
   return (

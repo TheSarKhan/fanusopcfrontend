@@ -2,6 +2,7 @@
 
 import type { ReactElement } from "react";
 import type { Announcement } from "@/lib/api";
+import { azFormatDate } from "@/lib/datetime";
 
 const ICON_MAP: Record<string, ReactElement> = {
   GROUP: (
@@ -24,8 +25,7 @@ const ICON_MAP: Record<string, ReactElement> = {
 };
 
 function formatDate(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("az-AZ", { day: "numeric", month: "long", year: "numeric" });
+  return azFormatDate(dateStr);
 }
 
 export default function Announcements({ announcements }: { announcements: Announcement[] }) {

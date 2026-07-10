@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { adminApi, type Announcement } from "@/lib/api";
+import { azFormatDate } from "@/lib/datetime";
 import { IconPlus } from "../_components/icons";
 import DatePicker from "@/components/DatePicker";
 
@@ -105,7 +106,7 @@ export default function AnnouncementsPage() {
                     {status === "active" && <span className="pill sage"><span className="dot" />Aktiv</span>}
                     {status === "scheduled" && <span className="pill gold"><span className="dot" />Cədvəldə</span>}
                     {status === "archived" && <span className="pill muted"><span className="dot" />Arxiv</span>}
-                    <span style={{ fontSize: 11, color: "var(--muted)" }}>{a.publishedDate}</span>
+                    <span style={{ fontSize: 11, color: "var(--muted)" }}>{azFormatDate(a.publishedDate)}</span>
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>{a.title}</div>
                   <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 12px", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>

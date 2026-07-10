@@ -6,6 +6,7 @@ import Deco from "@/components/Deco";
 import Breadcrumb from "@/components/Breadcrumb";
 import type { BlogPost } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { azFormatDate } from "@/lib/datetime";
 
 type Cat = "all" | "anxiety" | "relations" | "selfcare" | "sleep" | "youth" | "mindful";
 type Illu = "sun" | "people" | "flame" | "moon" | "waves" | "compass";
@@ -76,7 +77,7 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
         cat,
         title: p.title,
         excerpt: p.excerpt,
-        date: new Date(p.publishedDate).toLocaleDateString("az-AZ", { day: "numeric", month: "short", year: "numeric" }),
+        date: azFormatDate(p.publishedDate),
         read: `${p.readTimeMinutes} dəq`,
         readMinutes: p.readTimeMinutes,
         publishedAt: new Date(p.publishedDate).getTime(),

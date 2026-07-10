@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useBooking } from "@/context/BookingContext";
 import { useScrollReveal } from "@/lib/useScrollReveal";
 import Link from "next/link";
+import { azFormatDate } from "@/lib/datetime";
 
 const PROMPTS = [
   "Bu gün özümə demək istədiyim bir söz...",
@@ -25,7 +26,7 @@ export default function FinalCTA() {
     return () => clearInterval(t);
   }, [note]);
 
-  const today = new Date().toLocaleDateString("az-AZ", { day: "numeric", month: "long", year: "numeric" });
+  const today = azFormatDate(new Date());
 
   const onSeal = () => {
     if (!note.trim()) return;

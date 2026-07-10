@@ -259,7 +259,7 @@ export const az = {
   appt: {
     pageTitle: "Randevularım",
     pageSub: "Randevularınızı izləyin, seans sonrası təsdiqləyin",
-    newCta: "+ Yeni randevu",
+    newCta: "Yeni randevu",
     sectionToday: "Bu gün",
     sectionWeek: "Bu həftə",
     sectionAwaiting: "Təsdiq gözlənir",
@@ -726,6 +726,7 @@ export const az = {
     patFavEmptySub: "Psixoloq kartlarındakı qəlb işarəsinə klik edərək favoritə əlavə edin.",
     patFavBrowse: "Psixoloqlara bax",
     patFavRebook: "Yenidən randevu",
+    patFavRemove: "Favoritdən sil",
     patHwTitle: "Tapşırıqlarım",
     patHwSub: "Psixoloqunuzun verdiyi tapşırıqları izləyin",
     patHwEmpty: "Hələ tapşırıq yoxdur",

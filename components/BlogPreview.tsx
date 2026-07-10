@@ -1,9 +1,9 @@
 ﻿import Link from "next/link";
 import type { BlogPost } from "@/lib/api";
+import { azFormatDate } from "@/lib/datetime";
 
 function formatDate(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("az-AZ", { day: "numeric", month: "long", year: "numeric" });
+  return azFormatDate(dateStr);
 }
 
 export default function BlogPreview({ posts }: { posts: BlogPost[] }) {

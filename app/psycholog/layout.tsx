@@ -59,10 +59,10 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
 
   return (
     <PanelShell
-      brandLabel={t("nav.psychologists")}
+      brandLabel={t("pricing.rolePsychologist")}
       homeHref="/psycholog"
       navItems={nav}
-      user={{ name, initials, role: t("nav.psychologists") }}
+      user={{ name, initials, role: t("pricing.rolePsychologist") }}
       searchPlaceholder={t("common.search")}
     >
       <ModuleLock>{children}</ModuleLock>

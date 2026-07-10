@@ -20,7 +20,7 @@ type Tab = "POOL" | "MINE" | "CONVERTED" | "CANCELLED";
 
 const TAB_META: Record<Tab, { label: string }> = {
   POOL: { label: "Hovuz" },
-  MINE: { label: "Mənim" },
+  MINE: { label: "Baxılır" },
   CONVERTED: { label: "Qəbul edilmiş" },
   CANCELLED: { label: "Ləğv edilmiş" },
 };

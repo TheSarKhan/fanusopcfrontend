@@ -3485,7 +3485,7 @@ export const operatorApi = {
     authedRequest<SessionRequestClaimState>("POST", `/operator/session-requests/${id}/release`),
   convertSessionRequestToAppointment: (id: number, data: {
     psychologistId: number; startAt: string; endAt?: string | null; note?: string | null;
-    patientChoseDirectly?: boolean;
+    patientChoseDirectly?: boolean; sessionKind?: "STANDARD" | "INTRO" | null;
   }) => authedRequest<SessionRequest>("POST", `/operator/session-requests/${id}/convert-to-appointment`, data),
   convertSessionRequestToPackage: (id: number, data: {
     sessionPackageId?: number | null; psychologistId?: number | null; packageName?: string | null;

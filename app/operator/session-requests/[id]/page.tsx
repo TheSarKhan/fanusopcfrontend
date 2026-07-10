@@ -7,7 +7,6 @@ import { getStoredUser } from "@/lib/auth";
 import { azFormatDate, azFormatDateTime } from "@/lib/datetime";
 import DatePicker from "@/components/DatePicker";
 import { toast as uiToast } from "@/components/Toast";
-import { confirmDialog } from "@/components/ConfirmDialog";
 import ErrorState from "@/components/ErrorState";
 import { Skeleton } from "@/components/Skeleton";
 import { IconAlert, IconCheck, IconChevronLeft } from "../icons";
@@ -55,6 +54,10 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   const [convertError, setConvertError] = useState("");
   // Pasient telefonda bu psixoloqu özü istəyibsə komissiyasız/azaldılmış faiz tətbiq olunur.
   const [convertPatientChoseDirectly, setConvertPatientChoseDirectly] = useState(false);
+  // Operator qəbul edərkən seans növünü seçir: tək seans və ya pulsuz tanışlıq (15 dəq).
+  // Eligibility (1 pulsuz haqq) serverdə yoxlanır — pasient hələ yaranmadığı üçün burada
+  // əvvəlcədən yoxlanıla bilmir, uyğun deyilsə backend xəta qaytarır (convertError göstərir).
+  const [convertSessionKind, setConvertSessionKind] = useState<"STANDARD" | "INTRO">("STANDARD");
 
   // Paket sat
   const [pkgOpen, setPkgOpen] = useState(false);
@@ -69,6 +72,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   const [pkgPatientChoseDirectly, setPkgPatientChoseDirectly] = useState(false);
 
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -153,17 +157,10 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
       .finally(() => setClaimBusy(false));
   };
 
-  const cancel = async () => {
-    const ok = await confirmDialog({
-      title: "Müraciəti ləğv et",
-      message: "Bu müraciəti ləğv etmək istədiyinizə əminsiniz? Sonra “Bərpa et” ilə geri qaytara bilərsiniz.",
-      confirmLabel: "Ləğv et",
-      danger: true,
-    });
-    if (!ok) return;
+  const cancelWithReason = (reason: string) => {
     setCancelBusy(true);
-    operatorApi.updateSessionRequestStatus(req.id, { status: "CANCELLED" })
-      .then(() => { uiToast("Müraciət ləğv edildi", "success"); load(); })
+    operatorApi.updateSessionRequestStatus(req.id, { status: "CANCELLED", operatorNote: reason })
+      .then(() => { setCancelModalOpen(false); uiToast("Müraciət ləğv edildi", "success"); load(); })
       .catch(e => uiToast((e as Error).message, "error"))
       .finally(() => setCancelBusy(false));
   };
@@ -177,6 +174,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
       const updated = await operatorApi.convertSessionRequestToAppointment(req.id, {
         psychologistId: Number(psyId), startAt, note: note.trim() || undefined,
         patientChoseDirectly: convertPatientChoseDirectly,
+        sessionKind: convertSessionKind === "INTRO" ? "INTRO" : undefined,
       });
       setReq(updated);
       uiToast("Randevu yaradıldı", "success");
@@ -353,6 +351,26 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                 </div>
 
                 <div className="fx-field" style={{ marginBottom: 12 }}>
+                  <label className="fx-label">Seans növü</label>
+                  <div className="fx-segmented" style={{ width: "100%" }}>
+                    <button type="button" style={{ flex: 1 }} className={convertSessionKind === "STANDARD" ? "fx-seg--active" : ""}
+                      onClick={() => setConvertSessionKind("STANDARD")}>
+                      Tək seans
+                    </button>
+                    <button type="button" style={{ flex: 1 }} className={convertSessionKind === "INTRO" ? "fx-seg--active" : ""}
+                      onClick={() => setConvertSessionKind("INTRO")}>
+                      Tanışlıq (15 dəq, pulsuz)
+                    </button>
+                  </div>
+                  {convertSessionKind === "INTRO" && (
+                    <p className="fx-muted" style={{ margin: "6px 0 0", fontSize: 11.5, lineHeight: 1.4 }}>
+                      Pasientin pulsuz tanışlıq haqqı istifadə olunubsa, sistem xəta qaytaracaq —
+                      2-ci tanışlıq üçün Pasiyent 360-dan əvvəlcə icazə verilməlidir.
+                    </p>
+                  )}
+                </div>
+
+                <div className="fx-field" style={{ marginBottom: 12 }}>
                   <label className="fx-label">Seans tarixi/saatı *</label>
                   <DatePicker value={startAt} onChange={setStartAt} placeholder="gg.aa.iiii ss:dd" theme="light" withTime />
                 </div>
@@ -447,12 +465,53 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
               <button type="button" disabled={claimBusy} onClick={release} className="fx-btn fx-btn--ghost" style={{ flex: 1 }}>
                 Hovuza buraxdır
               </button>
-              <button type="button" disabled={cancelBusy} onClick={cancel} className="fx-btn fx-btn--danger-ghost" style={{ flex: 1 }}>
+              <button type="button" disabled={cancelBusy} onClick={() => setCancelModalOpen(true)} className="fx-btn fx-btn--danger-ghost" style={{ flex: 1 }}>
                 Ləğv et
               </button>
             </div>
           </div>
         )}
+      </div>
+
+      {cancelModalOpen && (
+        <CancelReasonModal
+          busy={cancelBusy}
+          onClose={() => setCancelModalOpen(false)}
+          onConfirm={cancelWithReason}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ─── Ləğv səbəbi modalı — səbəb yazılmadan ləğv mümkün deyil ─────────────── */
+
+function CancelReasonModal({ busy, onClose, onConfirm }: {
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState("");
+  const trimmed = reason.trim();
+
+  return (
+    <div className="fx-overlay fx-overlay--center" onClick={busy ? undefined : onClose} style={{ padding: 16 }}>
+      <div className="fx-modal" onClick={e => e.stopPropagation()} style={{ width: "min(440px, 100%)" }}>
+        <h3 className="fx-h3">Müraciəti ləğv et</h3>
+        <p className="fx-modal__text" style={{ marginTop: -6 }}>
+          Ləğv səbəbini yazın — bu qeyd müraciətin tarixçəsində saxlanılır. Sonra “Bərpa et” ilə geri qaytara bilərsiniz.
+        </p>
+        <textarea className="fx-textarea" rows={3} autoFocus value={reason} onChange={e => setReason(e.target.value)}
+          placeholder="Məsələn: Əlaqə saxlanılmadı, müştəri imtina etdi, uyğun vaxt tapılmadı..." />
+        <div className="fx-modal__actions">
+          <button type="button" onClick={onClose} disabled={busy} className="fx-btn fx-btn--ghost">
+            Vaz keç
+          </button>
+          <button type="button" onClick={() => onConfirm(trimmed)} disabled={busy || !trimmed}
+            className="fx-btn fx-btn--danger" style={{ opacity: busy || !trimmed ? 0.6 : 1, cursor: busy || !trimmed ? "not-allowed" : "pointer" }}>
+            {busy ? "…" : "Ləğv et"}
+          </button>
+        </div>
       </div>
     </div>
   );

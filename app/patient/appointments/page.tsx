@@ -520,15 +520,24 @@ function NextSessionHero({
   const alreadyConfirmed = !!appt.patientConfirmedAt;
   const urgent = tu.urgent || tu.expired;
 
-  const heroGhostBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 15px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" };
+  // "Qoşul" is the primary action here (JoinSessionButton variant="primary" — solid brand
+  // button), everything else is a secondary ghost action at this same comfortable size.
+  const heroGhostBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid var(--brand-200)", borderRadius: 10, padding: "10px 15px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" };
   const heroDangerBtn: React.CSSProperties = { ...heroGhostBtn, color: "#991B1B", border: "1px solid #F3D6D6" };
+
+  // No pill/badge chips — session context reads as a plain meta line under the
+  // name (weight/color for emphasis instead of colored backgrounds).
+  const metaParts: { text: string; color?: string }[] = [];
+  if (sessionNumber) metaParts.push({ text: `${azOrdinal(sessionNumber)} seans` });
+  if (appt.patientPackageId != null) metaParts.push({ text: appt.packageName ? `Paket · ${appt.packageName}` : "Paket" });
+  if (appt.sessionKind === "INTRO") metaParts.push({ text: "Tanışlıq · Pulsuz", color: "#059669" });
 
   return (
     <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(135deg,#F2F6FD 0%,#E4ECFA 100%)", border: `1px solid ${urgent ? "#FECACA" : "#D6E2F7"}`, borderRadius: 18, padding: "24px 26px", marginBottom: 32, boxShadow: "0 2px 12px rgba(8,47,109,.07)" }}>
       <div aria-hidden style={{ position: "absolute", top: -60, right: -40, width: 200, height: 200, borderRadius: "50%", background: `radial-gradient(circle,${urgent ? "rgba(239,68,68,.12)" : "rgba(16,81,183,.1)"},transparent 70%)`, pointerEvents: "none" }} />
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 18 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: urgent ? "#EF4444" : "var(--brand)", color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", padding: "6px 12px", borderRadius: 999 }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#fff" }} />NÖVBƏTİ SEANS
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 20 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: urgent ? "#DC2626" : "var(--brand)" }}>
+          Növbəti seans
         </span>
         <span style={{ fontSize: 14, fontWeight: 600, color: "#082F6D" }}>
           {relativeDayLabel(start, now)} · <strong>{fmtTime(start)}{appt.endAt ? ` – ${fmtTime(new Date(appt.endAt))}` : ""}</strong>
@@ -538,25 +547,22 @@ function NextSessionHero({
       <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <span style={{ width: 58, height: 58, borderRadius: "50%", background: "#082F6D", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 19, fontWeight: 700, flex: "none", overflow: "hidden" }}>
           {photoUrl ? (
-             
+
             <img src={photoUrl} alt={appt.psychologistName ?? ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : initialsOf(appt.psychologistName)}
         </span>
         <div style={{ flex: 1, minWidth: 230 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", marginBottom: 8 }}>
-            <span style={{ fontSize: 18, fontWeight: 700 }}>{appt.psychologistName ?? "Operator psixoloq təyin edəcək"}</span>
-            {sessionNumber && <span style={{ background: "#fff", border: "1px solid #D6E2F7", color: "#082F6D", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>{azOrdinal(sessionNumber)} seans</span>}
-            {appt.patientPackageId != null && (
-              <span title={appt.packageName ?? undefined} style={{ background: "#fff", border: "1px solid #D6E2F7", color: "var(--brand-700)", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                Paket{appt.packageName ? ` · ${appt.packageName}` : ""}
-              </span>
-            )}
-            {appt.sessionKind === "INTRO" && (
-              <span style={{ background: "#D1FAE5", color: "#065F46", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999, whiteSpace: "nowrap" }}>
-                Tanışlıq · Pulsuz
-              </span>
-            )}
-          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: metaParts.length > 0 ? 3 : 8 }}>{appt.psychologistName ?? "Operator psixoloq təyin edəcək"}</div>
+          {metaParts.length > 0 && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 8 }}>
+              {metaParts.map((p, i) => (
+                <span key={i} style={{ color: p.color }}>
+                  {i > 0 && <span style={{ opacity: .45, margin: "0 6px" }}>·</span>}
+                  {p.text}
+                </span>
+              ))}
+            </div>
+          )}
           {appt.note && (
             <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "rgba(255,255,255,.6)", border: "1px solid #D6E2F7", borderRadius: 11, padding: "10px 13px", maxWidth: 520 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1051B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
@@ -572,8 +578,8 @@ function NextSessionHero({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 18 }}>
-        <span className={tu.expired ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: urgent ? "#FEE2E2" : "#ECFDF5", color: urgent ? "#991B1B" : "#047857", border: `1px solid ${urgent ? "#FECACA" : "#A7F3D0"}`, fontSize: 13, fontWeight: 700, padding: "9px 14px", borderRadius: 999 }}>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", marginTop: 20 }}>
+        <span className={tu.expired ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: urgent ? "#DC2626" : "#059669", fontSize: 13.5, fontWeight: 700 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>{tu.text}
         </span>
         {showConfirm && !alreadyConfirmed && (
@@ -598,8 +604,8 @@ function NextSessionHero({
         )}
         {!tu.expired && (
           <>
-            <JoinSessionButton appointment={appt} variant="compact" />
-            <AddToCalendarMenu appointment={appt} variant="compact" />
+            <JoinSessionButton appointment={appt} variant="primary" />
+            <AddToCalendarMenu appointment={appt} />
             <button onClick={() => onReschedule(appt)} style={heroGhostBtn}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
               {t("staff.cardReschedule")}

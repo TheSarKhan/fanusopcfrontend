@@ -5,8 +5,10 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 
 interface Props {
   appointment: AppointmentDetail;
-  /** Inline / compact / button style. Compact uses small padding. */
-  variant?: "default" | "compact";
+  /** Inline / compact / primary style. Compact uses small padding.
+   *  Primary renders a solid brand-blue button for prominent placements
+   *  (e.g. the "next session" hero card) where this is the main CTA. */
+  variant?: "default" | "compact" | "primary";
 }
 
 // Modul B: seans görüş linkinə "Seansa qoşul" düyməsi. Operator linki təyin etdikdə
@@ -22,10 +24,11 @@ export default function JoinSessionButton({ appointment, variant = "default" }: 
   if (HIDDEN_STATUSES.has(appointment.status)) return null;
 
   const paymentPending = appointment.paymentStatus === "PENDING";
+  const wrapClass = `atc-wrap${variant === "compact" ? " atc-wrap--compact" : variant === "primary" ? " atc-wrap--primary" : ""}`;
 
   if (paymentPending) {
     return (
-      <span className={`atc-wrap${variant === "compact" ? " atc-wrap--compact" : ""}`}>
+      <span className={wrapClass}>
         <span
           className="atc-trigger"
           style={{ opacity: 0.5, cursor: "not-allowed", pointerEvents: "none" }}
@@ -39,7 +42,7 @@ export default function JoinSessionButton({ appointment, variant = "default" }: 
   }
 
   return (
-    <span className={`atc-wrap${variant === "compact" ? " atc-wrap--compact" : ""}`}>
+    <span className={wrapClass}>
       <a
         className="atc-trigger"
         href={link}

@@ -614,8 +614,8 @@ export const en: typeof az = {
     opReassignConfirm: "Reassign",
     opReassignDone: "Request reassigned",
     // Pool — dedicated intake page
-    opPoolTitle: "All Requests",
-    opPoolSub: "Pick up new requests — what you take stays permanently assigned to you.",
+    opPoolTitle: "Appointment Pool",
+    opPoolSub: "Pick up new appointment requests — what you take stays permanently assigned to you.",
     opPoolApptSection: "Session requests",
     opPoolPaySection: "Package requests",
     opPoolEmpty: "The pool is empty — no new requests",

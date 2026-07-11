@@ -78,7 +78,7 @@ function PsycHero({ onApply }: { onApply: () => void }) {
       </div>
 
       <style>{`
-        .pp-hero { padding: 72px 0 28px; text-align: center; }
+        .pp-hero { padding: 28px 0; text-align: center; }
         .pp-hero__inner { max-width: 720px; margin: 0 auto; }
         .pp-hero h1 {
           margin: 0 0 16px;
@@ -94,7 +94,7 @@ function PsycHero({ onApply }: { onApply: () => void }) {
           display: flex; justify-content: center; gap: 12px;
           margin-top: 28px; flex-wrap: wrap;
         }
-        @media (max-width: 640px) { .pp-hero { padding: 48px 0 20px; } }
+        @media (max-width: 640px) { .pp-hero { padding: 20px 0; } }
       `}</style>
     </section>
   );

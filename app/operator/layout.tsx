@@ -97,15 +97,15 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
   // Bütün modullar. Kilidlilər (./modules.ts) sidebar-dan çıxarılır.
   const allNav: ModuleNavItem[] = [
     { key: "dashboard",        href: "/operator",                    label: t("nav.dashboard"),       icon: "home" },
-    { key: "pool",             href: "/operator/pool",               label: "Bütün müraciətlər",      icon: "inbox", badge: poolCount },
+    { key: "pool",             href: "/operator/pool",               label: "Randevu hovuzu",         icon: "inbox", badge: poolCount },
     { key: "appointments",     href: "/operator/appointments",       label: t("nav.appointments"),    icon: "calendar" },
     { key: "meetingLinks",  href: "/operator/meeting-links", label: "Görüş linkləri",        icon: "video" },
     { key: "payments",      href: "/operator/payments",     label: t("pkg.paymentsTitle"),   icon: "clipboard" },
     { key: "analytics",     href: "/operator/analytics",    label: t("nav.analytics"),       icon: "chart" },
     { key: "customers",     href: "/operator/customers",     label: "Müştərilər",            icon: "users" },
     { key: "psychologists", href: "/operator/psychologists", label: "Psixoloq statistikası", icon: "user" },
-    { key: "requests",      href: "/operator/requests",      label: "Tələblər",              icon: "inbox" },
-    { key: "sessionRequests", href: "/operator/session-requests", label: "Müraciətlər",       icon: "message", badge: sessionReqCount },
+    { key: "requests",      href: "/operator/requests",      label: "Rəy silmə tələbləri",   icon: "flag" },
+    { key: "sessionRequests", href: "/operator/session-requests", label: "Sayt müraciətləri", icon: "message", badge: sessionReqCount },
   ];
 
   const nav: PanelNavItem[] = allNav.filter((item) => OPERATOR_MODULES[item.key]);

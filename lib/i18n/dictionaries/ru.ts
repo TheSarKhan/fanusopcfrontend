@@ -617,8 +617,8 @@ export const ru: typeof az = {
     opReassignConfirm: "Передать",
     opReassignDone: "Заявка передана",
     // Pool — отдельная страница приёма
-    opPoolTitle: "Все заявки",
-    opPoolSub: "Берите новые заявки — взятое навсегда закрепляется за вами.",
+    opPoolTitle: "Пул записей",
+    opPoolSub: "Берите новые заявки на запись — взятое навсегда закрепляется за вами.",
     opPoolApptSection: "Заявки на сессии",
     opPoolPaySection: "Заявки на пакет",
     opPoolEmpty: "Пул пуст — новых заявок нет",

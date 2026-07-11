@@ -1,5 +1,6 @@
 import { storeUser, clearUser, getMainSiteUrl } from "./auth";
 import { withSlugs } from "./slug";
+import { beginTask, endTask } from "./loadingOverlay";
 
 let API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 if (API_URL.endsWith("/")) API_URL = API_URL.slice(0, -1);
@@ -42,6 +43,15 @@ async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<R
     if (e instanceof TypeError) throw new Error(connectionErrorMessage());
     throw e;
   }
+}
+
+/** Public form əməliyyatları (login, qeydiyyat, əlaqə, guest booking, şifrə
+ *  sıfırlama, OTP) üçün fetch — qlobal yükləmə popupını tətikləyir. Panel
+ *  mutasiyaları `authedRequest` vasitəsilə onsuz da örtülüb. Arxa-plan çağırışlar
+ *  (beacon, check-email, logout, token refresh) bunu İŞLƏTMİR. */
+function trackedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  beginTask();
+  return fetch(input, init).finally(() => endTask());
 }
 
 async function get<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -190,6 +200,11 @@ async function authedRequest<T>(
   path: string,
   body?: unknown
 ): Promise<T> {
+  // Yalnız dəyişdirici əməliyyatlarda (GET olmayan) qlobal yükləmə popupı açılır;
+  // səhifə oxumaları (GET) və arxa-plan pollinq popup açmır.
+  const _track = method.toUpperCase() !== "GET";
+  if (_track) beginTask();
+  try {
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: "include",
@@ -229,6 +244,9 @@ async function authedRequest<T>(
   const text = await res.text();
   if (!text) return undefined as T;
   return JSON.parse(text) as T;
+  } finally {
+    if (_track) endTask();
+  }
 }
 
 async function authedBlobRequest(
@@ -236,6 +254,8 @@ async function authedBlobRequest(
   path: string,
   body?: unknown
 ): Promise<Blob> {
+  beginTask();
+  try {
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: "include",
@@ -261,6 +281,9 @@ async function authedBlobRequest(
 
   if (!res.ok) throw new Error(`API error ${res.status}`);
   return res.blob();
+  } finally {
+    endTask();
+  }
 }
 
 async function authedMultipartRequest<T>(
@@ -268,6 +291,8 @@ async function authedMultipartRequest<T>(
   path: string,
   form: FormData
 ): Promise<T> {
+  beginTask();
+  try {
   const makeReq = () => fetch(`${BASE}${path}`, {
     method,
     credentials: "include",
@@ -297,6 +322,9 @@ async function authedMultipartRequest<T>(
   }
 
   return res.json();
+  } finally {
+    endTask();
+  }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -703,7 +731,7 @@ export const getPsychologistReviewSummary = (id: number) =>
 
 export const bookAppointment = (data: {
   patientName: string; phone: string; psychologistName?: string; note?: string; preferredDate?: string;
-}) => fetch(`${BASE}/appointments`, {
+}) => trackedFetch(`${BASE}/appointments`, {
   method: "POST",
   credentials: "include",
   headers: { "Content-Type": "application/json" },
@@ -732,7 +760,7 @@ export const repeatCheck = async (data: {
 };
 
 export const submitContactMessage = async (data: ContactMessagePayload): Promise<ContactMessage> => {
-  const res = await fetch(`${BASE}/contact`, {
+  const res = await trackedFetch(`${BASE}/contact`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json", ...localeHeaders() },
@@ -765,7 +793,7 @@ export function trackFunnelEvent(eventType: FunnelEventType, mood?: string): voi
 // Backend sets accessToken + refreshToken as HTTP-only cookies (Domain=.fanus.com).
 // We just keep the lightweight user record locally for immediate UI rendering.
 export const login = async (email: string, password: string) => {
-  const res = await fetch(`${BASE}/auth/login`, {
+  const res = await trackedFetch(`${BASE}/auth/login`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json", ...localeHeaders() },
@@ -811,7 +839,7 @@ export const registerPatient = (data: {
   emergencyContactPhone?: string;
   emergencyContactRelation?: string;
   residentialAddress?: string;
-}) => fetch(`${BASE}/auth/register/patient`, {
+}) => trackedFetch(`${BASE}/auth/register/patient`, {
   method: "POST",
   credentials: "include",
   headers: { "Content-Type": "application/json", ...localeHeaders() },
@@ -882,7 +910,7 @@ export const registerPsychologist = (
   certificateFiles?.forEach(f => form.append("certificateFiles", f));
   if (photoFile) form.append("photoFile", photoFile);
 
-  return fetch(`${BASE}/auth/register/psychologist`, {
+  return trackedFetch(`${BASE}/auth/register/psychologist`, {
     method: "POST",
     credentials: "include",
     headers: localeHeaders(),
@@ -904,7 +932,7 @@ export const verifyEmail = (token: string) =>
 
 // Hesab sahiblənmə (operator-yaradılan pasiyent) — nömrəli OTP
 export const requestClaimOtp = (email: string) =>
-  fetch(`${BASE}/auth/claim/request-otp`, {
+  trackedFetch(`${BASE}/auth/claim/request-otp`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json", ...localeHeaders() },
@@ -918,7 +946,7 @@ export const requestClaimOtp = (email: string) =>
 export const verifyClaimOtp = (data: {
   email: string; code: string; password: string;
   firstName?: string; lastName?: string; phone?: string;
-}) => fetch(`${BASE}/auth/claim/verify-otp`, {
+}) => trackedFetch(`${BASE}/auth/claim/verify-otp`, {
   method: "POST",
   credentials: "include",
   headers: { "Content-Type": "application/json", ...localeHeaders() },
@@ -930,7 +958,7 @@ export const verifyClaimOtp = (data: {
 });
 
 export const forgotPassword = (email: string) =>
-  fetch(`${BASE}/auth/forgot-password`, {
+  trackedFetch(`${BASE}/auth/forgot-password`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -938,7 +966,7 @@ export const forgotPassword = (email: string) =>
   }).then(r => r.json());
 
 export const resetPassword = (token: string, newPassword: string) =>
-  fetch(`${BASE}/auth/reset-password`, {
+  trackedFetch(`${BASE}/auth/reset-password`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -3575,7 +3603,7 @@ export async function submitSessionRequest(data: {
   notes?: string;
   budget?: string;
 }): Promise<SessionRequest> {
-  const res = await fetch(`${BASE}/session-requests`, {
+  const res = await trackedFetch(`${BASE}/session-requests`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json", ...localeHeaders() },

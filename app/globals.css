@@ -252,6 +252,87 @@
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ─── FanusLoader — loqonun dolub-boşalma yüklənmə animasiyası ───────────── */
+.fanus-loader {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  aspect-ratio: 3508 / 2480; /* logo-black.png əsl nisbəti — dolma silueti tam izləsin */
+}
+.fanus-loader__layer {
+  position: absolute;
+  inset: 0;
+  -webkit-mask: url("/images/logos/logo-black.png") center / contain no-repeat;
+          mask: url("/images/logos/logo-black.png") center / contain no-repeat;
+}
+/* "Boş" loqo — solğun brend rəngi */
+.fanus-loader__base { background: var(--brand-100); }
+/* Aşağıdan yuxarı qalxıb-enən brend rəngli dolma */
+.fanus-loader__fill {
+  background: var(--brand);
+  animation: fanus-fill 2.2s ease-in-out infinite;
+}
+@keyframes fanus-fill {
+  0%   { clip-path: inset(100% 0 0 0); } /* boş */
+  50%  { clip-path: inset(0 0 0 0); }    /* dolu */
+  100% { clip-path: inset(100% 0 0 0); } /* yenidən boşalır */
+}
+
+.fanus-loader-screen {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.fanus-loader-screen__label {
+  font-size: 0.9rem;
+  color: var(--oxford-60, #52718F);
+  letter-spacing: 0.2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fanus-loader__fill {
+    animation: none;
+    clip-path: inset(35% 0 0 0); /* statik yarı-dolu vəziyyət */
+  }
+}
+
+/* ─── Qlobal yükləmə popupı (hər əməliyyat zamanı) ──────────────────────── */
+.fx-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4000; /* toast/confirm-dan üstdə */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 30, 63, 0.28);
+  -webkit-backdrop-filter: blur(2px);
+          backdrop-filter: blur(2px);
+  animation: fx-overlay-in 0.14s ease-out;
+}
+.fx-loading-overlay__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 30px 40px;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 12px 40px rgba(8, 30, 63, 0.22);
+}
+.fx-loading-overlay__text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--oxford-60, #52718F);
+  letter-spacing: 0.2px;
+}
+@keyframes fx-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 @keyframes msgIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1249,14 +1330,14 @@
 /* ===== ABOUT PAGE ===== */
 .ap-hero {
   position: relative;
-  padding: 180px 0 100px;
+  padding: 60px 0 100px;
   background: linear-gradient(180deg, #EEF4FF 0%, #F7F9FC 100%);
   overflow: hidden;
   text-align: center;
 }
 
 /* About page hero — 2-col with image (.abt-hero scopes it; co-exists with blog .ap-hero) */
-.abt-hero { padding: 140px 0 90px; text-align: left; }
+.abt-hero { padding: 50px 0 90px; text-align: left; }
 .abt-hero-grid {
   display: grid; grid-template-columns: 1.05fr 1fr;
   gap: 48px; align-items: center;
@@ -1645,12 +1726,12 @@
   .footer-legal { gap: 16px; }
 
   /* Contact */
-  .contact-section { padding: 4rem 0; }
+  .contact-section { padding: 1.5rem 0 4rem; }
 
   /* About page */
   .ap-mission-stats { grid-template-columns: 1fr 1fr; }
   .ap-values-grid, .ap-team-grid { grid-template-columns: 1fr; }
-  .ap-hero { padding: 120px 0 72px; }
+  .ap-hero { padding: 40px 0 72px; }
 
   /* Services page */
   .sv-hero { padding: 112px 0 72px; }
@@ -1727,7 +1808,7 @@
 
   /* About */
   .ap-values-grid { grid-template-columns: 1fr; }
-  .ap-hero { padding: 100px 0 56px; }
+  .ap-hero { padding: 36px 0 56px; }
   .ap-hero-sub { font-size: 16px; }
   .ap-mission-stats { grid-template-columns: 1fr 1fr; gap: 12px; }
   .ap-stat { padding: 24px 20px; }
@@ -10109,7 +10190,9 @@
 /* ===== CONTACT SECTION ===== */
 .contact-section {
   background: white;
-  padding: 6rem 0;
+  /* Top kept tight — breadcrumb sits right below the navbar like on other
+   * pages; bottom keeps the section's original breathing room. */
+  padding: 2rem 0 6rem;
   border-top: 1px solid var(--oxford-10);
 }
 

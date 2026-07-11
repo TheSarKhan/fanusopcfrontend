@@ -25,7 +25,7 @@ function ServicesHero() {
       </div>
 
       <style>{`
-        .svc-hero { padding: 72px 0 28px; text-align: center; }
+        .svc-hero { padding: 28px 0; text-align: center; }
         .svc-hero__inner { max-width: 720px; margin: 0 auto; }
         .svc-hero h1 {
           margin: 0 0 16px;
@@ -37,7 +37,7 @@ function ServicesHero() {
           font-size: 17px; color: var(--fanus-ink-3); line-height: 1.6;
           max-width: 600px; margin: 0 auto;
         }
-        @media (max-width: 640px) { .svc-hero { padding: 48px 0 20px; } }
+        @media (max-width: 640px) { .svc-hero { padding: 20px 0; } }
       `}</style>
     </section>
   );

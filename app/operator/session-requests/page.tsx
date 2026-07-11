@@ -120,7 +120,7 @@ export default function SessionRequestsPage() {
   return (
     <div style={{ maxWidth: 1100 }}>
       <div style={{ marginBottom: 24 }}>
-        <h1 className="fx-h1">Müraciətlər</h1>
+        <h1 className="fx-h1">Sayt müraciətləri</h1>
         <p className="fx-subtitle" style={{ margin: "6px 0 0", maxWidth: 640 }}>
           Saytdan gələn anonim seans müraciətləri. Hovuzdan götürün, uyğunlaşsanız randevuya
           çevirin və ya paket satın — müraciət sizə aid qalır, başqa operator görmür.

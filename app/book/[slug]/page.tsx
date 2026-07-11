@@ -157,6 +157,17 @@ export default function BookPsychologistPage() {
     patientApi.introEligibility().then(setIntroEligibility).catch(() => {});
   }, []);
 
+  // Tanışlıq görüşünə uyğun deyilsə banner heç göstərilmir və TypeCard-lar
+  // "Tək seans" default seçili görünür — amma introPromptAnswered manual klik
+  // olmadan false qalırdı, ona görə görünüşdə seçili olsa da Davam et düyməsi
+  // bloklu qalırdı. Uyğun olmadığı bilinən kimi default seçimi həqiqətən
+  // təsdiqlənmiş sayırıq.
+  useEffect(() => {
+    if (introEligibility && !introEligibility.eligible) {
+      setIntroPromptAnswered(true);
+    }
+  }, [introEligibility]);
+
   // Parse extend-mode query params once (client-only page).
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);

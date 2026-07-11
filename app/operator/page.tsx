@@ -162,7 +162,7 @@ export default function OperatorDashboard() {
           <p className="fx-subtitle" style={{ margin: "6px 0 0" }}>{t("staff.opDashSub")}</p>
         </div>
         <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
-          <GhostLink href="/operator/appointments" icon={<Ico d={I_CAL} w={15} />}>Bütün müraciətlər</GhostLink>
+          <GhostLink href="/operator/appointments" icon={<Ico d={I_CAL} w={15} />}>Randevular</GhostLink>
           <GhostLink href="/operator/payments" icon={<Ico d={I_CARD} w={15} />}>Ödənişlər</GhostLink>
         </div>
       </div>

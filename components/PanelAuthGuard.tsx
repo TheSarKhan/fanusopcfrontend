@@ -3,6 +3,7 @@
 import { useState, useEffect, ReactNode } from "react";
 import { getMainSiteUrl, getStoredUser, storeUser } from "@/lib/auth";
 import { tryGetMe, tryRefresh, clearSession } from "@/lib/api";
+import FanusLoader from "@/components/FanusLoader";
 
 /** Proactively refresh the access cookie every 20 minutes. The default access
  *  token lifetime is 1 hour (legacy) or 7 days (current default); refreshing
@@ -126,21 +127,7 @@ export default function PanelAuthGuard({
   if (!ready) {
     return (
       <div suppressHydrationWarning style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}>
-        <div suppressHydrationWarning style={{ display: "inline-flex", alignItems: "center", gap: 10, fontSize: "0.9rem", color: "#52718F" }}>
-          <span
-            suppressHydrationWarning
-            style={{
-              width: 16, height: 16, borderRadius: "50%",
-              border: "2px solid #C7D6E5", borderTopColor: "#1051B7",
-              animation: "fanus-spin 0.7s linear infinite",
-              display: "inline-block",
-            }}
-          />
-          Yüklənir...
-        </div>
-        <style>{`
-          @keyframes fanus-spin { to { transform: rotate(360deg); } }
-        `}</style>
+        <FanusLoader size={72} label="Yüklənir…" fullscreen />
       </div>
     );
   }

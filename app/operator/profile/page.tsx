@@ -32,8 +32,8 @@ export default function OperatorProfilePage() {
               </svg>
             </div>
             <div className="uprof-side-link-text">
-              <strong>Müraciətlər</strong>
-              <small>Müraciətləri psixoloqlara təyin et</small>
+              <strong>Randevular</strong>
+              <small>Randevuları psixoloqlara təyin et</small>
             </div>
             <span className="uprof-side-link-arrow">›</span>
           </Link>

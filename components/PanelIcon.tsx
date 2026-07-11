@@ -16,6 +16,7 @@ export type IconName =
   | "inbox"
   | "shield"
   | "star"
+  | "flag"
   | "sparkle"
   | "search"
   | "bell"
@@ -94,6 +95,8 @@ export default function PanelIcon({
       return <svg {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></svg>;
     case "star":
       return <svg {...props} fill={color === "currentColor" ? "none" : color}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>;
+    case "flag":
+      return <svg {...props}><path d="M4 22V4a1 1 0 0 1 1-1h13.4a1 1 0 0 1 .8 1.6l-3.4 4.4 3.4 4.4a1 1 0 0 1-.8 1.6H5" /></svg>;
     case "sparkle":
       return <svg {...props}><path d="M12 2v6M12 16v6M2 12h6M16 12h6M5 5l4 4M15 15l4 4M5 19l4-4M15 9l4-4" /></svg>;
     case "search":

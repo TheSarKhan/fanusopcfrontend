@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { login, clearSession, tryGetMe } from "@/lib/api";
 import { buildPanelUrl } from "@/lib/auth";
+import { holdOverlay } from "@/lib/loadingOverlay";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
@@ -106,6 +107,9 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    // Popupı submit-dən subdomainə yönləndirməyə qədər açıq saxla — response tez
+    // gəlsə də, hard-redirect tamamlanana kimi animasiya görünsün.
+    const releaseOverlay = holdOverlay();
     try {
       const data = await login(email, password);
 
@@ -142,7 +146,9 @@ export default function LoginPage() {
         } catch { /* fall through to panelUrl */ }
       }
       window.location.href = target;
+      // release ÇAĞIRILMIR — brauzer navigasiya edənə qədər popup açıq qalsın.
     } catch (err: unknown) {
+      releaseOverlay(); // xəta: popupı bağla
       setError(err instanceof Error ? err.message : "Giriş uğursuz oldu");
       setLoading(false);
     }

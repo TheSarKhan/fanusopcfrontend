@@ -631,8 +631,8 @@ export const az = {
     opReassignConfirm: "Keçir",
     opReassignDone: "Müraciət təhvil verildi",
     // Pool — ayrıca intake səhifəsi
-    opPoolTitle: "Bütün müraciətlər",
-    opPoolSub: "Yeni müraciətləri götürün — götürdüyünüz daimi olaraq sizin üzərinizdə qalır.",
+    opPoolTitle: "Randevu hovuzu",
+    opPoolSub: "Yeni randevu müraciətlərini götürün — götürdüyünüz daimi olaraq sizin üzərinizdə qalır.",
     opPoolApptSection: "Seans müraciətləri",
     opPoolPaySection: "Paket müraciətləri",
     opPoolEmpty: "Pool boşdur — yeni müraciət yoxdur",

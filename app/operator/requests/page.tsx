@@ -163,7 +163,7 @@ export default function OperatorRequestsPage() {
   return (
     <div className="fx-page" style={{ maxWidth: 1100 }}>
       <div style={{ marginBottom: 24 }}>
-        <h1 className="fx-h1">Tələblər</h1>
+        <h1 className="fx-h1">Rəy silmə tələbləri</h1>
         <p className="fx-subtitle" style={{ margin: "4px 0 0" }}>
           Psixoloqlardan gələn Rəy Silmə Tələbləri. Təsdiq etdikdə rəy ictimai profildən qaldırılır.
         </p>

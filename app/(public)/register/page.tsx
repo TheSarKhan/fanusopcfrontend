@@ -823,8 +823,6 @@ export default function RegisterPage() {
       </div>
 
       <div className="auth-panel">
-        <div className="auth-panel-blob auth-panel-blob-1" />
-        <div className="auth-panel-blob auth-panel-blob-2" />
         <div className="auth-panel-content">
           <Image src="/images/logos/logo-white.png" alt="Fanus" width={110} height={36} style={{ objectFit: "contain" }} />
           <h2 className="auth-panel-title" style={{ fontFamily: "var(--serif)" }}>{panelData.title}</h2>

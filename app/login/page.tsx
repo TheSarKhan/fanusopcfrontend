@@ -8,6 +8,22 @@ import { buildPanelUrl } from "@/lib/auth";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
+function MailIcon() {
+  return (
+    <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" /><path d="M22 6l-10 7L2 6" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  );
+}
+
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
     <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
@@ -165,14 +181,17 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div>
                 <label className="auth-label">{t("auth.email")}</label>
-                <input
-                  type="email"
-                  className="auth-input"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="email@nümunə.az"
-                  required
-                />
+                <div className="auth-input-icon-wrap">
+                  <span className="auth-input-icon"><MailIcon /></span>
+                  <input
+                    type="email"
+                    className="auth-input"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="email@nümunə.az"
+                    required
+                  />
+                </div>
               </div>
 
               <div>
@@ -200,7 +219,8 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>
+                  <AlertIcon />
                   {error}
                 </div>
               )}
@@ -227,8 +247,6 @@ export default function LoginPage() {
 
       {/* ── Decorative panel ── */}
       <div className="auth-panel">
-        <div className="auth-panel-blob auth-panel-blob-1" />
-        <div className="auth-panel-blob auth-panel-blob-2" />
         <div className="auth-panel-content">
           <Image src="/images/logos/logo-white.png" alt="Fanus" width={110} height={36} style={{ objectFit: "contain" }} />
           <h2 className="auth-panel-title">

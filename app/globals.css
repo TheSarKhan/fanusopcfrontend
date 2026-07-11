@@ -9848,6 +9848,16 @@
   background: white; transition: all 0.2s; white-space: nowrap;
 }
 .auth-back-btn:hover { color: var(--oxford); border-color: var(--oxford-40); background: #F5F8FC; }
+/* Language switcher is a global pill elsewhere on the site, but on auth pages it
+ * sits right next to the square "back" button — match its shape so the pair
+ * reads as one consistent control instead of two different button styles. */
+.auth-topbar .lsw__btn {
+  border-radius: 8px;
+  border: 1.5px solid #DDE6F0;
+  background: white;
+  padding: 8px 14px;
+}
+.auth-topbar .lsw__btn:hover { border-color: var(--oxford-40); background: #F5F8FC; }
 .auth-form-center {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -9858,10 +9868,12 @@
   max-width: 420px;
 }
 
-/* Right panel — deep Oxford blue */
+/* Right panel — calm photo with an Oxford-blue wash for text legibility */
 .auth-panel {
   position: relative;
-  background: linear-gradient(155deg, #001428 0%, var(--oxford) 55%, #002d5c 100%);
+  background:
+    linear-gradient(180deg, rgba(4,14,28,.82) 0%, rgba(8,22,44,.86) 50%, rgba(2,10,20,.92) 100%),
+    url('/images/login-hero.jpg') center/cover no-repeat;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   padding: 60px 48px;
@@ -9884,18 +9896,17 @@
   border: 1px solid rgba(255,255,255,0.08);
   pointer-events: none;
 }
-.auth-panel-blob {
-  position: absolute; border-radius: 50%;
-  filter: blur(90px); pointer-events: none;
-}
-.auth-panel-blob-1 { width: 320px; height: 320px; top: -80px; right: -60px; background: rgba(0,70,140,0.55); }
-.auth-panel-blob-2 { width: 260px; height: 260px; bottom: -60px; left: -40px; background: rgba(0,50,110,0.45); }
 .auth-panel-content { position: relative; z-index: 2; text-align: center; max-width: 380px; }
-.auth-panel-title { font-family: var(--serif); font-size: clamp(26px,2.8vw,38px); color: white; line-height: 1.2; margin: 28px 0 16px; font-weight: 500; }
-.auth-panel-sub { font-size: 14.5px; color: rgba(255,255,255,0.65); line-height: 1.7; margin-bottom: 40px; }
+.auth-panel-title { font-family: var(--serif); font-size: clamp(26px,2.8vw,38px); color: white; line-height: 1.2; margin: 28px 0 16px; font-weight: 500; text-shadow: 0 2px 16px rgba(0,0,0,.25); }
+.auth-panel-sub { font-size: 14.5px; color: rgba(255,255,255,0.75); line-height: 1.7; margin-bottom: 40px; }
 .auth-panel-trust { display: flex; flex-direction: column; gap: 12px; }
-.auth-panel-trust-item { display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 13px 16px; text-align: left; }
-.auth-panel-trust-icon { width: 34px; height: 34px; border-radius: 9px; background: rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.auth-panel-trust-item {
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px; padding: 13px 16px; text-align: left;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.auth-panel-trust-icon { width: 34px; height: 34px; border-radius: 9px; background: rgba(255,255,255,0.16); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .auth-panel-trust-text strong { display: block; font-size: 13px; color: white; font-weight: 600; margin-bottom: 2px; }
 .auth-panel-trust-text span { font-size: 11.5px; color: rgba(255,255,255,0.55); }
 
@@ -9906,16 +9917,20 @@
   border: 1.5px solid #DDE6F0; border-radius: 10px;
   background: #FAFCFF; font-family: var(--sans); font-size: 14px;
   color: var(--oxford); outline: none;
-  transition: border-color 0.25s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
-.auth-input:focus { border-color: var(--oxford-40); background: white; }
+.auth-input:focus { border-color: var(--oxford-40); background: white; box-shadow: 0 0 0 4px rgba(10,26,51,.08); }
 .auth-input-wrap { position: relative; }
 .auth-input-wrap .auth-input { padding-right: 44px; }
 .auth-eye { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--oxford-60); padding: 4px; }
-.auth-textarea { width: 100%; padding: 12px 14px; border: 1.5px solid #DDE6F0; border-radius: 10px; background: #FAFCFF; font-family: var(--sans); font-size: 14px; color: var(--oxford); outline: none; transition: border-color 0.25s; resize: vertical; min-height: 90px; }
-.auth-textarea:focus { border-color: var(--oxford-40); background: white; }
-.auth-select { width: 100%; height: 48px; padding: 0 14px; border: 1.5px solid #DDE6F0; border-radius: 10px; background: #FAFCFF; font-family: var(--sans); font-size: 14px; color: var(--oxford); outline: none; transition: border-color 0.25s; appearance: none; cursor: pointer; }
-.auth-select:focus { border-color: var(--oxford-40); }
+/* Leading icon variant (e.g. email field) — mirrors .auth-input-wrap's trailing icon */
+.auth-input-icon-wrap { position: relative; }
+.auth-input-icon-wrap .auth-input { padding-left: 44px; }
+.auth-input-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--oxford-60); pointer-events: none; display: flex; }
+.auth-textarea { width: 100%; padding: 12px 14px; border: 1.5px solid #DDE6F0; border-radius: 10px; background: #FAFCFF; font-family: var(--sans); font-size: 14px; color: var(--oxford); outline: none; transition: border-color 0.2s, box-shadow 0.2s; resize: vertical; min-height: 90px; }
+.auth-textarea:focus { border-color: var(--oxford-40); background: white; box-shadow: 0 0 0 4px rgba(10,26,51,.08); }
+.auth-select { width: 100%; height: 48px; padding: 0 14px; border: 1.5px solid #DDE6F0; border-radius: 10px; background: #FAFCFF; font-family: var(--sans); font-size: 14px; color: var(--oxford); outline: none; transition: border-color 0.2s, box-shadow 0.2s; appearance: none; cursor: pointer; }
+.auth-select:focus { border-color: var(--oxford-40); box-shadow: 0 0 0 4px rgba(10,26,51,.08); }
 
 /* File upload */
 .auth-file-label { display: block; cursor: pointer; }

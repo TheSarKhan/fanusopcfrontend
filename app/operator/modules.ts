@@ -10,7 +10,9 @@
 //   • sidebar-da görünmür  → layout.tsx onları filtrləyir,
 //   • route-una birbaşa URL ilə girişdə Dashboard-a yönləndirilir → ModuleLock.
 //
-// Dashboard həmişə açıq qalır (panelin girişidir).
+// Dashboard route-u (/operator) MODULE_PATHS-da yoxdur, ona görə ModuleLock onu
+// heç vaxt bağlamır (kilidli modulların fallback yönləndirmə hədəfi kimi qalır) —
+// `dashboard: false` yalnız sidebar linkini gizlədir, route-u söndürmür.
 // Profil və bildirişlər modul deyil — onlar həmişə əlçatandır.
 // ============================================================================
 
@@ -38,17 +40,20 @@ export type OperatorModuleKey =
 
 /** Hər nav modulunun açıq (true) / kilidli (false) vəziyyəti. */
 export const OPERATOR_MODULES: Record<OperatorModuleKey, boolean> = {
-  dashboard:       true,   // həmişə açıq — panelin girişi
+  // 2026-07-13: Ümumi baxış sidebar-dan gizlədilib (birbaşa /operator hələ də
+  // işləyir — kilidli modulların fallback yönləndirmə hədəfidir, MODULE_PATHS-da
+  // yoxdur ona görə ModuleLock onu bağlamır).
+  dashboard:       false,
   pool:            true,   // AÇIQ — müraciət pool-u (intake/triage)
   appointments:    true,   // AÇIQ — randevu detalı (bilet) + siyahı + paketlər + yönləndirmə tabı
   meetingLinks:    true,   // AÇIQ — görüş linkləri (link göndərmə iş siyahısı)
   payments:        true,   // AÇIQ — Ödənişlər (təsdiq · ləğv · geri qaytarma tam/qismi)
   analytics:       false,  // Analitika (gəlir/refund + əməliyyat göstəriciləri)
-  customers:       true,   // AÇIQ — Müştərilər (360° profil + paket satışı)
-  psychologists:   true,   // AÇIQ — Psixoloqlar (reytinq siyahısı + 360° detal)
-  requests:        true,   // AÇIQ — Tələblər (Rəy Silmə Tələbləri, Operator BRD §10)
-  feedback:        true,   // AÇIQ — Seans rəyləri (əlaqə tələbi lifecycle: yeni→əlaqədə→həll)
-  sessionRequests: true,   // AÇIQ — Müraciətlər (saytdan gələn anonim lead-lər → hovuz → randevu/paket)
+  customers:       false,  // 2026-07-13: gizlədilib — Müştərilər (360° profil + paket satışı)
+  psychologists:   false,  // 2026-07-13: gizlədilib — Psixoloqlar (reytinq siyahısı + 360° detal)
+  requests:        false,  // 2026-07-13: gizlədilib — Tələblər (Rəy Silmə Tələbləri, Operator BRD §10)
+  feedback:        false,  // 2026-07-13: gizlədilib — Seans rəyləri (əlaqə tələbi lifecycle: yeni→əlaqədə→həll)
+  sessionRequests: true,   // AÇIQ — Sayt müraciətləri (saytdan gələn anonim lead-lər → hovuz → randevu/paket)
 };
 
 /** Yalnız route-u kilidlənə bilən modullar (dashboard burada YOXDUR). */

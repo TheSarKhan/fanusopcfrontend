@@ -30,14 +30,14 @@ export type PatientModuleKey =
  *  Qeyd: `profile` burada `false` olduqda yalnız sidebar-dan gizlənir,
  *  route-u guard tərəfindən bloklanmır (avatar linki ilə əlçatan qalır). */
 export const PATIENT_MODULES: Record<PatientModuleKey, boolean> = {
-  dashboard:     true,  // həmişə açıq — panelin girişi
+  dashboard:     false, // sidebar-dan gizlədilib — loqo/avatar linki ilə əlçatan qalır
   psychologists: true,  // AÇIQ — psixoloq kataloqu (seçim + randevu/paket girişi)
   appointments:  true,  // AÇIQ — paketlər də bura birləşib (Proqramlarım); ayrıca "packages" nav YOX
   packages:      false, // ayrıca modul AÇILMAYACAQ; məzmunu "appointments"-ə birləşir
-  homework:      true,   // AÇIQ — Ev tapşırıqları (kanban)
-  favorites:     true,   // AÇIQ — Seçilmişlər (favorit psixoloqlar)
-  tests:         true,   // AÇIQ — Psixoloji testlər (təyinatlar)
-  profile:       true,  // AÇIQ — Profil sidebar-da görünür (avatar linki də qalır)
+  homework:      false, // sidebar-dan gizlədilib
+  favorites:     false, // sidebar-dan gizlədilib
+  tests:         false, // sidebar-dan gizlədilib
+  profile:       false, // sidebar-dan gizlədilib — avatar linki ilə əlçatan qalır
 };
 
 /** Yalnız route-u kilidlənə bilən modullar (dashboard və profile burada YOXDUR). */

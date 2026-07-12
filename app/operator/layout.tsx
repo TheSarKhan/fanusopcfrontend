@@ -112,7 +112,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
     { key: "payments",      href: "/operator/payments",     label: t("pkg.paymentsTitle"),   icon: "clipboard" },
     { key: "analytics",     href: "/operator/analytics",    label: t("nav.analytics"),       icon: "chart" },
     { key: "customers",     href: "/operator/customers",     label: "Müştərilər",            icon: "users" },
-    { key: "psychologists", href: "/operator/psychologists", label: "Psixoloq statistikası", icon: "user" },
+    { key: "psychologists", href: "/operator/psychologists", label: "Psixoloqlar", icon: "user" },
     { key: "requests",      href: "/operator/requests",      label: "Rəy silmə tələbləri",   icon: "flag" },
     { key: "feedback",      href: "/operator/feedback",      label: "Seans rəyləri",         icon: "star", badge: feedbackCount },
     { key: "sessionRequests", href: "/operator/session-requests", label: "Sayt müraciətləri", icon: "message", badge: sessionReqCount },

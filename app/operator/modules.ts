@@ -45,7 +45,7 @@ export const OPERATOR_MODULES: Record<OperatorModuleKey, boolean> = {
   payments:        true,   // AÇIQ — Ödənişlər (təsdiq · ləğv · geri qaytarma tam/qismi)
   analytics:       false,  // Analitika (gəlir/refund + əməliyyat göstəriciləri)
   customers:       true,   // AÇIQ — Müştərilər (360° profil + paket satışı)
-  psychologists:   true,   // AÇIQ — Psixoloq statistikası (reytinq siyahısı + 360° detal)
+  psychologists:   true,   // AÇIQ — Psixoloqlar (reytinq siyahısı + 360° detal)
   requests:        true,   // AÇIQ — Tələblər (Rəy Silmə Tələbləri, Operator BRD §10)
   feedback:        true,   // AÇIQ — Seans rəyləri (əlaqə tələbi lifecycle: yeni→əlaqədə→həll)
   sessionRequests: true,   // AÇIQ — Müraciətlər (saytdan gələn anonim lead-lər → hovuz → randevu/paket)

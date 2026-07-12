@@ -413,17 +413,22 @@ export default function OperatorPaymentsPage() {
               </button>
             </div>
 
-            {/* Sətirlər */}
-            {rows.length === 0 ? (
-              <div style={{ padding: 48, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, borderTop: "1px solid var(--hairline)" }}>
-                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--brand-300)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--oxford-80)" }}>Nəticə tapılmadı</div>
-                <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Axtarış və ya filtr şərtlərini dəyişin</div>
-              </div>
-            ) : rows.map(p => (
-              <PayRow key={p.id} p={p} selected={!!selected[p.id]} onToggle={() => toggleSel(p.id)}
-                onOpen={() => setDrawerId(p.id)} onPay={() => markPaid(p)} onCancel={() => setCancelFor(p)} onRefund={() => setRefundFor(p)} />
-            ))}
+            {/* Sətirlər — .fx-row bu qədər sütunla (checkbox+avatar+ad+2 pill+məbləğ+3 əməliyyat)
+                dar ekranda kart eninə sığmaya bilər; kartın özü overflow:hidden olduğu üçün
+                (guşələrin dəyirmiləşməsi üçün) əlavə sarğı olmadan sağ tərəf sadəcə kəsilib
+                görünməz olurdu — üfüqi scroll ilə əvəzləndi. */}
+            <div style={{ overflowX: "auto" }}>
+              {rows.length === 0 ? (
+                <div style={{ padding: 48, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, borderTop: "1px solid var(--hairline)" }}>
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--brand-300)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--oxford-80)" }}>Nəticə tapılmadı</div>
+                  <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Axtarış və ya filtr şərtlərini dəyişin</div>
+                </div>
+              ) : rows.map(p => (
+                <PayRow key={p.id} p={p} selected={!!selected[p.id]} onToggle={() => toggleSel(p.id)}
+                  onOpen={() => setDrawerId(p.id)} onPay={() => markPaid(p)} onCancel={() => setCancelFor(p)} onRefund={() => setRefundFor(p)} />
+              ))}
+            </div>
 
             <div className="fx-num" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", borderTop: "1px solid var(--hairline)", fontSize: 12, color: "var(--oxford-60)" }}>
               <span>{rows.length} nəticə göstərilir</span>

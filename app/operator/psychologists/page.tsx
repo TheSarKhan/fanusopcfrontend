@@ -7,9 +7,8 @@ import { formatAzn } from "@/lib/money";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 type Segment = "all" | "FANUS" | "NORMAL" | "vacation" | "attention";
-type SortKey = "rating" | "sessions" | "rejection" | "alpha";
+type SortKey = "sessions" | "alpha";
 const initials = (n: string) => n.replace(/^Dr\.\s*/i, "").split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
-const fmtRating = (n?: number | null) => n == null ? "—" : (Math.round(n * 10) / 10).toFixed(1);
 const AVS = [{ bg: "#E0EBFA", color: "#1E3A8A" }, { bg: "#D1FAE5", color: "#065F46" }, { bg: "#FEF3C7", color: "#92400E" }, { bg: "#EDE9FE", color: "#5B21B6" }, { bg: "#FCE7F3", color: "#9D174D" }, { bg: "#CCFBF1", color: "#115E59" }];
 const avatarOf = (i: number) => AVS[Math.abs(i) % AVS.length];
 const CARD: React.CSSProperties = { background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8" };
@@ -24,7 +23,7 @@ export default function OperatorPsychologistsPage() {
   const [error, setError] = useState(false);
   const [query, setQuery] = useState("");
   const [segment, setSegment] = useState<Segment>("all");
-  const [sort, setSort] = useState<SortKey>("rating");
+  const [sort, setSort] = useState<SortKey>("sessions");
   const [dir, setDir] = useState<"asc" | "desc">("desc");
 
   const handleSort = (key: SortKey) => {
@@ -70,9 +69,7 @@ export default function OperatorPsychologistsPage() {
     });
     list = [...list].sort((a, b) => {
       if (sort === "alpha") { const r = a.name.localeCompare(b.name, "az"); return dir === "asc" ? r : -r; }
-      const val = (p: PsychologistRankItem) => sort === "rating" ? (p.rankingScore ?? -Infinity)
-        : sort === "sessions" ? p.completedSessions : (p.rejectionRatePct ?? -Infinity);
-      const r = val(a) - val(b); return dir === "asc" ? r : -r;
+      const r = a.completedSessions - b.completedSessions; return dir === "asc" ? r : -r;
     });
     return list;
   }, [ranking, query, segment, sort, dir]);
@@ -146,8 +143,7 @@ export default function OperatorPsychologistsPage() {
                       <th onClick={() => handleSort("alpha")} style={{ cursor: "pointer" }}>Psixoloq {sortIndicator("alpha")}</th>
                       <th>Əlaqə</th>
                       <th onClick={() => handleSort("sessions")} style={{ cursor: "pointer", textAlign: "right" }}>Seans {sortIndicator("sessions")}</th>
-                      <th onClick={() => handleSort("rating")} style={{ cursor: "pointer", textAlign: "right" }}>Sıralama balı {sortIndicator("rating")}</th>
-                      <th onClick={() => handleSort("rejection")} style={{ cursor: "pointer", textAlign: "right" }}>Rədd faizi {sortIndicator("rejection")}</th>
+                      <th style={{ textAlign: "right" }}>Aktiv pasiyent</th>
                       <th>Qiymət</th>
                       <th>Status</th>
                       <th style={{ width: 76 }} />
@@ -158,7 +154,13 @@ export default function OperatorPsychologistsPage() {
                       const isFanus = (p.psychologistType ?? "").toUpperCase() === "FANUS";
                       const a = avatarOf(p.psychologistId);
                       const suspended = p.suspendedAt != null;
-                      const highRejection = (p.rejectionRatePct ?? 0) > 20;
+                      const status = suspended
+                        ? { label: "Dayandırılıb", bg: "#FEE2E2", color: "#991B1B" }
+                        : p.onVacationToday
+                        ? { label: "Məzuniyyətdə", bg: "#EDE9FE", color: "#5B21B6" }
+                        : p.active
+                        ? { label: "Aktiv", bg: "#D1FAE5", color: "#065F46" }
+                        : { label: "Deaktiv", bg: "#F3F4F6", color: "#374151" };
                       return (
                         <tr key={p.psychologistId} onClick={() => router.push(`/operator/psychologists/${p.psychologistId}`)} style={{ cursor: "pointer" }}>
                           <td>
@@ -167,7 +169,6 @@ export default function OperatorPsychologistsPage() {
                               <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
                                 <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{p.name}</span>
                                 <span style={{ background: isFanus ? "#E4ECFA" : "#F3F4F6", color: isFanus ? "#082F6D" : "#374151", fontSize: 10, fontWeight: 700, letterSpacing: ".04em", padding: "3px 8px", borderRadius: 999 }}>{isFanus ? "FANUS" : "NORMAL"}</span>
-                                {suspended && <span style={{ background: "#FEE2E2", color: "#991B1B", fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 999 }}>Dayandırılıb</span>}
                               </div>
                             </div>
                           </td>
@@ -179,10 +180,7 @@ export default function OperatorPsychologistsPage() {
                             </div>
                           </td>
                           <td className="fx-td-num">{p.completedSessions}</td>
-                          <td className="fx-td-num">{fmtRating(p.rankingScore)}</td>
-                          <td className="fx-td-num" style={highRejection ? { color: "#991B1B", fontWeight: 700 } : undefined}>
-                            {p.rejectionRatePct != null ? `${Math.round(p.rejectionRatePct)}%` : "—"}
-                          </td>
+                          <td className="fx-td-num">{p.activePatients}</td>
                           <td>
                             {p.individualPrice != null ? (
                               <span className="ps-num" style={{ fontWeight: 600, color: "var(--oxford)" }}>{formatAzn(p.individualPrice)}</span>
@@ -191,7 +189,7 @@ export default function OperatorPsychologistsPage() {
                             )}
                           </td>
                           <td>
-                            {p.onVacationToday && <span style={{ background: "#F0F4FA", color: "var(--oxford-60)", fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, whiteSpace: "nowrap" }}>Məzuniyyətdə</span>}
+                            <span style={{ background: status.bg, color: status.color, fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, whiteSpace: "nowrap" }}>{status.label}</span>
                           </td>
                           <td onClick={e => e.stopPropagation()}>
                             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>

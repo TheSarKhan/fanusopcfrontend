@@ -104,10 +104,18 @@ export function clearSession() {
   try { window.dispatchEvent(new Event("fanus:session-cleared")); } catch { /* ignore */ }
 }
 
+// Set for the duration of an explicit, user-initiated logout() call. While true,
+// redirectToLogin() is a no-op — otherwise a background request (notification
+// polling, etc.) that happens to 401 in the same instant the session cookie is
+// cleared races the intentional "/login?_logout=1" navigation and can overwrite
+// it with "/login?session=expired", showing a false "session expired" message
+// right after a normal logout click.
+let loggingOut = false;
+
 /** Called when an authenticated request fails after a refresh attempt — that
  *  always means the session genuinely expired (we had one to refresh). */
 export function redirectToLogin() {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || loggingOut) return;
   const next = window.location.pathname + window.location.search;
   clearSession();
   const params = new URLSearchParams({ session: "expired" });
@@ -815,6 +823,7 @@ export const login = async (email: string, password: string) => {
 };
 
 export const logout = async () => {
+  loggingOut = true;
   try {
     // Backend clears HTTP-only cookies and revokes refresh token server-side.
     await fetch(`${BASE}/auth/logout`, {

@@ -12,7 +12,7 @@ import { psychologistApi, type AppointmentDetail } from "@/lib/api";
 import { googleCalendarUrl } from "@/lib/calendar";
 import { appUrl } from "@/lib/appUrl";
 
-export const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"];
+export const WEEKDAYS_AZ = ["Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə", "Bazar"];
 export const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
 
 export function pad2(n: number) { return String(n).padStart(2, "0"); }

@@ -271,7 +271,7 @@ function PsyCard({
   const bookHref = p.slug ? `/patient/book/${p.slug}` : "/patient/psychologists";
 
   return (
-    <div style={{ position: "relative", background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 22, display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "relative", width: "100%", maxWidth: 420, background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 22, display: "flex", flexDirection: "column" }}>
       <button
         type="button"
         onClick={onToggleFav}
@@ -383,7 +383,7 @@ function PsyCard({
 
 function SkeletonCard() {
   return (
-    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 22 }}>
+    <div style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 22 }}>
       <div style={{ display: "flex", gap: 14, marginBottom: 18 }}>
         <div className="psy-skel" style={{ width: 56, height: 56, borderRadius: 16, flex: "none" }} />
         <div style={{ flex: 1, paddingTop: 4 }}>

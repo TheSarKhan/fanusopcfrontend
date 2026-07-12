@@ -11115,6 +11115,21 @@ a.contact-chip:hover {
 }
 .atc-wrap--primary .atc-trigger:hover { background: var(--brand-700); border-color: var(--brand-700); }
 
+/* "Növbəti seans" hero — action row: force equal-width AND equal-height buttons
+ * (Seansa qoşul / Google Calendar / Vaxtı dəyiş / Ləğv et) regardless of label
+ * length or which variant (default/primary) renders .atc-trigger internally —
+ * without this, Google Calendar (default .atc-trigger, padding 8px/font 13px)
+ * read visibly smaller than the raw <button> actions (padding 10px/font 14px).
+ * Scoped to this row only — .atc-trigger stays content-width/size everywhere
+ * else it's used (compact appointment cards, tables, etc.). */
+.pa-hero-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pa-hero-actions > * { flex: 1 1 150px; max-width: 200px; }
+.pa-hero-actions .atc-wrap { width: 100%; }
+.pa-hero-actions .atc-trigger {
+  width: 100%; justify-content: center;
+  padding: 10px 14px !important; font-size: 14px !important; border-radius: 10px !important;
+}
+
 /* ─── Reschedule proposal banner & modal ───────────────────────────── */
 .rsc-banner {
   background: linear-gradient(135deg, var(--brand-50), #fff);

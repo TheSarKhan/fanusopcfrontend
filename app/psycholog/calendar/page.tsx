@@ -6,7 +6,8 @@ import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDateTime } from "@/lib/datetime";
 
-const DAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"]; // Mon..Sun
+const DAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"]; // Mon..Sun — yalnız kompakt 7-günlük zolaq başlıqları üçün
+const DAYS_AZ_FULL = ["Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə", "Bazar"]; // Mon..Sun — mətn/etiketlərdə
 
 // Google Calendar inteqrasiyası — header-dəki "Sinxronlaşdır" düyməsi + status banner.
 const SHOW_GOOGLE_INTEGRATION = true;
@@ -53,7 +54,7 @@ function pad2(n: number) { return String(n).padStart(2, "0"); }
 function fmtHM(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
 
 function fmtFullDateTime(d: Date) {
-  const dayLabel = DAYS_AZ[(d.getDay() + 6) % 7];
+  const dayLabel = DAYS_AZ_FULL[(d.getDay() + 6) % 7];
   return `${dayLabel} · ${fmtDay(d)} · ${fmtHM(d)}`;
 }
 

@@ -45,8 +45,11 @@ function relativeDayLabel(d: Date, now: Date) {
   const weekdayShort = parts.find(p => p.type === "weekday")?.value ?? "";
   const dayNum = Number(parts.find(p => p.type === "day")?.value ?? 0);
   const monthNum = Number(parts.find(p => p.type === "month")?.value ?? 1);
-  // Map US weekday short → AZ
-  const map: Record<string, string> = { Mon: "B.e", Tue: "Ç.a", Wed: "Ç", Thu: "C.a", Fri: "C", Sat: "Ş", Sun: "B" };
+  // Map US weekday short → AZ (tam adlar — mətndə "C" kimi qısaldılmış hərf qarışıq görünür)
+  const map: Record<string, string> = {
+    Mon: "Bazar ertəsi", Tue: "Çərşənbə axşamı", Wed: "Çərşənbə", Thu: "Cümə axşamı",
+    Fri: "Cümə", Sat: "Şənbə", Sun: "Bazar",
+  };
   const azWd = map[weekdayShort] ?? weekdayShort;
   return `${azWd} · ${pad2(dayNum)} ${MONTHS_AZ[monthNum - 1]}`;
 }
@@ -539,15 +542,14 @@ function NextSessionHero({
 
   // "Qoşul" is the primary action here (JoinSessionButton variant="primary" — solid brand
   // button), everything else is a secondary ghost action at this same comfortable size.
-  const heroGhostBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid var(--brand-200)", borderRadius: 10, padding: "10px 15px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" };
+  const heroGhostBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid var(--brand-200)", borderRadius: 10, padding: "10px 14px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" };
   const heroDangerBtn: React.CSSProperties = { ...heroGhostBtn, color: "#991B1B", border: "1px solid #F3D6D6" };
 
-  // No pill/badge chips — session context reads as a plain meta line under the
-  // name (weight/color for emphasis instead of colored backgrounds).
+  // Badge/pill yox — hər biri öz sətrində, aydın etiketlə (yan-yana mətn qarışıq görünürdü).
   const metaParts: { text: string; color?: string }[] = [];
-  if (sessionNumber) metaParts.push({ text: `${azOrdinal(sessionNumber)} seans` });
-  if (appt.patientPackageId != null) metaParts.push({ text: appt.packageName ? `Paket · ${appt.packageName}` : "Paket" });
-  if (appt.sessionKind === "INTRO") metaParts.push({ text: "Tanışlıq · Pulsuz", color: "#059669" });
+  if (sessionNumber) metaParts.push({ text: `Seans sayı: ${azOrdinal(sessionNumber)}` });
+  if (appt.patientPackageId != null) metaParts.push({ text: appt.packageName ? `Paket: ${appt.packageName}` : "Paket" });
+  if (appt.sessionKind === "INTRO") metaParts.push({ text: "Seans növü: Tanışlıq" });
 
   return (
     <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(135deg,#F2F6FD 0%,#E4ECFA 100%)", border: `1px solid ${urgent ? "#FECACA" : "#D6E2F7"}`, borderRadius: 18, padding: "24px 26px", marginBottom: 32, boxShadow: "0 2px 12px rgba(8,47,109,.07)" }}>
@@ -556,8 +558,13 @@ function NextSessionHero({
         <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: urgent ? "#DC2626" : "var(--brand)" }}>
           Növbəti seans
         </span>
-        <span style={{ fontSize: 14, fontWeight: 600, color: "#082F6D" }}>
-          {relativeDayLabel(start, now)} · <strong>{fmtTime(start)}{appt.endAt ? ` – ${fmtTime(new Date(appt.endAt))}` : ""}</strong>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "#082F6D" }}>
+            {relativeDayLabel(start, now)} · <strong>{fmtTime(start)}{appt.endAt ? ` – ${fmtTime(new Date(appt.endAt))}` : ""}</strong>
+          </span>
+          <span className={tu.expired ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: urgent ? "#DC2626" : "#059669", fontSize: 13, fontWeight: 700 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>{tu.text}
+          </span>
         </span>
       </div>
 
@@ -571,23 +578,22 @@ function NextSessionHero({
         <div style={{ flex: 1, minWidth: 230 }}>
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: metaParts.length > 0 ? 3 : 8 }}>{appt.psychologistName ?? "Operator psixoloq təyin edəcək"}</div>
           {metaParts.length > 0 && (
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 8 }}>
               {metaParts.map((p, i) => (
-                <span key={i} style={{ color: p.color }}>
-                  {i > 0 && <span style={{ opacity: .45, margin: "0 6px" }}>·</span>}
+                <span key={i} style={{ fontSize: 13, fontWeight: 600, color: p.color ?? "var(--oxford-60)" }}>
                   {p.text}
                 </span>
               ))}
             </div>
           )}
           {appt.note && (
-            <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "rgba(255,255,255,.6)", border: "1px solid #D6E2F7", borderRadius: 11, padding: "10px 13px", maxWidth: 520 }}>
+            <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "rgba(255,255,255,.6)", border: "1px solid #D6E2F7", borderRadius: 11, padding: "10px 13px", width: "100%", boxSizing: "border-box" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1051B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
               <span style={{ fontSize: 13.5, color: "var(--oxford)", fontWeight: 500, lineHeight: 1.5 }}>Mövzunuz: <span style={{ fontStyle: "italic" }}>«{appt.note.slice(0, 140)}{appt.note.length > 140 ? "…" : ""}»</span></span>
             </div>
           )}
           {cleanOperatorNote(appt.operatorNote) && (
-            <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "rgba(255,255,255,.6)", border: "1px solid #FDE68A", borderRadius: 11, padding: "10px 13px", maxWidth: 520, marginTop: 8 }}>
+            <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "rgba(255,255,255,.6)", border: "1px solid #FDE68A", borderRadius: 11, padding: "10px 13px", width: "100%", boxSizing: "border-box", marginTop: 8 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
               <span style={{ fontSize: 13.5, color: "#92400E", fontWeight: 500, lineHeight: 1.5 }}>Operator qeydi: <span style={{ fontStyle: "italic" }}>«{cleanOperatorNote(appt.operatorNote).slice(0, 140)}{cleanOperatorNote(appt.operatorNote).length > 140 ? "…" : ""}»</span></span>
             </div>
@@ -595,12 +601,9 @@ function NextSessionHero({
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", marginTop: 20 }}>
-        <span className={tu.expired ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: urgent ? "#DC2626" : "#059669", fontSize: 13.5, fontWeight: 700 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>{tu.text}
-        </span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 20 }}>
         {showConfirm && !alreadyConfirmed && (
-          <>
+          <div className="pa-hero-actions">
             <button
               disabled={busyId === appt.id}
               onClick={() => onConfirm(appt)}
@@ -612,7 +615,7 @@ function NextSessionHero({
               className="psy-hero__btn psy-hero__btn--ghost">
               {t("staff.cardDispute")}
             </button>
-          </>
+          </div>
         )}
         {showConfirm && alreadyConfirmed && (
           <span className="psy-hero__btn psy-hero__btn--ghost" style={{ cursor: "default" }}>
@@ -620,7 +623,7 @@ function NextSessionHero({
           </span>
         )}
         {!tu.expired && (
-          <>
+          <div className="pa-hero-actions">
             <JoinSessionButton appointment={appt} variant="primary" />
             <AddToCalendarMenu appointment={appt} />
             <button onClick={() => onReschedule(appt)} style={heroGhostBtn}>
@@ -631,7 +634,7 @@ function NextSessionHero({
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
               {t("staff.cardCancel")}
             </button>
-          </>
+          </div>
         )}
       </div>
     </div>

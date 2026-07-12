@@ -108,12 +108,13 @@ export default function HomeworkDetailModal({
   };
 
   const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (role !== "PSYCHOLOGIST") return;
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 30 * 1024 * 1024) { alert("Maksimum 30 MB"); return; }
     setBusy(true);
     try {
-      const att = await api.homeworkUploadAttachment(homework.id, file);
+      const att = await psychologistApi.homeworkUploadAttachment(homework.id, file);
       onMutate({ ...homework, attachments: [att, ...homework.attachments] });
     } catch (er) { alert((er as Error).message); }
     finally {
@@ -282,7 +283,7 @@ export default function HomeworkDetailModal({
 
             {/* Attachments */}
             <Section title={`Fayllar${homework.attachments.length > 0 ? ` (${homework.attachments.length})` : ""}`}
-              right={
+              right={role === "PSYCHOLOGIST" && (
                 <label style={{
                   cursor: busy ? "wait" : "pointer", fontSize: 12, fontWeight: 600,
                   color: "var(--brand-700)", padding: "4px 10px", borderRadius: 6,
@@ -292,7 +293,7 @@ export default function HomeworkDetailModal({
                     style={{ display: "none" }} />
                   {busy ? "Yüklənir…" : "+ Fayl yüklə"}
                 </label>
-              }>
+              )}>
               {homework.attachments.length === 0 ? (
                 <div style={{ fontSize: 12, color: "var(--oxford-60)" }}>Heç bir fayl yoxdur</div>
               ) : (

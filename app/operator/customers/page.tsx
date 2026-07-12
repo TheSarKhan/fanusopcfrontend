@@ -285,7 +285,7 @@ export default function OperatorCustomersPage() {
                   <th onClick={() => setSort("activity")} style={{ cursor: "pointer" }}>Son fəaliyyət {sort === "activity" && "↓"}</th>
                   <th>Psixoloq</th>
                   <th>Paket</th>
-                  <th>Bayraq</th>
+                  <th>Diqqət</th>
                   <th style={{ width: 150 }} />
                 </tr>
               </thead>

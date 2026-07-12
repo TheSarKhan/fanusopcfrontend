@@ -1767,7 +1767,8 @@ export interface PatientBookingPayload {
 export interface IntroEligibility {
   eligible: boolean;
   usedCount: number;
-  hasGrant: boolean;
+  /** Bazadakı 1 pulsuz haqdan əlavə operatorun təyin etdiyi, hələ istifadə olunmamış say. */
+  extraGrantsRemaining: number;
   reason?: string | null;
 }
 
@@ -1870,8 +1871,9 @@ export const patientApi = {
     authedRequest<Paged<AppointmentDetail>>("GET", `/patient/appointments/paged${pagedQuery(opts)}`),
   book: (data: PatientBookingPayload) =>
     authedRequest<AppointmentDetail>("POST", "/patient/appointments", data),
-  introEligibility: () =>
-    authedRequest<IntroEligibility>("GET", "/patient/intro-eligibility"),
+  introEligibility: (psychologistId?: number) =>
+    authedRequest<IntroEligibility>("GET",
+      `/patient/intro-eligibility${psychologistId != null ? `?psychologistId=${psychologistId}` : ""}`),
   cancel: (id: number, reasonCode: string, reasonText?: string) =>
     authedRequest<AppointmentDetail>("POST", `/patient/appointments/${id}/cancel`, { reasonCode, reasonText }),
   // Modul G — öz təcili əlaqə + ünvan məlumatı
@@ -1961,11 +1963,6 @@ export const patientApi = {
     authedRequest<HomeworkChecklistItem>("POST", `/patient/homework/${id}/checklist`, { label }),
   homeworkToggleItem: (id: number, itemId: number, completed: boolean) =>
     authedRequest<HomeworkChecklistItem>("POST", `/patient/homework/${id}/checklist/${itemId}/toggle`, { completed }),
-  homeworkUploadAttachment: async (id: number, file: File): Promise<HomeworkAttachment> => {
-    const form = new FormData();
-    form.append("file", file);
-    return authedMultipartRequest<HomeworkAttachment>("POST", `/patient/homework/${id}/attachments`, form);
-  },
   homeworkDeleteAttachment: (id: number, attachmentId: number) =>
     authedRequest<void>("DELETE", `/patient/homework/${id}/attachments/${attachmentId}`),
 
@@ -3519,11 +3516,13 @@ export const operatorApi = {
   }) =>
     authedRequest<AppointmentDetail>("POST", "/operator/appointments/on-behalf", data),
 
-  // ─── Pulsuz tanışlıq (INTRO) görüşü — 2-ci seans icazəsi ─────────────────
-  freeIntroStatus: (patientId: number) =>
-    authedRequest<IntroEligibility>("GET", `/operator/patients/${patientId}/free-intro-status`),
-  setFreeIntroPermission: (patientId: number, allowed: boolean) =>
-    authedRequest<IntroEligibility>("PUT", `/operator/patients/${patientId}/free-intro-permission`, { allowed }),
+  // ─── Pulsuz tanışlıq (INTRO) görüşü — bazadakı 1 haqdan əlavə say ────────
+  freeIntroStatus: (patientId: number, psychologistId?: number) =>
+    authedRequest<IntroEligibility>("GET",
+      `/operator/patients/${patientId}/free-intro-status${psychologistId != null ? `?psychologistId=${psychologistId}` : ""}`),
+  /** grants — bazadakı 1 pulsuz haqdan əlavə neçə seansa icazə veriləcəyi (0 = söndür). */
+  setFreeIntroGrants: (patientId: number, grants: number) =>
+    authedRequest<IntroEligibility>("PUT", `/operator/patients/${patientId}/free-intro-permission`, { grants }),
 
   // ─── Seans müraciətləri ───────────────────────────────────────────────────
   listSessionRequests: (status?: string) =>

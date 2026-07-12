@@ -223,7 +223,7 @@ export default function OperatorPsychologistDetailPage() {
           <div style={{ ...CARD, padding: 20 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>Qiymət & Paketlər</div>
-              {isFanus && <span style={{ fontSize: 11, color: "#9DB0CC", fontWeight: 600 }}>FANUS — mərkəzi qiymət, yalnız Admin dəyişə bilər</span>}
+              {isFanus && <span style={{ fontSize: 11, color: "#9DB0CC", fontWeight: 600 }}>FANUS — psixoloq özü dəyişə bilmir, operator/admin idarə edir</span>}
             </div>
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start", marginBottom: 14 }}>
@@ -240,9 +240,7 @@ export default function OperatorPsychologistDetailPage() {
                     {stat.individualPrice != null
                       ? <span className="ps-num" style={{ fontSize: 18, fontWeight: 800, color: "var(--oxford)" }}>{formatAzn(stat.individualPrice)}</span>
                       : <span style={{ fontSize: 13, fontWeight: 700, color: "#92400E" }}>Qiymət təyin olunmayıb</span>}
-                    {!isFanus && (
-                      <button type="button" onClick={() => { setPriceInput(stat.individualPrice != null ? String(stat.individualPrice) : ""); setPriceEditing(true); }} style={miniGhostBtn}>Dəyiş</button>
-                    )}
+                    <button type="button" onClick={() => { setPriceInput(stat.individualPrice != null ? String(stat.individualPrice) : ""); setPriceEditing(true); }} style={miniGhostBtn}>Dəyiş</button>
                   </div>
                 )}
                 {priceError && <div style={{ fontSize: 11.5, color: "#991B1B", fontWeight: 600, marginTop: 6 }}>{priceError}</div>}
@@ -259,18 +257,16 @@ export default function OperatorPsychologistDetailPage() {
                     <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>{pk.sessionCount} seans</span>
                     <span className="ps-num" style={{ fontSize: 13, fontWeight: 700, color: "#5B21B6" }}>{formatAzn(pk.packagePrice)}</span>
                     <span style={{ background: pk.active ? "#ECFDF5" : "#F3F4F6", color: pk.active ? "#047857" : "#6B7280", fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 999 }}>{pk.active ? "Aktiv" : "Deaktiv"}</span>
-                    {!isFanus && (
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button type="button" onClick={() => setPkgForm({ id: pk.id, name: pk.name, sessionCount: String(pk.sessionCount), packagePrice: String(pk.packagePrice), active: pk.active })} style={miniGhostBtn}>Redaktə</button>
-                        <button type="button" onClick={() => deletePkg(pk.id)} style={{ ...miniGhostBtn, color: "#991B1B" }}>Sil</button>
-                      </div>
-                    )}
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button type="button" onClick={() => setPkgForm({ id: pk.id, name: pk.name, sessionCount: String(pk.sessionCount), packagePrice: String(pk.packagePrice), active: pk.active })} style={miniGhostBtn}>Redaktə</button>
+                      <button type="button" onClick={() => deletePkg(pk.id)} style={{ ...miniGhostBtn, color: "#991B1B" }}>Sil</button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {!isFanus && (pkgForm ? (
+            {(pkgForm ? (
               <div style={{ background: "#F8FAFD", border: "1px solid #D6E2F7", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <input value={pkgForm.name} onChange={e => setPkgForm({ ...pkgForm, name: e.target.value })} placeholder="Paket adı" style={{ flex: 1, minWidth: 120, border: "1px solid #D6E2F7", borderRadius: 8, padding: "7px 9px", fontSize: 13, fontFamily: "inherit" }} />

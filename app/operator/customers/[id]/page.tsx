@@ -171,14 +171,17 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
     return () => { alive = false; };
   }, [patientId, reloadKey]);
 
-  const toggleIntroGrant = async () => {
-    if (grantingIntro) return;
-    const nextAllowed = !introStatus?.hasGrant;
+  // Bazadakı 1 pulsuz haqdan əlavə operator istənilən sayda pulsuz tanışlıq seansı təyin
+  // edə bilir (3-cü, 4-cü, 5-ci ...) — açıq say, bir dəfəlik bayraq deyil, istənilən vaxt
+  // artırıla/0-a endirilə (söndürülə) bilər.
+  const adjustIntroGrant = async (delta: number) => {
+    if (grantingIntro || !introStatus) return;
+    const next = Math.max(0, introStatus.extraGrantsRemaining + delta);
     setGrantingIntro(true);
     try {
-      const s = await operatorApi.setFreeIntroPermission(patientId, nextAllowed);
+      const s = await operatorApi.setFreeIntroGrants(patientId, next);
       setIntroStatus(s);
-      toast(nextAllowed ? "2-ci pulsuz tanışlığa icazə verildi" : "İcazə geri alındı", "success");
+      toast(next > 0 ? `Əlavə pulsuz tanışlıq sayı: ${next}` : "Əlavə pulsuz tanışlıq icazəsi söndürüldü", "success");
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {
@@ -405,7 +408,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
               {introStatus && (
                 <span className="fx-pill fx-pill--info">
                   Tanışlıq: {introStatus.usedCount === 0 ? "1 pulsuz haqqı var"
-                    : introStatus.hasGrant ? "2-ci pulsuz haqqı verilib"
+                    : introStatus.extraGrantsRemaining > 0 ? `${introStatus.extraGrantsRemaining} əlavə pulsuz haqqı var`
                     : "haqqı bitib"}
                 </span>
               )}
@@ -473,10 +476,14 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
         )}
         <span className="fx-spacer" />
         {introStatus && introStatus.usedCount >= 1 && (
-          <button type="button" onClick={toggleIntroGrant} disabled={grantingIntro} className="fx-btn fx-btn--ghost">
-            <Icon name="calendar-plus" />
-            {grantingIntro ? "…" : introStatus.hasGrant ? "2-ci pulsuz icazəni geri al" : "2-ci pulsuz seansa icazə ver"}
-          </button>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--surface)", border: "1px solid var(--hairline)", borderRadius: 10, padding: "6px 8px 6px 14px" }}>
+            <span style={{ fontSize: 12.5, color: "var(--oxford-80)", whiteSpace: "nowrap" }}>Əlavə pulsuz tanışlıq</span>
+            <button type="button" onClick={() => adjustIntroGrant(-1)} disabled={grantingIntro || introStatus.extraGrantsRemaining <= 0}
+              className="fx-btn fx-btn--ghost fx-btn--sm" aria-label="Bir azalt" style={{ width: 26, height: 26, padding: 0 }}>−</button>
+            <span className="fx-num" style={{ minWidth: 18, textAlign: "center", fontWeight: 700, color: "var(--oxford)" }}>{introStatus.extraGrantsRemaining}</span>
+            <button type="button" onClick={() => adjustIntroGrant(1)} disabled={grantingIntro}
+              className="fx-btn fx-btn--ghost fx-btn--sm" aria-label="Bir artır" style={{ width: 26, height: 26, padding: 0 }}>+</button>
+          </div>
         )}
         <button type="button" onClick={toggleBlock} disabled={blocking} className="fx-btn fx-btn--ghost"
           style={h.blocked ? undefined : { borderColor: "rgba(201,125,125,.4)", color: "var(--rose)" }}>

@@ -44,10 +44,17 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
   const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(prev => ({ ...prev, [field]: e.target.value }));
 
+  // Hərf və xüsusi simvolları qəbul etmir — yalnız rəqəm, +, boşluq və defis.
+  const setPhone = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const filtered = e.target.value.replace(/[^\d+\s-]/g, "");
+    setForm(prev => ({ ...prev, phone: filtered }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim())   { setError("Ad Soyad daxil edin"); return; }
     if (!form.phone.trim())  { setError("Telefon nömrəsi daxil edin"); return; }
+    if (form.phone.replace(/\D/g, "").length < 9) { setError("Düzgün telefon nömrəsi daxil edin"); return; }
     if (!form.email.trim())  { setError("E-poçt ünvanı daxil edin"); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError("Düzgün e-poçt ünvanı daxil edin"); return; }
     if (!form.budget)        { setError("Büdcə seçin"); return; }
@@ -197,8 +204,8 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
       {/* Phone */}
       <div style={{ marginBottom: 14 }}>
         <label style={labelStyle}>Əlaqə nömrəsi *</label>
-        <input type="tel" value={form.phone} onChange={set("phone")}
-          placeholder="+994 50 000 00 00" style={inputStyle} />
+        <input type="tel" inputMode="tel" value={form.phone} onChange={setPhone}
+          placeholder="+994 50 000 00 00" maxLength={20} style={inputStyle} />
       </div>
 
       {/* Email + Age */}

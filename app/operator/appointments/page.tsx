@@ -289,11 +289,15 @@ export default function OperatorAppointmentsPage() {
     const q = search.trim().toLowerCase();
     // Paket seansları öz tabında (Paketlər) yaşayır; Randevular tabı yalnız tək
     // seansları göstərir. İstisna — kəsişən triyaj filtrləri (Gecikmiş/Ləğv
-    // tələbi/Vaxt dəyişikliyi): orada paket seansı da fərdi sətir kimi çıxır ki,
-    // təcili iş gözdən qaçmasın.
+    // tələbi/Vaxt dəyişikliyi) VƏ "Yeni müraciətlər" (PENDING) tabındakı ləğv/vaxt
+    // dəyişikliyi siqnalları: orada paket seansı da fərdi sətir kimi çıxır ki,
+    // təcili iş (bax "unified triage inbox" qeydi yuxarıda) gözdən qaçmasın —
+    // əks halda paket seansının vaxt dəyişikliyi tələbi heç yerdə görünmürdü.
     const triage = overdueOnly || rescheduleOnly || cancelOnly;
+    const isPendingTriageSignal = (a: AppointmentDetail) =>
+      tab === "PENDING" && !mineOnly && !allOnly && !triage && (isCancelReq(a) || isRescheduleReq(a));
     return items.filter(a => {
-      if (!triage && a.patientPackageId != null) return false;
+      if (!triage && a.patientPackageId != null && !isPendingTriageSignal(a)) return false;
       if (mineOnly && a.claimedByUserId !== meId) return false;
       if (rescheduleOnly) {
         if (!isRescheduleReq(a)) return false;
@@ -370,9 +374,15 @@ export default function OperatorAppointmentsPage() {
       else if (a.status === "COMPLETED") c.COMPLETED++;
       else if (a.status === "CANCELLED") c.CANCELLED++;
     }
+    // Paket seansı olsa belə, ləğv/vaxt dəyişikliyi tələbi "Yeni müraciətlər"
+    // sayğacına düşməlidir — yoxsa operator badge-də görmədiyi üçün heç vaxt
+    // "Digər filtrlər" menyusunu açıb axtarmır (bax filtered-dəki eyni istisna).
+    for (const a of items) {
+      if (a.patientPackageId != null && (isCancelReq(a) || isRescheduleReq(a))) c.PENDING++;
+    }
     return c;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [singleItems]);
+  }, [singleItems, items]);
 
   const overdueCount = useMemo(() => items.filter(isOverdue).length, [items, slaHours, now]); // eslint-disable-line react-hooks/exhaustive-deps
   const mineCount = useMemo(() => {

@@ -7,6 +7,7 @@ import {
   type PackageStats,
   type PackageReq,
   type PackagePatient,
+  type Psychologist,
 } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -48,6 +49,11 @@ export default function PsychologPackagesPage() {
   const [indivPrice, setIndivPrice] = useState<number | null>(null);
   const [priceEditing, setPriceEditing] = useState(false);
   const [priceBusy, setPriceBusy] = useState(false);
+  const [me, setMe] = useState<Psychologist | null>(null);
+
+  // FANUS psixoloqlar öz qiymət/paketlərini redaktə edə bilmir (backend requireNotFanus
+  // gate-i ilə eyni qayda) — yalnız statistikanı görürlər, dəyişikliyi operator/admin edir.
+  const isFanus = (me?.psychologistType ?? "").toUpperCase() === "FANUS";
 
   const load = () => {
     setLoading(true);
@@ -55,7 +61,8 @@ export default function PsychologPackagesPage() {
       psychologistApi.myPackages(),
       psychologistApi.myPackageStats(),
       psychologistApi.myPricing(),
-    ]).then(([c, s, p]) => {
+      psychologistApi.me(),
+    ]).then(([c, s, p, m]) => {
       if (c.status === "fulfilled") setCatalog(c.value);
       if (s.status === "fulfilled") {
         const map: Record<number, PackageStats> = {};
@@ -66,6 +73,7 @@ export default function PsychologPackagesPage() {
         setStatsReady(false);
       }
       if (p.status === "fulfilled") setIndivPrice(p.value.individualPrice ?? null);
+      if (m.status === "fulfilled") setMe(m.value);
     }).finally(() => setLoading(false));
   };
   useEffect(load, []);
@@ -117,14 +125,26 @@ export default function PsychologPackagesPage() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 22 }}>
         <div>
-          <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, letterSpacing: "-.01em", color: "var(--oxford)" }}>Paketlərim</h1>
+          <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, letterSpacing: "-.01em", color: "var(--oxford)" }}>Qiymətlər & Paketlər</h1>
           <p style={{ margin: 0, fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>Paket təklifləriniz, satış və istifadə statistikası</p>
         </div>
-        <button onClick={() => setNewOpen(o => !o)}
-          style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 17px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
-          <IPlus />Yeni paket
-        </button>
+        {!isFanus && (
+          <button onClick={() => setNewOpen(o => !o)}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 17px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
+            <IPlus />Yeni paket
+          </button>
+        )}
       </div>
+
+      {isFanus && (
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#F2F6FD", border: "1px solid #D6E2F7", borderRadius: 12, padding: "13px 16px", marginBottom: 20 }}>
+          <span style={{ color: "#1051B7", flex: "none", marginTop: 1 }}><IDollar s={16} c="#1051B7" /></span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--oxford)", lineHeight: 1.5 }}>
+            FANUS psixoloqu olduğunuz üçün qiymət və paketlər mərkəzi idarə olunur — özünüz redaktə edə bilmirsiniz.
+            Dəyişiklik üçün operator və ya admin ilə əlaqə saxlayın. Aşağıda yalnız statistikanı görürsünüz.
+          </span>
+        </div>
+      )}
 
       {/* Tək seans qiymət kartı */}
       <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "16px 20px", marginBottom: 20 }}>
@@ -142,14 +162,14 @@ export default function PsychologPackagesPage() {
               </div>
             </div>
           </div>
-          {!priceEditing && (
+          {!priceEditing && !isFanus && (
             <button onClick={() => setPriceEditing(true)} title="Redaktə" className="pk-icobtn"
               style={{ width: 34, height: 34, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, cursor: "pointer", flex: "none" }}>
               <IEdit />
             </button>
           )}
         </div>
-        {priceEditing && (
+        {priceEditing && !isFanus && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #EDF1F8", animation: "pkFade .2s ease" }}>
             <IndivPriceForm current={indivPrice} busy={priceBusy} onSave={saveIndivPrice} onCancel={() => setPriceEditing(false)} />
           </div>
@@ -183,13 +203,15 @@ export default function PsychologPackagesPage() {
       ) : catalog.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #EDF1F8", boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: "44px 24px", textAlign: "center" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Hələ paket təklifiniz yoxdur</div>
-          <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: "0 0 16px" }}>İlk paketinizi yaradın — pasiyentlərə endirimli seans dəstləri təklif edin.</p>
-          <button onClick={() => setNewOpen(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 18px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}><IPlus />İlk paketi yarat</button>
+          <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: "0 0 16px" }}>{isFanus ? "Paketləriniz operator/admin tərəfindən əlavə ediləndə burada görünəcək." : "İlk paketinizi yaradın — pasiyentlərə endirimli seans dəstləri təklif edin."}</p>
+          {!isFanus && (
+            <button onClick={() => setNewOpen(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 18px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}><IPlus />İlk paketi yarat</button>
+          )}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {catalog.map(p => (
-            <PackageCard key={p.id} pkg={p} stats={statsById[p.id]} busy={busy}
+            <PackageCard key={p.id} pkg={p} stats={statsById[p.id]} busy={busy} readOnly={isFanus}
               onUpdate={update} onDelete={remove} onToggleActive={toggleActive} />
           ))}
         </div>
@@ -214,13 +236,15 @@ function StatCard({ bg, color, icon, value, label, valueColor }: {
 }
 
 /* ─── Package card ────────────────────────────────────────────────────────── */
-function PackageCard({ pkg, stats, busy, onUpdate, onDelete, onToggleActive }: {
+function PackageCard({ pkg, stats, busy, onUpdate, onDelete, onToggleActive, readOnly }: {
   pkg: PackageDto;
   stats: PackageStats | undefined;
   busy: boolean;
   onUpdate: (id: number, req: PackageReq) => void;
   onDelete: (p: PackageDto) => void;
   onToggleActive: (p: PackageDto) => void;
+  /** FANUS psixoloq — statistikanı görür, redaktə/sil/aktiv-et əlçatan deyil. */
+  readOnly?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -245,7 +269,7 @@ function PackageCard({ pkg, stats, busy, onUpdate, onDelete, onToggleActive }: {
             {pkg.sessionCount} seans · {formatAzn(pkg.packagePrice)} · seans başına ≈ {formatAzn(pkg.perSessionPrice)}
           </div>
         </div>
-        {deaktiv ? (
+        {readOnly ? null : deaktiv ? (
           <div style={{ position: "relative", flex: "none" }}>
             <button onClick={() => setMenuOpen(o => !o)} aria-label="Əməliyyatlar" className="pk-icobtn"
               style={{ width: 34, height: 34, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, cursor: "pointer" }}><IDots /></button>
@@ -272,7 +296,7 @@ function PackageCard({ pkg, stats, busy, onUpdate, onDelete, onToggleActive }: {
       </div>
 
       {/* inline edit */}
-      {editing && (
+      {editing && !readOnly && (
         <div style={{ background: "#F2F6FD", border: "1px solid #D6E2F7", borderRadius: 12, padding: 15, marginBottom: 14, animation: "pkFade .2s ease" }}>
           <div style={{ fontSize: 12.5, fontWeight: 700, color: "#082F6D", marginBottom: 11 }}>Paketi redaktə et</div>
           <PackageForm compact busy={busy} initial={{ name: pkg.name, sessionCount: pkg.sessionCount, packagePrice: pkg.packagePrice, active: pkg.active }} onSave={save} onCancel={() => setEditing(false)} />

@@ -19,7 +19,7 @@ import {
 import { buildPanelUrl, getStoredUser } from "@/lib/auth";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
-import { azLocalToISO } from "@/lib/datetime";
+import { azLocalToISO, azOrdinal } from "@/lib/datetime";
 import DatePicker from "@/components/DatePicker";
 
 // Qısa forma (B.e/Ç.a/...) yalnız kompakt gün-tab çipləri üçün — sərbəst mətndə
@@ -172,8 +172,10 @@ export default function BookPsychologistPage() {
   }, []);
 
   useEffect(() => {
-    patientApi.introEligibility().then(setIntroEligibility).catch(() => {});
-  }, []);
+    // psychologist yüklənməmişsə ümumi (psixoloqdan asılı olmayan) haqq yoxlanır;
+    // yükləndikdən sonra bu psixoloqla artıq tanışlıq götürülüb-götürülmədiyi də nəzərə alınır.
+    patientApi.introEligibility(psychologist?.id).then(setIntroEligibility).catch(() => {});
+  }, [psychologist?.id]);
 
   // Tanışlıq görüşünə uyğun deyilsə banner heç göstərilmir və TypeCard-lar
   // "Tək seans" default seçili görünür — amma introPromptAnswered manual klik
@@ -529,7 +531,7 @@ export default function BookPsychologistPage() {
         // Pulsuz tanışlıq uğurla bron olundu — eligibility server-tərəfdə dəyişdi
         // (1-ci istifadə olundu / 2-ci qrant istehlak oldu), UI vəziyyətini təzələ.
         if (sessionKind === "INTRO") {
-          patientApi.introEligibility().then(setIntroEligibility).catch(() => {});
+          patientApi.introEligibility(psychologist.id).then(setIntroEligibility).catch(() => {});
         }
       }
     } catch (err) {
@@ -820,7 +822,7 @@ export default function BookPsychologistPage() {
                     <div style={{ background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 12, padding: 16, marginBottom: 14 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--brand-700)", marginBottom: 4 }}>
                         Sizin 1 dəfəlik pulsuz 15 dəqiqəlik tanışlıq görüşü keçirmək şansınız var
-                        {introEligibility.usedCount === 1 ? " (2-ci pulsuz seans)" : ""}.
+                        {introEligibility.usedCount >= 1 ? ` (${azOrdinal(introEligibility.usedCount + 1)} pulsuz seans)` : ""}.
                       </div>
                       <p style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, margin: "0 0 12px" }}>İstəyirsiniz?</p>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

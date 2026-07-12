@@ -65,8 +65,8 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
     setIntroStatus(null);
     setSessionKind("STANDARD");
     if (!patientId) return;
-    operatorApi.freeIntroStatus(patientId).then(setIntroStatus).catch(() => {});
-  }, [patientId]);
+    operatorApi.freeIntroStatus(patientId, psyId ?? undefined).then(setIntroStatus).catch(() => {});
+  }, [patientId, psyId]);
   useEffect(() => {
     setCatalog([]); setCatalogId(null);
     if (!sellPkg || !psyId) return;

@@ -117,6 +117,8 @@ function MeetingLinkCard({ a, onSent, onUpdated }: {
   const [busy, setBusy] = useState(false);
   const hasLink = !!a.meetingLink;
   const av = (Math.abs(a.id) % 4) + 1;
+  const paymentRequired = !a.patientPackageId && a.sessionKind !== "INTRO";
+  const paymentConfirmed = !paymentRequired || a.paymentStatus === "PAID";
 
   const saveAndSend = async () => {
     const link = value.trim();
@@ -185,27 +187,41 @@ function MeetingLinkCard({ a, onSent, onUpdated }: {
         </div>
       )}
 
-      <div className="fx-field">
-        <label className="fx-label">Görüş linki</label>
-        <input
-          type="url"
-          className="fx-input"
-          value={value}
-          onChange={e => setValue(e.target.value)}
-          placeholder="https://…"
-          onClick={e => e.stopPropagation()}
-        />
-        <span className="fx-help">Zoom, Google Meet və ya Jitsi linki · https:// ilə başlamalıdır</span>
-      </div>
+      {paymentConfirmed ? (
+        <>
+          <div className="fx-field">
+            <label className="fx-label">Görüş linki</label>
+            <input
+              type="url"
+              className="fx-input"
+              value={value}
+              onChange={e => setValue(e.target.value)}
+              placeholder="https://…"
+              onClick={e => e.stopPropagation()}
+            />
+            <span className="fx-help">Zoom, Google Meet və ya Jitsi linki · https:// ilə başlamalıdır</span>
+          </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <button type="button" onClick={saveAndSend} disabled={busy} className="fx-btn fx-btn--primary" style={{ width: "100%", ...busyStyle }}>
-          <IconSend /> Əlavə et və göndər
-        </button>
-        <button type="button" onClick={saveOnly} disabled={busy} className="fx-btn fx-btn--ghost" style={{ width: "100%", ...busyStyle }}>
-          Yalnız saxla
-        </button>
-      </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button type="button" onClick={saveAndSend} disabled={busy} className="fx-btn fx-btn--primary" style={{ width: "100%", ...busyStyle }}>
+              <IconSend /> Əlavə et və göndər
+            </button>
+            <button type="button" onClick={saveOnly} disabled={busy} className="fx-btn fx-btn--ghost" style={{ width: "100%", ...busyStyle }}>
+              Yalnız saxla
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, background: "#FEF3C7", border: "1px solid #FCE7A8", borderRadius: 10, padding: "10px 12px" }}>
+            Ödəniş təsdiqlənməyib — link yalnız ödəniş "Ödənildi" işarələndikdən sonra əlavə oluna bilər.
+          </div>
+          <Link href={`/operator/appointments/${a.id}`} onClick={e => e.stopPropagation()}
+            className="fx-btn fx-btn--primary" style={{ width: "100%", textAlign: "center", textDecoration: "none" }}>
+            Ödənişə keç
+          </Link>
+        </>
+      )}
 
       <Link href={`/operator/appointments/${a.id}`} onClick={e => e.stopPropagation()}
         style={{ marginTop: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: "var(--text-caption)", color: "var(--oxford-60)", textDecoration: "none", fontWeight: 600 }}>

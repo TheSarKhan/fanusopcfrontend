@@ -60,8 +60,6 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       homeHref="/admin"
       navItems={nav}
       user={me}
-      searchPlaceholder={t("common.search")}
-      searchHref="/admin/users"
     >
       {/* Wrap admin pages in .admin-shell so existing admin.css selectors apply. */}
       <div className="admin-shell">{children}</div>

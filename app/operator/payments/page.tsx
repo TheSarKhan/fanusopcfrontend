@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { operatorApi, type PaymentItem, type PaymentSummary } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { getStoredUser } from "@/lib/auth";

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { logout, meApi } from "@/lib/api";
 import { getMainSiteUrl } from "@/lib/auth";
@@ -35,16 +35,12 @@ interface PanelShellProps {
   homeHref: string;
   navItems: PanelNavItem[];
   user: UserInfo;
-  /** Optional placeholder text in the topbar search box. */
-  searchPlaceholder?: string;
   /** Optional primary CTA on the topbar (e.g. "Yeni seans" for psycholog). */
   topbarAction?: React.ReactNode;
   /** Optional auxiliary controls rendered next to the language switcher (e.g. a search trigger). */
   topbarExtras?: React.ReactNode;
   /** Profile page path. Defaults to `${homeHref}/profile`. */
   profileHref?: string;
-  /** Where the topbar search submits to. Defaults to `${homeHref}/appointments`. */
-  searchHref?: string;
 }
 
 export default function PanelShell({
@@ -53,19 +49,14 @@ export default function PanelShell({
   homeHref,
   navItems,
   user,
-  searchPlaceholder = "Axtar...",
   topbarAction,
   topbarExtras,
   profileHref,
-  searchHref,
 }: PanelShellProps) {
   const resolvedProfileHref = profileHref ?? `${homeHref.replace(/\/$/, "")}/profile`;
-  const resolvedSearchHref = searchHref ?? `${homeHref.replace(/\/$/, "")}/appointments`;
   const pathname = usePathname();
-  const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
   const [collapsed, setCollapsed] = useState(false);
 
   // Restore the collapsed preference after mount (avoids SSR/client mismatch).
@@ -102,13 +93,6 @@ export default function PanelShell({
     setLoggingOut(true);
     await logout();
     window.location.href = `${getMainSiteUrl()}/login?_logout=1`;
-  };
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = searchValue.trim();
-    if (!q) return;
-    router.push(`${resolvedSearchHref}?q=${encodeURIComponent(q)}`);
   };
 
   return (
@@ -217,17 +201,6 @@ export default function PanelShell({
           >
             <PanelIcon name="menu" size={20} stroke={2} />
           </button>
-
-          <form className="ps-top__search" onSubmit={handleSearchSubmit} role="search">
-            <PanelIcon name="search" size={15} color="var(--oxford-60)" stroke={2} />
-            <input
-              type="text"
-              placeholder={searchPlaceholder}
-              value={searchValue}
-              onChange={e => setSearchValue(e.target.value)}
-              aria-label={searchPlaceholder}
-            />
-          </form>
 
           <div className="ps-top__right">
             {topbarExtras}

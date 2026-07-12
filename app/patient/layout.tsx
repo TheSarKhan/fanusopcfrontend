@@ -81,7 +81,6 @@ function PatientShell({ children }: { children: React.ReactNode }) {
       homeHref="/patient"
       navItems={nav}
       user={{ name, initials, role: t("pkg.patient") }}
-      searchPlaceholder={t("common.search")}
     >
       <RiskBanner level={risk} />
       <ModuleLock>{children}</ModuleLock>

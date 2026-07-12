@@ -63,7 +63,6 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
       homeHref="/psycholog"
       navItems={nav}
       user={{ name, initials, role: t("pricing.rolePsychologist") }}
-      searchPlaceholder={t("common.search")}
     >
       <ModuleLock>{children}</ModuleLock>
     </PanelShell>

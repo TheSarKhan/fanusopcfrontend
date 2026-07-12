@@ -22,7 +22,7 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 import {
   STATUS, PKG_STATUS, PA_STYLE,
   PackageBadge, IntroBadge, IconClock, IconX, Section, Empty,
-  initialsOf, pad2,
+  initialsOf, pad2, cleanOperatorNote,
 } from "./shared";
 
 const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
@@ -586,10 +586,10 @@ function NextSessionHero({
               <span style={{ fontSize: 13.5, color: "var(--oxford)", fontWeight: 500, lineHeight: 1.5 }}>Mövzunuz: <span style={{ fontStyle: "italic" }}>«{appt.note.slice(0, 140)}{appt.note.length > 140 ? "…" : ""}»</span></span>
             </div>
           )}
-          {appt.operatorNote && (
+          {cleanOperatorNote(appt.operatorNote) && (
             <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "rgba(255,255,255,.6)", border: "1px solid #FDE68A", borderRadius: 11, padding: "10px 13px", maxWidth: 520, marginTop: 8 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
-              <span style={{ fontSize: 13.5, color: "#92400E", fontWeight: 500, lineHeight: 1.5 }}>Operator qeydi: <span style={{ fontStyle: "italic" }}>«{appt.operatorNote.slice(0, 140)}{appt.operatorNote.length > 140 ? "…" : ""}»</span></span>
+              <span style={{ fontSize: 13.5, color: "#92400E", fontWeight: 500, lineHeight: 1.5 }}>Operator qeydi: <span style={{ fontStyle: "italic" }}>«{cleanOperatorNote(appt.operatorNote).slice(0, 140)}{cleanOperatorNote(appt.operatorNote).length > 140 ? "…" : ""}»</span></span>
             </div>
           )}
         </div>
@@ -1119,12 +1119,12 @@ function SessionDetailModal({
           )}
 
           {/* Operator qeydi */}
-          {a.operatorNote && (
+          {cleanOperatorNote(a.operatorNote) && (
             <div>
               <div style={labelStyle}>Operator qeydi</div>
               <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 13px", fontSize: 13.5, color: "#92400E", fontWeight: 500, lineHeight: 1.5 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 2 }}><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
-                <span style={{ fontStyle: "italic" }}>«{a.operatorNote}»</span>
+                <span style={{ fontStyle: "italic" }}>«{cleanOperatorNote(a.operatorNote)}»</span>
               </div>
             </div>
           )}

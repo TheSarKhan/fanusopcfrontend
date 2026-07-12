@@ -54,6 +54,13 @@ const STATUS_LABEL: Record<string, string> = {
 function statusLabel(status?: string | null): string {
   return (status ? STATUS_LABEL[status] : null) ?? status ?? "—";
 }
+/** Köhnə randevularda operatorNote-a yazılmış "[Vaxt dəyişikliyi istəyi]" sistem
+ *  damğasını gizlədir — bu artıq öz banneri ilə (rescheduleRequestedAt/Note) ayrıca
+ *  göstərilir, ona görə xam qeyd blokunda təkrarlanmasın. */
+function cleanOperatorNote(note?: string | null): string {
+  if (!note) return "";
+  return note.split("\n").filter(line => !line.trim().startsWith("[Vaxt dəyişikliyi istəyi]")).join("\n").trim();
+}
 // Appointment status → Fanus UI Kit pill variant (colors mirror statusMeta()).
 function statusPillClass(status?: string | null): string {
   switch (status) {
@@ -292,6 +299,9 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const isCancelReq = a.status === "CANCEL_REQUESTED";
   // CONFIRMED included so the assign block doubles as the reschedule / change-psychologist tool.
   const canAssign = !isCancelReq && !isFinal && ["PENDING", "NEW", "REJECTED", "ASSIGNED", "IN_REVIEW", "CONFIRMED"].includes(a.status);
+  // Görüş linki artıq təyin edilibsə vaxt/psixoloq dəyişikliyi bloklanır — link konkret
+  // vaxta bağlıdır, vaxt dəyişsə köhnəlmiş qalır (backend: guardNotRescheduleWhenLinked).
+  const timeLocked = canAssign && !!a.meetingLink;
   const canCancel = !isCancelReq && !isFinal && a.status !== "DISPUTED";
   const canResolve = a.status === "DISPUTED";
   // Tək (paketsiz) seans təyin/yaradılanda qiymət yoxdusa ödəniş yaranmır — belə
@@ -391,7 +401,18 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
           <RequestContent full={full} t={t} />
 
           {/* PRIMARY — Təyinat (yalnız təyinat edilə bilən statuslarda) */}
-          {canAssign && (
+          {timeLocked ? (
+            <div className="op-det-card">
+              <div className="op-det-card__title">{t("staff.opDetAssignBlock")}</div>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "var(--amber-bg)", border: "1px solid rgba(201,125,46,.3)", borderRadius: 11, padding: "13px 15px" }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+                <div style={{ fontSize: 13, color: "#92400E", fontWeight: 500, lineHeight: 1.5 }}>
+                  <strong>Vaxt/psixoloq dəyişikliyi bloklanıb</strong> — bu randevu üçün seans linki artıq təyin edilib.
+                  Dəyişmək üçün əvvəlcə aşağıdakı "Görüş linki" kartından linki geri çağırın, sonra yenidən təyin edin.
+                </div>
+              </div>
+            </div>
+          ) : canAssign && (
             <AssignBlock
               key={`assign-${a.id}-${a.status}`}
               appointment={a}
@@ -732,14 +753,17 @@ function RequestContent({ full, t }: { full: OperatorAppointmentFull; t: ReturnT
 
       {a.rescheduleRequestedAt && (a.status === "CONFIRMED" || a.status === "ASSIGNED") && (
         <div className="fx-banner fx-banner--info" style={{ marginTop: 10, fontSize: 12.5, display: "block" }}>
-          <strong>Pasient vaxt dəyişikliyi tələb edib.</strong> Yeni vaxt seçmək üçün aşağıdakı «Vaxtı dəyiş / yenidən təyin» alətindən istifadə edin.
+          <strong>Pasient vaxt dəyişikliyi tələb edib.</strong>{" "}
+          {a.meetingLink
+            ? "Seans linki artıq təyin edilib — yeni vaxt seçmək üçün əvvəlcə linki geri çağırın."
+            : "Yeni vaxt seçmək üçün aşağıdakı «Vaxtı dəyiş / yenidən təyin» alətindən istifadə edin."}
           {a.rescheduleRequestNote && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.rescheduleRequestNote}»</div>}
         </div>
       )}
 
-      {a.operatorNote && (
+      {cleanOperatorNote(a.operatorNote) && (
         <div style={{ marginTop: 10, fontSize: 12, color: "var(--oxford-80)", background: "var(--amber-bg)", border: "1px solid rgba(201,125,46,.3)", borderRadius: 8, padding: "8px 12px", whiteSpace: "pre-wrap" }}>
-          <strong>Operator qeydi:</strong> {a.operatorNote}
+          <strong>Operator qeydi:</strong> {cleanOperatorNote(a.operatorNote)}
         </div>
       )}
 

@@ -198,11 +198,11 @@ function MeetingLinkCard({ a, onSent, onUpdated }: {
         <span className="fx-help">Zoom, Google Meet və ya Jitsi linki · https:// ilə başlamalıdır</span>
       </div>
 
-      <div style={{ display: "flex", gap: 8 }}>
-        <button type="button" onClick={saveAndSend} disabled={busy} className="fx-btn fx-btn--primary" style={{ flex: 1, ...busyStyle }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <button type="button" onClick={saveAndSend} disabled={busy} className="fx-btn fx-btn--primary" style={{ width: "100%", ...busyStyle }}>
           <IconSend /> Əlavə et və göndər
         </button>
-        <button type="button" onClick={saveOnly} disabled={busy} className="fx-btn fx-btn--ghost" style={busyStyle}>
+        <button type="button" onClick={saveOnly} disabled={busy} className="fx-btn fx-btn--ghost" style={{ width: "100%", ...busyStyle }}>
           Yalnız saxla
         </button>
       </div>

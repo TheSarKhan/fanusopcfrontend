@@ -1055,6 +1055,13 @@ function SessionBadges({ a }: { a: AppointmentDetail }) {
   );
 }
 
+/** Köhnə randevularda operatorNote-a yazılmış "[Vaxt dəyişikliyi istəyi]" sistem
+ *  damğasını gizlədir — bu daxili işarədir, psixoloqa göstərilməli deyil. */
+function cleanOperatorNote(note?: string | null): string {
+  if (!note) return "";
+  return note.split("\n").filter(line => !line.trim().startsWith("[Vaxt dəyişikliyi istəyi]")).join("\n").trim();
+}
+
 /** Seansa aid mətn detalları (qeyd / ləğv / mübahisə / operator notu) — paket sətri və timeline üçün ortaq. */
 function SessionDetail({ a }: { a: AppointmentDetail }) {
   const cancelledBy = a.cancelledBy === "PATIENT" ? "Pasient ləğv etdi"
@@ -1078,10 +1085,10 @@ function SessionDetail({ a }: { a: AppointmentDetail }) {
       {a.status === "DISPUTED" && a.disputeReason && (
         <div style={{ fontSize: 12.5, color: "#991B1B", fontWeight: 600, marginTop: 6 }}><strong>Mübahisə:</strong> «{a.disputeReason}»</div>
       )}
-      {a.operatorNote && (
+      {cleanOperatorNote(a.operatorNote) && (
         <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginTop: 6, display: "flex", alignItems: "flex-start", gap: 6 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8AAABF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }} aria-hidden><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg>
-          <span><strong style={{ color: "var(--oxford)" }}>Operator:</strong> {a.operatorNote}</span>
+          <span><strong style={{ color: "var(--oxford)" }}>Operator:</strong> {cleanOperatorNote(a.operatorNote)}</span>
         </div>
       )}
     </>

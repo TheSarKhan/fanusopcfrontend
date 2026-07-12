@@ -19,13 +19,21 @@ import {
 import { buildPanelUrl, getStoredUser } from "@/lib/auth";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { azLocalToISO } from "@/lib/datetime";
 import DatePicker from "@/components/DatePicker";
 
+// Qısa forma (B.e/Ç.a/...) yalnız kompakt gün-tab çipləri üçün — sərbəst mətndə
+// (səbətlər, təsdiq ekranı) qarışıq görünür, ona görə oralarda tam adlar (aşağıda) işlədilir.
 const WEEKDAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"];
+const WEEKDAYS_AZ_FULL = ["Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə", "Bazar"];
 
 function fmtDate(iso: string) {
   const d = new Date(iso);
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function fmtDateFull(iso: string) {
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
 }
 function fmtTime(iso: string) {
   const d = new Date(iso);
@@ -39,6 +47,12 @@ function dayLabel(iso: string) {
   const d = new Date(iso);
   const isoDow = (d.getDay() + 6) % 7;
   return `${WEEKDAYS_AZ[isoDow]} · ${fmtDate(iso)}`;
+}
+/** Tam, birmənalı gün etiketi — "Cümə, 24.07.2026" (təsdiq/səbət kontekstləri üçün). */
+function dayLabelFull(iso: string) {
+  const d = new Date(iso);
+  const isoDow = (d.getDay() + 6) % 7;
+  return `${WEEKDAYS_AZ_FULL[isoDow]}, ${fmtDateFull(iso)}`;
 }
 function isoDateOnly(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -110,6 +124,10 @@ export default function BookPsychologistPage() {
   const [activeDayKey, setActiveDayKey] = useState<string | null>(null);
   const [basket, setBasket] = useState<BasketItem[]>([]);
   const [note, setNote] = useState("");
+  // Psixoloqun açıq vaxtı olmadıqda pasient hələ də davam edə bilsin deyə —
+  // hazır saatlardan seçim əvəzinə öz istədiyi tarix/saatı DatePicker ilə
+  // qeyd edir; requestedStartAt kimi göndərilir, operator bunu təsdiqləyir.
+  const [preferredStartAt, setPreferredStartAt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [appointmentsUrl, setAppointmentsUrl] = useState("/patient/appointments");
@@ -490,11 +508,16 @@ export default function BookPsychologistPage() {
         });
         handleBasketResponse(res);
       } else {
-        // 0 or 1 slot — the unchanged single-booking flow.
+        // 0 or 1 slot — the unchanged single-booking flow. When the psychologist has
+        // no open slots at all, the patient may have picked their own preferred
+        // date/time via the DatePicker instead — send it as the requested start.
+        const requestedStartAt = okItems.length === 1 ? okItems[0].startAt
+          : preferredStartAt ? azLocalToISO(preferredStartAt)
+          : null;
         await patientApi.book({
           note: note.trim(),
           requestedPsychologistId: psychologist.id,
-          requestedStartAt: okItems.length === 1 ? okItems[0].startAt : null,
+          requestedStartAt,
           sessionKind: sessionKind === "INTRO" ? "INTRO" : undefined,
         });
         setResult({
@@ -623,7 +646,7 @@ export default function BookPsychologistPage() {
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 10 }}>{t("book.basketCreatedList")}</div>
                 {result.createdSlots.map(slot => (
                   <div key={slot} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "7px 0" }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)" }}>{dayLabel(slot)}, {fmtTime(slot)}</span>
+                    <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)" }}>{dayLabelFull(slot)}, saat {fmtTime(slot)}</span>
                     <span style={{ color: "#065F46" }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
                     </span>
@@ -632,7 +655,7 @@ export default function BookPsychologistPage() {
                 {result.conflicts.map(c => (
                   <div key={c.slot} style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 0", borderTop: "1px solid #EDF1F8" }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "#92400E" }}>
-                      {dayLabel(c.slot)}, {fmtTime(c.slot)} · <em>{t("book.basketTaken")}</em>
+                      {dayLabelFull(c.slot)}, saat {fmtTime(c.slot)} · <em>{t("book.basketTaken")}</em>
                     </span>
                     <span style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {c.alternatives.length === 0
@@ -642,7 +665,7 @@ export default function BookPsychologistPage() {
                             disabled={appendBusySlot !== null}
                             onClick={() => appendAlternative(c.slot, alt)}
                             style={{ background: "#fff", border: "1px solid #D6E2F7", borderRadius: 8, padding: "5px 10px", fontSize: 12.5, fontWeight: 600, color: "var(--brand-700)", cursor: "pointer" }}>
-                            {appendBusySlot === alt ? "…" : `${dayLabel(alt)}, ${fmtTime(alt)}`}
+                            {appendBusySlot === alt ? "…" : `${dayLabelFull(alt)}, saat ${fmtTime(alt)}`}
                           </button>
                         ))}
                     </span>
@@ -709,14 +732,22 @@ export default function BookPsychologistPage() {
       : sessionKind === "INTRO" ? "Tanışlıq görüşü (pulsuz)"
       : okItems.length > 1 ? "Çoxlu seans" : "Tək seans";
 
-  const timeDone = (mode === "PACKAGE" && chooseLater) ? true : okItems.length > 0;
+  const showPicker = !(mode === "PACKAGE" && chooseLater);
+  // Psixoloq heç bir açıq vaxt göstərməyibsə (grouped boşdur), seçiləcək heç nə yoxdur —
+  // pasienti bloklamaq əvəzinə davam etməyə icazə veririk (operator sonra əl ilə
+  // uyğunlaşdırır), paket/seriya-uzatma axınları isə öz "sonra seç" mexanizmini saxlayır.
+  const noSlotsAvailable = showPicker && !slotsLoading && grouped.length === 0;
+  const timeDone = (mode === "PACKAGE" && chooseLater) ? true
+    : pkgNeedsSlots ? okItems.length > 0
+    : extendCtx ? okItems.length > 0
+    : (okItems.length > 0 || noSlotsAvailable);
   const timeLabel = (mode === "PACKAGE" && chooseLater)
     ? "Vaxt sonra seçiləcək"
     : pkgNeedsSlots && selectedPackage
       ? t("pkg.selectedOfN", { m: okItems.length, n: selectedPackage.sessionCount })
-      : okItems.length === 0 ? "Vaxt (istəyə bağlı)" : `${okItems.length} seans seçildi`;
-
-  const showPicker = !(mode === "PACKAGE" && chooseLater);
+      : okItems.length > 0 ? `${okItems.length} seans seçildi`
+      : preferredStartAt ? `${dayLabelFull(preferredStartAt)}, saat ${fmtTime(preferredStartAt)}`
+      : "Vaxt (istəyə bağlı)";
 
   /* ── BOOKING FLOW ───────────────────────────────────────────────────────── */
   return (
@@ -887,7 +918,18 @@ export default function BookPsychologistPage() {
                   ) : slotsLoading ? (
                     <div style={{ background: "#F8FAFD", border: "1px dashed var(--brand-100)", borderRadius: 10, padding: 24, textAlign: "center", fontSize: 13, color: "var(--oxford-60)" }}>{t("common.loading")}</div>
                   ) : grouped.length === 0 ? (
-                    <div style={{ background: "#F8FAFD", border: "1px dashed var(--brand-100)", borderRadius: 10, padding: 24, textAlign: "center", fontSize: 13, color: "var(--oxford-60)" }}>{t("book.noSlots")}</div>
+                    <div style={{ background: "#F8FAFD", border: "1px dashed var(--brand-100)", borderRadius: 10, padding: 24, textAlign: "center", fontSize: 13, color: "var(--oxford-60)" }}>
+                      <p style={{ margin: pkgNeedsSlots || extendCtx ? 0 : "0 0 14px" }}>{t("book.noSlots")}</p>
+                      {!pkgNeedsSlots && !extendCtx && (
+                        <div style={{ textAlign: "left", maxWidth: 280, margin: "0 auto" }}>
+                          <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--oxford-80)", marginBottom: 6 }}>
+                            Sizə uyğun tarix/saatı seçin (opsional)
+                          </label>
+                          <DatePicker value={preferredStartAt} onChange={setPreferredStartAt} withTime theme="light"
+                            placeholder="gg.aa.iiii ss:dd" />
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <>
                       <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 12 }}>
@@ -953,7 +995,7 @@ export default function BookPsychologistPage() {
                         <div style={{ marginTop: 14 }}>
                           {customTime ? (
                             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>
-                              <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{dayLabel(customTime)}, {fmtTime(customTime)}</span>
+                              <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{dayLabelFull(customTime)}, saat {fmtTime(customTime)}</span>
                               <span style={{ background: "var(--brand-50)", color: "var(--brand-700)", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>Fərqli saat</span>
                               <button type="button" onClick={() => setCustomTime(null)}
                                 style={{ marginLeft: "auto", background: "#fff", border: "1px solid #E1E9F5", borderRadius: 8, padding: "5px 10px", fontSize: 12, fontWeight: 600, color: "#991B1B", cursor: "pointer", fontFamily: "inherit" }}>
@@ -1000,8 +1042,8 @@ export default function BookPsychologistPage() {
                                 style={{ border: `1px solid ${item.kind === "conflict" ? "#FECACA" : "#EDF1F8"}`, background: item.kind === "conflict" ? "#FEF2F2" : "#F8FAFD", borderRadius: 10, padding: "10px 12px" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                                   <div style={{ flex: 1, minWidth: 140, display: "flex", alignItems: "baseline", gap: 8 }}>
-                                    <strong style={{ fontSize: 13.5, color: "var(--oxford)" }}>{dayLabel(item.startAt)}</strong>
-                                    <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>{fmtTime(item.startAt)}</span>
+                                    <strong style={{ fontSize: 13.5, color: "var(--oxford)" }}>{dayLabelFull(item.startAt)}</strong>
+                                    <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>saat {fmtTime(item.startAt)}</span>
                                     {item.kind === "conflict" && <span style={{ fontSize: 11.5, fontWeight: 700, color: "#991B1B" }}>{t("book.basketConflictRow")}</span>}
                                   </div>
                                   <button type="button" onClick={() => removeRow(item.startAt)} aria-label={t("book.basketRemove")} title={t("book.basketRemove")}
@@ -1017,7 +1059,7 @@ export default function BookPsychologistPage() {
                                       : item.alternatives.map(alt => (
                                         <button key={alt} type="button" onClick={() => replaceConflict(item.startAt, alt)} title={t("book.basketConflictHint")}
                                           style={{ background: "#fff", border: "1px solid #D6E2F7", borderRadius: 8, padding: "5px 10px", fontSize: 12, fontWeight: 600, color: "var(--brand-700)", cursor: "pointer" }}>
-                                          {dayLabel(alt)}, {fmtTime(alt)}
+                                          {dayLabelFull(alt)}, saat {fmtTime(alt)}
                                         </button>
                                       ))}
                                   </div>
@@ -1136,8 +1178,8 @@ export default function BookPsychologistPage() {
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           {okItems.map(item => (
                             <div key={item.startAt} style={{ display: "flex", alignItems: "baseline", gap: 8, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 8, padding: "8px 10px" }}>
-                              <strong style={{ fontSize: 13, color: "var(--oxford)" }}>{dayLabel(item.startAt)}</strong>
-                              <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>{fmtTime(item.startAt)}</span>
+                              <strong style={{ fontSize: 13, color: "var(--oxford)" }}>{dayLabelFull(item.startAt)}</strong>
+                              <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>saat {fmtTime(item.startAt)}</span>
                             </div>
                           ))}
                           {mode === "PACKAGE" && selectedPackage && okItems.length < selectedPackage.sessionCount && (

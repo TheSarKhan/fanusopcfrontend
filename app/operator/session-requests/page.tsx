@@ -46,52 +46,49 @@ function timeAgo(iso: string): string {
   return `${Math.round(d / 30)} ay öncə`;
 }
 
+function avatarVariant(id: number) { return (Math.abs(id) % 4) + 1; }
+function initialsOf(name: string): string {
+  return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
+}
+
 export default function SessionRequestsPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("POOL");
   const [items, setItems] = useState<SessionRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
+  const [size, setSize] = useState(PAGE_SIZE);
   const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const fetchPage = useCallback((pageNum: number) => {
-    if (tab === "POOL") return operatorApi.sessionRequestsPoolPaged({ page: pageNum, size: PAGE_SIZE });
-    if (tab === "MINE") return operatorApi.sessionRequestsMinePaged({ status: "IN_REVIEW", page: pageNum, size: PAGE_SIZE });
-    return operatorApi.sessionRequestsMinePaged({ status: tab, page: pageNum, size: PAGE_SIZE });
-  }, [tab]);
+    if (tab === "POOL") return operatorApi.sessionRequestsPoolPaged({ page: pageNum, size });
+    if (tab === "MINE") return operatorApi.sessionRequestsMinePaged({ status: "IN_REVIEW", page: pageNum, size });
+    return operatorApi.sessionRequestsMinePaged({ status: tab, page: pageNum, size });
+  }, [tab, size]);
+
+  // Tab və ya səhifə ölçüsü dəyişəndə serverdən yenidən sorğu — səhifəni sıfırla.
+  useEffect(() => { setPage(0); }, [tab, size]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchPage(0)
+    fetchPage(page)
       .then(res => {
         if (cancelled) return;
         setItems(res.content);
         setTotalElements(res.totalElements);
-        setPage(0);
+        setTotalPages(res.totalPages);
       })
       .catch(e => { if (!cancelled) setError((e as Error).message || "Müraciətlər yüklənmədi"); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [fetchPage, reloadNonce]);
-
-  const loadMore = () => {
-    setLoadingMore(true);
-    fetchPage(page + 1)
-      .then(res => {
-        setItems(prev => [...prev, ...res.content]);
-        setTotalElements(res.totalElements);
-        setPage(res.page);
-      })
-      .catch(e => setError((e as Error).message || "Müraciətlər yüklənmədi"))
-      .finally(() => setLoadingMore(false));
-  };
+  }, [fetchPage, page, reloadNonce]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return items;
@@ -102,8 +99,6 @@ export default function SessionRequestsPage() {
       (x.email ?? "").toLowerCase().includes(q) ||
       x.reason.toLowerCase().includes(q));
   }, [items, search]);
-
-  const hasMore = items.length < totalElements;
 
   const take = (id: number) => {
     setBusyId(id);
@@ -118,7 +113,7 @@ export default function SessionRequestsPage() {
   };
 
   return (
-    <div style={{ maxWidth: 1100 }}>
+    <div>
       <div style={{ marginBottom: 24 }}>
         <h1 className="fx-h1">Sayt müraciətləri</h1>
         <p className="fx-subtitle" style={{ margin: "6px 0 0", maxWidth: 640 }}>
@@ -193,72 +188,136 @@ export default function SessionRequestsPage() {
             />
           </div>
         ) : (
-          <div>
-            {filtered.map(req => {
-              const badge = STATUS_PILL[req.status] ?? { label: req.status, className: "fx-pill--neutral" };
-              const busy = busyId === req.id;
-              return (
-                <div key={req.id} className="fx-row" onClick={() => router.push(`/operator/session-requests/${req.id}`)}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-                      <span className="fx-row__title">{req.name}</span>
-                      <span className={`fx-pill ${badge.className}`}>{badge.label}</span>
-                      {req.priority && <span className="fx-pill fx-pill--pending">Prioritet</span>}
-                      {tab === "POOL" && req.claimedByName && (
-                        <span className="fx-muted" style={{ fontSize: 12 }}>· {req.claimedByName} baxır</span>
-                      )}
-                    </div>
-                    <div className="fx-row__meta" style={{ marginBottom: 4 }}>
-                      <IconPhone className="fx-icon--sm" /><span>{req.phone}</span>
-                      {req.email && (<><span className="fx-sep">·</span><IconMail className="fx-icon--sm" /><span>{req.email}</span></>)}
-                      {req.age && (<><span className="fx-sep">·</span><span>{req.age} yaş</span></>)}
-                    </div>
-                    <div style={{ fontSize: 13, color: "var(--oxford-80)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 620 }}>
-                      {req.reason}
-                    </div>
-                    {req.preferredDate && (
-                      <div className="fx-row__meta" style={{ marginTop: 4 }}>
-                        <IconClock className="fx-icon--sm" />
-                        <span>Üstünlük verilən: {azFormatDate(req.preferredDate)}{req.preferredTime ? ` saat ${req.preferredTime}` : ""}</span>
-                      </div>
-                    )}
-                    {req.assignedPsychologistName && (
-                      <div className="fx-row__meta" style={{ marginTop: 4 }}>
-                        <span className="fx-muted">Psixoloq:</span>
-                        <span style={{ color: "var(--oxford-80)" }}>{req.assignedPsychologistName}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-                    <div className="fx-muted fx-num" style={{ fontSize: 12, textAlign: "right", whiteSpace: "nowrap" }}>
-                      #{req.id}<br />{timeAgo(req.createdAt)}
-                    </div>
-                    {tab === "POOL" ? (
-                      <button type="button" disabled={busy}
-                        onClick={e => { e.stopPropagation(); take(req.id); }}
-                        className="fx-btn fx-btn--sm"
-                        style={{ background: "var(--sage)", borderColor: "var(--sage)", color: "#fff", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1 }}>
-                        <IconCheck className="fx-icon--sm" />
-                        Götür
-                      </button>
-                    ) : (
-                      <IconChevronRight className="fx-icon" />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div style={{ overflowX: "auto" }}>
+            <table className="fx-table">
+              <thead>
+                <tr>
+                  <th>Müraciət</th>
+                  <th>Əlaqə</th>
+                  <th>Səbəb</th>
+                  <th>Üstünlük tarixi</th>
+                  <th>Status</th>
+                  <th>ID / Vaxt</th>
+                  <th style={{ width: 120 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(req => {
+                  const badge = STATUS_PILL[req.status] ?? { label: req.status, className: "fx-pill--neutral" };
+                  const busy = busyId === req.id;
+                  return (
+                    <tr key={req.id} onClick={() => router.push(`/operator/session-requests/${req.id}`)} style={{ cursor: "pointer" }}>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span className={`fx-avatar fx-avatar--${avatarVariant(req.id)}`}>{initialsOf(req.name)}</span>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                              <span className="fx-row__title">{req.name}</span>
+                              {req.priority && <span className="fx-pill fx-pill--pending">Prioritet</span>}
+                            </div>
+                            {tab === "POOL" && req.claimedByName && (
+                              <span className="fx-muted" style={{ fontSize: 12 }}>{req.claimedByName} baxır</span>
+                            )}
+                            {req.assignedPsychologistName && (
+                              <div className="fx-muted" style={{ fontSize: 12 }}>Psixoloq: {req.assignedPsychologistName}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          <span className="fx-muted fx-num" style={{ fontSize: 12.5, display: "inline-flex", alignItems: "center", gap: 5 }}><IconPhone className="fx-icon fx-icon--sm" />{req.phone}</span>
+                          {req.email && <span className="fx-muted" style={{ fontSize: 12.5, display: "inline-flex", alignItems: "center", gap: 5 }}><IconMail className="fx-icon fx-icon--sm" />{req.email}</span>}
+                          {req.age && <span className="fx-muted" style={{ fontSize: 12.5 }}>{req.age} yaş</span>}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: 13, color: "var(--oxford-80)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 260 }} title={req.reason}>
+                          {req.reason}
+                        </div>
+                      </td>
+                      <td>
+                        {req.preferredDate ? (
+                          <span className="fx-muted fx-num" style={{ fontSize: 12.5, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                            <IconClock className="fx-icon fx-icon--sm" />
+                            {azFormatDate(req.preferredDate)}{req.preferredTime ? ` / ${req.preferredTime}` : ""}
+                          </span>
+                        ) : <span className="fx-muted">—</span>}
+                      </td>
+                      <td><span className={`fx-pill ${badge.className}`}>{badge.label}</span></td>
+                      <td>
+                        <div className="fx-muted fx-num" style={{ fontSize: 12, whiteSpace: "nowrap" }}>
+                          #{req.id}<br />{timeAgo(req.createdAt)}
+                        </div>
+                      </td>
+                      <td onClick={e => e.stopPropagation()}>
+                        {tab === "POOL" ? (
+                          <button type="button" disabled={busy}
+                            onClick={() => take(req.id)}
+                            className="fx-btn fx-btn--sm"
+                            style={{ background: "var(--sage)", borderColor: "var(--sage)", color: "#fff", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1 }}>
+                            <IconCheck className="fx-icon--sm" />
+                            Götür
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => router.push(`/operator/session-requests/${req.id}`)} className="fx-btn fx-btn--ghost fx-btn--sm">
+                            <IconChevronRight className="fx-icon fx-icon--sm" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Səhifələmə */}
+        {!loading && !search.trim() && totalElements > 0 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderTop: "1px solid var(--hairline)", flexWrap: "wrap", gap: 10 }}>
+            <span className="fx-muted fx-num" style={{ fontSize: 12 }}>
+              Göstərilir: {page * size + 1}–{Math.min((page + 1) * size, totalElements)} / {totalElements}
+            </span>
+
+            {totalPages > 1 && (
+              <div style={{ display: "flex", gap: 4 }}>
+                <button type="button" className="fx-btn fx-btn--ghost fx-btn--sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                  Əvvəlki
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let p = i;
+                  if (totalPages > 5 && page > 2) {
+                    p = page - 2 + i;
+                    if (p >= totalPages) p = totalPages - (5 - i);
+                  }
+                  if (p < 0 || p >= totalPages) return null;
+                  return (
+                    <button key={p} type="button"
+                      className={`fx-btn fx-btn--sm${page === p ? " fx-btn--primary" : " fx-btn--ghost"}`}
+                      onClick={() => setPage(p)}>
+                      {p + 1}
+                    </button>
+                  );
+                })}
+                <button type="button" className="fx-btn fx-btn--ghost fx-btn--sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+                  Sonrakı
+                </button>
+              </div>
+            )}
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span className="fx-muted" style={{ fontSize: 12 }}>Səhifə başı:</span>
+              <select value={size} onChange={e => setSize(Number(e.target.value))} aria-label="Səhifə ölçüsü" className="fx-select fx-select--inline">
+                <option value={15}>15</option>
+                <option value={30}>30</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
           </div>
         )}
       </div>
-
-      {!loading && hasMore && (
-        <div style={{ textAlign: "center" }}>
-          <button type="button" className="fx-btn fx-btn--ghost" onClick={loadMore} disabled={loadingMore} style={{ opacity: loadingMore ? 0.7 : 1 }}>
-            Daha çox göstər (+{Math.min(PAGE_SIZE, totalElements - items.length)})
-          </button>
-        </div>
-      )}
     </div>
   );
 }

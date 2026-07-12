@@ -45,6 +45,13 @@ export function initialsOf(name?: string | null) {
   return name.split(" ").filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
 }
 
+/** Köhnə randevularda operatorNote-a yazılmış "[Vaxt dəyişikliyi istəyi]" sistem
+ *  damğasını gizlədir — bu daxili işarədir, pasiyentə göstərilməli deyil. */
+export function cleanOperatorNote(note?: string | null): string {
+  if (!note) return "";
+  return note.split("\n").filter(line => !line.trim().startsWith("[Vaxt dəyişikliyi istəyi]")).join("\n").trim();
+}
+
 /* Paket seansını adi seans siyahılarında fərqləndirən nişan. */
 export function PackageBadge({ name }: { name?: string | null }) {
   return (

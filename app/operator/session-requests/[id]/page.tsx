@@ -58,6 +58,9 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   // Eligibility (1 pulsuz haqq) serverdə yoxlanır — pasient hələ yaranmadığı üçün burada
   // əvvəlcədən yoxlanıla bilmir, uyğun deyilsə backend xəta qaytarır (convertError göstərir).
   const [convertSessionKind, setConvertSessionKind] = useState<"STANDARD" | "INTRO">("STANDARD");
+  // Seans qiyməti — psixoloq seçiləndə onun standart qiyməti (individualPrice) ilə öndoldurulur,
+  // operator dəyişə bilər. Boş buraxılsa backend individualPrice-a (o da yoxdursa 0-a) düşür.
+  const [convertPrice, setConvertPrice] = useState("");
 
   // Paket sat
   const [pkgOpen, setPkgOpen] = useState(false);
@@ -85,6 +88,13 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { operatorApi.listPsychologists().then(setPsychologists).catch(() => {}); }, []);
+
+  // Psixoloq seçiləndə seans qiymətini onun standart qiyməti ilə öndoldur (operator dəyişə bilər).
+  useEffect(() => {
+    if (!psyId) { setConvertPrice(""); return; }
+    const p = psychologists.find(x => x.id === psyId);
+    setConvertPrice(p?.individualPrice != null ? String(p.individualPrice) : "");
+  }, [psyId, psychologists]);
 
   useEffect(() => {
     setCatalog([]); setCatalogId("");
@@ -132,6 +142,11 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   const isCancelled = req.status === "CANCELLED";
   const canAct = mine && !isConverted && !isCancelled;
 
+  // Seçilmiş psixoloqun qiymət/müddət məlumatı — operatora çevirmədən əvvəl göstərilir.
+  const selectedPsy = psyId ? psychologists.find(p => p.id === psyId) : undefined;
+  const sessionMinutes = convertSessionKind === "INTRO" ? 15 : (selectedPsy?.defaultSessionMinutes || 50);
+  const psyCurrency = selectedPsy?.currency || "AZN";
+
   // Operatora cari mərhələni + növbəti addımı bir cümlə ilə izah edir (şəffaflıq).
   const statusHint =
     isConverted ? "Bu müraciət qəbul edilib (randevu / paket) — nəticə aşağıda göstərilir."
@@ -168,6 +183,11 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   const convertToAppointment = async () => {
     if (!psyId) { setConvertError("Psixoloq seçin"); return; }
     if (!startAt) { setConvertError("Vaxt seçin"); return; }
+    // INTRO pulsuzdur → qiymət göndərilmir. STANDARD üçün qiymət verilibsə düzgün olmalıdır.
+    const priceNum = convertSessionKind === "INTRO" || convertPrice.trim() === "" ? undefined : Number(convertPrice);
+    if (priceNum !== undefined && (!Number.isFinite(priceNum) || priceNum < 0)) {
+      setConvertError("Qiymət düzgün deyil"); return;
+    }
     setConvertError("");
     setConverting(true);
     try {
@@ -175,6 +195,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
         psychologistId: Number(psyId), startAt, note: note.trim() || undefined,
         patientChoseDirectly: convertPatientChoseDirectly,
         sessionKind: convertSessionKind === "INTRO" ? "INTRO" : undefined,
+        sessionPrice: priceNum,
       });
       setReq(updated);
       uiToast("Randevu yaradıldı", "success");
@@ -369,6 +390,37 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                     </p>
                   )}
                 </div>
+
+                {selectedPsy && (
+                  <div className="fx-field" style={{ marginBottom: 12, background: "#F7F9FC", border: "1px solid var(--hairline)", borderRadius: 10, padding: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: convertSessionKind === "INTRO" ? 0 : 10 }}>
+                      <span className="fx-muted">Seans müddəti</span>
+                      <span style={{ fontWeight: 600, color: "var(--oxford)" }}>{sessionMinutes} dəq</span>
+                    </div>
+                    {convertSessionKind === "INTRO" ? (
+                      <div style={{ marginTop: 8, fontSize: 12.5, color: "#2E6B54", fontWeight: 600 }}>
+                        Pulsuz tanışlıq görüşü — ödəniş yaranmır.
+                      </div>
+                    ) : (
+                      <>
+                        <label className="fx-label" style={{ marginBottom: 4 }}>Seans qiyməti ({psyCurrency})</label>
+                        <input className="fx-input" type="number" min={0} step="0.01" value={convertPrice}
+                          onChange={e => setConvertPrice(e.target.value)}
+                          placeholder={selectedPsy.individualPrice != null ? String(selectedPsy.individualPrice) : "Qiymət təyin olunmayıb"} />
+                        <p className="fx-muted" style={{ margin: "6px 0 0", fontSize: 11.5, lineHeight: 1.45 }}>
+                          {selectedPsy.individualPrice != null
+                            ? `Psixoloqun standart qiyməti: ${selectedPsy.individualPrice} ${psyCurrency}. Lazım olsa dəyişin.`
+                            : "Bu psixoloq üçün qiymət təyin olunmayıb — məbləği əl ilə yazın (boş buraxsanız 0 ilə yaranır, sonra Ödənişlərdə doldurulur)."}
+                        </p>
+                        <p className="fx-muted" style={{ margin: "6px 0 0", fontSize: 11.5, lineHeight: 1.45 }}>
+                          {convertPatientChoseDirectly
+                            ? "Pasient özü seçib → komissiyasız/azaldılmış faiz. Pasient bu qiyməti ödəyir."
+                            : "Platforma təyinatı → ödəniş təsdiqlənəndə platforma komissiyası tutulur. Pasient bu qiyməti ödəyir."}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
 
                 <div className="fx-field" style={{ marginBottom: 12 }}>
                   <label className="fx-label">Seans tarixi/saatı *</label>

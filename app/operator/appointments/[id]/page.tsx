@@ -852,11 +852,11 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     setLoadingSlots(true);
     const today = new Date();
     const to = new Date(); to.setDate(to.getDate() + 21);
-    operatorApi.availability(pid, isoDateOnly(today), isoDateOnly(to))
+    operatorApi.availability(pid, isoDateOnly(today), isoDateOnly(to), appointment.sessionKind ?? undefined)
       .then(setSlots)
       .catch(() => setSlots([]))
       .finally(() => setLoadingSlots(false));
-  }, []);
+  }, [appointment.sessionKind]);
 
   useEffect(() => {
     if (!psyId) { setSlots([]); return; }

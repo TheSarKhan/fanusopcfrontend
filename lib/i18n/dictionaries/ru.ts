@@ -698,10 +698,11 @@ export const ru: typeof az = {
     adminReviewsEmpty: "Ожидающих отзывов нет 🌿",
 
     patFavTitle: "Мои избранные психологи",
-    patFavSub: "Можно сразу записаться повторно.",
+    patFavSub: "Записывайтесь напрямую к избранным психологам.",
     patFavEmpty: "В избранном пока никого нет",
     patFavEmptySub: "Кликните на сердечко на карточке психолога, чтобы добавить в избранное.",
     patFavBrowse: "К психологам",
+    patFavBook: "Записаться",
     patFavRebook: "Записаться снова",
     patFavRemove: "Удалить из избранного",
     patHwTitle: "Мои задания",

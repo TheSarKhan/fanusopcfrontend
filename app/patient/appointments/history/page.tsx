@@ -221,7 +221,10 @@ function HistoryRow({
   const fbStatusOk = a.status === "COMPLETED" || a.status === "AWAITING_CONFIRMATION";
   const fbWindowOpen = fbStatusOk && fbAnchor != null && hoursSince(fbAnchor) <= 24;
   // "Rəyim" badge-i göstərilmir (lazım deyil) — yalnız moderasiya gözləyən rəy üçün işarə qalır.
-  const reviewLabel = review && review.status === "PENDING" ? "Rəy gözləyir" : null;
+  // Diqqət: bu, pasiyentin ARTIQ göndərdiyi ictimai rəyin moderasiya statusudur — pasiyentdən
+  // gözlənilən yeni əməliyyat deyil. "Rəy gözləyir" mətni "seans rəyi verildi" ilə yan-yana
+  // ziddiyyətli görünürdü; ona görə moderasiyanı bildirən aydın mətnə keçirildi.
+  const reviewLabel = review && review.status === "PENDING" ? "Rəy yoxlanılır" : null;
   const isCancelled = a.status === "CANCELLED";
   const cancelWho = a.cancelledBy === "PATIENT" ? "Siz ləğv etdiniz"
     : a.cancelledBy === "PSYCHOLOGIST" ? "Psixoloq ləğv etdi"

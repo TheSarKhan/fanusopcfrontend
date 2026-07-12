@@ -9,14 +9,27 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 export default function PatientFavoritesPage() {
   const { t } = useT();
   const [items, setItems] = useState<Psychologist[]>([]);
+  // Psychologist ids the patient has already had a completed session with —
+  // only these earn the "Yenidən randevu" (re-book) label. Merely favouriting
+  // a psychologist does not.
+  const [seenPsyIds, setSeenPsyIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
-    patientApi.favorites()
-      .then(setItems)
-      .catch(e => setErr((e as Error).message))
+    Promise.allSettled([patientApi.favorites(), patientApi.myAppointments()])
+      .then(([favRes, apptRes]) => {
+        if (favRes.status === "fulfilled") setItems(favRes.value);
+        else setErr((favRes.reason as Error).message);
+        if (apptRes.status === "fulfilled") {
+          const seen = new Set<number>();
+          for (const a of apptRes.value) {
+            if (a.status === "COMPLETED" && a.psychologistId != null) seen.add(a.psychologistId);
+          }
+          setSeenPsyIds(seen);
+        }
+      })
       .finally(() => setLoading(false));
   };
 
@@ -78,7 +91,7 @@ export default function PatientFavoritesPage() {
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: "auto", alignItems: "center" }}>
                 <a href={`/patient/book/${p.slug}`} style={{ flex: 1, textAlign: "center", background: "var(--brand)", color: "#fff", padding: "8px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
-                  {t("staff.patFavRebook")}
+                  {t(seenPsyIds.has(p.id) ? "staff.patFavRebook" : "staff.patFavBook")}
                 </a>
                 <button
                   type="button"

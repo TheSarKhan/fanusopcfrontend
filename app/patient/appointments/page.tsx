@@ -155,16 +155,33 @@ export default function PatientAppointmentsPage() {
 
   }, []);
 
-  // "Paketlərim" — aktiv (seans qalan) paketlər balans kartı kimi göstərilir.
+  // Paketin hələ CANLI (gələcək/gözləyən) seansı varmı? SCHEDULE_NOW paketi alınan
+  // kimi bütün seanslar rezerv olunub remaining=0 → backend statusu EXHAUSTED edir,
+  // ödəniş operator təsdiqindən keçməsə də. Seanslar hələ irəlidə (və ya PENDING)
+  // olduğundan belə paket "bitmiş" deyil — canlı seansa görə aktiv sayılır.
+  const pkgHasLiveSessions = useMemo(() => {
+    const live = new Set<number>();
+    for (const a of items) {
+      if (a.patientPackageId == null) continue;
+      const terminal = a.status === "COMPLETED" || a.status === "CANCELLED" || a.status === "REJECTED";
+      if (!terminal) live.add(a.patientPackageId);
+    }
+    return live;
+  }, [items]);
+
+  const isOngoingPackage = (p: PatientPackageItem) =>
+    p.status === "ACTIVE" || pkgHasLiveSessions.has(p.id);
+
+  // "Paketlərim" — aktiv (seans qalan VƏ YA canlı seansı olan) paketlər balans kartı kimi göstərilir.
   const activePackages = useMemo(
-    () => packages.filter(p => p.status === "ACTIVE"),
-    [packages],
+    () => packages.filter(isOngoingPackage),
+    [packages, pkgHasLiveSessions],
   );
 
-  // Bitmiş/müddəti keçmiş/ləğv edilmiş paketlər — yığılmış tarixçə bölməsi.
+  // Bitmiş/müddəti keçmiş/ləğv edilmiş paketlər — yalnız canlı seansı qalmayanlar.
   const pastPackages = useMemo(
-    () => packages.filter(p => p.status !== "ACTIVE"),
-    [packages],
+    () => packages.filter(p => !isOngoingPackage(p)),
+    [packages, pkgHasLiveSessions],
   );
 
   /** Psychologist filter chips: every psy from any active appointment, sorted by upcoming count. */
@@ -1178,6 +1195,11 @@ function CancelRequestNoteModal({
     ? (new Date(appointment.startAt).getTime() - openedAtMs) / (1000 * 60 * 60)
     : null;
   const isLate = hoursLeft !== null && hoursLeft >= 0 && hoursLeft < 24;
+  // Paket seansında "geri qaytarma" pul deyil, 1 seans krediti bərpasıdır (backend:
+  // maybeRestorePackageSession). Tək seansda isə yalnız PAID ödəniş refund-a namizəddir,
+  // və bu da operatorun əl ilə təsdiqlədiyi ayrıca proses — avtomatik deyil.
+  const isPackageSession = appointment.patientPackageId != null;
+  const paymentConfirmed = appointment.paymentStatus === "PAID";
 
   const submit = async () => {
     setSaving(true); setErr(null);
@@ -1201,14 +1223,24 @@ function CancelRequestNoteModal({
         <div style={{ padding: 22 }}>
           {isLate ? (
             <div style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#991B1B", lineHeight: 1.5 }}>
-              Seansa <strong>{Math.max(0, Math.floor(hoursLeft!))} saat</strong> qalıb (24 saatdan az).
-              Bu halda <strong>ödəniş geri qaytarılmır</strong> və gec-ləğv sayğacınıza əlavə olunur.
+              Seansa <strong>{Math.max(0, Math.floor(hoursLeft!))} saat</strong> qalıb (24 saatdan az).{" "}
+              {isPackageSession ? (
+                <>Bu halda <strong>bu seans krediti geri qaytarılmır</strong> və gec-ləğv sayğacınıza əlavə olunur.</>
+              ) : paymentConfirmed ? (
+                <>Bu halda <strong>ödənişiniz geri qaytarılmır</strong> və gec-ləğv sayğacınıza əlavə olunur.</>
+              ) : (
+                <>Bu, gec-ləğv sayğacınıza əlavə olunacaq.</>
+              )}
             </div>
-          ) : (
+          ) : isPackageSession ? (
             <div style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#166534", lineHeight: 1.5 }}>
-              Seansa 24 saatdan çox qaldığına görə ləğv etsəniz <strong>ödəniş paketinizə geri qaytarılacaq</strong>.
+              Seansa 24 saatdan çox qaldığı üçün <strong>bu seans krediti paketinizə geri qaytarılacaq</strong> — başqa vaxta təyin edə bilərsiniz. Paketin ödənişinə təsir etmir.
             </div>
-          )}
+          ) : paymentConfirmed ? (
+            <div style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#166534", lineHeight: 1.5 }}>
+              Seansa 24 saatdan çox qaldığı üçün <strong>ödənişiniz geri qaytarmaya uyğundur</strong> — operator müraciətinizi nəzərdən keçirib əlaqə saxlayacaq.
+            </div>
+          ) : null}
           <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
             placeholder="Səbəb (məcburi deyil)"
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />

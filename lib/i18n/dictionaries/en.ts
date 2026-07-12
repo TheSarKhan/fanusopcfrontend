@@ -695,10 +695,11 @@ export const en: typeof az = {
     adminReviewsEmpty: "No pending reviews 🌿",
 
     patFavTitle: "My favourite therapists",
-    patFavSub: "Re-book directly from here.",
+    patFavSub: "Book directly with your favourite therapists.",
     patFavEmpty: "No favourites yet",
     patFavEmptySub: "Tap the heart on a therapist card to save them.",
     patFavBrowse: "Browse therapists",
+    patFavBook: "Book",
     patFavRebook: "Re-book",
     patFavRemove: "Remove from favorites",
     patHwTitle: "My homework",

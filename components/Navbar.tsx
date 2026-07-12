@@ -158,14 +158,16 @@ export default function Navbar() {
         @media (min-width: 768px) {
           .fanus-nav--light .fanus-nav__type-name { color: #fff; }
           .fanus-nav--light .fanus-nav__type-sub { color: rgba(255,255,255,.75); }
-          .fanus-nav--light .fanus-nav__link { color: rgba(255,255,255,.92); }
-          .fanus-nav--light .fanus-nav__link:hover { color: #fff; }
-          .fanus-nav--light .fanus-nav__glow { background: rgba(255,255,255,.16); }
+          /* Scoped to the inline desktop nav/cta (hidden ≤980px) — must NOT leak into
+             .fanus-nav__mobile, which sits on a solid white panel and needs dark ink text. */
+          .fanus-nav--light .fanus-nav__links .fanus-nav__link { color: rgba(255,255,255,.92); }
+          .fanus-nav--light .fanus-nav__links .fanus-nav__link:hover { color: #fff; }
+          .fanus-nav--light .fanus-nav__links .fanus-nav__glow { background: rgba(255,255,255,.16); }
           .fanus-nav--light .fanus-nav__login { color: #fff; border-color: rgba(255,255,255,.5); }
           .fanus-nav--light .fanus-nav__login:hover { color: #fff; border-color: #fff; }
           .fanus-nav--light .fanus-nav__menu { color: #fff; }
-          .fanus-nav--light .lsw__btn { color: #fff; border-color: rgba(255,255,255,.5); }
-          .fanus-nav--light .lsw__btn:hover { background: rgba(255,255,255,.14); border-color: #fff; }
+          .fanus-nav--light .fanus-nav__cta .lsw__btn { color: #fff; border-color: rgba(255,255,255,.5); }
+          .fanus-nav--light .fanus-nav__cta .lsw__btn:hover { background: rgba(255,255,255,.14); border-color: #fff; }
         }
 
         /* ── Inner ── */

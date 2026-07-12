@@ -11070,6 +11070,14 @@ a.contact-chip:hover {
 }
 .opf-row-meta { font-size: 11.5px; color: var(--oxford-60); margin-top: 6px; }
 .opf-row-actions { flex-shrink: 0; }
+.opf-flag--info { background: #DBEAFE; color: #1E40AF; }
+.opf-btn-ghost {
+  background: #fff; border: 1px solid var(--brand-200); color: var(--oxford-80);
+  padding: 6px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.opf-btn-ghost:hover:not(:disabled) { background: #F7F9FC; }
+.opf-btn-ghost:disabled { opacity: .6; cursor: default; }
 
 @media (max-width: 720px) {
   .sf-star { font-size: 30px; padding: 2px; }

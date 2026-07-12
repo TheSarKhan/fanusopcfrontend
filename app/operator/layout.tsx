@@ -69,17 +69,26 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
   }, []);
   useEffect(() => { loadSessionReqCount(); }, [loadSessionReqCount]);
 
+  // Nav-dakı "Seans rəyləri" sayğacı — açıq (həll olunmamış) əlaqə tələbləri.
+  // Pasiyentin "operator mənimlə əlaqə saxlasın" müraciəti resolved olana qədər sayılır.
+  const [feedbackCount, setFeedbackCount] = useState(0);
+  const loadFeedbackCount = useCallback(() => {
+    operatorApi.feedbackOpenCount().then(setFeedbackCount).catch(() => {});
+  }, []);
+  useEffect(() => { loadFeedbackCount(); }, [loadFeedbackCount]);
+
   // Canlı yeniləmə: yeni müraciət/ödəniş bildirişi və ya sahiblik (claim) hadisəsi.
   useEffect(() => {
     const offN = subscribeNotifications((n) => {
       const ty = typeof n.type === "string" ? n.type : "";
       if (ty.startsWith("APPOINTMENT_") || ty.startsWith("PAYMENT_")) loadPoolCount();
       if (ty === "SESSION_REQUEST_NEW") loadSessionReqCount();
+      if (ty === "SESSION_FEEDBACK") loadFeedbackCount();
     });
     const offC = subscribeOperatorClaims(() => loadPoolCount());
-    const id = setInterval(() => { loadPoolCount(); loadSessionReqCount(); }, 60_000);
+    const id = setInterval(() => { loadPoolCount(); loadSessionReqCount(); loadFeedbackCount(); }, 60_000);
     return () => { offN(); offC(); clearInterval(id); };
-  }, [loadPoolCount, loadSessionReqCount]);
+  }, [loadPoolCount, loadSessionReqCount, loadFeedbackCount]);
 
   // Open palette on Cmd+K / Ctrl+K from anywhere in the operator panel.
   useEffect(() => {
@@ -105,6 +114,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
     { key: "customers",     href: "/operator/customers",     label: "Müştərilər",            icon: "users" },
     { key: "psychologists", href: "/operator/psychologists", label: "Psixoloq statistikası", icon: "user" },
     { key: "requests",      href: "/operator/requests",      label: "Rəy silmə tələbləri",   icon: "flag" },
+    { key: "feedback",      href: "/operator/feedback",      label: "Seans rəyləri",         icon: "star", badge: feedbackCount },
     { key: "sessionRequests", href: "/operator/session-requests", label: "Sayt müraciətləri", icon: "message", badge: sessionReqCount },
   ];
 

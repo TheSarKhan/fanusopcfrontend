@@ -48,6 +48,8 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
     e.preventDefault();
     if (!form.name.trim())   { setError("Ad Soyad daxil edin"); return; }
     if (!form.phone.trim())  { setError("Telefon nömrəsi daxil edin"); return; }
+    if (!form.email.trim())  { setError("E-poçt ünvanı daxil edin"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError("Düzgün e-poçt ünvanı daxil edin"); return; }
     if (!form.budget)        { setError("Büdcə seçin"); return; }
     if (!form.reason.trim()) { setError("Müraciətin səbəbini yazın"); return; }
     // Üstünlük verilən tarix/saat opsionaldır, lakin verilibsə keçmiş ola bilməz
@@ -71,7 +73,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
       const res = await submitSessionRequest({
         name: form.name.trim(),
         phone: form.phone.trim(),
-        email: form.email.trim() || undefined,
+        email: form.email.trim(),
         age: form.age ? Number(form.age) : undefined,
         reason: form.reason.trim(),
         preferredDate: form.preferredDate || undefined,
@@ -141,9 +143,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
         </div>
 
         <p style={{ margin: "0 0 24px", fontSize: 12.5, color: "#6B7280", lineHeight: 1.5 }}>
-          {form.email
-            ? "Prosesin gedişatı və psixoloq təyinatı barədə e-poçtunuza bildiriş göndəriləcək."
-            : "Qeyd etdiyiniz telefon nömrəsi ilə sizinlə əlaqə saxlanılacaq."}
+          Prosesin gedişatı və psixoloq təyinatı barədə e-poçtunuza bildiriş göndəriləcək.
         </p>
         {crisisDetected && (
           <div style={{
@@ -204,7 +204,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
       {/* Email + Age */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 12, marginBottom: 14 }}>
         <div>
-          <label style={labelStyle}>E-poçt (opsional)</label>
+          <label style={labelStyle}>E-poçt *</label>
           <input type="email" value={form.email} onChange={set("email")}
             placeholder="example@email.com" style={inputStyle} />
         </div>

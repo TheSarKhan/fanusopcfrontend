@@ -721,10 +721,11 @@ export const az = {
 
     // Patient extra pages
     patFavTitle: "Favorit psixoloqlarım",
-    patFavSub: "Buradan birbaşa yenidən randevu ala bilərsiniz.",
+    patFavSub: "Favorit psixoloqlarınızla birbaşa randevu ala bilərsiniz.",
     patFavEmpty: "Hələ favoritiniz yoxdur",
     patFavEmptySub: "Psixoloq kartlarındakı qəlb işarəsinə klik edərək favoritə əlavə edin.",
     patFavBrowse: "Psixoloqlara bax",
+    patFavBook: "Randevu al",
     patFavRebook: "Yenidən randevu",
     patFavRemove: "Favoritdən sil",
     patHwTitle: "Tapşırıqlarım",

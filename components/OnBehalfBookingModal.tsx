@@ -9,9 +9,16 @@
  * Paket seçilərsə ilk seans paketdən sərf olunur ({@code patientPackageId}).
  */
 
-import { useEffect, useState, type CSSProperties } from "react";
-import { operatorApi, type OperatorSearchHit, type PackageDto, type IntroEligibility } from "@/lib/api";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { operatorApi, getPsychologistAvailability, type OperatorSearchHit, type PackageDto, type IntroEligibility, type AvailableSlot } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
+import { azFormatDate, azFormatTime, azFormatWeekday, isoToAzLocal } from "@/lib/datetime";
+
+/** Yerli tarixi YYYY-MM-DD formatına salır (availability sorğu sərhədləri üçün). */
+function ymd(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
 
 export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId, presetPatientLabel }: {
   onClose: () => void;
@@ -33,6 +40,9 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
   const [psys, setPsys] = useState<{ id: number; name?: string | null; defaultSessionMinutes?: number | null }[]>([]);
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
+  // Seçilmiş psixoloqun boş vaxtları (yaxın 14 gün) — operator uyğun slot seçsin.
+  const [slots, setSlots] = useState<AvailableSlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -64,6 +74,35 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
       .then(list => setCatalog(list.filter(p => p.active !== false)))
       .catch(() => setCatalog([]));
   }, [sellPkg, psyId]);
+  // Psixoloq (və ya seans növü) dəyişəndə boş slotları yenidən yüklə.
+  useEffect(() => {
+    setSlots([]);
+    if (!psyId) return;
+    setSlotsLoading(true);
+    const from = ymd(new Date());
+    const toDate = new Date(); toDate.setDate(toDate.getDate() + 14);
+    getPsychologistAvailability(psyId, from, ymd(toDate), sessionKind === "INTRO" ? "INTRO" : "STANDARD")
+      .then(setSlots)
+      .catch(() => setSlots([]))
+      .finally(() => setSlotsLoading(false));
+  }, [psyId, sessionKind]);
+
+  // Boş slotları günlərə görə qruplaşdır (render üçün).
+  const slotsByDay = useMemo(() => {
+    const m = new Map<string, AvailableSlot[]>();
+    for (const s of slots) {
+      const day = s.startAt.slice(0, 10); // "YYYY-MM-DD"
+      const arr = m.get(day);
+      if (arr) arr.push(s); else m.set(day, [s]);
+    }
+    return Array.from(m.entries());
+  }, [slots]);
+
+  const pickSlot = (s: AvailableSlot) => {
+    setStartAt(isoToAzLocal(s.startAt));
+    setEndAt(isoToAzLocal(s.endAt));
+    setErr(null);
+  };
   useEffect(() => {
     if (locked || mode !== "search") return;
     const term = q.trim();
@@ -90,6 +129,10 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
     setErr(null);
     if (!psyId) { setErr("Psixoloq seçin"); return; }
     if (!startAt || !endAt) { setErr("Başlanğıc və bitiş vaxtını seçin"); return; }
+    if (new Date(endAt).getTime() <= new Date(startAt).getTime()) {
+      setErr("Bitiş vaxtı başlanğıc vaxtından sonra olmalıdır");
+      return;
+    }
     if (sessionKind === "INTRO" && sellPkg) { setErr("Tanışlıq görüşü paketlə birgə satıla bilməz"); return; }
     setSaving(true);
     try {
@@ -101,27 +144,32 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
       }
       if (!pid) { setErr("Pasiyent seçin"); setSaving(false); return; }
 
-      // Opsional: paket sat → ilk seans paketdən sərf olunsun.
-      let packageId: number | null = null;
       if (sellPkg) {
+        // Paket + ilk seans bronu TƏK atomik sorğu ilə. Əvvəllər bu iki ayrı çağırış
+        // idi (sellPackage → createOnBehalf); ikinci uğursuz olduqda birinci artıq
+        // commit olub sahibsiz PENDING ödəniş qalırdı, təkrar cəhdlər isə onu
+        // çoxaldırdı (məs. 4 × 90 AZN = 360 AZN səhv "Ödənişlər"). İndi seans bronu
+        // atılarsa paket + ödəniş də serverdə geri qaytarılır — orphan ödəniş qalmır.
+        let sell;
         if (pkgMode === "catalog") {
           if (!catalogId) { setErr("Kataloqdan paket seçin"); setSaving(false); return; }
-          const sold = await operatorApi.sellPackage(pid, { sessionPackageId: catalogId, patientChoseDirectly });
-          packageId = sold.id;
+          sell = { sessionPackageId: catalogId, patientChoseDirectly };
         } else {
           const s = Number(pkgSessions), p = Number(pkgPrice);
           if (!Number.isFinite(s) || s < 1) { setErr("Paket: seans sayı düzgün deyil"); setSaving(false); return; }
           if (!Number.isFinite(p) || p < 0) { setErr("Paket: qiymət düzgün deyil"); setSaving(false); return; }
-          const sold = await operatorApi.sellPackage(pid, { psychologistId: psyId, packageName: pkgName.trim() || undefined, sessionCount: s, price: p, patientChoseDirectly });
-          packageId = sold.id;
+          sell = { psychologistId: psyId, packageName: pkgName.trim() || undefined, sessionCount: s, price: p, patientChoseDirectly };
         }
+        await operatorApi.sellPackageAndBook(pid, {
+          sell, psychologistId: psyId, startAt, endAt, note: note.trim() || undefined,
+        });
+      } else {
+        await operatorApi.createOnBehalf({
+          patientId: pid, psychologistId: psyId, startAt, endAt, note: note.trim() || undefined,
+          patientPackageId: null, patientChoseDirectly,
+          sessionKind: sessionKind === "INTRO" ? "INTRO" : undefined,
+        });
       }
-
-      await operatorApi.createOnBehalf({
-        patientId: pid, psychologistId: psyId, startAt, endAt, note: note.trim() || undefined,
-        patientPackageId: packageId, patientChoseDirectly,
-        sessionKind: sessionKind === "INTRO" ? "INTRO" : undefined,
-      });
       onDone();
     } catch (e) { setErr((e as Error).message); setSaving(false); }
   };
@@ -239,12 +287,59 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
             )}
           </div>
 
+          {/* Seçilmiş psixoloqun boş gün/saatları — uyğun slot seçilir */}
+          {psyId && (
+            <div style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: 12 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#1A2535", marginBottom: 8 }}>
+                Psixoloqun boş vaxtları <span style={{ color: "#52718F", fontWeight: 500 }}>(yaxın 14 gün)</span>
+              </div>
+              {slotsLoading ? (
+                <div style={{ fontSize: 12, color: "#52718F" }}>Yüklənir…</div>
+              ) : slotsByDay.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "7px 10px" }}>
+                  Yaxın 14 gündə boş vaxt yoxdur — vaxtı əl ilə seçin.
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: 10, maxHeight: 200, overflowY: "auto" }}>
+                  {slotsByDay.map(([day, daySlots]) => (
+                    <div key={day}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#52718F", marginBottom: 6 }}>
+                        {azFormatWeekday(day)}, {azFormatDate(day)}
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {daySlots.map(s => {
+                          const active = startAt === isoToAzLocal(s.startAt);
+                          return (
+                            <button key={s.startAt} type="button" onClick={() => pickSlot(s)}
+                              style={{
+                                padding: "5px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                                border: active ? "2px solid var(--brand)" : "1px solid #E5E7EB",
+                                background: active ? "var(--brand-50)" : "#fff",
+                                color: active ? "var(--brand-700)" : "#1A2535",
+                              }}>
+                              {azFormatTime(s.startAt)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <label style={{ fontSize: 11, fontWeight: 600, color: "#52718F", display: "grid", gap: 4 }}>Başlanğıc
               <DatePicker value={startAt} onChange={v => onStart(v)} theme="light" withTime size="sm" style={{ width: "100%" }} /></label>
             <label style={{ fontSize: 11, fontWeight: 600, color: "#52718F", display: "grid", gap: 4 }}>Bitiş
               <DatePicker value={endAt} onChange={v => setEndAt(v)} theme="light" withTime size="sm" style={{ width: "100%" }} /></label>
           </div>
+          {startAt && endAt && new Date(endAt).getTime() <= new Date(startAt).getTime() && (
+            <div style={{ fontSize: 12, color: "#991B1B", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, padding: "7px 10px" }}>
+              Bitiş vaxtı başlanğıc vaxtından sonra olmalıdır.
+            </div>
+          )}
 
           <textarea rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Qeyd (məcburi deyil)" style={{ ...inp, fontFamily: "inherit", resize: "vertical" }} />
 

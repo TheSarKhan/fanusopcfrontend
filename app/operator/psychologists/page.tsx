@@ -146,7 +146,7 @@ export default function OperatorPsychologistsPage() {
                       <th onClick={() => handleSort("alpha")} style={{ cursor: "pointer" }}>Psixoloq {sortIndicator("alpha")}</th>
                       <th>Əlaqə</th>
                       <th onClick={() => handleSort("sessions")} style={{ cursor: "pointer", textAlign: "right" }}>Seans {sortIndicator("sessions")}</th>
-                      <th onClick={() => handleSort("rating")} style={{ cursor: "pointer", textAlign: "right" }}>Reytinq {sortIndicator("rating")}</th>
+                      <th onClick={() => handleSort("rating")} style={{ cursor: "pointer", textAlign: "right" }}>Sıralama balı {sortIndicator("rating")}</th>
                       <th onClick={() => handleSort("rejection")} style={{ cursor: "pointer", textAlign: "right" }}>Rədd faizi {sortIndicator("rejection")}</th>
                       <th>Qiymət</th>
                       <th>Status</th>
@@ -179,7 +179,7 @@ export default function OperatorPsychologistsPage() {
                             </div>
                           </td>
                           <td className="fx-td-num">{p.completedSessions}</td>
-                          <td className="fx-td-num">★ {fmtRating(p.rankingScore)}</td>
+                          <td className="fx-td-num">{fmtRating(p.rankingScore)}</td>
                           <td className="fx-td-num" style={highRejection ? { color: "#991B1B", fontWeight: 700 } : undefined}>
                             {p.rejectionRatePct != null ? `${Math.round(p.rejectionRatePct)}%` : "—"}
                           </td>

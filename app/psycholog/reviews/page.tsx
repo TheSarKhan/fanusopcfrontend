@@ -201,14 +201,21 @@ export default function PsychologReviewsPage() {
                   );
                 })()}
 
-                {r.reply ? (
+                {r.reply && (
                   <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--brand-50)", borderLeft: "3px solid var(--brand)", borderRadius: "0 8px 8px 0" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                       <strong style={{ fontSize: 12, color: "var(--brand)" }}>Sizin cavabınız</strong>
                       <span style={{ fontSize: 11, color: "#52718F" }}>{fmt(r.replyAt ?? null)}</span>
                     </div>
                     <p style={{ fontSize: 13, color: "#374151", margin: 0, whiteSpace: "pre-wrap" }}>{r.reply}</p>
-                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  </div>
+                )}
+                {/* Silmə tələbi düyməsi cavab yazılıb-yazılmamasından asılı olmayaraq görünməlidir —
+                    əvvəllər yalnız `r.reply` olmayanda göstərilirdi, cavab yazıldıqdan sonra tamamilə
+                    itirdi (silinmişdi, deaktiv olunmamışdı), sorğu göndərmək mümkünsüz olurdu. */}
+                <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {r.reply ? (
+                    <>
                       <button onClick={() => setReplyFor(r)} disabled={busy}
                         style={{ padding: "5px 10px", fontSize: 12, border: "1px solid var(--brand-200)", color: "var(--brand)", background: "#fff", borderRadius: 6, cursor: "pointer" }}>
                         Redaktə et
@@ -217,22 +224,20 @@ export default function PsychologReviewsPage() {
                         style={{ padding: "5px 10px", fontSize: 12, border: "1px solid #FECACA", color: "#991B1B", background: "#fff", borderRadius: 6, cursor: busy ? "wait" : "pointer" }}>
                         Sil
                       </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+                    </>
+                  ) : (
                     <button onClick={() => setReplyFor(r)}
                       style={{ padding: "7px 14px", fontSize: 13, fontWeight: 600, border: "1px solid var(--brand-200)", color: "var(--brand)", background: "var(--brand-50)", borderRadius: 8, cursor: "pointer" }}>
                       Cavab yaz
                     </button>
-                    {!deletionByReview.get(r.id) && (
-                      <button onClick={() => setDeleteFor(r)}
-                        style={{ padding: "7px 14px", fontSize: 13, fontWeight: 600, border: "1px solid #FECACA", color: "#991B1B", background: "#FEF2F2", borderRadius: 8, cursor: "pointer" }}>
-                        Silmə tələbi göndər
-                      </button>
-                    )}
-                  </div>
-                )}
+                  )}
+                  {!deletionByReview.get(r.id) && (
+                    <button onClick={() => setDeleteFor(r)}
+                      style={{ padding: "7px 14px", fontSize: 13, fontWeight: 600, border: "1px solid #FECACA", color: "#991B1B", background: "#FEF2F2", borderRadius: 8, cursor: "pointer" }}>
+                      Silmə tələbi göndər
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

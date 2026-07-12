@@ -2944,10 +2944,14 @@ export interface SessionFeedback {
   rating: number;
   comment: string | null;
   followUpNeeded: boolean;
+  /** Follow-up lifecycle — only meaningful when followUpNeeded. */
+  followUpStatus: "NEW" | "IN_PROGRESS" | "RESOLVED";
   operatorSeenAt: string | null;
   createdAt: string;
   appointmentStartAt: string | null;
 }
+
+export type FollowUpStatus = "NEW" | "IN_PROGRESS" | "RESOLVED";
 
 export interface FeedbackTriageResponse {
   content: SessionFeedback[];
@@ -2964,7 +2968,8 @@ export interface PsychologistFeedbackSummary {
   psychologistName: string;
   totalCount: number;
   avgRating: number;
-  unseenFollowUpCount: number;
+  /** Follow-up requests not yet RESOLVED — the operator's open workload. */
+  openFollowUpCount: number;
   lowRatingCount: number;
   lastFeedbackAt: string | null;
 }
@@ -3314,6 +3319,23 @@ export const operatorApi = {
     currency?: string | null;
     patientChoseDirectly?: boolean;
   }) => authedRequest<PatientPackageItem>("POST", `/operator/patients/${patientId}/packages`, data),
+  // Paket satışı + ilk seans bronu — ATOMİK (tək sorğu/tranzaksiya). Seans bronu
+  // uğursuz olarsa paket + ödəniş də geri qaytarılır (sahibsiz PENDING ödəniş qalmır).
+  sellPackageAndBook: (patientId: number, data: {
+    sell: {
+      sessionPackageId?: number | null;
+      psychologistId?: number | null;
+      packageName?: string | null;
+      sessionCount?: number | null;
+      price?: number | null;
+      currency?: string | null;
+      patientChoseDirectly?: boolean;
+    };
+    psychologistId: number;
+    startAt: string;
+    endAt: string;
+    note?: string | null;
+  }) => authedRequest<AppointmentDetail>("POST", `/operator/patients/${patientId}/packages/sell-and-book`, data),
   // Operator tək seans satışı (paketsiz) → seans bron + PENDING ödəniş (seansa bağlı)
   sellSingleSession: (patientId: number, data: {
     psychologistId: number;
@@ -3378,16 +3400,23 @@ export const operatorApi = {
   },
   feedbackMarkSeen: (id: number) =>
     authedRequest<SessionFeedback>("POST", `/operator/feedback/${id}/seen`),
+  feedbackSetStatus: (id: number, status: FollowUpStatus) =>
+    authedRequest<SessionFeedback>("POST", `/operator/feedback/${id}/status`, { status }),
+  feedbackOpenCount: () =>
+    authedRequest<number>("GET", "/operator/feedback/open-count"),
   feedbackByPsychologist: () =>
     authedRequest<PsychologistFeedbackSummary[]>("GET", "/operator/feedback/by-psychologist"),
   feedbackForPsychologist: (psychologistId: number) =>
     authedRequest<SessionFeedback[]>("GET", `/operator/feedback/psychologist/${psychologistId}`),
 
   listPsychologists: () => authedRequest<Psychologist[]>("GET", "/operator/psychologists"),
-  availability: (psychologistId: number, from?: string, to?: string) => {
+  availability: (psychologistId: number, from?: string, to?: string, sessionKind?: string) => {
     const params = new URLSearchParams();
     if (from) params.set("from", from);
     if (to) params.set("to", to);
+    // INTRO seansları (15 dəq sabit) üçün slotlar psixoloqun standart müddəti (məs. 1 saat)
+    // əvəzinə 15 dəq addımla bölünsün — backend sessionKind=INTRO görəndə override tətbiq edir.
+    if (sessionKind) params.set("sessionKind", sessionKind);
     const qs = params.toString();
     return authedRequest<AvailableSlot[]>(
       "GET", `/operator/psychologists/${psychologistId}/availability${qs ? "?" + qs : ""}`);
@@ -3514,6 +3543,7 @@ export const operatorApi = {
   convertSessionRequestToAppointment: (id: number, data: {
     psychologistId: number; startAt: string; endAt?: string | null; note?: string | null;
     patientChoseDirectly?: boolean; sessionKind?: "STANDARD" | "INTRO" | null;
+    sessionPrice?: number | null;
   }) => authedRequest<SessionRequest>("POST", `/operator/session-requests/${id}/convert-to-appointment`, data),
   convertSessionRequestToPackage: (id: number, data: {
     sessionPackageId?: number | null; psychologistId?: number | null; packageName?: string | null;

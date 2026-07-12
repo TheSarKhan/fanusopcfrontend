@@ -14,12 +14,14 @@
 // Profil və bildirişlər modul deyil — onlar həmişə əlçatandır.
 // ============================================================================
 
-// Qeyd: "feedback" (seans rəyləri) və "referrals" (standalone siyahı) modulları
-// qarışıqlıq yaratmamaq üçün SİLİNİB (2026-07-03). Lazım olsa git tarixçəsindən
-// bərpa olunur. Yönləndirmə detalı (/operator/referrals/{id}) qalır — Randevular
+// Qeyd: "referrals" (standalone siyahı) modulu qarışıqlıq yaratmamaq üçün SİLİNİB
+// (2026-07-03). Yönləndirmə detalı (/operator/referrals/{id}) qalır — Randevular
 // səhifəsinin tabından açılır. "sessionRequests" (anonim lead forması) həmin
-// tarixdə eyni səbəbdən bağlanmışdı — indi hovuz/sahiblik modeli ilə (Appointment
-// pool-una bənzər) yenidən açılıb.
+// tarixdə bağlanmışdı — sonra hovuz/sahiblik modeli ilə yenidən açıldı.
+// "feedback" (seans rəyləri) də həmin tarixdə bağlanmışdı; 2026-07-12-də lifecycle
+// statusu (YENİ → ƏLAQƏDƏ → HƏLL OLUNDU) ilə geri qaytarıldı — pasiyentin "operator
+// mənimlə əlaqə saxlasın" müraciəti artıq izlənilə bilən siyahıda görünür, yalnız
+// bildirişdə deyil.
 
 export type OperatorModuleKey =
   | "dashboard"
@@ -31,6 +33,7 @@ export type OperatorModuleKey =
   | "customers"
   | "psychologists"
   | "requests"
+  | "feedback"
   | "sessionRequests";
 
 /** Hər nav modulunun açıq (true) / kilidli (false) vəziyyəti. */
@@ -44,6 +47,7 @@ export const OPERATOR_MODULES: Record<OperatorModuleKey, boolean> = {
   customers:       true,   // AÇIQ — Müştərilər (360° profil + paket satışı)
   psychologists:   true,   // AÇIQ — Psixoloq statistikası (reytinq siyahısı + 360° detal)
   requests:        true,   // AÇIQ — Tələblər (Rəy Silmə Tələbləri, Operator BRD §10)
+  feedback:        true,   // AÇIQ — Seans rəyləri (əlaqə tələbi lifecycle: yeni→əlaqədə→həll)
   sessionRequests: true,   // AÇIQ — Müraciətlər (saytdan gələn anonim lead-lər → hovuz → randevu/paket)
 };
 
@@ -57,6 +61,7 @@ const MODULE_PATHS: Partial<Record<OperatorModuleKey, string[]>> = {
   customers:     ["/operator/customers"],
   psychologists: ["/operator/psychologists"],
   requests:      ["/operator/requests"],
+  feedback:      ["/operator/feedback"],
   sessionRequests: ["/operator/session-requests"],
 };
 

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Deco from "@/components/Deco";
 import Breadcrumb from "@/components/Breadcrumb";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -79,10 +78,20 @@ const PROGRAMS = [
     body: "13–18 yaş gənclər üçün ayrı yanaşma. Valideynlər üçün də ayrı dəstək.",
     bullets: ["Yaşa uyğun yanaşma", "Valideyn iclasları", "Məktəb əlaqəsi"],
   },
+  {
+    icon: "book",
+    title: "Təlimlər",
+    tag: "Maarifləndirici və elmi",
+    body: "Psixologiya mövzularında iki formatda təlim keçirilir — kimin qoşula biləcəyi və ödəniş forması təlimdən asılı olaraq dəyişir.",
+    bullets: [
+      "Maarifləndirici: hamı qoşula bilər",
+      "Elmi: yalnız psixoloq və psixologiya tələbələri üçün",
+      "Pulsuz və ödənişli təlimlər",
+    ],
+  },
 ];
 
 function ServicesPrograms() {
-  const { t } = useT();
   return (
     <section className="svc-prog" id="programs">
       <Deco type="mesh-blob" style={{ top: 60, right: "-5%", width: 400, opacity: .45 }} anim="drift" />
@@ -104,9 +113,6 @@ function ServicesPrograms() {
                   </li>
                 ))}
               </ul>
-              <Link href="/register" className="svc-card__btn">
-                {t("how.cta")} <Arrow size={14} />
-              </Link>
             </article>
           ))}
         </div>
@@ -149,15 +155,6 @@ function ServicesPrograms() {
           background: var(--fanus-primary-50); color: var(--fanus-primary);
           display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
-        .svc-card__btn {
-          margin-top: auto;
-          padding: 12px 18px; border-radius: 12px;
-          font-weight: 600; font-size: 14px;
-          background: var(--fanus-primary-50); color: var(--fanus-primary);
-          display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-          transition: background .2s, color .2s, transform .2s;
-        }
-        .svc-card__btn:hover { background: var(--fanus-primary); color: white; transform: translateY(-1px); }
         @media (max-width: 1080px) {
           .svc-card {
             flex: 0 0 calc((100% - 22px) / 2);
@@ -175,9 +172,6 @@ function ServicesPrograms() {
   );
 }
 
-function Arrow({ size = 18 }: { size?: number }) {
-  return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.4" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
-}
 function CheckIcon() { return <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4L19 6" /></svg>; }
 
 function PgmIcon({ name }: { name: string }) {
@@ -188,5 +182,6 @@ function PgmIcon({ name }: { name: string }) {
   if (name === "chat")    return <svg {...p}><path d="M4 5h16v11H8l-4 4V5z" /></svg>;
   if (name === "heart")   return <svg {...p}><path d="M12 20s-7-4.5-7-10a4 4 0 017-2.5A4 4 0 0119 10c0 5.5-7 10-7 10z" /></svg>;
   if (name === "smile")   return <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><circle cx="9" cy="9" r="1.2" fill="currentColor" /><circle cx="15" cy="9" r="1.2" fill="currentColor" /></svg>;
+  if (name === "book")    return <svg {...p}><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" /></svg>;
   return null;
 }

@@ -28,20 +28,21 @@ export type PsychologModuleKey =
   | "availability"
   | "reviews";
 
-/** Hər modulun açıq (true) / kilidli (false) vəziyyəti. */
+/** Hər modulun açıq (true) / kilidli (false) vəziyyəti.
+ *  2026-07-13: bütün modullar açıq — panel kilidləri müvəqqəti söndürülüb. */
 export const PSYCHOLOG_MODULES: Record<PsychologModuleKey, boolean> = {
-  dashboard:    false, // sidebar-dan gizlədilib — loqo linki ilə əlçatan qalır (route heç vaxt kilidlənmir)
-  calendar:     true,  // AÇIQ — Cədvəl (təqvim görünüşü)
-  appointments: true,  // AÇIQ — Görüşlər (seanslar)
-  packages:     true,  // AÇIQ — Paketlərim (satış/istifadə statistikası)
-  clients:      true,  // AÇIQ — Müştərilər (siyahı + 360° profil)
-  homework:     false, // sidebar-dan gizlədilib
-  tests:        false, // sidebar-dan gizlədilib
-  articles:     false, // sidebar-dan gizlədilib
-  community:    false, // sidebar-dan gizlədilib
-  resources:    false, // sidebar-dan gizlədilib
-  availability: true,  // AÇIQ — İş vaxtları (cədvəl/istisna/məzuniyyət)
-  reviews:      false, // sidebar-dan gizlədilib
+  dashboard:    true,
+  calendar:     true,
+  appointments: true,
+  packages:     true,
+  clients:      true,
+  homework:     true,
+  tests:        true,
+  articles:     true,
+  community:    true,
+  resources:    true,
+  availability: true,
+  reviews:      true,
 };
 
 /** Hər modulun "sahib olduğu" route prefiksləri (guard üçün). */

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { submitSessionRequest } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
-import { azNowLocal } from "@/lib/datetime";
 
 /**
  * Psixoloqsuz sürətli müraciət forması (Sayt BRD §8.2) — həm Əlaqə səhifəsində
@@ -59,21 +58,8 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError("Düzgün e-poçt ünvanı daxil edin"); return; }
     if (!form.budget)        { setError("Büdcə seçin"); return; }
     if (!form.reason.trim()) { setError("Müraciətin səbəbini yazın"); return; }
-    // Üstünlük verilən tarix/saat opsionaldır, lakin verilibsə keçmiş ola bilməz
-    // (Asia/Baku divar-saatı; backend də eyni yoxlamanı aparır).
-    if (form.preferredDate) {
-      const nowLocal = azNowLocal();            // "YYYY-MM-DDTHH:mm" (Asia/Baku)
-      const today = nowLocal.slice(0, 10);
-      if (form.preferredDate < today) {
-        setError("Keçmiş tarix üçün müraciət göndərmək olmaz");
-        return;
-      }
-      if (form.preferredDate === today && form.preferredTime
-          && `${form.preferredDate}T${form.preferredTime}` < nowLocal) {
-        setError("Keçmiş saat üçün müraciət göndərmək olmaz");
-        return;
-      }
-    }
+    // Üstünlük verilən tarix/saat sadəcə istəyi göstərir (real bron deyil, operator
+    // zəngləşib uyğun vaxtı təyin edəcək) — vaxt məhdudiyyəti yoxdur.
     setError("");
     setSending(true);
     try {
@@ -125,11 +111,11 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
 
         {/* Növbəti addımlar — prosesin şəffaflığı */}
         <div style={{
-          background: "#F5F3FF", border: "1px solid #E5E0FA",
+          background: "var(--brand-50)", border: "1px solid var(--brand-100)",
           borderRadius: 12, padding: "16px 18px", marginBottom: 14, textAlign: "left",
         }}>
           <div style={{
-            fontSize: 11, fontWeight: 700, color: "#5A4FC8",
+            fontSize: 11, fontWeight: 700, color: "var(--brand)",
             letterSpacing: ".04em", textTransform: "uppercase", marginBottom: 12,
           }}>
             Növbəti addımlar
@@ -141,7 +127,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
             }}>
               <span style={{
                 flexShrink: 0, width: 24, height: 24, borderRadius: "50%",
-                background: "#5A4FC8", color: "#fff", fontSize: 13, fontWeight: 700,
+                background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>{i + 1}</span>
               <span style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.5, paddingTop: 1 }}>{step}</span>
@@ -172,7 +158,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
           <button
             onClick={onDone}
             style={{
-              padding: "10px 28px", background: "#5A4FC8", color: "#fff",
+              padding: "10px 28px", background: "var(--brand)", color: "#fff",
               border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
             }}
           >
@@ -246,7 +232,6 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
           <DatePicker
             value={form.preferredDate}
             onChange={val => setForm(prev => ({ ...prev, preferredDate: val }))}
-            min={azNowLocal().slice(0, 10)}
             placeholder="gg.aa.iiii"
             theme="light"
           />
@@ -275,7 +260,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
         disabled={sending}
         style={{
           width: "100%", padding: "12px 0",
-          background: "#5A4FC8", color: "#fff",
+          background: "var(--brand)", color: "#fff",
           border: "none", borderRadius: 10, fontSize: 15, fontWeight: 600,
           cursor: sending ? "not-allowed" : "pointer",
           opacity: sending ? 0.7 : 1,

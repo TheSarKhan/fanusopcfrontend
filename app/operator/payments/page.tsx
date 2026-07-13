@@ -14,6 +14,8 @@ const PLATFORM_RATE = 0.20; // platforma komissiyası (default — sonra site_co
 const ALL_STATUSES = ["PENDING", "PAID", "PARTIALLY_REFUNDED", "REFUNDED", "CANCELLED"] as const;
 const PAGE_LIMIT = 300; // modul bir baxışda hesablanır (KPI/qrafik/payout) — hamısı bir dəfəyə gətirilir
 const MONTHS_AZ = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avqust", "sentyabr", "oktyabr", "noyabr", "dekabr"];
+// Backend PaymentService.PAYMENT_METHODS ilə eyni dəyərlər — "Ödəniş üsulu bölgüsü" qrafiki bunlardan hesablanır.
+const PAYMENT_METHOD_OPTIONS = ["Nağd", "Kart", "Köçürmə"] as const;
 
 type Status = "PENDING" | "PAID" | "PARTIALLY_REFUNDED" | "REFUNDED" | "CANCELLED";
 type BucketKey = "pending" | "paid" | "refunded" | "cancelled";
@@ -90,6 +92,7 @@ export default function OperatorPaymentsPage() {
   const [drawerId, setDrawerId] = useState<number | null>(null);
   const [refundFor, setRefundFor] = useState<PaymentItem | null>(null);
   const [cancelFor, setCancelFor] = useState<PaymentItem | null>(null);
+  const [payFor, setPayFor] = useState<PaymentItem | null>(null);
 
   // Bütün statuslar bir dəfəyə — modul insight (KPI/qrafik/payout) tam datadan hesablanır.
   const load = () => {
@@ -192,18 +195,10 @@ export default function OperatorPaymentsPage() {
   // ── Əməliyyatlar ───────────────────────────────────────────────────────────
   const toggleSel = (id: number) => setSelected(s => { const n = { ...s }; if (n[id]) delete n[id]; else n[id] = true; return n; });
 
-  const markPaid = async (p: PaymentItem) => {
-    const ok = await confirmDialog({
-      title: "Ödənişi təsdiqlə",
-      message: `${p.patientName} üçün ${formatAzn(p.amount)} (${p.method}) ödənişini təsdiqləmək istəyirsiniz? Bu əməliyyat audit izinə və maliyyə hesabatına düşür.`,
-      confirmLabel: "Ödənildi",
-    });
-    if (!ok) return;
-    try {
-      await operatorApi.markPaymentPaid(p.id);
-      patch(p.id, { status: "PAID", paidAt: new Date().toISOString() });
-      uiToast(`${p.patientName} — ödəniş təsdiqləndi`, "success");
-    } catch (e) { uiToast((e as Error).message || "Əməliyyat alınmadı", "error"); }
+  const onPaid = (p: PaymentItem, method: string) => {
+    patch(p.id, { status: "PAID", paidAt: new Date().toISOString(), method });
+    uiToast(`${p.patientName} — ödəniş təsdiqləndi`, "success");
+    setPayFor(null);
   };
 
   const bulkPay = async () => {
@@ -426,7 +421,7 @@ export default function OperatorPaymentsPage() {
                 </div>
               ) : rows.map(p => (
                 <PayRow key={p.id} p={p} selected={!!selected[p.id]} onToggle={() => toggleSel(p.id)}
-                  onOpen={() => setDrawerId(p.id)} onPay={() => markPaid(p)} onCancel={() => setCancelFor(p)} onRefund={() => setRefundFor(p)} />
+                  onOpen={() => setDrawerId(p.id)} onPay={() => setPayFor(p)} onCancel={() => setCancelFor(p)} onRefund={() => setRefundFor(p)} />
               ))}
             </div>
 
@@ -514,6 +509,7 @@ export default function OperatorPaymentsPage() {
 
       {refundFor && <RefundModal payment={refundFor} onClose={() => setRefundFor(null)} onDone={onRefundRequested} />}
       {cancelFor && <CancelModal payment={cancelFor} onClose={() => setCancelFor(null)} onDone={onCancelled} />}
+      {payFor && <MarkPaidModal payment={payFor} onClose={() => setPayFor(null)} onDone={onPaid} />}
     </div>
   );
 }
@@ -840,6 +836,34 @@ function CancelModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
       )}
       {err && <ModalError>{err}</ModalError>}
       <ModalFooter onClose={onClose} onSubmit={submit} disabled={!ready || busy} label={busy ? "Göndərilir…" : "Ödənişi ləğv et"} />
+    </ModalShell>
+  );
+}
+
+function MarkPaidModal({ payment, onClose, onDone }: { payment: PaymentItem; onClose: () => void; onDone: (p: PaymentItem, method: string) => void }) {
+  const [method, setMethod] = useState<string>(PAYMENT_METHOD_OPTIONS[0]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    if (busy) return;
+    setBusy(true); setErr(null);
+    try {
+      const updated = await operatorApi.markPaymentPaid(payment.id, method);
+      onDone(updated, method);
+    } catch (e) { setErr((e as Error).message); setBusy(false); }
+  };
+
+  return (
+    <ModalShell icon="brand" iconD="M20 6L9 17l-5-5" title="Ödənişi təsdiqlə" onClose={onClose}>
+      <div className="fx-modal__text">{payment.patientName} üçün {formatAzn(payment.amount)} ödənişini təsdiqləmək istəyirsiniz? Bu əməliyyat audit izinə və maliyyə hesabatına düşür.</div>
+      <ModalField label="Ödəniş üsulu">
+        <select value={method} onChange={e => setMethod(e.target.value)} className="fx-select" autoFocus>
+          {PAYMENT_METHOD_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </ModalField>
+      {err && <ModalError>{err}</ModalError>}
+      <ModalFooter onClose={onClose} onSubmit={submit} disabled={busy} label={busy ? "Göndərilir…" : "Ödənildi"} />
     </ModalShell>
   );
 }

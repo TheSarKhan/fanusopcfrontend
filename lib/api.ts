@@ -3297,8 +3297,8 @@ export const operatorApi = {
   listPaymentsPaged: (opts: { page?: number; size?: number; status?: string; mine?: boolean } = {}) =>
     authedRequest<Paged<PaymentItem>>("GET",
       `/operator/payments/paged${pagedQuery({ page: opts.page, size: opts.size, status: opts.status, mine: opts.mine ? "true" : undefined })}`),
-  markPaymentPaid: (id: number) =>
-    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/mark-paid`),
+  markPaymentPaid: (id: number, method?: string) =>
+    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/mark-paid`, method ? { method } : undefined),
   paymentsSummary: () =>
     authedRequest<PaymentSummary>("GET", "/operator/payments/summary"),
   cancelPayment: (id: number, reason: string) =>

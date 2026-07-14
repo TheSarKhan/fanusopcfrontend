@@ -117,8 +117,7 @@ function MeetingLinkCard({ a, onSent, onUpdated }: {
   const [busy, setBusy] = useState(false);
   const hasLink = !!a.meetingLink;
   const av = (Math.abs(a.id) % 4) + 1;
-  const paymentRequired = !a.patientPackageId && a.sessionKind !== "INTRO";
-  const paymentConfirmed = !paymentRequired || a.paymentStatus === "PAID";
+  const paymentConfirmed = a.paymentConfirmed;
 
   const saveAndSend = async () => {
     const link = value.trim();

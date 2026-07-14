@@ -56,7 +56,7 @@ export default function ReviewModal({
           </h2>
           <p style={{ fontSize: 12, color: "#52718F", marginTop: 4 }}>
             {psychologistName} ilə təcrübəniz haqqında qısa fikrinizi paylaşın.
-            Rəyiniz moderasiyadan keçdikdən sonra public profildə görünəcək.
+            Rəyiniz dərhal psixoloqun public profilində görünəcək.
           </p>
         </div>
 

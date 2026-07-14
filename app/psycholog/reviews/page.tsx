@@ -157,7 +157,7 @@ export default function PsychologReviewsPage() {
       ) : visible.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 60, textAlign: "center", color: "#52718F", border: "1px dashed #DDE6F0" }}>
           {filter === "APPROVED"
-            ? "Hələ public rəy yoxdur — yeni rəylər moderasiyadan sonra burada görünəcək."
+            ? "Hələ public rəy yoxdur — pasiyentlər yazan kimi burada dərc olunacaq."
             : "Bu kateqoriyada rəy yoxdur."}
         </div>
       ) : (

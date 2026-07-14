@@ -580,6 +580,12 @@ export interface AppointmentDetail {
   paymentStatus?: string | null;
   // Ödəniş məbləği (tək seans). 0 = qəbul olunub, lakin operator hələ məbləği təyin etməyib.
   paymentAmount?: number | null;
+  // Görüş linkinin görünməsi/əlavə edilə bilməsi üçün ƏSAS mənbə (backend
+  // AppointmentService.isPaymentConfirmed) — tək seansda öz ödənişi, paket
+  // seansında PAKETİN ÖZ ödənişi PAID olmalıdır (paketə bağlı olmaq təkbaşına
+  // kifayət deyil). paymentStatus/patientPackageId-dən TƏKRAR HESABLAMA —
+  // birbaşa bu sahədən oxu.
+  paymentConfirmed: boolean;
   // Rezervasiya mənbəyi ('DIRECT' | 'PLATFORM_MATCHED') — komissiya fərqləndirməsi.
   origin?: string | null;
   // Seans növü: 'STANDARD' | 'INTRO' (15 dəq, pulsuz tanışlıq görüşü).
@@ -1767,8 +1773,10 @@ export interface PatientBookingPayload {
 export interface IntroEligibility {
   eligible: boolean;
   usedCount: number;
-  /** Bazadakı 1 pulsuz haqdan əlavə operatorun təyin etdiyi, hələ istifadə olunmamış say. */
+  /** Bu andan sonrakı bron nəzərə alınmaqla (booking UI üçün) qalan əlavə haqq sayı. */
   extraGrantsRemaining: number;
+  /** Operatorun təyin etdiyi xam say — bron hesabına düzəliş edilməmiş (operator CRM göstəricisi). */
+  extraGrantsConfigured: number;
   reason?: string | null;
 }
 

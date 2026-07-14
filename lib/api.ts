@@ -3053,6 +3053,10 @@ export interface PatientHistory {
   emergencyContactPhone?: string | null;
   emergencyContactRelation?: string | null;
   residentialAddress?: string | null;
+  // Guest müraciətdən çevriləndə avtomatik yaradılan hesab hələ aktivləşdirilməyibsə
+  // (email təsdiqlənməyib) operator aktivləşdirmə dəvətini yenidən göndərə bilsin.
+  operatorCreated: boolean;
+  emailVerified: boolean;
 }
 
 export interface ContactLog {
@@ -3462,6 +3466,8 @@ export const operatorApi = {
     authedRequest<PsychologistSuggestion[]>("GET", `/operator/appointments/${appointmentId}/suggest?limit=${limit}`),
   patientHistory: (patientId: number) =>
     authedRequest<PatientHistory>("GET", `/operator/patients/${patientId}/history`),
+  resendActivationInvite: (patientId: number) =>
+    authedRequest<void>("POST", `/operator/patients/${patientId}/resend-activation`),
   // Modul H — analitika
   customerProfile: (patientId: number) =>
     authedRequest<CustomerProfile>("GET", `/operator/customers/${patientId}`),

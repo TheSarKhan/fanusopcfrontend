@@ -126,6 +126,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
   const [sellMode, setSellMode] = useState<"catalog" | "custom" | "single">("catalog");
   const [bookOpen, setBookOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [resendingActivation, setResendingActivation] = useState(false);
   const [introStatus, setIntroStatus] = useState<IntroEligibility | null>(null);
   const [grantingIntro, setGrantingIntro] = useState(false);
   const [schedulePkg, setSchedulePkg] = useState<CustomerProfile["packages"][number] | null>(null);
@@ -205,6 +206,19 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
       toast((e as Error).message, "error");
     } finally {
       setBlocking(false);
+    }
+  };
+
+  const resendActivation = async () => {
+    if (resendingActivation) return;
+    setResendingActivation(true);
+    try {
+      await operatorApi.resendActivationInvite(patientId);
+      toast("Aktivləşdirmə dəvəti yenidən göndərildi", "success");
+    } catch (e) {
+      toast((e as Error).message || "Göndərilmədi", "error");
+    } finally {
+      setResendingActivation(false);
     }
   };
 
@@ -480,6 +494,12 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
             aria-pressed={introStatus.extraGrantsConfigured > 0}>
             <Icon name="star" />
             {grantingIntro ? "…" : introStatus.extraGrantsConfigured > 0 ? "Əlavə pulsuz tanışlıq: Aktiv" : "Əlavə pulsuz tanışlıq"}
+          </button>
+        )}
+        {h.operatorCreated && !h.emailVerified && (
+          <button type="button" onClick={resendActivation} disabled={resendingActivation} className="fx-btn fx-btn--ghost"
+            title="Hesab hələ aktivləşdirilməyib — müştəri emaildəki linkdən şifrəsini təyin etməlidir">
+            <Icon name="mail" />{resendingActivation ? "…" : "Aktivləşdirmə dəvətini yenidən göndər"}
           </button>
         )}
         <button type="button" onClick={toggleBlock} disabled={blocking} className="fx-btn fx-btn--ghost"

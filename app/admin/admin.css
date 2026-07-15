@@ -722,7 +722,7 @@
 }
 
 /* ========== UTIL ========== */
-.admin-shell .row { display: flex; align-items: center; gap: 8px; }
+.admin-shell .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .admin-shell .mono { font-family: 'JetBrains Mono', monospace; }
 .admin-shell .text-muted { color: var(--muted); }
 .admin-shell .text-r { text-align: right; }

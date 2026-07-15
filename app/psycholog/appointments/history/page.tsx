@@ -157,7 +157,7 @@ export default function PsychologistAppointmentHistoryPage() {
         </div>
       ) : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12, marginBottom: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(320px, 100%), 1fr))", gap: 12, marginBottom: 20 }}>
             {visible.map(a => (
               <HistoryCard
                 key={a.id}

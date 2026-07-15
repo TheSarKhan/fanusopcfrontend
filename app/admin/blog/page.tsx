@@ -322,7 +322,7 @@ export default function ArticlesPage() {
       </div>
 
       {/* ── Stats ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(130px, 100%), 1fr))", gap: 10 }}>
         <StatCard label="Ümumi" value={stats.total} color="#1A2535" />
         <StatCard label="Yayımlandı" value={stats.published} color="#166534" />
         <StatCard label="Qaralama" value={stats.draft} color="#92400E" />

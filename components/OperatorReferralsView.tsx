@@ -92,7 +92,7 @@ export default function OperatorReferralsView({ onPendingCount }: { onPendingCou
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(320px, 100%), 1fr))", gap: 14 }}>
       {items.map(r => {
         const subj = SUBJECT_META[r.subjectType];
         const busy = busyId === r.id;

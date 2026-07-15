@@ -112,7 +112,11 @@ export default function PatientHomeworkPage() {
   const detail = detailId != null ? items.find(h => h.id === detailId) ?? null : null;
 
   return (
-    <div style={{ padding: "2rem" }}>
+    <div>
+      <style>{`
+        .pat-hw-grid { display: grid; grid-template-columns: repeat(3, minmax(260px, 1fr)); gap: 12px; }
+        @media (max-width: 760px) { .pat-hw-grid { grid-template-columns: 1fr; } }
+      `}</style>
       <div style={{ marginBottom: 14 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)" }}>{t("staff.patHwTitle")}</h1>
         <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4 }}>
@@ -128,11 +132,7 @@ export default function PatientHomeworkPage() {
         </div>
       ) : (
         <>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(260px, 1fr))",
-            gap: 12,
-          }}>
+          <div className="pat-hw-grid">
             {COLUMNS.map(col => (
               <KanbanColumn key={col.status}
                 column={col}

@@ -192,7 +192,7 @@ export default function PsychologArticlesPage() {
       </div>
 
       {/* Stat strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(160px, 100%), 1fr))", gap: 10 }}>
         <StatCell label="Ümumi"      value={totalElements}   tone="brand" />
         <StatCell label="Yayımlandı" value={stats.published} tone="good" />
         <StatCell label="Qaralama"   value={stats.draft}     tone="warn" />
@@ -262,7 +262,7 @@ export default function PsychologArticlesPage() {
 
       {/* Cards / list */}
       {loading ? (
-        <div style={{ display: "grid", gridTemplateColumns: view === "grid" ? "repeat(auto-fill, minmax(260px, 1fr))" : "1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: view === "grid" ? "repeat(auto-fill, minmax(min(260px, 100%), 1fr))" : "1fr", gap: 12 }}>
           {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} mode={view} />)}
         </div>
       ) : filtered.length === 0 && !hero ? (
@@ -276,7 +276,7 @@ export default function PsychologArticlesPage() {
       ) : filtered.length === 0 ? null : view === "grid" ? (
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(min(260px, 100%), 1fr))",
           gap: 12,
         }}>
           {filtered.map(p => (

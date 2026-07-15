@@ -384,7 +384,7 @@ export default function PsychologistsPage() {
       </div>
 
       {/* ── Stats ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(140px, 100%), 1fr))", gap: 10 }}>
         <StatCard label="Ümumi" value={stats.total} sub="psixoloq" />
         <StatCard label="Aktiv" value={stats.active} sub="hal-hazırda aktiv" accent="#166534" />
         <StatCard label="Passiv" value={stats.inactive} sub="deaktiv edilmiş" accent="#6B7280" />

@@ -302,7 +302,7 @@ export default function PsychologistAppointmentsPage() {
               {agendaList.length === 0 ? (
                 <Empty msg="Yaxınlaşan seans yoxdur." />
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(330px, 100%), 1fr))", gap: 12 }}>
                   {agendaList.map(a => (
                     <SessionCard
                       key={a.id}
@@ -325,7 +325,7 @@ export default function PsychologistAppointmentsPage() {
               {packagePatients.length === 0 ? (
                 <Empty msg="Paketli pasiyent yoxdur." />
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))", gap: 16, alignItems: "start" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(380px, 100%), 1fr))", gap: 16, alignItems: "start" }}>
                   {packagePatients.map(pp => (
                     <PatientPackagesCard key={pp.key} group={pp} now={now} busyId={busyId} h={handlers} />
                   ))}

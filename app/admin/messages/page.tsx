@@ -100,7 +100,7 @@ export default function AdminMessagesPage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(140px, 100%), 1fr))", gap: 10 }}>
         <StatCard label="Ümumi" value={stats.total} color="#1A2535" />
         <StatCard label="Yeni" value={stats.newCount} color="#92400E" />
         <StatCard label="Baxılır" value={stats.inReview} color="#1E40AF" />

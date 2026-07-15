@@ -178,7 +178,7 @@ export default function OperatorPoolPage() {
       </div>
 
       {loading ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(340px, 100%), 1fr))", gap: 16 }}>
           {Array.from({ length: 4 }).map((_, i) => <PoolSkeleton key={i} />)}
         </div>
       ) : error ? (
@@ -196,7 +196,7 @@ export default function OperatorPoolPage() {
           <div style={{ fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>Yeni müraciət gələndə burada görünəcək.</div>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(340px, 100%), 1fr))", gap: 16 }}>
           {poolPackages.map(sessions => (
             <PoolPackageCard
               key={sessions[0].patientPackageId}

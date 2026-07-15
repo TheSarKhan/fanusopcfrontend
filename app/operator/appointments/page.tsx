@@ -647,9 +647,9 @@ function FilterMoreMenu({ options }: { options: { key: string; label: string; co
 
 // ─── Müraciət kartı ───────────────────────────────────────────────────────────
 
-const GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(340px,1fr))", gap: 16 };
+const GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(340px, 100%), 1fr))", gap: 16 };
 // Paket kartları öz tabında, öz ölçü standartı ilə — tək seans kartlarına görə dartılmır
-const PKG_GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(360px,1fr))", gap: 16 };
+const PKG_GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(360px, 100%), 1fr))", gap: 16 };
 
 function AppointmentCard({
   a, meId, onTake, onOpen,

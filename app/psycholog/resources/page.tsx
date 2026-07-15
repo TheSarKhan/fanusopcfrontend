@@ -206,7 +206,7 @@ export default function PsychologResourcesPage() {
 
       {/* List */}
       {loading ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12 }}>
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} style={{ background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 14, height: 150 }} />
           ))}
@@ -229,7 +229,7 @@ export default function PsychologResourcesPage() {
           <button onClick={() => setEditing("new")} style={primaryBtn}><IconPlus /> Resurs əlavə et</button>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12 }}>
           {filtered.map(r => (
             <ResourceCard key={r.id} r={r}
               showShare={tab === "mine"}

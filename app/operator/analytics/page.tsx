@@ -125,7 +125,7 @@ export default function OperatorAnalyticsPage() {
       {/* MALİYYƏ */}
       {finKpis.length > 0 && <>
         <SectionLabel>Maliyyə</SectionLabel>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 13, marginBottom: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(180px, 100%), 1fr))", gap: 13, marginBottom: 24 }}>
           {finKpis.map(k => {
             const inner = <>
               <span style={{ position: "absolute", top: 15, right: 15, color: k.accent }}><Ico d={k.icon} /></span>
@@ -154,7 +154,7 @@ export default function OperatorAnalyticsPage() {
 
       {/* GƏLİR BÖLGÜSÜ */}
       {revenue && (revenue.packageRevenue + revenue.singleRevenue > 0) && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 18, marginBottom: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(320px, 100%), 1fr))", gap: 18, marginBottom: 24 }}>
           <div style={{ ...CARD, padding: 20 }}>
             <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3, color: "var(--oxford)" }}>Gəlir mənbəyinə görə</div>
             <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 14, flexWrap: "wrap" }}>
@@ -189,7 +189,7 @@ export default function OperatorAnalyticsPage() {
 
       {/* ƏMƏLİYYAT */}
       <SectionLabel>Əməliyyat</SectionLabel>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 13, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(175px, 100%), 1fr))", gap: 13, marginBottom: 24 }}>
         {opKpis.map(k => {
           const inner = <>
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 6 }}>{k.label}</div>
@@ -269,7 +269,7 @@ export default function OperatorAnalyticsPage() {
       </div>
 
       {/* DİQQƏT TƏLƏB EDƏNLƏR */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 18, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(320px, 100%), 1fr))", gap: 18, marginBottom: 24 }}>
         <div style={{ ...CARD, padding: 20 }}>
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "var(--oxford)" }}>Diqqət · Müraciətçilər</div>
           {stats.patientsNeedingAttention.length === 0 ? <Empty msg="İşarələnmiş müraciətçi yoxdur" /> : (

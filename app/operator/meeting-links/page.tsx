@@ -98,7 +98,7 @@ export default function OperatorMeetingLinksPage() {
         <EmptyState icon={<CalendarGlyph />} title="Gözləyən görüş linki yoxdur"
           sub="Bütün yaxınlaşan seanslara link göndərilib." />
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12, alignItems: "stretch" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))", gap: 12, alignItems: "stretch" }}>
           {items.map(a => (
             <MeetingLinkCard key={a.id} a={a} onSent={() => onSent(a.id)} onUpdated={onUpdated} />
           ))}

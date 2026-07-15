@@ -102,7 +102,7 @@ export default function OperatorFeedbackPage() {
       ) : !summaries || summaries.length === 0 ? (
         <EmptyState title="Hələ rəy yoxdur" sub="Pasiyentlər seansdan sonra rəy verdikcə burada görünəcək." />
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(260px, 100%), 1fr))", gap: 14 }}>
           {summaries.map((p, i) => (
             <PsyCard key={p.psychologistId} p={p} idx={i}
               onOpen={() => setSelected({ id: p.psychologistId, name: p.psychologistName })} />

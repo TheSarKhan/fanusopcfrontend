@@ -402,7 +402,7 @@ export default function PatientAppointmentsPage() {
                       : "Yaxınlaşan randevu yoxdur"
                   } />
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))", gap: 12 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(330px, 100%), 1fr))", gap: 12 }}>
                     {agendaList.map(a => (
                       <AgendaRow
                         key={a.id}
@@ -432,7 +432,7 @@ export default function PatientAppointmentsPage() {
                 <Section title="Aktiv paketlər" count={activePackages.length} icon="" collapsible={false}>
                   <div style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(360px, 100%), 1fr))",
                     gap: 16,
                   }}>
                     {activePackages.map(p => (

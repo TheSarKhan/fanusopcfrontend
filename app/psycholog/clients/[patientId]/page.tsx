@@ -419,7 +419,7 @@ export default function PatientDetailPage() {
     <div style={{ maxWidth: 1080, margin: "0 auto" }}>
       <style>{`
 .m360-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.m360-goalgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.m360-goalgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px, 100%), 1fr));gap:14px}
 @media(max-width:760px){.m360-2col{grid-template-columns:1fr}}
 @keyframes m360Fade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes m360Sheet{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
@@ -997,7 +997,7 @@ function SessionsSection({ items }: { items: AppointmentDetail[] }) {
     );
   }
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12, alignItems: "start", animation: "m360Fade .2s ease" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))", gap: 12, alignItems: "start", animation: "m360Fade .2s ease" }}>
       {items.map(a => <SessionCard360 key={a.id} a={a} />)}
     </div>
   );

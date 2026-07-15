@@ -186,7 +186,7 @@ export default function PsychologDashboard() {
           <EngagementStrip stats={stats} />
 
           {/* ── Stat row ───────────────────────────────────────────────────────── */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 22 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap: 14, marginBottom: 22 }}>
             <StatCard
               icon={<IconChart />}
               label="Bu ay seans"
@@ -292,7 +292,7 @@ export default function PsychologDashboard() {
             <h2 style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
               Sürətli giriş
             </h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))", gap: 12 }}>
               <QuickAction href="/psycholog/clients"  icon={<IconUsers />}   label="Müştərilər" />
               <QuickAction href="/psycholog/homework" icon={<IconTarget />}  label="Tapşırıqlar" badge={pendingHomework} />
             </div>
@@ -730,7 +730,7 @@ function SkeletonGrid() {
   );
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 18 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap: 14, marginBottom: 18 }}>
         {block(96)}{block(96)}{block(96)}{block(96)}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 18 }}>

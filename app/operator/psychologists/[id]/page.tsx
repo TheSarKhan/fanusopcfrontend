@@ -180,7 +180,7 @@ export default function OperatorPsychologistDetailPage() {
       </div>
 
       {/* KPI STRIP */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 13, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(165px, 100%), 1fr))", gap: 13, marginBottom: 20 }}>
         {kpis.map(k => (
           <div key={k.label} style={{ ...CARD, padding: "15px 17px", position: "relative" }}>
             <span style={{ position: "absolute", top: 15, right: 15, color: k.iconColor }}><Ico d={k.icon} /></span>

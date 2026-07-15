@@ -175,7 +175,7 @@ function ResultDetail({ result }: { result: TestResult }) {
           )}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(150px, 100%), 1fr))", gap: 12, marginBottom: 16 }}>
           <Stat label="Ümumi bal" value={`${result.totalScore} / ${result.maxScore}`} />
           <Stat label="Faiz" value={`${pct}%`} accentFg={tone.fg} accentBg={tone.bg} />
           <Stat label="Respondent" value={result.respondentName || "—"} />

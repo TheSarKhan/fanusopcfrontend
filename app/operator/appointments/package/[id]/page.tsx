@@ -81,7 +81,7 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
           </div>
           <div className="fx-skeleton" style={{ height: 6, borderRadius: 999, marginTop: 14 }} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(230px, 100%), 1fr))", gap: 14 }}>
           {[0, 1, 2, 3].map(i => <div key={i} className="fx-skeleton" style={{ height: 118, borderRadius: 12 }} />)}
         </div>
       </div>
@@ -142,7 +142,7 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
       </div>
 
       {/* Seanslar — dolu kartlar + boş "+" xanalar */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(230px, 100%), 1fr))", gap: 14 }}>
         {sessions.map(a => (
           <SessionCard key={a.id} a={a} onOpen={() => router.push(`/operator/appointments/${a.id}?pkg=${packageId}`)} />
         ))}

@@ -309,7 +309,7 @@ export default function PsychologClientsPage() {
       </div>
 
       {/* Stat strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 13, marginBottom: 18 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))", gap: 13, marginBottom: 18 }}>
         <StatCard label={t("staff.psyClientsFilterAll")}   value={counters.all}     tone="brand"
                   active={filter === "ALL"}     onClick={() => setFilter("ALL")} />
         <StatCard label={`${t("staff.psyClientsFilterActive")} (${ACTIVE_DAYS}d)`} value={counters.active}    tone="good"
@@ -400,7 +400,7 @@ export default function PsychologClientsPage() {
       )}
 
       {loading ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))", gap: 16 }}>
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 18 }}>
               <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
@@ -422,7 +422,7 @@ export default function PsychologClientsPage() {
       ) : visible.length === 0 ? (
         <EmptyState hasFilters={hasFilters} emptyText={t("staff.psyClientsEmpty")} onClear={() => { setFilter("ALL"); setTagFilter(null); setSearch(""); }} />
       ) : view === "grid" ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))", gap: 16 }}>
           {visible.map(c => <ClientGridCard key={c.patientId} c={c} tags={tagsByPatient[c.patientId] ?? []} />)}
         </div>
       ) : (

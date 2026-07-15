@@ -2665,6 +2665,9 @@
   .ps-content [style*="grid-template-columns: repeat(4, 1fr)"]:not([data-keep-cols]) {
     grid-template-columns: 1fr 1fr !important;
   }
+  .ps-content [style*="grid-template-columns: repeat(3, 1fr)"]:not([data-keep-cols]) {
+    grid-template-columns: 1fr !important;
+  }
   .ps-content [style*="grid-template-columns: 1fr 1fr 1fr 1fr"]:not([data-keep-cols]) {
     grid-template-columns: 1fr 1fr !important;
   }
@@ -2678,6 +2681,7 @@
   .ps-content [style*="grid-template-columns: 320px 1fr"]:not([data-keep-cols]),
   .ps-content [style*="grid-template-columns: 1fr 300px"]:not([data-keep-cols]),
   .ps-content [style*="grid-template-columns: 1fr 320px"]:not([data-keep-cols]),
+  .ps-content [style*="grid-template-columns: 1fr 340px"]:not([data-keep-cols]),
   .ps-content [style*="grid-template-columns: 180px 1fr"]:not([data-keep-cols]),
   .ps-content [style*="grid-template-columns: 1fr 130px"]:not([data-keep-cols]),
   .ps-content [style*="grid-template-columns: 1fr 140px"]:not([data-keep-cols]),
@@ -2751,6 +2755,7 @@
 /* Psycholog dashboard 2-col split → stack on mobile */
 @media (max-width: 900px) {
   .psy-dash-2col { grid-template-columns: 1fr !important; }
+  .psy-hw-layout { grid-template-columns: 1fr !important; }
 }
 @media (max-width: 720px) {
   .psy-dash-hero { padding: 18px 18px !important; border-radius: 14px !important; }

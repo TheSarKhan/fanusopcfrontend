@@ -123,7 +123,7 @@ export default function PsychologReviewsPage() {
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 18 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
         <Stat label={t("staff.psyReviewsAvg")} value={summary.total > 0 ? summary.avg.toFixed(1) : "—"}
               extra={summary.total > 0 ? <Stars value={Math.round(summary.avg)} size={14} /> : null} />
         <Stat label={t("psyDetail.reviews")} value={String(counts.APPROVED ?? 0)} />

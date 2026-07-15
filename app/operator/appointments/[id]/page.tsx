@@ -737,7 +737,7 @@ function RequestContent({ full, t }: { full: OperatorAppointmentFull; t: ReturnT
       ) : (
         <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Problem təsviri yazılmayıb</div>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginTop: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(160px, 100%), 1fr))", gap: 10, marginTop: 14 }}>
         {([
           [t("staff.opDetRequestedTime"), fmtDateTime(a.requestedStartAt)],
           [t("staff.opDetRequestedPsy"), a.psychologistName ?? a.requestedPsychologistName ?? "Seçilməyib"],
@@ -1714,7 +1714,7 @@ function OtherActions({ appointment, guardAction, showResolve, showCancelReq, sh
       <div className="op-det-card">
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 5 }}>Digər əməliyyatlar</div>
         <div style={{ fontSize: 12, color: "#8AAABF", fontWeight: 500, marginBottom: 14 }}>Statusa uyğun əməliyyatı seçin — fokuslu pəncərədə açılacaq.</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(150px, 100%), 1fr))", gap: 10 }}>
           {keys.map(k => {
             const m = META[k];
             return (

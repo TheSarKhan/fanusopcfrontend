@@ -241,7 +241,7 @@ export default function PsychologHomeworkPage() {
       </div>
 
       {/* Top stat strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10, marginBottom: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(160px, 100%), 1fr))", gap: 10, marginBottom: 14 }}>
         <StatCell label="Aktiv pasiyent" value={counts.activePatients} tone="brand" />
         <StatCell label="Cəmi tapşırıq"   value={counts.total}          tone="brand" />
         <StatCell label="Gözləyir"        value={counts.pending}        tone="warn" />

@@ -209,7 +209,7 @@ export default function PsychologistAvailabilityPage() {
       )}
 
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 13 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(190px, 100%), 1fr))", gap: 13 }}>
         <StatCell label="Aktiv günlər"      value={`${stats.activeDays}/7`}              tone="brand" />
         <StatCell label="Həftəlik iş saatı" value={fmtHours(stats.totalMinutes)}         tone="good"  />
         <StatCell label="Seans müddəti"     value={`${savedMinutes} dəq`}                tone="muted" />

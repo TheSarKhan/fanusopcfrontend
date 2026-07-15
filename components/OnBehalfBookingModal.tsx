@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { operatorApi, getPsychologistAvailability, type OperatorSearchHit, type PackageDto, type IntroEligibility, type AvailableSlot } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import { azFormatDate, azFormatTime, azFormatWeekday, isoToAzLocal } from "@/lib/datetime";
+import { toast as uiToast } from "@/components/Toast";
 
 /** Yerli tarixi YYYY-MM-DD formatına salır (availability sorğu sərhədləri üçün). */
 function ymd(d: Date): string {
@@ -59,6 +60,8 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
   const [pkgName, setPkgName] = useState("");
   const [pkgSessions, setPkgSessions] = useState("");
   const [pkgPrice, setPkgPrice] = useState("");
+  // Paketin qalan seansları üçün də operator burada vaxt seçə bilər (boş buraxıla bilər — sonra randevu detalından təyin edilir).
+  const [extraTimes, setExtraTimes] = useState<{ start: string; end: string }[]>([]);
 
   useEffect(() => { operatorApi.listPsychologists().then(setPsys).catch(() => {}); }, []);
   useEffect(() => {
@@ -103,6 +106,41 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
     setEndAt(isoToAzLocal(s.endAt));
     setErr(null);
   };
+
+  // Kataloq paketinin seans sayı (xüsusi paketdə operatorun daxil etdiyi say) — qalan seansların vaxt sırasını göstərmək üçün.
+  const sessionCount = useMemo(() => {
+    if (!sellPkg) return 1;
+    if (pkgMode === "catalog") {
+      const c = catalog.find(x => x.id === catalogId);
+      return c?.sessionCount ?? 1;
+    }
+    const n = Number(pkgSessions);
+    return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+  }, [sellPkg, pkgMode, catalog, catalogId, pkgSessions]);
+
+  useEffect(() => {
+    const need = Math.max(0, sessionCount - 1);
+    setExtraTimes(prev => {
+      if (prev.length === need) return prev;
+      const next = prev.slice(0, need);
+      while (next.length < need) next.push({ start: "", end: "" });
+      return next;
+    });
+  }, [sessionCount]);
+
+  const computeEnd = (v: string) => {
+    if (!v) return "";
+    const sessionMin = sessionKind === "INTRO" ? 15 : (psys.find(p => p.id === psyId)?.defaultSessionMinutes || 50);
+    const d = new Date(v); d.setMinutes(d.getMinutes() + sessionMin);
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  const setExtraStart = (i: number, v: string) => {
+    setExtraTimes(prev => prev.map((t, idx) => idx === i ? { start: v, end: v && !t.end ? computeEnd(v) : t.end } : t));
+  };
+  const setExtraEnd = (i: number, v: string) => {
+    setExtraTimes(prev => prev.map((t, idx) => idx === i ? { ...t, end: v } : t));
+  };
   useEffect(() => {
     if (locked || mode !== "search") return;
     const term = q.trim();
@@ -134,6 +172,16 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
       return;
     }
     if (sessionKind === "INTRO" && sellPkg) { setErr("Tanışlıq görüşü paketlə birgə satıla bilməz"); return; }
+    if (sellPkg) {
+      for (const t of extraTimes) {
+        if (!t.start) continue;
+        if (!t.end) { setErr("Bütün seçilmiş seanslar üçün bitiş vaxtı olmalıdır"); return; }
+        if (new Date(t.end).getTime() <= new Date(t.start).getTime()) {
+          setErr("Seansların bitiş vaxtı başlanğıcdan sonra olmalıdır");
+          return;
+        }
+      }
+    }
     setSaving(true);
     try {
       let pid = patientId;
@@ -160,9 +208,23 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
           if (!Number.isFinite(p) || p < 0) { setErr("Paket: qiymət düzgün deyil"); setSaving(false); return; }
           sell = { psychologistId: psyId, packageName: pkgName.trim() || undefined, sessionCount: s, price: p, patientChoseDirectly };
         }
-        await operatorApi.sellPackageAndBook(pid, {
+        const res = await operatorApi.sellPackageAndBook(pid, {
           sell, psychologistId: psyId, startAt, endAt, note: note.trim() || undefined,
         });
+        // Paketin qalan seansları üçün operator burada vaxt seçibsə, onları da ardıcıl planlaşdır.
+        // Paket + ilk seans artıq commit olub — bunlardan biri uğursuz olsa belə, qalanları
+        // operator sonra randevu/paket detalından təyin edə bilər.
+        const packageId = res.patientPackageId;
+        if (packageId) {
+          for (const t of extraTimes) {
+            if (!t.start) continue;
+            try {
+              await operatorApi.schedulePackageSession(pid, packageId, { startAt: t.start, endAt: t.end || undefined, note: note.trim() || undefined });
+            } catch (e) {
+              uiToast(`Seans planlaşdırılmadı: ${(e as Error).message}`, "error");
+            }
+          }
+        }
       } else {
         await operatorApi.createOnBehalf({
           patientId: pid, psychologistId: psyId, startAt, endAt, note: note.trim() || undefined,
@@ -280,7 +342,21 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
                         <input value={pkgPrice} onChange={e => setPkgPrice(e.target.value)} placeholder="Qiymət (AZN)" type="number" min={0} step="0.01" style={inp} />
                       </div>
                     )}
-                    <div style={{ fontSize: 11, color: "#52718F" }}>İlk seans paketdən sərf olunacaq; qalan seansları randevu detalından təyin edin.</div>
+                    <div style={{ fontSize: 11, color: "#52718F" }}>
+                      İlk seans paketdən sərf olunacaq.
+                      {sessionCount > 1 && " Digər seanslar üçün də indi vaxt seçə bilərsiniz — boş buraxılanlar sonra randevu detalından təyin edilə bilər."}
+                    </div>
+                    {sessionCount > 1 && (
+                      <div style={{ display: "grid", gap: 8 }}>
+                        {extraTimes.map((t, i) => (
+                          <div key={i} style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", gap: 8, alignItems: "center" }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: "#52718F", whiteSpace: "nowrap" }}>{i + 2}-ci seans</span>
+                            <DatePicker value={t.start} onChange={v => setExtraStart(i, v)} theme="light" withTime size="sm" style={{ width: "100%" }} />
+                            <DatePicker value={t.end} onChange={v => setExtraEnd(i, v)} theme="light" withTime size="sm" style={{ width: "100%" }} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </>
                 )}
               </div>

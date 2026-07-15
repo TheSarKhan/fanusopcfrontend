@@ -39,11 +39,7 @@ export default function Footer() {
       <div className="fanus-container fanus-ftr__main">
         <div className="fanus-ftr__brand">
           <Link href="/" className="fanus-ftr__lockup">
-            <Image src="/images/logos/logo-blue.png" alt="" width={56} height={40} style={{ objectFit: "contain" }} />
-            <span className="fanus-ftr__lockup-type">
-              <span className="fanus-ftr__lockup-name">FANUS</span>
-              <span className="fanus-ftr__lockup-sub">Onlayn psixoloji mərkəz</span>
-            </span>
+            <Image src="/images/logos/logo-blue.png" alt="Fanus" width={56} height={40} style={{ objectFit: "contain" }} />
           </Link>
           <p className="fanus-ftr__tag">{t("footer2.tag")}</p>
 
@@ -132,9 +128,6 @@ export default function Footer() {
           gap: 40px; padding: 64px 28px 48px;
         }
         .fanus-ftr__lockup { display: inline-flex; align-items: center; gap: 12px; }
-        .fanus-ftr__lockup-type { display: flex; flex-direction: column; line-height: 1; }
-        .fanus-ftr__lockup-name { font-weight: 800; font-size: 18px; letter-spacing: 0.02em; color: var(--fanus-primary); }
-        .fanus-ftr__lockup-sub { font-weight: 500; font-size: 9px; letter-spacing: 0.08em; color: rgba(16,81,183,.7); margin-top: 4px; text-transform: uppercase; }
         .fanus-ftr__tag {
           color: var(--fanus-ink-3);
           font-family: var(--font-poppins), system-ui, sans-serif;

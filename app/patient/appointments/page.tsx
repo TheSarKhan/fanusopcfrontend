@@ -215,7 +215,7 @@ export default function PatientAppointmentsPage() {
   const next = useMemo(() => {
     return items
       .filter(a => a.startAt && new Date(a.startAt).getTime() > now.getTime() - 30 * 60_000)
-      .filter(a => a.status === "ASSIGNED" || a.status === "CONFIRMED")
+      .filter(a => a.status === "ASSIGNED" || a.status === "CONFIRMED" || a.status === "CANCEL_REQUESTED")
       .filter(matchesFilters)
       .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())[0] ?? null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -538,6 +538,7 @@ function NextSessionHero({
   // Option B: sessions auto-complete — patient never confirms/disputes a session.
   const showConfirm = false;
   const alreadyConfirmed = !!appt.patientConfirmedAt;
+  const cancelRequested = appt.status === "CANCEL_REQUESTED";
   const urgent = tu.urgent || tu.expired;
 
   // "Qoşul" is the primary action here (JoinSessionButton variant="primary" — solid brand
@@ -622,7 +623,12 @@ function NextSessionHero({
             {t("appt.youConfirmed")}
           </span>
         )}
-        {!tu.expired && (
+        {cancelRequested ? (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
+            <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
+            Ləğv istəyiniz operator təsdiqini gözləyir
+          </div>
+        ) : !tu.expired && (
           <div className="pa-hero-actions">
             <JoinSessionButton appointment={appt} variant="primary" />
             <AddToCalendarMenu appointment={appt} />

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { operatorApi, type AvailableSlot, type PackageDto, type Psychologist, type SessionRequest } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
 import { azFormatDate, azFormatDateTime, azFormatTime, isoToAzLocal } from "@/lib/datetime";
-import DatePicker from "@/components/DatePicker";
 import { toast as uiToast } from "@/components/Toast";
 import ErrorState from "@/components/ErrorState";
 import { Skeleton } from "@/components/Skeleton";
@@ -99,7 +98,6 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   // axınları ilə eyni nümunə): psixoloq seçiləndə yaxın 3 həftənin boş vaxtları göstərilir.
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
-  const [manualOpen, setManualOpen] = useState(false);
 
   // Paket sat
   const [pkgMode, setPkgMode] = useState<"catalog" | "custom">("catalog");
@@ -153,7 +151,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
       .then(setSlots).catch(() => setSlots([])).finally(() => setSlotsLoading(false));
   }, [psyId, convertSessionKind]);
 
-  useEffect(() => { setStartAt(""); setManualOpen(false); }, [psyId, convertSessionKind]);
+  useEffect(() => { setStartAt(""); }, [psyId, convertSessionKind]);
 
   const groupedSlots = useMemo(() => {
     const map = new Map<string, AvailableSlot[]>();
@@ -510,7 +508,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                           <div className="fx-muted" style={{ fontSize: 12.5 }}>Boş saatlar yüklənir…</div>
                         ) : slots.length === 0 ? (
                           <div style={{ fontSize: 12.5, color: "var(--status-pending-fg)", background: "var(--status-pending-bg)", border: "1px solid rgba(201,125,46,.3)", borderRadius: 10, padding: "10px 12px" }}>
-                            Yaxın 3 həftədə boş saat yoxdur — aşağıdan əl ilə daxil edin.
+                            Yaxın 3 həftədə bu psixoloqun boş saatı yoxdur — psixoloqun iş qrafikinə yeni boş vaxt əlavə olunmalıdır.
                           </div>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 220, overflowY: "auto", paddingRight: 2 }}>
@@ -522,7 +520,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                                     const sel = startAt === isoToAzLocal(s.startAt);
                                     return (
                                       <button key={s.startAt} type="button"
-                                        onClick={() => { setManualOpen(false); setStartAt(isoToAzLocal(s.startAt)); }}
+                                        onClick={() => setStartAt(isoToAzLocal(s.startAt))}
                                         style={{ border: `1.5px solid ${sel ? "var(--brand)" : "var(--hairline)"}`, background: sel ? "var(--brand)" : "var(--surface)", color: sel ? "#fff" : "var(--oxford)", borderRadius: 9, padding: "7px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                                         {azFormatTime(s.startAt)}
                                       </button>
@@ -531,17 +529,6 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                                 </div>
                               </div>
                             ))}
-                          </div>
-                        )}
-                        {psyId && (
-                          <button type="button" onClick={() => setManualOpen(o => !o)}
-                            style={{ marginTop: 8, background: "none", border: "none", color: "var(--brand-700)", fontSize: 12.5, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
-                            {manualOpen ? "Əl ilə daxiletməni gizlət" : "Və ya əl ilə daxil et"}
-                          </button>
-                        )}
-                        {manualOpen && (
-                          <div style={{ marginTop: 8 }}>
-                            <DatePicker value={startAt} onChange={setStartAt} placeholder="gg.aa.iiii ss:dd" theme="light" withTime />
                           </div>
                         )}
                         {startAt && <div style={{ fontSize: 12, color: "#065F46", fontWeight: 600, marginTop: 8 }}>Seçilmiş vaxt: {azFormatDate(startAt)}, saat {azFormatTime(startAt)}</div>}

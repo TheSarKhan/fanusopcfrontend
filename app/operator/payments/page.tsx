@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import * as XLSX from "xlsx";
 import { operatorApi, type PaymentItem, type PaymentSummary } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { getStoredUser } from "@/lib/auth";
@@ -229,6 +230,27 @@ export default function OperatorPaymentsPage() {
   const callPatient = (p: PaymentItem) => { if (p.patientPhone) window.location.href = `tel:${p.patientPhone.replace(/\s/g, "")}`; };
   const viewPatient = (p: PaymentItem) => { if (p.patientId != null) router.push(`/operator/customers/${p.patientId}`); };
 
+  const exportExcel = (list: PaymentItem[]) => {
+    if (list.length === 0) { uiToast("Export ediləcək ödəniş yoxdur", "info"); return; }
+    const data = list.map(p => ({
+      ID: p.id,
+      Pasiyent: p.patientName,
+      Psixoloq: p.psychologistName ?? "",
+      Məbləğ: p.amount,
+      Valyuta: p.currency,
+      Status: PILL_LABEL[p.status as Status] ?? p.status,
+      Üsul: p.method,
+      Komissiya: p.commissionAmount ?? "",
+      "Geri qaytarılan": p.refundedAmount ?? "",
+      Tarix: fmtDay(p.paidAt ?? p.createdAt),
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ödənişlər");
+    XLSX.writeFile(wb, `odenisler-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    uiToast(`${list.length} ödəniş export edildi`, "success");
+  };
+
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -241,7 +263,7 @@ export default function OperatorPaymentsPage() {
           <div className="fx-subtitle">Maliyyə əməliyyatları · {fmtToday()}</div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button type="button" onClick={() => uiToast("CSV export hazırlanır", "info")} className="fx-btn fx-btn--ghost">
+          <button type="button" onClick={() => exportExcel(rows)} className="fx-btn fx-btn--ghost">
             <Ic d={["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"]} /> Export
           </button>
           <button type="button" onClick={() => { uiToast("Ödəniş seans/paket satışından yaranır", "info"); router.push("/operator/appointments"); }} className="fx-btn fx-btn--primary">
@@ -438,7 +460,6 @@ export default function OperatorPaymentsPage() {
                 <div className="fx-card__head">
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 700 }}>Psixoloq üzrə bu ay</div>
-                    <div style={{ fontSize: 12, color: "var(--oxford-60)" }}>Komissiya dərəcəsi: {Math.round(PLATFORM_RATE * 100)}% platforma payı</div>
                   </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr", padding: "10px 24px", fontSize: "var(--text-label)", fontWeight: 600, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", borderBottom: "1px solid var(--hairline)" }}>
@@ -473,10 +494,10 @@ export default function OperatorPaymentsPage() {
                   <span style={{ fontSize: 13, color: "var(--oxford-60)" }}>AZN platforma payı</span>
                 </div>
                 <div className="fx-progress fx-progress--lg">
-                  <div className="fx-progress__fill" style={{ width: `${Math.round(PLATFORM_RATE * 100)}%` }} />
+                  <div className="fx-progress__fill" style={{ width: `${payouts.totGross ? Math.round((payouts.totComm / payouts.totGross) * 100) : 0}%` }} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 12.5 }}>
-                  <LegendRow color="var(--brand)" label={`Platforma payı (${Math.round(PLATFORM_RATE * 100)}%)`} value={`${fmtNum(payouts.totComm)} AZN`} />
+                  <LegendRow color="var(--brand)" label="Platforma payı" value={`${fmtNum(payouts.totComm)} AZN`} />
                   <LegendRow color="var(--brand-100)" label="Psixoloqlara ödəniləcək" value={`${fmtNum(payouts.totNet)} AZN`} />
                 </div>
                 <div style={{ borderTop: "1px solid var(--hairline)", paddingTop: 14, display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--oxford-60)" }}>
@@ -495,7 +516,7 @@ export default function OperatorPaymentsPage() {
           <span className="fx-num" style={{ fontSize: 13, fontWeight: 600 }}>{selectedIds.length} seçildi</span>
           <span className="fx-bulkbar__divider" />
           <button type="button" onClick={bulkPay} className="fx-btn fx-btn--primary fx-btn--sm">Toplu ödənildi</button>
-          <button type="button" onClick={() => { uiToast(`${selectedIds.length} sətir export edildi`, "success"); setSelected({}); }} className="fx-btn fx-btn--dark-outline fx-btn--sm">
+          <button type="button" onClick={() => { exportExcel(items.filter(p => selected[p.id])); setSelected({}); }} className="fx-btn fx-btn--dark-outline fx-btn--sm">
             <Ic d={["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"]} /> Export
           </button>
           <button type="button" onClick={() => setSelected({})} aria-label="Seçimi təmizlə" style={{ background: "transparent", border: "none", color: "rgba(255,255,255,.6)", cursor: "pointer", display: "flex", padding: 4 }}>
@@ -675,11 +696,11 @@ function Drawer({ p, onClose, onCall, onWhatsapp, onViewLinked }: { p: PaymentIt
         <div className="fx-drawer__section">
           <div className="fx-section-label" style={{ marginBottom: 14 }}>Komissiya bölgüsü</div>
           <div className="fx-progress fx-progress--lg" style={{ marginBottom: 12 }}>
-            <div className="fx-progress__fill" style={{ width: `${Math.round(PLATFORM_RATE * 100)}%` }} />
+            <div className="fx-progress__fill" style={{ width: `${p.amount ? Math.round((comm / p.amount) * 100) : 0}%` }} />
           </div>
           <div className="fx-num" style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 13 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--oxford-60)" }}>Ümumi məbləğ</span><b>{fmtNum(p.amount)} AZN</b></div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--oxford-60)" }}><span style={{ width: 8, height: 8, borderRadius: 2.5, background: "var(--brand)" }} />Platforma payı ({Math.round(PLATFORM_RATE * 100)}%)</span><span style={{ fontWeight: 600 }}>{fmtNum(comm)} AZN</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--oxford-60)" }}><span style={{ width: 8, height: 8, borderRadius: 2.5, background: "var(--brand)" }} />Platforma payı</span><span style={{ fontWeight: 600 }}>{fmtNum(comm)} AZN</span></div>
             <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--oxford-60)" }}><span style={{ width: 8, height: 8, borderRadius: 2.5, background: "var(--brand-100)" }} />Psixoloq payı{p.psychologistName ? ` — ${p.psychologistName}` : ""}</span><b style={{ color: "var(--sage)" }}>{fmtNum(p.amount - comm)} AZN</b></div>
           </div>
         </div>

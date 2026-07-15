@@ -114,7 +114,7 @@ export default function PanelShell({
         <div className="ps-side__brand">
           <Link href={homeHref} className="ps-side__brand-link" aria-label="Fanus">
             <span className="ps-side__logo">
-              <Image src="/images/logos/logo-black.png" alt="" width={52} height={52} priority />
+              <Image src="/images/logos/logo-blue.png" alt="" width={52} height={52} priority />
             </span>
             <div>
               <div className="ps-side__name">Fanus</div>

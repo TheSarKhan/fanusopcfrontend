@@ -71,11 +71,7 @@ export default function Navbar() {
       <div className="fanus-container fanus-nav__inner">
         <Link href="/" className="fanus-nav__brand" aria-label="Fanus">
           <span className="fanus-nav__mark">
-            <Image src={light ? "/images/logos/logo-white.png" : "/images/logos/logo-blue.png"} alt="" width={56} height={40} priority />
-          </span>
-          <span className="fanus-nav__type">
-            <span className="fanus-nav__type-name">FANUS</span>
-            <span className="fanus-nav__type-sub">Onlayn psixoloji mərkəz</span>
+            <Image src={light ? "/images/logos/logo-white.png" : "/images/logos/logo-blue.png"} alt="Fanus" width={56} height={40} priority />
           </span>
         </Link>
 
@@ -156,8 +152,6 @@ export default function Navbar() {
         /* ── Light (transparent-over-hero) variant — homepage, not scrolled.
            Yalnız tablet/desktopda: mobildə hero adi ağ-fonlu mətn bloku ilə başlayır. ── */
         @media (min-width: 768px) {
-          .fanus-nav--light .fanus-nav__type-name { color: #fff; }
-          .fanus-nav--light .fanus-nav__type-sub { color: rgba(255,255,255,.75); }
           /* Scoped to the inline desktop nav/cta (hidden ≤980px) — must NOT leak into
              .fanus-nav__mobile, which sits on a solid white panel and needs dark ink text. */
           .fanus-nav--light .fanus-nav__links .fanus-nav__link { color: rgba(255,255,255,.92); }
@@ -190,24 +184,6 @@ export default function Navbar() {
           transition: height .3s ease;
         }
         .fanus-nav.is-scrolled .fanus-nav__mark img { height: 40px; }
-
-        .fanus-nav__type { display: flex; flex-direction: column; line-height: 1; }
-        .fanus-nav__type-name {
-          font-weight: 800; letter-spacing: 0.02em;
-          color: var(--fanus-primary); font-size: 22px;
-          transition: font-size .3s ease;
-        }
-        .fanus-nav.is-scrolled .fanus-nav__type-name { font-size: 17px; }
-        .fanus-nav__type-sub {
-          font-weight: 500; font-size: 9px; letter-spacing: 0.08em;
-          color: rgba(16,81,183,.7); margin-top: 5px; text-transform: uppercase;
-          max-height: 16px; opacity: 1;
-          transition: max-height .3s ease, opacity .2s ease, margin-top .3s ease;
-          overflow: hidden;
-        }
-        .fanus-nav.is-scrolled .fanus-nav__type-sub {
-          max-height: 0; opacity: 0; margin-top: 0;
-        }
 
         /* ── Links ── */
         .fanus-nav__links { display: flex; align-items: center; gap: 4px; }

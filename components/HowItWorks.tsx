@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import SessionRequestModal from "@/components/SessionRequestModal";
 
 export default function HowItWorks() {
   const { t } = useT();
@@ -12,6 +12,7 @@ export default function HowItWorks() {
     { n: 3, title: t("how.step3Title"), text: t("how.step3Text"), img: "/images/how/step3.jpg" },
   ];
   const [active, setActive] = useState(0);
+  const [modalOpen, setModalOpen] = useState(false);
 
   return (
     <section className="fanus-how" id="how">
@@ -46,12 +47,14 @@ export default function HowItWorks() {
             <div className="fanus-how__visual-frame">
               <img src={STEPS[active].img} alt="" />
             </div>
-            <Link href="/register" className="fanus-btn fanus-btn-primary fanus-how__visual-cta">
+            <button type="button" onClick={() => setModalOpen(true)} className="fanus-btn fanus-btn-primary fanus-how__visual-cta">
               {t("how.cta")}
-            </Link>
+            </button>
           </div>
         </div>
       </div>
+
+      <SessionRequestModal open={modalOpen} onClose={() => setModalOpen(false)} />
 
       <style>{`
         .fanus-how { padding: 64px 0; background: #fff; position: relative; }

@@ -19,6 +19,7 @@ import {
   reasonLabel,
   type AppointmentDetail,
   type Referral,
+  type RescheduleProposal,
 } from "@/lib/api";
 import OnBehalfBookingModal from "@/components/OnBehalfBookingModal";
 import ErrorState from "@/components/ErrorState";
@@ -108,7 +109,13 @@ function timeAgo(iso: string | null | undefined): string {
 }
 
 /** Status-asılı xəbərdarlıq (mübahisə / təsdiq / ləğv tələbi). */
-function buildAlert(a: AppointmentDetail): { tone: "red" | "amber"; text: string } | null {
+function buildAlert(a: AppointmentDetail, hasPsyProposal = false): { tone: "red" | "amber"; text: string } | null {
+  // Psixoloq Cədvəldə (drag-and-drop) yeni vaxt təklif edib — pasiyentin cavabını
+  // gözləyir. Randevunun öz statusu dəyişmədiyi üçün (CONFIRMED/ASSIGNED qalır)
+  // bu, ayrıca banner olmadan operatorda görünmürdü.
+  if (hasPsyProposal && (a.status === "CONFIRMED" || a.status === "ASSIGNED")) {
+    return { tone: "amber", text: "Psixoloq yeni vaxt təklif edib — pasiyentin cavabı gözlənilir." };
+  }
   if (a.status === "DISPUTED") {
     const who = a.patientDisputed && a.psychologistDisputed ? "İkisi də «olmadı» dedi"
       : a.patientDisputed ? "Pasient «olmadı» dedi"
@@ -179,6 +186,15 @@ export default function OperatorAppointmentsPage() {
   });
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const refCount = referrals.length;
+  // Psixoloqun Cədvəldə (drag-and-drop) yaratdığı, pasiyentin cavabını gözləyən
+  // təkliflərin randevu ID-ləri — bu məlumat AppointmentDetail-də olmadığı üçün
+  // ayrıca çəkilir və randevu sətrinə xəbərdarlıq/filtr kimi bağlanır.
+  const [psyProposalApptIds, setPsyProposalApptIds] = useState<Set<number>>(new Set());
+  const loadPsyProposals = useCallback(() => {
+    operatorApi.pendingPsychologistProposals()
+      .then((ps: RescheduleProposal[]) => setPsyProposalApptIds(new Set(ps.map(p => p.appointmentId))))
+      .catch(() => {});
+  }, []);
 
   // React to topbar search updates
   useEffect(() => {
@@ -190,7 +206,8 @@ export default function OperatorAppointmentsPage() {
   useEffect(() => {
     operatorApi.stats().then(s => setSlaHours(s.slaHours)).catch(() => {});
     operatorApi.pendingReferrals().then(setReferrals).catch(() => {});
-  }, []);
+    loadPsyProposals();
+  }, [loadPsyProposals]);
 
   const [error, setError] = useState(false);
   const load = () => {
@@ -252,10 +269,10 @@ export default function OperatorAppointmentsPage() {
   useEffect(() => {
     return subscribeNotifications((n) => {
       if (typeof n.type !== "string") return;
-      if (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_")) load();
+      if (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_")) { load(); loadPsyProposals(); }
       if (n.type.startsWith("REFERRAL_")) operatorApi.pendingReferrals().then(setReferrals).catch(() => {});
     });
-  }, []);
+  }, [loadPsyProposals]);
 
   // OP-2: claim hadisələri çipləri canlı yeniləyir (səhifə reload-suz)
   useEffect(() => {
@@ -276,9 +293,12 @@ export default function OperatorAppointmentsPage() {
     if (slaHours == null) return false;
     return now - new Date(a.createdAt).getTime() > slaHours * 3_600_000;
   };
-  // Patient reschedule request on an active appointment (no status change).
+  // Vaxt dəyişikliyi tələbi — həm pasiyentin note-tələbi (rescheduleRequestedAt),
+  // həm də psixoloqun Cədvəl (drag-and-drop) təklifi. Hər ikisi aktiv randevuda
+  // yaşayır (status dəyişmir), ona görə eyni filtr/inbox altında birləşir.
   const isRescheduleReq = (a: AppointmentDetail) =>
-    !!a.rescheduleRequestedAt && (a.status === "CONFIRMED" || a.status === "ASSIGNED");
+    (a.status === "CONFIRMED" || a.status === "ASSIGNED")
+    && (!!a.rescheduleRequestedAt || psyProposalApptIds.has(a.id));
   const isCancelReq = (a: AppointmentDetail) => a.status === "CANCEL_REQUESTED";
   // Everything that belongs in the unified "Yeni müraciətlər" inbox: brand-new
   // requests plus patient-initiated cancel/reschedule requests on existing bookings.
@@ -317,7 +337,7 @@ export default function OperatorAppointmentsPage() {
       return hay.includes(q);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, tab, allOnly, search, overdueOnly, mineOnly, rescheduleOnly, cancelOnly, meId, slaHours]);
+  }, [items, tab, allOnly, search, overdueOnly, mineOnly, rescheduleOnly, cancelOnly, meId, slaHours, psyProposalApptIds]);
 
   // ─── Paketlər tabı ───────────────────────────────────────────────────────────
   // Paket kartı BÜTÖV paketi əks etdirir: seans siyahısı/sayğacları həmişə paketin
@@ -359,7 +379,7 @@ export default function OperatorAppointmentsPage() {
     });
   }, [allPackageGroups, pkgStatusF, pkgSearch]);
 
-  const rescheduleCount = useMemo(() => items.filter(isRescheduleReq).length, [items]);
+  const rescheduleCount = useMemo(() => items.filter(isRescheduleReq).length, [items, psyProposalApptIds]);
   const cancelReqCount = useMemo(() => items.filter(isCancelReq).length, [items]);
 
   // Randevular tabının sayğacları yalnız tək seansları sayır (paketlər öz tabında)
@@ -566,7 +586,7 @@ export default function OperatorAppointmentsPage() {
               ) : (
                 <div style={GRID}>
                   {singles.map(a => (
-                    <AppointmentCard key={a.id} a={a} meId={meId}
+                    <AppointmentCard key={a.id} a={a} meId={meId} hasPsyProposal={psyProposalApptIds.has(a.id)}
                       onTake={() => takeOwnership(a.id)} onOpen={() => openDetail(a)} />
                   ))}
                 </div>
@@ -587,7 +607,7 @@ export default function OperatorAppointmentsPage() {
       ) : (
         <div style={GRID}>
           {filtered.map(a => (
-            <AppointmentCard key={a.id} a={a} meId={meId}
+            <AppointmentCard key={a.id} a={a} meId={meId} hasPsyProposal={psyProposalApptIds.has(a.id)}
               onTake={() => takeOwnership(a.id)} onOpen={() => openDetail(a)} />
           ))}
         </div>
@@ -652,9 +672,9 @@ const GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "repea
 const PKG_GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(360px, 100%), 1fr))", gap: 16 };
 
 function AppointmentCard({
-  a, meId, onTake, onOpen,
+  a, meId, onTake, onOpen, hasPsyProposal = false,
 }: {
-  a: AppointmentDetail; meId: number | null; onTake?: () => void; onOpen: () => void;
+  a: AppointmentDetail; meId: number | null; onTake?: () => void; onOpen: () => void; hasPsyProposal?: boolean;
 }) {
   const { t } = useT();
   const status = a.status;
@@ -667,7 +687,7 @@ function AppointmentCard({
   const claimLabel = claimMine ? t("staff.opClaimMine") : (a.claimedByName ? t("staff.opClaimWorking", { name: a.claimedByName }) : "");
   const hasSeries = a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null;
   const lastOutcome = a.lastContactOutcome ? OUTCOME_LABEL[a.lastContactOutcome] : null;
-  const alert = buildAlert(a);
+  const alert = buildAlert(a, hasPsyProposal);
   const canClaim = a.claimedByUserId == null && isPoolEligible(a.status) && !!onTake;
 
   // Təyinat sətri

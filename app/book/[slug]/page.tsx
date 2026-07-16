@@ -19,7 +19,7 @@ import {
 import { buildPanelUrl, getStoredUser } from "@/lib/auth";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
-import { azLocalToISO, azOrdinal } from "@/lib/datetime";
+import { azLocalToISO, azOrdinal, azNowLocal } from "@/lib/datetime";
 import DatePicker from "@/components/DatePicker";
 
 // Qısa forma (B.e/Ç.a/...) yalnız kompakt gün-tab çipləri üçün — sərbəst mətndə
@@ -739,10 +739,14 @@ export default function BookPsychologistPage() {
   // pasienti bloklamaq əvəzinə davam etməyə icazə veririk (operator sonra əl ilə
   // uyğunlaşdırır), paket/seriya-uzatma axınları isə öz "sonra seç" mexanizmini saxlayır.
   const noSlotsAvailable = showPicker && !slotsLoading && grouped.length === 0;
+  // Sərbəst tarix/saat sahəsi (əl ilə) — psixoloqun açıq vaxtı yoxdursa göstərilir.
+  // Boş buraxmaq olar (opsional), amma doldurularsa keçmiş vaxt qəbul edilməməlidir.
+  const preferredStartInPast = noSlotsAvailable && !!preferredStartAt
+    && new Date(preferredStartAt) <= new Date();
   const timeDone = (mode === "PACKAGE" && chooseLater) ? true
     : pkgNeedsSlots ? okItems.length > 0
     : extendCtx ? okItems.length > 0
-    : (okItems.length > 0 || noSlotsAvailable);
+    : (okItems.length > 0 || (noSlotsAvailable && !preferredStartInPast));
   const timeLabel = (mode === "PACKAGE" && chooseLater)
     ? "Vaxt sonra seçiləcək"
     : pkgNeedsSlots && selectedPackage
@@ -928,7 +932,12 @@ export default function BookPsychologistPage() {
                             Sizə uyğun tarix/saatı seçin (opsional)
                           </label>
                           <DatePicker value={preferredStartAt} onChange={setPreferredStartAt} withTime theme="light"
-                            placeholder="gg.aa.iiii ss:dd" />
+                            min={azNowLocal()} placeholder="gg.aa.iiii ss:dd" />
+                          {preferredStartInPast && (
+                            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#B42318", fontWeight: 600 }}>
+                              Keçmiş vaxt seçilə bilməz
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>

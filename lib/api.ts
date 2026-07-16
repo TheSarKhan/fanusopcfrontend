@@ -3264,6 +3264,9 @@ export const operatorApi = {
     authedRequest<AppointmentDetail[]>("GET", `/operator/appointments/recent-customers?patients=${patients}`),
   // ─── Psixoloqlar arası yönləndirmə təsdiqi ───────────────────────────────
   pendingReferrals: () => authedRequest<Referral[]>("GET", "/operator/referrals"),
+  /** Psixoloqun Cədvəldə (drag-and-drop) yaratdığı, pasiyentin cavabını gözləyən təkliflər. */
+  pendingPsychologistProposals: () =>
+    authedRequest<RescheduleProposal[]>("GET", "/operator/reschedule-proposals/pending"),
   referral: (id: number) => authedRequest<Referral>("GET", `/operator/referrals/${id}`),
   approveReferral: (id: number) =>
     authedRequest<Referral>("POST", `/operator/referrals/${id}/approve`),

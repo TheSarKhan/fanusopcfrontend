@@ -8,6 +8,7 @@ import {
   type OperatorStats,
   type PaymentSummary,
   type Referral,
+  type RescheduleProposal,
 } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { getStoredUser } from "@/lib/auth";
@@ -48,6 +49,7 @@ export default function OperatorDashboard() {
   const user = getStoredUser();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [psyProposals, setPsyProposals] = useState<RescheduleProposal[]>([]);
   const [stats, setStats] = useState<OperatorStats | null>(null);
   const [summary, setSummary] = useState<PaymentSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,7 +70,8 @@ export default function OperatorDashboard() {
       operatorApi.stats().catch(() => null),
       operatorApi.paymentsSummary().catch(() => null),
       operatorApi.pendingReferrals().catch(() => [] as Referral[]),
-    ]).then(([list, s, sm, rf]) => { setItems(list); setStats(s); setSummary(sm); setReferrals(rf); }).catch(() => setError(true)).finally(() => setLoading(false));
+      operatorApi.pendingPsychologistProposals().catch(() => [] as RescheduleProposal[]),
+    ]).then(([list, s, sm, rf, pp]) => { setItems(list); setStats(s); setSummary(sm); setReferrals(rf); setPsyProposals(pp); }).catch(() => setError(true)).finally(() => setLoading(false));
   };
   useEffect(load, []);
   useEffect(() => subscribeNotifications(n => { if (typeof n.type === "string" && (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_") || n.type.startsWith("REFERRAL"))) load(); }), []);
@@ -123,6 +126,9 @@ export default function OperatorDashboard() {
     for (const r of referrals)
       out.push({ key: `ref-${r.id}`, kind: "referral", href: `/operator/referrals/${r.id}`,
         name: r.patientName ?? "—", sub: `${r.fromPsychologistName} → ${r.toPsychologistName}`, ts: r.createdAt ?? "" });
+    for (const p of psyProposals)
+      out.push({ key: `psyprop-${p.id}`, kind: "psy_proposal", href: `/operator/appointments/${p.appointmentId}`,
+        name: p.patientName ?? "—", sub: `${p.psychologistName ?? "Psixoloq"} yeni vaxt təklif etdi`, ts: p.createdAt });
     // Mübahisəli olanlar tarixdən asılı olmayaraq yuxarıda — ən təcili kateqoriyadır.
     return out.sort((a, b) => {
       const pa = a.kind === "disputed" ? 1 : 0;
@@ -130,7 +136,7 @@ export default function OperatorDashboard() {
       if (pa !== pb) return pb - pa;
       return new Date(b.ts || 0).getTime() - new Date(a.ts || 0).getTime();
     });
-  }, [pending, rescheduleReqs, cancelReqs, disputed, rejected, referrals]);
+  }, [pending, rescheduleReqs, cancelReqs, disputed, rejected, referrals, psyProposals]);
   const todayActive = useMemo(() => items.filter(a => a.startAt && isSameDay(new Date(a.startAt), now)).filter(a => ["ASSIGNED", "CONFIRMED", "AWAITING_CONFIRMATION"].includes(a.status)).sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime()), [items, now]);
   const awaitingConfirm = useMemo(() => items.filter(a => a.status === "AWAITING_CONFIRMATION"), [items]);
   const stalePending = useMemo(() => { const cutoff = now.getTime() - 4 * 3600000; return pending.filter(a => new Date(a.createdAt).getTime() < cutoff); }, [pending, now]);
@@ -402,7 +408,7 @@ function Pill({ bg, fg, children }: { bg: string; fg: string; children: ReactNod
 }
 
 /* ─── Vahid inbox sətri (bütün müraciət növlərini eyni formatda göstərir) ──── */
-type InboxKind = "pending" | "reschedule" | "cancel" | "disputed" | "rejected" | "referral";
+type InboxKind = "pending" | "reschedule" | "cancel" | "disputed" | "rejected" | "referral" | "psy_proposal";
 interface InboxItem {
   key: string; kind: InboxKind; href: string; name: string; sub: string; ts: string;
   phone?: string | null;
@@ -418,6 +424,7 @@ const INBOX_META: Record<InboxKind, { label: string; bg: string; fg: string }> =
   disputed:   { label: "Mübahisə",         bg: "var(--status-refunded-bg)", fg: "var(--status-refunded-fg)" },
   rejected:   { label: "Rədd → təyin",     bg: "var(--status-pending-bg)",  fg: "var(--status-pending-fg)" },
   referral:   { label: "Yönləndirmə",      bg: "var(--lilac-bg)",           fg: "var(--lilac)" },
+  psy_proposal: { label: "Psixoloq təklifi", bg: "var(--bg-blue)",          fg: "var(--brand-600)" },
 };
 
 function initials(name: string): string {

@@ -140,9 +140,12 @@ export default function PatientAppointmentsPage() {
         const photos: Record<number, string> = {};
         for (const p of psys) if (p.photoUrl) photos[p.id] = p.photoUrl;
         setPsyPhotos(photos);
-        // Only psychologist-initiated proposals are FOR the patient to decide;
-        // the patient's own GAP-03 requests are awaiting the psychologist.
-        setProposals(props.filter(p => p.initiator !== "PATIENT"));
+        // Pasiyent artıq PSİXOLOQ-təşəbbüslü vaxt təklifini özü qəbul/rədd ETMİR —
+        // psixoloq Cədvəldə yeni vaxt təklif edəndə qərarı OPERATOR yekunlaşdırır
+        // (pasiyent yalnız məlumatlandırılır). Yalnız OPERATOR-təşəbbüslü təkliflər
+        // (B4-2 swap vasitəçiliyi — operatorun qəsdən pasiyentə təklifi) pasiyentin
+        // qərarına qalır; PATIENT-öz sorğuları psixoloqu gözləyir.
+        setProposals(props.filter(p => p.initiator === "OPERATOR"));
       })
       .catch(() => {})
       .finally(() => setLoading(false));

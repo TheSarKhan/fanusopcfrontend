@@ -2606,6 +2606,84 @@
   pointer-events: none;
 }
 
+/* ── OPD: müraciət detalı — "Operator Cockpit" redizayn (2 zonalı konteyner) ── */
+.opd { display: flex; flex-direction: column; min-height: 0; }
+.opd__grid {
+  display: flex;
+  border-radius: 16px;
+  background: #FFFFFF;
+  box-shadow: 0 4px 24px rgba(30, 41, 59, 0.06);
+  overflow: hidden;
+  border: 1px solid #EDF1F8;
+  min-height: 0;
+}
+.opd__left {
+  width: 300px;
+  flex: none;
+  background: #F8FAFC;
+  border-right: 1px solid #EDF1F8;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.opd__right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.opd__header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #FFFFFF;
+  padding: 16px 24px;
+  border-bottom: 1px solid #EDF1F8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.opd__body { padding: 20px 24px 36px; display: flex; flex-direction: column; gap: 18px; }
+.opd__secondary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.opd-card {
+  background: #FFFFFF;
+  border: 1px solid #EDF1F8;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(30, 41, 59, 0.04);
+}
+.opd-card__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #5C6B85;
+  text-transform: uppercase;
+}
+.opd-kv { display: flex; justify-content: space-between; gap: 10px; }
+.opd-kv__k { font-size: 12.5px; color: #5C6B85; }
+.opd-kv__v { font-size: 12.5px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 600; color: #1E293B; text-align: right; }
+.opd-icon-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 1px solid #E2E8F5; background: #FFFFFF; color: #475569;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0; text-decoration: none;
+  transition: background .12s, border-color .12s;
+}
+.opd-icon-btn:hover { background: #F1F5F9; border-color: #CBD5E1; }
+.opd-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; background: #F8FAFC; border: 1px solid #EDF1F8; border-radius: 10px;
+}
+.opd-ghost-btn {
+  background: transparent; border: 1px solid #E2E8F5; color: #475569;
+  border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600;
+  cursor: pointer; flex: none; font-family: inherit;
+}
+.opd-ghost-btn:hover { background: #EDF1F8; }
+@media (max-width: 960px) {
+  .opd__grid { flex-direction: column; }
+  .opd__left { width: 100%; order: 2; border-right: none; border-top: 1px solid #EDF1F8; }
+  .opd__right { order: 1; }
+  .opd__secondary-grid { grid-template-columns: 1fr; }
+}
+
 /* ── OP-2: claim çipləri (siyahı + header) ─────────────────────────────── */
 .op-claim-chip {
   display: inline-flex;

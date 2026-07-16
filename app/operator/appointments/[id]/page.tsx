@@ -16,11 +16,9 @@ import {
   operatorApi,
   isSlotConflict,
   CANCEL_REASONS,
-  reasonLabel,
   type AppointmentDetail,
   type AvailableSlot,
   type ClaimState,
-  type MeetingLinkLogItem,
   type OperatorActivityItem,
   type OperatorAppointmentFull,
   type Psychologist,
@@ -95,8 +93,17 @@ function ageLabel(fromIso: string, nowMs: number): string {
   if (h > 0) return `${h}s ${min % 60}d`;
   return `${min}d`;
 }
-function minutesSince(iso: string, nowMs: number): number {
-  return Math.max(0, Math.floor((nowMs - new Date(iso).getTime()) / 60000));
+/** İnsani nisbi vaxt — "2 saat əvvəl"; 30 gündən köhnə → tam tarix. */
+function azFromNow(iso?: string | null, nowMs: number = Date.now()): string {
+  if (!iso) return "—";
+  const min = Math.max(0, Math.floor((nowMs - new Date(iso).getTime()) / 60000));
+  if (min < 1) return "indi";
+  if (min < 60) return `${min} dəq əvvəl`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} saat əvvəl`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d} gün əvvəl`;
+  return azFormatDate(iso);
 }
 
 export default function OperatorAppointmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -117,8 +124,17 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [toast, setToast] = useState<string | null>(null);
   const [reassignOpen, setReassignOpen] = useState(false);
-  const [zone, setZone] = useState<"work" | "context">("work"); // <900px tablar
   const assignFocusRef = useRef<HTMLButtonElement | null>(null);
+  const assignCardRef = useRef<HTMLDivElement | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [approveErr, setApproveErr] = useState<string | null>(null);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [otherAction, setOtherAction] = useState<OtherActionKey | null>(null);
+  const focusAssign = useCallback(() => {
+    assignCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => assignFocusRef.current?.focus(), 250);
+  }, []);
 
   const a = full?.appointment ?? null;
   const claimedByOther = !!claim?.claimedByUserId && !claim.mine;
@@ -221,6 +237,36 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     operatorApi.claim(id).then(c => { setClaim(c); run(); }).catch(() => run());
   }, [claim?.mine, claim?.claimedByName, claimedByOther, isAdmin, id, meId, t]);
 
+  // ── Psixoloq təklifini bir kliklə təsdiqlə və tətbiq et ────────────────────
+  // "Operator OK edərsə yeni vaxt təyin edilsin" — pasiyentin qəbul/rədd addımı
+  // yoxdur. Təklifin ilk variant vaxtı mövcud psixoloqa assignSlots ilə tətbiq
+  // olunur; backend gözləyən təklifi ACCEPTED edir və pasiyenti xəbərdar edir.
+  const approveProposal = useCallback(() => {
+    const p = full?.pendingRescheduleProposal;
+    const opt = p?.options?.[0];
+    const appt = full?.appointment;
+    if (!p || !opt?.startAt || !opt?.endAt || !appt) return;
+    const psyId = appt.psychologistId ?? p.psychologistId;
+    if (!psyId) { setApproveErr("Bu randevuya psixoloq təyin olunmayıb"); return; }
+    guardAction(async () => {
+      setApproving(true); setApproveErr(null);
+      try {
+        await operatorApi.assignSlots(appt.id, {
+          psychologistId: psyId,
+          slots: [{ startAt: opt.startAt, endAt: opt.endAt }],
+          operatorNote: appt.operatorNote ?? null,
+          sessionPrice: null,
+        });
+        globalToast("Təklif təsdiqləndi — vaxt yeniləndi", "success");
+        backToList();
+      } catch (e) {
+        setApproveErr((e as Error).message);
+      } finally {
+        setApproving(false);
+      }
+    });
+  }, [full, guardAction, backToList]);
+
   // ── Yekun əməliyyat: toast ────────────────────────────────────────────────
   // Sahiblik QALIR (pool modeli) — yekun əməliyyat claim-i sıfırlamır.
   const onActionDone = useCallback((updated: AppointmentDetail, msg: string) => {
@@ -289,12 +335,6 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   }
 
   const isFinal = a.status === "COMPLETED" || a.status === "CANCELLED";
-  const ageMin = minutesSince(a.createdAt, nowMs);
-  const slaUrgent = ageMin >= 60; // yalnız SLA-ya yaxınlaşanda/keçəndə rəngli nişan qoyulur
-  const withinSla = ageMin <= full.slaHours * 60;
-  const slaColor = withinSla ? "var(--status-pending-fg)" : "var(--status-refunded-fg)";
-  const slaBg = withinSla ? "var(--status-pending-bg)" : "var(--status-refunded-bg)";
-  const claimedMin = claim?.claimedAt ? minutesSince(claim.claimedAt, nowMs) : 0;
 
   const isCancelReq = a.status === "CANCEL_REQUESTED";
   // CONFIRMED included so the assign block doubles as the reschedule / change-psychologist tool.
@@ -314,150 +354,253 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   // Option B: sessions auto-complete; operator retroactively marks a no-show.
   const canMarkNoShow = a.status === "COMPLETED" || a.status === "AWAITING_CONFIRMATION";
   const phone = normalizePhone(a.patientPhone);
+  const isAssigned = a.status === "ASSIGNED" || a.status === "CONFIRMED";
+
+  // ── "Sonrakı addım" strip — bir baxışda operatora indi nə lazım olduğunu deyir ──
+  // Qeyd: obyektdə funksiya SAXLAMIRIQ (yalnız `action` açarı) — belədə ref-bağlı
+  // callback-lar render obyektinə düşmür (react-hooks/refs lint qaydası təmiz qalır).
+  type NextTone = "action" | "warn" | "muted" | "done";
+  type NextAction = "approve" | "assign" | "link" | "payment" | "dispute" | "cancelreq";
+  const next: { tone: NextTone; title: string; sub?: string; btnLabel?: string; action?: NextAction } = (() => {
+    if (a.status === "CANCELLED") return { tone: "muted", title: "Bu müraciət ləğv edilib." };
+    if (a.status === "COMPLETED") return { tone: "done", title: "Seans tamamlanıb." };
+    if (canResolve) return { tone: "warn", title: "Mübahisə açılıb — nəticəni qeyd edin.", btnLabel: "Mübahisəni həll et", action: "dispute" };
+    if (isCancelReq) return { tone: "warn", title: "Pasiyent ləğv tələb edib — təsdiqləyin və ya rədd edin.", btnLabel: "Ləğv tələbinə bax", action: "cancelreq" };
+    if (canAssign && full.pendingRescheduleProposal?.initiator === "PSYCHOLOGIST" && full.pendingRescheduleProposal.options?.[0]?.startAt && !timeLocked)
+      return { tone: "action", title: "Bu psixoloq yeni vaxt təklif edib — təsdiqləyin.", sub: `Təklif olunan vaxt: ${fmtDateTime(full.pendingRescheduleProposal.options[0].startAt)}`, btnLabel: approving ? "…" : "Təsdiqlə və tətbiq et", action: "approve" };
+    if (canAssign && (a.rescheduleRequestedAt || full.pendingRescheduleProposal) && !timeLocked)
+      return { tone: "action", title: "Vaxt dəyişikliyi istənilib — yeni vaxt təyin edin.", btnLabel: "Vaxtı seç", action: "assign" };
+    if (canAssign && !isAssigned && !timeLocked)
+      return { tone: "action", title: "Bu müraciətə psixoloq və vaxt təyin edin.", btnLabel: "Təyin et", action: "assign" };
+    if (isAssigned && !a.meetingLink && !isFinal)
+      return { tone: "action", title: "Görüş linkini əlavə edin ki, pasiyentə göndərilsin.", btnLabel: "Link əlavə et", action: "link" };
+    if (needsPayment)
+      return { tone: "action", title: "Seans məbləğini təyin edin ki, ödənişlərdə görünsün.", btnLabel: "Məbləği təyin et", action: "payment" };
+    return { tone: "done", title: "Bütün məlumatlar tamamdır." };
+  })();
+  const runNextAction = (action: NextAction) => {
+    if (action === "approve") approveProposal();
+    else if (action === "assign") focusAssign();
+    else if (action === "link") setLinkModalOpen(true);
+    else if (action === "payment") setPaymentModalOpen(true);
+    else if (action === "dispute") setOtherAction("dispute");
+    else if (action === "cancelreq") setOtherAction("cancelreq");
+  };
+  const nextTone = {
+    action: { bg: "#EFF6FF", border: "#DBEAFE", iconBg: "#FFFFFF", icon: "#2563EB" },
+    warn:   { bg: "#FFFBEB", border: "#FDE68A", iconBg: "#FFFFFF", icon: "#D97706" },
+    muted:  { bg: "#F8FAFC", border: "#EDF1F8", iconBg: "#FFFFFF", icon: "#94A3B8" },
+    done:   { bg: "#ECFDF3", border: "#BBF7D0", iconBg: "#BBF7D0", icon: "#16A34A" },
+  }[next.tone];
+
+  // Claim çipi (sağ header) — sahiblik + SLA vəziyyəti tək kompakt nişanda.
+  const ownerLabel = claim?.mine ? "Sənin üzərində" : claimedByOther ? `${claim?.claimedByName ?? "?"} işləyir` : "Sahibsiz";
+  const ownerChip = claim?.mine
+    ? { bg: "#ECFDF3", fg: "#15803D", dot: "#16A34A" }
+    : claimedByOther
+      ? { bg: "#FFFBEB", fg: "#B45309", dot: "#D97706" }
+      : { bg: "#F1F5F9", fg: "#64748B", dot: "#94A3B8" };
+
+  const otherKeys: OtherActionKey[] = [];
+  if (canResolve) otherKeys.push("dispute");
+  if (isCancelReq) otherKeys.push("cancelreq");
+  if (canMarkNoShow) otherKeys.push("noshow");
+  if (canCancel) otherKeys.push("cancel");
 
   return (
-    <div className={claimedByOther ? "op-det op-det--busy" : "op-det"}>
+    <div className="opd">
+      <div className="opd__grid">
 
-      {/* ── Sticky header ──────────────────────────────────────────────────── */}
-      <div className="op-det__header">
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
-          <button onClick={backToList} title={t("staff.opDetBackToList")}
-            className="fx-btn fx-btn--ghost"
-            style={{ width: 34, height: 34, padding: 0, flex: "none" }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-          </button>
-          <span className="fx-num" style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>#FNS-{String(id).padStart(4, "0")}</span>
-          <span className={`fx-pill ${statusPillClass(a.status)}`}>
-            {statusLabel(a.status)}
-          </span>
-          {a.sessionKind === "INTRO" && (
-            <span className="fx-pill" style={{ background: "var(--status-paid-bg)", color: "var(--status-paid-fg)" }}>Tanışlıq · Pulsuz</span>
-          )}
-          {/* Gözləmə vaxtı: yalnız SLA-ya yaxınlaşanda/keçəndə (kəhrəba/qırmızı) rəngli
-              nişan kimi diqqət çəkir; sağlam vəziyyətdə sakit mətn kimi görünür. */}
-          {!isFinal && (
-            slaUrgent ? (
-              <span className="fx-pill fx-num" title={`SLA: ${full.slaHours} saat`}
-                style={{ background: slaBg, color: slaColor }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                {t("staff.opDetWaiting", { time: ageLabel(a.createdAt, nowMs) })}
-              </span>
-            ) : (
-              <span className="fx-num" title={`SLA: ${full.slaHours} saat`} style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>
-                {t("staff.opDetWaiting", { time: ageLabel(a.createdAt, nowMs) })}
-              </span>
-            )
-          )}
-          {claim?.claimedByUserId && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: claim.mine ? "var(--sage)" : "var(--status-pending-fg)" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: claim.mine ? "var(--sage)" : "var(--amber)" }} />
-              {claim.mine ? t("staff.opClaimMine") : t("staff.opClaimWorking", { name: claim.claimedByName ?? "?" })}
-            </span>
-          )}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          {unowned && (
-            <button onClick={takeOwnership} className="fx-btn fx-btn--primary">
-              {t("staff.opTake")}
-            </button>
-          )}
-          {isAdmin && !unowned && (
-            <button onClick={() => setReassignOpen(true)} className="fx-btn fx-btn--ghost">
-              {t("staff.opReassign")}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── OP-2: başqasının claim-i — sarı banner ─────────────────────────── */}
-      {claimedByOther && claim?.claimedByName && (
-        <div className="fx-banner fx-banner--warn" style={{ margin: "12px 0", alignItems: "center", fontWeight: 600 }}>
-          <span className="op-claim-dot" style={{ background: "var(--amber)" }} />
-          {claimedMin > 0
-            ? t("staff.opClaimBanner", { name: claim.claimedByName, minutes: claimedMin })
-            : t("staff.opClaimBannerFresh", { name: claim.claimedByName })}
-        </div>
-      )}
-
-      {/* ── <900px zona tabları ────────────────────────────────────────────── */}
-      <div className="op-det__tabs">
-        {([["work", t("staff.opDetZoneWork")], ["context", t("staff.opDetZoneContext")]] as const).map(([z, label]) => (
-          <button key={z} onClick={() => setZone(z)}
-            className={zone === z ? "op-det__tab op-det__tab--active" : "op-det__tab"}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <div className="op-det__grid">
-
-        {/* ── Sol zona: Kontekst ─────────────────────────────────────────────── */}
-        <aside className={`op-det__zone op-det__zone--context${zone === "context" ? " op-det__zone--visible" : ""}`}>
-          <ContextZone full={full} phone={phone} t={t} qs={qs} onHistoryChanged={() => load(true)} />
+        {/* ── Sol: kontekst ─────────────────────────────────────────────────── */}
+        <aside className="opd__left">
+          <ContextZone full={full} phone={phone} t={t} qs={qs} nowMs={nowMs} onHistoryChanged={() => load(true)} />
         </aside>
 
-        {/* ── Mərkəz zona: Əməliyyat ─────────────────────────────────────────── */}
-        <main className={`op-det__zone op-det__zone--work${zone === "work" ? " op-det__zone--visible" : ""}`}>
-          <RequestContent full={full} t={t} />
+        {/* ── Sağ: iş zonası ────────────────────────────────────────────────── */}
+        <main className="opd__right">
+          <div className="opd__header">
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
+              <button onClick={backToList} title={t("staff.opDetBackToList")} aria-label={t("staff.opDetBackToList")}
+                style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid #E2E8F5", background: "#fff", borderRadius: 9, cursor: "pointer", color: "#475569", flex: "none" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+              </button>
+              <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontWeight: 700, fontSize: 18, color: "#1E293B" }}>#FNS-{String(id).padStart(4, "0")}</span>
+              <span className={`fx-pill ${statusPillClass(a.status)}`}>{statusLabel(a.status)}</span>
+              {a.sessionKind === "INTRO" && (
+                <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 100, background: "#EFF6FF", color: "#1D4ED8" }}>Tanışlıq · Pulsuz</span>
+              )}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              {unowned && (
+                <button onClick={takeOwnership} className="fx-btn fx-btn--primary fx-btn--sm">{t("staff.opTake")}</button>
+              )}
+              {isAdmin && !unowned && (
+                <button onClick={() => setReassignOpen(true)} className="opd-ghost-btn">{t("staff.opReassign")}</button>
+              )}
+              <span style={{ display: "flex", alignItems: "center", gap: 6, background: ownerChip.bg, color: ownerChip.fg, padding: "6px 12px", borderRadius: 100, fontSize: 12.5, fontWeight: 600 }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: ownerChip.dot, flex: "none" }} />
+                {ownerLabel}{!isFinal ? ` · ${ageLabel(a.createdAt, nowMs)} gözləyir` : ""}
+              </span>
+            </div>
+          </div>
 
-          {/* PRIMARY — Təyinat (yalnız təyinat edilə bilən statuslarda) */}
-          {timeLocked ? (
-            <div className="op-det-card">
-              <div className="op-det-card__title">{t("staff.opDetAssignBlock")}</div>
-              <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "var(--amber-bg)", border: "1px solid rgba(201,125,46,.3)", borderRadius: 11, padding: "13px 15px" }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
-                <div style={{ fontSize: 13, color: "#92400E", fontWeight: 500, lineHeight: 1.5 }}>
-                  <strong>Vaxt/psixoloq dəyişikliyi bloklanıb</strong> — bu randevu üçün seans linki artıq təyin edilib.
-                  Dəyişmək üçün əvvəlcə aşağıdakı "Görüş linki" kartından linki geri çağırın, sonra yenidən təyin edin.
+          <div className="opd__body">
+
+            {/* Müraciət mətni — operatorun oxuması üçün (varsa) */}
+            {a.note && (
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#F8FAFC", border: "1px solid #EDF1F8", borderRadius: 12, padding: "13px 15px" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 2 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                <span style={{ fontSize: 13.5, color: "#334155", fontStyle: "italic", lineHeight: 1.5 }}>«{a.note}»</span>
+              </div>
+            )}
+
+            {/* Sonrakı addım */}
+            <div style={{ background: nextTone.bg, border: `1px solid ${nextTone.border}`, borderRadius: 14, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+                <span style={{ width: 34, height: 34, borderRadius: "50%", background: nextTone.iconBg, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                  {next.tone === "done"
+                    ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={nextTone.icon} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+                    : <span style={{ width: 9, height: 9, borderRadius: "50%", background: nextTone.icon }} />}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#1E293B" }}>{next.title}</div>
+                  {next.sub && <div style={{ fontSize: 12.5, color: "#5C6B85", marginTop: 2 }}>{next.sub}</div>}
+                  {approveErr && next.action === "approve" && <div style={{ fontSize: 12.5, color: "#B91C1C", marginTop: 4, fontWeight: 600 }}>{approveErr}</div>}
                 </div>
               </div>
+              {next.btnLabel && next.action && (
+                <button onClick={() => runNextAction(next.action!)} disabled={approving && next.action === "approve"}
+                  style={{ background: next.tone === "warn" ? "#D97706" : "#2563EB", color: "#fff", border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 13.5, fontWeight: 700, cursor: "pointer", flex: "none" }}>
+                  {next.btnLabel}
+                </button>
+              )}
             </div>
-          ) : canAssign && (
-            <AssignBlock
-              key={`assign-${a.id}-${a.status}`}
-              appointment={a}
-              suggestions={full.suggestions}
-              cold={claimedByOther}
-              guardAction={guardAction}
-              selectRef={assignFocusRef}
-              proposedStart={full.pendingRescheduleProposal?.options?.[0]?.startAt ?? null}
-              proposedEnd={full.pendingRescheduleProposal?.options?.[0]?.endAt ?? null}
-              proposedInitiator={full.pendingRescheduleProposal?.initiator ?? null}
-              onAssigned={(u) => {
-                // Təyinatdan sonra detal səhifəsində gözlətmə — randevular siyahısına qayıt.
-                globalToast((u.status === "ASSIGNED" || u.status === "CONFIRMED") ? "Təyin olundu" : "Yeniləndi", "success");
-                backToList();
-              }}
-            />
-          )}
 
-          {/* Görüş linki — öz kartı */}
-          {!isFinal && (
-            <LinkBlock key={`link-${a.id}`} appointment={a} cold={claimedByOther}
-              guardAction={guardAction} onDone={(u, m) => onActionDone(u, m)} />
-          )}
+            {isFinal ? (
+              /* Terminal vəziyyət kartı */
+              <div className="opd-card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Vəziyyət</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#1E293B" }}>{statusLabel(a.status)}</div>
+                {cleanOperatorNote(a.operatorNote) && (
+                  <div style={{ fontSize: 13, color: "#5C6B85" }}>Qeyd: {cleanOperatorNote(a.operatorNote)}</div>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* TƏYİN / YENİDƏN PLANLA */}
+                {timeLocked ? (
+                  <div className="opd-card" style={{ padding: 18 }}>
+                    <div className="opd-card__title" style={{ marginBottom: 10 }}>Təyin / yenidən planla</div>
+                    <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 11, padding: "13px 15px" }}>
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+                      <div style={{ fontSize: 13, color: "#92400E", fontWeight: 500, lineHeight: 1.5 }}>
+                        <strong>Vaxt/psixoloq dəyişikliyi bloklanıb</strong> — seans linki artıq təyin edilib. Dəyişmək üçün əvvəlcə «Görüş linki» kartından linki geri çağırın.
+                      </div>
+                    </div>
+                  </div>
+                ) : canAssign && (
+                  <div ref={assignCardRef}>
+                    <AssignBlock
+                      key={`assign-${a.id}-${a.status}`}
+                      appointment={a}
+                      suggestions={full.suggestions}
+                      cold={claimedByOther}
+                      guardAction={guardAction}
+                      selectRef={assignFocusRef}
+                      proposedStart={full.pendingRescheduleProposal?.options?.[0]?.startAt ?? null}
+                      proposedEnd={full.pendingRescheduleProposal?.options?.[0]?.endAt ?? null}
+                      proposedInitiator={full.pendingRescheduleProposal?.initiator ?? null}
+                      onAssigned={(u) => {
+                        globalToast((u.status === "ASSIGNED" || u.status === "CONFIRMED") ? "Təyin olundu" : "Yeniləndi", "success");
+                        backToList();
+                      }}
+                    />
+                  </div>
+                )}
 
-          {/* Ödəniş qeydi yoxdursa — operator əl ilə əlavə edə bilsin */}
-          {needsPayment && (
-            <PaymentMissingBlock key={`payment-${a.id}`} appointment={a}
-              onCreated={() => { load(true); setToast("Ödəniş əlavə edildi"); }} />
-          )}
+                {/* İkincili: Görüş linki + Ödəniş */}
+                <div className="opd__secondary-grid">
+                  <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div className="opd-card__title">Görüş linki</div>
+                    {a.meetingLink ? (
+                      <>
+                        <a href={a.meetingLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "#2563EB", wordBreak: "break-all" }}>{a.meetingLink}</a>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => setLinkModalOpen(true)} className="opd-ghost-btn">Dəyiş</button>
+                          <button onClick={() => guardAction(async () => { try { await operatorApi.revokeMeetingLink(a.id); load(true); setToast("Link silindi"); } catch (e) { globalToast((e as Error).message, "error"); } })}
+                            style={{ background: "transparent", border: "1px solid #FCA5A5", color: "#DC2626", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Sil</button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: 13, color: "#94A3B8" }}>Görüş linki hələ əlavə edilməyib</div>
+                        <button onClick={() => setLinkModalOpen(true)} style={{ alignSelf: "flex-start", background: "#EFF6FF", border: "1px solid #DBEAFE", color: "#1D4ED8", borderRadius: 8, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>Link əlavə et</button>
+                      </>
+                    )}
+                  </div>
+                  <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div className="opd-card__title">Ödəniş</div>
+                    {a.paymentAmount != null && a.paymentAmount > 0 ? (
+                      <>
+                        <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: "#1E293B" }}>{a.paymentAmount} ₼</div>
+                        <div style={{ fontSize: 12, color: "#94A3B8" }}>{a.paymentStatus === "PAID" ? "Ödənilib" : "Gözləyir"}</div>
+                      </>
+                    ) : needsPayment ? (
+                      <>
+                        <div style={{ fontSize: 13, color: "#94A3B8" }}>Bu seans üçün ödəniş qeydi yoxdur</div>
+                        <button onClick={() => setPaymentModalOpen(true)} style={{ alignSelf: "flex-start", background: "#ECFDF3", border: "1px solid #BBF7D0", color: "#15803D", borderRadius: 8, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>Məbləği təyin et</button>
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 13, color: "#94A3B8" }}>{a.patientPackageId ? "Paket seansı" : "Ödəniş tələb olunmur"}</div>
+                    )}
+                  </div>
+                </div>
 
-          {/* Digər əməliyyatlar — kart şəbəkəsi + fokuslu modal */}
-          <OtherActions
-            appointment={a}
-            guardAction={guardAction}
-            showResolve={canResolve}
-            showCancelReq={isCancelReq}
-            showNoShow={canMarkNoShow}
-            showCancel={canCancel}
-            onResolveDone={(u) => onActionDone(u, "Mübahisə həll olundu")}
-            onCancelReqDone={(u, approved) => onActionDone(u, approved ? "Ləğv təsdiqləndi" : "Tələb rədd edildi")}
-            onNoShowDone={(u) => onActionDone(u, "No-show işarələndi")}
-            onCancelDone={(u) => onActionDone(u, "Ləğv edildi")}
-          />
+                {/* Digər əməliyyatlar — sakit sətir */}
+                {otherKeys.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#94A3B8" }}>Digər əməliyyatlar</div>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      {otherKeys.map(k => {
+                        const m = OTHER_ACTION_META[k];
+                        return (
+                          <button key={k} onClick={() => setOtherAction(k)}
+                            style={{ background: "transparent", border: `1px solid ${m.border}`, color: m.fg, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                            {m.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </main>
       </div>
+
+      {/* ── Görüş linki modalı ───────────────────────────────────────────────── */}
+      {linkModalOpen && (
+        <LinkEditModal appointment={a} onClose={() => setLinkModalOpen(false)}
+          onSaved={() => { setLinkModalOpen(false); load(true); setToast("Görüş linki yeniləndi"); }} />
+      )}
+
+      {/* ── Ödəniş modalı ────────────────────────────────────────────────────── */}
+      {paymentModalOpen && (
+        <PaymentEditModal appointment={a} onClose={() => setPaymentModalOpen(false)}
+          onSaved={() => { setPaymentModalOpen(false); load(true); setToast("Ödəniş əlavə edildi"); }} />
+      )}
+
+      {/* ── Digər əməliyyat modalları ────────────────────────────────────────── */}
+      {otherAction && (
+        <ModalShell title={OTHER_ACTION_META[otherAction].title} sub={OTHER_ACTION_META[otherAction].sub}
+          badge={OTHER_ACTION_META[otherAction].badge} onClose={() => setOtherAction(null)}>
+          {otherAction === "dispute" && <ResolveDisputeBlock appointment={a} guardAction={guardAction} onDone={(u) => { setOtherAction(null); onActionDone(u, "Mübahisə həll olundu"); }} />}
+          {otherAction === "cancelreq" && <CancelRequestBlock appointment={a} guardAction={guardAction} onDone={(u, ap) => { setOtherAction(null); onActionDone(u, ap ? "Ləğv təsdiqləndi" : "Tələb rədd edildi"); }} />}
+          {otherAction === "noshow" && <NoShowBlock appointment={a} guardAction={guardAction} onDone={(u) => { setOtherAction(null); onActionDone(u, "No-show işarələndi"); }} />}
+          {otherAction === "cancel" && <CancelBlock appointment={a} guardAction={guardAction} onClose={() => setOtherAction(null)} onDone={(u) => { setOtherAction(null); onActionDone(u, "Ləğv edildi"); }} />}
+        </ModalShell>
+      )}
 
       {/* ── Admin: başqa operatora keçir (reassign) modalı ─────────────────── */}
       {reassignOpen && (
@@ -533,11 +676,12 @@ function ReassignModal({ id, currentHolderId, t, onClose, onDone }: {
 
 /* ─── Sol zona: pasiyent kartı + reputasiya + kurs + tarixçə ──────────────── */
 
-function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
+function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
   full: OperatorAppointmentFull;
   phone: string | null;
   t: ReturnType<typeof useT>["t"];
   qs: string;
+  nowMs: number;
   onHistoryChanged: () => void;
 }) {
   const a = full.appointment;
@@ -591,60 +735,63 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
   return (
     <>
       {/* Pasiyent kartı */}
-      <div className="op-det-card">
-        <div className="op-det-card__title">{t("staff.opDetPatientCard")}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 13 }}>
-          <span className={`fx-avatar fx-avatar--md fx-avatar--${((a.patientId ?? 0) % 4) + 1}`}>
-            {(a.patientName ?? "—").split(" ").filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "—"}
+      <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="opd-card__title">{t("staff.opDetPatientCard")}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: "#1E293B" }}>{a.patientName ?? "—"}</span>
+          <span className={`fx-pill ${a.patientId ? "fx-pill--paid" : "fx-pill--cancelled"}`}>
+            {a.patientId && (
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+            )}
+            {a.patientId ? t("staff.opDetRegistered") : t("staff.opDetAnonymous")}
           </span>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{a.patientName ?? "—"}</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 3 }}>
-              <span className={`fx-pill ${a.patientId ? "fx-pill--paid" : "fx-pill--cancelled"}`}>
-                {a.patientId && (
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-                )}
-                {a.patientId ? t("staff.opDetRegistered") : t("staff.opDetAnonymous")}
-              </span>
-              {h?.blocked && (
-                <span className="fx-pill fx-pill--refunded">BLOKLU</span>
-              )}
-            </div>
-          </div>
+          {h?.blocked && <span className="fx-pill fx-pill--refunded">BLOKLU</span>}
         </div>
-        {phone && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 11 }}>
-            <a href={`tel:${phone}`} className="fx-chip fx-num" style={{ textDecoration: "none" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
-              {a.patientPhone}
-            </a>
-            <a href={whatsappLink(phone)} target="_blank" rel="noopener noreferrer" className="fx-chip" style={{ textDecoration: "none" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
-              WhatsApp
-            </a>
-          </div>
+        {a.patientPhone && (
+          <div style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12.5, color: "#5C6B85" }}>{a.patientPhone}</div>
         )}
-        {a.patientEmail && (
-          <a href={`mailto:${a.patientEmail}`} className="fx-chip" style={{ textDecoration: "none", marginBottom: 12, maxWidth: "100%", wordBreak: "break-all" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-              <rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22,6 12,13 2,6" />
-            </svg>
-            {a.patientEmail}
-          </a>
+        {(phone || a.patientEmail) && (
+          <div style={{ display: "flex", gap: 8 }}>
+            {phone && (
+              <a href={`tel:${phone}`} className="opd-icon-btn" title="Zəng et" aria-label="Zəng et">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+              </a>
+            )}
+            {phone && (
+              <a href={whatsappLink(phone)} target="_blank" rel="noopener noreferrer" className="opd-icon-btn" title="WhatsApp" aria-label="WhatsApp">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /></svg>
+              </a>
+            )}
+            {a.patientEmail && (
+              <a href={`mailto:${a.patientEmail}`} className="opd-icon-btn" title={a.patientEmail} aria-label="E-poçt">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><polyline points="22,6 12,13 2,6" /></svg>
+              </a>
+            )}
+          </div>
         )}
         {h?.userId && (
-          <button onClick={blockOrUnblock}
-            className={`fx-btn ${h.blocked ? "fx-btn--ghost" : "fx-btn--danger-ghost"}`}
-            style={{ width: "100%" }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M4.9 4.9l14.2 14.2" /></svg>
-            {h.blocked ? "Bloku aç" : "Blokla / spam"}
-          </button>
+          <div style={{ borderTop: "1px solid #EDF1F8", marginTop: 2, paddingTop: 10 }}>
+            <span onClick={blockOrUnblock} role="button" tabIndex={0}
+              onKeyDown={e => { if (e.key === "Enter" || e.key === " ") blockOrUnblock(); }}
+              style={{ fontSize: 12, color: h.blocked ? "#15803D" : "#94A3B8", cursor: "pointer", fontWeight: 600 }}>
+              {h.blocked ? "Bloku aç" : "Blokla / spam"}
+            </span>
+          </div>
         )}
+      </div>
+
+      {/* Müraciət xülasəsi */}
+      <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="opd-card__title">Müraciət xülasəsi</div>
+        <div className="opd-kv"><span className="opd-kv__k">İstənilən vaxt</span><span className="opd-kv__v">{fmtDateTime(a.requestedStartAt)}</span></div>
+        <div className="opd-kv"><span className="opd-kv__k">İstənilən psixoloq</span><span className="opd-kv__v" style={{ fontFamily: "inherit" }}>{a.psychologistName ?? a.requestedPsychologistName ?? "Seçilməyib"}</span></div>
+        {a.startAt && <div className="opd-kv"><span className="opd-kv__k">Təyin edilmiş vaxt</span><span className="opd-kv__v">{fmtDateTime(a.startAt)}</span></div>}
+        <div className="opd-kv"><span className="opd-kv__k">Yaradılıb</span><span className="opd-kv__v">{fmtDateTime(a.createdAt)}</span></div>
       </div>
 
       {/* Kurs konteksti */}
       {a.seriesId != null && full.seriesSiblings.length > 0 && (
-        <div className="op-det-card">
+        <div className="opd-card" style={{ padding: 16 }}>
           <div className="op-det-card__title">
             {t("staff.opDetGroupContext")} · {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal ?? full.seriesSiblings.length })}
           </div>
@@ -687,27 +834,22 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
         </div>
       )}
 
-      {/* Son fəaliyyət — soyuq siyahı, kart deyil: qısa kontekst kartlarından
-          sonra qalan boş sahəni mənalı doldurur (ayrıca "lent" zonası əvəzinə). */}
+      {/* Son fəaliyyət — insaniləşdirilmiş lent (rəngli nöqtə + nisbi vaxt) */}
       {full.activity.length > 0 && (
-        <div style={{ padding: "2px 2px 0" }}>
-          <div className="fx-section-label" style={{ marginBottom: 10 }}>
-            Son fəaliyyət
-          </div>
-          <div className="fx-timeline">
-            {full.activity.slice(0, 4).map((item, i, arr) => (
-              <div key={i} className="fx-tl-item">
-                <div className="fx-tl-rail">
-                  <span className="fx-tl-dot fx-tl-dot--muted" />
-                  {i !== arr.length - 1 && <span className="fx-tl-line" />}
-                </div>
-                <div className="fx-tl-body" style={{ paddingBottom: i === arr.length - 1 ? 0 : 12 }}>
-                  <div className="fx-tl-title" style={{ fontSize: 12, fontWeight: 500 }}>{activityLabel(item)}</div>
-                  <div className="fx-tl-meta">{azFormatDateTime(item.createdAt)}</div>
-                </div>
+        <div className="opd-card" style={{ padding: 16 }}>
+          <div className="opd-card__title" style={{ marginBottom: 12 }}>Son fəaliyyət</div>
+          {full.activity.slice(0, 6).map((item, i, arr) => (
+            <div key={i} style={{ display: "flex", gap: 10, paddingBottom: i === arr.length - 1 ? 0 : 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: activityDotColor(item), flex: "none", marginTop: 4 }} />
+                {i !== arr.length - 1 && <div style={{ width: 1, flex: 1, background: "#E2E8F5", marginTop: 2 }} />}
               </div>
-            ))}
-          </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, color: "#1E293B", lineHeight: 1.4 }}>{activityLabel(item)}</div>
+                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }} title={azFormatDateTime(item.createdAt)}>{azFromNow(item.createdAt, nowMs)}</div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -716,7 +858,23 @@ function ContextZone({ full, phone, t, qs, onHistoryChanged }: {
 }
 
 function activityLabel(item: OperatorActivityItem): string {
-  if (item.text) return item.text;
+  const raw = item.text?.trim();
+  if (raw) {
+    // Backend audit qeydləri bəzən xam ingiliscə + ISO nanosaniyəli tarixlə gəlir
+    // (məs. "Psy proposed 1 options · expires 2026-07-19T00:12:07.808…") — bunları
+    // operatora insani AZ mətnə çeviririk, tanınmayanların ISO "quyruğunu" kəsirik.
+    if (/^Psy proposed/i.test(raw)) return "Psixoloq yeni vaxt təklif etdi";
+    if (/^Psy accepted/i.test(raw)) return "Psixoloq təklifi qəbul etdi";
+    if (/^Psy rejected/i.test(raw)) return "Psixoloq təklifi rədd etdi";
+    if (/^Patient rejected/i.test(raw)) return "Pasiyent təklifi rədd etdi";
+    if (/^Patient proposed/i.test(raw)) return "Pasiyent alternativ vaxt təklif etdi";
+    // "· expires <ISO>" və ya sonrakı ISO damcı-timestamp quyruğunu təmizlə
+    const cleaned = raw
+      .replace(/\s*·\s*expires\s+\S+/i, "")
+      .replace(/\s*\d{4}-\d{2}-\d{2}T[\d:.]+/g, "")
+      .trim();
+    return cleaned || "Yeniləndi";
+  }
   switch (item.kind) {
     case "CREATED": return "Müraciət yaradıldı";
     case "CONTACT": return "Pasiyentlə əlaqə saxlanıldı";
@@ -724,108 +882,28 @@ function activityLabel(item: OperatorActivityItem): string {
     default: return item.action ?? "Yeniləndi";
   }
 }
-
-/* ─── Mərkəz: müraciət məzmunu ─────────────────────────────────────────────── */
-
-function RequestContent({ full, t }: { full: OperatorAppointmentFull; t: ReturnType<typeof useT>["t"] }) {
-  const a = full.appointment;
-  return (
-    <div className="op-det-card">
-      <div className="op-det-card__title">{t("staff.opDetRequest")}</div>
-      {a.note ? (
-        <div style={{ display: "flex", gap: 10, background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 11, padding: "13px 15px" }}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-          <span style={{ fontSize: 14.5, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, lineHeight: 1.5 }}>«{a.note}»</span>
-        </div>
-      ) : (
-        <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Problem təsviri yazılmayıb</div>
-      )}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(160px, 100%), 1fr))", gap: 10, marginTop: 14 }}>
-        {([
-          [t("staff.opDetRequestedTime"), fmtDateTime(a.requestedStartAt)],
-          [t("staff.opDetRequestedPsy"), a.psychologistName ?? a.requestedPsychologistName ?? "Seçilməyib"],
-          ...(a.startAt ? [["Təyin edilmiş vaxt", fmtDateTime(a.startAt)] as [string, string]] : []),
-          ["Yaradılıb", fmtDateTime(a.createdAt)],
-        ] as [string, string][]).map(([label, value]) => (
-          <div key={label} style={{ background: "var(--surface-muted)", border: "1px solid var(--hairline)", borderRadius: 10, padding: "10px 12px" }}>
-            <div className="fx-label" style={{ marginBottom: 2 }}>{label}</div>
-            <div className="fx-num" style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{value}</div>
-          </div>
-        ))}
-      </div>
-
-      {a.rescheduleRequestedAt && (a.status === "CONFIRMED" || a.status === "ASSIGNED") && (
-        <div className="fx-banner fx-banner--info" style={{ marginTop: 10, fontSize: 12.5, display: "block" }}>
-          <strong>Pasient vaxt dəyişikliyi tələb edib.</strong>{" "}
-          {a.meetingLink
-            ? "Seans linki artıq təyin edilib — yeni vaxt seçmək üçün əvvəlcə linki geri çağırın."
-            : "Yeni vaxt seçmək üçün aşağıdakı «Vaxtı dəyiş / yenidən təyin» alətindən istifadə edin."}
-          {a.rescheduleRequestNote && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.rescheduleRequestNote}»</div>}
-        </div>
-      )}
-
-      {full.pendingRescheduleProposal && (
-        <div className="fx-banner fx-banner--info" style={{ marginTop: 10, fontSize: 12.5, display: "block" }}>
-          <strong>
-            {full.pendingRescheduleProposal.initiator === "PSYCHOLOGIST"
-              ? "Psixoloq Cədvəldə yeni vaxt təklif etdi"
-              : full.pendingRescheduleProposal.initiator === "OPERATOR"
-                ? "Operator vasitəçili təklif göndərdi"
-                : "Pasient alternativ vaxt təklif etdi"}
-            {" — pasientin cavabı gözlənilir."}
-          </strong>
-          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
-            {full.pendingRescheduleProposal.options.map(o => (
-              <span key={o.index} className="fx-num">{fmtDateTime(o.startAt)} – {azFormatTime(o.endAt)}</span>
-            ))}
-          </div>
-          {full.pendingRescheduleProposal.reason && (
-            <div style={{ marginTop: 4, fontStyle: "italic" }}>«{full.pendingRescheduleProposal.reason}»</div>
-          )}
-          <div style={{ marginTop: 4, opacity: .85 }}>Bitmə tarixi: {fmtDateTime(full.pendingRescheduleProposal.expiresAt)}</div>
-        </div>
-      )}
-
-      {cleanOperatorNote(a.operatorNote) && (
-        <div style={{ marginTop: 10, fontSize: 12, color: "var(--oxford-80)", background: "var(--amber-bg)", border: "1px solid rgba(201,125,46,.3)", borderRadius: 8, padding: "8px 12px", whiteSpace: "pre-wrap" }}>
-          <strong>Operator qeydi:</strong> {cleanOperatorNote(a.operatorNote)}
-        </div>
-      )}
-
-      {a.status === "DISPUTED" && (
-        <div className="fx-banner fx-banner--error" style={{ marginTop: 10, fontSize: 12.5, display: "block" }}>
-          <strong>Mübahisə:</strong>{" "}
-          {a.patientDisputed && a.psychologistDisputed ? "İkisi də 'olmadı' dedi"
-            : a.patientDisputed ? "Pasient 'olmadı' dedi"
-            : a.psychologistDisputed ? "Psixoloq 'olmadı' dedi" : "Mübahisə açıldı"}
-          {a.disputeReason && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.disputeReason}»</div>}
-        </div>
-      )}
-
-      {a.status === "CANCEL_REQUESTED" && (
-        <div className="fx-banner fx-banner--warn" style={{ marginTop: 10, fontSize: 12.5, display: "block" }}>
-          <strong>Pasient ləğv tələb edib.</strong>
-          {a.cancelRequestReasonCode && <> · {reasonLabel(a.cancelRequestReasonCode)}</>}
-          {a.cancelRequestReasonText && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.cancelRequestReasonText}»</div>}
-        </div>
-      )}
-
-      {a.status === "CANCELLED" && (
-        <div className="fx-banner fx-banner--error" style={{ marginTop: 10, fontSize: 12.5, display: "block" }}>
-          <strong>Ləğv edildi.</strong>{" "}
-          {a.cancelledBy === "PATIENT" ? "Pasient ləğv etdi"
-            : a.cancelledBy === "PSYCHOLOGIST" ? "Psixoloq ləğv etdi"
-            : a.cancelledBy === "OPERATOR" ? "Operator ləğv etdi" : "—"}
-          {a.cancelReasonCode && <> · {reasonLabel(a.cancelReasonCode)}</>}
-          {a.lateCancel && <> · <span style={{ fontWeight: 700 }}>Gec ləğv</span></>}
-          {a.cancelledAt && <> · {fmtDateTime(a.cancelledAt)}</>}
-          {a.cancelReasonText && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{a.cancelReasonText}»</div>}
-        </div>
-      )}
-
-    </div>
-  );
+/** Fəaliyyət növü → nöqtə rəngi (dizaynın lent nöqtələri). */
+function activityDotColor(item: OperatorActivityItem): string {
+  const raw = (item.text ?? "").toLowerCase();
+  if (item.kind === "CREATED") return "#94A3B8";
+  if (/təklif|proposed/.test(raw)) return "#D97706";
+  if (/təsdiq|confirm|qəbul|accepted/.test(raw)) return "#16A34A";
+  if (/ləğv|cancel|rədd|reject|no-show|gəlmə/.test(raw)) return "#DC2626";
+  if (/təyin|assign|vaxt|link|ödəniş|məbləğ/.test(raw)) return "#2563EB";
+  return "#94A3B8";
 }
+
+// "Digər əməliyyatlar" açarları + sakit sətir/modal meta məlumatı.
+type OtherActionKey = "dispute" | "cancelreq" | "noshow" | "cancel";
+const OTHER_ACTION_META: Record<OtherActionKey, {
+  label: string; border: string; fg: string;
+  title: string; sub: string; badge: { label: string; bg: string; color: string };
+}> = {
+  dispute:   { label: "Mübahisəni həll et", border: "#FDE68A", fg: "#B45309", title: "Mübahisəni həll et", sub: "Seans baş tutdumu? Nəticəni qeyd edin.", badge: { label: "Mübahisəli", bg: "#FFFBEB", color: "#B45309" } },
+  cancelreq: { label: "Ləğv tələbi",         border: "#FDE68A", fg: "#B45309", title: "Ləğv tələbi",         sub: "Pasiyentin ləğv tələbini emal edin.",  badge: { label: "Gözlənilir", bg: "#FEF3C7", color: "#92400E" } },
+  noshow:    { label: "No-show",             border: "#E2E8F5", fg: "#5C6B85", title: "No-show işarələ",     sub: "Seansa kim gəlmədi?",                  badge: { label: "No-show",    bg: "#F1F5F9", color: "#475569" } },
+  cancel:    { label: "Ləğv et",             border: "#FCA5A5", fg: "#DC2626", title: "Müraciəti ləğv et",   sub: "Bu müraciəti bağlayın.",               badge: { label: "Ləğv",       bg: "#FEE2E2", color: "#991B1B" } },
+};
 
 /* ─── Mərkəz: təyinat bloku (köhnə AssignModal-ın səhifə bloku) ────────────── */
 
@@ -1067,51 +1145,40 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   const atCap = maxSlots > 1 && pickedSlots.length >= maxSlots;
   const slotComplete = maxSlots === 1 ? timeN === 1 : timeN === maxSlots;
 
-  const summaryRow: React.CSSProperties = { display: "flex", alignItems: "center", gap: 12, background: "var(--surface-muted)", border: "1px solid var(--hairline)", borderRadius: 12, padding: "13px 14px" };
-  const summaryIcon: React.CSSProperties = { width: 38, height: 38, borderRadius: 11, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" };
-  const summaryLabel: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 2 };
-  const summaryBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 5, background: "var(--surface)", color: "var(--brand-700)", border: "1px solid var(--brand-200)", borderRadius: 9, padding: "8px 14px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", flex: "none" };
   const modalPrimary: React.CSSProperties = { width: "100%", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 11, padding: 13, fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" };
 
   return (
-    <div className={cold ? "op-det-card op-det-card--cold" : "op-det-card"} style={{ borderTop: "3px solid var(--brand)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 15, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--brand-700)" }}>
-          {(appointment.status === "CONFIRMED" || appointment.status === "ASSIGNED") ? "Yenidən planla / psixoloqu dəyiş" : t("staff.opDetAssignBlock")}
+    <div className={cold ? "opd-card op-det-card--cold" : "opd-card"} style={{ padding: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14, flexWrap: "wrap" }}>
+        <span className="opd-card__title">
+          {(appointment.status === "CONFIRMED" || appointment.status === "ASSIGNED") ? "Təyin / yenidən planla" : t("staff.opDetAssignBlock")}
         </span>
         {ready
           ? <span className="fx-pill fx-pill--paid">Təyinata hazır</span>
           : <span className="fx-pill fx-pill--pending">Tamamlanmamış</span>}
-        <kbd className="op-det-kbd" style={{ marginLeft: "auto" }}>A</kbd>
       </div>
 
       {/* özət sətirlər */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 13 }}>
-        <div style={summaryRow}>
-          <span style={{ ...summaryIcon, background: psyId ? "var(--brand-100)" : "var(--hairline)", color: psyId ? "var(--brand)" : "var(--oxford-60)" }}>
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-          </span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={summaryLabel}>Psixoloq</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 14.5, fontWeight: 700, color: psyId ? "var(--oxford)" : "var(--oxford-60)" }}>{psychName}</span>
+        <div className="opd-row">
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: "#5C6B85" }}>Psixoloq</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: psyId ? "#1E293B" : "#94A3B8" }}>{psychName}</span>
               {psychScore && <span className="fx-pill fx-num" style={{ background: "var(--sage-bg)", color: "var(--sage)" }}>{psychScore}</span>}
             </div>
           </div>
-          <button ref={selectRef} type="button" onClick={() => setPsychModalOpen(true)} style={summaryBtn}>
-            {psyId ? "Dəyiş" : "Seç"}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+          <button ref={selectRef} type="button" onClick={() => setPsychModalOpen(true)} className="opd-ghost-btn">
+            {psyId ? "Dəyiş" : "Seç"}
           </button>
         </div>
-        <div style={summaryRow}>
-          <span style={{ ...summaryIcon, background: timeN ? "var(--brand-100)" : "var(--hairline)", color: timeN ? "var(--brand)" : "var(--oxford-60)" }}>
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-          </span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={summaryLabel}>Vaxt</div>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: timeN ? "var(--oxford)" : "var(--oxford-60)" }}>{timeSummary}</div>
+        <div className="opd-row">
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: "#5C6B85" }}>Vaxt</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: timeN ? "#1E293B" : "#94A3B8", marginTop: 2, fontFamily: timeN ? "'JetBrains Mono', ui-monospace, monospace" : "inherit" }}>{timeSummary}</div>
           </div>
-          <button type="button" onClick={() => { if (!psyId) { setPsychModalOpen(true); return; } setTimeModalOpen(true); }} style={summaryBtn}>
-            {timeN ? "Dəyiş" : "Seç"}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+          <button type="button" onClick={() => { if (!psyId) { setPsychModalOpen(true); return; } setTimeModalOpen(true); }} className="opd-ghost-btn">
+            {timeN ? "Dəyiş" : "Seç"}
           </button>
         </div>
       </div>
@@ -1164,14 +1231,14 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
         </div>
       )}
 
-      <button onClick={() => guardAction(doSubmit)} disabled={saving || !ready}
-        className="fx-btn fx-btn--primary"
-        style={{ width: "100%", padding: 14, fontSize: 15, opacity: (saving || !ready) ? 0.6 : 1, cursor: (saving || !ready) ? "not-allowed" : "pointer" }}>
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-        {saving ? "Saxlanılır…"
-          : pickedSlots.length > 1 ? `${pickedSlots.length} seans təyin et`
-          : appointment.status === "ASSIGNED" ? "Yenidən təyin et" : "Təyin et"}
-      </button>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 14, marginTop: 4, paddingTop: 14, borderTop: "1px solid #EDF1F8" }}>
+        <button onClick={() => guardAction(doSubmit)} disabled={saving || !ready}
+          style={{ background: (saving || !ready) ? "#A9BEE2" : "#2563EB", color: "#fff", border: "none", borderRadius: 9, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: (saving || !ready) ? "not-allowed" : "pointer" }}>
+          {saving ? "Saxlanılır…"
+            : pickedSlots.length > 1 ? `${pickedSlots.length} seans təyin et`
+            : appointment.status === "ASSIGNED" ? "Yenidən təyin et" : "Təyin et"}
+        </button>
+      </div>
 
       {/* PSİXOLOQ MODALI */}
       {psychModalOpen && (
@@ -1360,147 +1427,6 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
           )}
         </ModalShell>
       )}
-    </div>
-  );
-}
-
-/* ─── Mərkəz: görüş linki bloku (link idarəsi + tarixçə) ───────────────────── */
-
-function LinkBlock({ appointment, cold }: {
-  appointment: AppointmentDetail;
-  cold: boolean;
-  guardAction: (run: () => void) => void;
-  onDone: (a: AppointmentDetail, msg: string) => void;
-}) {
-  const { t } = useT();
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [history, setHistory] = useState<MeetingLinkLogItem[] | null>(null);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
-  const hasLink = !!appointment.meetingLink;
-
-  const toggleHistory = () => {
-    if (historyOpen) { setHistoryOpen(false); return; }
-    setHistoryOpen(true);
-    if (history === null && !loadingHistory) {
-      setLoadingHistory(true);
-      operatorApi.meetingLinkHistory(appointment.id)
-        .then(setHistory)
-        .catch(() => setHistory([]))
-        .finally(() => setLoadingHistory(false));
-    }
-  };
-
-  const actionLabel = (action: MeetingLinkLogItem["action"]): string => {
-    switch (action) {
-      case "SET": return t("meetingLink.actionSet");
-      case "UPDATED": return t("meetingLink.actionUpdated");
-      case "REVOKED": return t("meetingLink.actionRevoked");
-      case "SENT": return t("meetingLink.actionSent");
-      default: return action;
-    }
-  };
-
-  return (
-    <div className={cold ? "op-det-card op-det-card--cold" : "op-det-card"}>
-      <div className="op-det-card__title">{t("meetingLink.title")}</div>
-
-      {hasLink ? (
-        <a href={appointment.meetingLink!} target="_blank" rel="noopener noreferrer"
-          style={{ display: "block", fontSize: 12.5, color: "var(--brand-700)", fontWeight: 600, wordBreak: "break-all", marginBottom: 8 }}>
-          {appointment.meetingLink}
-        </a>
-      ) : (
-        <div style={{ display: "flex", gap: 10, alignItems: "center", background: "#FEF3C7", border: "1px solid #FCE7A8", borderRadius: 11, padding: "12px 14px", marginBottom: 10 }}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
-          <span style={{ fontSize: 13.5, fontWeight: 700, color: "#92400E" }}>Görüş linki hələ əlavə edilməyib</span>
-        </div>
-      )}
-
-      <div style={{ fontSize: 12, color: "#52718F", marginBottom: 10 }}>
-        {appointment.meetingLinkSentAt
-          ? `${t("meetingLink.sent")} · ${azFormatDateTime(appointment.meetingLinkSentAt)}`
-          : t("meetingLink.notSent")}
-      </div>
-
-      <Link href="/operator/meeting-links"
-        style={{ display: "inline-block", padding: "8px 14px", border: "1px solid #C7D2FE", borderRadius: 10, fontSize: 12.5, fontWeight: 700, background: "#fff", color: "var(--brand-700)", textDecoration: "none" }}>
-        Görüş linklərini idarə et →
-      </Link>
-
-      <div style={{ marginTop: 10 }}>
-        <button onClick={toggleHistory}
-          style={{ border: "none", background: "transparent", padding: 0, fontSize: 12, fontWeight: 600, color: "#52718F", cursor: "pointer" }}>
-          {t("meetingLink.history")} {historyOpen ? "▴" : "▾"}
-        </button>
-        {historyOpen && (
-          <div style={{ marginTop: 8 }}>
-            {loadingHistory ? (
-              <div style={{ fontSize: 12, color: "#8AAABF" }}>Yüklənir…</div>
-            ) : !history || history.length === 0 ? (
-              <div style={{ fontSize: 12, color: "#8AAABF" }}>{t("meetingLink.none")}</div>
-            ) : (
-              <div style={{ display: "grid", gap: 6 }}>
-                {history.map((it, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, borderBottom: i < history.length - 1 ? "1px solid #F1F5F9" : "none", paddingBottom: 6 }}>
-                    <span style={{ color: "#1A2535", fontWeight: 600 }}>
-                      {actionLabel(it.action)}
-                      {it.actorName ? <span style={{ color: "#8AAABF", fontWeight: 400 }}> · {it.actorName}</span> : null}
-                    </span>
-                    <span style={{ color: "#8AAABF", whiteSpace: "nowrap" }}>{azFormatDateTime(it.createdAt)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ─── Ödəniş qeydi yoxdursa — əl ilə əlavə et ────────────────────────────────── */
-
-function PaymentMissingBlock({ appointment, onCreated }: {
-  appointment: AppointmentDetail;
-  onCreated: () => void;
-}) {
-  const [amount, setAmount] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  // Qəbul zamanı 0 məbləğli gözləyən ödəniş yaranıb (qiymətsiz psixoloq) — məbləği təyin edirik.
-  const amountUnset = appointment.paymentStatus === "PENDING";
-
-  const submit = async () => {
-    const amt = Number(amount);
-    if (!Number.isFinite(amt) || amt <= 0) { setErr("Məbləği düzgün daxil edin"); return; }
-    setErr(null); setSaving(true);
-    try {
-      await operatorApi.createManualPayment(appointment.id, amt);
-      onCreated();
-    } catch (e) { setErr((e as Error).message); }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <div className="op-det-card">
-      <div className="op-det-card__title">Ödəniş</div>
-      <div style={{ display: "flex", gap: 10, alignItems: "center", background: "#FEF3C7", border: "1px solid #FCE7A8", borderRadius: 11, padding: "12px 14px", marginBottom: 12 }}>
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
-        <span style={{ fontSize: 13.5, fontWeight: 700, color: "#92400E" }}>{amountUnset
-          ? "Bu seansın ödəniş məbləği hələ təyin olunmayıb — məbləği daxil edin"
-          : "Bu seans üçün ödəniş qeydi yoxdur — \"Ödənişlər\"də görünmür"}</span>
-      </div>
-      <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-        <input type="number" min={0} step="0.01" value={amount} onChange={e => setAmount(e.target.value)}
-          placeholder="Seans məbləği (₼)"
-          style={{ flex: 1, border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 12px", fontSize: 13.5, fontWeight: 500, fontFamily: "inherit", boxSizing: "border-box" }} />
-        <button onClick={submit} disabled={saving || !amount.trim()}
-          style={{ background: (saving || !amount.trim()) ? "#A9BEE2" : "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: (saving || !amount.trim()) ? "not-allowed" : "pointer", flex: "none" }}>
-          {saving ? "Saxlanılır…" : amountUnset ? "Məbləği təyin et" : "Ödəniş əlavə et"}
-        </button>
-      </div>
-      {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>{err}</div>}
     </div>
   );
 }
@@ -1702,93 +1628,6 @@ function CancelRequestBlock({ appointment, guardAction, onDone }: {
   );
 }
 
-/* ─── Mərkəz: digər əməliyyatlar (kart şəbəkəsi + fokuslu modal) ──────────── */
-
-type ActionKey = "dispute" | "cancelreq" | "noshow" | "cancel";
-
-function OtherActions({ appointment, guardAction, showResolve, showCancelReq, showNoShow, showCancel, onResolveDone, onCancelReqDone, onNoShowDone, onCancelDone }: {
-  appointment: AppointmentDetail;
-  guardAction: (run: () => void) => void;
-  showResolve: boolean;
-  showCancelReq: boolean;
-  showNoShow: boolean;
-  showCancel: boolean;
-  onResolveDone: (a: AppointmentDetail) => void;
-  onCancelReqDone: (a: AppointmentDetail, approved: boolean) => void;
-  onNoShowDone: (a: AppointmentDetail) => void;
-  onCancelDone: (a: AppointmentDetail) => void;
-}) {
-  const [open, setOpen] = useState<ActionKey | null>(null);
-
-  const META: Record<ActionKey, {
-    cardTitle: string; cardSub: string; tileBg: string; tileColor: string; hoverBorder: string; hoverBg: string; icon: React.ReactNode;
-    title: string; sub: string; badge: { label: string; bg: string; color: string };
-  }> = {
-    dispute: {
-      cardTitle: "Mübahisəni həll et", cardSub: "Tamamlandı / Ləğv", tileBg: "#FEE2E2", tileColor: "#991B1B", hoverBorder: "#991B1B", hoverBg: "#FFF8F8",
-      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.5 12h9M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" /></svg>,
-      title: "Mübahisəni həll et", sub: "Seans baş tutdumu? Nəticəni qeyd edin.", badge: { label: "Mübahisəli", bg: "#FEE2E2", color: "#991B1B" },
-    },
-    cancelreq: {
-      cardTitle: "Ləğv tələbi", cardSub: "Təsdiqlə / Rədd et", tileBg: "#FEF3C7", tileColor: "#92400E", hoverBorder: "#B45309", hoverBg: "#FFFBEB",
-      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.7 9.7 0 0 0-6.3 2.6L3 8" /><path d="M3 3v5h5" /></svg>,
-      title: "Ləğv tələbi", sub: "Pasiyentin ləğv tələbini emal edin.", badge: { label: "Gözlənilir", bg: "#FEF3C7", color: "#92400E" },
-    },
-    noshow: {
-      cardTitle: "No-show işarələ", cardSub: "Pasient / Psixoloq", tileBg: "#FEE2E2", tileColor: "#991B1B", hoverBorder: "#991B1B", hoverBg: "#FFF8F8",
-      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /><circle cx="10" cy="7" r="4" /><path d="M23 9l-4 4M19 9l4 4" /></svg>,
-      title: "No-show işarələ", sub: "Seansa kim gəlmədi?", badge: { label: "No-show", bg: "#FEE2E2", color: "#991B1B" },
-    },
-    cancel: {
-      cardTitle: "Müraciəti ləğv et", cardSub: "Səbəb + qeyd", tileBg: "#FEE2E2", tileColor: "#991B1B", hoverBorder: "#991B1B", hoverBg: "#FFF8F8",
-      icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M15 9l-6 6M9 9l6 6" /></svg>,
-      title: "Müraciəti ləğv et", sub: "Bu müraciəti bağlayın.", badge: { label: "Ləğv", bg: "#FEE2E2", color: "#991B1B" },
-    },
-  };
-
-  const keys: ActionKey[] = [];
-  if (showResolve) keys.push("dispute");
-  if (showCancelReq) keys.push("cancelreq");
-  if (showNoShow) keys.push("noshow");
-  if (showCancel) keys.push("cancel");
-  if (keys.length === 0) return null;
-
-  return (
-    <>
-      <div className="op-det-card">
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 5 }}>Digər əməliyyatlar</div>
-        <div style={{ fontSize: 12, color: "#8AAABF", fontWeight: 500, marginBottom: 14 }}>Statusa uyğun əməliyyatı seçin — fokuslu pəncərədə açılacaq.</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(150px, 100%), 1fr))", gap: 10 }}>
-          {keys.map(k => {
-            const m = META[k];
-            return (
-              <button key={k} type="button" onClick={() => setOpen(k)}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = m.hoverBorder; e.currentTarget.style.background = m.hoverBg; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "#EDF1F8"; e.currentTarget.style.background = "#fff"; }}
-                style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", background: "#fff", border: "1px solid #EDF1F8", borderRadius: 11, padding: 12, cursor: "pointer", fontFamily: "inherit" }}>
-                <span style={{ width: 32, height: 32, borderRadius: 9, background: m.tileBg, color: m.tileColor, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{m.icon}</span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>{m.cardTitle}</div>
-                  <div style={{ fontSize: 11, color: "#8AAABF", fontWeight: 600 }}>{m.cardSub}</div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {open && (
-        <ModalShell title={META[open].title} sub={META[open].sub} badge={META[open].badge} onClose={() => setOpen(null)}>
-          {open === "dispute" && <ResolveDisputeBlock appointment={appointment} guardAction={guardAction} onDone={(u) => { setOpen(null); onResolveDone(u); }} />}
-          {open === "cancelreq" && <CancelRequestBlock appointment={appointment} guardAction={guardAction} onDone={(u, a) => { setOpen(null); onCancelReqDone(u, a); }} />}
-          {open === "noshow" && <NoShowBlock appointment={appointment} guardAction={guardAction} onDone={(u) => { setOpen(null); onNoShowDone(u); }} />}
-          {open === "cancel" && <CancelBlock appointment={appointment} guardAction={guardAction} onClose={() => setOpen(null)} onDone={(u) => { setOpen(null); onCancelDone(u); }} />}
-        </ModalShell>
-      )}
-    </>
-  );
-}
-
 /* ─── Mərkəz: operator ləğvi bloku (köhnə CancelModal axını) ───────────────── */
 
 function CancelBlock({ appointment, guardAction, onClose, onDone }: {
@@ -1834,6 +1673,84 @@ function CancelBlock({ appointment, guardAction, onClose, onDone }: {
         </button>
       </div>
     </>
+  );
+}
+
+/* ─── Görüş linki modalı (əlavə et / dəyiş) ────────────────────────────────── */
+
+function LinkEditModal({ appointment, onClose, onSaved }: {
+  appointment: AppointmentDetail;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [url, setUrl] = useState(appointment.meetingLink ?? "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    const v = url.trim();
+    if (!v) { setErr("Görüş linki daxil edin"); return; }
+    setErr(null); setSaving(true);
+    try { await operatorApi.setMeetingLink(appointment.id, v); onSaved(); }
+    catch (e) { setErr((e as Error).message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <ModalShell title={appointment.meetingLink ? "Görüş linkini dəyiş" : "Görüş linki əlavə et"} onClose={onClose}
+      footer={
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button onClick={onClose} className="opd-ghost-btn">İmtina</button>
+          <button onClick={submit} disabled={saving}
+            style={{ background: "#2563EB", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
+            {saving ? "…" : "Yadda saxla"}
+          </button>
+        </div>
+      }>
+      <label style={{ display: "block", fontSize: 12, color: "#5C6B85", fontWeight: 600, marginBottom: 6 }}>Görüş linki</label>
+      <input type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://meet.google.com/..." autoFocus
+        style={{ width: "100%", border: "1px solid #E2E8F5", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#1E293B", boxSizing: "border-box", fontFamily: "inherit" }} />
+      {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>{err}</div>}
+    </ModalShell>
+  );
+}
+
+/* ─── Ödəniş modalı (məbləği təyin et) ─────────────────────────────────────── */
+
+function PaymentEditModal({ appointment, onClose, onSaved }: {
+  appointment: AppointmentDetail;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = async () => {
+    const amt = Number(amount);
+    if (!Number.isFinite(amt) || amt <= 0) { setErr("Məbləği düzgün daxil edin"); return; }
+    setErr(null); setSaving(true);
+    try { await operatorApi.createManualPayment(appointment.id, amt); onSaved(); }
+    catch (e) { setErr((e as Error).message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <ModalShell title="Seans məbləğini təyin et" sub="PENDING ödəniş yaranır və «Ödənişlər»də görünür." onClose={onClose}
+      footer={
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button onClick={onClose} className="opd-ghost-btn">İmtina</button>
+          <button onClick={submit} disabled={saving}
+            style={{ background: "#15803D", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
+            {saving ? "…" : "Yadda saxla"}
+          </button>
+        </div>
+      }>
+      <label style={{ display: "block", fontSize: 12, color: "#5C6B85", fontWeight: 600, marginBottom: 6 }}>Seans məbləği (₼)</label>
+      <input type="number" min={0} step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="məs. 80" autoFocus
+        style={{ width: "100%", border: "1px solid #E2E8F5", borderRadius: 8, padding: "9px 12px", fontSize: 13.5, fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: "#1E293B", boxSizing: "border-box" }} />
+      {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>{err}</div>}
+    </ModalShell>
   );
 }
 

@@ -110,11 +110,11 @@ function timeAgo(iso: string | null | undefined): string {
 
 /** Status-asılı xəbərdarlıq (mübahisə / təsdiq / ləğv tələbi). */
 function buildAlert(a: AppointmentDetail, hasPsyProposal = false): { tone: "red" | "amber"; text: string } | null {
-  // Psixoloq Cədvəldə (drag-and-drop) yeni vaxt təklif edib — pasiyentin cavabını
-  // gözləyir. Randevunun öz statusu dəyişmədiyi üçün (CONFIRMED/ASSIGNED qalır)
-  // bu, ayrıca banner olmadan operatorda görünmürdü.
+  // Psixoloq Cədvəldə (drag-and-drop) yeni vaxt təklif edib — təsdiq operatorun
+  // əməliyyatı ilə yekunlaşır (pasiyentin cavabı gözlənilmir). Randevunun öz statusu
+  // dəyişmədiyi üçün (CONFIRMED/ASSIGNED qalır) bu, ayrıca banner olmadan görünmürdü.
   if (hasPsyProposal && (a.status === "CONFIRMED" || a.status === "ASSIGNED")) {
-    return { tone: "amber", text: "Psixoloq yeni vaxt təklif edib — pasiyentin cavabı gözlənilir." };
+    return { tone: "amber", text: "Psixoloq yeni vaxt təklif edib — sizin təsdiqiniz gözlənilir." };
   }
   if (a.status === "DISPUTED") {
     const who = a.patientDisputed && a.psychologistDisputed ? "İkisi də «olmadı» dedi"
@@ -186,7 +186,7 @@ export default function OperatorAppointmentsPage() {
   });
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const refCount = referrals.length;
-  // Psixoloqun Cədvəldə (drag-and-drop) yaratdığı, pasiyentin cavabını gözləyən
+  // Psixoloqun Cədvəldə (drag-and-drop) yaratdığı, operator təsdiqini gözləyən
   // təkliflərin randevu ID-ləri — bu məlumat AppointmentDetail-də olmadığı üçün
   // ayrıca çəkilir və randevu sətrinə xəbərdarlıq/filtr kimi bağlanır.
   const [psyProposalApptIds, setPsyProposalApptIds] = useState<Set<number>>(new Set());

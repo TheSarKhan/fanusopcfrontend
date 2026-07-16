@@ -761,6 +761,28 @@ function RequestContent({ full, t }: { full: OperatorAppointmentFull; t: ReturnT
         </div>
       )}
 
+      {full.pendingRescheduleProposal && (
+        <div className="fx-banner fx-banner--info" style={{ marginTop: 10, fontSize: 12.5, display: "block" }}>
+          <strong>
+            {full.pendingRescheduleProposal.initiator === "PSYCHOLOGIST"
+              ? "Psixoloq Cədvəldə yeni vaxt təklif etdi"
+              : full.pendingRescheduleProposal.initiator === "OPERATOR"
+                ? "Operator vasitəçili təklif göndərdi"
+                : "Pasient alternativ vaxt təklif etdi"}
+            {" — pasientin cavabı gözlənilir."}
+          </strong>
+          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+            {full.pendingRescheduleProposal.options.map(o => (
+              <span key={o.index} className="fx-num">{fmtDateTime(o.startAt)} – {azFormatTime(o.endAt)}</span>
+            ))}
+          </div>
+          {full.pendingRescheduleProposal.reason && (
+            <div style={{ marginTop: 4, fontStyle: "italic" }}>«{full.pendingRescheduleProposal.reason}»</div>
+          )}
+          <div style={{ marginTop: 4, opacity: .85 }}>Bitmə tarixi: {fmtDateTime(full.pendingRescheduleProposal.expiresAt)}</div>
+        </div>
+      )}
+
       {cleanOperatorNote(a.operatorNote) && (
         <div style={{ marginTop: 10, fontSize: 12, color: "var(--oxford-80)", background: "var(--amber-bg)", border: "1px solid rgba(201,125,46,.3)", borderRadius: 8, padding: "8px 12px", whiteSpace: "pre-wrap" }}>
           <strong>Operator qeydi:</strong> {cleanOperatorNote(a.operatorNote)}

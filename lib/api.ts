@@ -2996,7 +2996,7 @@ export interface RescheduleProposal {
   patientUserId: number | null;
   reason: string | null;
   status: RescheduleStatus;
-  initiator: "PSYCHOLOGIST" | "PATIENT";
+  initiator: "PSYCHOLOGIST" | "PATIENT" | "OPERATOR";
   expiresAt: string;
   acceptedOption: number | null;
   decidedAt: string | null;
@@ -3159,6 +3159,8 @@ export interface OperatorAppointmentFull {
   suggestions: PsychologistSuggestion[];
   slaHours: number;
   claim: ClaimState;
+  /** Cədvəldə sürükləmə (psixoloq) və ya vasitəçili (operator) gözləyən təklif — varsa. */
+  pendingRescheduleProposal?: RescheduleProposal | null;
 }
 
 // Modul H — operator müştəri profili + psixoloq statistikası + analitika

@@ -539,6 +539,10 @@ function NextSessionHero({
   const showConfirm = false;
   const alreadyConfirmed = !!appt.patientConfirmedAt;
   const cancelRequested = appt.status === "CANCEL_REQUESTED";
+  // Vaxt dəyişikliyi istəyi göndərilib, operator hələ baxmayıb — pasiyentə görünən
+  // izi olmasa istəyin çatdığı bilinmir və təkrar-təkrar göndərilə bilər.
+  const rescheduleRequested = !!appt.rescheduleRequestedAt
+    && (appt.status === "CONFIRMED" || appt.status === "ASSIGNED");
   const urgent = tu.urgent || tu.expired;
 
   // "Qoşul" is the primary action here (JoinSessionButton variant="primary" — solid brand
@@ -629,18 +633,28 @@ function NextSessionHero({
             Ləğv istəyiniz operator təsdiqini gözləyir
           </div>
         ) : !tu.expired && (
-          <div className="pa-hero-actions">
-            <JoinSessionButton appointment={appt} variant="primary" />
-            <AddToCalendarMenu appointment={appt} />
-            <button onClick={() => onReschedule(appt)} style={heroGhostBtn}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-              {t("staff.cardReschedule")}
-            </button>
-            <button onClick={() => onCancel(appt)} style={heroDangerBtn}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
-              {t("staff.cardCancel")}
-            </button>
-          </div>
+          <>
+            {rescheduleRequested && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
+                <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
+                Vaxt dəyişikliyi istəyiniz operatora göndərilib — sizinlə əlaqə saxlanılacaq
+              </div>
+            )}
+            <div className="pa-hero-actions">
+              <JoinSessionButton appointment={appt} variant="primary" />
+              <AddToCalendarMenu appointment={appt} />
+              {!rescheduleRequested && (
+                <button onClick={() => onReschedule(appt)} style={heroGhostBtn}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                  {t("staff.cardReschedule")}
+                </button>
+              )}
+              <button onClick={() => onCancel(appt)} style={heroDangerBtn}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                {t("staff.cardCancel")}
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -831,6 +845,8 @@ function AgendaRow({
   const tu = start ? timeUntil(start, now) : null;
   const isToday = start ? isSameDay(start, now) : false;
   const cancelRequested = a.status === "CANCEL_REQUESTED";
+  const rescheduleRequested = !!a.rescheduleRequestedAt
+    && (a.status === "CONFIRMED" || a.status === "ASSIGNED");
   const psyName = a.psychologistName ?? a.requestedPsychologistName ?? null;
   const awaitingHint = a.status === "REJECTED"
     ? "Operator sizə yeni psixoloq təyin edəcək"
@@ -848,7 +864,10 @@ function AgendaRow({
           <div className="psy-card__name">{psyName ?? "Operator təyin edəcək"}</div>
           {sessionNumber != null && <div className="psy-card__nth">{azOrdinal(sessionNumber)} seans</div>}
         </div>
-        {!cancelRequested && !awaiting && <SessionCardMenu a={a} onReschedule={onReschedule} onCancel={onCancel} />}
+        {!cancelRequested && !awaiting && (
+          <SessionCardMenu a={a} onReschedule={onReschedule} onCancel={onCancel}
+            hideReschedule={rescheduleRequested} />
+        )}
       </div>
 
       {/* Vaxt aralığı — tarix başlıqları yığışdırılıb, gün etiketi burada */}
@@ -888,6 +907,12 @@ function AgendaRow({
         <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
           <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
           {awaitingHint}
+        </div>
+      )}
+      {rescheduleRequested && (
+        <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
+          <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
+          Vaxt dəyişikliyi istəyiniz operatora göndərilib
         </div>
       )}
 
@@ -965,10 +990,12 @@ function VideoIcon() {
 }
 
 /* 3 nöqtə menyu — Google Calendar, Vaxtı dəyiş, Ləğv et */
-function SessionCardMenu({ a, onReschedule, onCancel }: {
+function SessionCardMenu({ a, onReschedule, onCancel, hideReschedule }: {
   a: AppointmentDetail;
   onReschedule: () => void;
   onCancel: () => void;
+  /** Vaxt dəyişikliyi istəyi artıq göndərilib — təkrar göndərməyə imkan vermə. */
+  hideReschedule?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -997,10 +1024,12 @@ function SessionCardMenu({ a, onReschedule, onCancel }: {
                 Google Calendar-a əlavə et
               </a>
             )}
-            <button type="button" onClick={() => { setOpen(false); onReschedule(); }} style={itemStyle}>
-              <IconClock />
-              Vaxtı dəyiş
-            </button>
+            {!hideReschedule && (
+              <button type="button" onClick={() => { setOpen(false); onReschedule(); }} style={itemStyle}>
+                <IconClock />
+                Vaxtı dəyiş
+              </button>
+            )}
             <div style={{ height: 1, background: "#F0F4FA", margin: "4px 6px" }} />
             <button type="button" onClick={() => { setOpen(false); onCancel(); }} style={{ ...itemStyle, color: "#991B1B" }}>
               <IconX />
@@ -1032,6 +1061,8 @@ function SessionDetailModal({
   const start = a.startAt ? new Date(a.startAt) : null;
   const tu = start ? timeUntil(start, now) : null;
   const cancelRequested = a.status === "CANCEL_REQUESTED";
+  const rescheduleRequested = !!a.rescheduleRequestedAt
+    && (a.status === "CONFIRMED" || a.status === "ASSIGNED");
   // Operator təsdiqi gözləyən müraciət — görüş/əməliyyat blokları bağlıdır.
   const awaiting = a.status === "PENDING" || a.status === "REJECTED";
   const psyName = a.psychologistName ?? a.requestedPsychologistName ?? null;
@@ -1163,16 +1194,24 @@ function SessionDetailModal({
             </div>
           ) : (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", borderTop: "1px solid #F0F4FA", paddingTop: 16 }}>
+              {rescheduleRequested && (
+                <div style={{ width: "100%", display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>
+                  <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
+                  Vaxt dəyişikliyi istəyiniz operatora göndərilib
+                </div>
+              )}
               {gcalHref && (
                 <a href={gcalHref} target="_blank" rel="noopener noreferrer" style={ghostBtn}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
                   Google Calendar-a əlavə et
                 </a>
               )}
-              <button type="button" onClick={onReschedule} style={ghostBtn}>
-                <IconClock />
-                Vaxtı dəyiş
-              </button>
+              {!rescheduleRequested && (
+                <button type="button" onClick={onReschedule} style={ghostBtn}>
+                  <IconClock />
+                  Vaxtı dəyiş
+                </button>
+              )}
               <button type="button" onClick={onCancel} style={{ ...ghostBtn, color: "#991B1B", border: "1px solid #F3D6D6" }}>
                 <IconX />
                 Ləğv et

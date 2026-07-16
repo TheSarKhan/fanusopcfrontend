@@ -137,7 +137,7 @@ export default function BookingModal() {
                 </div>
                 <div className="bm-option-text">
                   <span className="bm-option-title">Platforma üzərindən</span>
-                  <span className="bm-option-desc">Formu doldurun, admin uyğun psixoloq təyin edib geri dönəcək.</span>
+                  <span className="bm-option-desc">Formu doldurun, operator uyğun psixoloq təyin edib geri dönəcək.</span>
                 </div>
                 <svg className="bm-option-arrow" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12h14M12 5l7 7-7 7" />

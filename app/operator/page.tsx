@@ -486,6 +486,7 @@ function statusVerb(s: string): string {
     case "DISPUTED": return "Mübahisə";
     case "COMPLETED": return "Tamamlandı";
     case "CANCELLED": return "Ləğv";
+    case "CANCEL_REQUESTED": return "Ləğv tələbi";
     case "REJECTED": return "Rədd";
     case "PENDING": return "Yeni müraciət";
     default: return s;
@@ -495,7 +496,7 @@ function verbTone(s: string): { bg: string; fg: string } {
   switch (s) {
     case "ASSIGNED": return { bg: "var(--brand-100)", fg: "var(--brand-700)" };
     case "CONFIRMED": return { bg: "var(--status-paid-bg)", fg: "var(--status-paid-fg)" };
-    case "REJECTED": case "AWAITING_CONFIRMATION": return { bg: "var(--status-pending-bg)", fg: "var(--status-pending-fg)" };
+    case "REJECTED": case "AWAITING_CONFIRMATION": case "CANCEL_REQUESTED": return { bg: "var(--status-pending-bg)", fg: "var(--status-pending-fg)" };
     case "DISPUTED": case "CANCELLED": return { bg: "var(--status-refunded-bg)", fg: "var(--status-refunded-fg)" };
     default: return { bg: "var(--status-cancelled-bg)", fg: "var(--status-cancelled-fg)" };
   }

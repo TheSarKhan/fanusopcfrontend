@@ -420,6 +420,9 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
               cold={claimedByOther}
               guardAction={guardAction}
               selectRef={assignFocusRef}
+              proposedStart={full.pendingRescheduleProposal?.options?.[0]?.startAt ?? null}
+              proposedEnd={full.pendingRescheduleProposal?.options?.[0]?.endAt ?? null}
+              proposedInitiator={full.pendingRescheduleProposal?.initiator ?? null}
               onAssigned={(u) => {
                 // Təyinatdan sonra detal səhifəsində gözlətmə — randevular siyahısına qayıt.
                 globalToast((u.status === "ASSIGNED" || u.status === "CONFIRMED") ? "Təyin olundu" : "Yeniləndi", "success");
@@ -865,13 +868,19 @@ function ModalShell({ title, sub, badge, onClose, footer, maxWidth = 480, childr
   );
 }
 
-function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, onAssigned }: {
+function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, onAssigned,
+  proposedStart = null, proposedEnd = null, proposedInitiator = null }: {
   appointment: AppointmentDetail;
   suggestions: OperatorAppointmentFull["suggestions"];
   cold: boolean;
   guardAction: (run: () => void) => void;
   selectRef: React.RefObject<HTMLButtonElement | null>;
   onAssigned: (a: AppointmentDetail) => void;
+  /** Gözləyən vaxt-dəyişmə təklifi varsa (psixoloq/operator/pasiyent) — onun ilk
+   *  variantı "İstənilən vaxt" kimi işlədilir (banner + slot seçimi + manual seed). */
+  proposedStart?: string | null;
+  proposedEnd?: string | null;
+  proposedInitiator?: string | null;
 }) {
   const { t } = useT();
   const [psychologists, setPsychologists] = useState<Psychologist[]>([]);
@@ -923,7 +932,9 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   // Təyin edilmiş randevuda startAt artıq booked-dur → açıq slotlarda görünmür → manual sahə ilə əks olunur,
   // ona görə yenidən girişdə "Vaxt" özəti boş (seçilməmiş kimi) qalmasın.
   useEffect(() => {
-    const seedStart = appointment.startAt ?? appointment.requestedStartAt;
+    // Prioritet: gözləyən təklifin vaxtı (psixoloq/operator/pasiyent məhz bu yeni
+    // vaxtı istəyir) → mövcud təyin olunmuş vaxt → pasiyentin ilkin istədiyi vaxt.
+    const seedStart = proposedStart ?? appointment.startAt ?? appointment.requestedStartAt;
     if (!seedStart || !psyId || loadingSlots) return;
     if (pickedSlots.length > 0 || manualStart) return;
     const reqMs = new Date(seedStart).getTime();
@@ -936,14 +947,17 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     // seed ETMƏ — çünki aşağıdakı `manualStart` guard-ı yanlış aralığı (məs. 10:00–10:50)
     // dondurur və pasiyent tərəfi (məs. 90 dəq) ilə uyğunsuz görünür. Siyahı gəldikdə
     // effekt yenidən işə düşür (psychologists dependency-dir) və düzgün müddətlə seed edir.
-    if (!isIntro && psychologists.length === 0) return;
+    if (!proposedEnd && !isIntro && psychologists.length === 0) return;
     const minutes = isIntro
       ? 15
       : (psy?.defaultSessionMinutes && psy.defaultSessionMinutes > 0 ? psy.defaultSessionMinutes : 50);
-    const seedEnd = (appointment.startAt && appointment.endAt) ? appointment.endAt : new Date(reqMs + minutes * 60_000).toISOString();
+    // Təklifin öz bitmə vaxtı varsa onu işlət; yoxsa mövcud randevunun, o da yoxsa
+    // psixoloqun standart müddətindən hesabla.
+    const seedEnd = proposedEnd
+      ?? ((appointment.startAt && appointment.endAt) ? appointment.endAt : new Date(reqMs + minutes * 60_000).toISOString());
     setManualStart(isoToAzLocal(seedStart));
     setManualEnd(isoToAzLocal(seedEnd));
-  }, [slots, loadingSlots, psyId, psychologists, appointment.startAt, appointment.endAt, appointment.requestedStartAt, pickedSlots.length, manualStart]);
+  }, [slots, loadingSlots, psyId, psychologists, appointment.startAt, appointment.endAt, appointment.requestedStartAt, appointment.sessionKind, proposedStart, proposedEnd, pickedSlots.length, manualStart]);
 
   // Slot seç/çıxar — paket icazəsinə görə tavanla məhdudlaşır.
   const toggleSlot = (startAt: string) => {
@@ -1028,7 +1042,9 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     setSinglePrice(psy?.individualPrice != null ? String(psy.individualPrice) : "");
   };
 
-  const requestedMs = appointment.requestedStartAt ? new Date(appointment.requestedStartAt).getTime() : null;
+  // "İstənilən vaxt" = gözləyən təklifin vaxtı (varsa) → pasiyentin ilkin istədiyi vaxt.
+  const desiredStart = proposedStart ?? appointment.requestedStartAt;
+  const requestedMs = desiredStart ? new Date(desiredStart).getTime() : null;
   const chosenSlots = pickedSlots.length > 0
     ? pickedSlots.map(st => {
         const slot = slots.find(x => x.startAt === st);
@@ -1211,10 +1227,16 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
             <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 500 }}>Əvvəlcə psixoloq seçin.</div>
           ) : (
             <>
-              {appointment.requestedStartAt && (
+              {desiredStart && (
                 <div style={{ display: "flex", gap: 9, alignItems: "center", background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 10, padding: "10px 13px", marginBottom: 11 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--brand-700)" }}>İstənilən vaxt: {fmtDateTime(appointment.requestedStartAt)} — uyğun slot avtomatik seçilir</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--brand-700)" }}>
+                    {proposedStart
+                      ? `${proposedInitiator === "PSYCHOLOGIST" ? "Psixoloqun təklif etdiyi vaxt"
+                          : proposedInitiator === "PATIENT" ? "Pasiyentin təklif etdiyi vaxt"
+                          : "Təklif olunan vaxt"}: ${fmtDateTime(proposedStart)} — uyğun slot avtomatik seçilir`
+                      : `İstənilən vaxt: ${fmtDateTime(appointment.requestedStartAt)} — uyğun slot avtomatik seçilir`}
+                  </span>
                 </div>
               )}
 
@@ -1260,7 +1282,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                           const disabled = atCap && !active;
                           return (
                             <button key={s.startAt} type="button"
-                              title={isRequested ? "Müştərinin istədiyi vaxt" : disabled ? "Tavan dolub" : undefined}
+                              title={isRequested ? (proposedStart ? "Təklif olunan vaxt" : "Müştərinin istədiyi vaxt") : disabled ? "Tavan dolub" : undefined}
                               disabled={disabled}
                               onClick={disabled ? undefined : () => toggleSlot(s.startAt)}
                               style={{ position: "relative", padding: "9px 15px", borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.55 : 1, fontFamily: "inherit",

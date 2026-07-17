@@ -76,6 +76,10 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
     e.preventDefault();
     if (!test || submitting) return;
     setSubmitError(null);
+    if (!respondentName.trim()) {
+      setSubmitError("Zəhmət olmasa ad və soyadınızı yazın.");
+      return;
+    }
     if (!allAnswered) {
       setSubmitError("Davam etmək üçün bütün sualları cavablandırın.");
       return;
@@ -267,7 +271,7 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
 
           <label style={{ display: "block", marginTop: 18 }}>
             <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: INK, marginBottom: 6 }}>
-              Adınız <span style={{ color: MUTED, fontWeight: 400 }}>(istəyə bağlı)</span>
+              Adınız <span style={{ color: "#DC2626", fontWeight: 700 }}>*</span>
             </span>
             <input
               type="text"

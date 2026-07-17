@@ -1284,6 +1284,9 @@ export type SubmitAnswer = { questionId: number; selectedOptionId: number }
 export interface AnswerResult { questionId: number; questionText: string; selectedOptionId: number; selectedLabel: string; pointsAwarded: number; displayOrder: number }
 export interface TestResult { resultId: number; assignmentId: number; totalScore: number; maxScore: number; percentage: number; scaleId?: number | null; scaleLabel?: string | null; respondentName?: string | null; submittedAt: string; answers: AnswerResult[] }
 export interface TestAssignment { id: number; testId: number; testTitle: string; patientId?: number | null; patientName?: string | null; status: string; publicToken?: string | null; assignedAt: string; completedAt?: string | null; hasResult: boolean; submissionCount: number; note?: string | null }
+export interface TestResultRow { resultId: number; assignmentId: number; respondentName?: string | null; publicLink: boolean; totalScore: number; maxScore: number; percentage: number; scaleLabel?: string | null; submittedAt: string }
+export interface StatsLabelCount { label: string; count: number }
+export interface TestStatsSummary { total: number; avgScore: number; avgPercent: number; maxScore: number; topScore: number; scaleCounts: StatsLabelCount[]; buckets: StatsLabelCount[] }
 
 // Psixoloq müraciət statusu — public (auth YOXDUR): e-poçtdakı token ilə baxılır.
 export interface ApplicationStatusResult {
@@ -2598,6 +2601,21 @@ export const psychologistApi = {
   // Psychologist-authored tests (own builder; sharing needs admin approval)
   myTests: () => authedRequest<PsyTestSummary[]>("GET", "/psychologist/psych-tests/manage"),
   myTest: (id: number) => authedRequest<PsyTest>("GET", `/psychologist/psych-tests/manage/${id}`),
+  // Respondent-style preview of any assignable test (own / published / shared).
+  previewTest: (id: number) => authedRequest<PsyTest>("GET", `/psychologist/psych-tests/${id}/preview`),
+  // Statistics: full list (CSV export), paged table, and aggregate summary.
+  testResults: (id: number) => authedRequest<TestResultRow[]>("GET", `/psychologist/psych-tests/${id}/results`),
+  testResultsPaged: (id: number, opts: { page?: number; size?: number; q?: string } = {}) => {
+    const p = new URLSearchParams();
+    if (opts.page != null) p.set("page", String(opts.page));
+    if (opts.size != null) p.set("size", String(opts.size));
+    if (opts.q) p.set("q", opts.q);
+    const qs = p.toString();
+    return authedRequest<Paged<TestResultRow>>("GET", `/psychologist/psych-tests/${id}/results/paged${qs ? `?${qs}` : ""}`);
+  },
+  testStatsSummary: (id: number) => authedRequest<TestStatsSummary>("GET", `/psychologist/psych-tests/${id}/results/summary`),
+  testResultDetail: (resultId: number) => authedRequest<TestResult>("GET", `/psychologist/psych-tests/results/${resultId}`),
+  deleteTestResult: (resultId: number) => authedRequest<void>("DELETE", `/psychologist/psych-tests/results/${resultId}`),
   createMyTest: (data: PsyTestReq) => authedRequest<PsyTest>("POST", "/psychologist/psych-tests/manage", data),
   updateMyTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("PUT", `/psychologist/psych-tests/manage/${id}`, data),
   deleteMyTest: (id: number) => authedRequest<void>("DELETE", `/psychologist/psych-tests/manage/${id}`),

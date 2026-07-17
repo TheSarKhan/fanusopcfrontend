@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 /* Shared sub-navigation for the psychologist "Resurslar" module.
-   Three sibling routes presented as one tabbed module:
-   Bilik bazası (resources) · Materiallar (materials) · Testlər (tests). */
+   Sibling routes presented as one tabbed module: Materiallar · Testlər.
+   "Bilik bazası" (resources) is temporarily hidden. */
 
 const TABS = [
-  { href: "/psycholog/resources", label: "Bilik bazası" },
+  // { href: "/psycholog/resources", label: "Bilik bazası" }, // hidden for now
   { href: "/psycholog/materials", label: "Materiallar" },
   { href: "/psycholog/tests",     label: "Testlər" },
 ] as const;

@@ -137,9 +137,17 @@ export default function PanelShell({
         <div className="ps-side__brand">
           <Link href={homeHref} className="ps-side__brand-link" aria-label={`Fanus — ${brandLabel}`}>
             <span className="ps-side__logo">
-              {/* Geniş sidebar: tam enli lockup. Collapsed rail: yalnız ikon (CSS ilə keçid). */}
-              <Image className="ps-side__logo-full" src="/images/logos/sidebar-logo.png" alt="Fanus" width={2533} height={1402} priority />
-              <Image className="ps-side__logo-icon" src="/images/logos/logo-blue.png" alt="Fanus" width={44} height={44} priority />
+              {/* İkon + brand-rəngli yazı (şəkil deyil ki, rəng/ölçü CSS ilə dəqiq idarə
+                  olunsun və şəkil-keş problemi olmasın). Collapsed rail-də yalnız ikon. */}
+              <Image className="ps-side__logo-mark" src="/images/logos/logo-mark.png" alt="Fanus" width={1035} height={1856} priority />
+              <span className="ps-side__logo-text">
+                <span className="ps-side__logo-name">FANUS</span>
+                <span className="ps-side__logo-sub">
+                  <span>Online</span>
+                  <span>Psychology</span>
+                  <span>Center</span>
+                </span>
+              </span>
             </span>
           </Link>
           {/* Desktop: language + notifications sit right beside the logo. On mobile

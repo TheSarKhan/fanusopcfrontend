@@ -2292,21 +2292,34 @@
   text-decoration: none; color: inherit;
   flex: 1; min-width: 0;
 }
+/* Loqo = ikon + şaquli ayraç + brand-rəngli yazı (hamısı CSS ilə). */
 .ps-side__logo {
   flex: 1; min-width: 0;
-  display: flex; align-items: center;
+  display: flex; align-items: center; gap: 11px;
 }
-/* Geniş sidebar: enli lockup mövcud eni doldurur (contain ilə en-boy pozulmadan,
-   sola düzləndirilmiş), hündürlük 68px ilə məhdud. İkon gizli. */
-.ps-side__logo-full {
-  width: 100%; height: 68px;
-  object-fit: contain; object-position: left center;
+.ps-side__logo-mark {
+  height: 52px; width: auto; flex: none;
 }
-.ps-side__logo-icon { display: none; }
-/* Collapsed rail: yalnız əvvəlki kvadrat ikon-loqo. */
-.ps-side.is-collapsed .ps-side__logo { flex: none; height: 44px; justify-content: center; }
-.ps-side.is-collapsed .ps-side__logo-full { display: none; }
-.ps-side.is-collapsed .ps-side__logo-icon { display: inline-flex; width: 44px; height: 44px; object-fit: contain; }
+.ps-side__logo-text {
+  display: flex; flex-direction: column; justify-content: center;
+  min-width: 0;
+  border-left: 2px solid var(--brand);
+  padding-left: 11px;
+}
+.ps-side__logo-name {
+  font-size: 20px; font-weight: 800; line-height: 1;
+  letter-spacing: 0.04em; color: var(--brand);
+}
+.ps-side__logo-sub {
+  display: flex; flex-direction: column;
+  margin-top: 5px;
+  font-size: 8px; font-weight: 700; line-height: 1.28;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--brand);
+}
+/* Collapsed rail: yalnız ikon (yazı gizli). */
+.ps-side.is-collapsed .ps-side__logo { flex: none; gap: 0; justify-content: center; }
+.ps-side.is-collapsed .ps-side__logo-text { display: none; }
+.ps-side.is-collapsed .ps-side__logo-mark { height: 40px; }
 .ps-side__name {
   font-size: 16px; font-weight: 700; color: var(--oxford);
   letter-spacing: -0.01em; line-height: 1.2;

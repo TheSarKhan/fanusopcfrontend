@@ -8,6 +8,7 @@ import {
   type CrisisCheckIn,
   type CrisisContactPsy,
 } from "@/lib/api";
+import { toast } from "@/components/Toast";
 
 const MOOD_LABELS = [
   "Çox pisəm",     // 1
@@ -55,7 +56,7 @@ export default function PatientSupportPage() {
 
   const submitCheckIn = async () => {
     if (mood == null) return;
-    setSubmitting(true); setErr(null);
+    setSubmitting(true);
     try {
       const saved = await patientApi.crisisCheckIn({
         moodScore: mood,
@@ -67,7 +68,7 @@ export default function PatientSupportPage() {
       setNote("");
       setTimeout(() => setThanks(false), 4000);
     } catch (e) {
-      setErr((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -140,7 +141,6 @@ export default function PatientSupportPage() {
                 rows={3} maxLength={2000}
                 placeholder="(İstəyə bağlı) Qısa təfərrüat — nə hiss edirsiniz?"
                 className="psupport__note" />
-              {err && <div className="psupport__error">{err}</div>}
               {thanks && (
                 <div className="psupport__thanks">Təşəkkürlər. Komandamız izləyəcək.</div>
               )}

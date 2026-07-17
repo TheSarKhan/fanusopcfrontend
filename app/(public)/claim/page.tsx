@@ -39,7 +39,11 @@ export default function ClaimPage() {
   const activate = async () => {
     setErr(null);
     if (!code.trim()) { setErr("Kodu daxil edin"); return; }
-    if (password.length < 6) { setErr("Parol ən az 6 simvol olmalıdır"); return; }
+    // Qeydiyyatla eyni parol qaydası — ən az 8 simvol, böyük hərf, kiçik hərf, rəqəm.
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      setErr("Şifrə ən az 8 simvol, böyük hərf, kiçik hərf və rəqəm ehtiva etməlidir.");
+      return;
+    }
     setBusy(true);
     try {
       await verifyClaimOtp({
@@ -80,7 +84,7 @@ export default function ClaimPage() {
           <div style={{ display: "grid", gap: 12 }}>
             <input value={code} onChange={e => setCode(e.target.value)} placeholder="6 rəqəmli kod" inputMode="numeric" maxLength={6}
               style={{ ...inp, letterSpacing: 6, textAlign: "center", fontWeight: 700, fontSize: 18 }} autoFocus />
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Yeni parol (ən az 6 simvol)" style={inp} />
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Yeni parol (min 8 simvol, böyük hərf, rəqəm)" style={inp} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Ad (ops.)" style={inp} />
               <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Soyad (ops.)" style={inp} />

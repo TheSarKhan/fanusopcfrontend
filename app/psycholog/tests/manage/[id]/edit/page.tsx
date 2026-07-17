@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import "@/app/admin/admin.css";
 import { psychologistApi, type PsyTest } from "@/lib/api";
-import PsychTestBuilder from "@/components/PsychTestBuilder";
+import PsychTestWizard from "@/components/PsychTestWizard";
 
 export default function PsyEditTestPage() {
-  const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
 
@@ -26,7 +26,7 @@ export default function PsyEditTestPage() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <a href="/psycholog/tests" style={{ fontSize: 13, color: "#52718F", textDecoration: "none" }}>← Testlərə qayıt</a>
+        <Link href="/psycholog/tests" style={{ fontSize: 13, color: "#52718F", textDecoration: "none" }}>← Testlərə qayıt</Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: "8px 0 0" }}>Testi redaktə et</h1>
       </div>
 
@@ -38,10 +38,15 @@ export default function PsyEditTestPage() {
         </div>
       ) : (
         <div className="admin-shell">
-          <PsychTestBuilder
-            hidePublished
+          <PsychTestWizard
             initial={test}
-            onSubmit={(d) => psychologistApi.updateMyTest(id, d).then(() => router.push("/psycholog/tests"))}
+            doneHref="/psycholog/tests"
+            api={{
+              createDraft: psychologistApi.createMyTestDraft,
+              saveDraft: psychologistApi.saveMyTestDraft,
+              publish: psychologistApi.publishMyTest,
+              uploadFile: psychologistApi.uploadFile,
+            }}
           />
         </div>
       )}

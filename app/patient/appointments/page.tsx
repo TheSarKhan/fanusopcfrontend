@@ -18,6 +18,7 @@ import { formatAzn } from "@/lib/money";
 import RescheduleProposalModal from "@/components/RescheduleProposalModal";
 import AddToCalendarMenu from "@/components/AddToCalendarMenu";
 import JoinSessionButton from "@/components/JoinSessionButton";
+import { toast } from "@/components/Toast";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import {
   STATUS, PKG_STATUS, PA_STYLE,
@@ -74,6 +75,14 @@ function timeUntil(target: Date, now: Date): CountdownInfo {
 }
 
 const ACTIVE_STATUSES = new Set(["ASSIGNED", "CONFIRMED", "PENDING", "REJECTED", "CANCEL_REQUESTED"]);
+
+/** Seans hələ bitməyibsə (yaxınlaşan/davam edən) true. Bitmə vaxtı (endAt) keçibsə
+ *  seans BİTİB — qısa (15 dəq INTRO) seanslar da "startAt > now − 30dəq" proxy-si
+ *  ilə səhvən "növbəti" görünürdü; endAt ilə düzgün "keçmiş" sayılır. */
+function notEndedYet(a: { startAt?: string | null; endAt?: string | null }, nowMs: number): boolean {
+  if (a.endAt) return new Date(a.endAt).getTime() > nowMs;
+  return !!a.startAt && new Date(a.startAt).getTime() > nowMs - 30 * 60_000;
+}
 
 type StatusFilter = "all" | "confirmed" | "pending";
 type TabKey = "sessions" | "packages";
@@ -217,7 +226,7 @@ export default function PatientAppointmentsPage() {
 
   const next = useMemo(() => {
     return items
-      .filter(a => a.startAt && new Date(a.startAt).getTime() > now.getTime() - 30 * 60_000)
+      .filter(a => notEndedYet(a, now.getTime()))
       .filter(a => a.status === "ASSIGNED" || a.status === "CONFIRMED" || a.status === "CANCEL_REQUESTED")
       .filter(matchesFilters)
       .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())[0] ?? null;
@@ -233,7 +242,7 @@ export default function PatientAppointmentsPage() {
         // Gözləyən müraciətlər vaxt filtrindən keçmir — operator baxana qədər görünür.
         if (a.status === "PENDING" || a.status === "REJECTED") return true;
         if (a.status !== "ASSIGNED" && a.status !== "CONFIRMED" && a.status !== "CANCEL_REQUESTED") return false;
-        return !!a.startAt && new Date(a.startAt).getTime() > now.getTime() - 30 * 60_000;
+        return notEndedYet(a, now.getTime());
       })
       .filter(matchesFilters)
       .sort((x, y) => {
@@ -1238,7 +1247,6 @@ function CancelRequestNoteModal({
 }) {
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   // Modal açılan andakı vaxt — render içində Date.now() çağırmamaq üçün state-də.
   const [openedAtMs] = useState(() => Date.now());
 
@@ -1253,11 +1261,11 @@ function CancelRequestNoteModal({
   const paymentConfirmed = appointment.paymentStatus === "PAID";
 
   const submit = async () => {
-    setSaving(true); setErr(null);
+    setSaving(true);
     try {
       const updated = await patientApi.cancel(appointment.id, "PATIENT_OTHER", note.trim() || undefined);
       onDone(updated);
-    } catch (e) { setErr((e as Error).message); setSaving(false); }
+    } catch (e) { toast((e as Error).message, "error"); setSaving(false); }
   };
 
   return (
@@ -1295,7 +1303,6 @@ function CancelRequestNoteModal({
           <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
             placeholder="Səbəb (məcburi deyil)"
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, margin: "10px 0 0" }}>{err}</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
             <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid var(--brand-100)", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>Geri</button>
             <button onClick={submit} disabled={saving}
@@ -1320,14 +1327,13 @@ function RescheduleRequestNoteModal({
 }) {
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const submit = async () => {
-    setSaving(true); setErr(null);
+    setSaving(true);
     try {
       await patientApi.requestRescheduleNote(appointment.id, note.trim() || undefined);
       onDone();
-    } catch (e) { setErr((e as Error).message); setSaving(false); }
+    } catch (e) { toast((e as Error).message, "error"); setSaving(false); }
   };
 
   return (
@@ -1345,7 +1351,6 @@ function RescheduleRequestNoteModal({
           <textarea rows={4} value={note} onChange={e => setNote(e.target.value)}
             placeholder="Hansı vaxt sizə daha uyğundur? (məs. həftə içi axşamlar, və ya konkret tarix)"
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, margin: "10px 0 0" }}>{err}</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
             <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid var(--brand-100)", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>Bağla</button>
             <button onClick={submit} disabled={saving}
@@ -1370,16 +1375,14 @@ function DisputeModal({
 }) {
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const submit = async () => {
-    setErr(null);
     setSaving(true);
     try {
       const updated = await patientApi.disputeSession(appointment.id, reason.trim() || undefined);
       onDone(updated);
     } catch (e) {
-      setErr((e as Error).message);
+      toast((e as Error).message, "error");
       setSaving(false);
     }
   };
@@ -1403,8 +1406,6 @@ function DisputeModal({
             rows={4} value={reason} onChange={e => setReason(e.target.value)}
             placeholder="Məsələn: psixoloq qoşulmadı, texniki problem, vaxt uyğun deyildi…"
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12 }} />
-
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>{err}</div>}
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>

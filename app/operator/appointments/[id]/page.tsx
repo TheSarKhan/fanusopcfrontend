@@ -15,6 +15,7 @@ import {
   ApiError,
   operatorApi,
   isSlotConflict,
+  isScheduleMismatch,
   CANCEL_REASONS,
   type AppointmentDetail,
   type AvailableSlot,
@@ -72,6 +73,17 @@ function statusPillClass(status?: string | null): string {
 }
 
 
+// Status → nöqtə rəngi (header-də badge əvəzinə rəngli nöqtə + düz mətn üçün).
+function statusDotColor(status?: string | null): string {
+  switch (status) {
+    case "CONFIRMED": return "#16A34A";
+    case "ASSIGNED":  return "#2563EB";
+    case "COMPLETED": return "#64748B";
+    case "DISPUTED":
+    case "CANCELLED": return "#DC2626";
+    default:          return "#D97706"; // PENDING/NEW/REJECTED/IN_REVIEW/AWAITING/CANCEL_REQUESTED
+  }
+}
 function fmtDateTime(iso?: string | null) { return iso ? azFormatDateTime(iso) : "—"; }
 function isoDateOnly(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -130,6 +142,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const [approveErr, setApproveErr] = useState<string | null>(null);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [otherAction, setOtherAction] = useState<OtherActionKey | null>(null);
   const focusAssign = useCallback(() => {
     assignCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -356,11 +369,31 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const phone = normalizePhone(a.patientPhone);
   const isAssigned = a.status === "ASSIGNED" || a.status === "CONFIRMED";
 
+  // ── Ödəniş vəziyyəti (link ödənişdən ASILI — backend: isPaymentConfirmed) ──
+  // Pasiyent ödəniş etməsə operator link ƏLAVƏ də edə bilmir. Ona görə axışda
+  // ödəniş mərhələsi linkdən ƏVVƏL gəlir.
+  const canMarkPaid = a.paymentStatus === "PENDING" && (a.paymentAmount ?? 0) > 0 && a.paymentId != null;
+  const needsAmount = a.patientId != null && !a.patientPackageId && (!a.paymentStatus || paymentAmountUnset);
+  const paymentDue = isAssigned && !a.paymentConfirmed && !isFinal;
+
+  const markPaid = () => {
+    if (!a.paymentId) return;
+    guardAction(async () => {
+      setPaying(true);
+      try {
+        await operatorApi.markPaymentPaid(a.paymentId!);
+        globalToast("Ödəniş təsdiqləndi — indi görüş linki əlavə edilə bilər", "success");
+        load(true);
+      } catch (e) { globalToast((e as Error).message, "error"); }
+      finally { setPaying(false); }
+    });
+  };
+
   // ── "Sonrakı addım" strip — bir baxışda operatora indi nə lazım olduğunu deyir ──
   // Qeyd: obyektdə funksiya SAXLAMIRIQ (yalnız `action` açarı) — belədə ref-bağlı
   // callback-lar render obyektinə düşmür (react-hooks/refs lint qaydası təmiz qalır).
   type NextTone = "action" | "warn" | "muted" | "done";
-  type NextAction = "approve" | "assign" | "link" | "payment" | "dispute" | "cancelreq";
+  type NextAction = "approve" | "assign" | "link" | "paySet" | "payMark" | "payView" | "dispute" | "cancelreq";
   const next: { tone: NextTone; title: string; sub?: string; btnLabel?: string; action?: NextAction } = (() => {
     if (a.status === "CANCELLED") return { tone: "muted", title: "Bu müraciət ləğv edilib." };
     if (a.status === "COMPLETED") return { tone: "done", title: "Seans tamamlanıb." };
@@ -372,17 +405,27 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
       return { tone: "action", title: "Vaxt dəyişikliyi istənilib — yeni vaxt təyin edin.", btnLabel: "Vaxtı seç", action: "assign" };
     if (canAssign && !isAssigned && !timeLocked)
       return { tone: "action", title: "Bu müraciətə psixoloq və vaxt təyin edin.", btnLabel: "Təyin et", action: "assign" };
-    if (isAssigned && !a.meetingLink && !isFinal)
+    // ── ÖDƏNİŞ mərhələsi — linkdən ƏVVƏL. Pasiyent ödəməsə link göndərilmir. ──
+    if (paymentDue) {
+      if (canMarkPaid)
+        return { tone: "action", title: "Müştəri ödəniş etməlidir — ödəniş təsdiqlənəndə link göndərilə bilər.", sub: `Məbləğ: ${a.paymentAmount} ₼`, btnLabel: paying ? "…" : "Ödənildi olaraq işarələ", action: "payMark" };
+      if (needsAmount)
+        return { tone: "action", title: "Seans məbləğini təyin edin ki, müştəri ödəyə bilsin.", btnLabel: "Məbləği təyin et", action: "paySet" };
+      return { tone: "action", title: "Ödəniş təsdiqlənməyib — link ödənişdən sonra göndərilir.", btnLabel: "Ödənişlərə bax", action: "payView" };
+    }
+    if (isAssigned && a.paymentConfirmed && !a.meetingLink && !isFinal)
       return { tone: "action", title: "Görüş linkini əlavə edin ki, pasiyentə göndərilsin.", btnLabel: "Link əlavə et", action: "link" };
     if (needsPayment)
-      return { tone: "action", title: "Seans məbləğini təyin edin ki, ödənişlərdə görünsün.", btnLabel: "Məbləği təyin et", action: "payment" };
+      return { tone: "action", title: "Seans məbləğini təyin edin ki, ödənişlərdə görünsün.", btnLabel: "Məbləği təyin et", action: "paySet" };
     return { tone: "done", title: "Bütün məlumatlar tamamdır." };
   })();
   const runNextAction = (action: NextAction) => {
     if (action === "approve") approveProposal();
     else if (action === "assign") focusAssign();
     else if (action === "link") setLinkModalOpen(true);
-    else if (action === "payment") setPaymentModalOpen(true);
+    else if (action === "paySet") setPaymentModalOpen(true);
+    else if (action === "payMark") markPaid();
+    else if (action === "payView") router.push("/operator/payments");
     else if (action === "dispute") setOtherAction("dispute");
     else if (action === "cancelreq") setOtherAction("cancelreq");
   };
@@ -425,9 +468,16 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
               </button>
               <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontWeight: 700, fontSize: 18, color: "#1E293B" }}>#FNS-{String(id).padStart(4, "0")}</span>
-              <span className={`fx-pill ${statusPillClass(a.status)}`}>{statusLabel(a.status)}</span>
+              {/* Badge deyil — rəngli nöqtə + düz mətn (status rəng ilə oxunur, amma çip yox). */}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "#334155" }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusDotColor(a.status), flex: "none" }} />
+                {statusLabel(a.status)}
+              </span>
               {a.sessionKind === "INTRO" && (
-                <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 100, background: "#EFF6FF", color: "#1D4ED8" }}>Tanışlıq · Pulsuz</span>
+                <>
+                  <span style={{ width: 1, height: 13, background: "#E2E8F5", flex: "none" }} />
+                  <span style={{ fontSize: 12.5, color: "#94A3B8" }}>Tanışlıq · pulsuz</span>
+                </>
               )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -437,8 +487,9 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
               {isAdmin && !unowned && (
                 <button onClick={() => setReassignOpen(true)} className="opd-ghost-btn">{t("staff.opReassign")}</button>
               )}
-              <span style={{ display: "flex", alignItems: "center", gap: 6, background: ownerChip.bg, color: ownerChip.fg, padding: "6px 12px", borderRadius: 100, fontSize: 12.5, fontWeight: 600 }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: ownerChip.dot, flex: "none" }} />
+              {/* Badge deyil — rəngli nöqtə + düz mətn (sahiblik/SLA). */}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: ownerChip.fg, fontSize: 12.5, fontWeight: 600 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: ownerChip.dot, flex: "none" }} />
                 {ownerLabel}{!isFinal ? ` · ${ageLabel(a.createdAt, nowMs)} gözləyir` : ""}
               </span>
             </div>
@@ -531,6 +582,11 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
                             style={{ background: "transparent", border: "1px solid #FCA5A5", color: "#DC2626", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Sil</button>
                         </div>
                       </>
+                    ) : !a.paymentConfirmed ? (
+                      <div style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, color: "#B45309", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 12px" }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                        <span>Əvvəlcə ödəniş təsdiqlənməlidir — müştəri ödəyəndən sonra link əlavə oluna və göndərilə bilər.</span>
+                      </div>
                     ) : (
                       <>
                         <div style={{ fontSize: 13, color: "#94A3B8" }}>Görüş linki hələ əlavə edilməyib</div>
@@ -543,7 +599,12 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
                     {a.paymentAmount != null && a.paymentAmount > 0 ? (
                       <>
                         <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: "#1E293B" }}>{a.paymentAmount} ₼</div>
-                        <div style={{ fontSize: 12, color: "#94A3B8" }}>{a.paymentStatus === "PAID" ? "Ödənilib" : "Gözləyir"}</div>
+                        <div style={{ fontSize: 12, color: a.paymentStatus === "PAID" ? "#15803D" : "#B45309", fontWeight: 600 }}>{a.paymentStatus === "PAID" ? "Ödənilib" : "Gözləyir — müştəri ödəməlidir"}</div>
+                        {canMarkPaid && (
+                          <button onClick={markPaid} disabled={paying} style={{ alignSelf: "flex-start", background: "#ECFDF3", border: "1px solid #BBF7D0", color: "#15803D", borderRadius: 8, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, cursor: paying ? "wait" : "pointer", opacity: paying ? 0.7 : 1 }}>
+                            {paying ? "…" : "Ödənildi olaraq işarələ"}
+                          </button>
+                        )}
                       </>
                     ) : needsPayment ? (
                       <>
@@ -635,18 +696,17 @@ function ReassignModal({ id, currentHolderId, t, onClose, onDone }: {
   const [operators, setOperators] = useState<{ id: number; name: string }[]>([]);
   const [opId, setOpId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     operatorApi.listOperators().then(setOperators).catch(() => {});
   }, []);
 
   const submit = () => {
-    if (!opId) { setErr(t("staff.opReassignPick")); return; }
-    setBusy(true); setErr(null);
+    if (!opId) { globalToast(t("staff.opReassignPick"), "error"); return; }
+    setBusy(true);
     operatorApi.reassignAppointment(id, opId)
       .then(onDone)
-      .catch(e => { setErr((e as Error).message); setBusy(false); });
+      .catch(e => { globalToast((e as Error).message, "error"); setBusy(false); });
   };
 
   return (
@@ -660,7 +720,6 @@ function ReassignModal({ id, currentHolderId, t, onClose, onDone }: {
             <option key={o.id} value={o.id}>{o.name}</option>
           ))}
         </select>
-        {err && <div className="fx-banner fx-banner--error" style={{ fontSize: 12 }}>{err}</div>}
         <div className="fx-modal__actions">
           <button onClick={onClose} className="fx-btn fx-btn--ghost">
             {t("staff.opReassignCancel")}
@@ -716,36 +775,19 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
     finally { setSeriesBusy(false); }
   };
 
-  const blockOrUnblock = async () => {
-    if (!h?.userId) return;
-    try {
-      if (h.blocked) {
-        if (!(await confirmDialog({ title: "Bloku aç", message: "Bu istifadəçinin blokunu açmaq istəyirsiniz?", confirmLabel: "Aç" }))) return;
-        await operatorApi.unblockUser(h.userId);
-        globalToast("Blok açıldı", "success");
-      } else {
-        if (!(await confirmDialog({ title: "İstifadəçini blokla", message: "Bu pasiyenti bloklamaq istəyirsiniz? Səbəbi sonra qeyd kimi əlavə edə bilərsiniz.", confirmLabel: "Blokla", danger: true }))) return;
-        await operatorApi.blockUser(h.userId, "");
-        globalToast("İstifadəçi bloklandı", "success");
-      }
-      onHistoryChanged();
-    } catch (e) { globalToast((e as Error).message, "error"); }
-  };
+  // Qeyd: "Blokla / spam" hələlik gizlədilib (sonra baxılacaq) — blockOrUnblock
+  // funksiyası da götürülüb ki, istifadə olunmayan kod qalmasın.
 
   return (
     <>
       {/* Pasiyent kartı */}
       <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
         <div className="opd-card__title">{t("staff.opDetPatientCard")}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: "#1E293B" }}>{a.patientName ?? "—"}</span>
-          <span className={`fx-pill ${a.patientId ? "fx-pill--paid" : "fx-pill--cancelled"}`}>
-            {a.patientId && (
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-            )}
-            {a.patientId ? t("staff.opDetRegistered") : t("staff.opDetAnonymous")}
-          </span>
-          {h?.blocked && <span className="fx-pill fx-pill--refunded">BLOKLU</span>}
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#1E293B" }}>{a.patientName ?? "—"}</div>
+          <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>
+            {a.patientId ? t("staff.opDetRegistered") : t("staff.opDetAnonymous")}{h?.blocked ? " · Bloklanıb" : ""}
+          </div>
         </div>
         {a.patientPhone && (
           <div style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12.5, color: "#5C6B85" }}>{a.patientPhone}</div>
@@ -769,25 +811,50 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
             )}
           </div>
         )}
-        {h?.userId && (
-          <div style={{ borderTop: "1px solid #EDF1F8", marginTop: 2, paddingTop: 10 }}>
-            <span onClick={blockOrUnblock} role="button" tabIndex={0}
-              onKeyDown={e => { if (e.key === "Enter" || e.key === " ") blockOrUnblock(); }}
-              style={{ fontSize: 12, color: h.blocked ? "#15803D" : "#94A3B8", cursor: "pointer", fontWeight: 600 }}>
-              {h.blocked ? "Bloku aç" : "Blokla / spam"}
-            </span>
-          </div>
-        )}
       </div>
 
-      {/* Müraciət xülasəsi */}
+      {/* Müraciət xülasəsi — düz "etiket: dəyər" sətirləri, hər biri tək xətt */}
       <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
         <div className="opd-card__title">Müraciət xülasəsi</div>
         <div className="opd-kv"><span className="opd-kv__k">İstənilən vaxt</span><span className="opd-kv__v">{fmtDateTime(a.requestedStartAt)}</span></div>
-        <div className="opd-kv"><span className="opd-kv__k">İstənilən psixoloq</span><span className="opd-kv__v" style={{ fontFamily: "inherit" }}>{a.psychologistName ?? a.requestedPsychologistName ?? "Seçilməyib"}</span></div>
+        {/* origin=DIRECT → etiketin özü "Müştəri seçdi" olur (badge lazım deyil). */}
+        <div className="opd-kv">
+          <span className="opd-kv__k">{a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən psixoloq"}</span>
+          <span className="opd-kv__v" style={{ fontFamily: "inherit" }}>{a.psychologistName ?? a.requestedPsychologistName ?? "Seçilməyib"}</span>
+        </div>
         {a.startAt && <div className="opd-kv"><span className="opd-kv__k">Təyin edilmiş vaxt</span><span className="opd-kv__v">{fmtDateTime(a.startAt)}</span></div>}
         <div className="opd-kv"><span className="opd-kv__k">Yaradılıb</span><span className="opd-kv__v">{fmtDateTime(a.createdAt)}</span></div>
       </div>
+
+      {/* Bu müştərinin digər seansları — cross-appointment kontekst (Son fəaliyyət
+          yalnız BU müraciətin hadisələridir; əvvəlki seanslar orada görünmür). */}
+      {(() => {
+        const others = (h?.recent ?? []).filter(r => r.id !== a.id);
+        if (others.length === 0) return null;
+        return (
+          <div className="opd-card" style={{ padding: 16 }}>
+            <div className="opd-card__title" style={{ marginBottom: 10 }}>Müştərinin seansları</div>
+            {others.slice(0, 6).map((r, i, arr) => {
+              // İki sətir: başlıq (Seans/Tanışlıq · psixoloq — tam eni, sığmasa "…")
+              // + altında boz "tarix · status". Bir sətirdə hamısı sığmır, kəsilirdi.
+              const when = r.startAt ?? r.createdAt;
+              const statusColor = r.status === "COMPLETED" ? "#15803D"
+                : (r.status === "CANCELLED" || r.status === "REJECTED") ? "#B91C1C" : "#94A3B8";
+              return (
+                <Link key={r.id} href={`/operator/appointments/${r.id}${suffix}`}
+                  style={{ display: "block", padding: "8px 0", borderBottom: i === arr.length - 1 ? "none" : "1px solid #F1F5F9", textDecoration: "none" }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {r.sessionKind === "INTRO" ? "Tanışlıq" : "Seans"}{r.psychologistName ? ` · ${r.psychologistName}` : ""}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 3 }}>
+                    {when ? azFormatDate(when) : "—"} · <span style={{ color: statusColor, fontWeight: 600 }}>{statusLabel(r.status)}</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* Kurs konteksti */}
       {a.seriesId != null && full.seriesSiblings.length > 0 && (
@@ -838,18 +905,41 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
       {full.activity.length > 0 && (
         <div className="opd-card" style={{ padding: 16 }}>
           <div className="opd-card__title" style={{ marginBottom: 12 }}>Son fəaliyyət</div>
-          {full.activity.slice(0, 6).map((item, i, arr) => (
-            <div key={i} style={{ display: "flex", gap: 10, paddingBottom: i === arr.length - 1 ? 0 : 14 }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: activityDotColor(item), flex: "none", marginTop: 4 }} />
-                {i !== arr.length - 1 && <div style={{ width: 1, flex: 1, background: "#E2E8F5", marginTop: 2 }} />}
+          {full.activity.slice(0, 6).map((item, i, arr) => {
+            // Görüş linki hadisələri: xam link ("meetingLink=https://…") ekranı daşırırdı.
+            // İndi "Link təyin edildi" kimi göstərilir; link varsa mavi + klikləyəndə kopyalanır.
+            const isLink = !!item.action && item.action.startsWith("APPT_MEETING_LINK");
+            const copyLink = isLink
+              ? (meetingLinkFromActivity(item) ?? (item.action !== "APPT_MEETING_LINK_REVOKED" ? a.meetingLink ?? null : null))
+              : null;
+            const doCopy = () => {
+              if (!copyLink) return;
+              navigator.clipboard?.writeText(copyLink)
+                .then(() => globalToast("Link kopyalandı", "success"))
+                .catch(() => globalToast("Kopyalamaq alınmadı", "error"));
+            };
+            return (
+              <div key={i} style={{ display: "flex", gap: 10, paddingBottom: i === arr.length - 1 ? 0 : 14 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: activityDotColor(item), flex: "none", marginTop: 4 }} />
+                  {i !== arr.length - 1 && <div style={{ width: 1, flex: 1, background: "#E2E8F5", marginTop: 2 }} />}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  {copyLink ? (
+                    <div onClick={doCopy} role="button" tabIndex={0}
+                      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); doCopy(); } }}
+                      title="Klikləyin — link kopyalanır"
+                      style={{ fontSize: 12.5, color: "#2563EB", fontWeight: 600, lineHeight: 1.4, cursor: "pointer" }}>
+                      {activityLabel(item)}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12.5, color: "#1E293B", lineHeight: 1.4, overflowWrap: "anywhere" }}>{activityLabel(item)}</div>
+                  )}
+                  <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }} title={azFormatDateTime(item.createdAt)}>{azFromNow(item.createdAt, nowMs)}</div>
+                </div>
               </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, color: "#1E293B", lineHeight: 1.4 }}>{activityLabel(item)}</div>
-                <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }} title={azFormatDateTime(item.createdAt)}>{azFromNow(item.createdAt, nowMs)}</div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -857,7 +947,21 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
   );
 }
 
+// Görüş linki audit hadisələri → təmiz AZ etiket (xam "meetingLink=…" göstərilmir).
+const MEETING_LINK_ACTIONS: Record<string, string> = {
+  APPT_MEETING_LINK_SET: "Link təyin edildi",
+  APPT_MEETING_LINK_UPDATED: "Link yeniləndi",
+  APPT_MEETING_LINK_SENT: "Link göndərildi",
+  APPT_MEETING_LINK_REVOKED: "Link silindi",
+};
+/** Audit qeydindən ("meetingLink=https://…") URL-i çıxarır — yoxdursa null. */
+function meetingLinkFromActivity(item: OperatorActivityItem): string | null {
+  const m = item.text?.match(/meetingLink=(\S+)/i);
+  return m ? m[1] : null;
+}
+
 function activityLabel(item: OperatorActivityItem): string {
+  if (item.action && MEETING_LINK_ACTIONS[item.action]) return MEETING_LINK_ACTIONS[item.action];
   const raw = item.text?.trim();
   if (raw) {
     // Backend audit qeydləri bəzən xam ingiliscə + ISO nanosaniyəli tarixlə gəlir
@@ -971,7 +1075,9 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   const [manualEnd, setManualEnd] = useState("");
   const [singlePrice, setSinglePrice] = useState("");  // yalnız tək (paketsiz) seans ödənişi üçün opsional
   const [note, setNote] = useState(appointment.operatorNote ?? "");
-  const [error, setError] = useState<string | null>(null);
+  // Seçilmiş vaxt psixoloqun iş qrafikinə düşmür — bloklayıcı deyil, xəbərdarlıq.
+  // Operator psixoloqla razılaşıb "Yenə də təyin et" ilə təsdiqləyə bilər.
+  const [scheduleWarn, setScheduleWarn] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [psychModalOpen, setPsychModalOpen] = useState(false);
   const [timeModalOpen, setTimeModalOpen] = useState(false);
@@ -1040,16 +1146,16 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   // Slot seç/çıxar — paket icazəsinə görə tavanla məhdudlaşır.
   const toggleSlot = (startAt: string) => {
     setManualStart(""); setManualEnd("");
+    setScheduleWarn(null); // vaxt dəyişdi — köhnə qrafik xəbərdarlığı artıq keçərsizdir
     setPickedSlots(prev => {
       if (prev.includes(startAt)) return prev.filter(s => s !== startAt);
       if (maxSlots <= 1) return [startAt]; // tək seçim → əvəzlə
       if (prev.length >= maxSlots) {
-        setError(allowance?.packageName
+        globalToast(allowance?.packageName
           ? `Paketdə ${maxSlots} seans qalıb — daha çox seçilə bilməz`
-          : "Paket yoxdur — yalnız 1 vaxt seçilə bilər");
+          : "Paket yoxdur — yalnız 1 vaxt seçilə bilər", "error");
         return prev;
       }
-      setError(null);
       return [...prev, startAt];
     });
   };
@@ -1064,9 +1170,9 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     return Array.from(map.entries());
   }, [slots]);
 
-  const doSubmit = async () => {
-    setError(null);
-    if (!psyId) { setError("Psixoloq seçin"); return; }
+  const doSubmit = async (allowOutsideSchedule = false) => {
+    if (!allowOutsideSchedule) setScheduleWarn(null);
+    if (!psyId) { globalToast("Psixoloq seçin", "error"); return; }
 
     // Seçilmiş slotları (vaxt sırası ilə) payload-a çevir; slot yoxdursa əl ilə.
     let payloadSlots: { startAt: string; endAt: string }[] = [];
@@ -1079,14 +1185,14 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     } else if (manualStart && manualEnd) {
       const startAt = azLocalToISO(manualStart);
       const endAt = azLocalToISO(manualEnd);
-      if (new Date(startAt) >= new Date(endAt)) { setError("Başlama vaxtı bitiş vaxtından əvvəl olmalıdır"); return; }
+      if (new Date(startAt) >= new Date(endAt)) { globalToast("Başlama vaxtı bitiş vaxtından əvvəl olmalıdır", "error"); return; }
       payloadSlots = [{ startAt, endAt }];
     }
-    if (payloadSlots.length === 0) { setError("Vaxt seçin və ya əl ilə daxil edin"); return; }
+    if (payloadSlots.length === 0) { globalToast("Vaxt seçin və ya əl ilə daxil edin", "error"); return; }
     if (payloadSlots.length > maxSlots) {
-      setError(allowance?.packageName
+      globalToast(allowance?.packageName
         ? `Paketdə ${maxSlots} seans qalıb — daha çox vaxt seçilə bilməz`
-        : "Paket yoxdur — yalnız 1 vaxt seçilə bilər");
+        : "Paket yoxdur — yalnız 1 vaxt seçilə bilər", "error");
       return;
     }
 
@@ -1096,15 +1202,22 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
         psychologistId: psyId, slots: payloadSlots, operatorNote: note || null,
         // Tək (paketsiz) seans üçün opsional qiymət override-i; paketdə göndərilmir.
         sessionPrice: (!allowance?.packageName && singlePrice.trim()) ? Number(singlePrice) : null,
+        allowOutsideSchedule,
       });
       const primary = updated.find(u => u.id === appointment.id) ?? updated[0];
       if (primary) onAssigned(primary);
     } catch (e) {
-      setError((e as Error).message);
-      // GAP-02 / B4-2: konflikt konsolu — slot qaçdı, köhnə seçimi at, yenilə
-      if (isSlotConflict(e) && psyId) {
-        setPickedSlots([]);
-        loadSlots(psyId);
+      // İş-qrafiki uyğunsuzluğu (422) — bloklamır: xəbərdarlıq göstər, operator
+      // psixoloqla əlaqə saxlayıb "Yenə də təyin et" ilə təsdiqləyə bilər.
+      if (!allowOutsideSchedule && isScheduleMismatch(e)) {
+        setScheduleWarn((e as Error).message);
+      } else {
+        globalToast((e as Error).message, "error");
+        // GAP-02 / B4-2: konflikt konsolu — slot qaçdı, köhnə seçimi at, yenilə
+        if (isSlotConflict(e) && psyId) {
+          setPickedSlots([]);
+          loadSlots(psyId);
+        }
       }
     } finally {
       setSaving(false);
@@ -1116,6 +1229,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     setPickedSlots([]);
     setManualStart("");
     setManualEnd("");
+    setScheduleWarn(null); // psixoloq dəyişdi — qrafik xəbərdarlığı yeni psixoloqa aid deyil
     const psy = id !== null ? psychologists.find(p => p.id === id) : null;
     setSinglePrice(psy?.individualPrice != null ? String(psy.individualPrice) : "");
   };
@@ -1225,16 +1339,25 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
         </div>
       )}
 
-      {error && (
-        <div className="fx-banner fx-banner--error" style={{ fontSize: 12.5, marginBottom: 12 }}>
-          {error}
+      {/* İş-qrafiki xəbərdarlığı — bloklamır. Operator psixoloqla əlaqə saxlayıb
+          "Yenə də təyin et" ilə qrafikdən kənar vaxtı təsdiqləyə bilər. */}
+      {scheduleWarn && (
+        <div className="fx-alert" style={{ alignItems: "flex-start", marginBottom: 12, fontSize: 12.5, fontWeight: 600, color: "var(--status-pending-fg)" }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+          <div>
+            {scheduleWarn}
+            <div style={{ fontWeight: 500, marginTop: 4, opacity: 0.9 }}>
+              Psixoloqla əlaqə saxlayıb yenə də təsdiqləyə bilərsiniz.
+            </div>
+          </div>
         </div>
       )}
 
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 14, marginTop: 4, paddingTop: 14, borderTop: "1px solid #EDF1F8" }}>
-        <button onClick={() => guardAction(doSubmit)} disabled={saving || !ready}
-          style={{ background: (saving || !ready) ? "#A9BEE2" : "#2563EB", color: "#fff", border: "none", borderRadius: 9, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: (saving || !ready) ? "not-allowed" : "pointer" }}>
+        <button onClick={() => guardAction(() => doSubmit(!!scheduleWarn))} disabled={saving || !ready}
+          style={{ background: (saving || !ready) ? "#A9BEE2" : scheduleWarn ? "#D97706" : "#2563EB", color: "#fff", border: "none", borderRadius: 9, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: (saving || !ready) ? "not-allowed" : "pointer" }}>
           {saving ? "Saxlanılır…"
+            : scheduleWarn ? "Yenə də təyin et"
             : pickedSlots.length > 1 ? `${pickedSlots.length} seans təyin et`
             : appointment.status === "ASSIGNED" ? "Yenidən təyin et" : "Təyin et"}
         </button>
@@ -1442,15 +1565,14 @@ function ResolveDisputeBlock({ appointment, guardAction, onDone }: {
   const [blameSide, setBlameSide] = useState<"PATIENT" | "PSYCHOLOGIST" | "NONE">("NONE");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const doSubmit = async () => {
-    setErr(null); setSaving(true);
+    setSaving(true);
     try {
       const blame = decision === "CANCEL" && blameSide !== "NONE" ? blameSide : undefined;
       const updated = await operatorApi.resolveDispute(appointment.id, decision, note.trim() || undefined, blame);
       onDone(updated);
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) { globalToast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 
@@ -1509,8 +1631,6 @@ function ResolveDisputeBlock({ appointment, guardAction, onDone }: {
         placeholder="Operator qeydi (məcburi deyil)"
         style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, fontFamily: "inherit", marginBottom: 10, boxSizing: "border-box" }} />
 
-      {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
-
       <button onClick={() => guardAction(doSubmit)} disabled={saving}
         style={{
           width: "100%", padding: 12, borderRadius: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit",
@@ -1535,14 +1655,13 @@ function NoShowBlock({ appointment, guardAction, onDone }: {
   const [blameSide, setBlameSide] = useState<"PATIENT" | "PSYCHOLOGIST">("PATIENT");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const doSubmit = async () => {
-    setErr(null); setSaving(true);
+    setSaving(true);
     try {
       const updated = await operatorApi.markNoShow(appointment.id, blameSide, note.trim() || undefined);
       onDone(updated);
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) { globalToast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 
@@ -1574,7 +1693,6 @@ function NoShowBlock({ appointment, guardAction, onDone }: {
       <textarea rows={2} value={note} onChange={e => setNote(e.target.value)}
         placeholder="Qeyd (məcburi deyil)"
         style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, fontFamily: "inherit", marginBottom: 10, boxSizing: "border-box" }} />
-      {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
       <button onClick={() => guardAction(doSubmit)} disabled={saving}
         style={{
           width: "100%", padding: 12, borderRadius: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit",
@@ -1595,16 +1713,15 @@ function CancelRequestBlock({ appointment, guardAction, onDone }: {
 }) {
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const run = (approved: boolean) => async () => {
-    setErr(null); setSaving(true);
+    setSaving(true);
     try {
       const updated = approved
         ? await operatorApi.approveCancelRequest(appointment.id, note.trim() || undefined)
         : await operatorApi.rejectCancelRequest(appointment.id, note.trim() || undefined);
       onDone(updated, approved);
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) { globalToast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 
@@ -1613,7 +1730,6 @@ function CancelRequestBlock({ appointment, guardAction, onDone }: {
       <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
         placeholder="Pasiyentə qeyd (təsdiqdə məcburi deyil, rəddə tövsiyə olunur)"
         style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box" }} />
-      {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <button onClick={() => guardAction(run(true))} disabled={saving}
           style={{ padding: 12, border: "1.5px solid #F3D6D6", borderRadius: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit", background: "#FEE2E2", color: "#991B1B", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
@@ -1640,14 +1756,13 @@ function CancelBlock({ appointment, guardAction, onClose, onDone }: {
   const [reasonCode, setReasonCode] = useState(reasons[0]?.code ?? "OPERATOR_OTHER");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const doSubmit = async () => {
-    setErr(null); setSaving(true);
+    setSaving(true);
     try {
       const updated = await operatorApi.cancel(appointment.id, reasonCode, note.trim() || undefined);
       onDone(updated);
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) { globalToast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 
@@ -1661,7 +1776,6 @@ function CancelBlock({ appointment, guardAction, onClose, onDone }: {
       <textarea rows={2} value={note} onChange={e => setNote(e.target.value)}
         placeholder="Qeyd (məcburi deyil)"
         style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, fontFamily: "inherit", marginBottom: 10, boxSizing: "border-box" }} />
-      {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={onClose}
           style={{ flex: 1, padding: "9px 14px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 12.5, fontWeight: 600, background: "#fff", cursor: "pointer" }}>
@@ -1685,14 +1799,13 @@ function LinkEditModal({ appointment, onClose, onSaved }: {
 }) {
   const [url, setUrl] = useState(appointment.meetingLink ?? "");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const submit = async () => {
     const v = url.trim();
-    if (!v) { setErr("Görüş linki daxil edin"); return; }
-    setErr(null); setSaving(true);
+    if (!v) { globalToast("Görüş linki daxil edin", "error"); return; }
+    setSaving(true);
     try { await operatorApi.setMeetingLink(appointment.id, v); onSaved(); }
-    catch (e) { setErr((e as Error).message); }
+    catch (e) { globalToast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 
@@ -1710,7 +1823,6 @@ function LinkEditModal({ appointment, onClose, onSaved }: {
       <label style={{ display: "block", fontSize: 12, color: "#5C6B85", fontWeight: 600, marginBottom: 6 }}>Görüş linki</label>
       <input type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://meet.google.com/..." autoFocus
         style={{ width: "100%", border: "1px solid #E2E8F5", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#1E293B", boxSizing: "border-box", fontFamily: "inherit" }} />
-      {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>{err}</div>}
     </ModalShell>
   );
 }
@@ -1724,14 +1836,13 @@ function PaymentEditModal({ appointment, onClose, onSaved }: {
 }) {
   const [amount, setAmount] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const submit = async () => {
     const amt = Number(amount);
-    if (!Number.isFinite(amt) || amt <= 0) { setErr("Məbləği düzgün daxil edin"); return; }
-    setErr(null); setSaving(true);
+    if (!Number.isFinite(amt) || amt <= 0) { globalToast("Məbləği düzgün daxil edin", "error"); return; }
+    setSaving(true);
     try { await operatorApi.createManualPayment(appointment.id, amt); onSaved(); }
-    catch (e) { setErr((e as Error).message); }
+    catch (e) { globalToast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 
@@ -1749,7 +1860,6 @@ function PaymentEditModal({ appointment, onClose, onSaved }: {
       <label style={{ display: "block", fontSize: 12, color: "#5C6B85", fontWeight: 600, marginBottom: 6 }}>Seans məbləği (₼)</label>
       <input type="number" min={0} step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="məs. 80" autoFocus
         style={{ width: "100%", border: "1px solid #E2E8F5", borderRadius: 8, padding: "9px 12px", fontSize: 13.5, fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: "#1E293B", boxSizing: "border-box" }} />
-      {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>{err}</div>}
     </ModalShell>
   );
 }

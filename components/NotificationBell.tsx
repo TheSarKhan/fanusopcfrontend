@@ -19,7 +19,7 @@ function timeAgo(iso: string): string {
   return azFormatDate(iso);
 }
 
-export default function NotificationBell() {
+export default function NotificationBell({ align = "right" }: { align?: "left" | "right" } = {}) {
   const pathname = usePathname();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
@@ -126,7 +126,7 @@ export default function NotificationBell() {
         onClick={toggle}
         aria-label="Bildirişlər"
         style={{
-          width: 38, height: 38, borderRadius: "50%",
+          width: 40, height: 40, borderRadius: 12,
           background: open ? "#EEF2FF" : "transparent",
           border: "1px solid #E5E7EB", cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
@@ -152,8 +152,10 @@ export default function NotificationBell() {
 
       {open && (
         <div style={{
-          position: "absolute", top: "calc(100% + 8px)", right: 0,
-          width: 360, maxHeight: 480, overflow: "hidden",
+          position: "absolute", top: "calc(100% + 8px)",
+          left: align === "left" ? 0 : "auto",
+          right: align === "left" ? "auto" : 0,
+          width: 360, maxWidth: "min(360px, calc(100vw - 24px))", maxHeight: 480, overflow: "hidden",
           background: "#fff", borderRadius: 14, boxShadow: "0 12px 40px rgba(0,0,0,0.18)",
           border: "1px solid #E5E7EB", zIndex: 80,
           display: "flex", flexDirection: "column",

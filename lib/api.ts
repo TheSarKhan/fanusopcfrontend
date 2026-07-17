@@ -203,6 +203,13 @@ export function isSlotConflict(e: unknown): boolean {
   return e instanceof ApiError && e.status === 409;
 }
 
+/** True when the chosen time falls outside the psychologist's working hours (HTTP 422).
+ *  Non-fatal — the operator may confirm anyway via `allowOutsideSchedule` after
+ *  coordinating with the psychologist. */
+export function isScheduleMismatch(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 422;
+}
+
 async function authedRequest<T>(
   method: string,
   path: string,
@@ -586,6 +593,8 @@ export interface AppointmentDetail {
   // kifayət deyil). paymentStatus/patientPackageId-dən TƏKRAR HESABLAMA —
   // birbaşa bu sahədən oxu.
   paymentConfirmed: boolean;
+  // Bu seansa birbaşa bağlı ödənişin id-si (varsa) — "Ödənildi" işarələmək üçün.
+  paymentId?: number | null;
   // Rezervasiya mənbəyi ('DIRECT' | 'PLATFORM_MATCHED') — komissiya fərqləndirməsi.
   origin?: string | null;
   // Seans növü: 'STANDARD' | 'INTRO' (15 dəq, pulsuz tanışlıq görüşü).
@@ -1254,17 +1263,22 @@ export type MaterialCategoryReq = { name: string; slug: string; color?: string; 
 export type MaterialReq = { title: string; description?: string; categoryId: number; active: boolean; sortOrder: number }
 
 // ─── Modul F: psixoloji testlər ──────────────────────────────────────────────
-export interface PsyTestSummary { id: number; title: string; published: boolean; questionCount: number; scaleCount: number; shareStatus: string; mine: boolean }
-export interface PsyTestOption { id: number; label: string; points: number; displayOrder: number }
-export interface PsyTestQuestion { id: number; text: string; displayOrder: number; options: PsyTestOption[] }
+export interface PsyTestSummary { id: number; title: string; published: boolean; status: string; questionCount: number; scaleCount: number; shareStatus: string; mine: boolean }
+export interface PsyTestOption { id: number; label: string; points: number; imageUrl?: string | null; displayOrder: number }
+export interface PsyTestQuestion { id: number; text: string; imageUrl?: string | null; displayOrder: number; options: PsyTestOption[] }
 export interface PsyTestScale { id: number; label: string; minScore: number; maxScore: number; color?: string | null; description?: string | null; displayOrder: number }
-export interface PsyTest { id: number; title: string; description?: string | null; instructions?: string | null; scoreBasis: string; published: boolean; questionCount: number; questions: PsyTestQuestion[]; scales: PsyTestScale[] }
-export type PsyOptionReq = { label: string; points: number; displayOrder: number }
-export type PsyQuestionReq = { text: string; displayOrder: number; options: PsyOptionReq[] }
+export interface PsyTest { id: number; title: string; description?: string | null; instructions?: string | null; scoreBasis: string; published: boolean; status: string; questionCount: number; questions: PsyTestQuestion[]; scales: PsyTestScale[] }
+export type PsyOptionReq = { label: string; points: number; imageUrl?: string; displayOrder: number }
+export type PsyQuestionReq = { text: string; imageUrl?: string; displayOrder: number; options: PsyOptionReq[] }
 export type PsyScaleReq = { label: string; minScore: number; maxScore: number; color?: string; description?: string; displayOrder: number }
 export type PsyTestReq = { title: string; description?: string; instructions?: string; scoreBasis: string; published: boolean; questions: PsyQuestionReq[]; scales: PsyScaleReq[] }
-export interface TakeOption { id: number; label: string }
-export interface TakeQuestion { id: number; text: string; options: TakeOption[] }
+// Draft autosave payload — everything optional (lenient server-side).
+export type PsyDraftOptionReq = { label?: string; points?: number; imageUrl?: string; displayOrder?: number }
+export type PsyDraftQuestionReq = { text?: string; imageUrl?: string; displayOrder?: number; options?: PsyDraftOptionReq[] }
+export type PsyDraftScaleReq = { label?: string; minScore?: number; maxScore?: number; color?: string; description?: string; displayOrder?: number }
+export type PsyDraftReq = { title?: string; description?: string; instructions?: string; scoreBasis?: string; questions?: PsyDraftQuestionReq[]; scales?: PsyDraftScaleReq[] }
+export interface TakeOption { id: number; label: string; imageUrl?: string | null }
+export interface TakeQuestion { id: number; text: string; imageUrl?: string | null; options: TakeOption[] }
 export interface TakeTest { testId: number; assignmentId?: number | null; title: string; description?: string | null; instructions?: string | null; questions: TakeQuestion[]; note?: string | null }
 export type SubmitAnswer = { questionId: number; selectedOptionId: number }
 export interface AnswerResult { questionId: number; questionText: string; selectedOptionId: number; selectedLabel: string; pointsAwarded: number; displayOrder: number }
@@ -1589,6 +1603,10 @@ export const adminApi = {
   createPsychTest: (data: PsyTestReq) => authedRequest<PsyTest>("POST", "/admin/psych-tests", data),
   updatePsychTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("PUT", `/admin/psych-tests/${id}`, data),
   deletePsychTest: (id: number) => authedRequest<void>("DELETE", `/admin/psych-tests/${id}`),
+  // Wizard: create empty draft → autosave (lenient) → publish (strict)
+  createPsychTestDraft: () => authedRequest<PsyTest>("POST", "/admin/psych-tests/draft"),
+  savePsychTestDraft: (id: number, data: PsyDraftReq) => authedRequest<PsyTest>("PUT", `/admin/psych-tests/${id}/draft`, data),
+  publishPsychTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("POST", `/admin/psych-tests/${id}/publish`, data),
   // Psychologist test-share moderation
   pendingTestShares: () => authedRequest<PsyTestSummary[]>("GET", "/admin/psych-tests/pending-shares"),
   approveTestShare: (id: number, note?: string) => authedRequest<PsyTestSummary>("POST", `/admin/psych-tests/${id}/approve-share`, { note }),
@@ -2583,6 +2601,10 @@ export const psychologistApi = {
   createMyTest: (data: PsyTestReq) => authedRequest<PsyTest>("POST", "/psychologist/psych-tests/manage", data),
   updateMyTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("PUT", `/psychologist/psych-tests/manage/${id}`, data),
   deleteMyTest: (id: number) => authedRequest<void>("DELETE", `/psychologist/psych-tests/manage/${id}`),
+  // Wizard: create empty draft → autosave (lenient) → publish (strict)
+  createMyTestDraft: () => authedRequest<PsyTest>("POST", "/psychologist/psych-tests/manage/draft"),
+  saveMyTestDraft: (id: number, data: PsyDraftReq) => authedRequest<PsyTest>("PUT", `/psychologist/psych-tests/manage/${id}/draft`, data),
+  publishMyTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("POST", `/psychologist/psych-tests/manage/${id}/publish`, data),
   requestTestShare: (id: number) => authedRequest<PsyTestSummary>("POST", `/psychologist/psych-tests/manage/${id}/request-share`),
   assignTest: (data: { testId: number; patientId: number; note?: string }) =>
     authedRequest<TestAssignment>("POST", "/psychologist/psych-tests/assignments", data),
@@ -3047,7 +3069,7 @@ export interface PatientHistory {
   lateCancelCount: number;
   autoFlag?: "HIGH_NO_SHOW" | "HIGH_LATE_CANCEL" | "HIGH_REJECT" | null;
   registeredAt?: string | null;
-  recent: { id: number; status: string; psychologistName?: string | null; startAt?: string | null; createdAt?: string | null; note?: string | null }[];
+  recent: { id: number; status: string; psychologistName?: string | null; startAt?: string | null; createdAt?: string | null; note?: string | null; sessionKind?: string | null }[];
   // Modul G — təcili əlaqə + yaşayış ünvanı (decrypt olunmuş, operator/admin)
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
@@ -3294,7 +3316,7 @@ export const operatorApi = {
   // Çoxlu vaxt (paket / seriya) təyini + paket balansı
   slotAllowance: (id: number, psychologistId: number) =>
     authedRequest<SlotAllowance>("GET", `/operator/appointments/${id}/slot-allowance?psychologistId=${psychologistId}`),
-  assignSlots: (id: number, data: { psychologistId: number; slots: { startAt: string; endAt: string }[]; operatorNote?: string | null; sessionPrice?: number | null }) =>
+  assignSlots: (id: number, data: { psychologistId: number; slots: { startAt: string; endAt: string }[]; operatorNote?: string | null; sessionPrice?: number | null; allowOutsideSchedule?: boolean }) =>
     authedRequest<AppointmentDetail[]>("POST", `/operator/appointments/${id}/assign-slots`, data),
   // Modul B: seans görüş linki idarəetməsi
   pendingMeetingLinks: () =>

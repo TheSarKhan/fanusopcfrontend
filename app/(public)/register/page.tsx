@@ -760,7 +760,7 @@ export default function RegisterPage() {
             <Image src="/images/logos/logo-blue.png" alt="Fanus" width={100} height={33} style={{ objectFit: "contain" }} priority />
           </Link>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <LanguageSwitcher variant="compact" />
+            <LanguageSwitcher variant="default" />
             <Link href="/" className="auth-back-btn">
               <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="15 18 9 12 15 6" />

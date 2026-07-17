@@ -7,6 +7,7 @@ import TimePicker from "@/components/TimePicker";
 import RescheduleComposeModal from "@/components/RescheduleComposeModal";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDateTime } from "@/lib/datetime";
+import { toast } from "@/components/Toast";
 
 const WEEKDAYS_AZ = [
   { iso: 1, label: "Bazar ertəsi", short: "B.e" },
@@ -73,8 +74,6 @@ export default function PsychologistAvailabilityPage() {
   // Add vacation modal
   const [vacationModal, setVacationModal] = useState(false);
 
-  const [error, setError] = useState<string | null>(null);
-
   const load = () => {
     setLoading(true);
     Promise.all([
@@ -110,9 +109,8 @@ export default function PsychologistAvailabilityPage() {
   }, [slots, slotsByDay, vacations]);
 
   const saveSessionMinutes = async () => {
-    setError(null);
     if (sessionMinutes < 15 || sessionMinutes > 240) {
-      setError("Sessiya müddəti 15–240 dəqiqə aralığında olmalıdır");
+      toast("Sessiya müddəti 15–240 dəqiqə aralığında olmalıdır", "error");
       return;
     }
     setSavingMinutes(true);
@@ -121,7 +119,7 @@ export default function PsychologistAvailabilityPage() {
       const m = updated.defaultSessionMinutes ?? sessionMinutes;
       setSavedMinutes(m); setSessionMinutes(m);
     } catch (e) {
-      setError((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setSavingMinutes(false);
     }
@@ -200,13 +198,6 @@ export default function PsychologistAvailabilityPage() {
           Həftəlik iş vaxtları, tarix istisnaları və məzuniyyət — bir səhifədə.
         </p>
       </div>
-
-      {error && (
-        <div style={{
-          background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B",
-          padding: "10px 14px", borderRadius: 10, fontSize: 13,
-        }}>{error}</div>
-      )}
 
       {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(190px, 100%), 1fr))", gap: 13 }}>
@@ -385,7 +376,7 @@ function DayColumn({ day, slots, onAdd, onDelete, onToggle }: {
       minHeight: 150,
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 11 }}>
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: isWeekend ? "#A9B8CC" : "var(--oxford)" }}>{day.short}</span>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: isWeekend ? "#A9B8CC" : "var(--oxford)", lineHeight: 1.2 }}>{day.label}</span>
         {/* Show the count only when 2+ slots — a single pill below already conveys "1". */}
         {slots.length >= 2 && (
           <span style={{
@@ -625,7 +616,6 @@ function AddSlotModal({ initialDay, existingSlots, onClose, onCreated }: {
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("12:00");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const toggleDay = (iso: number) => {
     setDays(prev => prev.includes(iso) ? prev.filter(d => d !== iso) : [...prev, iso].sort());
@@ -635,8 +625,8 @@ function AddSlotModal({ initialDay, existingSlots, onClose, onCreated }: {
   const clearDays = () => setDays([]);
 
   const submit = async () => {
-    if (days.length === 0) { setErr("Ən azı bir gün seçin"); return; }
-    if (start >= end) { setErr("Başlama vaxtı bitişdən əvvəl olmalıdır"); return; }
+    if (days.length === 0) { toast("Ən azı bir gün seçin", "error"); return; }
+    if (start >= end) { toast("Başlama vaxtı bitişdən əvvəl olmalıdır", "error"); return; }
 
     const conflictDay = days.find(day =>
       existingSlots.some(s =>
@@ -645,11 +635,11 @@ function AddSlotModal({ initialDay, existingSlots, onClose, onCreated }: {
     );
     if (conflictDay != null) {
       const dayLabel = WEEKDAYS_AZ.find(d => d.iso === conflictDay)?.label ?? "";
-      setErr(`${dayLabel} günü üçün bu vaxt aralığı artıq mövcud olan bir vaxt aralığı ilə üst-üstə düşür`);
+      toast(`${dayLabel} günü üçün bu vaxt aralığı artıq mövcud olan bir vaxt aralığı ilə üst-üstə düşür`, "error");
       return;
     }
 
-    setSaving(true); setErr(null);
+    setSaving(true);
     try {
       const created: TimeSlot[] = [];
       for (const day of days) {
@@ -659,7 +649,7 @@ function AddSlotModal({ initialDay, existingSlots, onClose, onCreated }: {
         created.push(slot);
       }
       onCreated(created);
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 
@@ -715,8 +705,6 @@ function AddSlotModal({ initialDay, existingSlots, onClose, onCreated }: {
         </div>
       )}
 
-      {err && <ErrorBox message={err} />}
-
       <ModalActions onCancel={onClose} onSubmit={submit} submitDisabled={saving || days.length === 0}
         submitLabel={saving ? "Saxlanılır…" : "Saxla"} />
     </Modal>
@@ -735,15 +723,14 @@ function AddOverrideModal({ onClose, onCreated }: {
   const [end, setEnd] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const submit = async () => {
-    if (!date) { setErr("Tarix seçin"); return; }
+    if (!date) { toast("Tarix seçin", "error"); return; }
     if (type === "EXTRA" && (!start || !end)) {
-      setErr("Əlavə vaxt üçün başlama və bitiş tələb olunur"); return;
+      toast("Əlavə vaxt üçün başlama və bitiş tələb olunur", "error"); return;
     }
-    if (start && end && start >= end) { setErr("Bitiş başlamadan sonra olmalıdır"); return; }
-    setSaving(true); setErr(null);
+    if (start && end && start >= end) { toast("Bitiş başlamadan sonra olmalıdır", "error"); return; }
+    setSaving(true);
     try {
       const data: { overrideDate: string; overrideType: "BLOCK" | "EXTRA"; startTime?: string; endTime?: string; note?: string } = {
         overrideDate: date, overrideType: type, note: note || undefined,
@@ -752,7 +739,7 @@ function AddOverrideModal({ onClose, onCreated }: {
       if (end) data.endTime = end;
       const created = await psychologistApi.createOverride(data);
       onCreated(created);
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 
@@ -792,8 +779,6 @@ function AddOverrideModal({ onClose, onCreated }: {
           style={{ ...timeInputStyle, width: "100%" }} />
       </Section>
 
-      {err && <ErrorBox message={err} />}
-
       <ModalActions onCancel={onClose} onSubmit={submit} submitDisabled={saving}
         submitLabel={saving ? "Saxlanılır…" : "Saxla"} />
     </Modal>
@@ -832,7 +817,6 @@ function AddVacationModal({ onClose, onCreated }: {
   const [reason, setReason] = useState("");
   const [notify, setNotify] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   // GAP-05: unresolved bookings in the range block activation — resolve each, then retry.
   const [conflicts, setConflicts] = useState<AppointmentDetail[] | null>(null);
   const [proposeFor, setProposeFor] = useState<AppointmentDetail | null>(null);
@@ -840,9 +824,9 @@ function AddVacationModal({ onClose, onCreated }: {
   const [resolvedIds, setResolvedIds] = useState<Set<number>>(new Set());
 
   const submit = async () => {
-    if (!start || !end) { setErr("Tarixləri seçin"); return; }
-    if (end < start) { setErr("Bitiş başlanğıcdan sonra olmalıdır"); return; }
-    setSaving(true); setErr(null);
+    if (!start || !end) { toast("Tarixləri seçin", "error"); return; }
+    if (end < start) { toast("Bitiş başlanğıcdan sonra olmalıdır", "error"); return; }
+    setSaving(true);
     try {
       const result = await psychologistApi.createVacation({
         startDate: start, endDate: end,
@@ -854,16 +838,16 @@ function AddVacationModal({ onClose, onCreated }: {
       } else {
         setConflicts(result.conflicts);
       }
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 
   const handoff = async (a: AppointmentDetail) => {
-    setHandingOffId(a.id); setErr(null);
+    setHandingOffId(a.id);
     try {
       await psychologistApi.handoffToOperator(a.id, "psixoloq məzuniyyəti");
       setResolvedIds(prev => new Set(prev).add(a.id));
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
     finally { setHandingOffId(null); }
   };
 
@@ -916,8 +900,6 @@ function AddVacationModal({ onClose, onCreated }: {
             təklif qəbul olunandan sonra «Yenidən cəhd et» düyməsi ilə məzuniyyəti aktivləşdirin.
           </p>
 
-          {err && <ErrorBox message={err} />}
-
           <ModalActions onCancel={onClose} onSubmit={submit} submitDisabled={saving}
             submitLabel={saving ? "Yoxlanılır…"
               : open.length > 0 ? `Yenidən cəhd et (${open.length} konflikt)` : "Yenidən cəhd et"} />
@@ -968,8 +950,6 @@ function AddVacationModal({ onClose, onCreated }: {
           </div>
         </div>
       </label>
-
-      {err && <ErrorBox message={err} />}
 
       <ModalActions onCancel={onClose} onSubmit={submit} submitDisabled={saving}
         submitLabel={saving ? "Əlavə olunur…" : "Əlavə et"} />
@@ -1068,16 +1048,6 @@ function ModalActions({ onCancel, onSubmit, submitDisabled, submitLabel }: {
           cursor: submitDisabled ? "not-allowed" : "pointer",
         }}>{submitLabel}</button>
     </div>
-  );
-}
-
-function ErrorBox({ message }: { message: string }) {
-  return (
-    <div style={{
-      padding: "9px 12px", borderRadius: 8,
-      background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B",
-      fontSize: 12.5,
-    }}>{message}</div>
   );
 }
 

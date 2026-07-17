@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { adminApi, type PsyTest } from "@/lib/api";
-import PsychTestBuilder from "@/components/PsychTestBuilder";
+import PsychTestWizard from "@/components/PsychTestWizard";
 
 export default function EditTestPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [test, setTest] = useState<PsyTest | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -51,11 +50,16 @@ export default function EditTestPage() {
         </div>
       </div>
 
-      <PsychTestBuilder
+      <PsychTestWizard
+        showPublished
         initial={test}
-        onSubmit={(d) =>
-          adminApi.updatePsychTest(Number(id), d).then(() => router.push("/admin/tests"))
-        }
+        doneHref="/admin/tests"
+        api={{
+          createDraft: adminApi.createPsychTestDraft,
+          saveDraft: adminApi.savePsychTestDraft,
+          publish: adminApi.publishPsychTest,
+          uploadFile: adminApi.uploadFile,
+        }}
       />
     </div>
   );

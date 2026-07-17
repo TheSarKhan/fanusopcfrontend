@@ -308,8 +308,25 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
         });
       }
     }
+    // Seanslar — HƏR seans (paylı/pulsuz fərq etməz) açıq "Seans" event-i kimi.
+    // Əvvəllər seanslar timeline-da yalnız ÖDƏNİŞ event-i ilə görünürdü; pulsuz
+    // tanışlıq (INTRO) ödəniş yaratmadığı üçün müştəri tarixçəsində görünmürdü.
+    for (const s of profile.appointments) {
+      const at = s.startAt ?? s.createdAt;
+      if (!at) continue;
+      const isIntro = s.sessionKind === "INTRO";
+      events.push({
+        key: `appt-${s.id}`,
+        title: `${isIntro ? "Tanışlıq seansı" : "Seans"} — ${STATUS_LABEL[s.status] ?? s.status}`,
+        detail: s.psychologistName ?? "—",
+        at, dot: "seans",
+      });
+    }
     for (const ev of profile.activity) {
-      const tone: DotTone = ev.type === "SUPPORT" ? "care" : ev.type === "APPOINTMENT" ? "seans" : ev.type === "TEST" ? "test" : "sys";
+      // Seans (APPOINTMENT) event-ləri artıq yuxarıda profile.appointments-dən
+      // açıq şəkildə qurulur — burada təkrarlamırıq.
+      if (ev.type === "APPOINTMENT") continue;
+      const tone: DotTone = ev.type === "SUPPORT" ? "care" : ev.type === "TEST" ? "test" : "sys";
       events.push({
         key: `act-${ev.at}-${ev.action ?? ""}`,
         title: ev.action || ACTIVITY_LABEL[ev.type] || ev.type,
@@ -886,7 +903,6 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   // Pasient bu psixoloqu özü seçib müraciət edibsə komissiyasız/azaldılmış faiz tətbiq olunur.
   const [patientChoseDirectly, setPatientChoseDirectly] = useState(false);
 
@@ -933,13 +949,12 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
   const sessionMin = selPsy?.defaultSessionMinutes ?? 50;
 
   const submit = async () => {
-    setErr(null);
-    if (!psyId) { setErr("Psixoloq seçin"); return; }
+    if (!psyId) { toast("Psixoloq seçin", "error"); return; }
 
     if (mode === "single") {
       const p = Number(singlePrice);
-      if (!Number.isFinite(p) || p < 0) { setErr("Qiymət düzgün deyil"); return; }
-      if (!singleStart) { setErr("Seans vaxtını seçin"); return; }
+      if (!Number.isFinite(p) || p < 0) { toast("Qiymət düzgün deyil", "error"); return; }
+      if (!singleStart) { toast("Seans vaxtını seçin", "error"); return; }
       setSaving(true);
       try {
         await operatorApi.sellSingleSession(patientId, {
@@ -948,7 +963,7 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
         });
         onDone(singleName.trim() || "Tək seans", true);
       } catch (e) {
-        setErr((e as Error).message);
+        toast((e as Error).message, "error");
         setSaving(false);
       }
       return;
@@ -957,13 +972,13 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
     let payload: Parameters<typeof operatorApi.sellPackage>[1];
     let displayName: string;
     if (mode === "catalog") {
-      if (!catalogId) { setErr("Kataloqdan paket seçin"); return; }
+      if (!catalogId) { toast("Kataloqdan paket seçin", "error"); return; }
       payload = { sessionPackageId: catalogId };
       displayName = catalog.find(c => c.id === catalogId)?.name ?? "Paket";
     } else {
       const s = Number(sessions), p = Number(price);
-      if (!Number.isFinite(s) || s < 1) { setErr("Seans sayı düzgün deyil"); return; }
-      if (!Number.isFinite(p) || p < 0) { setErr("Qiymət düzgün deyil"); return; }
+      if (!Number.isFinite(s) || s < 1) { toast("Seans sayı düzgün deyil", "error"); return; }
+      if (!Number.isFinite(p) || p < 0) { toast("Qiymət düzgün deyil", "error"); return; }
       payload = { psychologistId: psyId, packageName: name.trim() || undefined, sessionCount: s, price: p };
       displayName = name.trim() || `${s} seanslıq paket`;
     }
@@ -972,7 +987,7 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
       await operatorApi.sellPackage(patientId, { ...payload, patientChoseDirectly });
       onDone(displayName, false);
     } catch (e) {
-      setErr((e as Error).message);
+      toast((e as Error).message, "error");
       setSaving(false);
     }
   };
@@ -1159,7 +1174,6 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
             )}
           </div>
 
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 14 }}>{err}</div>}
         </div>
 
         <div style={{ display: "flex", gap: 10, padding: "16px 22px", borderTop: "1px solid #F0F4FA" }}>
@@ -1188,7 +1202,6 @@ function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   const [psy, setPsy] = useState<Psychologist | null>(null);
 
   useEffect(() => {
@@ -1221,16 +1234,15 @@ function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
   }, [slots]);
 
   const submit = async () => {
-    setErr(null);
-    if (!start || !end) { setErr("Vaxt seçin və ya əl ilə daxil edin"); return; }
+    if (!start || !end) { toast("Vaxt seçin və ya əl ilə daxil edin", "error"); return; }
     const startAt = azLocalToISO(start);
     const endAt = azLocalToISO(end);
-    if (new Date(startAt) >= new Date(endAt)) { setErr("Başlama vaxtı bitiş vaxtından əvvəl olmalıdır"); return; }
+    if (new Date(startAt) >= new Date(endAt)) { toast("Başlama vaxtı bitiş vaxtından əvvəl olmalıdır", "error"); return; }
     setSaving(true);
     try {
       await operatorApi.schedulePackageSession(patientId, pkg.id, { startAt, endAt });
       onDone();
-    } catch (e) { setErr((e as Error).message); setSaving(false); }
+    } catch (e) { toast((e as Error).message, "error"); setSaving(false); }
   };
 
   const labS: CSSProperties = { display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 5 };
@@ -1300,7 +1312,6 @@ function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
             Paket balansından 1 seans sərf olunacaq və seans təsdiqlənmiş (CONFIRMED) yaranacaq.
           </div>
 
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 12 }}>{err}</div>}
         </div>
         <div style={{ display: "flex", gap: 10, padding: "16px 22px", borderTop: "1px solid #F0F4FA" }}>
           <button onClick={onClose} style={{ flex: "none", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "12px 20px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>

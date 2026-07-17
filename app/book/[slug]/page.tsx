@@ -43,11 +43,6 @@ function dayKey(iso: string) {
   const d = new Date(iso);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
-function dayLabel(iso: string) {
-  const d = new Date(iso);
-  const isoDow = (d.getDay() + 6) % 7;
-  return `${WEEKDAYS_AZ[isoDow]} · ${fmtDate(iso)}`;
-}
 /** Tam, birmənalı gün etiketi — "Cümə, 24.07.2026" (təsdiq/səbət kontekstləri üçün). */
 function dayLabelFull(iso: string) {
   const d = new Date(iso);
@@ -65,17 +60,6 @@ function fmtRange(startIso: string, minutes: number) {
   const e = new Date(s.getTime() + minutes * 60_000);
   return `${fmtTime(startIso)}–${String(e.getHours()).padStart(2, "0")}:${String(e.getMinutes()).padStart(2, "0")}`;
 }
-function timeOfDay(iso: string): "morning" | "afternoon" | "evening" {
-  const h = new Date(iso).getHours();
-  if (h < 12) return "morning";
-  if (h < 17) return "afternoon";
-  return "evening";
-}
-const TOD_LABEL: Record<"morning" | "afternoon" | "evening", string> = {
-  morning: "Səhər",
-  afternoon: "Günorta",
-  evening: "Axşam",
-};
 
 const NOTE_TEMPLATES: { key: string; label: string; body: string }[] = [
   {
@@ -373,7 +357,7 @@ export default function BookPsychologistPage() {
   }, [activeDayKey]);
 
   const confirmCustomTime = () => {
-    if (!dayBounds || !customTimeDraft) return;
+    if (!customTimeDraft) return;
     const picked = new Date(customTimeDraft);
     if (Number.isNaN(picked.getTime())) {
       setCustomTimeError("Etibarsız vaxt");
@@ -383,14 +367,8 @@ export default function BookPsychologistPage() {
       setCustomTimeError("Keçmiş vaxt seçilə bilməz");
       return;
     }
-    if (dayKey(customTimeDraft) !== activeDayKey) {
-      setCustomTimeError("Seçilmiş gün üçün vaxt daxil edin");
-      return;
-    }
-    if (customTimeDraft < dayBounds.minIso || customTimeDraft > dayBounds.maxIso) {
-      setCustomTimeError(`Seçdiyiniz vaxt mövcud aralıqdan (${fmtTime(dayBounds.minIso)}–${fmtTime(dayBounds.maxIso)}) kənardır`);
-      return;
-    }
+    // Mövcud aralıq məhdudiyyəti yoxdur — bu, yalnız pasiyentin ilkin istəyidir; operator/
+    // psixoloq lazım gələrsə vaxtı sonradan tənzimləyir. İstənilən (keçmiş olmayan) vaxt olar.
     setCustomTimeError(null);
     setCustomTime(customTimeDraft);
     setBasket([]);
@@ -959,7 +937,8 @@ export default function BookPsychologistPage() {
                                 {idx === 0 && <span style={{ background: active ? "rgba(255,255,255,.22)" : "#D1FAE5", color: active ? "#fff" : "#065F46", fontSize: 9.5, fontWeight: 800, padding: "2px 6px", borderRadius: 999, textTransform: "uppercase", letterSpacing: ".04em" }}>Ən tez</span>}
                                 {picked > 0 && <span style={{ background: active ? "#fff" : "var(--brand)", color: active ? "var(--brand)" : "#fff", fontSize: 10, fontWeight: 800, minWidth: 16, height: 16, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{picked}</span>}
                               </span>
-                              {dayLabel(daySlots[0].startAt)}
+                              <span style={{ fontSize: 13.5, fontWeight: 700 }}>{WEEKDAYS_AZ_FULL[(new Date(daySlots[0].startAt).getDay() + 6) % 7]}</span>
+                              <span style={{ fontSize: 12, fontWeight: 600, opacity: active ? 0.9 : 0.7 }}>{fmtDateFull(daySlots[0].startAt)}</span>
                               <small style={{ fontSize: 11, fontWeight: 600, opacity: active ? 0.85 : 0.6 }}>{daySlots.length} vaxt</small>
                             </button>
                           );
@@ -968,35 +947,27 @@ export default function BookPsychologistPage() {
 
                       {(() => {
                         const sessionMin = sessionKind === "INTRO" ? 15 : (psychologist.defaultSessionMinutes ?? 50);
-                        const byTod: Record<"morning" | "afternoon" | "evening", AvailableSlot[]> = { morning: [], afternoon: [], evening: [] };
-                        for (const s of activeSlots) byTod[timeOfDay(s.startAt)].push(s);
-                        const groups = (["morning", "afternoon", "evening"] as const).filter(g => byTod[g].length > 0);
-                        if (groups.length === 0) {
+                        if (activeSlots.length === 0) {
                           return (
                             <div style={{ background: "#F8FAFD", border: "1px dashed var(--brand-100)", borderRadius: 10, padding: 20, textAlign: "center", fontSize: 13, color: "var(--oxford-60)" }}>
                               Bu gündə boş vaxt yoxdur.{grouped.length > 1 && " Növbəti günü yoxlayın →"}
                             </div>
                           );
                         }
+                        // Bütün vaxtlar tək ardıcıl grid-də (səhər/günorta/axşam bölmələri yoxdur).
+                        const sorted = [...activeSlots].sort((a, b) => a.startAt.localeCompare(b.startAt));
                         return (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                            {groups.map(g => (
-                              <div key={g}>
-                                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8 }}>{TOD_LABEL[g]}</div>
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                                  {byTod[g].map(s => {
-                                    const active = inBasket(s.startAt);
-                                    return (
-                                      <button type="button" key={s.startAt} onClick={() => toggleSlot(s)} title={fmtRange(s.startAt, sessionMin)} className="bkx-hover"
-                                        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, minWidth: 76, border: `1.5px solid ${active ? "var(--brand)" : "#D6E2F7"}`, background: active ? "var(--brand)" : "#fff", color: active ? "#fff" : "var(--oxford)", borderRadius: 10, padding: "9px 12px", fontFamily: "inherit", cursor: "pointer", transition: "background .2s ease, border-color .2s ease" }}>
-                                        <span style={{ fontSize: 14.5, fontWeight: 700 }}>{fmtTime(s.startAt)}</span>
-                                        <span style={{ fontSize: 11, fontWeight: 600, opacity: active ? 0.85 : 0.6 }}>{sessionMin} dəq</span>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            ))}
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                            {sorted.map(s => {
+                              const active = inBasket(s.startAt);
+                              return (
+                                <button type="button" key={s.startAt} onClick={() => toggleSlot(s)} title={fmtRange(s.startAt, sessionMin)} className="bkx-hover"
+                                  style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, minWidth: 76, border: `1.5px solid ${active ? "var(--brand)" : "#D6E2F7"}`, background: active ? "var(--brand)" : "#fff", color: active ? "#fff" : "var(--oxford)", borderRadius: 10, padding: "9px 12px", fontFamily: "inherit", cursor: "pointer", transition: "background .2s ease, border-color .2s ease" }}>
+                                  <span style={{ fontSize: 14.5, fontWeight: 700 }}>{fmtTime(s.startAt)}</span>
+                                  <span style={{ fontSize: 11, fontWeight: 600, opacity: active ? 0.85 : 0.6 }}>{sessionMin} dəq</span>
+                                </button>
+                              );
+                            })}
                           </div>
                         );
                       })()}
@@ -1021,11 +992,11 @@ export default function BookPsychologistPage() {
                           ) : (
                             <div style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: 14 }}>
                               <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 8 }}>
-                                Bu gün üçün mövcud aralıq: {fmtTime(dayBounds.minIso)}–{fmtTime(dayBounds.maxIso)}
+                                İstədiyiniz tarix və saatı seçin — bu, ilkin istəyinizdir, lazım gələrsə sonradan dəyişdirilə bilər.
                               </div>
                               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                                 <DatePicker value={customTimeDraft} onChange={setCustomTimeDraft} withTime theme="light" size="sm"
-                                  min={dayBounds.minIso} max={dayBounds.maxIso} style={{ width: 240, flex: "0 0 auto" }} />
+                                  min={isoDateOnly(new Date())} style={{ width: 240, flex: "0 0 auto" }} />
                                 <button type="button" onClick={confirmCustomTime}
                                   style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                                   Bu vaxtı seç

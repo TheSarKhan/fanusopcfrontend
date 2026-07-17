@@ -667,32 +667,33 @@ function DailyChart({ data }: { data: { date: string; count: number }[] }) {
   if (data.length === 0) {
     return <EmptyState title="Məlumat yoxdur" body="Aktivliyiniz burada görünəcək." />;
   }
+  // Bar hündürlüyü PİKSEL ilə hesablanır (faiz DEYİL): valideyn konteynerin
+  // hündürlüyü qeyri-müəyyən olduğu üçün (row `alignItems: flex-end`) faizli
+  // hündürlük həll olunmurdu və bütün bar-lar minHeight-ə düşüb eyni görünürdü.
+  const CHART_H = 100; // ən yüksək bar üçün maks. piksel (konteyner 110px)
   return (
     <div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 110 }}>
         {data.map((d, i) => {
-          const h = (d.count / max) * 100;
-          const date = new Date(d.date);
-          const today = new Date();
-          const isToday = isSameDay(date, today);
+          const barH = d.count > 0 ? Math.max(6, Math.round((d.count / max) * CHART_H)) : 3;
+          const isToday = isSameDay(new Date(d.date), new Date());
           return (
-            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-              <div style={{ flex: 1, width: "100%", display: "flex", alignItems: "flex-end" }}>
-                <div
-                  title={`${azFormatDate(d.date)}: ${d.count} seans`}
-                  style={{
-                    width: "100%",
-                    background: isToday
-                      ? "linear-gradient(180deg, var(--brand-700), var(--brand))"
-                      : "linear-gradient(180deg, var(--brand-300), var(--brand-200))",
-                    borderRadius: 4,
-                    height: `${Math.max(3, h)}%`,
-                    minHeight: 3,
-                    transition: "all 0.2s",
-                  }}
-                />
-              </div>
-            </div>
+            <div
+              key={i}
+              title={`${azFormatDate(d.date)}: ${d.count} seans`}
+              style={{
+                flex: 1,
+                height: `${barH}px`,
+                background: isToday
+                  ? "linear-gradient(180deg, var(--brand-700), var(--brand))"
+                  : d.count > 0
+                    ? "linear-gradient(180deg, var(--brand-400), var(--brand-300))"
+                    : "var(--hairline)",
+                borderRadius: 4,
+                minHeight: 3,
+                transition: "height 0.2s",
+              }}
+            />
           );
         })}
       </div>

@@ -327,6 +327,15 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
                 </p>
               </div>
 
+              {q.imageUrl && (
+                 
+                <img
+                  src={q.imageUrl}
+                  alt=""
+                  style={{ maxWidth: "100%", maxHeight: 280, borderRadius: 12, border: `1px solid ${BORDER}`, objectFit: "contain", margin: "0 0 12px", display: "block" }}
+                />
+              )}
+
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {q.options.map((opt) => {
                   const active = selected === opt.id;
@@ -354,6 +363,14 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
                         onChange={() => pick(q.id, opt.id)}
                         style={{ accentColor: BRAND, width: 18, height: 18, flex: "0 0 auto" }}
                       />
+                      {opt.imageUrl && (
+                         
+                        <img
+                          src={opt.imageUrl}
+                          alt=""
+                          style={{ width: 52, height: 52, borderRadius: 8, objectFit: "cover", border: `1px solid ${BORDER}`, flex: "0 0 auto" }}
+                        />
+                      )}
                       <span style={{ fontSize: 15, color: INK, lineHeight: 1.4, minWidth: 0, overflowWrap: "anywhere" }}>{opt.label}</span>
                     </label>
                   );

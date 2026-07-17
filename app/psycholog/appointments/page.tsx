@@ -12,6 +12,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { toast } from "@/components/Toast";
 import { useSearchParams } from "next/navigation";
 import {
   psychologistApi,
@@ -38,6 +39,15 @@ import {
 const ACTIVE_STATUSES = new Set(["ASSIGNED", "CONFIRMED", "CANCEL_REQUESTED"]);
 const ATTENTION_STATUSES = new Set(["AWAITING_CONFIRMATION", "DISPUTED"]);
 
+/** Seans hələ bitməyibsə (yaxınlaşan/davam edən) true. Bitmə vaxtı (endAt) keçibsə
+ *  seans BİTİB. Əvvəllər "startAt > now − 30dəq" proxy-si istifadə olunurdu —
+ *  bu, 15 dəqlik INTRO kimi qısa seanslar bitsə də hələ "növbəti" göstərirdi
+ *  (məs. 20:20–20:35 seans saat 20:39-da hələ növbəti görünürdü). */
+function notEndedYet(a: { startAt?: string | null; endAt?: string | null }, nowMs: number): boolean {
+  if (a.endAt) return new Date(a.endAt).getTime() > nowMs;
+  return !!a.startAt && new Date(a.startAt).getTime() > nowMs - 30 * 60_000;
+}
+
 type TabKey = "sessions" | "packages" | "referrals";
 
 export default function PsychologistAppointmentsPage() {
@@ -55,7 +65,6 @@ export default function PsychologistAppointmentsPage() {
   const [cancelFor, setCancelFor] = useState<AppointmentDetail | null>(null);
   const [rescheduleProposeFor, setRescheduleProposeFor] = useState<AppointmentDetail | null>(null);
   const [outcomeFor, setOutcomeFor] = useState<AppointmentDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
   // Tab: bildiriş deep-link-i (?view=referrals) Yönləndirmələr tabını açır.
   const [tab, setTab] = useState<TabKey>(() =>
     searchParams.get("view") === "referrals" ? "referrals"
@@ -107,7 +116,7 @@ export default function PsychologistAppointmentsPage() {
 
   const next = useMemo(() => {
     return items
-      .filter(a => a.startAt && new Date(a.startAt).getTime() > now.getTime() - 30 * 60_000)
+      .filter(a => notEndedYet(a, now.getTime()))
       .filter(a => a.status === "ASSIGNED" || a.status === "CONFIRMED")
       .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())[0] ?? null;
   }, [items, now]);
@@ -120,7 +129,7 @@ export default function PsychologistAppointmentsPage() {
       .filter(a => {
         if (ATTENTION_STATUSES.has(a.status)) return true;
         if (!ACTIVE_STATUSES.has(a.status)) return false;
-        return !!a.startAt && new Date(a.startAt).getTime() > now.getTime() - 30 * 60_000;
+        return notEndedYet(a, now.getTime());
       })
       .sort((x, y) => {
         const dx = new Date(x.startAt ?? x.endAt ?? x.createdAt).getTime();
@@ -181,14 +190,13 @@ export default function PsychologistAppointmentsPage() {
   }, [agendaList, next]);
 
   const action = async (id: number, fn: () => Promise<AppointmentDetail>) => {
-    setError(null);
     setBusyId(id);
     try {
       const updated = await fn();
       setItems(prev => prev.map(a => a.id === id ? updated : a));
       setDetailFor(prev => (prev && prev.id === id ? updated : prev));
     } catch (e) {
-      setError((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setBusyId(null);
     }
@@ -252,13 +260,6 @@ export default function PsychologistAppointmentsPage() {
         </div>
       ) : (
         <>
-          {error && (
-            <div role="alert" style={{
-              fontSize: 12.5, fontWeight: 600, color: "#991B1B", background: "#FEE2E2",
-              border: "1px solid #FECACA", borderRadius: 10, padding: "10px 12px", marginBottom: 14,
-            }}>{error}</div>
-          )}
-
           <NextHero appt={next} now={now} client={next ? clientFor(next.patientId) : null} />
 
           {/* Seanslar / Paketlər / Yönləndirmələr tab seçimi */}
@@ -817,7 +818,7 @@ function PackageBlock({ pkg, ordinal, now, busyId, h }: {
   const plannedPct = total ? (planned / total) * 100 : 0;
   // "Qalan" = balans (planlanmamış seans) — pasiyent/operator panelləri ilə eyni metrika.
   const remaining = Math.max(0, total - sessions.length);
-  const upcoming = sessions.find(s => s.startAt && new Date(s.startAt).getTime() >= now.getTime() - 30 * 60_000
+  const upcoming = sessions.find(s => notEndedYet(s, now.getTime())
     && (s.status === "CONFIRMED" || s.status === "ASSIGNED" || s.status === "AWAITING_CONFIRMATION"));
   const upStatus = upcoming ? (STATUS[upcoming.status] ?? STATUS.ASSIGNED) : null;
   const fmtDM = (iso?: string | null) => { if (!iso) return "—"; const d = new Date(iso); return `${d.getDate()} ${MONTHS_AZ[d.getMonth()]}`; };
@@ -934,7 +935,6 @@ function PatientRescheduleRequestCard({
 }) {
   const [busyOption, setBusyOption] = useState<number | null>(null);
   const [rejecting, setRejecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const fmtOpt = (startIso: string, endIso: string) => {
     const s = new Date(startIso), e = new Date(endIso);
@@ -942,24 +942,24 @@ function PatientRescheduleRequestCard({
   };
 
   const accept = async (idx: number) => {
-    setError(null); setBusyOption(idx);
+    setBusyOption(idx);
     try {
       const updated = await psychologistApi.acceptPatientReschedule(proposal.id, idx);
       onDecided(updated);
     } catch (e) {
-      setError(isSlotConflict(e)
+      toast(isSlotConflict(e)
         ? (e as Error).message + " Digər variantlardan birini seçə bilərsiniz."
-        : (e as Error).message);
+        : (e as Error).message, "error");
     } finally { setBusyOption(null); }
   };
 
   const reject = async () => {
     if (!confirm("İstəyi rədd etmək istəyirsiniz? Randevu köhnə vaxtında qalacaq.")) return;
-    setError(null); setRejecting(true);
+    setRejecting(true);
     try {
       const updated = await psychologistApi.rejectPatientReschedule(proposal.id);
       onDecided(updated);
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
     finally { setRejecting(false); }
   };
 
@@ -1006,11 +1006,6 @@ function PatientRescheduleRequestCard({
           </button>
         ))}
       </div>
-      {error && (
-        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>
-          {error}
-        </div>
-      )}
       <button
         type="button"
         className="gor-decline"

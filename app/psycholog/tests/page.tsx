@@ -10,6 +10,7 @@ import {
   type PsyTestSummary,
   type TestAssignment,
 } from "@/lib/api";
+import { toast } from "@/components/Toast";
 
 function fmt(iso?: string | null) {
   if (!iso) return "—";
@@ -230,32 +231,49 @@ export default function PsychologTestsPage() {
         }}>+ Yeni test yarat</Link>
       </div>
 
-      {/* ── My tests (psychologist-authored) ───────────────────────────────── */}
+      {/* ── My tests (psychologist-authored) — card grid ───────────────────── */}
       {!loading && myTests.length > 0 && (
         <section style={{ marginBottom: 28 }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: "0 0 12px" }}>Mənim testlərim</h2>
-          <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #EEF2F7", overflow: "hidden" }}>
-            {myTests.map((t, idx) => (
-              <div key={t.id} style={{
-                display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
-                borderTop: idx > 0 ? "1px solid #EEF2F7" : "none", flexWrap: "wrap",
-              }}>
-                <div style={{ flex: 1, minWidth: 180 }}>
-                  <div style={{ fontWeight: 600, color: "#1A2535", fontSize: 14 }}>{t.title}</div>
-                  <div style={{ fontSize: 11.5, color: "#52718F", marginTop: 2 }}>
-                    {t.questionCount} sual · {t.scaleCount} şkala
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))", gap: 12 }}>
+            {myTests.map((t) => {
+              const draft = t.status === "DRAFT";
+              return (
+                <div key={t.id} style={{ background: "#fff", borderRadius: 14, padding: 18, border: "1px solid #EEF2F7", display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                      <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1A2535", margin: 0 }}>
+                        {t.title?.trim() || "Adsız qaralama"}
+                      </h3>
+                      {draft ? (
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 999, color: "#92400E", background: "#FEF3C7" }}>
+                          Qaralama
+                        </span>
+                      ) : (
+                        <ShareStatusBadge status={t.shareStatus} />
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#52718F" }}>
+                      {t.questionCount} sual · {t.scaleCount} şkala
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 6, marginTop: "auto", flexWrap: "wrap" }}>
+                    {draft ? (
+                      <a href={`/psycholog/tests/manage/${t.id}/edit`} style={{ ...smallBtn("#fff", "var(--brand)"), flex: 1, textAlign: "center" }}>Davam et</a>
+                    ) : (
+                      <>
+                        <a href={`/psycholog/tests/manage/${t.id}/edit`} style={smallBtn("#52718F", "#EEF2F7")}>Redaktə</a>
+                        {(t.shareStatus === "PRIVATE" || t.shareStatus === "REJECTED") && (
+                          <button onClick={() => requestShare(t)} style={smallBtn("var(--brand-700)", "var(--brand-50)")}>Paylaşım üçün göndər</button>
+                        )}
+                      </>
+                    )}
+                    <button onClick={() => deleteMyTest(t)} style={smallBtn("#991B1B", "#FEE2E2")}>Sil</button>
                   </div>
                 </div>
-                <ShareStatusBadge status={t.shareStatus} />
-                <div style={{ display: "flex", gap: 6 }}>
-                  <a href={`/psycholog/tests/manage/${t.id}/edit`} style={smallBtn("#52718F", "#EEF2F7")}>Redaktə</a>
-                  {(t.shareStatus === "PRIVATE" || t.shareStatus === "REJECTED") && (
-                    <button onClick={() => requestShare(t)} style={smallBtn("var(--brand-700)", "var(--brand-50)")}>Paylaşım üçün göndər</button>
-                  )}
-                  <button onClick={() => deleteMyTest(t)} style={smallBtn("#991B1B", "#FEE2E2")}>Sil</button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}
@@ -469,7 +487,6 @@ function AssignModal({
   const [patientId, setPatientId] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -480,8 +497,8 @@ function AssignModal({
   }, [clients, search]);
 
   const submit = async () => {
-    if (patientId === null) { setErr("Pasiyent seçin"); return; }
-    setSaving(true); setErr(null);
+    if (patientId === null) { toast("Pasiyent seçin", "error"); return; }
+    setSaving(true);
     try {
       const created = await psychologistApi.assignTest({
         testId: test.id,
@@ -490,7 +507,7 @@ function AssignModal({
       });
       onAssigned(created);
     } catch (e) {
-      setErr((e as Error).message);
+      toast((e as Error).message, "error");
       setSaving(false);
     }
   };
@@ -555,11 +572,6 @@ function AssignModal({
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
           />
 
-          {err && (
-            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>
-              {err}
-            </div>
-          )}
         </div>
 
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", padding: "14px 22px", borderTop: "1px solid #EFF2F7" }}>

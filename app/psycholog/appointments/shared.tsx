@@ -11,6 +11,7 @@ import Link from "next/link";
 import { psychologistApi, type AppointmentDetail } from "@/lib/api";
 import { googleCalendarUrl } from "@/lib/calendar";
 import { appUrl } from "@/lib/appUrl";
+import { toast } from "@/components/Toast";
 
 export const WEEKDAYS_AZ = ["Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə", "Bazar"];
 export const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
@@ -229,16 +230,14 @@ export function DisputeModal({
 }) {
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const submit = async () => {
-    setErr(null);
     setSaving(true);
     try {
       const updated = await psychologistApi.disputeSession(appointment.id, reason.trim() || undefined);
       onDone(updated);
     } catch (e) {
-      setErr((e as Error).message);
+      toast((e as Error).message, "error");
       setSaving(false);
     }
   };
@@ -262,8 +261,6 @@ export function DisputeModal({
             rows={4} value={reason} onChange={e => setReason(e.target.value)}
             placeholder="Məsələn: pasient qoşulmadı, texniki problem…"
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12 }} />
-
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>{err}</div>}
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>
@@ -294,7 +291,6 @@ export function OutcomeModal({
   const [body, setBody] = useState("");
   const [mood, setMood] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   // Bu seans üçün əvvəlcədən yazılmış qeyd varsa, formu onunla dolduraq —
   // yoxdursa boş qalır və submit "create" edir.
@@ -313,9 +309,9 @@ export function OutcomeModal({
   }, [appointment.id]);
 
   const submit = async () => {
-    if (!body.trim()) { setErr("Qeyd mətni boş ola bilməz"); return; }
-    if (!appointment.patientId) { setErr("Pasient ID tapılmadı"); return; }
-    setSaving(true); setErr(null);
+    if (!body.trim()) { toast("Qeyd mətni boş ola bilməz", "error"); return; }
+    if (!appointment.patientId) { toast("Pasient ID tapılmadı", "error"); return; }
+    setSaving(true);
     try {
       if (existingId != null) {
         await psychologistApi.updateNote(existingId, {
@@ -336,7 +332,7 @@ export function OutcomeModal({
       }
       onSaved();
     } catch (e) {
-      setErr((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setSaving(false);
     }
@@ -377,8 +373,6 @@ export function OutcomeModal({
                 style={{ width: 80, padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 12 }} />
             </>
           )}
-
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>{err}</div>}
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>

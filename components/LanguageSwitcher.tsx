@@ -53,7 +53,15 @@ const FLAGS: Record<Locale, () => React.ReactElement> = {
 };
 const LABELS: Record<Locale, string> = { az: "AZ", ru: "RU", en: "EN" };
 
-export default function LanguageSwitcher({ variant = "default" }: { variant?: "default" | "compact" }) {
+export default function LanguageSwitcher({
+  variant = "default",
+  align = "right",
+}: {
+  variant?: "default" | "compact";
+  /** Which edge the dropdown anchors to. Use "left" inside the narrow sidebar so
+   *  it opens toward the content instead of off-screen. */
+  align?: "left" | "right";
+}) {
   const { locale, setLocale } = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -75,7 +83,7 @@ export default function LanguageSwitcher({ variant = "default" }: { variant?: "d
   const CurrentFlag = FLAGS[locale];
 
   return (
-    <div className={`lsw${variant === "compact" ? " lsw--compact" : ""}`} ref={ref}>
+    <div className={`lsw${variant === "compact" ? " lsw--compact" : ""}${align === "left" ? " lsw--left" : ""}`} ref={ref}>
       <button
         className="lsw__btn"
         onClick={() => setOpen(o => !o)}
@@ -121,6 +129,14 @@ export default function LanguageSwitcher({ variant = "default" }: { variant?: "d
           transition: background .15s, border-color .15s;
           white-space: nowrap; font-weight: 600;
         }
+        /* Compact (panel topbar / sidebar): flag-only square button that mirrors
+           the logo / notification bell — 40px, 12px radius, bordered. */
+        .lsw--compact .lsw__btn {
+          width: 40px; height: 40px; padding: 0; gap: 0;
+          justify-content: center; border-radius: 12px;
+        }
+        .lsw--compact .lsw__code,
+        .lsw--compact .lsw__chevron { display: none; }
         .lsw__btn:hover { background: var(--fanus-primary-50); border-color: var(--fanus-primary-300); }
         .lsw__code { font-size: 14px; font-weight: 600; }
         .lsw__chevron { transition: transform .2s; flex-shrink: 0; color: var(--fanus-ink-3); }
@@ -129,6 +145,9 @@ export default function LanguageSwitcher({ variant = "default" }: { variant?: "d
         .lsw__menu {
           position: absolute; top: calc(100% + 8px); right: 0;
           background: #fff; border: 1px solid var(--fanus-line);
+        }
+        .lsw--left .lsw__menu { left: 0; right: auto; }
+        .lsw__menu {
           border-radius: 14px; box-shadow: 0 8px 28px rgba(10,26,51,.12);
           padding: 6px; min-width: 100px; z-index: 200;
           display: flex; flex-direction: column; gap: 2px;

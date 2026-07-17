@@ -2278,9 +2278,14 @@
   border-color: var(--brand-200);
 }
 .ps-side__brand {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 20px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px;
   border-bottom: 1px solid var(--oxford-10);
+}
+/* Language + notifications, right beside the logo (desktop). */
+.ps-side__controls {
+  display: flex; align-items: center; gap: 6px;
+  margin-left: auto; flex-shrink: 0;
 }
 .ps-side__brand-link {
   display: flex; align-items: center; gap: 12px;
@@ -2288,13 +2293,20 @@
   flex: 1; min-width: 0;
 }
 .ps-side__logo {
-  width: 52px; height: 52px;
-  display: inline-flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
+  flex: 1; min-width: 0;
+  display: flex; align-items: center;
 }
-.ps-side__logo img {
-  width: 100%; height: 100%; object-fit: contain;
+/* Geniş sidebar: enli lockup mövcud eni doldurur (contain ilə en-boy pozulmadan,
+   sola düzləndirilmiş), hündürlük 68px ilə məhdud. İkon gizli. */
+.ps-side__logo-full {
+  width: 100%; height: 68px;
+  object-fit: contain; object-position: left center;
 }
+.ps-side__logo-icon { display: none; }
+/* Collapsed rail: yalnız əvvəlki kvadrat ikon-loqo. */
+.ps-side.is-collapsed .ps-side__logo { flex: none; height: 44px; justify-content: center; }
+.ps-side.is-collapsed .ps-side__logo-full { display: none; }
+.ps-side.is-collapsed .ps-side__logo-icon { display: inline-flex; width: 44px; height: 44px; object-fit: contain; }
 .ps-side__name {
   font-size: 16px; font-weight: 700; color: var(--oxford);
   letter-spacing: -0.01em; line-height: 1.2;
@@ -2310,10 +2322,12 @@
   align-items: center; justify-content: center;
   cursor: pointer; border: none;
 }
-.ps-side.is-collapsed .ps-side__brand { justify-content: center; padding: 18px 0; }
+.ps-side.is-collapsed .ps-side__brand { flex-direction: column; align-items: center; padding: 16px 0; gap: 10px; }
 .ps-side.is-collapsed .ps-side__brand-link { flex: none; gap: 0; }
 .ps-side.is-collapsed .ps-side__name,
 .ps-side.is-collapsed .ps-side__role { display: none; }
+/* Collapsed rail is only 76px wide — stack the controls vertically. */
+.ps-side.is-collapsed .ps-side__controls { flex-direction: column; margin-left: 0; gap: 8px; }
 
 /* Nav */
 .ps-side__nav {
@@ -2355,10 +2369,32 @@
   background: #fff;
   color: var(--brand);
 }
-.ps-side.is-collapsed .ps-side__nav { padding: 14px 10px; }
-.ps-side.is-collapsed .ps-nav { justify-content: center; padding: 10px; gap: 0; }
-.ps-side.is-collapsed .ps-nav span:not(.ps-nav__badge),
+/* Collapsed: let hover tooltips escape the rail instead of being clipped. */
+.ps-side.is-collapsed .ps-side__nav { padding: 14px 10px; overflow: visible; }
+.ps-side.is-collapsed .ps-nav { justify-content: center; padding: 10px; gap: 0; position: relative; }
 .ps-side.is-collapsed .ps-nav__badge { display: none; }
+/* Label is hidden inline, then revealed as a floating badge on hover. */
+.ps-side.is-collapsed .ps-nav span:not(.ps-nav__badge) { display: none; }
+.ps-side.is-collapsed .ps-nav:hover span:not(.ps-nav__badge) {
+  display: block;
+  position: absolute; left: calc(100% + 12px); top: 50%;
+  transform: translateY(-50%);
+  background: var(--oxford, #1A2535); color: #fff;
+  padding: 7px 11px; border-radius: 8px;
+  font-size: 12.5px; font-weight: 600; line-height: 1;
+  white-space: nowrap; pointer-events: none;
+  box-shadow: 0 6px 18px rgba(10, 26, 51, 0.22);
+  z-index: 60;
+}
+/* Little arrow pointing back to the icon. */
+.ps-side.is-collapsed .ps-nav:hover span:not(.ps-nav__badge)::before {
+  content: ""; position: absolute; right: 100%; top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-right-color: var(--oxford, #1A2535);
+}
+/* Active item keeps its white-on-brand look; tooltip stays dark for contrast. */
+.ps-side.is-collapsed .ps-nav.is-active:hover span:not(.ps-nav__badge) { color: #fff; }
 
 /* User card at sidebar bottom */
 .ps-side__user {
@@ -2447,6 +2483,54 @@
 }
 .ps-top__right {
   margin-left: auto; display: flex; align-items: center; gap: 10px;
+}
+/* Desktop: controls live in the sidebar, so a page with no topbar action has an
+   empty bar — collapse it. On mobile the bar still holds the menu + controls. */
+@media (min-width: 981px) {
+  .ps-top--empty { display: none; }
+}
+
+/* ── Psych-test wizard motion ─────────────────────────────────────────────── */
+@keyframes wizStepIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes wizPopIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+.wiz-step { animation: wizStepIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1); }
+.wiz-pop  { animation: wizPopIn 0.24s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .wiz-step, .wiz-pop { animation: none; }
+}
+
+/* Wizard step bar: full-width, pinned to the top while scrolling. */
+.wiz-header {
+  position: sticky; top: 0; z-index: 6;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  margin-bottom: 4px;
+  padding: 12px 4px;
+  background: var(--surface, #fff);
+  border-bottom: 1px solid var(--line, #DDE6F0);
+  box-shadow: 0 6px 16px rgba(10, 26, 51, 0.05);
+}
+/* On mobile the panel topbar already occupies the top edge, so don't pin. */
+@media (max-width: 980px) {
+  .wiz-header { position: static; box-shadow: none; }
+}
+
+/* Wizard footer nav: full-width bar pinned to the bottom, arrows at the edges. */
+.wiz-footer {
+  position: sticky; bottom: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; flex-wrap: wrap;
+  margin-top: 4px;
+  padding: 12px 4px;
+  background: var(--surface, #fff);
+  border-top: 1px solid var(--line, #DDE6F0);
+  box-shadow: 0 -6px 16px rgba(10, 26, 51, 0.05);
 }
 
 /* Content area */
@@ -2656,9 +2740,9 @@
   color: #5C6B85;
   text-transform: uppercase;
 }
-.opd-kv { display: flex; justify-content: space-between; gap: 10px; }
-.opd-kv__k { font-size: 12.5px; color: #5C6B85; }
-.opd-kv__v { font-size: 12.5px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 600; color: #1E293B; text-align: right; }
+.opd-kv { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.opd-kv__k { font-size: 12.5px; color: #5C6B85; white-space: nowrap; flex: none; }
+.opd-kv__v { font-size: 12.5px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 600; color: #1E293B; text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .opd-icon-btn {
   width: 34px; height: 34px; border-radius: 50%;
   border: 1px solid #E2E8F5; background: #FFFFFF; color: #475569;

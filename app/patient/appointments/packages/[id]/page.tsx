@@ -18,6 +18,7 @@ import { azFormatDate, azFormatTime, azOrdinal } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
 import AddToCalendarMenu from "@/components/AddToCalendarMenu";
 import JoinSessionButton from "@/components/JoinSessionButton";
+import { toast } from "@/components/Toast";
 import { STATUS, PKG_STATUS, PA_STYLE, SlotPicker, initialsOf } from "../../shared";
 
 export default function PatientPackageDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,7 +30,6 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
   const [loading, setLoading] = useState(true);
   const [planning, setPlanning] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   const [now] = useState(() => new Date());
 
   const load = () => {
@@ -55,12 +55,12 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
   const planned = useMemo(() => sessions.filter(a => a.status !== "COMPLETED" && a.status !== "CANCELLED").length, [sessions]);
 
   const scheduleSlot = async (slot: AvailableSlot) => {
-    setBusy(true); setErr(null);
+    setBusy(true);
     try {
       await patientApi.schedulePackageSession(packageId, { startAt: slot.startAt });
       setPlanning(false); setBusy(false);
       load();
-    } catch (e) { setErr((e as Error).message); setBusy(false); }
+    } catch (e) { toast((e as Error).message, "error"); setBusy(false); }
   };
 
   const backLink = (
@@ -181,17 +181,13 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
         <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 20 }}>
           <button
             type="button"
-            onClick={() => { setErr(null); setPlanning(p => !p); }}
+            onClick={() => setPlanning(p => !p)}
             style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: planning ? "#fff" : "var(--brand)", color: planning ? "var(--oxford-60)" : "#fff", border: planning ? "1px solid #D6E2F7" : "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" />
             </svg>
             {planning ? "Planlaşdırmanı bağla" : "Seans planla"}
           </button>
-
-          {err && (
-            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 12 }}>{err}</div>
-          )}
 
           {planning && (
             <div style={{ marginTop: 14, background: "var(--brand-50)", border: "1px solid #D6E2F7", borderRadius: 12, padding: 16, animation: "paFade .25s ease" }}>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getPsychologists, patientApi, type Psychologist } from "@/lib/api";
+import { toast } from "@/components/Toast";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -35,7 +36,6 @@ export default function PatientPsychologistsPage() {
   const [items, setItems] = useState<Psychologist[]>([]);
   const [favIds, setFavIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [spec, setSpec] = useState<string | null>(null);
   const [onlyFavs, setOnlyFavs] = useState(false);
@@ -48,7 +48,7 @@ export default function PatientPsychologistsPage() {
         setItems(all.filter(p => p.active));
         setFavIds(new Set(favs.map(f => f.id)));
       })
-      .catch(e => setErr((e as Error).message))
+      .catch(e => toast((e as Error).message, "error"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -196,12 +196,6 @@ export default function PatientPsychologistsPage() {
           </div>
         </div>
       </div>
-
-      {err && (
-        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 12, borderRadius: 10, marginBottom: 16 }}>
-          {err}
-        </div>
-      )}
 
       {/* 4. CARDS / STATES */}
       {loading ? (

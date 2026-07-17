@@ -59,6 +59,18 @@ export default function PanelShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
+  // Below this width the sidebar goes off-canvas, so the language/notification
+  // controls move from the sidebar brand into the topbar. Kept as a single
+  // rendered instance (NotificationBell holds a WebSocket) — never both.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 980px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
   // Restore the collapsed preference after mount (avoids SSR/client mismatch).
   useEffect(() => {
     if (localStorage.getItem("ps_sidebar_collapsed") === "1") setCollapsed(true);
@@ -95,6 +107,17 @@ export default function PanelShell({
     window.location.href = `${getMainSiteUrl()}/login?_logout=1`;
   };
 
+  // Single instance — placed next to the logo on desktop, in the topbar on
+  // mobile. The bell dropdown must open rightward (into content) from the narrow
+  // sidebar, but leftward from the right-aligned topbar.
+  const controls = (
+    <>
+      {topbarExtras}
+      <LanguageSwitcher variant="compact" align={isMobile ? "right" : "left"} />
+      <NotificationBell align={isMobile ? "right" : "left"} />
+    </>
+  );
+
   return (
     <div className="ps-app">
       {mobileOpen && (
@@ -112,15 +135,16 @@ export default function PanelShell({
         </button>
 
         <div className="ps-side__brand">
-          <Link href={homeHref} className="ps-side__brand-link" aria-label="Fanus">
+          <Link href={homeHref} className="ps-side__brand-link" aria-label={`Fanus — ${brandLabel}`}>
             <span className="ps-side__logo">
-              <Image src="/images/logos/logo-blue.png" alt="" width={52} height={52} priority />
+              {/* Geniş sidebar: tam enli lockup. Collapsed rail: yalnız ikon (CSS ilə keçid). */}
+              <Image className="ps-side__logo-full" src="/images/logos/sidebar-logo.png" alt="Fanus" width={2533} height={1402} priority />
+              <Image className="ps-side__logo-icon" src="/images/logos/logo-blue.png" alt="Fanus" width={44} height={44} priority />
             </span>
-            <div>
-              <div className="ps-side__name">Fanus</div>
-              <div className="ps-side__role">{brandLabel}</div>
-            </div>
           </Link>
+          {/* Desktop: language + notifications sit right beside the logo. On mobile
+              they live in the topbar instead (sidebar is off-canvas). */}
+          {!isMobile && <div className="ps-side__controls">{controls}</div>}
           <button
             className="ps-side__close"
             aria-label="Bağla"
@@ -193,7 +217,9 @@ export default function PanelShell({
       </aside>
 
       <main className="ps-main">
-        <header className="ps-top">
+        {/* Topbar carries the mobile menu + relocated controls. On desktop with
+            no page action it collapses away (see .ps-top--empty). */}
+        <header className={`ps-top${topbarAction ? "" : " ps-top--empty"}`}>
           <button
             className="ps-top__menu"
             aria-label="Menyu"
@@ -203,9 +229,7 @@ export default function PanelShell({
           </button>
 
           <div className="ps-top__right">
-            {topbarExtras}
-            <LanguageSwitcher variant="compact" />
-            <NotificationBell />
+            {isMobile && controls}
             {topbarAction}
           </div>
         </header>

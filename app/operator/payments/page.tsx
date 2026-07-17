@@ -794,7 +794,6 @@ function RefundModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
   const [amount, setAmount] = useState(String(remaining));
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const amt = Number(amount);
   const amtOk = Number.isFinite(amt) && amt > 0 && amt <= remaining + 1e-9;
@@ -802,9 +801,9 @@ function RefundModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
 
   const submit = async () => {
     if (!ready || busy) return;
-    setBusy(true); setErr(null);
+    setBusy(true);
     try { await operatorApi.refundPayment(payment.id, amt, reason.trim()); onDone(); }
-    catch (e) { setErr((e as Error).message); setBusy(false); }
+    catch (e) { uiToast((e as Error).message, "error"); setBusy(false); }
   };
 
   return (
@@ -824,7 +823,6 @@ function RefundModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
         <Ic d={["M12 16v-4", "M12 8h.01"]} sw={2} w={14} />
         <span>Bütün iadələr (tam və qismi) Admin təsdiqindən keçir — tələb təsdiqlənəndə icra olunacaq.{payment.patientPackageId != null && " Paket ödənişidirsə icra zamanı qalan seanslar bağlanacaq."}</span>
       </div>
-      {err && <ModalError>{err}</ModalError>}
       <ModalFooter onClose={onClose} onSubmit={submit} disabled={!ready || busy} label={busy ? "Göndərilir…" : `${formatAzn(amtOk ? amt : 0)} üçün tələb göndər`} />
     </ModalShell>
   );
@@ -833,14 +831,13 @@ function RefundModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
 function CancelModal({ payment, onClose, onDone }: { payment: PaymentItem; onClose: () => void; onDone: (p: PaymentItem) => void }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   const ready = reason.trim().length > 0;
 
   const submit = async () => {
     if (!ready || busy) return;
-    setBusy(true); setErr(null);
+    setBusy(true);
     try { onDone(await operatorApi.cancelPayment(payment.id, reason.trim())); }
-    catch (e) { setErr((e as Error).message); setBusy(false); }
+    catch (e) { uiToast((e as Error).message, "error"); setBusy(false); }
   };
 
   return (
@@ -855,7 +852,6 @@ function CancelModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
           <span>Paket ödənişidir — paket də ləğv olunacaq (qalan seanslar bağlanır).</span>
         </div>
       )}
-      {err && <ModalError>{err}</ModalError>}
       <ModalFooter onClose={onClose} onSubmit={submit} disabled={!ready || busy} label={busy ? "Göndərilir…" : "Ödənişi ləğv et"} />
     </ModalShell>
   );
@@ -864,15 +860,14 @@ function CancelModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
 function MarkPaidModal({ payment, onClose, onDone }: { payment: PaymentItem; onClose: () => void; onDone: (p: PaymentItem, method: string) => void }) {
   const [method, setMethod] = useState<string>(PAYMENT_METHOD_OPTIONS[0]);
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const submit = async () => {
     if (busy) return;
-    setBusy(true); setErr(null);
+    setBusy(true);
     try {
       const updated = await operatorApi.markPaymentPaid(payment.id, method);
       onDone(updated, method);
-    } catch (e) { setErr((e as Error).message); setBusy(false); }
+    } catch (e) { uiToast((e as Error).message, "error"); setBusy(false); }
   };
 
   return (
@@ -883,7 +878,6 @@ function MarkPaidModal({ payment, onClose, onDone }: { payment: PaymentItem; onC
           {PAYMENT_METHOD_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
       </ModalField>
-      {err && <ModalError>{err}</ModalError>}
       <ModalFooter onClose={onClose} onSubmit={submit} disabled={busy} label={busy ? "Göndərilir…" : "Ödənildi"} />
     </ModalShell>
   );
@@ -904,14 +898,6 @@ function ModalShell({ icon, iconD, title, onClose, children }: { icon: "rose" | 
 }
 function ModalField({ label, children }: { label: string; children: ReactNode }) {
   return <label className="fx-field">{label && <span className="fx-label" style={{ textTransform: "none", letterSpacing: 0 }}>{label}</span>}{children}</label>;
-}
-function ModalError({ children }: { children: ReactNode }) {
-  return (
-    <div className="fx-banner fx-banner--error">
-      <Ic d={["M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z", "M12 9v4", "M12 17h.01"]} sw={2} w={14} />
-      <span>{children}</span>
-    </div>
-  );
 }
 function ModalFooter({ onClose, onSubmit, disabled, label }: { onClose: () => void; onSubmit: () => void; disabled: boolean; label: string }) {
   return (

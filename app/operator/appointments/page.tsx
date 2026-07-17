@@ -696,8 +696,8 @@ function AppointmentCard({
     assignText = `Təyin olundu: ${a.psychologistName} · ${fmtDateTime(a.startAt)}`;
     assignColor = "var(--oxford)"; assignItalic = false;
   } else if (a.requestedPsychologistName) {
-    assignText = `Tövsiyə olunan: ${a.requestedPsychologistName}${a.requestedStartAt ? ` · ${fmtDateTime(a.requestedStartAt)}` : ""}`;
-    assignColor = "var(--oxford-60)"; assignItalic = true;
+    assignText = `${a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən"}: ${a.requestedPsychologistName}${a.requestedStartAt ? ` · ${fmtDateTime(a.requestedStartAt)}` : ""}`;
+    assignColor = a.origin === "DIRECT" ? "#15803D" : "var(--oxford-60)"; assignItalic = a.origin !== "DIRECT";
   } else {
     assignText = "Psixoloq seçilməyib — operator təyin edəcək";
     assignColor = "var(--oxford-60)"; assignItalic = true;

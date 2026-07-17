@@ -435,13 +435,12 @@ function PackageForm({ initial, onSave, onCancel, busy, compact }: {
   const [sessions, setSessions] = useState(initial ? String(initial.sessionCount) : "");
   const [price, setPrice] = useState(initial ? String(initial.packagePrice) : "");
   const [active, setActive] = useState(initial?.active ?? true);
-  const [err, setErr] = useState<string | null>(null);
 
   const submit = () => {
     const sc = Number(sessions), pp = Number(price);
-    if (!name.trim()) { setErr("Ad lazımdır"); return; }
-    if (!Number.isFinite(sc) || sc < 1) { setErr("Seans sayı düzgün deyil"); return; }
-    if (!Number.isFinite(pp) || pp < 0) { setErr("Qiymət düzgün deyil"); return; }
+    if (!name.trim()) { toast("Ad lazımdır", "error"); return; }
+    if (!Number.isFinite(sc) || sc < 1) { toast("Seans sayı düzgün deyil", "error"); return; }
+    if (!Number.isFinite(pp) || pp < 0) { toast("Qiymət düzgün deyil", "error"); return; }
     onSave({ name: name.trim(), sessionCount: sc, packagePrice: pp, active });
   };
 
@@ -465,7 +464,6 @@ function PackageForm({ initial, onSave, onCancel, busy, compact }: {
           Aktiv (satışda göstərilsin)
         </label>
       )}
-      {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 9, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>{err}</div>}
       <div style={{ display: "flex", gap: compact ? 9 : 10 }}>
         <button onClick={submit} disabled={busy} style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: compact ? 9 : 10, padding: compact ? "10px 16px" : "11px 18px", fontSize: compact ? 13.5 : 14, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer" }}>{initial ? "Saxla" : "Əlavə et"}</button>
         <button onClick={onCancel} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: compact ? 9 : 10, padding: compact ? "10px 16px" : "11px 18px", fontSize: compact ? 13.5 : 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>

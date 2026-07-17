@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { patientApi, type PatientPackageItem } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
+import { toast } from "@/components/Toast";
 import { azLocalToISO, azFormatDate } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -107,7 +108,6 @@ function PackageCard({ pkg, onScheduled }: { pkg: PatientPackageItem; onSchedule
   const { t } = useT();
   const [datetime, setDatetime] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   const [scheduled, setScheduled] = useState(false);
 
   const tone = STATUS_TONE[pkg.status] ?? STATUS_TONE.ACTIVE;
@@ -115,8 +115,7 @@ function PackageCard({ pkg, onScheduled }: { pkg: PatientPackageItem; onSchedule
   const canSchedule = pkg.status === "ACTIVE" && pkg.remaining > 0;
 
   const submit = async () => {
-    setErr(null);
-    if (!datetime) { setErr("Vaxt seçin"); return; }
+    if (!datetime) { toast("Vaxt seçin", "error"); return; }
     setSaving(true);
     try {
       await patientApi.schedulePackageSession(pkg.id, { startAt: azLocalToISO(datetime) });
@@ -124,7 +123,7 @@ function PackageCard({ pkg, onScheduled }: { pkg: PatientPackageItem; onSchedule
       setDatetime("");
       onScheduled();
     } catch (e) {
-      setErr((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setSaving(false);
     }
@@ -185,12 +184,7 @@ function PackageCard({ pkg, onScheduled }: { pkg: PatientPackageItem; onSchedule
               {saving ? "Göndərilir…" : t("pkg.scheduleSession")}
             </button>
           </div>
-          {err && (
-            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>
-              {err}
-            </div>
-          )}
-          {scheduled && !err && (
+          {scheduled && (
             <div style={{ background: "var(--brand-50)", color: "var(--brand-700)", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>
               {t("pkg.pendingNote")}
             </div>

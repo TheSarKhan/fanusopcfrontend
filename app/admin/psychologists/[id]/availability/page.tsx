@@ -10,6 +10,7 @@ import {
 } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
+import { toast } from "@/components/Toast";
 
 const WEEKDAYS_AZ = [
   { iso: 1, label: "Bazar ertəsi" },
@@ -32,7 +33,6 @@ export default function AdminPsychologistAvailabilityPage() {
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [overrides, setOverrides] = useState<TimeSlotOverride[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Forms
   const [newDay, setNewDay] = useState(1);
@@ -60,12 +60,11 @@ export default function AdminPsychologistAvailabilityPage() {
 
   const addSlot = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    if (newStart >= newEnd) { setError("Başlama vaxtı bitiş vaxtından əvvəl olmalıdır"); return; }
+    if (newStart >= newEnd) { toast("Başlama vaxtı bitiş vaxtından əvvəl olmalıdır", "error"); return; }
     try {
       const created = await operatorApi.createPsyTimeSlot(psyId, { dayOfWeek: newDay, startTime: newStart, endTime: newEnd, active: true });
       setSlots(prev => [...prev, created].sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime)));
-    } catch (e2) { setError((e2 as Error).message); }
+    } catch (e2) { toast((e2 as Error).message, "error"); }
   };
 
   const deleteSlot = async (id: number) => {
@@ -78,9 +77,8 @@ export default function AdminPsychologistAvailabilityPage() {
 
   const addOverride = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    if (!oDate) { setError("Tarix seçin"); return; }
-    if (oType === "EXTRA" && (!oStart || !oEnd)) { setError("EXTRA üçün başlama və bitiş tələb olunur"); return; }
+    if (!oDate) { toast("Tarix seçin", "error"); return; }
+    if (oType === "EXTRA" && (!oStart || !oEnd)) { toast("EXTRA üçün başlama və bitiş tələb olunur", "error"); return; }
     try {
       const data: { overrideDate: string; overrideType: "BLOCK" | "EXTRA"; startTime?: string; endTime?: string; note?: string } = {
         overrideDate: oDate, overrideType: oType, note: oNote || undefined,
@@ -90,7 +88,7 @@ export default function AdminPsychologistAvailabilityPage() {
       const created = await operatorApi.createPsyOverride(psyId, data);
       setOverrides(prev => [created, ...prev]);
       setODate(""); setOStart(""); setOEnd(""); setONote("");
-    } catch (e2) { setError((e2 as Error).message); }
+    } catch (e2) { toast((e2 as Error).message, "error"); }
   };
 
   const deleteOverride = async (id: number) => {
@@ -110,12 +108,6 @@ export default function AdminPsychologistAvailabilityPage() {
         </div>
         <a href="/admin/psychologists" className="btn">Psixoloqlara qayıt</a>
       </div>
-
-      {error && (
-        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 10, fontSize: 13, marginBottom: 16 }}>
-          {error}
-        </div>
-      )}
 
       {loading ? (
         <div style={{ background: "var(--surface)", padding: 40, borderRadius: 12, textAlign: "center", color: "var(--muted)" }}>Yüklənir…</div>

@@ -7,6 +7,7 @@ import GoogleCalendarCard from "@/components/GoogleCalendarCard";
 import { psychologistApi, type Psychologist, type PackageDto, type PackageReq } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { toast } from "@/components/Toast";
 
 export default function PsychologProfilePage() {
   const [me, setMe] = useState<Psychologist | null>(null);
@@ -191,7 +192,6 @@ function PricingCard({ editable }: { editable: boolean }) {
   const [savingPrice, setSavingPrice] = useState(false);
 
   const [packages, setPackages] = useState<PackageDto[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
 
   // Add package form
@@ -231,10 +231,9 @@ function PricingCard({ editable }: { editable: boolean }) {
   const priceDirty = Number(individualInput) !== (savedPrice ?? 0) && individualInput.trim() !== "";
 
   const saveIndividual = async () => {
-    setError(null);
     const val = Number(individualInput);
     if (!Number.isFinite(val) || val < 0) {
-      setError(t("pricing.individualPrice"));
+      toast(t("pricing.individualPrice"), "error");
       return;
     }
     setSavingPrice(true);
@@ -245,19 +244,18 @@ function PricingCard({ editable }: { editable: boolean }) {
       setIndividualInput(res.individualPrice != null ? String(res.individualPrice) : "");
       flashSaved();
     } catch (e) {
-      setError((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setSavingPrice(false);
     }
   };
 
   const addPackage = async () => {
-    setError(null);
     const sessionCount = Number(addSessions);
     const packagePrice = Number(addPrice);
     if (!addName.trim() || !Number.isFinite(sessionCount) || sessionCount < 1
       || !Number.isFinite(packagePrice) || packagePrice < 0) {
-      setError(t("pricing.addPackage"));
+      toast(t("pricing.addPackage"), "error");
       return;
     }
     setAdding(true);
@@ -268,7 +266,7 @@ function PricingCard({ editable }: { editable: boolean }) {
       setAddName(""); setAddSessions(""); setAddPrice("");
       flashSaved();
     } catch (e) {
-      setError((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setAdding(false);
     }
@@ -279,16 +277,14 @@ function PricingCard({ editable }: { editable: boolean }) {
     setEditName(p.name);
     setEditSessions(String(p.sessionCount));
     setEditPrice(String(p.packagePrice));
-    setError(null);
   };
 
   const saveEdit = async (id: number) => {
-    setError(null);
     const sessionCount = Number(editSessions);
     const packagePrice = Number(editPrice);
     if (!editName.trim() || !Number.isFinite(sessionCount) || sessionCount < 1
       || !Number.isFinite(packagePrice) || packagePrice < 0) {
-      setError(t("pricing.packageName"));
+      toast(t("pricing.packageName"), "error");
       return;
     }
     setSavingEdit(true);
@@ -299,7 +295,7 @@ function PricingCard({ editable }: { editable: boolean }) {
       setEditId(null);
       flashSaved();
     } catch (e) {
-      setError((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setSavingEdit(false);
     }
@@ -307,13 +303,12 @@ function PricingCard({ editable }: { editable: boolean }) {
 
   const removePackage = async (id: number) => {
     if (!confirm(t("pricing.deleteConfirm"))) return;
-    setError(null);
     try {
       await psychologistApi.deleteMyPackage(id);
       setPackages(prev => prev.filter(p => p.id !== id));
       flashSaved();
     } catch (e) {
-      setError((e as Error).message);
+      toast((e as Error).message, "error");
     }
   };
 
@@ -340,12 +335,6 @@ function PricingCard({ editable }: { editable: boolean }) {
           <div style={{ padding: 24, textAlign: "center", color: "var(--oxford-60)", fontSize: 13 }}>Yüklənir…</div>
         ) : (
           <>
-            {error && (
-              <p style={{ margin: 0, fontSize: 12.5, color: "#b42318", background: "#fef3f2", border: "1px solid #fecdca", borderRadius: 8, padding: "8px 11px" }}>
-                {error}
-              </p>
-            )}
-
             {/* Individual price */}
             <div>
               <label style={labelStyle}>{t("pricing.individualPrice")}</label>
@@ -501,7 +490,6 @@ function StatsSourceCard({
   const [selected, setSelected] = useState<StatsSource>(initialSource);
   const [savedSource, setSavedSource] = useState<StatsSource>(initialSource);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
 
   const flashSaved = () => {
@@ -512,7 +500,6 @@ function StatsSourceCard({
   const dirty = selected !== savedSource;
 
   const save = async () => {
-    setError(null);
     setSaving(true);
     try {
       const res = await psychologistApi.updateStatsSource(selected);
@@ -527,7 +514,7 @@ function StatsSourceCard({
       });
       flashSaved();
     } catch (e) {
-      setError((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setSaving(false);
     }
@@ -557,12 +544,6 @@ function StatsSourceCard({
       </div>
 
       <div style={{ padding: 20, display: "grid", gap: 18 }}>
-        {error && (
-          <p style={{ margin: 0, fontSize: 12.5, color: "#b42318", background: "#fef3f2", border: "1px solid #fecdca", borderRadius: 8, padding: "8px 11px" }}>
-            {error}
-          </p>
-        )}
-
         <div style={{ display: "grid", gap: 10 }}>
           {options.map(opt => {
             const active = selected === opt.value;

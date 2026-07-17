@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { patientApi, type Psychologist } from "@/lib/api";
+import { toast } from "@/components/Toast";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -14,14 +15,13 @@ export default function PatientFavoritesPage() {
   // a psychologist does not.
   const [seenPsyIds, setSeenPsyIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
     Promise.allSettled([patientApi.favorites(), patientApi.myAppointments()])
       .then(([favRes, apptRes]) => {
         if (favRes.status === "fulfilled") setItems(favRes.value);
-        else setErr((favRes.reason as Error).message);
+        else toast((favRes.reason as Error).message, "error");
         if (apptRes.status === "fulfilled") {
           const seen = new Set<number>();
           for (const a of apptRes.value) {
@@ -50,8 +50,6 @@ export default function PatientFavoritesPage() {
       <p style={{ color: "#52718F", fontSize: 14, marginTop: 4, marginBottom: 24 }}>
         {t("staff.patFavSub")}
       </p>
-
-      {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 12, borderRadius: 10, marginBottom: 16 }}>{err}</div>}
 
       {loading ? (
         <div style={{ background: "#fff", padding: 40, borderRadius: 14, textAlign: "center", color: "#52718F" }}>{t("common.loading")}</div>

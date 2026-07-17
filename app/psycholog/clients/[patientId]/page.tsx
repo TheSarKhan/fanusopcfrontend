@@ -182,7 +182,6 @@ export default function PatientDetailPage() {
   const [tagDraft, setTagDraft] = useState("");
   const [tagColor, setTagColor] = useState<PatientTagColor>("brand");
   const [tagSaving, setTagSaving] = useState(false);
-  const [tagError, setTagError] = useState<string | null>(null);
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
   // Notes editor
@@ -192,7 +191,6 @@ export default function PatientDetailPage() {
   const [body, setBody] = useState("");
   const [mood, setMood] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [noteSearch, setNoteSearch] = useState("");
 
   // Custom note templates (backend-managed, reusable across patients)
@@ -201,7 +199,6 @@ export default function PatientDetailPage() {
   const [tplName, setTplName] = useState("");
   const [tplBody, setTplBody] = useState("");
   const [tplSaving, setTplSaving] = useState(false);
-  const [tplError, setTplError] = useState<string | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -230,14 +227,14 @@ export default function PatientDetailPage() {
   const addTag = async (label: string) => {
     const trimmed = label.trim();
     if (!trimmed) return;
-    setTagSaving(true); setTagError(null);
+    setTagSaving(true);
     try {
       const created = await psychologistApi.createPatientTag(patientId, { label: trimmed, color: tagColor });
       setTags(prev => [...prev, created]);
       setTagDraft("");
       setTagPickerOpen(false);
     } catch (e) {
-      setTagError((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setTagSaving(false);
     }
@@ -255,15 +252,15 @@ export default function PatientDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- load identity changes every render; re-fetch only on patientId change
   useEffect(() => { if (Number.isFinite(patientId)) load(); }, [patientId]);
 
-  const reset = () => { setEditing(null); setTitle(""); setBody(""); setMood(""); setShowForm(false); setError(null); };
+  const reset = () => { setEditing(null); setTitle(""); setBody(""); setMood(""); setShowForm(false); };
 
   const startEdit = (n: ClientNote) => {
     setEditing(n); setTitle(n.title ?? ""); setBody(n.body); setMood(n.moodScore ?? ""); setShowForm(true);
   };
 
   const save = async () => {
-    if (!body.trim()) { setError("Qeyd mətni boş ola bilməz"); return; }
-    setSaving(true); setError(null);
+    if (!body.trim()) { toast("Qeyd mətni boş ola bilməz", "error"); return; }
+    setSaving(true);
     try {
       const payload = {
         patientId,
@@ -279,7 +276,7 @@ export default function PatientDetailPage() {
         setNotes(prev => [created, ...prev]);
       }
       reset();
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 
@@ -380,16 +377,16 @@ export default function PatientDetailPage() {
 
   const saveTemplate = async () => {
     if (!tplName.trim() || !tplBody.trim()) {
-      setTplError("Ad və mətn lazımdır");
+      toast("Ad və mətn lazımdır", "error");
       return;
     }
-    setTplSaving(true); setTplError(null);
+    setTplSaving(true);
     try {
       const created = await psychologistApi.createTemplate({ name: tplName.trim(), body: tplBody.trim() });
       setCustomTemplates(prev => [...prev, created]);
       setTplName(""); setTplBody(""); setShowTemplateModal(false);
     } catch (e) {
-      setTplError((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setTplSaving(false);
     }
@@ -493,7 +490,7 @@ export default function PatientDetailPage() {
                 );
               })}
               {!tagPickerOpen && (
-                <button type="button" onClick={() => { setTagPickerOpen(true); setTagError(null); }} className="m360-ghost"
+                <button type="button" onClick={() => { setTagPickerOpen(true); }} className="m360-ghost"
                   style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#fff", color: "var(--brand)", border: "1px dashed #B6C9E8", borderRadius: 999, padding: "5px 12px", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>+ etiket</button>
               )}
             </div>
@@ -503,7 +500,7 @@ export default function PatientDetailPage() {
                 <input value={tagDraft} onChange={e => setTagDraft(e.target.value)}
                   onKeyDown={e => {
                     if (e.key === "Enter") { e.preventDefault(); addTag(tagDraft); }
-                    if (e.key === "Escape") { setTagPickerOpen(false); setTagDraft(""); setTagError(null); }
+                    if (e.key === "Escape") { setTagPickerOpen(false); setTagDraft(""); }
                   }}
                   placeholder="Etiket adı…" autoFocus maxLength={40}
                   style={{ width: "100%", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 11px", fontSize: 13.5, fontWeight: 600, color: "var(--oxford)", fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box" }} />
@@ -526,9 +523,8 @@ export default function PatientDetailPage() {
                       style={{ background: "#F2F6FD", color: "#082F6D", border: "1px solid #E4ECFA", borderRadius: 999, padding: "5px 11px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>{p}</button>
                   ))}
                 </div>
-                {tagError && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 8, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>{tagError}</div>}
                 <div style={{ display: "flex", gap: 9 }}>
-                  <button type="button" onClick={() => { setTagPickerOpen(false); setTagDraft(""); setTagError(null); }}
+                  <button type="button" onClick={() => { setTagPickerOpen(false); setTagDraft(""); }}
                     style={{ flex: 1, background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, padding: 9, fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
                   <button type="button" onClick={() => addTag(tagDraft)} disabled={tagSaving || !tagDraft.trim()} className="m360-primary"
                     style={{ flex: 1, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: 9, fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>{tagSaving ? "Əlavə olunur…" : "Əlavə et"}</button>
@@ -669,13 +665,13 @@ export default function PatientDetailPage() {
               editing={editing}
               title={title} body={body} mood={mood}
               setTitle={setTitle} setBody={setBody} setMood={setMood}
-              saving={saving} error={error}
+              saving={saving}
               onSave={save} onCancel={reset}
               onEdit={startEdit} onDelete={remove}
               onAddNew={() => { reset(); setShowForm(true); }}
               onApplyTemplate={applyTemplate}
               customTemplates={customTemplates}
-              onCreateTemplate={() => { setTplName(""); setTplBody(""); setTplError(null); setShowTemplateModal(true); }}
+              onCreateTemplate={() => { setTplName(""); setTplBody(""); setShowTemplateModal(true); }}
               onDeleteCustomTemplate={deleteTemplate}
             />
           )}
@@ -710,7 +706,6 @@ export default function PatientDetailPage() {
               style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 10, boxSizing: "border-box" }} />
             <textarea rows={8} value={tplBody} onChange={e => setTplBody(e.target.value)} placeholder="Şablon mətni — başlıqlar, sual çərçivəsi, vs."
               style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 10, boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" }} />
-            {tplError && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{tplError}</div>}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button onClick={() => setShowTemplateModal(false)}
                 style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Ləğv</button>
@@ -905,11 +900,10 @@ function GoalModal({
   const [status, setStatus] = useState<PatientGoalStatus>(goal?.status ?? "OPEN");
   const [progressPct, setProgressPct] = useState<number>(goal?.progressPct ?? 0);
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const save = async () => {
-    if (!title.trim()) { setErr("Başlıq tələb olunur"); return; }
-    setSaving(true); setErr(null);
+    if (!title.trim()) { toast("Başlıq tələb olunur", "error"); return; }
+    setSaving(true);
     try {
       const payload: PatientGoalPayload = {
         title: title.trim(),
@@ -923,7 +917,7 @@ function GoalModal({
         : await psychologistApi.createGoal(patientId, payload);
       onSaved(saved);
     } catch (e) {
-      setErr((e as Error).message);
+      toast((e as Error).message, "error");
       setSaving(false);
     }
   };
@@ -972,7 +966,6 @@ function GoalModal({
               <input type="range" min={0} max={100} step={5} value={progressPct} onChange={e => setProgressPct(Number(e.target.value))} style={{ width: "100%", accentColor: "var(--brand)" }} />
             </label>
           )}
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12 }}>{err}</div>}
         </div>
         <div style={{ display: "flex", gap: 10, padding: "16px 20px", borderTop: "1px solid #F0F4FA" }}>
           <button onClick={onClose} style={{ flex: 1, background: "#fff", color: "#082F6D", border: "1px solid #D6E2F7", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Bağla</button>
@@ -1203,7 +1196,7 @@ function NotesSection(props: {
   setTitle: (v: string) => void;
   setBody: (v: string) => void;
   setMood: (v: number | "") => void;
-  saving: boolean; error: string | null;
+  saving: boolean;
   onSave: () => void; onCancel: () => void;
   onEdit: (n: ClientNote) => void;
   onDelete: (id: number) => void;
@@ -1214,7 +1207,7 @@ function NotesSection(props: {
   onDeleteCustomTemplate: (id: number) => void;
 }) {
   const { notes, filteredNotes, search, setSearch,
-          showForm, editing, title, body, mood, saving, error,
+          showForm, editing, title, body, mood, saving,
           setTitle, setBody, setMood, onSave, onCancel, onEdit, onDelete, onAddNew, onApplyTemplate,
           customTemplates, onCreateTemplate, onDeleteCustomTemplate } = props;
 
@@ -1275,7 +1268,6 @@ function NotesSection(props: {
               <button onClick={onSave} disabled={saving} className="m360-primary" style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "wait" : "pointer" }}>{saving ? "Saxlanılır…" : (editing ? "Yenilə" : "Saxla")}</button>
             </div>
           </div>
-          {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 12 }}>{error}</div>}
         </div>
       )}
 

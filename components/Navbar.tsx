@@ -85,7 +85,7 @@ export default function Navbar() {
         </nav>
 
         <div className="fanus-nav__cta">
-          <LanguageSwitcher variant="compact" />
+          <LanguageSwitcher variant="default" />
           {isLoggedIn ? (
             <a href={panelUrl!} className="fanus-btn fanus-btn-primary fanus-btn-sm">
               {t("nav.myAccount")}
@@ -121,7 +121,7 @@ export default function Navbar() {
             </Link>
           ))}
           <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-            <LanguageSwitcher variant="compact" />
+            <LanguageSwitcher variant="default" />
             {isLoggedIn ? (
               <a href={panelUrl!} className="fanus-btn fanus-btn-primary" style={{ flex: 1 }}>{t("nav.myAccount")}</a>
             ) : (

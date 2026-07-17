@@ -11,6 +11,7 @@ import { use, useCallback, useEffect, useMemo, useState, type ReactNode } from "
 import { useRouter } from "next/navigation";
 import { operatorApi, type AppointmentDetail, type AvailableSlot, type Psychologist } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
+import { toast } from "@/components/Toast";
 import { statusMeta } from "@/lib/appointmentStatus";
 import { azLocalToISO, azFormatDate, azFormatTime, azFormatDateTime, isoToAzLocal } from "@/lib/datetime";
 
@@ -277,7 +278,6 @@ function AddPackageSessionModal({ sessions, onClose, onDone }: {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     operatorApi.listPsychologists().then(setPsychologists).catch(() => {});
@@ -308,17 +308,16 @@ function AddPackageSessionModal({ sessions, onClose, onDone }: {
   const defaultDurationMin = psychologists.find(p => p.id === psyId)?.defaultSessionMinutes ?? 50;
 
   const submit = async () => {
-    setErr(null);
-    if (psyId == null) { setErr("Psixoloq seçin"); return; }
-    if (!start || !end) { setErr("Vaxt seçin və ya əl ilə daxil edin"); return; }
+    if (psyId == null) { toast("Psixoloq seçin", "error"); return; }
+    if (!start || !end) { toast("Vaxt seçin və ya əl ilə daxil edin", "error"); return; }
     const startAt = azLocalToISO(start);
     const endAt = azLocalToISO(end);
-    if (new Date(startAt) >= new Date(endAt)) { setErr("Başlama vaxtı bitiş vaxtından əvvəl olmalıdır"); return; }
+    if (new Date(startAt) >= new Date(endAt)) { toast("Başlama vaxtı bitiş vaxtından əvvəl olmalıdır", "error"); return; }
     setSaving(true);
     try {
       await operatorApi.schedulePackageSession(patientId, packageId, { startAt, endAt, psychologistId: psyId });
       onDone();
-    } catch (e) { setErr((e as Error).message); setSaving(false); }
+    } catch (e) { toast((e as Error).message, "error"); setSaving(false); }
   };
 
   const selectPsy = (id: number | null) => {
@@ -417,7 +416,6 @@ function AddPackageSessionModal({ sessions, onClose, onDone }: {
             Paket balansından 1 seans sərf olunacaq və seans təsdiqlənmiş (CONFIRMED) yaranacaq.
           </div>
 
-          {err && <div style={{ background: "var(--rose-bg)", border: "1px solid rgba(201,125,125,.35)", color: "var(--status-refunded-fg)", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 12 }}>{err}</div>}
         </div>
         <div style={{ display: "flex", gap: 10, padding: "16px 22px", borderTop: "1px solid var(--hairline)" }}>
           <button onClick={onClose} className="fx-btn fx-btn--ghost" style={{ flex: "none" }}>Ləğv</button>

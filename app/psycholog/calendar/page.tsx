@@ -5,6 +5,7 @@ import { psychologistApi, type AppointmentDetail, type GoogleCalendarStatus, typ
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDateTime } from "@/lib/datetime";
+import { toast } from "@/components/Toast";
 
 const DAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"]; // Mon..Sun — yalnız kompakt 7-günlük zolaq başlıqları üçün
 const DAYS_AZ_FULL = ["Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə", "Bazar"]; // Mon..Sun — mətn/etiketlərdə
@@ -158,7 +159,6 @@ export default function PsychologCalendarPage() {
   const [gLoading, setGLoading] = useState(false);
   const [gShown, setGShown] = useState(true);
   const [gConnecting, setGConnecting] = useState(false);
-  const [gError, setGError] = useState<string | null>(null);
   const [showConflicts, setShowConflicts] = useState(false);
 
   const gridScrollRef = useRef<HTMLDivElement | null>(null);
@@ -205,7 +205,7 @@ export default function PsychologCalendarPage() {
     const g = params.get("google");
     if (!g) return;
     if (g === "error") {
-      setGError(params.get("reason") || "Google bağlantısı alınmadı");
+      toast(params.get("reason") || "Google bağlantısı alınmadı", "error");
     }
     params.delete("google");
     params.delete("reason");
@@ -219,10 +219,10 @@ export default function PsychologCalendarPage() {
     if (!gStatus?.connected) { setGEvents([]); return; }
     const from = new Date(weekStart); from.setHours(0, 0, 0, 0);
     const to = addDays(weekStart, 7);
-    setGLoading(true); setGError(null);
+    setGLoading(true);
     psychologistApi.googleEvents(toLocalIso(from), toLocalIso(to))
       .then(setGEvents)
-      .catch((e: Error) => { setGEvents([]); setGError(e.message); })
+      .catch((e: Error) => { setGEvents([]); toast(e.message, "error"); })
       .finally(() => setGLoading(false));
   }, [gStatus?.connected, weekStart, refreshNonce]);
 
@@ -422,24 +422,24 @@ export default function PsychologCalendarPage() {
   const dropPreviewHeightPx = () => DROP_SNAP_MIN * PX_PER_MIN;
 
   const handleGoogleConnect = async () => {
-    setGConnecting(true); setGError(null);
+    setGConnecting(true);
     try {
       const { url } = await psychologistApi.googleAuthUrl();
       window.location.href = url;
     } catch (e) {
-      setGError((e as Error).message);
+      toast((e as Error).message, "error");
       setGConnecting(false);
     }
   };
 
   const handleGoogleResync = async () => {
-    setGLoading(true); setGError(null);
+    setGLoading(true);
     try {
       await psychologistApi.googleResync();
       setRefreshNonce(x => x + 1);
       psychologistApi.googleStatus().then(setGStatus).catch(() => {});
     } catch (e) {
-      setGError((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setGLoading(false);
     }
@@ -448,26 +448,26 @@ export default function PsychologCalendarPage() {
   // Səhv hesabla qoşulubsa: köhnə bağlantını silib dərhal yenidən OAuth-a
   // yönləndiririk — select_account sayəsində Google hesab seçimi ekranı çıxır.
   const handleGoogleChangeAccount = async () => {
-    setGConnecting(true); setGError(null);
+    setGConnecting(true);
     try {
       await psychologistApi.googleDisconnect();
       const { url } = await psychologistApi.googleAuthUrl();
       window.location.href = url;
     } catch (e) {
-      setGError((e as Error).message);
+      toast((e as Error).message, "error");
       setGConnecting(false);
     }
   };
 
   const handleGoogleDisconnect = async () => {
     if (!window.confirm("Google Calendar bağlantısı kəsilsin? Mövcud hadisələr Google Calendar-da qalacaq, yeni seanslar daha sinxronlaşmayacaq.")) return;
-    setGLoading(true); setGError(null);
+    setGLoading(true);
     try {
       await psychologistApi.googleDisconnect();
       setGEvents([]);
       psychologistApi.googleStatus().then(setGStatus).catch(() => {});
     } catch (e) {
-      setGError((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setGLoading(false);
     }
@@ -524,13 +524,11 @@ export default function PsychologCalendarPage() {
           eventCount={gEvents.length}
           conflictCount={conflictIds.size}
           connecting={gConnecting}
-          error={gError}
           onConnect={handleGoogleConnect}
           onResync={handleGoogleResync}
           onChangeAccount={handleGoogleChangeAccount}
           onDisconnect={handleGoogleDisconnect}
           onToggleShown={() => setGShown(s => !s)}
-          onDismissError={() => setGError(null)}
           onShowConflicts={() => setShowConflicts(true)}
         />
       )}
@@ -863,8 +861,8 @@ function GoogleIcon({ size = 14 }: { size?: number }) {
 }
 
 function GoogleStatusBanner({
-  status, loading, shown, eventCount, conflictCount, connecting, error,
-  onConnect, onResync, onChangeAccount, onDisconnect, onToggleShown, onDismissError, onShowConflicts,
+  status, loading, shown, eventCount, conflictCount, connecting,
+  onConnect, onResync, onChangeAccount, onDisconnect, onToggleShown, onShowConflicts,
 }: {
   status: GoogleCalendarStatus | null;
   loading: boolean;
@@ -872,13 +870,11 @@ function GoogleStatusBanner({
   eventCount: number;
   conflictCount: number;
   connecting: boolean;
-  error: string | null;
   onConnect: () => void;
   onResync: () => void;
   onChangeAccount: () => void;
   onDisconnect: () => void;
   onToggleShown: () => void;
-  onDismissError: () => void;
   onShowConflicts: () => void;
 }) {
   const baseCard: React.CSSProperties = {
@@ -973,21 +969,6 @@ function GoogleStatusBanner({
         }}>
           <GoogleIcon size={13} /> {connecting ? "Yönləndirilir…" : "Google ilə qoşul"}
         </button>
-        {error && (
-          <div style={{
-            width: "100%",
-            background: "#FEF2F2", border: "1px solid #FECACA",
-            color: "#991B1B",
-            padding: "8px 10px", borderRadius: 8, fontSize: 11.5,
-            display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
-          }}>
-            <span>{error}</span>
-            <button onClick={onDismissError} aria-label="Bağla" style={{
-              border: 0, background: "transparent", color: "#991B1B",
-              fontSize: 14, cursor: "pointer", padding: 0, lineHeight: 1,
-            }}>×</button>
-          </div>
-        )}
       </div>
     );
   }
@@ -1083,21 +1064,6 @@ function GoogleStatusBanner({
       }}>
         Bağlantını kəs
       </button>
-      {error && (
-        <div style={{
-          width: "100%",
-          background: "#FEF2F2", border: "1px solid #FECACA",
-          color: "#991B1B",
-          padding: "8px 10px", borderRadius: 8, fontSize: 11.5,
-          display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
-        }}>
-          <span>{error}</span>
-          <button onClick={onDismissError} aria-label="Bağla" style={{
-            border: 0, background: "transparent", color: "#991B1B",
-            fontSize: 14, cursor: "pointer", padding: 0, lineHeight: 1,
-          }}>×</button>
-        </div>
-      )}
     </div>
   );
 }
@@ -1168,7 +1134,6 @@ function DragProposalModal({
 }) {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   const [start, setStart] = useState<Date>(newStart);
   const [openedAt] = useState(() => new Date());
 
@@ -1183,14 +1148,14 @@ function DragProposalModal({
 
   const submit = async () => {
     if (start.getTime() < openedAt.getTime()) {
-      setErr("Keçmiş vaxta təklif göndərmək olmaz — başqa vaxt seçin.");
+      toast("Keçmiş vaxta təklif göndərmək olmaz — başqa vaxt seçin.", "error");
       return;
     }
     if (originalStart && start.getTime() === originalStart.getTime()) {
-      setErr("Yeni vaxt köhnə vaxtla eynidir — başqa vaxt seçin.");
+      toast("Yeni vaxt köhnə vaxtla eynidir — başqa vaxt seçin.", "error");
       return;
     }
-    setSubmitting(true); setErr(null);
+    setSubmitting(true);
     try {
       await psychologistApi.proposeReschedule(appointment.id, {
         options: [{ startAt: start.toISOString(), endAt: newEnd.toISOString() }],
@@ -1199,7 +1164,7 @@ function DragProposalModal({
       });
       onSubmitted();
     } catch (e) {
-      setErr((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -1242,8 +1207,6 @@ function DragProposalModal({
           <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)}
             placeholder="Məsələn: O saatda işim çıxdı, bu zaman daha rahat olarsa…"
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box", resize: "vertical" }} />
-
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 12 }}>{err}</div>}
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>

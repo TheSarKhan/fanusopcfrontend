@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { psychologistApi, type PsychologistReceivedReview, type ReviewDeletionRequestItem } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { toast } from "@/components/Toast";
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   PENDING:  { label: "Moderasiyada", color: "#92400E", bg: "#FEF3C7" },
@@ -286,17 +287,15 @@ function DeletionRequestModal({ review, onClose, onSaved }: {
 }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const submit = async () => {
-    setErr(null);
-    if (reason.trim().length < 5) { setErr("Səbəbi qısaca izah edin (ən azı 5 simvol)"); return; }
+    if (reason.trim().length < 5) { toast("Səbəbi qısaca izah edin (ən azı 5 simvol)", "error"); return; }
     setBusy(true);
     try {
       const dr = await psychologistApi.requestReviewDeletion(review.id, reason.trim());
       onSaved(dr);
     } catch (e) {
-      setErr((e as Error).message);
+      toast((e as Error).message, "error");
       setBusy(false);
     }
   };
@@ -330,11 +329,6 @@ function DeletionRequestModal({ review, onClose, onSaved }: {
             placeholder="Rəyin niyə uyğunsuz olduğunu izah edin…"
             style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", lineHeight: 1.55, resize: "vertical" }}
           />
-          {err && (
-            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>
-              {err}
-            </div>
-          )}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
             <button onClick={onClose} disabled={busy}
               style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: busy ? "wait" : "pointer" }}>
@@ -368,17 +362,15 @@ function ReplyModal({ review, onClose, onSaved }: {
 }) {
   const [text, setText] = useState(review.reply ?? "");
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const submit = async () => {
-    setErr(null);
-    if (text.trim().length < 2) { setErr("Cavab mətnini yazın"); return; }
+    if (text.trim().length < 2) { toast("Cavab mətnini yazın", "error"); return; }
     setBusy(true);
     try {
       const updated = await psychologistApi.replyToReview(review.id, text.trim());
       onSaved(updated);
     } catch (e) {
-      setErr((e as Error).message);
+      toast((e as Error).message, "error");
       setBusy(false);
     }
   };
@@ -415,11 +407,6 @@ function ReplyModal({ review, onClose, onSaved }: {
           <div style={{ fontSize: 11, color: "#8AAABF", textAlign: "right", marginTop: 4 }}>
             {text.length} / 2000
           </div>
-          {err && (
-            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>
-              {err}
-            </div>
-          )}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
             <button onClick={onClose} disabled={busy}
               style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: busy ? "wait" : "pointer" }}>

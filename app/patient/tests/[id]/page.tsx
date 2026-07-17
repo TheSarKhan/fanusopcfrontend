@@ -153,6 +153,14 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
                   style={{ fontWeight: 600, color: "var(--oxford)", fontSize: 14, marginBottom: 10, overflowWrap: "break-word" }}>
                   {qi + 1}. {stripLeadingNumber(q.text)}
                 </div>
+                {q.imageUrl && (
+                   
+                  <img
+                    src={q.imageUrl}
+                    alt=""
+                    style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 10, border: "1px solid var(--brand-100)", objectFit: "contain", marginBottom: 10, display: "block" }}
+                  />
+                )}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {q.options.map(opt => {
                     const isSel = selected === opt.id;
@@ -180,6 +188,14 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
                           onChange={() => select(q.id, opt.id)}
                           style={{ accentColor: "var(--brand)", flex: "0 0 auto" }}
                         />
+                        {opt.imageUrl && (
+                           
+                          <img
+                            src={opt.imageUrl}
+                            alt=""
+                            style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover", border: "1px solid #E5E7EB", flex: "0 0 auto" }}
+                          />
+                        )}
                         <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{opt.label}</span>
                       </label>
                     );

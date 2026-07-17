@@ -18,6 +18,7 @@ import {
 import { azLocalToISO, azFormatDate, azFormatTime, azFormatDateTime } from "@/lib/datetime";
 import { IconSearch } from "../_components/icons";
 import DatePicker from "@/components/DatePicker";
+import { toast } from "@/components/Toast";
 
 /** MODUL 2: admin sətri = operator detail DTO + operator adı + pasiyent bayrağı. */
 type AdminAppt = AppointmentDetail & {
@@ -695,7 +696,6 @@ function AssignModal({
   const [manualEnd, setManualEnd] = useState("");
   const [note, setNote] = useState(appointment.operatorNote ?? "");
   const [suggestions, setSuggestions] = useState<PsychologistSuggestion[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState<ConflictInfo | null>(null);
   const [mediateOpen, setMediateOpen] = useState(false);
@@ -739,12 +739,11 @@ function AssignModal({
   };
 
   const submit = async () => {
-    setError(null);
     setConflict(null);
-    if (!psyId) { setError("Psixoloq seçin"); return; }
+    if (!psyId) { toast("Psixoloq seçin", "error"); return; }
     const time = chosen();
-    if (!time) { setError("Vaxt seçin və ya əl ilə daxil edin"); return; }
-    if (new Date(time.startAt) >= new Date(time.endAt)) { setError("Başlama bitişdən əvvəl olmalıdır"); return; }
+    if (!time) { toast("Vaxt seçin və ya əl ilə daxil edin", "error"); return; }
+    if (new Date(time.startAt) >= new Date(time.endAt)) { toast("Başlama bitişdən əvvəl olmalıdır", "error"); return; }
 
     setSaving(true);
     try {
@@ -753,7 +752,7 @@ function AssignModal({
       });
       onAssigned(updated);
     } catch (e) {
-      setError((e as Error).message);
+      toast((e as Error).message, "error");
       if (isSlotConflict(e) && psyId) {
         // B4-2: konflikt konsolu — tutan randevunu göstər.
         adminApi.getConflictInfo(psyId, time.startAt, time.endAt)
@@ -864,12 +863,6 @@ function AssignModal({
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2}
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid var(--line)", fontSize: 13, marginBottom: 12, fontFamily: "inherit", boxSizing: "border-box" }} />
 
-          {error && (
-            <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12.5, marginBottom: 10 }}>
-              {error}
-            </div>
-          )}
-
           {/* ─── Konflikt konsolu (B4-2) ──────────────────────────────────── */}
           {conflict && (
             <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 10, padding: 12, marginBottom: 12 }}>
@@ -949,19 +942,17 @@ function MediateModal({
   const [reason, setReason] = useState("");
   const [withSwap, setWithSwap] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const setOpt = (i: number, field: "start" | "end", v: string) => {
     setOptions((prev) => prev.map((o, idx) => (idx === i ? { ...o, [field]: v } : o)));
   };
 
   const submit = async () => {
-    setErr(null);
     const filled = options.filter((o) => o.start && o.end);
-    if (filled.length === 0) { setErr("Ən azı 1 alternativ vaxt daxil edin"); return; }
+    if (filled.length === 0) { toast("Ən azı 1 alternativ vaxt daxil edin", "error"); return; }
     for (const o of filled) {
       if (new Date(azLocalToISO(o.start)) >= new Date(azLocalToISO(o.end))) {
-        setErr("Hər variantda başlama bitişdən əvvəl olmalıdır"); return;
+        toast("Hər variantda başlama bitişdən əvvəl olmalıdır", "error"); return;
       }
     }
     setSaving(true);
@@ -973,7 +964,7 @@ function MediateModal({
       });
       onSent();
     } catch (e) {
-      setErr((e as Error).message);
+      toast((e as Error).message, "error");
       setSaving(false);
     }
   };
@@ -1017,8 +1008,6 @@ function MediateModal({
             Qəbul olunarsa boşalan slotu #{waitingAppointmentId} müraciətinə avtomatik təyin et (atomik svop)
           </label>
 
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
-
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button className="btn" onClick={onClose}>Bağla</button>
             <button className="btn primary" onClick={submit} disabled={saving}>
@@ -1043,12 +1032,11 @@ function AdminCancelModal({
   const [reason, setReason] = useState(OPERATOR_REASONS[0].code);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const submit = async () => {
-    setSaving(true); setErr(null);
+    setSaving(true);
     try { onDone(await adminApi.cancelAppointment(appointment.id, reason, note.trim() || undefined)); }
-    catch (e) { setErr((e as Error).message); setSaving(false); }
+    catch (e) { toast((e as Error).message, "error"); setSaving(false); }
   };
 
   return (
@@ -1066,7 +1054,6 @@ function AdminCancelModal({
           </select>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Qeyd (məcburi deyil)"
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid var(--line)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 12 }} />
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button className="btn" onClick={onClose}>Bağla</button>
             <button className="btn danger" onClick={submit} disabled={saving}>{saving ? "Göndərilir…" : "Ləğv et"}</button>
@@ -1089,16 +1076,15 @@ function BulkCancelModal({
   const [reason, setReason] = useState(OPERATOR_REASONS[0].code);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   const [result, setResult] = useState<{ cancelled: number[]; failed: Record<string, string> } | null>(null);
 
   const submit = async () => {
-    setSaving(true); setErr(null);
+    setSaving(true);
     try {
       const res = await adminApi.bulkCancelAppointments(ids, reason, note.trim() || undefined);
       setResult(res);
       if (Object.keys(res.failed).length === 0) onDone();
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 
@@ -1131,8 +1117,6 @@ function BulkCancelModal({
             </div>
           )}
 
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
-
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button className="btn" onClick={result ? onDone : onClose}>{result ? "Bağla" : "İmtina"}</button>
             {!result && (
@@ -1160,14 +1144,13 @@ function ResolveDisputeModal({
   const [blameSide, setBlameSide] = useState<"PATIENT" | "PSYCHOLOGIST" | "NONE">("NONE");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   const submit = async () => {
-    setErr(null); setSaving(true);
+    setSaving(true);
     try {
       const blame = decision === "CANCEL" && blameSide !== "NONE" ? blameSide : undefined;
       onDone(await adminApi.resolveAppointmentDispute(appointment.id, decision, note.trim() || undefined, blame));
-    } catch (e) { setErr((e as Error).message); setSaving(false); }
+    } catch (e) { toast((e as Error).message, "error"); setSaving(false); }
   };
 
   return (
@@ -1231,8 +1214,6 @@ function ResolveDisputeModal({
           <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Həll qeydi (məcburi deyil)"
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid var(--line)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", marginBottom: 10 }} />
 
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
-
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button className="btn" onClick={onClose}>Bağla</button>
             <button className={`btn ${decision === "COMPLETE" ? "primary" : "danger"}`} onClick={submit} disabled={saving}>
@@ -1257,17 +1238,16 @@ function AdminReassignModal({
   const [operators, setOperators] = useState<{ id: number; name: string }[]>([]);
   const [opId, setOpId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     operatorApi.listOperators().then(setOperators).catch(() => {});
   }, []);
 
   const submit = async () => {
-    if (!opId) { setErr("Operator seçin"); return; }
-    setSaving(true); setErr(null);
+    if (!opId) { toast("Operator seçin", "error"); return; }
+    setSaving(true);
     try { onDone(await operatorApi.reassignAppointment(appointment.id, opId)); }
-    catch (e) { setErr((e as Error).message); setSaving(false); }
+    catch (e) { toast((e as Error).message, "error"); setSaving(false); }
   };
 
   return (
@@ -1294,7 +1274,6 @@ function AdminReassignModal({
           <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 12px" }}>
             Keçid qeyd-şərtsizdir: əvvəlki sahibə bildiriş gedir, əməliyyat audit-loqa yazılır.
           </p>
-          {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 12, marginBottom: 10 }}>{err}</div>}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button className="btn" onClick={onClose}>Bağla</button>
             <button className="btn primary" onClick={submit} disabled={saving}>

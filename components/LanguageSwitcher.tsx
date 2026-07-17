@@ -135,8 +135,9 @@ export default function LanguageSwitcher({
           width: 40px; height: 40px; padding: 0; gap: 0;
           justify-content: center; border-radius: 12px;
         }
-        .lsw--compact .lsw__code,
-        .lsw--compact .lsw__chevron { display: none; }
+        /* Yalnız trigger düyməsində gizlə — açılan menyudakı AZ/RU/EN etiketləri qalsın. */
+        .lsw--compact .lsw__btn .lsw__code,
+        .lsw--compact .lsw__btn .lsw__chevron { display: none; }
         .lsw__btn:hover { background: var(--fanus-primary-50); border-color: var(--fanus-primary-300); }
         .lsw__code { font-size: 14px; font-weight: 600; }
         .lsw__chevron { transition: transform .2s; flex-shrink: 0; color: var(--fanus-ink-3); }

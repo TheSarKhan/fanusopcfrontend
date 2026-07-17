@@ -436,6 +436,12 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     done:   { bg: "#ECFDF3", border: "#BBF7D0", iconBg: "#BBF7D0", icon: "#16A34A" },
   }[next.tone];
 
+  // Təyin/yenidən-planla forması (AssignBlock) birbaşa aşağıda tam görünürsə,
+  // eyni "psixoloq və vaxt təyin edin" çağırışını təkrarlayan üst strip artıqdır —
+  // onu gizlə (assign-dışı addımlarda: ödəniş/link/mübahisə strip QALIR).
+  const assignBlockVisible = !isFinal && canAssign && !timeLocked;
+  const hideNextStrip = assignBlockVisible && next.action === "assign";
+
   // Claim çipi (sağ header) — sahiblik + SLA vəziyyəti tək kompakt nişanda.
   const ownerLabel = claim?.mine ? "Sənin üzərində" : claimedByOther ? `${claim?.claimedByName ?? "?"} işləyir` : "Sahibsiz";
   const ownerChip = claim?.mine
@@ -505,7 +511,8 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
               </div>
             )}
 
-            {/* Sonrakı addım */}
+            {/* Sonrakı addım — AssignBlock aşağıda göründükdə təkrar strip gizlədilir */}
+            {!hideNextStrip && (
             <div style={{ background: nextTone.bg, border: `1px solid ${nextTone.border}`, borderRadius: 14, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
                 <span style={{ width: 34, height: 34, borderRadius: "50%", background: nextTone.iconBg, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
@@ -526,6 +533,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
                 </button>
               )}
             </div>
+            )}
 
             {isFinal ? (
               /* Terminal vəziyyət kartı */

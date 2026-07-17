@@ -470,6 +470,7 @@ export interface BlogPost {
   authorName?: string;
   createdAt?: string;
   updatedAt?: string;
+  tags?: string[];
   attachments?: ArticleAttachment[];
   // Draft shadow fields (published articles only)
   draftTitle?: string;

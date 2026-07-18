@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   operatorApi,
@@ -117,10 +118,10 @@ export default function OperatorAnalyticsPage() {
     <div style={{ display: "flex", flexDirection: "column" }}>
       <style>{CSS}</style>
 
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, letterSpacing: "-.01em", color: "var(--oxford)" }}>{t("staff.opAnalyticsTitle")}</h1>
-        <p style={{ margin: 0, fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>Gəlir, geri qaytarmalar və əməliyyat göstəriciləri</p>
-      </div>
+      <PageHeader
+        title={t("staff.opAnalyticsTitle")}
+        subtitle="Gəlir, geri qaytarmalar və əməliyyat göstəriciləri"
+      />
 
       {/* MALİYYƏ */}
       {finKpis.length > 0 && <>

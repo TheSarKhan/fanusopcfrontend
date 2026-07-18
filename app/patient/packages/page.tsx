@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { patientApi, type PatientPackageItem } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
+import PageHeader from "@/components/PageHeader";
 import { toast } from "@/components/Toast";
 import { azLocalToISO, azFormatDate } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
@@ -64,11 +65,7 @@ export default function PatientPackagesPage() {
 
   return (
     <div className="psy-appt-page">
-      <header style={{ marginBottom: 18 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>
-          {t("pkg.myPackages")}
-        </h1>
-      </header>
+      <PageHeader title={t("pkg.myPackages")} subtitle="Aldığınız paketləri və qalan seansları buradan izləyin" />
 
       {loading ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>

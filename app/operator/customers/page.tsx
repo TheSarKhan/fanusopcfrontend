@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { operatorApi, type OperatorSearchHit, type AppointmentDetail } from "@/lib/api";
 import { toast } from "@/components/Toast";
+import PageHeader from "@/components/PageHeader";
 import { Icon } from "./icons";
 
 // ─── Köməkçilər ──────────────────────────────────────────────────────────────
@@ -215,15 +216,15 @@ export default function OperatorCustomersPage() {
   return (
     <div className="fx-page" style={{ minHeight: "auto", padding: 0 }}>
       {/* Başlıq */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, marginBottom: 24, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <h1 className="fx-h1">Müştərilər</h1>
-          <div className="fx-subtitle">Direktoriya · axtar, seqmentlə, sətirdən əməliyyat et</div>
-        </div>
-        <button type="button" onClick={() => setNewOpen(true)} className="fx-btn fx-btn--primary">
-          <Icon name="plus" /> Yeni müştəri
-        </button>
-      </div>
+      <PageHeader
+        title="Müştərilər"
+        subtitle="Direktoriya · axtar, seqmentlə, sətirdən əməliyyat et"
+        actions={
+          <button type="button" onClick={() => setNewOpen(true)} className="fx-btn fx-btn--primary">
+            <Icon name="plus" /> Yeni müştəri
+          </button>
+        }
+      />
 
       {/* KPI zolağı */}
       <div className="fx-card fx-card--lg fx-kpi-row" style={{ gridTemplateColumns: "repeat(4,1fr)", marginBottom: 16 }}>

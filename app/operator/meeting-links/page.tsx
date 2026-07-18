@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { operatorApi, type AppointmentDetail } from "@/lib/api";
+import PageHeader from "@/components/PageHeader";
 import { azFormatDateTime } from "@/lib/datetime";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { SkeletonGrid } from "@/components/Skeleton";
@@ -80,17 +81,15 @@ export default function OperatorMeetingLinksPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
-        <div>
-          <h1 className="fx-h1">Görüş linkləri</h1>
-          <p className="fx-subtitle" style={{ margin: "6px 0 0" }}>
-            Yaxınlaşan, görüş linki hələ göndərilməmiş seanslar. Linki əlavə edib göndərin.
-          </p>
-        </div>
-        <button type="button" onClick={load} className="fx-btn fx-btn--ghost">
-          <IconRefresh /> Yenilə
-        </button>
-      </div>
+      <PageHeader
+        title="Görüş linkləri"
+        subtitle="Yaxınlaşan, görüş linki hələ göndərilməmiş seanslar. Linki əlavə edib göndərin."
+        actions={
+          <button type="button" onClick={load} className="fx-btn fx-btn--ghost">
+            <IconRefresh /> Yenilə
+          </button>
+        }
+      />
 
       {loading ? (
         <SkeletonGrid count={4} />

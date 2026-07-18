@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { toast } from "@/components/Toast";
 import EmptyState from "@/components/EmptyState";
+import PageHeader from "@/components/PageHeader";
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
 
@@ -101,10 +102,10 @@ export default function PsychologCommunityPage() {
 
   return (
     <div className="pcom-page">
-      <header className="pcom-head">
-        <h1>İcma</h1>
-        <p>Həmkarlarınızı izləyin, profillərinə baxın və yeni məqalələrindən xəbərdar olun.</p>
-      </header>
+      <PageHeader
+        title="İcma"
+        subtitle="Həmkarlarınızı izləyin, profillərinə baxın və yeni məqalələrindən xəbərdar olun."
+      />
 
       {/* ── Tövsiyə karuseli ──────────────────────────────────────────── */}
       {discoverLoading ? (

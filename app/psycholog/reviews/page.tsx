@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { psychologistApi, type PsychologistReceivedReview, type ReviewDeletionRequestItem } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
+import PageHeader from "@/components/PageHeader";
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   PENDING:  { label: "Moderasiyada", color: "#92400E", bg: "#FEF3C7" },
@@ -117,12 +118,10 @@ export default function PsychologReviewsPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: 18 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535", margin: 0 }}>{t("staff.psyReviewsTitle")}</h1>
-        <p style={{ fontSize: 13, color: "#52718F", marginTop: 4 }}>
-          {t("staff.psyReviewsSub")}
-        </p>
-      </div>
+      <PageHeader
+        title={t("staff.psyReviewsTitle")}
+        subtitle={t("staff.psyReviewsSub")}
+      />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
         <Stat label={t("staff.psyReviewsAvg")} value={summary.total > 0 ? summary.avg.toFixed(1) : "—"}

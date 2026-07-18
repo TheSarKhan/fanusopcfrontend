@@ -9,6 +9,7 @@ import { getStoredUser } from "@/lib/auth";
 import { toast as uiToast } from "@/components/Toast";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import ErrorState from "@/components/ErrorState";
+import PageHeader from "@/components/PageHeader";
 
 // ─── Sabitlər ─────────────────────────────────────────────────────────────────
 const PLATFORM_RATE = 0.20; // platforma komissiyası (default — sonra site_config-dən oxunacaq)
@@ -257,20 +258,20 @@ export default function OperatorPaymentsPage() {
       <style>{CSS}</style>
 
       {/* Başlıq */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
-        <div>
-          <h1 className="fx-h1" style={{ marginBottom: 5 }}>Ödənişlər</h1>
-          <div className="fx-subtitle">Maliyyə əməliyyatları · {fmtToday()}</div>
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button type="button" onClick={() => exportExcel(rows)} className="fx-btn fx-btn--ghost">
-            <Ic d={["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"]} /> Export
-          </button>
-          <button type="button" onClick={() => { uiToast("Ödəniş seans/paket satışından yaranır", "info"); router.push("/operator/appointments"); }} className="fx-btn fx-btn--primary">
-            <Ic d={["M12 5v14", "M5 12h14"]} sw={2} /> Yeni ödəniş
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Ödənişlər"
+        subtitle={<>Maliyyə əməliyyatları · {fmtToday()}</>}
+        actions={
+          <>
+            <button type="button" onClick={() => exportExcel(rows)} className="fx-btn fx-btn--ghost">
+              <Ic d={["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"]} /> Export
+            </button>
+            <button type="button" onClick={() => { uiToast("Ödəniş seans/paket satışından yaranır", "info"); router.push("/operator/appointments"); }} className="fx-btn fx-btn--primary">
+              <Ic d={["M12 5v14", "M5 12h14"]} sw={2} /> Yeni ödəniş
+            </button>
+          </>
+        }
+      />
 
       {loading ? <PageSkeleton /> : error ? (
         <ErrorState title="Ödənişlər yüklənmədi" sub="Bağlantı və ya server problemi ola bilər. Yenidən cəhd edin." onRetry={load} />

@@ -17,6 +17,7 @@ import { formatAzn } from "@/lib/money";
 import { toast } from "@/components/Toast";
 import ErrorState from "@/components/ErrorState";
 import { Skeleton } from "@/components/Skeleton";
+import PageHeader from "@/components/PageHeader";
 
 const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
 const DAYS_AZ = ["Bazar", "Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə"];
@@ -161,17 +162,17 @@ export default function OperatorDashboard() {
       <style>{CSS}</style>
 
       {/* HEADER */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
-        <div>
-          <div className="fx-label" style={{ color: "var(--brand)", marginBottom: 7 }}>{todayLabel()}</div>
-          <h1 className="fx-h1">İdarə paneli{user?.firstName ? ` · ${user.firstName}` : ""}</h1>
-          <p className="fx-subtitle" style={{ margin: "6px 0 0" }}>{t("staff.opDashSub")}</p>
-        </div>
-        <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
-          <GhostLink href="/operator/appointments" icon={<Ico d={I_CAL} w={15} />}>Randevular</GhostLink>
-          <GhostLink href="/operator/payments" icon={<Ico d={I_CARD} w={15} />}>Ödənişlər</GhostLink>
-        </div>
-      </div>
+      <div className="fx-label" style={{ color: "var(--brand)", marginBottom: 7 }}>{todayLabel()}</div>
+      <PageHeader
+        title={<>İdarə paneli{user?.firstName ? ` · ${user.firstName}` : ""}</>}
+        subtitle={t("staff.opDashSub")}
+        actions={
+          <>
+            <GhostLink href="/operator/appointments" icon={<Ico d={I_CAL} w={15} />}>Randevular</GhostLink>
+            <GhostLink href="/operator/payments" icon={<Ico d={I_CARD} w={15} />}>Ödənişlər</GhostLink>
+          </>
+        }
+      />
 
       {loading ? (
         <DashboardSkeleton />

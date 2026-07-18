@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "@/components/Toast";
+import PageHeader from "@/components/PageHeader";
 import { useSearchParams } from "next/navigation";
 import {
   psychologistApi,
@@ -219,40 +220,38 @@ export default function PsychologistAppointmentsPage() {
   return (
     <div className="psy-appt-page">
       <style>{PSY_APPT_STYLE}</style>
-      <header style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 22 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.01em", color: "var(--oxford)", margin: "0 0 6px" }}>{t("staff.psyApptTitle")}</h1>
-          <p style={{ fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500, margin: 0 }}>
-            {t("staff.psyApptSub")}
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Link
-            href="/psycholog/appointments/history"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              background: "#fff", color: "var(--oxford)",
-              border: "1px solid #D6E2F7",
-              padding: "11px 17px", borderRadius: 10,
-              fontSize: 14, fontWeight: 600, textDecoration: "none",
-            }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>
-            Tarixçə
-          </Link>
-          <Link
-            href="/psycholog/calendar"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              background: "var(--brand)", color: "#fff",
-              padding: "11px 17px", borderRadius: 10,
-              fontSize: 14, fontWeight: 600, textDecoration: "none",
-              boxShadow: "0 4px 14px rgba(16,81,183,.25)",
-            }}>
-            <ICal s={17} c="#fff" />
-            Təqvim
-          </Link>
-        </div>
-      </header>
+      <PageHeader
+        title={t("staff.psyApptTitle")}
+        subtitle={t("staff.psyApptSub")}
+        actions={
+          <>
+            <Link
+              href="/psycholog/appointments/history"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                background: "#fff", color: "var(--oxford)",
+                border: "1px solid #D6E2F7",
+                padding: "11px 17px", borderRadius: 10,
+                fontSize: 14, fontWeight: 600, textDecoration: "none",
+              }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>
+              Tarixçə
+            </Link>
+            <Link
+              href="/psycholog/calendar"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                background: "var(--brand)", color: "#fff",
+                padding: "11px 17px", borderRadius: 10,
+                fontSize: 14, fontWeight: 600, textDecoration: "none",
+                boxShadow: "0 4px 14px rgba(16,81,183,.25)",
+              }}>
+              <ICal s={17} c="#fff" />
+              Təqvim
+            </Link>
+          </>
+        }
+      />
 
       {loading ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>

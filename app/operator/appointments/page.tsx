@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import PageHeader from "@/components/PageHeader";
 import {
   operatorApi,
   reasonLabel,
@@ -451,22 +452,22 @@ export default function OperatorAppointmentsPage() {
       )}
 
       {/* HEADER */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 18 }}>
-        <div>
-          <h1 className="fx-h1" style={{ marginBottom: 6 }}>{t("staff.opApptTitle")}</h1>
-          <p className="fx-subtitle" style={{ margin: 0 }}>{t("staff.opDashSub")}</p>
-        </div>
-        <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
-          {view !== "referrals" && (
-            <button type="button" onClick={() => setOnBehalfOpen(true)} className="fx-btn fx-btn--primary">
-              <Svg w={15} d={<path d="M12 5v14M5 12h14" />} /> Pasiyent adına randevu
+      <PageHeader
+        title={t("staff.opApptTitle")}
+        subtitle={t("staff.opDashSub")}
+        actions={
+          <>
+            {view !== "referrals" && (
+              <button type="button" onClick={() => setOnBehalfOpen(true)} className="fx-btn fx-btn--primary">
+                <Svg w={15} d={<path d="M12 5v14M5 12h14" />} /> Pasiyent adına randevu
+              </button>
+            )}
+            <button type="button" onClick={load} className="fx-btn fx-btn--ghost">
+              <Svg w={15} d={<><path d="M23 4v6h-6" /><path d="M1 20v-6h6" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" /><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></>} /> Yenilə
             </button>
-          )}
-          <button type="button" onClick={load} className="fx-btn fx-btn--ghost">
-            <Svg w={15} d={<><path d="M23 4v6h-6" /><path d="M1 20v-6h6" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" /><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></>} /> Yenilə
-          </button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* ƏSAS TABLAR — alt-xəttli: Randevular | Paketlər | Yönləndirmələr */}
       <div className="fx-tabs" style={{ borderBottom: "1px solid var(--hairline)", marginBottom: 18, overflowX: "auto" }}>

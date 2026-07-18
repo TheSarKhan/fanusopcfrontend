@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { psychologistApi, type BlogPost } from "@/lib/api";
 import { getMainSiteUrl } from "@/lib/auth";
+import PageHeader from "@/components/PageHeader";
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
 
@@ -179,17 +180,15 @@ export default function PsychologArticlesPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--oxford)", margin: 0 }}>Məqalələrim</h1>
-          <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4, marginBottom: 0 }}>
-            Yazılarınızı toplayın, qaralamadan yayımlayın və paylaşın.
-          </p>
-        </div>
-        <a href="/psycholog/articles/new" style={primaryBtnLink}>
-          <IconPlus /> Yeni məqalə
-        </a>
-      </div>
+      <PageHeader
+        title="Məqalələrim"
+        subtitle="Yazılarınızı toplayın, qaralamadan yayımlayın və paylaşın."
+        actions={
+          <a href="/psycholog/articles/new" style={primaryBtnLink}>
+            <IconPlus /> Yeni məqalə
+          </a>
+        }
+      />
 
       {/* Stat strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(160px, 100%), 1fr))", gap: 10 }}>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PsychResourceTabs from "@/components/PsychResourceTabs";
+import PageHeader from "@/components/PageHeader";
 import AssignTestModal from "@/components/AssignTestModal";
 import {
   psychologistApi,
@@ -245,21 +246,19 @@ export default function PsychologTestsPage() {
         <PsychResourceTabs />
       </div>
 
-      <div style={{ marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "#1A2535", margin: 0 }}>Psixoloji testlər</h1>
-          <p style={{ fontSize: 13, color: "#52718F", marginTop: 4 }}>
-            Testləri yaradın, önizləyin və statistikaya baxın.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => router.push("/psycholog/tests/manage/new")}
-          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 10, background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}
-        >
-          + Yeni test yarat
-        </button>
-      </div>
+      <PageHeader
+        title="Psixoloji testlər"
+        subtitle="Testləri yaradın, önizləyin və statistikaya baxın."
+        actions={
+          <button
+            type="button"
+            onClick={() => router.push("/psycholog/tests/manage/new")}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 10, background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}
+          >
+            + Yeni test yarat
+          </button>
+        }
+      />
 
       {/* ── KPI row ─────────────────────────────────────────────────────────── */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 22 }}>

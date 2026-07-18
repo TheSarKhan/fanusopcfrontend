@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { patientApi, type TestAssignment } from "@/lib/api";
+import PageHeader from "@/components/PageHeader";
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -40,10 +41,7 @@ export default function PatientTestsPage() {
 
   return (
     <div className="pgoals">
-      <header className="pgoals__head">
-        <h1>Testlərim</h1>
-        <p>Psixoloqunuzun sizə təyin etdiyi psixoloji testlər. Testi həll edin və nəticənizi dərhal görün.</p>
-      </header>
+      <PageHeader title="Testlərim" subtitle="Psixoloqunuzun sizə təyin etdiyi psixoloji testlər. Testi həll edin və nəticənizi dərhal görün." />
 
       {loading ? (
         <div className="pgoals__loading">Yüklənir…</div>

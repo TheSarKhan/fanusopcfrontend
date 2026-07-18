@@ -13,6 +13,7 @@ import { operatorApi, type SessionRequest } from "@/lib/api";
 import { toast as uiToast } from "@/components/Toast";
 import EmptyState from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
+import PageHeader from "@/components/PageHeader";
 import { azFormatDate } from "@/lib/datetime";
 import { IconAlert, IconCheck, IconChevronRight, IconClock, IconInbox, IconMail, IconPhone, IconSearch } from "./icons";
 
@@ -114,13 +115,10 @@ export default function SessionRequestsPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <h1 className="fx-h1">Sayt müraciətləri</h1>
-        <p className="fx-subtitle" style={{ margin: "6px 0 0", maxWidth: 640 }}>
-          Saytdan gələn anonim seans müraciətləri. Hovuzdan götürün, uyğunlaşsanız randevuya
-          çevirin və ya paket satın — müraciət sizə aid qalır, başqa operator görmür.
-        </p>
-      </div>
+      <PageHeader
+        title="Sayt müraciətləri"
+        subtitle="Saytdan gələn anonim seans müraciətləri. Hovuzdan götürün, uyğunlaşsanız randevuya çevirin və ya paket satın — müraciət sizə aid qalır, başqa operator görmür."
+      />
 
       <div className="fx-card" style={{ overflow: "hidden", marginBottom: 20 }}>
         {/* Tablar */}

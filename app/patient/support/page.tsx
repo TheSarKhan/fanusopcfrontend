@@ -9,6 +9,7 @@ import {
   type CrisisContactPsy,
 } from "@/lib/api";
 import { toast } from "@/components/Toast";
+import PageHeader from "@/components/PageHeader";
 
 const MOOD_LABELS = [
   "Çox pisəm",     // 1
@@ -76,10 +77,7 @@ export default function PatientSupportPage() {
 
   return (
     <div className="psupport">
-      <header className="psupport__head">
-        <h1>Dəstək</h1>
-        <p>Çətin anlarda təkbaşına deyilsiniz. Aşağıdakı vasitələrdən istifadə edin və ya bizimlə əlaqə saxlayın.</p>
-      </header>
+      <PageHeader title="Dəstək" subtitle="Çətin anlarda təkbaşına deyilsiniz. Aşağıdakı vasitələrdən istifadə edin və ya bizimlə əlaqə saxlayın." />
 
       {loading ? (
         <div className="psupport__loading">Yüklənir…</div>

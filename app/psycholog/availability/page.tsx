@@ -8,6 +8,7 @@ import RescheduleComposeModal from "@/components/RescheduleComposeModal";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDateTime } from "@/lib/datetime";
 import { toast } from "@/components/Toast";
+import PageHeader from "@/components/PageHeader";
 
 const WEEKDAYS_AZ = [
   { iso: 1, label: "Bazar ertəsi", short: "B.e" },
@@ -190,14 +191,10 @@ export default function PsychologistAvailabilityPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Header */}
-      <div>
-        <h1 style={{ fontSize: 27, fontWeight: 800, letterSpacing: "-.02em", color: "var(--oxford)", margin: "0 0 6px" }}>
-          {t("staff.psyAvailTitle")}
-        </h1>
-        <p style={{ fontSize: 15, color: "var(--oxford-60)", fontWeight: 500, margin: 0 }}>
-          Həftəlik iş vaxtları, tarix istisnaları və məzuniyyət — bir səhifədə.
-        </p>
-      </div>
+      <PageHeader
+        title={t("staff.psyAvailTitle")}
+        subtitle="Həftəlik iş vaxtları, tarix istisnaları və məzuniyyət — bir səhifədə."
+      />
 
       {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(190px, 100%), 1fr))", gap: 13 }}>

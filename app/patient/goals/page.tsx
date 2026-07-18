@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { patientApi, type PatientGoalStatus, type PatientGoalView } from "@/lib/api";
 import { FEATURE_GOALS } from "@/lib/features";
+import PageHeader from "@/components/PageHeader";
 
 const STATUS_META: Record<PatientGoalStatus, { label: string; bg: string; fg: string; border: string }> = {
   OPEN:        { label: "Açıq",        bg: "var(--brand-50)", fg: "var(--brand-700)", border: "var(--brand-100)" },
@@ -72,10 +73,7 @@ export default function PatientGoalsPage() {
 
   return (
     <div className="pgoals">
-      <header className="pgoals__head">
-        <h1>Mənim hədəflərim</h1>
-        <p>Psixoloqunuzla razılaşdırdığınız hədəflər. İrəliləyişinizi qeyd edin — psixoloqunuza dərhal bildiriş gedir.</p>
-      </header>
+      <PageHeader title="Mənim hədəflərim" subtitle="Psixoloqunuzla razılaşdırdığınız hədəflər. İrəliləyişinizi qeyd edin — psixoloqunuza dərhal bildiriş gedir." />
 
       {loading ? (
         <div className="pgoals__loading">Yüklənir…</div>

@@ -6,6 +6,7 @@ import { getPsychologists, patientApi, type Psychologist, type MyReview } from "
 import { toast } from "@/components/Toast";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import PageHeader from "@/components/PageHeader";
 import ReviewModal from "@/app/patient/appointments/ReviewModal";
 
 type SortMode = "recommended" | "rating" | "experience" | "newest";
@@ -153,25 +154,25 @@ export default function PatientPsychologistsPage() {
       `}</style>
 
       {/* 1. HEADER + SEARCH */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, flexWrap: "wrap", marginBottom: 24 }}>
-        <div>
-          <h1 style={{ margin: "0 0 6px", fontSize: 28, fontWeight: 800, letterSpacing: "-.02em", color: "var(--oxford)" }}>{t("patPsy.pageTitle")}</h1>
-          <p style={{ margin: 0, fontSize: 15, color: "var(--oxford-60)", fontWeight: 500 }}>{t("patPsy.pageSub")}</p>
-        </div>
-        <div style={{ position: "relative", minWidth: 280, flex: 1, maxWidth: 360 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
-            <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
-          </svg>
-          <input
-            type="search"
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            placeholder={t("patPsy.searchPh")}
-            aria-label={t("patPsy.searchPh")}
-            style={{ width: "100%", border: "1px solid #D6E2F7", background: "#fff", borderRadius: 11, padding: "12px 14px 12px 42px", fontSize: 14, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", boxShadow: "0 2px 12px rgba(0,0,0,.04)" }}
-          />
-        </div>
-      </div>
+      <PageHeader
+        title={t("patPsy.pageTitle")}
+        subtitle={t("patPsy.pageSub")}
+        actions={
+          <div style={{ position: "relative", minWidth: 280, flex: 1, maxWidth: 360 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+              <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
+            </svg>
+            <input
+              type="search"
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder={t("patPsy.searchPh")}
+              aria-label={t("patPsy.searchPh")}
+              style={{ width: "100%", border: "1px solid #D6E2F7", background: "#fff", borderRadius: 11, padding: "12px 14px 12px 42px", fontSize: 14, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", boxShadow: "0 2px 12px rgba(0,0,0,.04)" }}
+            />
+          </div>
+        }
+      />
 
       {/* 2. SPECIALIZATION CHIPS */}
       {specChips.length > 0 && (

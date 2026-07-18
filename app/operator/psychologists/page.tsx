@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { operatorApi, type PsychologistRankItem } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import PageHeader from "@/components/PageHeader";
 
 type Segment = "all" | "FANUS" | "NORMAL" | "vacation" | "attention";
 type SortKey = "sessions" | "alpha";
@@ -83,16 +84,16 @@ export default function OperatorPsychologistsPage() {
     <div style={{ display: "flex", flexDirection: "column" }}>
       <style>{`.ps-num{font-variant-numeric:tabular-nums}.ps-row:hover{background:#F2F6FD}@keyframes psShim{0%{background-position:-320px 0}100%{background-position:320px 0}}.ps-skel{background:linear-gradient(90deg,#EEF2F9 25%,#E2E9F4 37%,#EEF2F9 63%);background-size:640px 100%;animation:psShim 1.4s infinite linear}`}</style>
 
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, letterSpacing: "-.01em", color: "var(--oxford)" }}>Psixoloqlar</h1>
-          <p style={{ margin: 0, fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>Platformadakı bütün psixoloqları idarə edin — əlaqə saxlayın, riskləri görün, 360° profilə keçin</p>
-        </div>
-        <a href="/admin/psychologists" target="_blank" rel="noreferrer" style={{ flex: "none", fontSize: 12.5, fontWeight: 700, color: "var(--brand-700)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
-          Admin panelinə keçid
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6" /><path d="M10 14L21 3" /></svg>
-        </a>
-      </div>
+      <PageHeader
+        title="Psixoloqlar"
+        subtitle="Platformadakı bütün psixoloqları idarə edin — əlaqə saxlayın, riskləri görün, 360° profilə keçin"
+        actions={
+          <a href="/admin/psychologists" target="_blank" rel="noreferrer" style={{ flex: "none", fontSize: 12.5, fontWeight: 700, color: "var(--brand-700)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            Admin panelinə keçid
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6" /><path d="M10 14L21 3" /></svg>
+          </a>
+        }
+      />
 
       {error ? <div className="op-error">{t("common.error")}</div> : loading ? <SkeletonList /> : ranking.length === 0 ? (
         <div style={{ ...CARD, padding: "44px 20px", textAlign: "center" }}>

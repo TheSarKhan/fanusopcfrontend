@@ -16,6 +16,7 @@ import { appUrl } from "@/lib/appUrl";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { azFormatTime, azFormatDate, azOrdinal, hoursSince } from "@/lib/datetime";
 import SessionFeedbackModal from "@/components/SessionFeedbackModal";
+import PageHeader from "@/components/PageHeader";
 import { formatAzn } from "@/lib/money";
 import RescheduleProposalModal from "@/components/RescheduleProposalModal";
 import AddToCalendarMenu from "@/components/AddToCalendarMenu";
@@ -329,38 +330,38 @@ export default function PatientAppointmentsPage() {
   return (
     <div className="psy-appt-page" style={{ maxWidth: 1040, margin: "0 auto" }}>
       <style>{PA_STYLE}</style>
-      <header style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 22 }}>
-        <div>
-          <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 700, letterSpacing: "-.01em", color: "var(--oxford)" }}>{t("appt.pageTitle")}</h1>
-          <p style={{ margin: 0, fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>{t("appt.pageSub")}</p>
-        </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Link
-            href="/patient/appointments/history"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              background: "#fff", color: "var(--oxford)",
-              border: "1px solid #D6E2F7",
-              padding: "11px 17px", borderRadius: 10,
-              fontSize: 14, fontWeight: 600, textDecoration: "none",
-            }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>
-            Tarixçə
-          </Link>
-          <Link
-            href="/patient/psychologists"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              background: "var(--brand)", color: "#fff",
-              padding: "11px 17px", borderRadius: 10,
-              fontSize: 14, fontWeight: 600, textDecoration: "none",
-              boxShadow: "0 4px 14px rgba(16,81,183,.25)",
-            }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-            {t("appt.newCta")}
-          </Link>
-        </div>
-      </header>
+      <PageHeader
+        title={t("appt.pageTitle")}
+        subtitle={t("appt.pageSub")}
+        actions={
+          <>
+            <Link
+              href="/patient/appointments/history"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                background: "#fff", color: "var(--oxford)",
+                border: "1px solid #D6E2F7",
+                padding: "11px 17px", borderRadius: 10,
+                fontSize: 14, fontWeight: 600, textDecoration: "none",
+              }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>
+              Tarixçə
+            </Link>
+            <Link
+              href="/patient/psychologists"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                background: "var(--brand)", color: "#fff",
+                padding: "11px 17px", borderRadius: 10,
+                fontSize: 14, fontWeight: 600, textDecoration: "none",
+                boxShadow: "0 4px 14px rgba(16,81,183,.25)",
+              }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+              {t("appt.newCta")}
+            </Link>
+          </>
+        }
+      />
 
       {pendingRate && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", background: "linear-gradient(90deg,#F4F8FF,#fff)", border: "1px solid #DCE8FB", borderLeft: "3px solid var(--brand)", borderRadius: 13, padding: "14px 16px", marginBottom: 20 }}>
@@ -609,13 +610,9 @@ function NextSessionHero({
   onCancel: (a: AppointmentDetail) => void;
 }) {
   const { t } = useT();
-  if (!appt || !appt.startAt) {
-    return (
-      <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: 28, textAlign: "center", marginBottom: 32, fontSize: 14, color: "var(--oxford-60)", fontWeight: 600 }}>
-        Yaxınlaşan randevu yoxdur — yeni randevu üçün psixoloq seçin.
-      </div>
-    );
-  }
+  // Yaxınlaşan seans yoxdursa burada heç nə göstərmirik — aşağıdakı "Yaxınlaşan"
+  // bölməsi onsuz da boş-halı göstərir (təkrar olmasın deyə).
+  if (!appt || !appt.startAt) return null;
 
   const start = new Date(appt.startAt);
   const tu = timeUntil(start, now);

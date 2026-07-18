@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { psychologistApi, type Material, type MaterialCategory, type MaterialVersion } from "@/lib/api";
 import PsychResourceTabs from "@/components/PsychResourceTabs";
+import PageHeader from "@/components/PageHeader";
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
 
@@ -87,12 +88,10 @@ export default function PsychologMaterialsPage() {
       <PsychResourceTabs />
 
       {/* Header */}
-      <div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--oxford)", margin: 0 }}>Material kitabxanası</h1>
-        <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4, marginBottom: 0 }}>
-          Pasiyentlərlə paylaşmaq üçün hazır materialları nəzərdən keçirin və yükləyin.
-        </p>
-      </div>
+      <PageHeader
+        title="Material kitabxanası"
+        subtitle="Pasiyentlərlə paylaşmaq üçün hazır materialları nəzərdən keçirin və yükləyin."
+      />
 
       {/* Toolbar: search */}
       <div style={{

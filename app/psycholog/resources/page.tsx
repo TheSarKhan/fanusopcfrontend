@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { psychologistApi, type Paged, type PsychResource, type PsychResourceReq } from "@/lib/api";
 import PsychResourceTabs from "@/components/PsychResourceTabs";
+import PageHeader from "@/components/PageHeader";
 
 /* ─── kateqoriyalar (sabit dəst) ──────────────────────────────────────────── */
 
@@ -163,18 +164,15 @@ export default function PsychologResourcesPage() {
       <PsychResourceTabs />
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--oxford)", margin: 0 }}>Bilik bazası</h1>
-          <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4, marginBottom: 0 }}>
-            Həmkarlarınızla protokol, şablon və materialları paylaşın. Yeni resurs əvvəlcə şəxsidir;
-            paylaşmaq üçün admin təsdiqinə göndərin.
-          </p>
-        </div>
-        <button onClick={() => setEditing("new")} style={primaryBtn}>
-          <IconPlus /> Resurs əlavə et
-        </button>
-      </div>
+      <PageHeader
+        title="Bilik bazası"
+        subtitle="Həmkarlarınızla protokol, şablon və materialları paylaşın. Yeni resurs əvvəlcə şəxsidir; paylaşmaq üçün admin təsdiqinə göndərin."
+        actions={
+          <button onClick={() => setEditing("new")} style={primaryBtn}>
+            <IconPlus /> Resurs əlavə et
+          </button>
+        }
+      />
 
       {/* View switcher */}
       <div style={{ display: "flex", gap: 6, background: "#fff", padding: 6, borderRadius: 10, border: "1px solid var(--oxford-10)", width: "fit-content" }}>

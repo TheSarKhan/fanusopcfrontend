@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { psychologistApi, type ClientSummary, type PatientTag } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import PageHeader from "@/components/PageHeader";
 
 const ACTIVE_DAYS = 30;
 const DORMANT_DAYS = 90;
@@ -278,12 +279,11 @@ export default function PsychologClientsPage() {
       `}</style>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 22 }}>
-        <div>
-          <h1 style={{ margin: "0 0 6px", fontSize: 27, fontWeight: 800, letterSpacing: "-.02em", color: "var(--oxford)" }}>{t("staff.psyClientsTitle")}</h1>
-          <p style={{ margin: 0, fontSize: 15, color: "var(--oxford-60)", fontWeight: 500 }}>{t("staff.psyClientsSub")}</p>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <PageHeader
+        title={t("staff.psyClientsTitle")}
+        subtitle={t("staff.psyClientsSub")}
+        actions={
+          <>
           <div style={{ position: "relative", minWidth: 230 }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} aria-hidden><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
             <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)} placeholder={t("common.search")}
@@ -305,8 +305,9 @@ export default function PsychologClientsPage() {
             style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 14px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: visible.length === 0 ? "not-allowed" : "pointer", opacity: visible.length === 0 ? 0.5 : 1 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5M12 15V3" /></svg>CSV
           </button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Stat strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))", gap: 13, marginBottom: 18 }}>

@@ -6,6 +6,7 @@ import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDateTime } from "@/lib/datetime";
 import { toast } from "@/components/Toast";
+import PageHeader from "@/components/PageHeader";
 
 const DAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"]; // Mon..Sun — yalnız kompakt 7-günlük zolaq başlıqları üçün
 const DAYS_AZ_FULL = ["Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə", "Bazar"]; // Mon..Sun — mətn/etiketlərdə
@@ -475,14 +476,11 @@ export default function PsychologCalendarPage() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>{t("staff.psyCalendarTitle")}</h1>
-          <p style={{ fontSize: 12.5, color: "var(--oxford-60)", margin: "3px 0 0", maxWidth: 580 }}>
-            Gələcək təsdiqli/təyin edilmiş seansı sürükləyib başqa saata buraxaraq yenidən təklif edə bilərsiniz (15 dəq addımlarla).
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      <PageHeader
+        title={t("staff.psyCalendarTitle")}
+        subtitle="Gələcək təsdiqli/təyin edilmiş seansı sürükləyib başqa saata buraxaraq yenidən təklif edə bilərsiniz (15 dəq addımlarla)."
+        actions={
+          <>
           <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>
             {fmtDay(weekDays[0])} – {fmtDay(weekDays[6])}.{weekDays[6].getFullYear()}
           </span>
@@ -513,8 +511,9 @@ export default function PsychologCalendarPage() {
                 : (gConnecting ? "Yönləndirilir…" : "Google Calendar ilə sinxronlaşdır")}
             </button>
           )}
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {SHOW_GOOGLE_INTEGRATION && (
         <GoogleStatusBanner

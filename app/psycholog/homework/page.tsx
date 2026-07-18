@@ -11,6 +11,7 @@ import HomeworkCreateModal from "@/components/HomeworkCreateModal";
 import HomeworkLabelChip, { LABEL_COLOR_LIST, labelColors } from "@/components/HomeworkLabelChip";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDate } from "@/lib/datetime";
+import PageHeader from "@/components/PageHeader";
 
 const PRIORITY_COLOR: Record<HomeworkPriority, string> = {
   LOW: "#10B981", MEDIUM: "#F59E0B", HIGH: "#DC2626",
@@ -225,20 +226,18 @@ export default function PsychologHomeworkPage() {
 
   return (
     <div>
-      <div className="psy-page-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 14, flexWrap: "wrap", gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)" }}>{t("staff.psyHomeworkTitle")}</h1>
-          <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4 }}>
-            Pasiyent əsaslı iş otağı. Sol panelden pasiyent seçin və ya yeni tapşırıq əlavə edin.
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={() => setShowLabelManager(true)}
-            style={ghostBtn()}>Etiketləri idarə et</button>
-          <button onClick={() => openNewForm()}
-            style={primaryBtn()}>+ Yeni tapşırıq</button>
-        </div>
-      </div>
+      <PageHeader
+        title={t("staff.psyHomeworkTitle")}
+        subtitle="Pasiyent əsaslı iş otağı. Sol panelden pasiyent seçin və ya yeni tapşırıq əlavə edin."
+        actions={
+          <>
+            <button onClick={() => setShowLabelManager(true)}
+              style={ghostBtn()}>Etiketləri idarə et</button>
+            <button onClick={() => openNewForm()}
+              style={primaryBtn()}>+ Yeni tapşırıq</button>
+          </>
+        }
+      />
 
       {/* Top stat strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(160px, 100%), 1fr))", gap: 10, marginBottom: 14 }}>

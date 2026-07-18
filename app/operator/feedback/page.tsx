@@ -10,6 +10,7 @@ import {
 import { toast as uiToast } from "@/components/Toast";
 import { SkeletonGrid } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
+import PageHeader from "@/components/PageHeader";
 import { azFormatDate, azFormatDateTime } from "@/lib/datetime";
 
 // ── Dizayn sistemi yardımçıları (operator/psychologists ilə eyni dil) ───────
@@ -83,13 +84,10 @@ export default function OperatorFeedbackPage() {
 
   return (
     <div className="opf-page">
-      <header style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Seans rəyləri</h1>
-        <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>
-          Psixoloqlara görə qruplaşmış pasiyent rəyləri. «Operator mənimlə əlaqə saxlasın» müraciətləri
-          həll olunana qədər açıq qalır. Karta klikləyib həmin psixoloqun rəylərinə baxın.
-        </p>
-      </header>
+      <PageHeader
+        title="Seans rəyləri"
+        subtitle="Psixoloqlara görə qruplaşmış pasiyent rəyləri. «Operator mənimlə əlaqə saxlasın» müraciətləri həll olunana qədər açıq qalır. Karta klikləyib həmin psixoloqun rəylərinə baxın."
+      />
 
       <div className="opf-stats">
         <Stat label="Cəmi rəy" value={totals.count} />

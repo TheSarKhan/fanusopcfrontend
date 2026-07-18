@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import PageHeader from "@/components/PageHeader";
 import {
   operatorApi,
   type AppointmentDetail,
@@ -166,16 +167,16 @@ export default function OperatorPoolPage() {
   return (
     <div style={{ width: "100%" }}>
       {/* HEADER */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 24 }}>
-        <div>
-          <h1 className="fx-h1" style={{ marginBottom: 6 }}>{t("staff.opPoolTitle")}</h1>
-          <p className="fx-subtitle" style={{ margin: 0 }}>{t("staff.opPoolSub")}</p>
-        </div>
-        <button type="button" onClick={load} className="fx-btn fx-btn--ghost">
-          <IconRefresh />
-          Yenilə
-        </button>
-      </div>
+      <PageHeader
+        title={t("staff.opPoolTitle")}
+        subtitle={t("staff.opPoolSub")}
+        actions={
+          <button type="button" onClick={load} className="fx-btn fx-btn--ghost">
+            <IconRefresh />
+            Yenilə
+          </button>
+        }
+      />
 
       {loading ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(340px, 100%), 1fr))", gap: 16 }}>

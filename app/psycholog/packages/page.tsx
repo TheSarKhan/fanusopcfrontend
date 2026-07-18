@@ -10,6 +10,7 @@ import {
   type Psychologist,
 } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
+import PageHeader from "@/components/PageHeader";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "@/components/Toast";
 
@@ -123,18 +124,16 @@ export default function PsychologPackagesPage() {
         .pk-menu-item--danger:hover{background:#FEE2E2!important}`}</style>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 18, flexWrap: "wrap", marginBottom: 22 }}>
-        <div>
-          <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, letterSpacing: "-.01em", color: "var(--oxford)" }}>Qiymətlər & Paketlər</h1>
-          <p style={{ margin: 0, fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>Paket təklifləriniz, satış və istifadə statistikası</p>
-        </div>
-        {!isFanus && (
+      <PageHeader
+        title="Qiymətlər & Paketlər"
+        subtitle="Paket təklifləriniz, satış və istifadə statistikası"
+        actions={!isFanus && (
           <button onClick={() => setNewOpen(o => !o)}
             style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 17px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
             <IPlus />Yeni paket
           </button>
         )}
-      </div>
+      />
 
       {isFanus && (
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#F2F6FD", border: "1px solid #D6E2F7", borderRadius: 12, padding: "13px 16px", marginBottom: 20 }}>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { patientApi, type Homework, type HomeworkPriority, type HomeworkStatus } from "@/lib/api";
 import HomeworkDetailModal from "@/components/HomeworkDetailModal";
 import HomeworkLabelChip from "@/components/HomeworkLabelChip";
+import PageHeader from "@/components/PageHeader";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDate } from "@/lib/datetime";
 
@@ -117,12 +118,7 @@ export default function PatientHomeworkPage() {
         .pat-hw-grid { display: grid; grid-template-columns: repeat(3, minmax(260px, 1fr)); gap: 12px; }
         @media (max-width: 760px) { .pat-hw-grid { grid-template-columns: 1fr; } }
       `}</style>
-      <div style={{ marginBottom: 14 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)" }}>{t("staff.patHwTitle")}</h1>
-        <p style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 4 }}>
-          Kartı tutub başqa sütuna sürükləyərək statusunu dəyişin və ya açıb şərh yazın.
-        </p>
-      </div>
+      <PageHeader title={t("staff.patHwTitle")} subtitle="Kartı tutub başqa sütuna sürükləyərək statusunu dəyişin və ya açıb şərh yazın." />
 
       {loading ? (
         <div style={{ background: "#fff", padding: 40, borderRadius: 14, textAlign: "center", color: "var(--oxford-60)" }}>{t("common.loading")}</div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { patientApi, type Psychologist } from "@/lib/api";
 import { toast } from "@/components/Toast";
+import PageHeader from "@/components/PageHeader";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -45,11 +46,8 @@ export default function PatientFavoritesPage() {
   };
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, color: "#1A2535" }}>{t("staff.patFavTitle")}</h1>
-      <p style={{ color: "#52718F", fontSize: 14, marginTop: 4, marginBottom: 24 }}>
-        {t("staff.patFavSub")}
-      </p>
+    <div>
+      <PageHeader title={t("staff.patFavTitle")} subtitle={t("staff.patFavSub")} />
 
       {loading ? (
         <div style={{ background: "#fff", padding: 40, borderRadius: 14, textAlign: "center", color: "#52718F" }}>{t("common.loading")}</div>

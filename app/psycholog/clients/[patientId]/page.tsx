@@ -39,7 +39,7 @@ const TAG_PRESETS = [
   "Daimi müştəri", "VIP",
 ];
 
-const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
+const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
 function pad2(n: number) { return String(n).padStart(2, "0"); }
 function fmtTime(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
 function fmtDateTime(iso?: string | null) {
@@ -56,6 +56,14 @@ function daysBetween(iso?: string | null) {
   if (!iso) return null;
   const ms = Date.now() - new Date(iso).getTime();
   return Math.abs(Math.floor(ms / (1000 * 60 * 60 * 24)));
+}
+/** İnsani nisbi gün etiketi — "Bu gün" / "Dünən" / "N gün əvvəl". */
+function agoLabel(iso?: string | null): string {
+  const n = daysBetween(iso);
+  if (n == null) return "";
+  if (n === 0) return "Bu gün";
+  if (n === 1) return "Dünən";
+  return `${n} gün əvvəl`;
 }
 function initialsOf(name?: string | null) {
   if (!name) return "?";
@@ -342,15 +350,6 @@ export default function PatientDetailPage() {
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0] ?? null;
   }, [appointments]);
 
-  // Most recent COMPLETED session + matching clinical note (if any) — quick reference
-  const lastCompleted = useMemo(() => {
-    return appointments
-      .filter(a => a.status === "COMPLETED")
-      .sort((a, b) => new Date(b.startAt ?? b.endAt ?? 0).getTime() - new Date(a.startAt ?? a.endAt ?? 0).getTime())[0] ?? null;
-  }, [appointments]);
-
-  const latestNote = notes[0] ?? null; // notes are returned newest first
-
   const filteredNotes = useMemo(() => {
     const q = noteSearch.trim().toLowerCase();
     if (!q) return notes;
@@ -410,7 +409,29 @@ export default function PatientDetailPage() {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [notes]);
 
+  // Əhval trendi (son iki qeydin fərqi) — KPI oxu üçün.
+  const moodTrend = useMemo(() => {
+    if (moodPoints.length < 2) return null;
+    const last = moodPoints[moodPoints.length - 1].score;
+    const prev = moodPoints[moodPoints.length - 2].score;
+    return { last, delta: last - prev };
+  }, [moodPoints]);
+
+  // Son fəaliyyət lenti — seanslar + klinik qeydlər qarışıq, ən son 6.
+  const recentActivity = useMemo(() => {
+    type Item = { kind: "session"; ts: number; appt: AppointmentDetail } | { kind: "note"; ts: number; note: ClientNote };
+    const items: Item[] = [
+      ...appointments.map((a): Item => ({ kind: "session", ts: apptTs(a), appt: a })),
+      ...notes.map((n): Item => ({ kind: "note", ts: new Date(n.createdAt).getTime(), note: n })),
+    ];
+    return items.sort((x, y) => y.ts - x.ts).slice(0, 6);
+  }, [appointments, notes]);
+
   const flag = client?.autoFlag ? FLAG_META[client.autoFlag] : null;
+
+  // İcmalda yan sütun (növbəti seans / ilk müraciət / böhran) varmı — yoxdursa
+  // əsas sütun tam eni tutur (boş sağ boşluq qalmasın).
+  const overviewHasSide = !!upcoming?.startAt || !!firstNote?.note || crisis.length > 0;
 
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto" }}>
@@ -418,10 +439,23 @@ export default function PatientDetailPage() {
 .m360-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .m360-goalgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px, 100%), 1fr));gap:14px}
 @media(max-width:760px){.m360-2col{grid-template-columns:1fr}}
+.m360-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:820px){.m360-kpi{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:440px){.m360-kpi{grid-template-columns:1fr}}
+.m360-main{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:860px){.m360-main{grid-template-columns:1fr}}
 @keyframes m360Fade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes m360Sheet{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 .m360-link:hover{text-decoration:underline}
 .m360-ghost:hover{border-color:var(--brand) !important;color:var(--brand) !important}
+.m360-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.m360-tbl th{text-align:left;padding:11px 14px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8AAABF;border-bottom:1px solid #EDF1F8;white-space:nowrap;background:#FAFCFE}
+.m360-tbl td{padding:12px 14px;border-bottom:1px solid #F0F4FA;vertical-align:top;color:var(--oxford)}
+.m360-tbl tbody tr:last-child td{border-bottom:none}
+.m360-tbl tbody tr:hover{background:#F8FAFD}
+.m360-pgbtn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #D6E2F7;background:#fff;border-radius:8px;color:var(--oxford);cursor:pointer;font-family:inherit}
+.m360-pgbtn:disabled{opacity:.4;cursor:default}
+.m360-pgbtn:not(:disabled):hover{border-color:var(--brand);color:var(--brand)}
 .m360-soft:hover{background:#FEE2E2 !important}
 .m360-primary:hover{background:var(--brand-700) !important}
       `}</style>
@@ -443,15 +477,33 @@ export default function PatientDetailPage() {
               <span style={{ width: 72, height: 72, borderRadius: 18, background: avatarTint(client.name).bg, color: avatarTint(client.name).fg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 700, flex: "none" }}>{initialsOf(client.name)}</span>
               <div style={{ flex: 1, minWidth: 240 }}>
                 <h1 style={{ margin: "0 0 5px", fontSize: 24, fontWeight: 800, letterSpacing: "-.02em", color: "var(--oxford)" }}>{client.name}</h1>
-                <div style={{ fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 11 }}>
-                  {client.email}{client.phone ? ` · ${client.phone}` : ""}
+                <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 11 }}>
+                  {client.email && (
+                    <a href={`mailto:${client.email}`} className="m360-link" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, textDecoration: "none" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8AAABF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" /></svg>
+                      {client.email}
+                    </a>
+                  )}
+                  {client.phone && (
+                    <a href={`tel:${client.phone}`} className="m360-link" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, textDecoration: "none", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8AAABF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+                      {client.phone}
+                    </a>
+                  )}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", fontSize: 13, fontWeight: 600, color: "var(--oxford)", marginBottom: 12 }}>
-                  <span><strong style={{ fontWeight: 800 }}>{client.totalSessions}</strong> seans</span>
-                  <span style={{ color: "#CBD5E6" }}>·</span>
-                  <span><strong style={{ fontWeight: 800 }}>{client.completedSessions}</strong> tamamlanan</span>
-                  {client.lastAppointmentAt && <><span style={{ color: "#CBD5E6" }}>·</span><span style={{ color: "var(--oxford-60)" }}>son seans: <strong style={{ fontWeight: 700, color: "var(--oxford)" }}>{fmtShort(client.lastAppointmentAt)}</strong></span></>}
-                  {moodFromNotes !== null && <><span style={{ color: "#CBD5E6" }}>·</span><span style={{ color: "var(--oxford-60)" }}>əhval <strong style={{ fontWeight: 800, color: "var(--oxford)" }}>{moodFromNotes}/10</strong></span></>}
+                <div style={{ display: "flex", alignItems: "stretch", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                  <HeroStat tint="brand" value={String(client.totalSessions)} label="seans"
+                    icon={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />
+                  <HeroStat tint="sage" value={String(client.completedSessions)} label="tamamlanan"
+                    icon={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></>} />
+                  {client.lastAppointmentAt && (
+                    <HeroStat tint="neutral" value={fmtShort(client.lastAppointmentAt)} label="son seans"
+                      icon={<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>} />
+                  )}
+                  {moodFromNotes !== null && (
+                    <HeroStat tint="gold" value={`${moodFromNotes}/10`} label="əhval-ruhiyyə"
+                      icon={<><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><path d="M9 9h.01M15 9h.01" /></>} />
+                  )}
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {client.noShowCount > 0 && <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999 }}>{client.noShowCount} no-show</span>}
@@ -558,66 +610,85 @@ export default function PatientDetailPage() {
             })}
           </div>
 
-          {/* ── İcmal tabı — kontekst kartları, böhran, əhval trendi, ilk müraciət ── */}
+          {/* ── İcmal tabı — KPI zolağı + son fəaliyyət lenti + yan kontekst + əhval trendi ── */}
           {tab === "overview" && (
             <div style={{ animation: "m360Fade .2s ease" }}>
-          {(upcoming?.startAt || lastCompleted) && (
-            <div className="m360-2col" style={{ marginBottom: 14 }}>
-              {upcoming && upcoming.startAt && (
-                <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 18 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 12 }}>Növbəti seans</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 12 }}>
-                    <span style={{ width: 40, height: 40, borderRadius: 11, background: "var(--brand-100)", color: "var(--brand)", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                    </span>
-                    <div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{fmtShort(upcoming.startAt)}</div>
-                      <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>{fmtTime(new Date(upcoming.startAt))}</div>
-                    </div>
-                  </div>
-                  <Link href="/psycholog/calendar" className="m360-link" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none" }}>
-                    Cədvələ keç<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                  </Link>
+
+          {/* KPI zolağı */}
+          <div className="m360-kpi">
+            <OverviewKpi label="İştirak" tint="brand"
+              icon={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></>}
+              value={completionPct != null ? `${completionPct}%` : "—"}
+              sub={`${client.completedSessions}/${client.totalSessions} tamamlanan`} />
+            <OverviewKpi label="Orta əhval" tint="gold" trend={moodTrend?.delta}
+              icon={<><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><path d="M9 9h.01M15 9h.01" /></>}
+              value={moodFromNotes != null ? `${moodFromNotes}/10` : "—"}
+              sub={moodTrend ? (moodTrend.delta > 0 ? `↑ +${moodTrend.delta} son qeyd` : moodTrend.delta < 0 ? `↓ ${moodTrend.delta} son qeyd` : "dəyişməz") : "trend üçün az qeyd"} />
+            <OverviewKpi label="Ümumi seans" tint="sage"
+              icon={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>}
+              value={String(client.totalSessions)}
+              sub={client.noShowCount > 0 ? `${client.noShowCount} no-show` : "tam iştirak"} />
+            <OverviewKpi label="Son seans" tint="neutral"
+              icon={<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>}
+              value={client.lastAppointmentAt ? agoLabel(client.lastAppointmentAt) : "—"}
+              sub={client.lastAppointmentAt ? fmtShort(client.lastAppointmentAt) : "hələ yoxdur"} />
+          </div>
+
+          {/* Əsas (son fəaliyyət) + yan sütun (növbəti / ilk müraciət / böhran) */}
+          <div className={overviewHasSide ? "m360-main" : undefined} style={{ marginBottom: 14 }}>
+            {/* Əsas: son fəaliyyət lenti */}
+            <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 18 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 16 }}>Son fəaliyyət</div>
+              {recentActivity.length > 0 ? (
+                <div>
+                  {recentActivity.map((it, i) => (
+                    <ActivityRow key={`${it.kind}-${it.kind === "session" ? it.appt.id : it.note.id}`} item={it} last={i === recentActivity.length - 1} />
+                  ))}
                 </div>
-              )}
-              {lastCompleted && (
-                <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 18 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 12 }}>Son tamamlanmış seans</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: "var(--oxford)" }}>{fmtShort(lastCompleted.startAt ?? lastCompleted.endAt)}</span>
-                    <span style={{ background: "#F3F4F6", color: "#374151", fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>{daysBetween(lastCompleted.startAt ?? lastCompleted.endAt)} gün öncə</span>
-                    {latestNote?.moodScore && (
-                      <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>əhval-ruhiyyə {latestNote.moodScore}/10</span>
-                    )}
-                  </div>
-                  {latestNote?.body && (
-                    <div style={{ fontSize: 13, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, lineHeight: 1.5, background: "#F8FAFD", borderRadius: 9, padding: "10px 12px" }}>«{latestNote.body.slice(0, 180)}{latestNote.body.length > 180 ? "…" : ""}»</div>
-                  )}
+              ) : (
+                <div style={{ padding: "20px 0", textAlign: "center", fontSize: 13, color: "var(--oxford-60)" }}>
+                  Hələ fəaliyyət yoxdur — seans keçirildikcə və qeyd əlavə etdikcə burada görünəcək.
                 </div>
               )}
             </div>
-          )}
 
-          {crisis.length > 0 && <CrisisHistoryCard items={crisis} />}
+            {/* Yan sütun */}
+            {overviewHasSide && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {upcoming && upcoming.startAt && (
+                  <div style={{ background: "linear-gradient(180deg,#F4F8FF,#fff)", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #DCE8FB", padding: 18 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--brand-700)", marginBottom: 12 }}>Növbəti seans</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--brand)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{fmtShort(upcoming.startAt)}</div>
+                        <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>{fmtTime(new Date(upcoming.startAt))} · {agoLabel(upcoming.startAt)}</div>
+                      </div>
+                    </div>
+                    <Link href="/psycholog/calendar" className="m360-link" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none", marginTop: 12 }}>
+                      Cədvələ keç<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                    </Link>
+                  </div>
+                )}
+                {firstNote?.note && (
+                  <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 18 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)" }}>İlk müraciət konteksti</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, lineHeight: 1.55 }}>«{firstNote.note}»</p>
+                  </div>
+                )}
+                {crisis.length > 0 && <CrisisHistoryCard items={crisis} />}
+              </div>
+            )}
+          </div>
 
+          {/* Əhval trendi — tam en */}
           {moodPoints.length >= 2 && <MoodTrendChart points={moodPoints} />}
 
-          {firstNote?.note && (
-            <div style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 12, padding: "13px 16px", marginBottom: 18, display: "flex", gap: 10, alignItems: "flex-start" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }} aria-hidden><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-              <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 500, lineHeight: 1.5 }}>
-                <strong style={{ color: "var(--oxford)", fontWeight: 700 }}>İlk müraciət konteksti:</strong> <span style={{ fontStyle: "italic" }}>«{firstNote.note}»</span>
-              </span>
-            </div>
-          )}
-
-          {/* Heç bir icmal məlumatı yoxdursa boş vəziyyət */}
-          {!upcoming?.startAt && !lastCompleted && crisis.length === 0 && moodPoints.length < 2 && !firstNote?.note && (
-            <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "32px 24px", textAlign: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Hələ icmal üçün məlumat azdır</div>
-              <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>Seanslar keçirildikcə növbəti seans, əhval tendensiyası və son qeyd burada görünəcək.</p>
-            </div>
-          )}
             </div>
           )}
 
@@ -976,11 +1047,29 @@ function GoalModal({
   );
 }
 
-/* ─── Seanslar tabı — tək seanslar kart görünüşündə ──────────────────────── */
+/* ─── Seanslar tabı — datatable (cədvəl) + frontend pagination ────────────── */
 
 const apptTs = (a: AppointmentDetail) => new Date(a.startAt ?? a.endAt ?? a.createdAt).getTime();
 
+const SESSIONS_PAGE_SIZE = 8;
+
+/** Seansın tək sətirlik xülasəsi (cədvəl "Qeyd" sütunu üçün). */
+function sessionSummary(a: AppointmentDetail): string {
+  if (a.note) return a.note;
+  if (a.status === "CANCELLED") {
+    const r = a.cancelReasonCode ? REASON_LABELS[a.cancelReasonCode] ?? a.cancelReasonCode : null;
+    return `Ləğv${r ? ` · ${r}` : ""}`;
+  }
+  if (a.status === "DISPUTED" && a.disputeReason) return `Mübahisə: ${a.disputeReason}`;
+  const op = cleanOperatorNote(a.operatorNote);
+  if (op) return `Operator: ${op}`;
+  return "—";
+}
+
 function SessionsSection({ items }: { items: AppointmentDetail[] }) {
+  const [page, setPage] = useState(0);
+  const [detailAppt, setDetailAppt] = useState<AppointmentDetail | null>(null);
+
   if (items.length === 0) {
     return (
       <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "32px 24px", textAlign: "center", animation: "m360Fade .2s ease" }}>
@@ -989,39 +1078,220 @@ function SessionsSection({ items }: { items: AppointmentDetail[] }) {
       </div>
     );
   }
+
+  const totalPages = Math.max(1, Math.ceil(items.length / SESSIONS_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const start = safePage * SESSIONS_PAGE_SIZE;
+  const rows = items.slice(start, start + SESSIONS_PAGE_SIZE);
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))", gap: 12, alignItems: "start", animation: "m360Fade .2s ease" }}>
-      {items.map(a => <SessionCard360 key={a.id} a={a} />)}
+    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", overflow: "hidden", animation: "m360Fade .2s ease" }}>
+      <div style={{ overflowX: "auto" }}>
+        <table className="m360-tbl">
+          <thead>
+            <tr>
+              <th>Tarix</th>
+              <th>Vaxt</th>
+              <th>Status</th>
+              <th>Nişan</th>
+              <th>Qeyd</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(a => <SessionRow key={a.id} a={a} onView={setDetailAppt} />)}
+          </tbody>
+        </table>
+      </div>
+
+      {items.length > SESSIONS_PAGE_SIZE && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", padding: "11px 16px", borderTop: "1px solid #F0F4FA" }}>
+          <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
+            {start + 1}–{Math.min(start + SESSIONS_PAGE_SIZE, items.length)} / {items.length} seans
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button type="button" className="m360-pgbtn" disabled={safePage === 0} onClick={() => setPage(safePage - 1)} aria-label="Əvvəlki">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 18l-6-6 6-6" /></svg>
+            </button>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--oxford)", minWidth: 44, textAlign: "center" }}>{safePage + 1} / {totalPages}</span>
+            <button type="button" className="m360-pgbtn" disabled={safePage >= totalPages - 1} onClick={() => setPage(safePage + 1)} aria-label="Növbəti">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 18l6-6-6-6" /></svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {detailAppt && <SessionDetailModal a={detailAppt} onClose={() => setDetailAppt(null)} />}
     </div>
   );
 }
 
-/* Seans kartı — randevu səhifələrindəki kart dili ilə (yalnız oxu). */
-function SessionCard360({ a }: { a: AppointmentDetail }) {
+/** Cədvəl sətri — bir seans. */
+function SessionRow({ a, onView }: { a: AppointmentDetail; onView: (a: AppointmentDetail) => void }) {
   const st = STATUS[a.status] ?? STATUS.ASSIGNED;
   const when = a.startAt ?? a.requestedStartAt ?? a.createdAt;
   const d = new Date(when);
   const hasBadges = (!!a.cancelReasonCode && a.cancelReasonCode.includes("NO_SHOW"))
     || !!a.lateCancel
-    || (a.status === "COMPLETED" && (!!a.autoConfirmedAt || (!!a.patientConfirmedAt && !!a.psychologistConfirmedAt)));
+    || (a.status === "COMPLETED" && !!a.patientConfirmedAt && !!a.psychologistConfirmedAt && !a.autoConfirmedAt);
+  const hasDetail = sessionSummary(a) !== "—";
   return (
-    <div className="psy-card" style={{ borderLeft: `3px solid ${st.accent}`, display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-        <span className="psy-card__time">{fmtShort(when)} · {fmtTime(d)}</span>
-        <span className="psy-card__badge" style={{ background: st.bg, color: st.color }}>{st.label}</span>
-      </div>
-      {hasBadges && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-          <SessionBadges a={a} />
+    <tr>
+      <td style={{ whiteSpace: "nowrap", fontWeight: 700 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: st.accent, flex: "none" }} aria-hidden />
+          {fmtShort(when)}
+        </span>
+      </td>
+      <td style={{ whiteSpace: "nowrap", fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: "var(--oxford-60)" }}>{fmtTime(d)}</td>
+      <td><span style={{ display: "inline-block", background: st.bg, color: st.color, fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999, whiteSpace: "nowrap" }}>{st.label}</span></td>
+      <td>
+        {hasBadges
+          ? <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}><SessionBadges a={a} /></div>
+          : <span style={{ color: "#B9C6D8" }}>—</span>}
+      </td>
+      <td>
+        {hasDetail ? (
+          <button type="button" onClick={() => onView(a)} className="m360-link"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", padding: 0, color: "var(--brand)", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+            Qeydə bax
+          </button>
+        ) : <span style={{ color: "#B9C6D8" }}>—</span>}
+      </td>
+    </tr>
+  );
+}
+
+/** Seans qeydi / detalları — popup (uzun qeyd cədvəldə yer tutmasın deyə). */
+function SessionDetailModal({ a, onClose }: { a: AppointmentDetail; onClose: () => void }) {
+  const st = STATUS[a.status] ?? STATUS.ASSIGNED;
+  const when = a.startAt ?? a.requestedStartAt ?? a.createdAt;
+  const d = new Date(when);
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(8,47,109,.45)", backdropFilter: "blur(4px)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "m360Fade .18s ease" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "min(540px, 100%)", maxHeight: "88vh", overflow: "auto", boxShadow: "0 24px 70px rgba(8,47,109,.28)", animation: "m360Sheet .22s ease" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "20px 22px 14px", borderBottom: "1px solid #F0F4FA" }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 8 }}>Seans qeydi</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{fmtShort(when)}</span>
+              <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{fmtTime(d)}</span>
+              <span style={{ background: st.bg, color: st.color, fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>{st.label}</span>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Bağla"
+            style={{ width: 34, height: 34, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F2F6FD", border: "none", borderRadius: 9, color: "var(--oxford-60)", cursor: "pointer" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
         </div>
-      )}
-      <SessionDetail a={a} />
+        <div style={{ padding: "16px 22px 22px" }}>
+          <SessionDetail a={a} />
+        </div>
+      </div>
     </div>
   );
 }
 
 /** Kiçik nişan (pill) stili — təkrar üçün. */
 const miniPill = (bg: string, color: string) => ({ background: bg, color, fontSize: 10.5, fontWeight: 700 as const, padding: "3px 9px", borderRadius: 999 });
+
+/** Hero başlığındakı ikonlu stat-tile (seans / tamamlanan / son seans / əhval). */
+function HeroStat({ icon, value, label, tint }: { icon: React.ReactNode; value: string; label: string; tint: "brand" | "sage" | "gold" | "neutral" }) {
+  const tints: Record<string, { bg: string; fg: string }> = {
+    brand:   { bg: "var(--brand-100)", fg: "var(--brand)" },
+    sage:    { bg: "#DCFCE7", fg: "#15803D" },
+    gold:    { bg: "#FEF3C7", fg: "#B45309" },
+    neutral: { bg: "#EDF1F8", fg: "#5C6B85" },
+  };
+  const c = tints[tint];
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 9, background: "#F7FAFD", border: "1px solid #EDF1F8", borderRadius: 12, padding: "8px 13px 8px 9px" }}>
+      <span style={{ width: 32, height: 32, borderRadius: 9, background: c.bg, color: c.fg, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{icon}</svg>
+      </span>
+      <span style={{ lineHeight: 1.15 }}>
+        <span style={{ display: "block", fontSize: 14.5, fontWeight: 800, color: "var(--oxford)" }}>{value}</span>
+        <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--oxford-60)" }}>{label}</span>
+      </span>
+    </div>
+  );
+}
+
+/** İcmal KPI kartı — ikon + dəyər + alt sətir (İştirak / Orta əhval / Seans / Son seans). */
+function OverviewKpi({ label, value, sub, tint, trend, icon }: { label: string; value: string; sub?: string; tint: "brand" | "sage" | "gold" | "neutral"; trend?: number; icon: React.ReactNode }) {
+  const tints: Record<string, { bg: string; fg: string }> = {
+    brand:   { bg: "var(--brand-100)", fg: "var(--brand)" },
+    sage:    { bg: "#DCFCE7", fg: "#15803D" },
+    gold:    { bg: "#FEF3C7", fg: "#B45309" },
+    neutral: { bg: "#EDF1F8", fg: "#5C6B85" },
+  };
+  const c = tints[tint];
+  const subColor = trend != null && trend !== 0 ? (trend > 0 ? "#15803D" : "#B91C1C") : "var(--oxford-60)";
+  return (
+    <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.05)", padding: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 12 }}>
+        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--oxford-60)" }}>{label}</span>
+        <span style={{ width: 30, height: 30, borderRadius: 9, background: c.bg, color: c.fg, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{icon}</svg>
+        </span>
+      </div>
+      <div style={{ fontSize: 23, fontWeight: 800, color: "var(--oxford)", lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11.5, fontWeight: 600, color: subColor, marginTop: 6 }}>{sub}</div>}
+    </div>
+  );
+}
+
+type ActivityItem =
+  | { kind: "session"; ts: number; appt: AppointmentDetail }
+  | { kind: "note"; ts: number; note: ClientNote };
+
+/** Son fəaliyyət lentinin bir sətri (seans və ya klinik qeyd). */
+function ActivityRow({ item, last }: { item: ActivityItem; last: boolean }) {
+  const tints: Record<string, { bg: string; fg: string }> = {
+    brand: { bg: "var(--brand-100)", fg: "var(--brand)" },
+    sage:  { bg: "#DCFCE7", fg: "#15803D" },
+    gold:  { bg: "#FEF3C7", fg: "#B45309" },
+  };
+  let icon: React.ReactNode, tint: keyof typeof tints, title: string, sub: string | null, dateStr: string, italic = false;
+  if (item.kind === "session") {
+    const a = item.appt;
+    const stx = STATUS[a.status] ?? STATUS.ASSIGNED;
+    const when = a.startAt ?? a.requestedStartAt ?? a.createdAt;
+    const done = a.status === "COMPLETED";
+    tint = done ? "sage" : "brand";
+    icon = done
+      ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></>
+      : <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>;
+    title = `Seans · ${stx.label}`;
+    sub = a.note ? `«${a.note.length > 90 ? a.note.slice(0, 90) + "…" : a.note}»` : null;
+    italic = true;
+    dateStr = `${fmtShort(when)} · ${fmtTime(new Date(when))}`;
+  } else {
+    const n = item.note;
+    tint = "gold";
+    icon = <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></>;
+    title = n.title || "Klinik qeyd";
+    const preview = n.body.replace(/\s+/g, " ").trim();
+    sub = preview ? (preview.length > 90 ? preview.slice(0, 90) + "…" : preview) : null;
+    dateStr = fmtDateTime(n.createdAt);
+  }
+  const c = tints[tint];
+  return (
+    <div style={{ display: "flex", gap: 12 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "none" }}>
+        <span style={{ width: 30, height: 30, borderRadius: 9, background: c.bg, color: c.fg, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{icon}</svg>
+        </span>
+        {!last && <span style={{ width: 2, flex: 1, minHeight: 16, background: "#EDF1F8", marginTop: 4 }} />}
+      </div>
+      <div style={{ paddingBottom: last ? 0 : 16, minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{title}</div>
+        {sub && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, fontStyle: italic ? "italic" : "normal", marginTop: 2, lineHeight: 1.45 }}>{sub}</div>}
+        <div style={{ fontSize: 11.5, color: "#9DB0CC", fontWeight: 600, marginTop: 3 }}>{dateStr}</div>
+      </div>
+    </div>
+  );
+}
 
 function Stat({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
   return (
@@ -1040,7 +1310,6 @@ function SessionBadges({ a }: { a: AppointmentDetail }) {
     <>
       {noShow && <span style={miniPill("#FEE2E2", "#991B1B")}>No-show</span>}
       {a.lateCancel && <span style={miniPill("#FEF3C7", "#92400E")}>Geç ləğv</span>}
-      {done && a.autoConfirmedAt && <span style={miniPill("#F2F6FD", "#082F6D")}>Auto-təsdiq</span>}
       {done && a.patientConfirmedAt && a.psychologistConfirmedAt && !a.autoConfirmedAt && (
         <span style={miniPill("#D1FAE5", "#065F46")}>Qarşılıqlı təsdiq</span>
       )}
@@ -1210,6 +1479,7 @@ function NotesSection(props: {
           showForm, editing, title, body, mood, saving,
           setTitle, setBody, setMood, onSave, onCancel, onEdit, onDelete, onAddNew, onApplyTemplate,
           customTemplates, onCreateTemplate, onDeleteCustomTemplate } = props;
+  const [viewNote, setViewNote] = useState<ClientNote | null>(null);
 
   return (
     <div style={{ animation: "m360Fade .2s ease" }}>
@@ -1218,60 +1488,74 @@ function NotesSection(props: {
         <span style={{ fontSize: 12.5, color: "#082F6D", fontWeight: 600, lineHeight: 1.45 }}>Bütün qeydlər AES-256-GCM ilə şifrələnir. Yalnız siz oxuya bilərsiniz.</span>
       </div>
 
-      {!showForm && (
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 14 }}>
-          <button onClick={onAddNew} className="m360-primary" style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 15px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M12 5v14M5 12h14" /></svg>Yeni qeyd
-          </button>
-          {notes.length > 0 && (
-            <div style={{ position: "relative", flex: 1, minWidth: 180, maxWidth: 300 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} aria-hidden><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Qeydləri axtar…" style={{ width: "100%", border: "1px solid #D6E2F7", borderRadius: 10, padding: "9px 12px 9px 36px", fontSize: 13.5, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", boxSizing: "border-box" }} />
-            </div>
-          )}
-        </div>
-      )}
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 14 }}>
+        <button onClick={onAddNew} className="m360-primary" style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 15px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M12 5v14M5 12h14" /></svg>Yeni qeyd
+        </button>
+        {notes.length > 0 && (
+          <div style={{ position: "relative", flex: 1, minWidth: 180, maxWidth: 300 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} aria-hidden><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Qeydləri axtar…" style={{ width: "100%", border: "1px solid #D6E2F7", borderRadius: 10, padding: "9px 12px 9px 36px", fontSize: 13.5, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", boxSizing: "border-box" }} />
+          </div>
+        )}
+      </div>
 
       {showForm && (
-        <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #C7DBF6", borderTop: "3px solid var(--brand)", padding: 18, marginBottom: 16 }}>
-          {!editing && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 }}>
-              {NOTE_TEMPLATES.map(t => (
-                <button key={t.key} type="button" onClick={() => onApplyTemplate(t.key)}
-                  style={{ background: "#E4ECFA", color: "#082F6D", fontSize: 12, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: "none", fontFamily: "inherit", cursor: "pointer" }}>{t.label}</button>
-              ))}
-              {customTemplates.map(tpl => (
-                <span key={tpl.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#E4ECFA", color: "#082F6D", fontSize: 12, fontWeight: 600, padding: "6px 11px", borderRadius: 999 }}>
-                  <button type="button" onClick={() => onApplyTemplate(`custom:${tpl.id}`)} style={{ background: "none", border: "none", color: "inherit", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", padding: 0 }}>{tpl.name}</button>
-                  <button type="button" onClick={() => onDeleteCustomTemplate(tpl.id)} title="Şablonu sil" style={{ width: 15, height: 15, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(8,47,109,.12)", border: "none", borderRadius: "50%", color: "#082F6D", cursor: "pointer", padding: 0 }}>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
-                  </button>
-                </span>
-              ))}
-              <button type="button" onClick={onCreateTemplate} className="m360-ghost"
-                style={{ background: "#fff", color: "var(--oxford-60)", border: "1.5px dashed #C7D3E6", borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>+ Yeni şablon</button>
+        <div onClick={onCancel} style={{ position: "fixed", inset: 0, background: "rgba(8,47,109,.45)", backdropFilter: "blur(4px)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "m360Fade .18s ease" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "min(620px, 100%)", height: "min(640px, 90vh)", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 70px rgba(8,47,109,.28)", animation: "m360Sheet .22s ease" }}>
+            {/* Başlıq — sabit */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "18px 22px 14px", borderBottom: "1px solid #F0F4FA", flex: "none" }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{editing ? "Qeydi düzəlt" : "Yeni klinik qeyd"}</h3>
+              <button type="button" onClick={onCancel} aria-label="Bağla"
+                style={{ width: 34, height: 34, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F2F6FD", border: "none", borderRadius: 9, color: "var(--oxford-60)", cursor: "pointer" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
+              </button>
             </div>
-          )}
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Başlıq (məcburi deyil)"
-            style={{ width: "100%", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 13px", fontSize: 14.5, fontWeight: 700, color: "var(--oxford)", fontFamily: "inherit", marginBottom: 11, boxSizing: "border-box" }} />
-          <textarea value={body} onChange={e => setBody(e.target.value)} rows={6} placeholder="Seans qeydləri burada saxlanır — yalnız siz görə bilərsiniz."
-            style={{ width: "100%", border: "1px solid #D6E2F7", borderRadius: 10, padding: "12px 13px", fontSize: 13.5, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", resize: "vertical", lineHeight: 1.6, marginBottom: 12, boxSizing: "border-box" }} />
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 9 }}>
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford-60)" }}>Əhval-ruhiyyə (1–10)</span>
-              <input type="number" min={1} max={10} value={mood}
-                onChange={e => { const v = e.target.value; setMood(v === "" ? "" : Math.max(1, Math.min(10, Number(v)))); }}
-                style={{ width: 64, border: "1px solid #D6E2F7", borderRadius: 9, padding: "8px 10px", fontSize: 14, fontWeight: 700, color: "var(--oxford)", fontFamily: "inherit" }} />
-            </label>
-            <div style={{ display: "flex", gap: 9 }}>
-              <button onClick={onCancel} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 16px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
-              <button onClick={onSave} disabled={saving} className="m360-primary" style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "wait" : "pointer" }}>{saving ? "Saxlanılır…" : (editing ? "Yenilə" : "Saxla")}</button>
+
+            {/* Gövdə — boşluğu doldurur; yalnız textarea öz içində böyüyür (bütün modal scroll olmur) */}
+            <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: 18 }}>
+              {!editing && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14, flex: "none" }}>
+                  {NOTE_TEMPLATES.map(t => (
+                    <button key={t.key} type="button" onClick={() => onApplyTemplate(t.key)}
+                      style={{ background: "#E4ECFA", color: "#082F6D", fontSize: 12, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: "none", fontFamily: "inherit", cursor: "pointer" }}>{t.label}</button>
+                  ))}
+                  {customTemplates.map(tpl => (
+                    <span key={tpl.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#E4ECFA", color: "#082F6D", fontSize: 12, fontWeight: 600, padding: "6px 11px", borderRadius: 999 }}>
+                      <button type="button" onClick={() => onApplyTemplate(`custom:${tpl.id}`)} style={{ background: "none", border: "none", color: "inherit", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", padding: 0 }}>{tpl.name}</button>
+                      <button type="button" onClick={() => onDeleteCustomTemplate(tpl.id)} title="Şablonu sil" style={{ width: 15, height: 15, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(8,47,109,.12)", border: "none", borderRadius: "50%", color: "#082F6D", cursor: "pointer", padding: 0 }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
+                      </button>
+                    </span>
+                  ))}
+                  <button type="button" onClick={onCreateTemplate} className="m360-ghost"
+                    style={{ background: "#fff", color: "var(--oxford-60)", border: "1.5px dashed #C7D3E6", borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>+ Yeni şablon</button>
+                </div>
+              )}
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Başlıq (məcburi deyil)"
+                style={{ width: "100%", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 13px", fontSize: 14.5, fontWeight: 700, color: "var(--oxford)", fontFamily: "inherit", marginBottom: 11, boxSizing: "border-box", flex: "none" }} />
+              <textarea value={body} onChange={e => setBody(e.target.value)} placeholder="Seans qeydləri burada saxlanır — yalnız siz görə bilərsiniz."
+                style={{ width: "100%", flex: 1, minHeight: 150, border: "1px solid #D6E2F7", borderRadius: 10, padding: "12px 13px", fontSize: 13.5, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", resize: "none", lineHeight: 1.6, boxSizing: "border-box" }} />
+            </div>
+
+            {/* Alt panel — sabit (əhval + düymələr həmişə görünür) */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "14px 18px", borderTop: "1px solid #F0F4FA", flex: "none" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford-60)" }}>Əhval-ruhiyyə (1–10)</span>
+                <input type="number" min={1} max={10} value={mood}
+                  onChange={e => { const v = e.target.value; setMood(v === "" ? "" : Math.max(1, Math.min(10, Number(v)))); }}
+                  style={{ width: 64, border: "1px solid #D6E2F7", borderRadius: 9, padding: "8px 10px", fontSize: 14, fontWeight: 700, color: "var(--oxford)", fontFamily: "inherit" }} />
+              </label>
+              <div style={{ display: "flex", gap: 9 }}>
+                <button onClick={onCancel} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 16px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
+                <button onClick={onSave} disabled={saving} className="m360-primary" style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "wait" : "pointer" }}>{saving ? "Saxlanılır…" : (editing ? "Yenilə" : "Saxla")}</button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {notes.length === 0 && !showForm ? (
+      {notes.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "32px 24px", textAlign: "center" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Hələ klinik qeyd yoxdur</div>
           <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>Bu müştəri üçün ilk qeydinizi yazın.</p>
@@ -1279,28 +1563,83 @@ function NotesSection(props: {
       ) : filteredNotes.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #EDF1F8", padding: 24, textAlign: "center", fontSize: 13, color: "var(--oxford-60)" }}>«{search}» üzrə uyğun qeyd tapılmadı.</div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {filteredNotes.map(n => (
-            <div key={n.id} style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 17 }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 9 }}>
-                <div>
-                  {n.title && <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--oxford)" }}>{n.title}</div>}
-                  <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginTop: n.title ? 2 : 0 }}>
-                    {fmtDateTime(n.createdAt)}
-                    {n.updatedAt && n.updatedAt !== n.createdAt && ` · düzəldildi ${fmtDateTime(n.updatedAt)}`}
-                    {typeof n.moodScore === "number" && ` · əhval-ruhiyyə ${n.moodScore}/10`}
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 6, flex: "none" }}>
-                  <button onClick={() => onEdit(n)} className="m360-ghost" style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#fff", color: "#082F6D", border: "1px solid #D6E2F7", borderRadius: 8, padding: "6px 11px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Düzəlt</button>
-                  <button onClick={() => onDelete(n.id)} className="m360-soft" style={{ background: "#fff", color: "#991B1B", border: "1px solid #F3D6D6", borderRadius: 8, padding: "6px 11px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Sil</button>
-                </div>
-              </div>
-              <div style={{ fontSize: 13.5, color: "var(--oxford)", fontWeight: 500, lineHeight: 1.6, whiteSpace: "pre-line" }}>{n.body}</div>
-            </div>
-          ))}
+        <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="m360-tbl">
+              <thead>
+                <tr>
+                  <th>Tarix</th>
+                  <th>Qeyd</th>
+                  <th>Əhval</th>
+                  <th style={{ textAlign: "right" }}>Əməliyyat</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredNotes.map(n => {
+                  const preview = n.body.replace(/\s+/g, " ").trim();
+                  const edited = !!n.updatedAt && n.updatedAt !== n.createdAt;
+                  return (
+                    <tr key={n.id}>
+                      <td style={{ whiteSpace: "nowrap", fontWeight: 700 }}>
+                        {fmtDateTime(n.createdAt)}
+                        {edited && <div style={{ fontSize: 10.5, fontWeight: 600, color: "var(--oxford-60)", marginTop: 2 }}>düzəldildi</div>}
+                      </td>
+                      <td style={{ minWidth: 220 }}>
+                        {n.title && <div style={{ fontWeight: 700, marginBottom: 2 }}>{n.title}</div>}
+                        <span style={{ color: "var(--oxford-60)", fontWeight: 500 }}>{preview ? (preview.length > 72 ? preview.slice(0, 72) + "…" : preview) : "—"}</span>
+                      </td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        {typeof n.moodScore === "number"
+                          ? <strong style={{ fontWeight: 800 }}>{n.moodScore}/10</strong>
+                          : <span style={{ color: "#B9C6D8" }}>—</span>}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                          <button onClick={() => setViewNote(n)} className="m360-ghost" style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 8, padding: "6px 11px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}>Bax</button>
+                          <button onClick={() => onEdit(n)} className="m360-ghost" style={{ background: "#fff", color: "#082F6D", border: "1px solid #D6E2F7", borderRadius: 8, padding: "6px 11px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}>Düzəlt</button>
+                          <button onClick={() => onDelete(n.id)} className="m360-soft" style={{ background: "#fff", color: "#991B1B", border: "1px solid #F3D6D6", borderRadius: 8, padding: "6px 11px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}>Sil</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
+
+      {viewNote && <NoteViewModal n={viewNote} onClose={() => setViewNote(null)} onEdit={(n) => { setViewNote(null); onEdit(n); }} />}
+    </div>
+  );
+}
+
+/** Klinik qeydin tam mətni — popup (cədvəl sətrindən "Bax"). */
+function NoteViewModal({ n, onClose, onEdit }: { n: ClientNote; onClose: () => void; onEdit: (n: ClientNote) => void }) {
+  const edited = !!n.updatedAt && n.updatedAt !== n.createdAt;
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(8,47,109,.45)", backdropFilter: "blur(4px)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "m360Fade .18s ease" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "min(600px, 100%)", maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 70px rgba(8,47,109,.28)", animation: "m360Sheet .22s ease" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "18px 22px 14px", borderBottom: "1px solid #F0F4FA", flex: "none" }}>
+          <div>
+            <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{n.title || "Klinik qeyd"}</h3>
+            <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
+              {fmtDateTime(n.createdAt)}
+              {edited && ` · düzəldildi ${fmtDateTime(n.updatedAt!)}`}
+              {typeof n.moodScore === "number" && ` · əhval-ruhiyyə ${n.moodScore}/10`}
+            </div>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Bağla"
+            style={{ width: 34, height: 34, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F2F6FD", border: "none", borderRadius: 9, color: "var(--oxford-60)", cursor: "pointer" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div style={{ padding: "18px 22px", overflow: "auto", flex: 1, minHeight: 0, fontSize: 14, color: "var(--oxford)", fontWeight: 500, lineHeight: 1.7, whiteSpace: "pre-line" }}>{n.body}</div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 9, padding: "14px 22px", borderTop: "1px solid #F0F4FA", flex: "none" }}>
+          <button type="button" onClick={onClose} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 16px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Bağla</button>
+          <button type="button" onClick={() => onEdit(n)} className="m360-primary" style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>Düzəlt</button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -9,11 +9,13 @@ import {
   type AppointmentDetail,
   type PatientPackageItem,
   type RescheduleProposal,
+  type SessionFeedback,
 } from "@/lib/api";
 import { googleCalendarUrl } from "@/lib/calendar";
 import { appUrl } from "@/lib/appUrl";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
-import { azFormatTime, azFormatDate, azOrdinal } from "@/lib/datetime";
+import { azFormatTime, azFormatDate, azOrdinal, hoursSince } from "@/lib/datetime";
+import SessionFeedbackModal from "@/components/SessionFeedbackModal";
 import { formatAzn } from "@/lib/money";
 import RescheduleProposalModal from "@/components/RescheduleProposalModal";
 import AddToCalendarMenu from "@/components/AddToCalendarMenu";
@@ -123,6 +125,11 @@ export default function PatientAppointmentsPage() {
   const [proposalFor, setProposalFor] = useState<RescheduleProposal | null>(null);
   const [psyFilter, setPsyFilter] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  // "Necə keçdi?" — qiymətləndirilməmiş, yaxın tamamlanmış seans üçün prompt.
+  const [pendingRate, setPendingRate] = useState<AppointmentDetail | null>(null);
+  const [ratedIds, setRatedIds] = useState<Set<number>>(new Set());
+  const [feedbackFor, setFeedbackFor] = useState<AppointmentDetail | null>(null);
+  const [existingFeedback, setExistingFeedback] = useState<SessionFeedback | null>(null);
 
   const switchTab = (next: TabKey) => {
     setTab(next);
@@ -161,6 +168,37 @@ export default function PatientAppointmentsPage() {
   };
 
   useEffect(load, []);
+
+  // Yaxınlarda tamamlanmış (24 saat pəncərəsi) və hələ qiymətləndirilməmiş seansı tap —
+  // "Necə keçdi?" prompt-u üçün. Ən sonuncudan başlayaraq feedback varlığını yoxlayır.
+  useEffect(() => {
+    const candidates = items
+      .filter(a => a.status === "COMPLETED")
+      .filter(a => { const anchor = a.endAt ?? a.startAt; return !!anchor && hoursSince(anchor) <= 24; })
+      .filter(a => !ratedIds.has(a.id))
+      .sort((a, b) => new Date(b.startAt ?? b.endAt ?? 0).getTime() - new Date(a.startAt ?? a.endAt ?? 0).getTime());
+    if (candidates.length === 0) { setPendingRate(null); return; }
+    let cancelled = false;
+    (async () => {
+      for (const a of candidates) {
+        try {
+          const fb = await patientApi.getSessionFeedback(a.id);
+          if (cancelled) return;
+          if (fb) { setRatedIds(prev => new Set(prev).add(a.id)); continue; }
+          setPendingRate(a); return;
+        } catch { /* yoxlanıla bilmədi — keç */ }
+      }
+      if (!cancelled) setPendingRate(null);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
+
+  const openRate = async (a: AppointmentDetail) => {
+    setExistingFeedback(null);
+    setFeedbackFor(a);
+    try { setExistingFeedback(await patientApi.getSessionFeedback(a.id)); } catch { /* təzə form */ }
+  };
 
   useEffect(() => {
     return subscribeNotifications((n) => {
@@ -323,6 +361,40 @@ export default function PatientAppointmentsPage() {
           </Link>
         </div>
       </header>
+
+      {pendingRate && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", background: "linear-gradient(90deg,#F4F8FF,#fff)", border: "1px solid #DCE8FB", borderLeft: "3px solid var(--brand)", borderRadius: 13, padding: "14px 16px", marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 13, minWidth: 0 }}>
+            <span style={{ width: 40, height: 40, borderRadius: 11, background: "var(--brand-100)", color: "var(--brand)", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--oxford)" }}>Son seansınız necə keçdi?</div>
+              <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 2 }}>
+                {pendingRate.psychologistName ?? "Psixoloq"} · {azFormatDate(pendingRate.startAt ?? pendingRate.endAt ?? "")}
+              </div>
+            </div>
+          </div>
+          <button type="button" onClick={() => openRate(pendingRate)}
+            style={{ flex: "none", display: "inline-flex", alignItems: "center", gap: 7, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
+            Qiymətləndir
+          </button>
+        </div>
+      )}
+
+      {feedbackFor && (
+        <SessionFeedbackModal
+          appointment={feedbackFor}
+          existing={existingFeedback}
+          onClose={() => { setFeedbackFor(null); setExistingFeedback(null); }}
+          onSubmitted={() => {
+            setRatedIds(prev => new Set(prev).add(feedbackFor.id));
+            if (pendingRate?.id === feedbackFor.id) setPendingRate(null);
+            setFeedbackFor(null);
+            setExistingFeedback(null);
+          }}
+        />
+      )}
 
       {proposals.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>

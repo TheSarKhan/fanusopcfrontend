@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { getPsychologists, patientApi, type Psychologist } from "@/lib/api";
+import { getPsychologists, patientApi, type Psychologist, type MyReview } from "@/lib/api";
 import { toast } from "@/components/Toast";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import ReviewModal from "@/app/patient/appointments/ReviewModal";
 
 type SortMode = "recommended" | "rating" | "experience" | "newest";
 
@@ -41,16 +42,42 @@ export default function PatientPsychologistsPage() {
   const [onlyFavs, setOnlyFavs] = useState(false);
   const [sort, setSort] = useState<SortMode>("recommended");
   const [busyFav, setBusyFav] = useState<number | null>(null);
+  const [myReviews, setMyReviews] = useState<MyReview[]>([]);
+  const [reviewFor, setReviewFor] = useState<Psychologist | null>(null);
+  const [reviewInitial, setReviewInitial] = useState<MyReview | null>(null);
+  const [reviewBusy, setReviewBusy] = useState<number | null>(null);
 
   useEffect(() => {
-    Promise.all([getPsychologists(), patientApi.favorites()])
-      .then(([all, favs]) => {
+    Promise.all([getPsychologists(), patientApi.favorites(), patientApi.myReviews().catch(() => [] as MyReview[])])
+      .then(([all, favs, revs]) => {
         setItems(all.filter(p => p.active));
         setFavIds(new Set(favs.map(f => f.id)));
+        setMyReviews(revs);
       })
       .catch(e => toast((e as Error).message, "error"))
       .finally(() => setLoading(false));
   }, []);
+
+  // Rəy yaz — artıq rəy varsa redaktə; yoxdursa serverdən uyğunluğu (tamamlanmış
+  // seans) yoxla, uyğun deyilsə aydın mesaj göstər (backend qaydası ilə eyni).
+  const openReview = async (p: Psychologist) => {
+    const existing = myReviews.find(r => r.psychologistId === p.id) ?? null;
+    if (existing) { setReviewInitial(existing); setReviewFor(p); return; }
+    if (reviewBusy) return;
+    setReviewBusy(p.id);
+    try {
+      const { canReview } = await patientApi.canReview(p.id);
+      if (!canReview) {
+        toast("Rəy yazmaq üçün psixoloqla ən azı bir tamamlanmış seansınız olmalıdır.", "error");
+        return;
+      }
+      setReviewInitial(null); setReviewFor(p);
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setReviewBusy(null);
+    }
+  };
 
   const itemsWithSlug = useMemo(() => withSlugs(items), [items]);
 
@@ -213,9 +240,26 @@ export default function PatientPsychologistsPage() {
               favorite={favIds.has(p.id)}
               busy={busyFav === p.id}
               onToggleFav={() => toggleFav(p.id)}
+              reviewed={myReviews.some(r => r.psychologistId === p.id)}
+              reviewChecking={reviewBusy === p.id}
+              onReview={() => openReview(p)}
             />
           ))}
         </div>
+      )}
+
+      {reviewFor && (
+        <ReviewModal
+          psychologistId={reviewFor.id}
+          psychologistName={reviewFor.name}
+          initial={reviewInitial ?? undefined}
+          onClose={() => { setReviewFor(null); setReviewInitial(null); }}
+          onSubmitted={(saved) => {
+            setMyReviews(prev => [saved, ...prev.filter(r => r.id !== saved.id)]);
+            setReviewFor(null);
+            setReviewInitial(null);
+          }}
+        />
       )}
     </div>
   );
@@ -245,12 +289,15 @@ function ChipButton({
 /* ─── Psychologist card ──────────────────────────────────────────────────── */
 
 function PsyCard({
-  p, favorite, busy, onToggleFav,
+  p, favorite, busy, onToggleFav, reviewed, reviewChecking, onReview,
 }: {
   p: Psychologist & { slug?: string };
   favorite: boolean;
   busy: boolean;
   onToggleFav: () => void;
+  reviewed: boolean;
+  reviewChecking: boolean;
+  onReview: () => void;
 }) {
   const { t } = useT();
   const verified = p.psychologistType === "FANUS";
@@ -281,7 +328,7 @@ function PsyCard({
       <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 16, paddingRight: 44 }}>
         <span style={{ width: 56, height: 56, borderRadius: 16, background: p.accentColor || "var(--brand-700)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, flex: "none", overflow: "hidden" }}>
           {p.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
+             
             <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : initialsOf(p.name)}
         </span>
@@ -317,7 +364,7 @@ function PsyCard({
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1.5" strokeLinejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
             <span style={{ fontSize: 14, fontWeight: 800, color: "var(--oxford)" }}>{rating.toFixed(1)}</span>
-            <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>Reytinq</span>
+            <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>{(p.ratingCount ?? 0) > 0 ? `${p.ratingCount} qiymət` : "Reytinq"}</span>
           </div>
         )}
         {years > 0 && (
@@ -369,6 +416,15 @@ function PsyCard({
           {t("patPsy.book")}
         </Link>
       </div>
+
+      <button
+        type="button"
+        onClick={onReview}
+        disabled={reviewChecking}
+        style={{ marginTop: 10, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "transparent", color: "var(--oxford-60)", border: "none", padding: "6px 0", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: reviewChecking ? "wait" : "pointer" }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill={reviewed ? "#F59E0B" : "none"} stroke={reviewed ? "#F59E0B" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
+        {reviewChecking ? "Yoxlanılır…" : reviewed ? "Rəyinizi düzəldin" : "Rəy yaz"}
+      </button>
     </div>
   );
 }

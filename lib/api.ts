@@ -345,7 +345,7 @@ async function authedMultipartRequest<T>(
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface Psychologist {
   id: number; name: string; title: string; specializations: string[];
-  experience: string; sessionsCount: string; rating: string;
+  experience: string; sessionsCount: string; rating: string; ratingCount?: number;
   photoUrl?: string; bio?: string; phone?: string; email?: string;
   languages?: string; sessionTypes?: string;
   university?: string; degree?: string; graduationYear?: string;

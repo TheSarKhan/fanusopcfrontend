@@ -40,7 +40,7 @@ export const PSYCHOLOG_MODULES: Record<PsychologModuleKey, boolean> = {
   tests:        true,
   articles:     true,
   community:    true,
-  resources:    true,
+  resources:    false, // hələ ki gizlədilib (2026-07-18)
   availability: true,
   reviews:      true,
 };

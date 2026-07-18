@@ -146,6 +146,9 @@ export default function Hero() {
           .fanus-hero__scrim {
             position: absolute; inset: 0; z-index: 1;
             background:
+              /* Yuxarıdan tündləşdirmə — navbar (AZ / Daxil ol / Qeydiyyat) ağ yazıları
+                 videonun açıq hissələrində də oxunsun (bütün en boyu). */
+              linear-gradient(180deg, rgba(6,14,28,.62) 0%, rgba(6,14,28,.28) 10%, rgba(6,14,28,0) 24%),
               linear-gradient(90deg, rgba(6,14,28,.85) 0%, rgba(6,14,28,.58) 36%, rgba(6,14,28,.18) 64%, rgba(6,14,28,0) 82%),
               linear-gradient(0deg, rgba(6,14,28,.6) 0%, rgba(6,14,28,0) 42%);
           }
@@ -208,7 +211,8 @@ export default function Hero() {
             background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.4);
             box-shadow: none;
           }
-          .fanus-hero__mood .fanus-mood-chip__icon { background: rgba(255,255,255,.14); }
+          /* İkonlar ağ — SVG currentColor işlədir; inline color-u əvəz etmək üçün !important. */
+          .fanus-hero__mood .fanus-mood-chip__icon { background: rgba(255,255,255,.14); color: #fff !important; }
           .fanus-hero__mood .fanus-mood-chip:hover .fanus-mood-chip__icon { background: rgba(255,255,255,.22); box-shadow: none; }
           .fanus-hero__mood .fanus-mood-chip__label { color: #fff; }
           .fanus-hero__mood .fanus-mood-chip__ring { display: none; }

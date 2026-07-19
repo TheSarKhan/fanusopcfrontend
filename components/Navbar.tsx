@@ -64,7 +64,7 @@ export default function Navbar() {
         <Link href="/" className="fanus-nav__brand" aria-label="Fanus">
           <span className="fanus-nav__logo">
             <span className="fanus-nav__mark">
-              <Image src={light ? "/images/logos/logo-white.png" : "/images/logos/logo-blue.png"} alt="Fanus" width={56} height={40} priority />
+              <Image src={light ? "/images/logos/logo-mark-white.png" : "/images/logos/logo-mark.png"} alt="Fanus" width={1035} height={1856} priority />
             </span>
             {/* Panel loqosu ilə eyni yazı bloku — brand-rəngli (light-da ağ). */}
             <span className="fanus-nav__logo-text">
@@ -165,6 +165,10 @@ export default function Navbar() {
           .fanus-nav--light .fanus-nav__menu { color: #fff; }
           .fanus-nav--light .fanus-nav__cta .lsw__btn { color: #fff; border-color: rgba(255,255,255,.5); }
           .fanus-nav--light .fanus-nav__cta .lsw__btn:hover { background: rgba(255,255,255,.14); border-color: #fff; }
+          /* .lsw__chevron sets its own color (breaks currentColor inheritance from
+             .lsw__btn) — without this it stays --fanus-ink-3 (grayish-blue) and is
+             unreadable over the dark hero. */
+          .fanus-nav--light .fanus-nav__cta .lsw__btn .lsw__chevron { color: #fff; }
         }
 
         /* ── Inner ── */
@@ -181,7 +185,7 @@ export default function Navbar() {
 
         /* ── Brand ── */
         .fanus-nav__brand { display: inline-flex; align-items: center; }
-        .fanus-nav__logo { display: inline-flex; align-items: center; gap: 11px; }
+        .fanus-nav__logo { display: inline-flex; align-items: center; gap: 5px; }
         .fanus-nav__mark { display: inline-flex; align-items: center; }
         .fanus-nav__mark img {
           object-fit: contain; height: 58px; width: auto;
@@ -259,7 +263,7 @@ export default function Navbar() {
           .fanus-nav__menu { display: inline-flex; }
           .fanus-nav__mobile { display: flex; }
           /* Lockup mobildə bir az kiçik — hamburgerlə yan-yana sığsın. */
-          .fanus-nav__logo { gap: 9px; }
+          .fanus-nav__logo { gap: 4px; }
           .fanus-nav__mark img { height: 46px; }
           .fanus-nav.is-scrolled .fanus-nav__mark img { height: 38px; }
           .fanus-nav__logo-text { padding-left: 9px; }

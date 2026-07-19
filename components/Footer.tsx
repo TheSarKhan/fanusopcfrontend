@@ -38,8 +38,19 @@ export default function Footer() {
 
       <div className="fanus-container fanus-ftr__main">
         <div className="fanus-ftr__brand">
-          <Link href="/" className="fanus-ftr__lockup">
-            <Image src="/images/logos/logo-blue.png" alt="Fanus" width={56} height={40} />
+          <Link href="/" className="fanus-ftr__lockup" aria-label="Fanus">
+            <span className="fanus-ftr__mark">
+              <Image src="/images/logos/logo-mark.png" alt="Fanus" width={1035} height={1856} priority />
+            </span>
+            {/* Navbar-dakı loqo ilə eyni yazı bloku. */}
+            <span className="fanus-ftr__logo-text">
+              <span className="fanus-ftr__logo-name">FANUS</span>
+              <span className="fanus-ftr__logo-sub">
+                <span>Online</span>
+                <span>Psychology</span>
+                <span>Center</span>
+              </span>
+            </span>
           </Link>
           <p className="fanus-ftr__tag">{t("footer2.tag")}</p>
 
@@ -127,8 +138,24 @@ export default function Footer() {
           display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1.2fr;
           gap: 40px; padding: 64px 28px 48px;
         }
-        .fanus-ftr__lockup { display: inline-flex; align-items: center; gap: 12px; }
-        .fanus-ftr__lockup img { height: 58px; width: auto; object-fit: contain; }
+        .fanus-ftr__lockup { display: inline-flex; align-items: center; gap: 5px; }
+        .fanus-ftr__mark { display: inline-flex; align-items: center; }
+        .fanus-ftr__mark img { object-fit: contain; height: 58px; width: auto; }
+        /* Navbar-dakı loqo yazı bloku ilə eyni (bax Navbar.tsx .fanus-nav__logo-text). */
+        .fanus-ftr__logo-text {
+          display: flex; flex-direction: column; justify-content: center;
+          border-left: 2px solid var(--fanus-primary);
+          padding-left: 11px;
+        }
+        .fanus-ftr__logo-name {
+          font-size: 20px; font-weight: 800; line-height: 1;
+          letter-spacing: .04em; color: var(--fanus-primary);
+        }
+        .fanus-ftr__logo-sub {
+          display: flex; flex-direction: column; margin-top: 5px;
+          font-size: 8px; font-weight: 700; line-height: 1.28;
+          letter-spacing: .14em; text-transform: uppercase; color: var(--fanus-primary);
+        }
         .fanus-ftr__tag {
           color: var(--fanus-ink-3);
           font-family: var(--font-poppins), system-ui, sans-serif;

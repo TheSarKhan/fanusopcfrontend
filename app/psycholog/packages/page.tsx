@@ -1,41 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   psychologistApi,
   type PackageDto,
   type PackageStats,
   type PackageReq,
-  type PackagePatient,
   type Psychologist,
 } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import PageHeader from "@/components/PageHeader";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "@/components/Toast";
-
-/* ─── Pasiyent paketi statusu ─────────────────────────────────────────────── */
-const STATUS_PT: Record<string, { label: string; bg: string; color: string }> = {
-  ACTIVE:    { label: "Aktiv",       bg: "#D1FAE5", color: "#065F46" },
-  EXHAUSTED: { label: "Tamamlanıb",  bg: "#F3F4F6", color: "#374151" },
-  EXPIRED:   { label: "Vaxtı keçib", bg: "#FEF3C7", color: "#92400E" },
-  CANCELLED: { label: "Ləğv",        bg: "#FEE2E2", color: "#991B1B" },
-};
-
-const TINTS = [
-  { bg: "#E0EBFA", fg: "#1E3A8A" }, { bg: "#D1FAE5", fg: "#065F46" },
-  { bg: "#FEF3C7", fg: "#92400E" }, { bg: "#FCE7F3", fg: "#9D174D" },
-  { bg: "#EDE9FE", fg: "#5B21B6" }, { bg: "#CCFBF1", fg: "#115E59" },
-];
-function avatarTint(name?: string | null) {
-  const s = name ?? "?"; let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return TINTS[h % TINTS.length];
-}
-function initials(name?: string | null) {
-  if (!name) return "?";
-  return name.split(" ").filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
-}
 
 /* ═══ Page ════════════════════════════════════════════════════════════════ */
 
@@ -121,14 +98,16 @@ export default function PsychologPackagesPage() {
         .pk-icobtn:hover{border-color:var(--brand)!important;color:var(--brand)!important}
         .pk-del:hover{background:#FEE2E2!important}
         .pk-menu-item:hover{background:#F2F6FD!important}
-        .pk-menu-item--danger:hover{background:#FEE2E2!important}`}</style>
+        .pk-menu-item--danger:hover{background:#FEE2E2!important}
+        .pk-patients-link:hover .pk-arrow{transform:translateX(3px)}
+        .pk-arrow{transition:transform .16s ease}`}</style>
 
       {/* Header */}
       <PageHeader
         title="Qiymətlər & Paketlər"
         subtitle="Paket təklifləriniz, satış və istifadə statistikası"
         actions={!isFanus && (
-          <button onClick={() => setNewOpen(o => !o)}
+          <button onClick={() => setNewOpen(true)}
             style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 17px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
             <IPlus />Yeni paket
           </button>
@@ -179,7 +158,7 @@ export default function PsychologPackagesPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(180px, 100%), 1fr))", gap: 13, marginBottom: 20 }}>
         <StatCard bg="#E4ECFA" color="#1051B7" icon={<ICube s={19} />} value={String(catalog.length)} label="Cəmi paket" />
         <StatCard bg="#E4ECFA" color="#1051B7" icon={<ICart s={19} />} value={statsReady ? String(sold) : "—"} label="Satılıb" />
-        <StatCard bg="#D1FAE5" color="#065F46" icon={<ICheckCircle s={19} c="#065F46" />} value={statsReady ? String(active) : "—"} label="Aktiv" />
+        <StatCard bg="#D1FAE5" color="#065F46" icon={<ICheckCircle s={19} c="#065F46" />} value={statsReady ? String(active) : "—"} label="Davam edən" />
         <StatCard bg="#E4ECFA" color="#082F6D" icon={<IDollar s={19} c="#082F6D" />} value={statsReady ? formatAzn(revenue) : "—"} label="Ümumi gəlir" valueColor="#082F6D" />
       </div>
 
@@ -189,12 +168,9 @@ export default function PsychologPackagesPage() {
         </div>
       )}
 
-      {/* New package form */}
+      {/* New package modal */}
       {newOpen && (
-        <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #C7DBF6", borderTop: "3px solid var(--brand)", padding: 20, marginBottom: 18, animation: "pkFade .2s ease" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 15, color: "var(--oxford)" }}>Yeni paket təklifi</div>
-          <PackageForm busy={busy} onSave={create} onCancel={() => setNewOpen(false)} />
-        </div>
+        <PackageFormModal busy={busy} onSave={create} onClose={() => setNewOpen(false)} />
       )}
 
       {loading ? (
@@ -208,10 +184,12 @@ export default function PsychologPackagesPage() {
           )}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
           {catalog.map(p => (
-            <PackageCard key={p.id} pkg={p} stats={statsById[p.id]} busy={busy} readOnly={isFanus}
-              onUpdate={update} onDelete={remove} onToggleActive={toggleActive} />
+            <div key={p.id} style={{ width: "100%", maxWidth: 420 }}>
+              <PackageCard pkg={p} stats={statsById[p.id]} busy={busy} readOnly={isFanus}
+                onUpdate={update} onDelete={remove} onToggleActive={toggleActive} />
+            </div>
           ))}
         </div>
       )}
@@ -246,7 +224,6 @@ function PackageCard({ pkg, stats, busy, onUpdate, onDelete, onToggleActive, rea
   readOnly?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const deaktiv = !pkg.active;
   const s = stats;
@@ -256,16 +233,18 @@ function PackageCard({ pkg, stats, busy, onUpdate, onDelete, onToggleActive, rea
 
   return (
     <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 20, opacity: deaktiv ? 0.96 : 1 }}>
-      {/* header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", marginBottom: 7 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: deaktiv ? "#F3F4F6" : "#E4ECFA", color: deaktiv ? "#6B7280" : "#082F6D", fontSize: 10.5, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", padding: "4px 9px", borderRadius: 7 }}><ICube s={12} />Paket</span>
-            <span style={{ fontSize: 17, fontWeight: 800, color: deaktiv ? "var(--oxford-60)" : "var(--oxford)" }}>{pkg.name}</span>
-            <span style={{ background: deaktiv ? "#F3F4F6" : "#D1FAE5", color: deaktiv ? "#6B7280" : "#065F46", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>{deaktiv ? "Deaktiv" : "Aktiv"}</span>
-          </div>
-          <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>
-            {pkg.sessionCount} seans · {formatAzn(pkg.packagePrice)} · seans başına ≈ {formatAzn(pkg.perSessionPrice)}
+      {/* header — kimlik + əməliyyatlar */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+          <span style={{ width: 42, height: 42, borderRadius: 12, background: deaktiv ? "#F3F4F6" : "#EAF1FC", color: deaktiv ? "#9AA7BD" : "#1051B7", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+            <ICube s={21} />
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: deaktiv ? "var(--oxford-60)" : "var(--oxford)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pkg.name}</div>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 3, fontSize: 11.5, fontWeight: 700, color: deaktiv ? "#9AA7BD" : "#059669" }}>
+              {deaktiv ? <IPause s={12} c="#9AA7BD" /> : <ICheckCircle s={12} c="#059669" />}
+              {deaktiv ? "Deaktiv" : "Aktiv"}
+            </span>
           </div>
         </div>
         {readOnly ? null : deaktiv ? (
@@ -286,48 +265,61 @@ function PackageCard({ pkg, stats, busy, onUpdate, onDelete, onToggleActive, rea
           </div>
         ) : (
           <div style={{ display: "flex", gap: 7, flex: "none" }}>
-            <button onClick={() => setEditing(e => !e)} title="Redaktə" className="pk-icobtn"
-              style={{ width: 34, height: 34, display: "inline-flex", alignItems: "center", justifyContent: "center", background: editing ? "#F2F6FD" : "#fff", color: editing ? "var(--brand)" : "var(--oxford-60)", border: `1px solid ${editing ? "#C7DBF6" : "#D6E2F7"}`, borderRadius: 9, cursor: "pointer" }}><IEdit /></button>
+            <button onClick={() => setEditing(true)} title="Redaktə" className="pk-icobtn"
+              style={{ width: 34, height: 34, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, cursor: "pointer" }}><IEdit /></button>
             <button onClick={() => onDelete(pkg)} title="Sil" className="pk-del"
               style={{ width: 34, height: 34, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "#991B1B", border: "1px solid #F3D6D6", borderRadius: 9, cursor: "pointer" }}><ITrash /></button>
           </div>
         )}
       </div>
 
-      {/* inline edit */}
+      {/* edit modal */}
       {editing && !readOnly && (
-        <div style={{ background: "#F2F6FD", border: "1px solid #D6E2F7", borderRadius: 12, padding: 15, marginBottom: 14, animation: "pkFade .2s ease" }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#082F6D", marginBottom: 11 }}>Paketi redaktə et</div>
-          <PackageForm compact busy={busy} initial={{ name: pkg.name, sessionCount: pkg.sessionCount, packagePrice: pkg.packagePrice, active: pkg.active }} onSave={save} onCancel={() => setEditing(false)} />
-        </div>
+        <PackageFormModal busy={busy}
+          initial={{ name: pkg.name, sessionCount: pkg.sessionCount, packagePrice: pkg.packagePrice, active: pkg.active }}
+          onSave={save} onClose={() => setEditing(false)} />
       )}
 
-      {/* stats row */}
-      <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap", padding: "13px 0", borderTop: "1px solid #EDF1F8", borderBottom: "1px solid #EDF1F8", marginBottom: 14 }}>
-        <div style={{ flex: 1, minWidth: 200, display: "flex", gap: 18, flexWrap: "wrap" }}>
+      {/* təklif zolağı — qiymət hero, seans sayı dəstəkləyici */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#F6FAFF", border: "1px solid #E9F1FC", borderRadius: 12, padding: "13px 16px", marginBottom: 16 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#9AA7BD", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 3 }}>Paket qiyməti</div>
+          <div style={{ fontSize: 23, fontWeight: 800, color: "var(--oxford)", lineHeight: 1, letterSpacing: "-.01em", whiteSpace: "nowrap" }}>{formatAzn(pkg.packagePrice)}</div>
+        </div>
+        <div style={{ textAlign: "right", flex: "none" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, fontWeight: 800, color: "var(--oxford)", whiteSpace: "nowrap" }}>
+            <ICalendar s={14} c="#1051B7" />{pkg.sessionCount} seans
+          </div>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)", marginTop: 3, whiteSpace: "nowrap" }}>≈ {formatAzn(pkg.perSessionPrice)} / seans</div>
+        </div>
+      </div>
+
+      {/* satış statistikası */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
+        <div style={{ flex: 1, minWidth: 180, display: "flex", gap: 16, flexWrap: "wrap" }}>
           <Stat label="Satılıb" value={s ? String(s.sold) : "—"} />
-          <Stat label="Aktiv" value={s ? String(s.active) : "—"} color="#065F46" />
+          <Stat label="Davam edən" value={s ? String(s.active) : "—"} color="#059669" />
           <Stat label="Tamamlanıb" value={s ? String(s.completed) : "—"} />
           {(!s || s.cancelled > 0) && <Stat label="Ləğv" value={s ? String(s.cancelled) : "—"} color="#991B1B" />}
-          <Stat label="Gəlir" value={s ? formatAzn(s.revenue) : "—"} color="#082F6D" />
+          <Stat label="Gəlir" value={s ? formatAzn(s.revenue) : "—"} color="#1051B7" />
         </div>
         <CompletionRing pct={s?.completionPct ?? 0} />
       </div>
 
-      {/* detail toggle */}
-      <button onClick={() => setDetailOpen(o => !o)}
-        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#082F6D" }}>Bu paketi alan pasiyentlər ({patientCount})</span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: detailOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .2s" }}><path d="M6 9l6 6 6-6" /></svg>
-      </button>
-      {detailOpen && (
-        patientCount === 0 ? (
-          <div style={{ marginTop: 12, textAlign: "center", fontSize: 13, color: "#9DB0CC", fontWeight: 600, background: "#F8FAFD", border: "1px dashed #D6E2F7", borderRadius: 11, padding: 20, animation: "pkFade .2s ease" }}>Hələ bu paketi alan yoxdur</div>
-        ) : (
-          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 9, animation: "pkFade .2s ease" }}>
-            {s!.patients.map((pt, i) => <PatientRow key={i} p={pt} />)}
-          </div>
-        )
+      {/* patient list link */}
+      {patientCount === 0 ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#9DB0CC", borderTop: "1px solid #EDF1F8", paddingTop: 14 }}>
+          <IUsers s={16} c="#9DB0CC" />Hələ bu paketi alan yoxdur
+        </div>
+      ) : (
+        <Link href={`/psycholog/packages/${pkg.id}/patients`}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", textDecoration: "none", borderTop: "1px solid #EDF1F8", paddingTop: 14 }}
+          className="pk-patients-link">
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "#082F6D" }}>
+            <IUsers s={16} c="#082F6D" />Bu paketi alan pasiyentlər ({patientCount})
+          </span>
+          <svg className="pk-arrow" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+        </Link>
       )}
     </div>
   );
@@ -336,8 +328,8 @@ function PackageCard({ pkg, stats, busy, onUpdate, onDelete, onToggleActive, rea
 function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div>
-      <div style={{ fontSize: 10.5, fontWeight: 600, color: "#8AAABF", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 800, color: color ?? "var(--oxford)" }}>{value}</div>
+      <div style={{ fontSize: 10, fontWeight: 600, color: "#8AAABF", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 16, fontWeight: 800, color: color ?? "var(--oxford)", whiteSpace: "nowrap" }}>{value}</div>
     </div>
   );
 }
@@ -356,29 +348,6 @@ function CompletionRing({ pct }: { pct: number }) {
         <span style={{ fontSize: 14, fontWeight: 800, color: "#065F46", lineHeight: 1 }}>{v}%</span>
         <span style={{ fontSize: 8, fontWeight: 600, color: "#8AAABF" }}>tamam.</span>
       </div>
-    </div>
-  );
-}
-
-function PatientRow({ p }: { p: PackagePatient }) {
-  const st = STATUS_PT[p.status] ?? STATUS_PT.ACTIVE;
-  const pct = p.total > 0 ? Math.round((p.completed / p.total) * 100) : 0;
-  const tint = avatarTint(p.patientName);
-  const done = p.status === "EXHAUSTED";
-  const fill = p.status === "CANCELLED" ? "#EF4444" : done ? "#10B981" : "linear-gradient(90deg,#1051B7,#3A74D6)";
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 11, padding: "11px 13px", flexWrap: "wrap" }}>
-      <span style={{ width: 36, height: 36, borderRadius: 11, background: tint.bg, color: tint.fg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flex: "none" }}>{initials(p.patientName)}</span>
-      <div style={{ flex: 1, minWidth: 130 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{p.patientName}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-          <div style={{ flex: 1, maxWidth: 120, height: 6, background: done ? "#D1FAE5" : "#E4ECFA", borderRadius: 999, overflow: "hidden" }}>
-            <div style={{ width: `${pct}%`, height: "100%", background: fill, borderRadius: 999 }} />
-          </div>
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--oxford-60)" }}>{p.completed}/{p.total}</span>
-        </div>
-      </div>
-      <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>{st.label}</span>
     </div>
   );
 }
@@ -417,6 +386,37 @@ function IndivPriceForm({ current, busy, onSave, onCancel }: {
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end", paddingBottom: 0, marginTop: 22 }}>
         <button onClick={submit} disabled={busy} style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer" }}>Saxla</button>
         <button onClick={onCancel} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Paket yaratma/redaktə popup-u — həm "Yeni paket", həm "Redaktə" bunu paylaşır ── */
+function PackageFormModal({ initial, busy, onSave, onClose }: {
+  initial?: { name: string; sessionCount: number; packagePrice: number; active?: boolean };
+  busy: boolean;
+  onSave: (req: PackageReq) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(8,47,109,.45)", backdropFilter: "blur(4px)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "pkFade .18s ease" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "min(520px, 100%)", maxHeight: "88vh", overflow: "auto", boxShadow: "0 24px 70px rgba(8,47,109,.28)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 22px 16px", borderBottom: "1px solid #F0F4FA" }}>
+          <span style={{ width: 38, height: 38, borderRadius: 11, background: "#E4ECFA", color: "#1051B7", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+            <ICube s={19} />
+          </span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--oxford-60)" }}>{initial ? "Paket" : "Yeni paket"}</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{initial ? "Paketi redaktə et" : "Paket təklifi yarat"}</div>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Bağla"
+            style={{ width: 34, height: 34, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F2F6FD", border: "none", borderRadius: 9, color: "var(--oxford-60)", cursor: "pointer" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div style={{ padding: "18px 22px 22px" }}>
+          <PackageForm initial={initial} busy={busy} onSave={onSave} onCancel={onClose} />
+        </div>
       </div>
     </div>
   );
@@ -491,3 +491,6 @@ function IEdit({ s = 16, c = "currentColor" }: Ico) { return <svg {...sw(s, c)} 
 function ITrash({ s = 16, c = "currentColor" }: Ico) { return <svg {...sw(s, c)} aria-hidden><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>; }
 function IPlus({ s = 17, c = "currentColor" }: Ico) { return <svg {...sw(s, c)} aria-hidden><path d="M12 5v14M5 12h14" /></svg>; }
 function IDots({ s = 16 }: Ico) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>; }
+function IUsers({ s = 16, c = "currentColor" }: Ico) { return <svg {...sw(s, c)} aria-hidden><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>; }
+function IPause({ s = 16, c = "currentColor" }: Ico) { return <svg {...sw(s, c)} aria-hidden><circle cx="12" cy="12" r="9" /><line x1="10" y1="9" x2="10" y2="15" /><line x1="14" y1="9" x2="14" y2="15" /></svg>; }
+function ICalendar({ s = 16, c = "currentColor" }: Ico) { return <svg {...sw(s, c)} aria-hidden><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>; }

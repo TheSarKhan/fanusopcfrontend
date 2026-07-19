@@ -393,10 +393,12 @@ export interface PackageDto {
 
 /** "Paketlərim" — paketi alan pasiyentin gedişatı. */
 export interface PackagePatient {
+  patientId: number;
   patientName: string;
   completed: number;
   total: number;
   status: string; // ACTIVE | EXHAUSTED | EXPIRED | CANCELLED
+  purchasedAt: string;
 }
 
 /** "Paketlərim" — hər kataloq paketi üzrə satış/istifadə statistikası. */

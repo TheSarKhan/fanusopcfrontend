@@ -231,12 +231,21 @@ export default function PsychologReviewsPage() {
                       Cavab yaz
                     </button>
                   )}
-                  {!deletionByReview.get(r.id) && (
-                    <button onClick={() => setDeleteFor(r)}
-                      style={{ padding: "7px 14px", fontSize: 13, fontWeight: 600, border: "1px solid #FECACA", color: "#991B1B", background: "#FEF2F2", borderRadius: 8, cursor: "pointer" }}>
-                      Silmə tələbi göndər
-                    </button>
-                  )}
+                  {(() => {
+                    const dr = deletionByReview.get(r.id);
+                    // Yalnız GÖZLƏYƏN (PENDING) tələb varkən, yaxud tələb təsdiqlənib rəy
+                    // artıq qaldırılıbsa (APPROVED) düyməni gizlət. Backend də yalnız PENDING-i
+                    // CONFLICT ilə bloklayır — rədd edilmiş (REJECTED) tələbdən sonra psixoloq
+                    // yenidən silmə tələbi göndərə bilməlidir (əvvəllər hər hansı tələb düyməni
+                    // tamamilə gizlədirdi → təkrar sorğu mümkünsüz olurdu).
+                    if (dr && (dr.status === "PENDING" || dr.status === "APPROVED")) return null;
+                    return (
+                      <button onClick={() => setDeleteFor(r)}
+                        style={{ padding: "7px 14px", fontSize: 13, fontWeight: 600, border: "1px solid #FECACA", color: "#991B1B", background: "#FEF2F2", borderRadius: 8, cursor: "pointer" }}>
+                        {dr ? "Yenidən silmə tələbi göndər" : "Silmə tələbi göndər"}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             );

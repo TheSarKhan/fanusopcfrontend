@@ -215,7 +215,13 @@ export default function Navbar() {
         .fanus-nav--light .fanus-nav__logo-text { border-left-color: rgba(255,255,255,.6); }
         .fanus-nav--light .fanus-nav__logo-name,
         .fanus-nav--light .fanus-nav__logo-sub { color: #fff; }
-        .fanus-nav--light .fanus-nav__menu { color: #fff; }
+        /* Burger yuxarıda hero videonun üstündədir. Video sağ kənarda scrim zəif
+           olduğundan (horizontal gradient orada ~.08) ağ ikon parlaq kadrlarda
+           itə bilir — tünd drop-shadow halosu istənilən kadrda onu görünən saxlayır. */
+        .fanus-nav--light .fanus-nav__menu {
+          color: #fff;
+          filter: drop-shadow(0 1px 4px rgba(6,14,28,.75)) drop-shadow(0 0 1px rgba(6,14,28,.6));
+        }
 
         /* Scroll edəndə yazı da ikonla birlikdə kiçilir (hündürlüklər eyni qalsın). */
         .fanus-nav.is-scrolled .fanus-nav__logo-text { padding-left: 9px; }

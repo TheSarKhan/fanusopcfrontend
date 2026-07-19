@@ -365,7 +365,7 @@ function PsyCard({
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1.5" strokeLinejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
             <span style={{ fontSize: 14, fontWeight: 800, color: "var(--oxford)" }}>{rating.toFixed(1)}</span>
-            <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>{(p.ratingCount ?? 0) > 0 ? `${p.ratingCount} qiymət` : "Reytinq"}</span>
+            <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>{(p.ratingCount ?? 0) > 0 ? `${p.ratingCount} rəy` : "Reytinq"}</span>
           </div>
         )}
         {years > 0 && (

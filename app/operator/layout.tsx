@@ -44,6 +44,9 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
   // Nav-dakı "Pool" sayğacı — sahibsiz yeni müraciətlər (seans + ödəniş).
   // Operator hara olursa olsun gözləyən işin sayını görür.
   const [poolCount, setPoolCount] = useState(0);
+  // "Ödənişlər" nav sayğacı — bütün gözləyən (PENDING) ödənişlər (sahibli/sahibsiz fərq
+  // etmir; bu, modulun özündəki "Gözləyən" tabının sayı ilə eyni işi göstərir).
+  const [paymentsCount, setPaymentsCount] = useState(0);
   const loadPoolCount = useCallback(() => {
     Promise.all([
       operatorApi.listPoolAppointments().catch(() => []),
@@ -54,6 +57,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
       const a = appts.filter(x => x.claimedByUserId == null && isPoolEligible(x.status)).length;
       const p = payments.filter(x => x.claimedByOperatorId == null).length;
       setPoolCount(a + p);
+      setPaymentsCount(payments.length);
     }).catch(() => {});
   }, []);
 
@@ -103,7 +107,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
     { key: "pool",             href: "/operator/pool",               label: "Randevu hovuzu",         icon: "inbox", badge: poolCount },
     { key: "appointments",     href: "/operator/appointments",       label: t("nav.appointments"),    icon: "calendar", badge: poolCount },
     { key: "meetingLinks",  href: "/operator/meeting-links", label: "Görüş linkləri",        icon: "video", badge: meetingLinksCount },
-    { key: "payments",      href: "/operator/payments",     label: t("pkg.paymentsTitle"),   icon: "clipboard" },
+    { key: "payments",      href: "/operator/payments",     label: t("pkg.paymentsTitle"),   icon: "clipboard", badge: paymentsCount },
     { key: "analytics",     href: "/operator/analytics",    label: t("nav.analytics"),       icon: "chart" },
     { key: "customers",     href: "/operator/customers",     label: "Müştərilər",            icon: "users" },
     { key: "psychologists", href: "/operator/psychologists", label: "Psixoloqlar", icon: "user" },

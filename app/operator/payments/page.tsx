@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as XLSX from "xlsx";
 import { operatorApi, type PaymentItem, type PaymentSummary } from "@/lib/api";
@@ -75,6 +75,7 @@ const originLabel = (p: PaymentItem) => p.origin === "DIRECT" ? "Birbaşa" : p.o
 // ─── Səhifə ───────────────────────────────────────────────────────────────────
 export default function OperatorPaymentsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const me = getStoredUser();
   const meId = me?.userId ?? null;
 
@@ -106,6 +107,22 @@ export default function OperatorPaymentsPage() {
       .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
+
+  // Görüş linkləri səhifəsindən "Ödənişə keç" ilə gələndə (?focus=<paymentId>) həmin
+  // ödənişi tapıb tabını aç və detal panelini göstər — operator dərhal onu görsün.
+  const focusedRef = useRef(false);
+  useEffect(() => {
+    if (focusedRef.current || items.length === 0) return;
+    const focus = searchParams.get("focus");
+    if (!focus) return;
+    const fid = Number(focus);
+    const item = items.find(p => p.id === fid);
+    if (!item) return;
+    focusedRef.current = true;
+    const bucket = (Object.keys(GROUPS) as BucketKey[]).find(k => GROUPS[k].includes(item.status as Status));
+    if (bucket) setTab(bucket);
+    setDrawerId(fid);
+  }, [items, searchParams]);
 
   const patch = (id: number, next: Partial<PaymentItem>) =>
     setItems(list => list.map(x => x.id === id ? { ...x, ...next } : x));

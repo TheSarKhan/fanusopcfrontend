@@ -124,6 +124,16 @@ function MeetingLinkCard({ a, onSent, onUpdated }: {
   const paymentConfirmed = a.paymentConfirmed;
   const accountDeleted = !!a.patientAccountDeleted || !!a.psychologistAccountDeleted;
 
+  // Ödəniş qeydi (Payment sətri) HƏLƏ yaradılmayıbsa — paymentId null — ödənişlər
+  // səhifəsində göstəriləcək heç nə yoxdur; ödəniş əvvəlcə randevu səhifəsindən
+  // yaradılmalıdır. Qeyd varsa (məbləği təyin olunmuş, gözləyən) — birbaşa ödənişlər
+  // səhifəsinə, həmin ödənişə fokuslanaraq keç.
+  const paymentExists = a.paymentId != null && (a.paymentAmount ?? 0) > 0;
+  const payHref = paymentExists
+    ? `/operator/payments?focus=${a.paymentId}`
+    : `/operator/appointments/${a.id}`;
+  const payLabel = paymentExists ? "Ödənişə keç" : "Ödəniş yarat";
+
   const markNoShow = async () => {
     setBusy(true);
     try {
@@ -246,9 +256,9 @@ function MeetingLinkCard({ a, onSent, onUpdated }: {
           <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, background: "#FEF3C7", border: "1px solid #FCE7A8", borderRadius: 10, padding: "10px 12px" }}>
             Ödəniş təsdiqlənməyib — link yalnız ödəniş "Ödənildi" işarələndikdən sonra əlavə oluna bilər.
           </div>
-          <Link href={`/operator/appointments/${a.id}`} onClick={e => e.stopPropagation()}
+          <Link href={payHref} onClick={e => e.stopPropagation()}
             className="fx-btn fx-btn--primary" style={{ width: "100%", textAlign: "center", textDecoration: "none" }}>
-            Ödənişə keç
+            {payLabel}
           </Link>
         </>
       )}

@@ -39,7 +39,7 @@ export default function Footer() {
       <div className="fanus-container fanus-ftr__main">
         <div className="fanus-ftr__brand">
           <Link href="/" className="fanus-ftr__lockup">
-            <Image src="/images/logos/logo-blue.png" alt="Fanus" width={56} height={40} style={{ objectFit: "contain" }} />
+            <Image src="/images/logos/logo-blue.png" alt="Fanus" width={56} height={40} />
           </Link>
           <p className="fanus-ftr__tag">{t("footer2.tag")}</p>
 
@@ -128,6 +128,7 @@ export default function Footer() {
           gap: 40px; padding: 64px 28px 48px;
         }
         .fanus-ftr__lockup { display: inline-flex; align-items: center; gap: 12px; }
+        .fanus-ftr__lockup img { height: 58px; width: auto; object-fit: contain; }
         .fanus-ftr__tag {
           color: var(--fanus-ink-3);
           font-family: var(--font-poppins), system-ui, sans-serif;

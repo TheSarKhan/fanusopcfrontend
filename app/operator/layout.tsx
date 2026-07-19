@@ -59,6 +59,14 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { loadPoolCount(); }, [loadPoolCount]);
 
+  // Nav-dakı "Görüş linkləri" sayğacı — yaxınlaşan, hələ link göndərilməmiş seanslar
+  // (eyni mənbə — Görüş linkləri səhifəsinin özü).
+  const [meetingLinksCount, setMeetingLinksCount] = useState(0);
+  const loadMeetingLinksCount = useCallback(() => {
+    operatorApi.pendingMeetingLinks().then(items => setMeetingLinksCount(items.length)).catch(() => {});
+  }, []);
+  useEffect(() => { loadMeetingLinksCount(); }, [loadMeetingLinksCount]);
+
   // Nav-dakı "Müraciətlər" sayğacı — saytdan gələn yeni (hələ götürülməmiş) lead-lər.
   const [sessionReqCount, setSessionReqCount] = useState(0);
   const loadSessionReqCount = useCallback(() => {
@@ -78,21 +86,23 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const offN = subscribeNotifications((n) => {
       const ty = typeof n.type === "string" ? n.type : "";
-      if (ty.startsWith("APPOINTMENT_") || ty.startsWith("PAYMENT_")) loadPoolCount();
+      if (ty.startsWith("APPOINTMENT_") || ty.startsWith("PAYMENT_")) { loadPoolCount(); loadMeetingLinksCount(); }
       if (ty === "SESSION_REQUEST_NEW") loadSessionReqCount();
       if (ty === "SESSION_FEEDBACK") loadFeedbackCount();
     });
     const offC = subscribeOperatorClaims(() => loadPoolCount());
-    const id = setInterval(() => { loadPoolCount(); loadSessionReqCount(); loadFeedbackCount(); }, 60_000);
+    const id = setInterval(() => {
+      loadPoolCount(); loadSessionReqCount(); loadFeedbackCount(); loadMeetingLinksCount();
+    }, 60_000);
     return () => { offN(); offC(); clearInterval(id); };
-  }, [loadPoolCount, loadSessionReqCount, loadFeedbackCount]);
+  }, [loadPoolCount, loadSessionReqCount, loadFeedbackCount, loadMeetingLinksCount]);
 
   // Bütün modullar. Kilidlilər (./modules.ts) sidebar-dan çıxarılır.
   const allNav: ModuleNavItem[] = [
     { key: "dashboard",        href: "/operator",                    label: t("nav.dashboard"),       icon: "home" },
     { key: "pool",             href: "/operator/pool",               label: "Randevu hovuzu",         icon: "inbox", badge: poolCount },
-    { key: "appointments",     href: "/operator/appointments",       label: t("nav.appointments"),    icon: "calendar" },
-    { key: "meetingLinks",  href: "/operator/meeting-links", label: "Görüş linkləri",        icon: "video" },
+    { key: "appointments",     href: "/operator/appointments",       label: t("nav.appointments"),    icon: "calendar", badge: poolCount },
+    { key: "meetingLinks",  href: "/operator/meeting-links", label: "Görüş linkləri",        icon: "video", badge: meetingLinksCount },
     { key: "payments",      href: "/operator/payments",     label: t("pkg.paymentsTitle"),   icon: "clipboard" },
     { key: "analytics",     href: "/operator/analytics",    label: t("nav.analytics"),       icon: "chart" },
     { key: "customers",     href: "/operator/customers",     label: "Müştərilər",            icon: "users" },

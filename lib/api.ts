@@ -600,6 +600,10 @@ export interface AppointmentDetail {
   origin?: string | null;
   // Seans növü: 'STANDARD' | 'INTRO' (15 dəq, pulsuz tanışlıq görüşü).
   sessionKind?: string | null;
+  // Hesab silinib/deaktivdir — Görüş linkləri səhifəsində link təyini yerinə
+  // "Baş tutmadı" göstərilməlidir.
+  patientAccountDeleted?: boolean;
+  psychologistAccountDeleted?: boolean;
 }
 
 // Modul B: operator panelində link tarixçəsinin bir sətri
@@ -3441,7 +3445,7 @@ export const operatorApi = {
    *  no-show counter for the blamed side). Replaces the old dispute flow. */
   markNoShow: (
     id: number,
-    blameSide: "PATIENT" | "PSYCHOLOGIST",
+    blameSide?: "PATIENT" | "PSYCHOLOGIST",
     note?: string
   ) =>
     authedRequest<AppointmentDetail>("POST", `/operator/appointments/${id}/no-show`, { blameSide, note }),

@@ -38,6 +38,11 @@ const IconArrowRight = () => (
     <path d="M5 12h14" /><path d="M12 5l7 7-7 7" />
   </svg>
 );
+const IconUserOff = () => (
+  <svg className="fx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="18" y1="8" x2="23" y2="13" /><line x1="23" y1="8" x2="18" y2="13" />
+  </svg>
+);
 
 const initialsOf = (name?: string | null) =>
   (name ?? "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
@@ -117,6 +122,20 @@ function MeetingLinkCard({ a, onSent, onUpdated }: {
   const hasLink = !!a.meetingLink;
   const av = (Math.abs(a.id) % 4) + 1;
   const paymentConfirmed = a.paymentConfirmed;
+  const accountDeleted = !!a.patientAccountDeleted || !!a.psychologistAccountDeleted;
+
+  const markNoShow = async () => {
+    setBusy(true);
+    try {
+      await operatorApi.markNoShow(a.id, undefined, "Hesab silinib — seans baş tuta bilmədi (avtomatik, Görüş linkləri səhifəsindən)");
+      toast("Seans baş tutmadı kimi işarələndi", "success");
+      onSent();
+    } catch (e) {
+      toast("Alınmadı: " + (e as Error).message, "error");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const saveAndSend = async () => {
     const link = value.trim();
@@ -185,7 +204,20 @@ function MeetingLinkCard({ a, onSent, onUpdated }: {
         </div>
       )}
 
-      {paymentConfirmed ? (
+      {accountDeleted ? (
+        <>
+          <div style={{ fontSize: 12.5, color: "#991B1B", fontWeight: 500, background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: 10, padding: "10px 12px" }}>
+            {a.patientAccountDeleted && a.psychologistAccountDeleted
+              ? "Pasiyent və psixoloq hesabı silinib — görüş linki təyin etmək mənasızdır."
+              : a.patientAccountDeleted
+                ? "Pasiyent hesabı silinib — görüş linki təyin etmək mənasızdır."
+                : "Psixoloq hesabı silinib — görüş linki təyin etmək mənasızdır."}
+          </div>
+          <button type="button" onClick={markNoShow} disabled={busy} className="fx-btn fx-btn--danger-ghost" style={{ width: "100%", ...busyStyle }}>
+            <IconUserOff /> Baş tutmadı
+          </button>
+        </>
+      ) : paymentConfirmed ? (
         <>
           <div className="fx-field">
             <label className="fx-label">Görüş linki</label>

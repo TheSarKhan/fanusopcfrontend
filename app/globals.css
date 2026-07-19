@@ -4114,7 +4114,7 @@
 }
 
 /* ─── Patient goals page (.pgoals) ─────────────────────────────────────── */
-.pgoals { display: flex; flex-direction: column; gap: 16px; padding: 24px 28px 32px; max-width: 980px; }
+.pgoals { display: flex; flex-direction: column; gap: 16px; padding: 24px 28px 32px; }
 .pgoals__head h1 {
   font-size: 22px; font-weight: 700; color: var(--oxford); margin: 0;
 }
@@ -9987,6 +9987,26 @@
 .auth-panel-trust-icon { width: 34px; height: 34px; border-radius: 9px; background: rgba(255,255,255,0.16); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .auth-panel-trust-text strong { display: block; font-size: 13px; color: white; font-weight: 600; margin-bottom: 2px; }
 .auth-panel-trust-text span { font-size: 11.5px; color: rgba(255,255,255,0.55); }
+
+/* Auth logo lockup — Navbar/Footer ilə eyni: mark + FANUS + alt-yazı bloku. */
+.auth-logo { display: inline-flex; align-items: center; gap: 5px; }
+.auth-logo__mark { display: inline-flex; align-items: center; }
+.auth-logo__mark img { display: block; object-fit: contain; height: 38px; width: auto; }
+.auth-logo__text {
+  display: flex; flex-direction: column; justify-content: center;
+  border-left: 2px solid var(--brand);
+  padding-left: 9px;
+}
+.auth-logo__name { font-size: 16px; font-weight: 800; line-height: 1; letter-spacing: .04em; color: var(--brand); }
+.auth-logo__sub {
+  display: flex; flex-direction: column; margin-top: 3px;
+  font-size: 6.5px; font-weight: 700; line-height: 1.28;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--brand);
+}
+/* Light variant — sağdakı dekorativ panel tünd foto fonundadır, lockup ağ olmalıdır. */
+.auth-logo--light .auth-logo__text { border-left-color: rgba(255,255,255,.6); }
+.auth-logo--light .auth-logo__name,
+.auth-logo--light .auth-logo__sub { color: #fff; }
 
 /* Auth form elements */
 .auth-label { display: block; font-size: 13px; font-weight: 600; color: var(--oxford); margin-bottom: 6px; }

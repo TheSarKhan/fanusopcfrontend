@@ -160,8 +160,20 @@ export default function LoginPage() {
       <div className="auth-form-side">
         {/* Top bar */}
         <div className="auth-topbar">
-          <Link href="/">
-            <Image src="/images/logos/logo-blue.png" alt="Fanus" width={100} height={33} style={{ objectFit: "contain" }} priority />
+          <Link href="/" aria-label="Fanus">
+            <span className="auth-logo">
+              <span className="auth-logo__mark">
+                <Image src="/images/logos/logo-mark.png" alt="Fanus" width={1035} height={1856} priority />
+              </span>
+              <span className="auth-logo__text">
+                <span className="auth-logo__name">FANUS</span>
+                <span className="auth-logo__sub">
+                  <span>Online</span>
+                  <span>Psychology</span>
+                  <span>Center</span>
+                </span>
+              </span>
+            </span>
           </Link>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <LanguageSwitcher variant="default" />
@@ -254,7 +266,19 @@ export default function LoginPage() {
       {/* ── Decorative panel ── */}
       <div className="auth-panel">
         <div className="auth-panel-content">
-          <Image src="/images/logos/logo-white.png" alt="Fanus" width={110} height={36} style={{ objectFit: "contain" }} />
+          <span className="auth-logo auth-logo--light">
+            <span className="auth-logo__mark">
+              <Image src="/images/logos/logo-mark-white.png" alt="Fanus" width={1035} height={1856} />
+            </span>
+            <span className="auth-logo__text">
+              <span className="auth-logo__name">FANUS</span>
+              <span className="auth-logo__sub">
+                <span>Online</span>
+                <span>Psychology</span>
+                <span>Center</span>
+              </span>
+            </span>
+          </span>
           <h2 className="auth-panel-title">
             Daha yaxşı hiss etmək<br />bu gün başlayır
           </h2>

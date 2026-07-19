@@ -204,7 +204,6 @@ export default function PatientDashboard() {
             <StatTile
               label="Bu ay seans"
               value={monthStats.completed}
-              sub={monthStats.scheduled > 0 ? `${monthStats.scheduled} planlaşdırılıb` : "hələ planlaşdırma yoxdur"}
               icon={<IconCheck />}
               tone="brand"
               href="/patient/appointments"
@@ -212,7 +211,6 @@ export default function PatientDashboard() {
             <StatTile
               label="Aktiv tapşırıq"
               value={taskStats.pending}
-              sub={taskStats.overdue > 0 ? `${taskStats.overdue} gecikib` : "vaxtında"}
               icon={<IconTarget />}
               tone={taskStats.overdue > 0 ? "warn" : "brand"}
               href="/patient/homework"
@@ -220,7 +218,6 @@ export default function PatientDashboard() {
             <StatTile
               label="Bitirilmiş tapşırıq"
               value={taskStats.completed}
-              sub={taskStats.total > 0 ? `${Math.round((taskStats.completed / taskStats.total) * 100)}% tamamlanma` : "hələ tapşırıq yoxdur"}
               icon={<IconAward />}
               tone="good"
               href="/patient/homework"

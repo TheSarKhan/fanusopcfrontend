@@ -328,7 +328,7 @@ export default function PatientAppointmentsPage() {
   };
 
   return (
-    <div className="psy-appt-page" style={{ maxWidth: 1040, margin: "0 auto" }}>
+    <div className="psy-appt-page">
       <style>{PA_STYLE}</style>
       <PageHeader
         title={t("appt.pageTitle")}

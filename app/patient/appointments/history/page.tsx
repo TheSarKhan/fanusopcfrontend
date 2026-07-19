@@ -60,7 +60,7 @@ export default function PatientAppointmentHistoryPage() {
   const rows = useMemo(() => items.filter(a => a.startAt || a.endAt), [items]);
 
   return (
-    <div className="psy-appt-page" style={{ maxWidth: 1040, margin: "0 auto" }}>
+    <div className="psy-appt-page">
       <style>{PA_STYLE}{HIST_STYLE}</style>
       <header style={{ marginBottom: 22 }}>
         <Link href="/patient/appointments" style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none", marginBottom: 10 }}>

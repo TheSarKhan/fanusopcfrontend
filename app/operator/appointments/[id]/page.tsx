@@ -1014,7 +1014,7 @@ const OTHER_ACTION_META: Record<OtherActionKey, {
   dispute:   { label: "Mübahisəni həll et", border: "#FDE68A", fg: "#B45309", title: "Mübahisəni həll et", sub: "Seans baş tutdumu? Nəticəni qeyd edin.", badge: { label: "Mübahisəli", bg: "#FFFBEB", color: "#B45309" } },
   cancelreq: { label: "Ləğv tələbi",         border: "#FDE68A", fg: "#B45309", title: "Ləğv tələbi",         sub: "Pasiyentin ləğv tələbini emal edin.",  badge: { label: "Gözlənilir", bg: "#FEF3C7", color: "#92400E" } },
   noshow:    { label: "No-show",             border: "#E2E8F5", fg: "#5C6B85", title: "No-show işarələ",     sub: "Seansa kim gəlmədi?",                  badge: { label: "No-show",    bg: "#F1F5F9", color: "#475569" } },
-  cancel:    { label: "Ləğv et",             border: "#FCA5A5", fg: "#DC2626", title: "Müraciəti ləğv et",   sub: "Bu müraciəti bağlayın.",               badge: { label: "Ləğv",       bg: "#FEE2E2", color: "#991B1B" } },
+  cancel:    { label: "Seansı ləğv et",      border: "#FCA5A5", fg: "#DC2626", title: "Seansı ləğv et",      sub: "Bu seansı bağlayın.",                  badge: { label: "Ləğv",       bg: "#FEE2E2", color: "#991B1B" } },
 };
 
 /* ─── Mərkəz: təyinat bloku (köhnə AssignModal-ın səhifə bloku) ────────────── */

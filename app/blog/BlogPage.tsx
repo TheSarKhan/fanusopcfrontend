@@ -123,26 +123,28 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
 function ArtHero() {
   const { t } = useT();
   return (
-    <section className="ap-hero">
-      <div className="fanus-container ap-hero__inner">
+    <section className="blog-hero">
+      <div className="fanus-container blog-hero__inner">
         <h1>{t("articles.title")}</h1>
-        <p className="ap-hero__lead">{t("articles.lead")}</p>
+        <p className="blog-hero__lead">{t("articles.lead")}</p>
       </div>
 
       <style>{`
-        .ap-hero { padding: 28px 0; text-align: center; }
-        .ap-hero__inner { max-width: 720px; margin: 0 auto; }
-        .ap-hero h1 {
+        /* Ad qəsdən "ap-hero" DEYİL — o sinif globals.css-də ABOUT səhifəsinə
+           aiddir (mavi gradient background) və eyni adı paylaşsaydı bura sızardı. */
+        .blog-hero { padding: 28px 0; text-align: center; background: transparent; }
+        .blog-hero__inner { max-width: 720px; margin: 0 auto; }
+        .blog-hero h1 {
           margin: 0 0 16px;
           font-family: var(--font-poppins), system-ui, sans-serif;
           font-size: clamp(32px, 4.6vw, 54px); font-weight: 800;
           letter-spacing: -0.03em; line-height: 1.1; color: var(--fanus-ink);
         }
-        .ap-hero__lead {
+        .blog-hero__lead {
           font-size: 17px; color: var(--fanus-ink-3); line-height: 1.6;
           max-width: 600px; margin: 0 auto;
         }
-        @media (max-width: 640px) { .ap-hero { padding: 20px 0; } }
+        @media (max-width: 640px) { .blog-hero { padding: 20px 0; } }
       `}</style>
     </section>
   );
@@ -262,7 +264,7 @@ function ArtList({
                     <span className="ap-card__avatar">{a.author.split(" ").map((n) => n[0]).join("")}</span>
                     <div>
                       <div className="ap-card__author-name">{a.author}</div>
-                      <div className="ap-card__author-role">Psixoloq · Fanus</div>
+                      <div className="ap-card__author-role">Psixoloq</div>
                     </div>
                     <span className="ap-card__cta">Oxu <Arrow /></span>
                   </div>

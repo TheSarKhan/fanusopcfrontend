@@ -1726,7 +1726,7 @@
   .footer-legal { gap: 16px; }
 
   /* Contact */
-  .contact-section { padding: 1.5rem 0 4rem; }
+  .contact-section { padding: 0 0 4rem; }
 
   /* About page */
   .ap-mission-stats { grid-template-columns: 1fr 1fr; }
@@ -10187,9 +10187,10 @@
 /* ===== CONTACT SECTION ===== */
 .contact-section {
   background: white;
-  /* Top kept tight — breadcrumb sits right below the navbar like on other
-   * pages; bottom keeps the section's original breathing room. */
-  padding: 2rem 0 6rem;
+  /* Top is 0 — Breadcrumb's own top padding (.fanus-crumb, 20px) is the ONLY
+   * top spacing, same as every other page. An extra padding-top here used to
+   * stack on top of that and push the breadcrumb further down than elsewhere. */
+  padding: 0 0 6rem;
   border-top: 1px solid var(--oxford-10);
 }
 

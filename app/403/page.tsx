@@ -28,7 +28,7 @@ export default function ForbiddenPage() {
           className="inline-block py-3 px-8 rounded-xl text-sm font-bold text-white"
           style={{ background: "var(--brand)" }}
         >
-           Daxil ol
+          Daxil ol
         </Link>
       </div>
     </div>

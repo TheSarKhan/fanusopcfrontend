@@ -16,9 +16,9 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [panelUrl, setPanelUrl] = useState<string | null>(null);
-  const [isDesktop, setIsDesktop] = useState(false);
-  // Şəffaf/ağ variant yalnız tablet+ ekranlarda: mobildə hero adi ağ-fonlu mətn bloku ilə başlayır.
-  const light = isHome && !scrolled && isDesktop;
+  // Şəffaf/ağ variant: ana səhifədə yuxarıda (hero videonun üstündə) — mobil daxil,
+  // çünki mobil hero da artıq tam-ekran tünd videodur.
+  const light = isHome && !scrolled;
 
   const navLinks = [
     { label: t("nav.services"),      href: "/xidmetler" },
@@ -42,14 +42,6 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    const mql = window.matchMedia("(min-width: 768px)");
-    const update = () => setIsDesktop(mql.matches);
-    update();
-    mql.addEventListener("change", update);
-    return () => mql.removeEventListener("change", update);
-  }, []);
-
-  useEffect(() => {
     // Optimistic: render panel link from the cached user record immediately…
     const cached = getStoredUser();
     if (cached?.role) setPanelUrl(buildPanelUrl(cached.role));
@@ -70,8 +62,19 @@ export default function Navbar() {
     <header className={`fanus-nav ${scrolled ? "is-scrolled" : ""} ${light ? "fanus-nav--light" : ""}`}>
       <div className="fanus-container fanus-nav__inner">
         <Link href="/" className="fanus-nav__brand" aria-label="Fanus">
-          <span className="fanus-nav__mark">
-            <Image src={light ? "/images/logos/logo-white.png" : "/images/logos/logo-blue.png"} alt="Fanus" width={56} height={40} priority />
+          <span className="fanus-nav__logo">
+            <span className="fanus-nav__mark">
+              <Image src={light ? "/images/logos/logo-white.png" : "/images/logos/logo-blue.png"} alt="Fanus" width={56} height={40} priority />
+            </span>
+            {/* Panel loqosu ilə eyni yazı bloku — brand-rəngli (light-da ağ). */}
+            <span className="fanus-nav__logo-text">
+              <span className="fanus-nav__logo-name">FANUS</span>
+              <span className="fanus-nav__logo-sub">
+                <span>Online</span>
+                <span>Psychology</span>
+                <span>Center</span>
+              </span>
+            </span>
           </span>
         </Link>
 
@@ -177,13 +180,43 @@ export default function Navbar() {
         }
 
         /* ── Brand ── */
-        .fanus-nav__brand { display: inline-flex; align-items: center; gap: 8px; }
+        .fanus-nav__brand { display: inline-flex; align-items: center; }
+        .fanus-nav__logo { display: inline-flex; align-items: center; gap: 11px; }
         .fanus-nav__mark { display: inline-flex; align-items: center; }
         .fanus-nav__mark img {
-          object-fit: contain; height: 64px; width: auto;
+          object-fit: contain; height: 58px; width: auto;
           transition: height .3s ease;
         }
         .fanus-nav.is-scrolled .fanus-nav__mark img { height: 40px; }
+
+        /* Panellə eyni yazı bloku: sol brand-xətt + FANUS + kiçik alt-yazı. */
+        .fanus-nav__logo-text {
+          display: flex; flex-direction: column; justify-content: center;
+          border-left: 2px solid var(--brand);
+          padding-left: 11px;
+          transition: border-color .3s ease, padding-left .3s ease;
+        }
+        .fanus-nav__logo-name {
+          font-size: 20px; font-weight: 800; line-height: 1;
+          letter-spacing: .04em; color: var(--brand);
+          transition: color .3s ease, font-size .3s ease;
+        }
+        .fanus-nav__logo-sub {
+          display: flex; flex-direction: column; margin-top: 5px;
+          font-size: 8px; font-weight: 700; line-height: 1.28;
+          letter-spacing: .14em; text-transform: uppercase; color: var(--brand);
+          transition: color .3s ease, font-size .3s ease, margin-top .3s ease;
+        }
+        /* Light (hero videonun üstündə, mobil daxil): ağ lockup. */
+        .fanus-nav--light .fanus-nav__logo-text { border-left-color: rgba(255,255,255,.6); }
+        .fanus-nav--light .fanus-nav__logo-name,
+        .fanus-nav--light .fanus-nav__logo-sub { color: #fff; }
+        .fanus-nav--light .fanus-nav__menu { color: #fff; }
+
+        /* Scroll edəndə yazı da ikonla birlikdə kiçilir (hündürlüklər eyni qalsın). */
+        .fanus-nav.is-scrolled .fanus-nav__logo-text { padding-left: 9px; }
+        .fanus-nav.is-scrolled .fanus-nav__logo-name { font-size: 15px; }
+        .fanus-nav.is-scrolled .fanus-nav__logo-sub { font-size: 6px; margin-top: 3px; letter-spacing: .12em; }
 
         /* ── Links ── */
         .fanus-nav__links { display: flex; align-items: center; gap: 4px; }
@@ -225,6 +258,13 @@ export default function Navbar() {
           .fanus-nav__links, .fanus-nav__cta { display: none; }
           .fanus-nav__menu { display: inline-flex; }
           .fanus-nav__mobile { display: flex; }
+          /* Lockup mobildə bir az kiçik — hamburgerlə yan-yana sığsın. */
+          .fanus-nav__logo { gap: 9px; }
+          .fanus-nav__mark img { height: 46px; }
+          .fanus-nav.is-scrolled .fanus-nav__mark img { height: 38px; }
+          .fanus-nav__logo-text { padding-left: 9px; }
+          .fanus-nav__logo-name { font-size: 17px; }
+          .fanus-nav__logo-sub { font-size: 7px; letter-spacing: .12em; }
         }
       `}</style>
     </header>

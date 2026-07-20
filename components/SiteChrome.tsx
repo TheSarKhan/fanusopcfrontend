@@ -27,10 +27,9 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
   return (
     <>
       <Navbar />
-      {/* Spacer reserves the navbar height so content starts below it. On the homepage it
-          collapses on tablet/desktop only — there the navbar floats transparently over the
-          full-bleed hero video; on mobile the hero starts with a normal light section, so the
-          spacer is still needed there. */}
+      {/* Spacer reserves the navbar height so content starts below it. Ana səhifədə isə
+          BÜTÜN ölçülərdə sıfırdır: hero artıq mobil daxil tam-ekran video arxa fondur və
+          navbar onun üzərində şəffaf durur (əvvəl mobildə 88px ağ zolaq qalırdı). */}
       {isHome ? (
         <div className="fanus-nav-spacer--home" aria-hidden />
       ) : (
@@ -44,8 +43,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
       <RandevuButton />
 
       <style>{`
-        .fanus-nav-spacer--home { height: 88px; }
-        @media (min-width: 768px) { .fanus-nav-spacer--home { height: 0; } }
+        .fanus-nav-spacer--home { height: 0; }
       `}</style>
     </>
   );

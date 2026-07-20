@@ -6,7 +6,7 @@
 // uyğunlaşdırılıb (app/patient/appointments/shared.tsx).
 // ============================================================================
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { psychologistApi, type AppointmentDetail } from "@/lib/api";
 import { googleCalendarUrl } from "@/lib/calendar";
@@ -14,7 +14,7 @@ import { appUrl } from "@/lib/appUrl";
 import { toast } from "@/components/Toast";
 
 export const WEEKDAYS_AZ = ["Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə", "Bazar"];
-export const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
+export const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
 
 export function pad2(n: number) { return String(n).padStart(2, "0"); }
 export function fmtTime(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
@@ -27,7 +27,7 @@ export function relativeDayLabel(d: Date, now: Date) {
   if (isSameDay(d, today)) return "Bu gün";
   if (isSameDay(d, tomorrow)) return "Sabah";
   const isoDow = (d.getDay() + 6) % 7;
-  return `${WEEKDAYS_AZ[isoDow]} · ${pad2(d.getDate())} ${MONTHS_AZ[d.getMonth()]}`;
+  return `${WEEKDAYS_AZ[isoDow]}, ${pad2(d.getDate())} ${MONTHS_AZ[d.getMonth()]}`;
 }
 
 export interface CountdownInfo {
@@ -92,12 +92,93 @@ export const PSY_APPT_STYLE = `
 .gor-decline:hover{background:#FEE2E2!important}
 .gor-sheet-item:hover{background:#F8FAFD!important}
 .gor-sheet-item--danger:hover{background:#FEE2E2!important}
+
+/* ─── Ortaq mətn primitivləri (nişan/badge əvəzinə) ────────────────────── */
+.pa-sec{font-size:13px;font-weight:600;color:var(--oxford-60);margin:0 0 10px;letter-spacing:0}
+/* Status — fonsuz, yalnız rəngli mətn. Ton mənanı daşıyır (mavi = sizdən asılı,
+   sage = qaydasında, kəhrəba = gözləmədə, gül = problem, boz = arxivlik). */
+.pa-status{display:inline-block;white-space:nowrap;font-size:12.5px;font-weight:600;letter-spacing:-.005em;color:var(--oxford-60)}
+.pa-status--brand{color:#1051B7}
+.pa-status--sage{color:#2F8163}
+.pa-status--amber{color:#B0731F}
+.pa-status--rose{color:#B4534F}
+.pa-meta{display:flex;flex-wrap:wrap;align-items:center;gap:5px 14px;font-size:13px;font-weight:500;color:var(--oxford-60);line-height:1.5}
+.pa-meta__item{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.pa-meta__item svg{flex:none}
+.pa-meta b{font-weight:600;color:var(--oxford-80)}
+
+/* ─── Növbəti seans ────────────────────────────────────────────────────── */
+.pa-next{display:flex;background:#fff;border:1px solid var(--oxford-10);border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(0,33,71,.04)}
+.pa-next__when{flex:none;width:138px;padding:24px 22px;border-right:1px solid var(--oxford-10);background:#FBFCFE;display:flex;flex-direction:column;justify-content:center}
+.pa-next__day{font-size:12.5px;font-weight:600;color:var(--oxford-60);margin-bottom:2px}
+.pa-next__time{font-size:31px;font-weight:600;letter-spacing:-.025em;color:var(--oxford);line-height:1.05;font-feature-settings:"tnum"}
+.pa-next__end{font-size:12.5px;font-weight:500;color:var(--oxford-60);margin-top:3px;font-feature-settings:"tnum"}
+.pa-next__main{flex:1;min-width:0;display:flex;align-items:center;gap:16px;padding:22px}
+.pa-next__who{flex:1;min-width:0}
+.pa-next__name{font-size:19px;font-weight:600;letter-spacing:-.01em;color:var(--oxford);line-height:1.25}
+.pa-next__cta{flex:none;width:212px;padding:22px 22px 22px 0;display:flex;flex-direction:column;gap:9px;justify-content:center}
+.pa-next__count{font-size:12.5px;font-weight:500;color:var(--oxford-60);text-align:center}
+.pa-next__count--urgent{color:#B45309;font-weight:600}
+.pa-next--empty{align-items:center;gap:12px;padding:20px 22px;color:var(--oxford-60);font-size:14px;font-weight:500;background:#FBFCFE}
+
+/* ─── Düymələr ─────────────────────────────────────────────────────────── */
+.pa-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;border-radius:10px;padding:11px 14px;font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer;border:1px solid transparent;text-decoration:none;transition:background .15s,border-color .15s,color .15s}
+.pa-btn--primary{background:var(--brand);color:#fff}
+.pa-btn--primary:hover:not(:disabled){background:var(--brand-600)}
+.pa-btn--primary:disabled{opacity:.65;cursor:wait}
+.pa-btn--ghost{background:#fff;color:var(--oxford-80);border-color:var(--oxford-10)}
+.pa-btn--ghost:hover{background:#FBFCFE;border-color:var(--brand-200);color:var(--brand-700)}
+.pa-btn--muted{background:#F4F7FB;color:#9AA7BD;cursor:not-allowed;user-select:none}
+.pa-btn--auto{width:auto}
+
+/* ─── Seans kartı ──────────────────────────────────────────────────────── */
+.pa-card{display:flex;flex-direction:column;background:#fff;border:1px solid var(--oxford-10);border-radius:16px;padding:18px 20px;box-shadow:0 1px 2px rgba(0,33,71,.04);transition:box-shadow .18s ease,border-color .18s ease}
+.pa-card:hover{box-shadow:0 6px 18px rgba(0,33,71,.07)}
+.pa-card--next{border-color:var(--brand-200)}
+.pa-card--attn{border-left:3px solid #E0A33E;padding-left:18px}
+.pa-card--alert{border-left:3px solid #DC5757;padding-left:18px}
+.pa-card__head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.pa-card__day{font-size:12.5px;font-weight:500;color:var(--oxford-60)}
+.pa-card__time{font-size:21px;font-weight:600;letter-spacing:-.02em;color:var(--oxford);line-height:1.2;margin-top:2px;font-feature-settings:"tnum"}
+.pa-card__count{font-size:12.5px;font-weight:500;color:var(--oxford-60);margin-top:4px}
+.pa-card__count--urgent{color:#B45309;font-weight:600}
+.pa-card__rule{height:1px;background:var(--oxford-10);margin:14px 0}
+.pa-card__who{display:flex;align-items:flex-start;gap:11px}
+.pa-card__av{width:38px;height:38px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;flex:none}
+.pa-card__name{font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--oxford);line-height:1.3}
+.pa-card__nth{font-size:12.5px;font-weight:500;color:var(--oxford-60);margin-top:1px}
+.pa-card__note{margin-top:12px;font-size:12.5px;font-weight:500;color:var(--oxford-60);line-height:1.5}
+.pa-card__foot{display:flex;gap:9px;margin-top:auto;padding-top:16px}
+
+/* ─── "Daha çox" menyusu ───────────────────────────────────────────────── */
+.pa-menu-btn{display:inline-flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:8px;color:var(--oxford-60);cursor:pointer;transition:background .15s,border-color .15s}
+.pa-menu-btn:hover,.pa-menu-btn[data-open]{background:#F4F7FB;border-color:var(--oxford-10)}
+.pa-menu{position:absolute;right:0;z-index:41;min-width:224px;background:#fff;border:1px solid var(--oxford-10);border-radius:12px;box-shadow:0 12px 32px rgba(0,33,71,.12);padding:6px;animation:gorFade .16s ease}
+.pa-menu__item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:none;border-radius:8px;padding:9px 10px;font-size:13px;font-weight:500;font-family:inherit;color:var(--oxford);cursor:pointer;text-decoration:none;transition:background .12s}
+.pa-menu__item:hover{background:#F4F7FB}
+.pa-menu__item--danger{color:#B4413F}
+.pa-menu__item--danger:hover{background:#FBF1F1}
+.pa-menu__ico{width:18px;display:inline-flex;align-items:center;justify-content:center;flex:none;opacity:.85}
+.pa-menu__sep{height:1px;background:var(--oxford-10);margin:5px 4px}
+@media(max-width:760px){
+  .pa-next{flex-direction:column}
+  .pa-next__when{width:auto;flex-direction:row;align-items:baseline;gap:10px;padding:15px 20px;border-right:none;border-bottom:1px solid var(--oxford-10)}
+  .pa-next__day{margin-bottom:0}
+  .pa-next__time{font-size:24px}
+  .pa-next__end{margin-top:0}
+  .pa-next__cta{width:auto;padding:0 20px 20px}
+  .pa-next__main{padding:20px}
+}
 `;
 
 /* ─── Inline line icons (no emojis) ──────────────────────────────────────── */
 type IcoProps = { s?: number; c?: string };
 export function IClock({ s = 14, c = "#5C6B85" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>; }
-export function IDots({ s = 16, c = "#5C6B85" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill={c} aria-hidden><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>; }
+/* Meta sətri ikonları — seans sayı, paket, pulsuz tanışlıq. */
+export function ILayers({ s = 13, c = "#9DB0CC" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" /></svg>; }
+export function IBox({ s = 13, c = "#9DB0CC" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z" /><path d="M3 8l9 5 9-5M12 13v9" /></svg>; }
+export function ISpark({ s = 13, c = "#9DB0CC" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 3l2.2 6.8H21l-5.5 4 2.1 6.8L12 16.6 6.4 20.6l2.1-6.8L3 9.8h6.8L12 3z" /></svg>; }
+export function IDots({ s = 16, c = "#5C6B85" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill={c} aria-hidden><circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" /></svg>; }
 export function IMsg({ s = 14, c = "#9DB0CC" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>; }
 export function ICal({ s = 20, c = "currentColor" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>; }
 export function IAlert({ s = 20, c = "currentColor" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>; }
@@ -109,25 +190,54 @@ export function IVideo({ s = 15, c = "currentColor" }: IcoProps) { return <svg w
 export function IOpen({ s = 15, c = "currentColor" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>; }
 export function ISearch({ s = 15, c = "currentColor" }: IcoProps) { return <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="m21 21-4.35-4.35" /></svg>; }
 
-/* Paket seansını adi seans siyahılarında fərqləndirən nişan. */
-export function PackageBadge({ name }: { name?: string | null }) {
+/* ─── Mətn primitivləri ──────────────────────────────────────────────────
+   Rəngli nişan/çip yerinə sadə "Etiket: dəyər" sətirləri və nöqtə + status
+   mətni. Panel dili vebsayt ilə eyni olsun deyə. */
+
+/* Seans statusu — semantik tonda yumşaq nişan.
+   mavi = sizdən asılı, yaşıl = qaydasında, kəhrəba = gözləmədə, gül = problem,
+   boz = arxivlik. Rəng mənası daşıyır, bəzək deyil. */
+const STATUS_TONE: Record<string, string> = {
+  ASSIGNED: "pa-status--brand",
+  CONFIRMED: "pa-status--sage",
+  PENDING: "pa-status--amber",
+  AWAITING_CONFIRMATION: "pa-status--amber",
+  CANCEL_REQUESTED: "pa-status--amber",
+  REJECTED: "pa-status--rose",
+  DISPUTED: "pa-status--rose",
+  CANCELLED: "pa-status--rose",
+};
+export function StatusText({ status, size }: { status: string; size?: number }) {
+  const s = STATUS[status] ?? STATUS.ASSIGNED;
   return (
-    <span title={name ?? undefined} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--brand-50)", color: "var(--brand-700)", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-      </svg>
-      Paket
+    <span className={`pa-status ${STATUS_TONE[status] ?? ""}`.trim()} style={size ? { fontSize: size } : undefined}>
+      {s.label}
     </span>
   );
 }
 
-/* Pulsuz tanışlıq (INTRO, 15 dəq) görüşünü adi seans siyahılarında fərqləndirən nişan. */
-export function IntroBadge() {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#D1FAE5", color: "#065F46", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>
-      Tanışlıq · Pulsuz
-    </span>
-  );
+/* Seansın növü/paketi haqqında sətirlər — "Paket: 8 seanslıq proqram". */
+/** Meta sətrinin bir elementi: ikon + mətn. Elementlər arasında ayırıcı ("·")
+ *  yoxdur — fərqi ikon və boşluq yaradır. */
+export function MetaItem({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return <span className="pa-meta__item">{icon}<span>{children}</span></span>;
+}
+
+export function SessionMeta({ a, extra }: { a: AppointmentDetail; extra?: React.ReactNode }) {
+  const items: React.ReactNode[] = [];
+  if (extra) items.push(extra);
+  if (a.sessionKind === "INTRO") {
+    items.push(<MetaItem icon={<ISpark />}>Pulsuz tanışlıq görüşü</MetaItem>);
+  }
+  if (a.patientPackageId != null) {
+    items.push(<MetaItem icon={<IBox />}><b>{a.packageName ?? "Seans paketi"}</b></MetaItem>);
+    if (a.packageRemaining != null) {
+      items.push(<MetaItem icon={<ICheck s={13} c="#9DB0CC" />}>{a.packageRemaining} seans qalıb</MetaItem>);
+    }
+  }
+  if (!items.length) return null;
+  // Fragment ilə sarılır ki, elementlər birbaşa flex uşağı qalsın (boşluqlar düzgün işləsin).
+  return <div className="pa-meta">{items.map((l, i) => <Fragment key={i}>{l}</Fragment>)}</div>;
 }
 
 export function Empty({ msg }: { msg: string }) {
@@ -143,23 +253,16 @@ export function Empty({ msg }: { msg: string }) {
    edilməyibsə boz/deaktiv. Pasient tərəfindəki SessionJoinButton ilə eyni dizayn. */
 export function PsyJoinButton({ a }: { a: AppointmentDetail }) {
   const link = a.meetingLink;
-  const base: React.CSSProperties = {
-    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
-    width: "100%", borderRadius: 10, padding: "11px 14px",
-    fontSize: 13.5, fontWeight: 700, fontFamily: "inherit",
-  };
   if (link) {
     return (
-      <a href={link} target="_blank" rel="noopener noreferrer"
-        style={{ ...base, background: "var(--brand)", color: "#fff", textDecoration: "none", boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
+      <a href={link} target="_blank" rel="noopener noreferrer" className="pa-btn pa-btn--primary">
         <IVideo />
         Seansa qoşul
       </a>
     );
   }
   return (
-    <span title="Görüş linkini operator təyin edəcək"
-      style={{ ...base, background: "#EEF2F8", color: "#9AA7BD", cursor: "not-allowed", userSelect: "none" }}>
+    <span title="Görüş linkini operator təyin edəcək" className="pa-btn pa-btn--muted">
       <IVideo />
       Seansa qoşul
     </span>
@@ -188,29 +291,48 @@ export function gcalHrefFor(a: AppointmentDetail): string | null {
 
 export type MenuItem = { label: string; onClick?: () => void; href?: string; danger?: boolean; icon?: React.ReactNode };
 
+/** Kartın küncündəki "daha çox" menyusu — şaquli üç nöqtə (standart overflow
+ *  affordansı). Sıralama sabitdir: təhlükəsiz əməliyyatlar üstdə, dağıdıcı
+ *  olanlar (ləğv/rədd/baş tutmadı) ayırıcı xəttdən sonra ən altda — beləliklə
+ *  siyahı hansı statusda olursa-olsun eyni əzələ yaddaşı ilə işləyir. */
 export function RowMenu({ items, size = 32 }: { items: MenuItem[]; size?: number }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   if (!items.length) return null;
+  const safe = items.filter(it => !it.danger);
+  const danger = items.filter(it => it.danger);
+  const ordered = [...safe, ...danger];
+  const firstDangerAt = danger.length ? safe.length : -1;
+
   return (
     <div style={{ position: "relative", flex: "none" }}>
-      <button type="button" className="gor-menu" aria-label="Əməliyyatlar" onClick={() => setOpen(o => !o)}
-        style={{ width: size, height: size, display: "inline-flex", alignItems: "center", justifyContent: "center", background: open ? "var(--brand-50)" : "transparent", color: "var(--oxford-60)", border: "none", borderRadius: 8, cursor: "pointer" }}>
+      <button type="button" className="pa-menu-btn" aria-label="Digər əməliyyatlar"
+        aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}
+        style={{ width: size, height: size }} data-open={open ? "1" : undefined}>
         <IDots s={17} />
       </button>
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} aria-hidden />
-          <div role="menu" style={{ position: "absolute", right: 0, top: size + 4, zIndex: 41, minWidth: 210, background: "#fff", border: "1px solid #E3EAF6", borderRadius: 12, boxShadow: "0 10px 30px rgba(8,47,109,.14)", padding: 6, animation: "gorFade .16s ease" }}>
-            {items.map((it, i) => {
-              const st: React.CSSProperties = { display: "flex", alignItems: "center", gap: 9, width: "100%", textAlign: "left", background: "none", border: "none", borderRadius: 8, padding: "9px 11px", fontSize: 13, fontWeight: 600, color: it.danger ? "#991B1B" : "var(--oxford)", cursor: "pointer", fontFamily: "inherit", textDecoration: "none" };
-              const cls = `gor-sheet-item${it.danger ? " gor-sheet-item--danger" : ""}`;
-              if (!it.href) {
-                return <button key={i} type="button" className={cls} style={st} onClick={() => { setOpen(false); it.onClick?.(); }}>{it.icon}<span>{it.label}</span></button>;
-              }
-              // Xarici linklər (məs. Google Calendar) yeni tabda açılır.
-              return it.href.startsWith("http")
-                ? <a key={i} href={it.href} target="_blank" rel="noopener noreferrer" className={cls} style={st} onClick={() => setOpen(false)}>{it.icon}<span>{it.label}</span></a>
-                : <Link key={i} href={it.href} className={cls} style={st} onClick={() => setOpen(false)}>{it.icon}<span>{it.label}</span></Link>;
+          <div role="menu" className="pa-menu" style={{ top: size + 6 }}>
+            {ordered.map((it, i) => {
+              const cls = `pa-menu__item${it.danger ? " pa-menu__item--danger" : ""}`;
+              const sep = i === firstDangerAt ? <div key={`sep-${i}`} className="pa-menu__sep" /> : null;
+              const inner = <><span className="pa-menu__ico">{it.icon}</span><span>{it.label}</span></>;
+              const node = !it.href
+                ? <button key={i} type="button" className={cls} onClick={() => { setOpen(false); it.onClick?.(); }}>{inner}</button>
+                // Xarici linklər (məs. Google Calendar) yeni tabda açılır.
+                : it.href.startsWith("http")
+                  ? <a key={i} href={it.href} target="_blank" rel="noopener noreferrer" className={cls} onClick={() => setOpen(false)}>{inner}</a>
+                  : <Link key={i} href={it.href} className={cls} onClick={() => setOpen(false)}>{inner}</Link>;
+              return sep ? <div key={`g-${i}`}>{sep}{node}</div> : node;
             })}
           </div>
         </>

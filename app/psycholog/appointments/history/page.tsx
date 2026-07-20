@@ -11,9 +11,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { psychologistApi, type AppointmentDetail } from "@/lib/api";
 import {
-  pad2, fmtTime, avatarColor, initialsOf, STATUS, NO_SHOW_REPORT_WINDOW_MS,
+  pad2, fmtTime, avatarColor, initialsOf, NO_SHOW_REPORT_WINDOW_MS,
   PSY_APPT_STYLE, IMsg, IAlert, IUser, ISearch,
-  PackageBadge, IntroBadge, RowMenu, type MenuItem, DisputeModal, OutcomeModal,
+  StatusText, SessionMeta, RowMenu, type MenuItem, DisputeModal, OutcomeModal,
 } from "../shared";
 
 const CANCEL_REASON_LABEL: Record<string, string> = {
@@ -108,7 +108,7 @@ export default function PsychologistAppointmentHistoryPage() {
   const hasMore = items.length < totalElements;
 
   return (
-    <div className="psy-appt-page" style={{ maxWidth: 1040, margin: "0 auto" }}>
+    <div className="psy-appt-page">
       <style>{PSY_APPT_STYLE}</style>
       <header style={{ marginBottom: 22 }}>
         <Link href="/psycholog/appointments" style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none", marginBottom: 10 }}>
@@ -214,7 +214,6 @@ function HistoryCard({
   const ref = a.startAt ?? a.endAt;
   if (!ref) return null;
   const d = new Date(ref);
-  const status = STATUS[a.status] ?? STATUS.COMPLETED;
   const av = avatarColor(a.patientId ?? a.patientName);
   // Avtomatik tamamlanmış seansı bu pəncərə ərzində "baş tutmadı" kimi bildirmək olar.
   const endMs = a.endAt ? new Date(a.endAt).getTime() : null;
@@ -239,10 +238,9 @@ function HistoryCard({
         {menu.length > 0 && <RowMenu items={menu} />}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
-        <span className="psy-card__badge" style={{ background: status.bg, color: status.color }}>{status.label}</span>
-        {a.patientPackageId != null && <PackageBadge name={a.packageName} />}
-        {a.sessionKind === "INTRO" && <IntroBadge />}
+      <div style={{ marginTop: 12 }}>
+        <StatusText status={a.status} />
+        <SessionMeta a={a} />
       </div>
 
       {cancelReason && (

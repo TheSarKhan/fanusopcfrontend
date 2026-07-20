@@ -185,7 +185,7 @@ export default function PsyTestStatsPage() {
   const hbtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" };
 
   return (
-    <div style={{ width: "100%", maxWidth: 1160, margin: "0 auto" }}>
+    <div className="panel-page">
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
         <button type="button" onClick={() => router.push("/psycholog/tests")} aria-label="Geri"
           style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid #EEF2F7", background: "#fff", color: "#52718F", cursor: "pointer", fontSize: 18, lineHeight: 1, flexShrink: 0 }}>←</button>

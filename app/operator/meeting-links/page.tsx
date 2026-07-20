@@ -61,6 +61,7 @@ function untilLabel(iso?: string | null): string {
 
 export default function OperatorMeetingLinksPage() {
   const [items, setItems] = useState<AppointmentDetail[]>([]);
+  const [sentItems, setSentItems] = useState<AppointmentDetail[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = () => {
@@ -69,6 +70,10 @@ export default function OperatorMeetingLinksPage() {
       .then(setItems)
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
+    // Göndərilmiş linklər — redaktə bölməsi (siyahıdan çıxmır, yenilənir).
+    operatorApi.sentMeetingLinks()
+      .then(setSentItems)
+      .catch(() => setSentItems([]));
   };
 
   useEffect(load, []);
@@ -108,14 +113,41 @@ export default function OperatorMeetingLinksPage() {
           ))}
         </div>
       )}
+
+      {/* Göndərilmiş linklər — mövcud linki redaktə etmək üçün (əvvəllər link
+          göndəriləndən sonra sətir yox olurdu və dəyişmək mümkün deyildi). */}
+      {sentItems.length > 0 && (
+        <div style={{ marginTop: 26 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)", marginBottom: 4 }}>
+            Göndərilmiş linklər
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginBottom: 12 }}>
+            Yaxınlaşan seanslar üçün link artıq göndərilib. Linki dəyişib yenidən göndərə bilərsiniz.
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))", gap: 12, alignItems: "stretch" }}>
+            {sentItems.map(a => (
+              <MeetingLinkCard
+                key={a.id}
+                a={a}
+                mode="sent"
+                onSent={load}
+                onUpdated={(u) => setSentItems(prev => prev.map(x => (x.id === u.id ? u : x)))}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function MeetingLinkCard({ a, onSent, onUpdated }: {
+function MeetingLinkCard({ a, onSent, onUpdated, mode = "pending" }: {
   a: AppointmentDetail;
   onSent: () => void;
   onUpdated: (a: AppointmentDetail) => void;
+  /** "pending" — link hələ göndərilməyib (iş siyahısı). "sent" — link göndərilib,
+   *  operator onu redaktə edir (sətir siyahıdan çıxmır, yenilənir). */
+  mode?: "pending" | "sent";
 }) {
   const [value, setValue] = useState(a.meetingLink ?? "");
   const [busy, setBusy] = useState(false);
@@ -244,10 +276,10 @@ function MeetingLinkCard({ a, onSent, onUpdated }: {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <button type="button" onClick={saveAndSend} disabled={busy} className="fx-btn fx-btn--primary" style={{ width: "100%", ...busyStyle }}>
-              <IconSend /> Əlavə et və göndər
+              <IconSend /> {mode === "sent" ? "Yenilə və yenidən göndər" : "Əlavə et və göndər"}
             </button>
             <button type="button" onClick={saveOnly} disabled={busy} className="fx-btn fx-btn--ghost" style={{ width: "100%", ...busyStyle }}>
-              Yalnız saxla
+              {mode === "sent" ? "Yalnız dəyişikliyi saxla" : "Yalnız saxla"}
             </button>
           </div>
         </>

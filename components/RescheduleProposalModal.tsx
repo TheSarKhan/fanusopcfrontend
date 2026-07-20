@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { patientApi, type RescheduleProposal } from "@/lib/api";
 
-const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
+const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
 function pad2(n: number) { return String(n).padStart(2, "0"); }
 function fmtFull(iso: string) {
   const d = new Date(iso);

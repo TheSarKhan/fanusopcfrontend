@@ -70,6 +70,12 @@ const netOf = (p: PaymentItem) => p.amount - (p.refundedAmount ?? 0);
 const commOf = (p: PaymentItem) => p.commissionAmount != null ? Math.round(p.commissionAmount) : Math.round(p.amount * PLATFORM_RATE);
 const linkLabel = (p: PaymentItem) =>
   p.patientPackageId != null ? "Paket" : p.appointmentId != null ? `Seans #${p.appointmentId}` : "—";
+/** Pasiyentin adı ödənişdə snapshot kimi saxlanılır — hesab silinsə də siyahıda görünür.
+ *  Ona görə silinmiş hesabda adın ÖNÜNDƏ sakit "(silinmiş)" işarəsi göstərilir. */
+function DeletedMark({ p }: { p: PaymentItem }) {
+  if (!p.patientAccountDeleted) return null;
+  return <span style={{ color: "#B91C1C", fontWeight: 500 }}>(silinmiş) </span>;
+}
 const originLabel = (p: PaymentItem) => p.origin === "DIRECT" ? "Birbaşa" : p.origin === "PLATFORM_MATCHED" ? "Yönləndirilmiş" : null;
 
 // ─── Səhifə ───────────────────────────────────────────────────────────────────
@@ -378,7 +384,7 @@ export default function OperatorPaymentsPage() {
                   <div key={p.id} className="pm-attn-row" style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 24px", borderTop: "1px solid var(--hairline)" }}>
                     <span className={`fx-avatar fx-avatar--sm ${avatarClassOf(p.id)}`}>{initialsOf(p.patientName)}</span>
                     <div style={{ display: "flex", flexDirection: "column", minWidth: 170 }}>
-                      <span style={{ fontSize: 13.5, fontWeight: 600 }}>{p.patientName}</span>
+                      <span style={{ fontSize: 13.5, fontWeight: 600 }}><DeletedMark p={p} />{p.patientName}</span>
                       <span style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>{linkLabel(p)}{p.psychologistName ? ` · ${p.psychologistName}` : ""}</span>
                     </div>
                     <span className={`fx-pill ${agePillClass} fx-num`} style={{ whiteSpace: "nowrap" }}>{ageLabel(h)}</span>
@@ -616,7 +622,7 @@ function PayRow({ p, selected, onToggle, onOpen, onPay, onCancel, onRefund }: {
       <input type="checkbox" checked={selected} onChange={onToggle} onClick={e => e.stopPropagation()} aria-label="Seç" className="fx-checkbox" />
       <span className={`fx-avatar ${avatarClassOf(p.id)}`}>{initialsOf(p.patientName)}</span>
       <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 210 }}>
-        <span className="fx-row__title">{p.patientName}</span>
+        <span className="fx-row__title"><DeletedMark p={p} />{p.patientName}</span>
         <div className="fx-row__meta">
           <MethodIcon method={p.method} />
           <span>{p.method}</span><span className="fx-sep">·</span>
@@ -669,7 +675,7 @@ function Drawer({ p, onClose, onCall, onWhatsapp, onViewLinked }: { p: PaymentIt
         <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "24px 26px", borderBottom: "1px solid var(--hairline)" }}>
           <span className={`fx-avatar fx-avatar--md ${avatarClassOf(p.id)}`}>{initialsOf(p.patientName)}</span>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 5 }}>
-            <div className="fx-h3">{p.patientName}</div>
+            <div className="fx-h3"><DeletedMark p={p} />{p.patientName}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span className="fx-num" style={{ fontSize: 20, fontWeight: 800 }}>{fmtNum(p.amount)} <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>AZN</span></span>
               <span className={`fx-pill ${PILL_CLASS[st] ?? "fx-pill--pending"}`}>{PILL_LABEL[st] ?? PILL_LABEL.PENDING}</span>

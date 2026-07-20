@@ -2,11 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import QuickRequestForm from "@/components/QuickRequestForm";
+import { buildPanelUrl, clearUser, getStoredUser } from "@/lib/auth";
+import { tryGetMe } from "@/lib/api";
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
+
+const ROLE_LABEL: Record<string, string> = {
+  PATIENT: "Pasiyent",
+  PSYCHOLOGIST: "Psixoloq",
+  OPERATOR: "Operator",
+  ADMIN: "Administrator",
+};
 
 /** "Bizə Müraciət Edin" — psixoloqsuz sürətli müraciət modalı (Sayt BRD §8.2, SAYT-FR-19). */
 export default function SessionRequestModal({ open, onClose }: Props) {
@@ -25,6 +34,31 @@ export default function SessionRequestModal({ open, onClose }: Props) {
   useEffect(() => {
     if (open) setFormKey(k => k + 1);
   }, [open]);
+
+  // Sayt üzərindən müraciət QONAQ axınıdır. Login olmuş istifadəçi bura düşməməlidir:
+  // pasiyent öz bron axınına yönləndirilir, digər rollarda forma ümumiyyətlə açılmır
+  // (əvvəl admin hesabı ilə də müraciət göndərmək mümkün idi).
+  // undefined = hələ yoxlanılır, null = qonaq.
+  const [role, setRole] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!open) { setRole(undefined); return; }
+    // Keşdən dərhal (forma bir anlıq görünməsin), sonra cookie ilə təsdiqlə.
+    setRole(getStoredUser()?.role ?? null);
+    let cancelled = false;
+    tryGetMe().then(me => {
+      if (cancelled) return;
+      if (!me) { clearUser(); setRole(null); return; }
+      setRole(me.role);
+    }).catch(() => { /* şəbəkə xətası — keşdəki dəyər qalsın */ });
+    return () => { cancelled = true; };
+  }, [open]);
+
+  // Pasiyent: qonaq forması yerinə öz psixoloq seçimi/bron axını.
+  useEffect(() => {
+    if (!open || role !== "PATIENT") return;
+    window.location.href = `${buildPanelUrl("PATIENT")}/psychologists`;
+  }, [open, role]);
 
   if (!open) return null;
 
@@ -56,7 +90,9 @@ export default function SessionRequestModal({ open, onClose }: Props) {
                 Seans üçün müraciət
               </h2>
               <p style={{ margin: "6px 0 0", fontSize: 13, color: "#52718F" }}>
-                Formanı doldurun, operator sizinlə əlaqə saxlayacaq.
+                {role === null
+                  ? "Formanı doldurun, operator sizinlə əlaqə saxlayacaq."
+                  : "Hesab məlumatı yoxlanılır…"}
               </p>
             </div>
             <button
@@ -73,7 +109,30 @@ export default function SessionRequestModal({ open, onClose }: Props) {
             </button>
           </div>
 
-          <QuickRequestForm key={formKey} onDone={onClose} />
+          {role === undefined || role === "PATIENT" ? (
+            <p style={{ margin: 0, fontSize: 13.5, color: "#52718F" }}>Yüklənir…</p>
+          ) : role === null ? (
+            <QuickRequestForm key={formKey} onDone={onClose} />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "#0B1A35" }}>
+                Siz <strong>{ROLE_LABEL[role] ?? role}</strong> hesabı ilə daxil olmusunuz.
+                Seans müraciəti yalnız pasiyentlər üçündür.
+              </p>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => { window.location.href = buildPanelUrl(role); }}
+                  className="fanus-btn fanus-btn-primary"
+                >
+                  Panelə keç
+                </button>
+                <button type="button" onClick={onClose} className="fanus-btn fanus-btn-ghost">
+                  Bağla
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

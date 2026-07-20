@@ -41,7 +41,7 @@ function fmtDay(iso: string) {
   const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
   if (same(d, today)) return "Bu gün";
   if (same(d, tomorrow)) return "Sabah";
-  const months = ["Yan","Fev","Mar","Apr","May","İyn","İyl","Avq","Sen","Okt","Noy","Dek"];
+  const months = ["Yanvar","Fevral","Mart","Aprel","May","İyun","İyul","Avqust","Sentyabr","Oktyabr","Noyabr","Dekabr"];
   return `${d.getDate()} ${months[d.getMonth()]}`;
 }
 

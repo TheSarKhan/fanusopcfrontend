@@ -1862,6 +1862,9 @@ export interface PaymentItem {
   commissionAmount?: number | null;
   /** 'DIRECT' | 'PLATFORM_MATCHED' — komissiya fərqləndirməsi üçün mənbə. */
   origin?: string | null;
+  /** Pasiyentin hesabı silinib/deaktivdir — ad snapshot-dan gəldiyi üçün siyahıda
+   *  hələ görünür, ona görə adın yanında "(silinmiş)" göstərilməlidir. */
+  patientAccountDeleted?: boolean;
 }
 
 export interface PaymentSummary {
@@ -2837,6 +2840,10 @@ export interface PsychologistStats {
   sessionHoursThisMonth?: number;
   weeklyStreak?: number;
   noShowsLast90Days?: number;
+  /** Müştəri məhz bu psixoloqu seçib (ləğv/rədd istisna). */
+  originDirectCount?: number;
+  /** Fanus yönləndirib — platforma uyğunlaşdırması. */
+  originMatchedCount?: number;
 }
 
 export interface ClientSummary {
@@ -3346,6 +3353,9 @@ export const operatorApi = {
   // Modul B: seans görüş linki idarəetməsi
   pendingMeetingLinks: () =>
     authedRequest<AppointmentDetail[]>("GET", "/operator/meeting-links/pending"),
+  /** Linki artıq göndərilmiş yaxın seanslar — mövcud linki redaktə etmək üçün. */
+  sentMeetingLinks: () =>
+    authedRequest<AppointmentDetail[]>("GET", "/operator/meeting-links/sent"),
   setMeetingLink: (id: number, meetingLink: string) =>
     authedRequest<AppointmentDetail>("PUT", `/operator/appointments/${id}/meeting-link`, { meetingLink }),
   revokeMeetingLink: (id: number) =>
@@ -3681,6 +3691,8 @@ export interface SessionRequest {
   claimedByUserId: number | null;
   claimedByName: string | null;
   claimedAt: string | null;
+  /** Müraciəti göndərən qeydiyyatlı pasiyent (login olmuş halda). Qonaqda null. */
+  patientId: number | null;
   convertedPatientId: number | null;
   convertedAppointmentId: number | null;
   convertedPackageId: number | null;

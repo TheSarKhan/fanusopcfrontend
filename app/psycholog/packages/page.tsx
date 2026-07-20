@@ -93,7 +93,7 @@ export default function PsychologPackagesPage() {
     update(p.id, { name: p.name, sessionCount: p.sessionCount, packagePrice: p.packagePrice, active: !p.active });
 
   return (
-    <div style={{ maxWidth: 1040, margin: "0 auto" }}>
+    <div className="panel-page">
       <style>{`@keyframes pkFade{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
         .pk-icobtn:hover{border-color:var(--brand)!important;color:var(--brand)!important}
         .pk-del:hover{background:#FEE2E2!important}

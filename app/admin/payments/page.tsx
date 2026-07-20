@@ -121,7 +121,10 @@ export default function AdminPaymentsPage() {
               <div className="list-item" key={p.id}>
                 <div style={{ flex: 2, minWidth: 0 }}>
                   <div className="li-title">
-                    #PAY-{String(p.id).padStart(4, "0")} · {p.patientName || "—"}
+                    #PAY-{String(p.id).padStart(4, "0")} ·{" "}
+                    {/* Ad snapshot-dan gəlir — hesab silinibsə adın önündə bunu bildir. */}
+                    {p.patientAccountDeleted && <span style={{ color: "#B91C1C", fontWeight: 500 }}>(silinmiş) </span>}
+                    {p.patientName || "—"}
                     <span className="pill ox" style={{ marginLeft: 6 }}>
                       {p.patientPackageId != null ? "Paket" : "Seans"}
                     </span>

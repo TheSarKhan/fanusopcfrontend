@@ -434,7 +434,7 @@ export default function PatientDetailPage() {
   const overviewHasSide = !!upcoming?.startAt || !!firstNote?.note || crisis.length > 0;
 
   return (
-    <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+    <div className="panel-page">
       <style>{`
 .m360-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .m360-goalgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px, 100%), 1fr));gap:14px}

@@ -29,7 +29,7 @@ import {
   initialsOf, pad2, cleanOperatorNote,
 } from "./shared";
 
-const MONTHS_AZ = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
+const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
 
 function fmtTime(d: Date) { return azFormatTime(d); }
 // AZ-zone year/month/day key for a Date — uses Intl with Asia/Baku.

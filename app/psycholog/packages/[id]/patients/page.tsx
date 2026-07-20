@@ -45,7 +45,7 @@ export default function PackagePatientsPage() {
 
   if (loading) {
     return (
-      <div style={{ maxWidth: 1040, margin: "0 auto" }}>
+      <div className="panel-page">
         {backLink}
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>Yüklənir…</div>
       </div>
@@ -54,7 +54,7 @@ export default function PackagePatientsPage() {
 
   if (!pkg) {
     return (
-      <div style={{ maxWidth: 1040, margin: "0 auto" }}>
+      <div className="panel-page">
         {backLink}
         <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: 40, textAlign: "center", fontSize: 14, color: "var(--oxford-60)", fontWeight: 600 }}>
           Paket tapılmadı
@@ -64,7 +64,7 @@ export default function PackagePatientsPage() {
   }
 
   return (
-    <div style={{ maxWidth: 1040, margin: "0 auto" }}>
+    <div className="panel-page">
       {backLink}
 
       {/* Paket başlığı */}

@@ -8,6 +8,7 @@ import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import PageHeader from "@/components/PageHeader";
 import ReviewModal from "@/app/patient/appointments/ReviewModal";
+import FanusAssignWizard from "@/components/FanusAssignWizard";
 
 type SortMode = "recommended" | "rating" | "experience" | "newest";
 
@@ -47,6 +48,7 @@ export default function PatientPsychologistsPage() {
   const [reviewFor, setReviewFor] = useState<Psychologist | null>(null);
   const [reviewInitial, setReviewInitial] = useState<MyReview | null>(null);
   const [reviewBusy, setReviewBusy] = useState<number | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([getPsychologists(), patientApi.favorites(), patientApi.myReviews().catch(() => [] as MyReview[])])
@@ -225,6 +227,34 @@ export default function PatientPsychologistsPage() {
         </div>
       </div>
 
+      {/* 3.5 "Fanus təyin etsin" — hansı psixoloqu seçəcəyini bilməyən pasiyent
+          seçimi bizə həvalə edir; müraciət operator hovuzuna düşür. Filtrlərdən
+          asılı olmasın deyə şəbəkədən kənarda, həmişə görünür. */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: 16, flexWrap: "wrap",
+        border: "1.5px solid var(--brand-100, #D8E2EF)",
+        background: "var(--brand-50, #F4F8FF)",
+        borderRadius: 14, padding: "16px 18px", marginBottom: 20,
+      }}>
+        <div style={{ minWidth: 240, flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford, #0B1A35)" }}>
+            Hansı psixoloqu seçəcəyinizi bilmirsiniz?
+          </div>
+          <div style={{ fontSize: 13, color: "var(--oxford-60, #52718F)", marginTop: 4, lineHeight: 1.55 }}>
+            Bir neçə sual verək — ehtiyacınıza uyğun psixoloqu Fanus təyin etsin.
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAssignOpen(true)}
+          className="fanus-btn fanus-btn-primary"
+          style={{ flex: "none" }}
+        >
+          Fanus təyin etsin
+        </button>
+      </div>
+
       {/* 4. CARDS / STATES */}
       {loading ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 20 }}>
@@ -248,6 +278,8 @@ export default function PatientPsychologistsPage() {
           ))}
         </div>
       )}
+
+      <FanusAssignWizard open={assignOpen} onClose={() => setAssignOpen(false)} />
 
       {reviewFor && (
         <ReviewModal

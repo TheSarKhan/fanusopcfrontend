@@ -17,8 +17,10 @@ const SHOW_GOOGLE_INTEGRATION = true;
 const HOUR_PX = 72;                  // 1 dəqiqə = 1.2px — 11:20–12:25 kimi seanslar dəqiq proporsiyada görünür
 const PX_PER_MIN = HOUR_PX / 60;
 const DROP_SNAP_MIN = 15;            // drop targets snap to a 15-minute grid
-const DEFAULT_HOUR_MIN = 7;
-const DEFAULT_HOUR_MAX = 21;         // exclusive upper bound (last visible hour label = 20)
+// Cədvəl həmişə tam 24 saatı göstərir (00:00–23:00) — heç bir seans/hadisə
+// görünən pəncərədən kənarda qalmasın.
+const DEFAULT_HOUR_MIN = 0;
+const DEFAULT_HOUR_MAX = 24;         // exclusive upper bound (last visible hour label = 23)
 
 function startOfWeek(d: Date) {
   const x = new Date(d);
@@ -565,7 +567,9 @@ export default function PsychologCalendarPage() {
             </div>
 
             {/* Scrollable time grid */}
-            <div ref={gridScrollRef} style={{ maxHeight: "70vh", overflow: "auto", position: "relative" }}>
+            {/* paddingTop: ilk saat etiketi (00:00) translateY(-6px) ilə yuxarı sürüşür —
+                boşluq olmasa scroll konteyneri onu yarıya qədər kəsirdi. */}
+            <div ref={gridScrollRef} style={{ maxHeight: "70vh", overflow: "auto", position: "relative", paddingTop: 10 }}>
               <div style={{
                 display: "grid",
                 gridTemplateColumns: `60px repeat(7, 1fr)`,

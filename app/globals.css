@@ -2385,7 +2385,18 @@
 /* Collapsed: let hover tooltips escape the rail instead of being clipped. */
 .ps-side.is-collapsed .ps-side__nav { padding: 14px 10px; overflow: visible; }
 .ps-side.is-collapsed .ps-nav { justify-content: center; padding: 10px; gap: 0; position: relative; }
-.ps-side.is-collapsed .ps-nav__badge { display: none; }
+/* Yığılmış rail-də nişanə GİZLƏNMİR — əks halda admin oxunmamış mesajı /
+   gözləyən rəyi ümumiyyətlə görmür. İkonun sağ-üst küncündə kiçik sayğac
+   kimi qalır; kontur onu ikondan ayırır. */
+.ps-side.is-collapsed .ps-nav__badge {
+  position: absolute; top: 3px; right: 3px;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  font-size: 10px;
+  box-shadow: 0 0 0 2px #fff;
+}
+.ps-side.is-collapsed .ps-nav.is-active .ps-nav__badge {
+  box-shadow: 0 0 0 2px var(--brand);
+}
 /* Label is hidden inline, then revealed as a floating badge on hover. */
 .ps-side.is-collapsed .ps-nav span:not(.ps-nav__badge) { display: none; }
 .ps-side.is-collapsed .ps-nav:hover span:not(.ps-nav__badge) {
@@ -2952,8 +2963,14 @@
   .psy-avail-form > button { grid-column: span 2; }
 }
 
-/* ─── Psycholog appointments page (.psy-hero/.psy-card/.psy-week-row/.psy-hist-row) ── */
-.psy-appt-page { display: flex; flex-direction: column; max-width: 1400px; width: 100%; }
+/* ─── Panel səhifə qabığı (LAYOUT QAYDASI) ────────────────────────────────
+   Panel səhifələri .ps-content-un tam enini tutur; yalnız çox geniş ekranlarda
+   oxunaqlıq üçün yumşaq tavan qoyulur. Kök sarğıya inline `max-width` YAZMAYIN
+   — .ps-content qaydası onu mərkəzləyir və sağda ölü boşluq yaradır. */
+.panel-page,
+.psy-appt-page { display: flex; flex-direction: column; width: 100%; max-width: 1400px; }
+@media (min-width: 1600px) { .panel-page, .psy-appt-page { max-width: 1560px; } }
+@media (min-width: 1920px) { .panel-page, .psy-appt-page { max-width: 1720px; } }
 
 /* Two-pane responsive layout: agenda (main) + sticky info rail (side) */
 .psy-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
@@ -7623,6 +7640,19 @@
 }
 .uprof-field small { font-size: 11px; color: var(--oxford-60); }
 
+/* Şifrə sahəsi + "göstər/gizlət" göz düyməsi. Wrapper input-un yerini tutur
+   (flex sütunda stretch olur), göz isə onun üzərində mütləq mövqedədir.
+   Həm .uprof-field, həm .uprof-priv-confirm daxilində işləyir. */
+.uprof-pw { position: relative; display: block; width: 100%; }
+.uprof-pw > input { width: 100%; box-sizing: border-box; padding-right: 40px; }
+.uprof-pw__eye {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: center;
+  background: none; border: none; padding: 4px; cursor: pointer;
+  color: var(--oxford-60); line-height: 0;
+}
+.uprof-pw__eye:hover { color: var(--oxford); }
+
 .uprof-error-inline {
   background: #FEF2F2; border: 1px solid #FECACA;
   color: #991B1B; padding: 10px 14px; border-radius: 10px;
@@ -11719,4 +11749,118 @@ a.pread-author:hover .pread-author__name { color: var(--brand-700); }
   .pread-body { padding: 18px 16px 8px; }
   .pread-title { font-size: 22px; }
   .pread-actions { padding: 12px 16px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL DİZAYN DİLİ (pnl-*)
+   ───────────────────────────────────────────────────────────────────────────
+   Panellər sayta yad görünürdü: gradient hero banner-lər, halqa/qauge
+   göstəricilər, uppercase "eyebrow" başlıqlar, rəngli pill-lər və səhifədən
+   səhifəyə fərqli inline stillər. Tokenlər (rəng, kölgə, radius) yaxşıdır —
+   dəyişən onların TƏTBİQİdir.
+
+   Qaydalar:
+   • Sakit səth: ağ kart + 1px hairline. Dekorativ kölgə/gradient yoxdur.
+   • Başlıqlar cümlə formasında — uppercase/letter-spacing "eyebrow" YOXDUR.
+   • Rəqəm rəqəmdir: badge/pill deyil, sadə "dəyər + etiket".
+   • Tək boşluq ritmi: 8 / 12 / 16 / 24.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Səhifə başlığı ──────────────────────────────────────────────────────── */
+.pnl-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 24px;
+}
+.pnl-head__title {
+  margin: 0; font-size: 22px; font-weight: 700; line-height: 1.25;
+  letter-spacing: -0.01em; color: var(--oxford);
+}
+.pnl-head__sub { margin: 6px 0 0; font-size: 14px; line-height: 1.55; color: var(--oxford-60); }
+.pnl-head__actions { display: flex; gap: 8px; flex-wrap: wrap; flex: none; }
+
+/* ── Bölmə başlığı (eyebrow deyil) ───────────────────────────────────────── */
+.pnl-section-title {
+  margin: 0 0 12px; font-size: 15px; font-weight: 700;
+  color: var(--oxford); letter-spacing: -0.01em;
+}
+
+/* ── Kart ────────────────────────────────────────────────────────────────── */
+.pnl-card {
+  background: #fff; border: 1px solid var(--oxford-10);
+  border-radius: 14px; padding: 20px; min-width: 0;
+  /* Flex sütun: kart şəbəkə xanasını tam doldurur, məzmun yuxarıdan yığılır —
+     sətirdəki iki kart eyni hündürlükdə olur, altda boşluq qalmır. */
+  display: flex; flex-direction: column;
+}
+.pnl-card__head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; margin-bottom: 16px;
+}
+.pnl-card__title { margin: 0; font-size: 15px; font-weight: 700; color: var(--oxford); letter-spacing: -0.01em; }
+.pnl-card__sub { margin: 4px 0 0; font-size: 13px; color: var(--oxford-60); }
+
+/* ── Statistika: dəyər + etiket, dekorasiyasız ───────────────────────────── */
+.pnl-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+.pnl-stat {
+  background: #fff; border: 1px solid var(--oxford-10);
+  border-radius: 14px; padding: 18px 20px;
+}
+.pnl-stat__val {
+  font-size: 28px; font-weight: 700; line-height: 1.1; color: var(--oxford);
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+.pnl-stat__label { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--oxford-80); }
+.pnl-stat__sub { margin-top: 2px; font-size: 12.5px; color: var(--oxford-60); line-height: 1.5; }
+
+/* ── Siyahı sətri ────────────────────────────────────────────────────────── */
+.pnl-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--oxford-10);
+}
+.pnl-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.pnl-row:first-child { padding-top: 0; }
+.pnl-row__title { font-size: 14px; font-weight: 600; color: var(--oxford); }
+.pnl-row__meta { margin-top: 2px; font-size: 12.5px; color: var(--oxford-60); }
+.pnl-row__val { font-size: 15px; font-weight: 700; color: var(--oxford); font-variant-numeric: tabular-nums; flex: none; }
+
+/* ── Düymələr ────────────────────────────────────────────────────────────── */
+.pnl-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 16px; border-radius: 8px; border: 1px solid transparent;
+  font-size: 13.5px; font-weight: 600; font-family: inherit;
+  cursor: pointer; text-decoration: none; white-space: nowrap;
+  background: var(--brand); color: #fff;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.pnl-btn:hover { background: var(--brand-600); }
+.pnl-btn--ghost { background: #fff; color: var(--oxford); border-color: var(--oxford-10); }
+.pnl-btn--ghost:hover { background: var(--brand-50); border-color: var(--brand-200); color: var(--brand); }
+.pnl-link {
+  font-size: 13px; font-weight: 600; color: var(--brand);
+  text-decoration: none; white-space: nowrap;
+}
+.pnl-link:hover { text-decoration: underline; }
+
+/* ── Boş vəziyyət ────────────────────────────────────────────────────────── */
+.pnl-empty { padding: 24px 4px; }
+.pnl-empty__title { font-size: 14px; font-weight: 600; color: var(--oxford-80); }
+.pnl-empty__body { margin-top: 4px; font-size: 13px; color: var(--oxford-60); line-height: 1.6; max-width: 46ch; }
+
+/* ── Şəbəkə ──────────────────────────────────────────────────────────────── */
+.pnl-2col {
+  display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px; align-items: stretch;
+}
+.pnl-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* Şəbəkədə tam eni tutan xana — tək qalan kart sağda boşluq buraxmasın. */
+.pnl-span-2 { grid-column: 1 / -1; min-width: 0; }
+.pnl-span-2 > * { flex: 1; }
+
+@media (max-width: 900px) {
+  .pnl-2col { grid-template-columns: 1fr; }
+  .pnl-head__title { font-size: 20px; }
+  .pnl-card { padding: 16px; }
 }

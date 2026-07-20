@@ -31,9 +31,9 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 import { azOrdinal } from "@/lib/datetime";
 import {
   MONTHS_AZ, pad2, fmtTime, isSameDay, relativeDayLabel, timeUntil,
-  initialsOf, avatarColor, STATUS, NO_SHOW_REPORT_WINDOW_MS, PSY_APPT_STYLE,
-  IClock, IMsg, ICal, IAlert, IRefresh, ICheck, IUser, IX, IOpen,
-  PackageBadge, IntroBadge, Empty, PsyJoinButton, gcalHrefFor,
+  initialsOf, avatarColor, NO_SHOW_REPORT_WINDOW_MS, PSY_APPT_STYLE,
+  IClock, IMsg, ICal, IAlert, IRefresh, ICheck, IUser, IX, IOpen, ILayers,
+  StatusText, SessionMeta, MetaItem, Empty, PsyJoinButton, gcalHrefFor,
   RowMenu, type MenuItem, DisputeModal, OutcomeModal,
 } from "./shared";
 
@@ -225,27 +225,11 @@ export default function PsychologistAppointmentsPage() {
         subtitle={t("staff.psyApptSub")}
         actions={
           <>
-            <Link
-              href="/psycholog/appointments/history"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                background: "#fff", color: "var(--oxford)",
-                border: "1px solid #D6E2F7",
-                padding: "11px 17px", borderRadius: 10,
-                fontSize: 14, fontWeight: 600, textDecoration: "none",
-              }}>
+            <Link href="/psycholog/appointments/history" className="pa-btn pa-btn--ghost pa-btn--auto">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>
               Tarixçə
             </Link>
-            <Link
-              href="/psycholog/calendar"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                background: "var(--brand)", color: "#fff",
-                padding: "11px 17px", borderRadius: 10,
-                fontSize: 14, fontWeight: 600, textDecoration: "none",
-                boxShadow: "0 4px 14px rgba(16,81,183,.25)",
-              }}>
+            <Link href="/psycholog/calendar" className="pa-btn pa-btn--primary pa-btn--auto">
               <ICal s={17} c="#fff" />
               Təqvim
             </Link>
@@ -259,10 +243,10 @@ export default function PsychologistAppointmentsPage() {
         </div>
       ) : (
         <>
-          <NextHero appt={next} now={now} client={next ? clientFor(next.patientId) : null} />
+          <NextHero appt={next} now={now} client={next ? clientFor(next.patientId) : null} busyId={busyId} h={handlers} />
 
           {/* Seanslar / Paketlər / Yönləndirmələr tab seçimi */}
-          <div role="tablist" className="gor-tabs" style={{ display: "inline-flex", maxWidth: "100%", overflowX: "auto", gap: 4, background: "#fff", border: "1px solid #EDF1F8", borderRadius: 12, padding: 5, boxShadow: "0 2px 12px rgba(0,0,0,.04)" }}>
+          <div role="tablist" className="gor-tabs" style={{ display: "inline-flex", maxWidth: "100%", overflowX: "auto", gap: 4, background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 5 }}>
             {([
               ["sessions", "Seanslar", agendaList.length + patientRequests.length, false],
               ["packages", "Paketlər", packagesTotal, false],
@@ -271,10 +255,10 @@ export default function PsychologistAppointmentsPage() {
               const active = tab === key;
               return (
                 <button key={key} type="button" role="tab" aria-selected={active} onClick={() => switchTab(key)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 7, background: active ? "var(--brand)" : "transparent", color: active ? "#fff" : warn ? "#92400E" : "var(--oxford)", border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap", flex: "none" }}>
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, background: active ? "var(--brand)" : "transparent", color: active ? "#fff" : "var(--oxford-80)", border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap", flex: "none" }}>
                   {label}
                   {count > 0 && (
-                    <span style={{ background: active ? "rgba(255,255,255,.22)" : warn ? "#FEF3C7" : "var(--brand-50)", color: active ? "#fff" : warn ? "#92400E" : "var(--brand-700)", fontSize: 11.5, fontWeight: 700, minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{count}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 500, color: active ? "rgba(255,255,255,.75)" : warn ? "#B45309" : "var(--oxford-60)" }}>{count}</span>
                   )}
                 </button>
               );
@@ -416,61 +400,93 @@ type Handlers = {
   onAddOutcome: (a: AppointmentDetail) => void;
 };
 
-function NextHero({ appt, now, client }: { appt: AppointmentDetail | null; now: Date; client: ClientSummary | null }) {
+/* ─── Növbəti seans ────────────────────────────────────────────────────────
+   Üç sütun: nə vaxt · kim · nə etməli. Rəngli nişan yoxdur — tarix və vaxt
+   tipoqrafiya ilə oxunur, status və paket sadə mətn sətirləridir. */
+
+/** Sol sütun üçün qısa gün etiketi: "Bu gün" · "Sabah" · "12 Avq". */
+function shortDayLabel(d: Date, now: Date) {
+  const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
+  if (isSameDay(d, now)) return "Bu gün";
+  if (isSameDay(d, tomorrow)) return "Sabah";
+  return `${pad2(d.getDate())} ${MONTHS_AZ[d.getMonth()]}`;
+}
+
+function NextHero({ appt, now, client, busyId, h }: {
+  appt: AppointmentDetail | null; now: Date; client: ClientSummary | null;
+  busyId: number | null; h: Handlers;
+}) {
   if (!appt || !appt.startAt) {
     return (
-      <div style={{ background: "linear-gradient(135deg,#F2F6FD,#E4ECFA)", border: "1px solid #D6E2F7", borderRadius: 18, padding: "20px 24px", marginBottom: 24, display: "flex", alignItems: "center", gap: 12, color: "var(--oxford-60)" }}>
-        <ICal s={22} c="#9DB0CC" /><span style={{ fontSize: 14, fontWeight: 600 }}>Yaxınlaşan təsdiqli seans yoxdur.</span>
-      </div>
+      <section style={{ marginBottom: 26 }}>
+        <h2 className="pa-sec">Növbəti seans</h2>
+        <div className="pa-next pa-next--empty">
+          <ICal s={20} c="#9DB0CC" />
+          Yaxınlaşan təsdiqli seans yoxdur.
+        </div>
+      </section>
     );
   }
   const start = new Date(appt.startAt);
+  const end = appt.endAt ? new Date(appt.endAt) : null;
   const cd = timeUntil(start, now);
   const av = avatarColor(appt.patientId ?? appt.patientName);
   const sessionNumber = client ? client.completedSessions + 1 : null;
+  const minutes = end ? Math.round((end.getTime() - start.getTime()) / 60_000) : null;
+  const busy = busyId === appt.id;
+  const needsConfirm = appt.status === "ASSIGNED";
+
   return (
-    <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(135deg,#F2F6FD,#E4ECFA)", border: "1px solid #D6E2F7", borderRadius: 18, padding: "22px 24px", marginBottom: 24, boxShadow: "0 2px 12px rgba(8,47,109,.07)" }}>
-      <div aria-hidden style={{ position: "absolute", top: -60, right: -40, width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle,rgba(16,81,183,.1),transparent 70%)", pointerEvents: "none" }} />
-      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--brand)", color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", padding: "6px 12px", borderRadius: 999 }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#fff" }} />Növbəti seans
-        </span>
-        {!cd.expired && (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: cd.urgent ? "#FEF3C7" : "#ECFDF5", color: cd.urgent ? "#92400E" : "#047857", border: `1px solid ${cd.urgent ? "#FDE68A" : "#A7F3D0"}`, fontSize: 13, fontWeight: 700, padding: "7px 13px", borderRadius: 999 }}>
-            <IClock s={14} c={cd.urgent ? "#92400E" : "#047857"} />{cd.text}
+    <section style={{ marginBottom: 26 }}>
+      <h2 className="pa-sec">Növbəti seans</h2>
+      <div className="pa-next">
+        {/* Nə vaxt */}
+        <div className="pa-next__when">
+          <div className="pa-next__day">{shortDayLabel(start, now)}</div>
+          <div className="pa-next__time">{fmtTime(start)}</div>
+          {end && <div className="pa-next__end">{fmtTime(end)}-dək</div>}
+        </div>
+
+        {/* Kim */}
+        <div className="pa-next__main">
+          <span style={{ width: 44, height: 44, borderRadius: "50%", background: av, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 600, flex: "none" }}>
+            {initialsOf(appt.patientName)}
           </span>
-        )}
-      </div>
-      <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <span style={{ width: 56, height: 56, borderRadius: "50%", background: av, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, flex: "none" }}>{initialsOf(appt.patientName)}</span>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", marginBottom: 3 }}>
-            <span style={{ fontSize: 18, fontWeight: 700 }}>{appt.patientName ?? "Pasiyent"}</span>
-            {appt.patientPackageId != null && <PackageBadge name={appt.packageName} />}
-            {appt.sessionKind === "INTRO" && <IntroBadge />}
+          <div className="pa-next__who">
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span className="pa-next__name">{appt.patientName ?? "Pasiyent"}</span>
+              <StatusText status={appt.status} />
+            </div>
+            <SessionMeta
+              a={appt}
+              extra={
+                <>
+                  <MetaItem icon={<ICal s={13} c="#9DB0CC" />}>{relativeDayLabel(start, now)}</MetaItem>
+                  {sessionNumber ? <MetaItem icon={<ILayers />}>{azOrdinal(sessionNumber)} seans</MetaItem> : null}
+                  {minutes ? <MetaItem icon={<IClock s={13} c="#9DB0CC" />}>{minutes} dəqiqə</MetaItem> : null}
+                </>
+              }
+            />
           </div>
-          <div style={{ fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 600 }}>{relativeDayLabel(start, now)} · {fmtTime(start)}{appt.endAt ? ` – ${fmtTime(new Date(appt.endAt))}` : ""}{sessionNumber ? ` · ${azOrdinal(sessionNumber)} seans` : ""}</div>
         </div>
-        <div style={{ minWidth: 180 }}>
-          <PsyJoinButton a={appt} />
+
+        {/* Nə etməli */}
+        <div className="pa-next__cta">
+          {needsConfirm ? <PrimaryAction a={appt} busy={busy} h={h} /> : <PsyJoinButton a={appt} />}
+          {!cd.expired && (
+            <div className={`pa-next__count${cd.urgent ? " pa-next__count--urgent" : ""}`}>{cd.text}</div>
+          )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
 /* Status-a görə əsas düymə — kartın aşağı sağ hissəsində ("Qoşul" yeri). */
 function PrimaryAction({ a, busy, h }: { a: AppointmentDetail; busy: boolean; h: Handlers }) {
-  const btn: React.CSSProperties = {
-    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
-    width: "100%", borderRadius: 10, padding: "11px 14px",
-    fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer",
-    background: "var(--brand)", color: "#fff", border: "none",
-    boxShadow: "0 4px 14px rgba(16,81,183,.25)", opacity: busy ? 0.7 : 1,
-  };
   if (a.status === "ASSIGNED") {
     return (
-      <button type="button" className="gor-accept" disabled={busy} style={btn}
+      <button type="button" className="pa-btn pa-btn--primary" disabled={busy}
         onClick={() => h.onAction(a.id, () => psychologistApi.confirm(a.id))}>
         <ICheck s={15} c="#fff" />{busy ? "…" : "Təsdiqlə"}
       </button>
@@ -478,7 +494,7 @@ function PrimaryAction({ a, busy, h }: { a: AppointmentDetail; busy: boolean; h:
   }
   if (a.status === "AWAITING_CONFIRMATION") {
     return (
-      <button type="button" className="gor-accept" disabled={busy} style={btn}
+      <button type="button" className="pa-btn pa-btn--primary" disabled={busy}
         onClick={() => h.onAction(a.id, () => psychologistApi.confirmSession(a.id))}>
         <ICheck s={15} c="#fff" />{busy ? "…" : "Baş tutdu"}
       </button>
@@ -488,39 +504,58 @@ function PrimaryAction({ a, busy, h }: { a: AppointmentDetail; busy: boolean; h:
   return null;
 }
 
-/* Status-a uyğun 3 nöqtə menyusu. */
+/* Status-a uyğun "daha çox" menyusu.
+   Sıralama hər statusda eynidir ki, psixoloq axtarmasın:
+     1) seansı idarə et (vaxt dəyişikliyi tələbi)
+     2) seansdan sonrakı işlər (qeyd, baş tutmadı)
+     3) kontekst (müştəri 360°, təqvimə əlavə)
+     4) dağıdıcı (ləğv / rədd) — RowMenu bunları ayırıcı xəttdən sonra göstərir. */
 function buildMenu(a: AppointmentDetail, h: Handlers, now: Date): MenuItem[] {
+  const ico = "#5C6B85";
   const m: MenuItem[] = [];
   const endMs = a.endAt ? new Date(a.endAt).getTime() : null;
   const expired = endMs != null && endMs < now.getTime();
   const reportableNoShow = endMs != null && expired && now.getTime() - endMs < NO_SHOW_REPORT_WINDOW_MS;
-  const noShowItem: MenuItem = { label: "Baş tutmadı", onClick: () => h.onDispute(a), icon: <IAlert s={15} c="#5C6B85" /> };
-  const gcal = gcalHrefFor(a);
-  if (gcal && (a.status === "ASSIGNED" || a.status === "CONFIRMED")) {
-    m.push({ label: "Google Calendar-a əlavə et", href: gcal, icon: <ICal s={15} c="#5C6B85" /> });
+  const noShowItem: MenuItem = { label: "Baş tutmadı", onClick: () => h.onDispute(a), icon: <IAlert s={15} c={ico} /> };
+  const noteItem = (label: string): MenuItem => ({ label, onClick: () => h.onAddOutcome(a), icon: <IMsg s={15} c={ico} /> });
+
+  // 1) Seansı idarə et
+  if (a.status === "ASSIGNED" || a.status === "CONFIRMED") {
+    m.push({ label: "Vaxt dəyişikliyi tələb et", onClick: () => h.onPropose(a), icon: <IClock s={15} c={ico} /> });
   }
-  if (a.status === "ASSIGNED") {
-    m.push({ label: "Vaxt təklif et", onClick: () => h.onPropose(a), icon: <IClock /> });
-    m.push({ label: "Rədd et", onClick: () => h.onReject(a), danger: true, icon: <IX s={15} /> });
-  } else if (a.status === "CONFIRMED") {
-    m.push({ label: "Vaxt təklif et", onClick: () => h.onPropose(a), icon: <IClock /> });
-    if (!expired) m.push({ label: "Ləğv et", onClick: () => h.onCancel(a), danger: true, icon: <IX s={15} /> });
-    else {
-      m.push(noShowItem);
-      m.push({ label: "Seans qeydi", onClick: () => h.onAddOutcome(a), icon: <IMsg c="var(--brand)" /> });
-    }
-  } else if (a.status === "AWAITING_CONFIRMATION") {
+
+  // 2) Seansdan sonra
+  if (a.status === "AWAITING_CONFIRMATION") {
+    m.push(noteItem("Nəticə əlavə et"));
     m.push(noShowItem);
-    m.push({ label: "Nəticə əlavə et", onClick: () => h.onAddOutcome(a), icon: <IMsg c="var(--brand)" /> });
+  } else if (a.status === "CONFIRMED" && expired) {
+    m.push(noteItem("Seans qeydi"));
+    m.push(noShowItem);
   } else if (a.status === "COMPLETED" && reportableNoShow) {
     // Avtomatik tamamlanmış, lakin əslində baş tutmamış seansı operatora bildir.
     m.push(noShowItem);
   }
-  if (a.patientId) m.push({ label: "Müştəri 360°", href: `/psycholog/clients/${a.patientId}`, icon: <IUser /> });
+
+  // 3) Kontekst
+  if (a.patientId) m.push({ label: "Müştəri 360°", href: `/psycholog/clients/${a.patientId}`, icon: <IUser s={15} c={ico} /> });
+  const gcal = gcalHrefFor(a);
+  if (gcal && (a.status === "ASSIGNED" || a.status === "CONFIRMED")) {
+    m.push({ label: "Google Calendar-a əlavə et", href: gcal, icon: <ICal s={15} c={ico} /> });
+  }
+
+  // 4) Dağıdıcı
+  if (a.status === "ASSIGNED") {
+    m.push({ label: "Rədd et", onClick: () => h.onReject(a), danger: true, icon: <IX s={15} /> });
+  } else if (a.status === "CONFIRMED" && !expired) {
+    m.push({ label: "Ləğv et", onClick: () => h.onCancel(a), danger: true, icon: <IX s={15} /> });
+  }
   return m;
 }
 
-/* ─── Seans kartı — pasient tərəfindəki kartın psixoloq variantı ──────────── */
+/* ─── Seans kartı ──────────────────────────────────────────────────────────
+   Oxunuş sırası: NƏ VAXT → KİM → VƏZİYYƏT → NƏ ETMƏLİ.
+   Vaxt tipoqrafiya ilə öndədir; status rəngli nişan deyil, nöqtə + mətndir.
+   Kart çərçivəsi yalnız diqqət tələb edən vəziyyətlərdə rənglənir. */
 
 function SessionCard({
   a, client, isNext, now, busyId, onOpen, h,
@@ -533,8 +568,8 @@ function SessionCard({
   onOpen: () => void;
   h: Handlers;
 }) {
-  const status = STATUS[a.status] ?? STATUS.ASSIGNED;
   const start = a.startAt ? new Date(a.startAt) : null;
+  const end = a.endAt ? new Date(a.endAt) : null;
   const tu = start ? timeUntil(start, now) : null;
   const isToday = start ? isSameDay(start, now) : false;
   const av = avatarColor(a.patientId ?? a.patientName);
@@ -543,64 +578,67 @@ function SessionCard({
   const menu = buildMenu(a, h, now);
   const cancelRequested = a.status === "CANCEL_REQUESTED";
   const disputed = a.status === "DISPUTED";
+  const awaiting = a.status === "AWAITING_CONFIRMATION";
+  const cls = ["pa-card"];
+  if (isNext) cls.push("pa-card--next");
+  if (disputed) cls.push("pa-card--alert");
+  else if (awaiting || cancelRequested) cls.push("pa-card--attn");
+
   return (
-    <div className={`psy-card psy-card--today${isNext ? " psy-card--next" : ""}`} style={{ borderLeft: `3px solid ${status.accent}`, display: "flex", flexDirection: "column" }}>
-      {/* Pasient + ad, sağda 3 nöqtə menyu */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <div className="psy-card__avatar" style={{ width: 46, height: 46, background: av, color: "#fff", border: "none" }}>
-          {initialsOf(a.patientName)}
+    <div className={cls.join(" ")}>
+      {/* Nə vaxt — kartın başlığı */}
+      <div className="pa-card__head">
+        <div style={{ minWidth: 0 }}>
+          <div className="pa-card__day">{start ? relativeDayLabel(start, now) : "Vaxt təyin edilməyib"}</div>
+          {start && (
+            <div className="pa-card__time">
+              {fmtTime(start)}{end ? ` – ${fmtTime(end)}` : ""}
+            </div>
+          )}
+          {isToday && tu && !tu.expired && (
+            <div className={`pa-card__count${tu.urgent ? " pa-card__count--urgent" : ""}`}>{tu.text}</div>
+          )}
         </div>
+        {/* Status vaxtın qarşısında, sağ üst küncdə — kartın "vəziyyət" xanası */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flex: "none" }}>
+          <StatusText status={a.status} />
+          {menu.length > 0 && <RowMenu items={menu} size={28} />}
+        </div>
+      </div>
+
+      <div className="pa-card__rule" />
+
+      {/* Kim */}
+      <div className="pa-card__who">
+        <span className="pa-card__av" style={{ background: av }}>{initialsOf(a.patientName)}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="psy-card__name">{a.patientName ?? "Pasiyent"}</div>
-          {sessionNumber != null && <div className="psy-card__nth">{azOrdinal(sessionNumber)} seans</div>}
+          <div className="pa-card__name">{a.patientName ?? "Pasiyent"}</div>
+          {sessionNumber != null && <div className="pa-card__nth">{azOrdinal(sessionNumber)} seans</div>}
         </div>
-        {menu.length > 0 && <RowMenu items={menu} />}
       </div>
 
-      {/* Vaxt aralığı — gün etiketi kartın öz sətrindədir */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-        {start ? (
-          <span className="psy-card__time">{relativeDayLabel(start, now)} · {fmtTime(start)}{a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}</span>
-        ) : (
-          <span className="psy-card__time" style={{ color: "var(--oxford-60)" }}>Vaxt təyin edilməyib</span>
-        )}
-        {isToday && tu && !tu.expired && (
-          <span className={tu.urgent ? "gor-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: tu.urgent ? "#FEE2E2" : "#ECFDF5", color: tu.urgent ? "#991B1B" : "#047857", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>
-            <IClock s={12} c={tu.urgent ? "#991B1B" : "#047857"} />{tu.text}
-          </span>
-        )}
-      </div>
+      {/* Seans konteksti — paket / tanışlıq sətirləri */}
+      {(a.patientPackageId != null || a.sessionKind === "INTRO") && (
+        <div style={{ marginTop: 10 }}>
+          <SessionMeta a={a} />
+        </div>
+      )}
 
-      {/* Status + nişanlar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-        <span className="psy-card__badge" style={{ background: status.bg, color: status.color }}>{status.label}</span>
-        {isNext && <span className="psy-card__chip psy-card__chip--next">Növbəti</span>}
-        {a.patientPackageId != null && <PackageBadge name={a.packageName} />}
-        {a.sessionKind === "INTRO" && <IntroBadge />}
-      </div>
-
-      {/* Gözləmə vəziyyətləri */}
       {cancelRequested && (
-        <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
-          <span className="gor-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
-          Pasient ləğv istəyib — operator təsdiqi gözlənilir
-        </div>
+        <div className="pa-card__note">Pasient ləğv istəyib — operator təsdiqi gözlənilir.</div>
       )}
       {disputed && (
-        <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "#991B1B", fontWeight: 600 }}>
-          <IAlert s={13} c="#991B1B" />Operator həll edir — qərar gözlənilir
-        </div>
+        <div className="pa-card__note" style={{ color: "#B4413F" }}>Operator həll edir — qərar gözlənilir.</div>
       )}
 
-      {/* Aşağı: Aç (ətraflı) + status-a uyğun əsas düymə */}
-      <div style={{ display: "flex", gap: 8, marginTop: "auto", paddingTop: 14 }}>
-        <button type="button" onClick={onOpen}
-          style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 14px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
+      {/* Nə etməli */}
+      <div className="pa-card__foot">
+        <button type="button" onClick={onOpen} className="pa-btn pa-btn--ghost" style={{ flex: 1 }}>
           <IOpen />
-          Aç
+          Ətraflı
         </button>
         {!cancelRequested && !disputed && (
-          <div style={{ flex: 1.6 }}>
+          <div style={{ flex: 1.5, minWidth: 0 }}>
             <PrimaryAction a={a} busy={busy} h={h} />
           </div>
         )}
@@ -622,7 +660,6 @@ function SessionDetailModal({
   h: Handlers;
   onClose: () => void;
 }) {
-  const status = STATUS[a.status] ?? STATUS.ASSIGNED;
   const start = a.startAt ? new Date(a.startAt) : null;
   const tu = start ? timeUntil(start, now) : null;
   const busy = busyId === a.id;
@@ -634,7 +671,7 @@ function SessionDetailModal({
     onClick: it.onClick ? () => { onClose(); it.onClick!(); } : undefined,
   }));
 
-  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 4 };
+  const labelStyle: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 5 };
   const ghostBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 14px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", textDecoration: "none" };
 
   return (
@@ -651,8 +688,7 @@ function SessionDetailModal({
             <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{a.patientName ?? "Pasiyent"}</div>
             {sessionNumber != null && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1 }}>{azOrdinal(sessionNumber)} seans</div>}
           </div>
-          <span className="psy-card__badge" style={{ background: status.bg, color: status.color, flex: "none" }}>{status.label}</span>
-          {a.sessionKind === "INTRO" && <IntroBadge />}
+          <span style={{ flex: "none" }}><StatusText status={a.status} /></span>
           <button type="button" aria-label="Bağla" onClick={onClose}
             style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "var(--oxford-60)", border: "none", borderRadius: 8, cursor: "pointer", flex: "none" }}>
             <IX s={16} />
@@ -670,24 +706,16 @@ function SessionDetailModal({
                   : "Vaxt təyin edilməyib"}
               </span>
               {tu && !tu.expired && (
-                <span className={tu.urgent ? "gor-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: tu.urgent ? "#FEE2E2" : "#ECFDF5", color: tu.urgent ? "#991B1B" : "#047857", fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>
-                  <IClock s={12} c={tu.urgent ? "#991B1B" : "#047857"} />{tu.text}
-                </span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: tu.urgent ? "#B45309" : "var(--oxford-60)" }}>{tu.text}</span>
               )}
             </div>
           </div>
 
-          {/* Paket bağlantısı */}
-          {a.patientPackageId != null && (
+          {/* Seans növü / paket — sadə sətirlər */}
+          {(a.patientPackageId != null || a.sessionKind === "INTRO") && (
             <div>
-              <div style={labelStyle}>Paket</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--brand-50)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 13px", flexWrap: "wrap", fontSize: 13.5, fontWeight: 700, color: "var(--brand-700)" }}>
-                <PackageBadge name={a.packageName} />
-                {a.packageName ?? "Paket seansı"}
-                {a.packageTotal != null && a.packageRemaining != null && (
-                  <span style={{ fontWeight: 600, color: "var(--oxford-60)", fontSize: 12.5 }}>· {a.packageRemaining} seans qalıb</span>
-                )}
-              </div>
+              <div style={labelStyle}>Seans</div>
+              <SessionMeta a={a} />
             </div>
           )}
 
@@ -766,8 +794,8 @@ function SessionDetailModal({
    Eyni pasient eyni paketi bir neçə dəfə ala bilər; hər alış ayrıca blok kimi
    (alış sırası ilə) göstərilir — ayrı pasient kimi yox. */
 
-const pkgStatLab: React.CSSProperties = { fontSize: 10.5, fontWeight: 600, color: "#8AAABF", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 2 };
-const pkgStatVal: React.CSSProperties = { fontSize: 13, fontWeight: 700 };
+const pkgStatLab: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: "var(--oxford-60)", marginBottom: 2 };
+const pkgStatVal: React.CSSProperties = { fontSize: 13.5, fontWeight: 600, color: "var(--oxford)" };
 
 type PackageGroup = { id: number; patientId: number | null; patientName: string; sessions: AppointmentDetail[] };
 type PatientPackageGroup = { key: string; patientId: number | null; patientName: string; packages: PackageGroup[] };
@@ -819,32 +847,20 @@ function PackageBlock({ pkg, ordinal, now, busyId, h }: {
   const remaining = Math.max(0, total - sessions.length);
   const upcoming = sessions.find(s => notEndedYet(s, now.getTime())
     && (s.status === "CONFIRMED" || s.status === "ASSIGNED" || s.status === "AWAITING_CONFIRMATION"));
-  const upStatus = upcoming ? (STATUS[upcoming.status] ?? STATUS.ASSIGNED) : null;
   const fmtDM = (iso?: string | null) => { if (!iso) return "—"; const d = new Date(iso); return `${d.getDate()} ${MONTHS_AZ[d.getMonth()]}`; };
 
   return (
     <div style={{ background: "#FBFCFE", border: "1px solid #EDF1F8", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--brand-100)", color: "var(--brand-700)", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", padding: "5px 10px", borderRadius: 7 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-              <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
-            </svg>
-            Paket
-          </span>
-          {ordinal != null && (
-            <span style={{ background: "#F2F6FD", color: "#082F6D", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>{azOrdinal(ordinal)} alış</span>
-          )}
-        </span>
-        <span style={{ background: "#F2F6FD", border: "1px solid #D6E2F7", color: "#082F6D", fontSize: 17, fontWeight: 800, padding: "4px 12px", borderRadius: 10, flex: "none" }}>{completed}<span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--oxford-60)" }}>/{total}</span></span>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: "var(--oxford)", letterSpacing: "-.01em" }}>{name}</div>
+        {ordinal != null && (
+          <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--oxford-60)", marginTop: 2 }}>{azOrdinal(ordinal)} alış</div>
+        )}
       </div>
-
-      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)", marginBottom: 14 }}>{name}</div>
 
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
-          <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>
+          <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)" }}>
             {completed}/{total} tamamlanıb
           </span>
           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>{Math.round(completedPct)}%</span>
@@ -856,7 +872,11 @@ function PackageBlock({ pkg, ordinal, now, busyId, h }: {
       </div>
 
       <div style={{ display: "flex", gap: 18, flexWrap: "wrap", padding: "11px 0", borderTop: "1px solid #EDF1F8", borderBottom: "1px solid #EDF1F8" }}>
-        <div><div style={pkgStatLab}>Növbəti</div><div style={pkgStatVal}>{upcoming && upcoming.startAt ? `${fmtDM(upcoming.startAt)} · ${fmtTime(new Date(upcoming.startAt))}` : "—"}{upStatus && <span style={{ background: upStatus.bg, color: upStatus.color, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999, marginLeft: 7 }}>{upStatus.label}</span>}</div></div>
+        <div>
+          <div style={pkgStatLab}>Növbəti</div>
+          <div style={pkgStatVal}>{upcoming && upcoming.startAt ? `${fmtDM(upcoming.startAt)} · ${fmtTime(new Date(upcoming.startAt))}` : "—"}</div>
+          {upcoming && <div style={{ marginTop: 3 }}><StatusText status={upcoming.status} size={12.5} /></div>}
+        </div>
         <div><div style={pkgStatLab}>Planlanmamış</div><div style={pkgStatVal}>{remaining}</div></div>
       </div>
 
@@ -882,10 +902,10 @@ function PackageBlock({ pkg, ordinal, now, busyId, h }: {
             const activeCount = sessions.filter(s => s.status !== "CANCELLED" && s.status !== "REJECTED").length;
             return Array.from({ length: remaining }).map((_, i) => (
               <div key={`rem-${i}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderTop: "1px solid #F4F7FB", flexWrap: "wrap" }}>
-                <span style={{ width: 22, height: 22, borderRadius: 7, background: "#fff", border: "1.5px solid #D6E2F7", color: "#9DB0CC", fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{activeCount + i + 1}</span>
-                <div style={{ width: 108, flex: "none" }}><span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)" }}>—</span></div>
-                <span style={{ flex: 1, minWidth: 60, fontSize: 11.5, color: "#9DB0CC", fontWeight: 600 }}>planlaşmayıb</span>
-                <span style={{ background: "#F2F6FD", color: "#082F6D", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>Qalıb</span>
+                <span style={{ width: 22, textAlign: "center", color: "#9DB0CC", fontSize: 12.5, fontWeight: 600, flex: "none", fontFeatureSettings: '"tnum"' }}>{activeCount + i + 1}</span>
+                <div style={{ width: 150, flex: "none" }}><span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>—</span></div>
+                <span style={{ flex: 1, minWidth: 60, fontSize: 12.5, color: "#9DB0CC", fontWeight: 500 }}>planlaşmayıb</span>
+                <span style={{ fontSize: 12.5, fontWeight: 500, color: "var(--oxford-60)" }}>Qalıb</span>
               </div>
             ));
           })()}
@@ -898,20 +918,19 @@ function PackageBlock({ pkg, ordinal, now, busyId, h }: {
 function PackageSessionRow({ a, index, now, busyId, h }: {
   a: AppointmentDetail; index: number | null; now: Date; busyId: number | null; h: Handlers;
 }) {
-  const status = STATUS[a.status] ?? STATUS.ASSIGNED;
   const start = a.startAt ? new Date(a.startAt) : null;
   const busy = busyId === a.id;
   const menu = buildMenu(a, h, now);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderTop: "1px solid #F4F7FB", flexWrap: "wrap" }}>
-      <span style={{ width: 22, height: 22, borderRadius: 7, background: index != null ? status.bg : "#F3F4F6", color: index != null ? status.color : "#9CA3AF", fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{index ?? "—"}</span>
-      <div style={{ width: 108, flex: "none" }}>
+      <span style={{ width: 22, textAlign: "center", color: "var(--oxford-60)", fontSize: 12.5, fontWeight: 600, flex: "none", fontFeatureSettings: '"tnum"' }}>{index ?? "—"}</span>
+      <div style={{ width: 150, flex: "none" }}>
         {start
-          ? <><span style={{ fontSize: 13, fontWeight: 700 }}>{start.getDate()} {MONTHS_AZ[start.getMonth()]}</span> <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 700 }}>{fmtTime(start)}</span></>
-          : <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)" }}>—</span>}
+          ? <><span style={{ fontSize: 13, fontWeight: 600 }}>{start.getDate()} {MONTHS_AZ[start.getMonth()]}</span> <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>{fmtTime(start)}</span></>
+          : <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>—</span>}
       </div>
       <span style={{ flex: 1, minWidth: 50 }} />
-      <span style={{ background: status.bg, color: status.color, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, flex: "none" }}>{status.label}</span>
+      <span style={{ flex: "none" }}><StatusText status={a.status} size={12.5} /></span>
       {a.status === "ASSIGNED" && (
         <button type="button" className="gor-accept" disabled={busy}
           onClick={() => h.onAction(a.id, () => psychologistApi.confirm(a.id))}
@@ -965,24 +984,24 @@ function PatientRescheduleRequestCard({
   const busy = busyOption !== null || rejecting;
 
   return (
-    <div style={{ background: "linear-gradient(90deg,#FFFBEB,#FEF3C7)", border: "1px solid #FDE68A", borderLeft: "3px solid #F59E0B", borderRadius: 14, padding: 18, boxShadow: "0 2px 12px rgba(180,83,9,.06)", animation: "gorFade .25s ease" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
-        <span style={{ width: 34, height: 34, borderRadius: 10, background: "#FEF3C7", color: "#92400E", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}><IRefresh s={17} c="#92400E" /></span>
+    <div style={{ background: "#fff", border: "1px solid var(--oxford-10)", borderLeft: "3px solid #E0A33E", borderRadius: 14, padding: 20, boxShadow: "0 1px 2px rgba(0,33,71,.04)", animation: "gorFade .25s ease" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 11, marginBottom: 14 }}>
+        <IRefresh s={18} c="#B45309" />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 14.5, fontWeight: 700, color: "#92400E" }}>{proposal.patientName ?? "Pasiyent"} vaxt dəyişikliyi istəyir</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--oxford)", letterSpacing: "-.01em" }}>{proposal.patientName ?? "Pasiyent"} vaxt dəyişikliyi istəyir</div>
           {proposal.originalStartAt && (
-            <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
+            <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 500, marginTop: 2 }}>
               Hazırkı vaxt: {fmtOpt(proposal.originalStartAt, proposal.originalEndAt ?? proposal.originalStartAt)}
             </div>
           )}
         </div>
       </div>
       {proposal.reason && (
-        <div style={{ background: "rgba(255,255,255,.7)", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 13px", marginBottom: 14, fontSize: 13.5, color: "#0A1A33", fontStyle: "italic", fontWeight: 500 }}>
+        <div style={{ marginBottom: 14, fontSize: 13.5, color: "var(--oxford-80)", fontStyle: "italic", fontWeight: 400, lineHeight: 1.5 }}>
           «{proposal.reason}»
         </div>
       )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 14 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
         {proposal.options.map(opt => (
           <button
             key={opt.index}
@@ -991,15 +1010,14 @@ function PatientRescheduleRequestCard({
             disabled={busy}
             onClick={() => accept(opt.index)}
             style={{
-              display: "flex", alignItems: "center", gap: 11, background: "#fff",
-              border: "1px solid #FDE68A", borderRadius: 10, padding: "11px 13px",
+              display: "flex", alignItems: "center", gap: 11, background: "#FBFCFE",
+              border: "1px solid var(--oxford-10)", borderRadius: 10, padding: "12px 14px",
               cursor: busy ? "default" : "pointer", opacity: busy && busyOption !== opt.index ? 0.6 : 1,
               fontFamily: "inherit", textAlign: "left",
             }}
           >
-            <span style={{ width: 22, height: 22, borderRadius: 7, background: "#FEF3C7", color: "#92400E", fontSize: 12, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{opt.index + 1}</span>
-            <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{fmtOpt(opt.startAt, opt.endAt)}</span>
-            <span className="gor-accept" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--brand)", color: "#fff", borderRadius: 8, padding: "7px 13px", fontSize: 12.5, fontWeight: 700 }}>
+            <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: "var(--oxford)" }}>{fmtOpt(opt.startAt, opt.endAt)}</span>
+            <span className="gor-accept" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--brand)", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 12.5, fontWeight: 600 }}>
               {busyOption === opt.index ? "…" : <><ICheck s={13} c="#fff" />Qəbul et</>}
             </span>
           </button>

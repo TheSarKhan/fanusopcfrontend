@@ -14,6 +14,51 @@ const ROLE_LABEL: Record<string, string> = {
   ADMIN: "Administrator",
 };
 
+/* ─── Şifrə sahəsi + göz düyməsi (login/register ilə eyni ikon) ───────── */
+function EyeIcon({ open }: { open: boolean }) {
+  return open ? (
+    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+    </svg>
+  ) : (
+    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  );
+}
+
+function PasswordInput({
+  value, onChange, autoComplete, required,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  autoComplete?: string;
+  required?: boolean;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="uprof-pw">
+      <input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        autoComplete={autoComplete}
+        required={required}
+      />
+      <button
+        type="button"
+        className="uprof-pw__eye"
+        onClick={() => setShow(v => !v)}
+        aria-label={show ? "Şifrəni gizlət" : "Şifrəni göstər"}
+      >
+        <EyeIcon open={show} />
+      </button>
+    </span>
+  );
+}
+
 function fmtDateTime(iso?: string | null) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -23,7 +68,7 @@ function fmtDateTime(iso?: string | null) {
 function fmtDate(iso?: string | null) {
   if (!iso) return "—";
   const d = new Date(iso);
-  const months = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
+  const months = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
@@ -546,17 +591,17 @@ function PasswordCard() {
       <div className="uprof-form">
         <div className="uprof-field">
           <label>Cari şifrə</label>
-          <input type="password" value={current} onChange={e => setCurrent(e.target.value)} required />
+          <PasswordInput value={current} onChange={setCurrent} autoComplete="current-password" required />
         </div>
         <div className="uprof-grid-2">
           <div className="uprof-field">
             <label>Yeni şifrə</label>
-            <input type="password" value={next} onChange={e => setNext(e.target.value)} required />
+            <PasswordInput value={next} onChange={setNext} autoComplete="new-password" required />
             <small>Ən azı 8 simvol, böyük/kiçik hərf, rəqəm</small>
           </div>
           <div className="uprof-field">
             <label>Yeni şifrə təkrarı</label>
-            <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required />
+            <PasswordInput value={confirm} onChange={setConfirm} autoComplete="new-password" required />
           </div>
         </div>
 
@@ -694,7 +739,7 @@ function PrivacyCard({
           </p>
           <label>
             <span>Cari şifrə</span>
-            <input type="password" value={pwd} onChange={e => setPwd(e.target.value)} autoComplete="current-password" />
+            <PasswordInput value={pwd} onChange={setPwd} autoComplete="current-password" />
           </label>
           <label>
             <span>Təsdiq üçün <strong>SİL</strong> və ya email yazın</span>

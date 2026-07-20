@@ -344,6 +344,9 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
         {/* Gövdə: sol məlumat sütunu + sağ əməliyyat sütunu (yalnız canAct-də) */}
         <div style={{ display: "grid", gridTemplateColumns: canAct ? "1.6fr 1fr" : "1fr", alignItems: "start" }}>
           <div style={{ padding: "20px 24px" }}>
+            {/* Müraciət login olmuş pasiyentdən gəlibsə operator bunu dərhal görsün —
+                ad/e-poçta görə təxmin etməsin (çevirmə lazım deyil, hesab onsuz da var). */}
+            <InfoRow label="Hesab" value={req.patientId ? "Qeydiyyatlı pasiyent" : "Qonaq"} />
             <InfoRow label="Telefon" value={req.phone} />
             <InfoRow label="E-poçt" value={req.email} />
             <InfoRow label="Yaş" value={req.age} />

@@ -7,7 +7,7 @@ import PageHeader from "@/components/PageHeader";
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "—";
-  const months = ["Yan", "Fev", "Mar", "Apr", "May", "İyn", "İyl", "Avq", "Sen", "Okt", "Noy", "Dek"];
+  const months = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
   const d = new Date(iso.includes("T") ? iso : iso + "T00:00:00");
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }

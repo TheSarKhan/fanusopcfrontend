@@ -1512,11 +1512,14 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                     <label style={{ display: "block" }}>
                       <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 5 }}>Başlama vaxtı</span>
-                      <DatePicker withTime theme="light" size="sm" value={manualStart} onChange={v => { setManualStart(v); setPickedSlots([]); }} style={{ width: "100%" }} />
+                      {/* Vaxt dəyişdi → köhnə qrafik xəbərdarlığı keçərsizdir (toggleSlot /
+                          selectPsy ilə eyni davranış). Əks halda düymə "Yenə də təyin et"
+                          qalıb artıq düzəldilmiş vaxtı da məcburi göndərirdi. */}
+                      <DatePicker withTime theme="light" size="sm" value={manualStart} onChange={v => { setManualStart(v); setPickedSlots([]); setScheduleWarn(null); }} style={{ width: "100%" }} />
                     </label>
                     <label style={{ display: "block" }}>
                       <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 5 }}>Bitmə vaxtı</span>
-                      <DatePicker withTime theme="light" size="sm" value={manualEnd} onChange={v => { setManualEnd(v); setPickedSlots([]); }} style={{ width: "100%" }} />
+                      <DatePicker withTime theme="light" size="sm" value={manualEnd} onChange={v => { setManualEnd(v); setPickedSlots([]); setScheduleWarn(null); }} style={{ width: "100%" }} />
                     </label>
                   </div>
                 </div>

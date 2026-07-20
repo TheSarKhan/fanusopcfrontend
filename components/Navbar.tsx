@@ -18,7 +18,9 @@ export default function Navbar() {
   const [panelUrl, setPanelUrl] = useState<string | null>(null);
   // Şəffaf/ağ variant: ana səhifədə yuxarıda (hero videonun üstündə) — mobil daxil,
   // çünki mobil hero da artıq tam-ekran tünd videodur.
-  const light = isHome && !scrolled;
+  // Mobil menyu açıqdırsa light SÖNÜR: açıq menyu ağ paneldir, ağ loqo/burger ağ fonda
+  // itirdi (yuxarıda, scroll=0 halında görünmürdülər).
+  const light = isHome && !scrolled && !open;
 
   const navLinks = [
     { label: t("nav.services"),      href: "/xidmetler" },
@@ -59,7 +61,7 @@ export default function Navbar() {
   const isLoggedIn = panelUrl !== null;
 
   return (
-    <header className={`fanus-nav ${scrolled ? "is-scrolled" : ""} ${light ? "fanus-nav--light" : ""}`}>
+    <header className={`fanus-nav ${scrolled ? "is-scrolled" : ""} ${open ? "is-open" : ""} ${light ? "fanus-nav--light" : ""}`}>
       <div className="fanus-container fanus-nav__inner">
         <Link href="/" className="fanus-nav__brand" aria-label="Fanus">
           <span className="fanus-nav__logo">
@@ -148,6 +150,13 @@ export default function Navbar() {
           background: rgba(255,255,255,0.95);
           backdrop-filter: blur(16px) saturate(1.3);
           -webkit-backdrop-filter: blur(16px) saturate(1.3);
+          border-bottom-color: var(--fanus-line);
+          box-shadow: 0 2px 16px rgba(10,26,51,.07);
+        }
+        /* Mobil menyu açıqdır: açılan panel ağdır, ona görə üst zolaq da bərk ağ olmalıdır
+           (əks halda yuxarıda şəffaf qalır və tünd loqo/burger video üzərinə düşür). */
+        .fanus-nav.is-open {
+          background: #fff;
           border-bottom-color: var(--fanus-line);
           box-shadow: 0 2px 16px rgba(10,26,51,.07);
         }

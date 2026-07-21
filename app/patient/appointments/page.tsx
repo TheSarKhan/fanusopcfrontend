@@ -55,7 +55,7 @@ function relativeDayLabel(d: Date, now: Date) {
     Fri: "Cümə", Sat: "Şənbə", Sun: "Bazar",
   };
   const azWd = map[weekdayShort] ?? weekdayShort;
-  return `${azWd} · ${pad2(dayNum)} ${MONTHS_AZ[monthNum - 1]}`;
+  return `${azWd}, ${pad2(dayNum)} ${MONTHS_AZ[monthNum - 1]}`;
 }
 
 interface CountdownInfo {
@@ -335,27 +335,11 @@ export default function PatientAppointmentsPage() {
         subtitle={t("appt.pageSub")}
         actions={
           <>
-            <Link
-              href="/patient/appointments/history"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                background: "#fff", color: "var(--oxford)",
-                border: "1px solid #D6E2F7",
-                padding: "11px 17px", borderRadius: 10,
-                fontSize: 14, fontWeight: 600, textDecoration: "none",
-              }}>
+            <Link href="/patient/appointments/history" className="pnl-btn pnl-btn--ghost">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>
               Tarixçə
             </Link>
-            <Link
-              href="/patient/psychologists"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                background: "var(--brand)", color: "#fff",
-                padding: "11px 17px", borderRadius: 10,
-                fontSize: 14, fontWeight: 600, textDecoration: "none",
-                boxShadow: "0 4px 14px rgba(16,81,183,.25)",
-              }}>
+            <Link href="/patient/psychologists" className="pnl-btn">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
               {t("appt.newCta")}
             </Link>
@@ -364,20 +348,14 @@ export default function PatientAppointmentsPage() {
       />
 
       {pendingRate && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", background: "linear-gradient(90deg,#F4F8FF,#fff)", border: "1px solid #DCE8FB", borderLeft: "3px solid var(--brand)", borderRadius: 13, padding: "14px 16px", marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 13, minWidth: 0 }}>
-            <span style={{ width: 40, height: 40, borderRadius: 11, background: "var(--brand-100)", color: "var(--brand)", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
-            </span>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--oxford)" }}>Son seansınız necə keçdi?</div>
-              <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 2 }}>
-                {pendingRate.psychologistName ?? "Psixoloq"} · {azFormatDate(pendingRate.startAt ?? pendingRate.endAt ?? "")}
-              </div>
+        <div className="pnl-card" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div className="pnl-card__title">Son seansınız necə keçdi?</div>
+            <div className="pnl-row__meta">
+              {pendingRate.psychologistName ?? "Psixoloq"}, {azFormatDate(pendingRate.startAt ?? pendingRate.endAt ?? "")}
             </div>
           </div>
-          <button type="button" onClick={() => openRate(pendingRate)}
-            style={{ flex: "none", display: "inline-flex", alignItems: "center", gap: 7, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
+          <button type="button" onClick={() => openRate(pendingRate)} className="pnl-btn" style={{ flex: "none" }}>
             Qiymətləndir
           </button>
         </div>
@@ -400,17 +378,14 @@ export default function PatientAppointmentsPage() {
       {proposals.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
           {proposals.map(p => (
-            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 13, background: "linear-gradient(90deg,#FFFBEB,#FEF3C7)", border: "1px solid #FDE68A", borderLeft: "3px solid #F59E0B", borderRadius: 13, padding: "13px 16px" }}>
-              <span style={{ width: 34, height: 34, borderRadius: 10, background: "#FEF3C7", color: "#92400E", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-              </span>
+            <div key={p.id} className="pnl-card" style={{ flexDirection: "row", alignItems: "center", gap: 13, background: "#FFFBEB", borderColor: "#FDE68A" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: "#92400E" }}>Saat təklifi gözləyir</div>
-                <div style={{ fontSize: 12.5, color: "#92400E", opacity: .9, fontWeight: 500, marginTop: 1 }}>
+                <div className="pnl-card__title" style={{ color: "#92400E" }}>Saat təklifi gözləyir</div>
+                <div style={{ fontSize: 12.5, color: "#92400E", opacity: .9, marginTop: 2, lineHeight: 1.55 }}>
                   {p.psychologistName ?? "Psixoloqunuz"} {p.options.length} alternativ saat təklif edir. Birini seçin və ya hamısını rədd edin.
                 </div>
               </div>
-              <button onClick={() => setProposalFor(p)} style={{ background: "#fff", color: "#92400E", border: "1px solid #FDE68A", borderRadius: 9, padding: "9px 14px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", flex: "none" }}>
+              <button onClick={() => setProposalFor(p)} className="pnl-btn pnl-btn--ghost" style={{ flex: "none" }}>
                 Bax və seç
               </button>
             </div>
@@ -423,7 +398,7 @@ export default function PatientAppointmentsPage() {
           Yüklənir…
         </div>
       ) : items.length === 0 && packages.length === 0 ? (
-        <div style={{ background: "#fff", borderRadius: 16, padding: "4rem 2rem", textAlign: "center", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <div style={{ background: "#fff", borderRadius: 14, padding: "3rem 2rem", textAlign: "center", border: "1px solid var(--oxford-10)" }}>
           <h3 style={{ fontWeight: 700, color: "var(--oxford)", marginBottom: 6, fontSize: 17 }}>Hələ randevunuz yoxdur</h3>
           <p style={{ color: "var(--oxford-60)", fontSize: 13, marginBottom: 18 }}>
             Psixoloqlarımızdan biri ilə randevu alaraq başlayın
@@ -449,7 +424,7 @@ export default function PatientAppointmentsPage() {
           />
 
           {/* Seanslar / Paketlər tab seçimi */}
-          <div role="tablist" style={{ display: "inline-flex", gap: 4, background: "#fff", border: "1px solid #EDF1F8", borderRadius: 12, padding: 5, boxShadow: "0 2px 12px rgba(0,0,0,.04)" }}>
+          <div role="tablist" style={{ display: "inline-flex", gap: 4, background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 4 }}>
             {([
               ["sessions", "Seanslar", agendaTotal],
               ["packages", "Paketlər", activePackages.length],
@@ -638,15 +613,13 @@ function NextSessionHero({
   if (appt.sessionKind === "INTRO") metaParts.push({ text: "Seans növü: Tanışlıq" });
 
   return (
-    <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(135deg,#F2F6FD 0%,#E4ECFA 100%)", border: `1px solid ${urgent ? "#FECACA" : "#D6E2F7"}`, borderRadius: 18, padding: "24px 26px", marginBottom: 32, boxShadow: "0 2px 12px rgba(8,47,109,.07)" }}>
-      <div aria-hidden style={{ position: "absolute", top: -60, right: -40, width: 200, height: 200, borderRadius: "50%", background: `radial-gradient(circle,${urgent ? "rgba(239,68,68,.12)" : "rgba(16,81,183,.1)"},transparent 70%)`, pointerEvents: "none" }} />
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 20 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: urgent ? "#DC2626" : "var(--brand)" }}>
-          Növbəti seans
-        </span>
+    // Gradient fon, radial parıltı və uppercase "eyebrow" götürüldü — sakit kart.
+    <div className="pnl-card" style={{ marginBottom: 16, borderColor: urgent ? "#FECACA" : undefined }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
+        <h2 className="pnl-card__title">Növbəti seans</h2>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: "#082F6D" }}>
-            {relativeDayLabel(start, now)} · <strong>{fmtTime(start)}{appt.endAt ? ` – ${fmtTime(new Date(appt.endAt))}` : ""}</strong>
+            {relativeDayLabel(start, now)}, <strong>{fmtTime(start)}{appt.endAt ? ` – ${fmtTime(new Date(appt.endAt))}` : ""}</strong>
           </span>
           <span className={tu.expired ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: urgent ? "#DC2626" : "#059669", fontSize: 13, fontWeight: 700 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>{tu.text}
@@ -655,14 +628,14 @@ function NextSessionHero({
       </div>
 
       <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-        <span style={{ width: 58, height: 58, borderRadius: "50%", background: "#082F6D", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 19, fontWeight: 700, flex: "none", overflow: "hidden" }}>
+        <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--brand-50)", color: "var(--brand-700)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, flex: "none", overflow: "hidden" }}>
           {photoUrl ? (
 
             <img src={photoUrl} alt={appt.psychologistName ?? ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : initialsOf(appt.psychologistName)}
         </span>
         <div style={{ flex: 1, minWidth: 230 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: metaParts.length > 0 ? 3 : 8 }}>{appt.psychologistName ?? "Operator psixoloq təyin edəcək"}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: metaParts.length > 0 ? 3 : 8 }}>{appt.psychologistName ?? "Operator psixoloq təyin edəcək"}</div>
           {metaParts.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 8 }}>
               {metaParts.map((p, i) => (
@@ -673,13 +646,13 @@ function NextSessionHero({
             </div>
           )}
           {appt.note && (
-            <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "rgba(255,255,255,.6)", border: "1px solid #D6E2F7", borderRadius: 11, padding: "10px 13px", width: "100%", boxSizing: "border-box" }}>
+            <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 10, padding: "10px 12px", width: "100%", boxSizing: "border-box" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1051B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
               <span style={{ fontSize: 13.5, color: "var(--oxford)", fontWeight: 500, lineHeight: 1.5 }}>Mövzunuz: <span style={{ fontStyle: "italic" }}>«{appt.note.slice(0, 140)}{appt.note.length > 140 ? "…" : ""}»</span></span>
             </div>
           )}
           {cleanOperatorNote(appt.operatorNote) && (
-            <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "rgba(255,255,255,.6)", border: "1px solid #FDE68A", borderRadius: 11, padding: "10px 13px", width: "100%", boxSizing: "border-box", marginTop: 8 }}>
+            <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 12px", width: "100%", boxSizing: "border-box", marginTop: 8 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
               <span style={{ fontSize: 13.5, color: "#92400E", fontWeight: 500, lineHeight: 1.5 }}>Operator qeydi: <span style={{ fontStyle: "italic" }}>«{cleanOperatorNote(appt.operatorNote).slice(0, 140)}{cleanOperatorNote(appt.operatorNote).length > 140 ? "…" : ""}»</span></span>
             </div>
@@ -761,9 +734,9 @@ function PackageProgramCard({
 
   return (
     <Link href={`/patient/appointments/packages/${pkg.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 22, display: "flex", flexDirection: "column", height: "100%", cursor: "pointer" }}>
+    <div style={{ background: "#fff", borderRadius: 14, border: "1px solid var(--oxford-10)", padding: 16, display: "flex", flexDirection: "column", height: "100%", cursor: "pointer" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 16 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--brand-100)", color: "var(--brand-700)", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", padding: "5px 10px", borderRadius: 7 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--oxford-60)", fontSize: 12.5, fontWeight: 600 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
             <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
@@ -784,12 +757,12 @@ function PackageProgramCard({
       <div style={{ marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>
-            {completed}/{pkg.total} tamamlanıb · <span style={{ color: "var(--brand)" }}>{pkg.remaining} seans qalıb</span>
+            {pkg.total} seansdan {completed} tamamlanıb, <span style={{ color: "var(--brand)" }}>{pkg.remaining} qalıb</span>
           </span>
           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>{Math.round(completedPct)}%</span>
         </div>
         <div style={{ display: "flex", height: 9, background: "var(--brand-100)", borderRadius: 999, overflow: "hidden" }}>
-          <div style={{ width: `${completedPct}%`, height: "100%", background: "linear-gradient(90deg,#1051B7,#3A74D6)" }} />
+          <div style={{ width: `${completedPct}%`, height: "100%", background: "var(--brand)" }} />
           <div style={{ width: `${plannedPct}%`, height: "100%", background: "#9DBCEB" }} />
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)", flexWrap: "wrap" }}>
@@ -801,11 +774,11 @@ function PackageProgramCard({
 
       <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 130, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 3 }}>Ödənilib</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 3 }}>Ödənilib</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{formatAzn(pkg.pricePaid)}</div>
         </div>
         <div style={{ flex: 1, minWidth: 130, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 3 }}>Alınıb</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 3 }}>Alınıb</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{azFormatDate(pkg.purchasedAt)}</div>
         </div>
       </div>
@@ -955,7 +928,7 @@ function AgendaRow({
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
         {when ? (
           <span className="psy-card__time">
-            {relativeDayLabel(new Date(when), now)} · {fmtTime(new Date(when))}{start && a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}
+            {relativeDayLabel(new Date(when), now)}, {fmtTime(new Date(when))}{start && a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}
           </span>
         ) : (
           <span className="psy-card__time" style={{ color: "var(--oxford-60)" }}>Vaxt operator təyin edəcək</span>
@@ -1046,7 +1019,7 @@ function SessionJoinButton({ a }: { a: AppointmentDetail }) {
   if (link && !paymentPending) {
     return (
       <a href={link} target="_blank" rel="noopener noreferrer"
-        style={{ ...base, background: "var(--brand)", color: "#fff", textDecoration: "none", boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
+        style={{ ...base, background: "var(--brand)", color: "#fff", textDecoration: "none" }}>
         <VideoIcon />
         Seansa qoşul
       </a>
@@ -1149,7 +1122,7 @@ function SessionDetailModal({
   const psyName = a.psychologistName ?? a.requestedPsychologistName ?? null;
   const gcalHref = gcalHrefFor(a);
 
-  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 4 };
+  const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 4 };
   const ghostBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 14px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", textDecoration: "none" };
 
   return (
@@ -1183,9 +1156,9 @@ function SessionDetailModal({
             <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
                 {a.startAt
-                  ? `${azFormatDate(a.startAt)} · ${fmtTime(new Date(a.startAt))}${a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}`
+                  ? `${azFormatDate(a.startAt)}, ${fmtTime(new Date(a.startAt))}${a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}`
                   : a.requestedStartAt
-                    ? `İstədiyiniz vaxt: ${azFormatDate(a.requestedStartAt)} · ${fmtTime(new Date(a.requestedStartAt))}`
+                    ? `İstədiyiniz vaxt: ${azFormatDate(a.requestedStartAt)}, ${fmtTime(new Date(a.requestedStartAt))}`
                     : "Operator vaxtı təyin edəcək"}
               </span>
               {tu && !tu.expired && (
@@ -1206,7 +1179,7 @@ function SessionDetailModal({
                   <PackageBadge name={a.packageName} />
                   {a.packageName ?? "Paket seansı"}
                   {a.packageTotal != null && a.packageRemaining != null && (
-                    <span style={{ fontWeight: 600, color: "var(--oxford-60)", fontSize: 12.5 }}>· {a.packageRemaining} seans qalıb</span>
+                    <span style={{ fontWeight: 600, color: "var(--oxford-60)", fontSize: 12.5 }}>{a.packageRemaining} seans qalıb</span>
                   )}
                 </span>
                 <Link href={`/patient/appointments/packages/${a.patientPackageId}`} style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", textDecoration: "none", whiteSpace: "nowrap" }}>

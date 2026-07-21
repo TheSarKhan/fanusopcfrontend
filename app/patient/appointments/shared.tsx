@@ -68,7 +68,7 @@ export function PackageBadge({ name }: { name?: string | null }) {
 export function IntroBadge() {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#D1FAE5", color: "#065F46", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>
-      Tanışlıq · Pulsuz
+      Pulsuz tanışlıq
     </span>
   );
 }
@@ -107,8 +107,10 @@ export function Section({
   const labelRow = (
     <>
       {icon && <span style={{ fontSize: 16 }}>{icon}</span>}
-      <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--oxford)" }}>{title}</span>
-      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 22, height: 22, padding: "0 7px", background: "var(--brand-50)", color: "var(--brand-700)", fontSize: 12, fontWeight: 700, borderRadius: 999 }}>{count}</span>
+      {/* Uppercase "eyebrow" + dairəvi sayğac badge idi — cümlə formalı başlıq
+          və yanında sadə rəqəm. */}
+      <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", letterSpacing: "-0.01em" }}>{title}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", fontVariantNumeric: "tabular-nums" }}>{count}</span>
     </>
   );
   const chevron = (
@@ -218,7 +220,7 @@ export function SlotPicker({ psychologistId, busy, onPick, confirmNote }: {
             </div>
             <div style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Bu vaxtı təsdiqləyirsiniz?</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "var(--brand-700)", marginBottom: 8 }}>
-              {azFormatDate(picked.startAt)} · {azFormatTime(picked.startAt)}
+              {azFormatDate(picked.startAt)}, {azFormatTime(picked.startAt)}
             </div>
             <div style={{ fontSize: 13, color: "var(--oxford-60)", lineHeight: 1.5, marginBottom: 20 }}>
               {confirmNote ?? "Seçdiyiniz vaxt operatora göndəriləcək, təsdiqdən sonra randevuya çevriləcək."}

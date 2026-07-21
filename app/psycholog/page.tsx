@@ -146,7 +146,7 @@ export default function PsychologDashboard() {
             <StatCard
               label="Bu ay seans"
               value={stats?.thisMonthTotal ?? 0}
-              sub={`${stats?.thisMonthCompleted ?? 0} tamamlandı · ${completionRate}% bitirilib`}
+              sub={`${stats?.thisMonthCompleted ?? 0} tamamlandı (${completionRate}%)`}
             />
             <StatCard
               label="Bu həftə"
@@ -305,7 +305,7 @@ function UpcomingRow({ a }: { a: AppointmentDetail }) {
           {a.patientName ?? "Müştəri"}
         </div>
         <div className="pnl-row__meta">
-          {formatDayShort(a.startAt)} · {formatTime(a.startAt)}
+          {formatDayShort(a.startAt)}, {formatTime(a.startAt)}
         </div>
       </div>
     </Link>
@@ -350,7 +350,7 @@ function PricingSummaryCard({ pricing, packages }: {
           {active.slice(0, 4).map(p => (
             <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}>
               <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--oxford)", fontWeight: 600 }}>
-                {p.name} <span style={{ color: "var(--oxford-60)", fontWeight: 500 }}>· {p.sessionCount} seans</span>
+                {p.name} <span style={{ color: "var(--oxford-60)", fontWeight: 500 }}>{p.sessionCount} seans</span>
               </span>
               <span style={{ fontWeight: 700, color: "var(--brand-700)", flex: "none" }}>{formatAzn(p.packagePrice)}</span>
             </div>

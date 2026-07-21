@@ -11775,7 +11775,7 @@ a.pread-author:hover .pread-author__name { color: var(--brand-700); }
 /* ── Səhifə başlığı ──────────────────────────────────────────────────────── */
 .pnl-head {
   display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap; margin-bottom: 24px;
+  gap: 14px; flex-wrap: wrap; margin-bottom: 18px;
 }
 .pnl-head__title {
   margin: 0; font-size: 22px; font-weight: 700; line-height: 1.25;
@@ -11793,14 +11793,14 @@ a.pread-author:hover .pread-author__name { color: var(--brand-700); }
 /* ── Kart ────────────────────────────────────────────────────────────────── */
 .pnl-card {
   background: #fff; border: 1px solid var(--oxford-10);
-  border-radius: 14px; padding: 20px; min-width: 0;
+  border-radius: 14px; padding: 16px; min-width: 0;
   /* Flex sütun: kart şəbəkə xanasını tam doldurur, məzmun yuxarıdan yığılır —
      sətirdəki iki kart eyni hündürlükdə olur, altda boşluq qalmır. */
   display: flex; flex-direction: column;
 }
 .pnl-card__head {
   display: flex; align-items: baseline; justify-content: space-between;
-  gap: 12px; margin-bottom: 16px;
+  gap: 10px; margin-bottom: 12px;
 }
 .pnl-card__title { margin: 0; font-size: 15px; font-weight: 700; color: var(--oxford); letter-spacing: -0.01em; }
 .pnl-card__sub { margin: 4px 0 0; font-size: 13px; color: var(--oxford-60); }
@@ -11808,11 +11808,11 @@ a.pread-author:hover .pread-author__name { color: var(--brand-700); }
 /* ── Statistika: dəyər + etiket, dekorasiyasız ───────────────────────────── */
 .pnl-stats {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
-  gap: 12px; margin-bottom: 24px;
+  gap: 10px; margin-bottom: 16px;
 }
 .pnl-stat {
   background: #fff; border: 1px solid var(--oxford-10);
-  border-radius: 14px; padding: 18px 20px;
+  border-radius: 14px; padding: 14px 16px;
 }
 .pnl-stat__val {
   font-size: 28px; font-weight: 700; line-height: 1.1; color: var(--oxford);
@@ -11824,7 +11824,7 @@ a.pread-author:hover .pread-author__name { color: var(--brand-700); }
 /* ── Siyahı sətri ────────────────────────────────────────────────────────── */
 .pnl-row {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--oxford-10);
+  gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--oxford-10);
 }
 .pnl-row:last-child { border-bottom: 0; padding-bottom: 0; }
 .pnl-row:first-child { padding-top: 0; }
@@ -11851,16 +11851,16 @@ a.pread-author:hover .pread-author__name { color: var(--brand-700); }
 .pnl-link:hover { text-decoration: underline; }
 
 /* ── Boş vəziyyət ────────────────────────────────────────────────────────── */
-.pnl-empty { padding: 24px 4px; }
+.pnl-empty { padding: 16px 2px; }
 .pnl-empty__title { font-size: 14px; font-weight: 600; color: var(--oxford-80); }
 .pnl-empty__body { margin-top: 4px; font-size: 13px; color: var(--oxford-60); line-height: 1.6; max-width: 46ch; }
 
 /* ── Şəbəkə ──────────────────────────────────────────────────────────────── */
 .pnl-2col {
   display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 16px; align-items: stretch;
+  gap: 12px; align-items: stretch;
 }
-.pnl-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.pnl-stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 /* Şəbəkədə tam eni tutan xana — tək qalan kart sağda boşluq buraxmasın. */
 .pnl-span-2 { grid-column: 1 / -1; min-width: 0; }
 .pnl-span-2 > * { flex: 1; }
@@ -11868,5 +11868,5 @@ a.pread-author:hover .pread-author__name { color: var(--brand-700); }
 @media (max-width: 900px) {
   .pnl-2col { grid-template-columns: 1fr; }
   .pnl-head__title { font-size: 20px; }
-  .pnl-card { padding: 16px; }
+  .pnl-card { padding: 14px; }
 }

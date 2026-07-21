@@ -565,34 +565,56 @@ export default function OperatorAppointmentsPage() {
         })}
       </div>
 
-      {/* RANDEVULAR — filtr çipləri */}
+      {/* RANDEVULAR — axtarış + tək "Filtrlər" paneli (çiplər cədvələ keçdikdən
+          sonra ləğv edildi: status/xüsusi filtr/sıralama hamısı paneldədir) */}
       {view === "appointments" && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-          <Chip label="Hamısı" count={singleItems.length} active={allOnly}
-            onClick={() => { setAllOnly(true); setOverdueOnly(false); setMineOnly(false); setRescheduleOnly(false); setCancelOnly(false); }} />
-          {(Object.keys(TAB_META) as Tab[]).map(tk => (
-            <Chip key={tk} label={TAB_META[tk].label} count={counts[tk] ?? 0} active={statusActive(tk)} onClick={() => pickStatus(tk)} />
-          ))}
-          <FilterMoreMenu options={[
-            {
-              key: "overdue", label: "Gecikmiş", count: overdueCount, dot: "var(--rose)", active: overdueOnly,
-              onClick: () => { setAllOnly(false); setMineOnly(false); setRescheduleOnly(false); setCancelOnly(false); setOverdueOnly(o => !o); },
-            },
-            {
-              key: "cancelReq", label: "Ləğv tələbləri", count: cancelReqCount, dot: "var(--amber)", active: cancelOnly,
-              onClick: () => { setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setRescheduleOnly(false); setCancelOnly(c => !c); },
-            },
-            {
-              key: "reschedule", label: "Vaxt dəyişikliyi", count: rescheduleCount, dot: "var(--brand)", active: rescheduleOnly,
-              onClick: () => { setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setCancelOnly(false); setRescheduleOnly(r => !r); },
-            },
-          ]} />
-          <Chip label={t("staff.opMineFilter")} count={mineCount} active={mineOnly} dot="var(--brand)"
-            onClick={() => { setAllOnly(false); setOverdueOnly(false); setRescheduleOnly(false); setCancelOnly(false); setMineOnly(m => !m); }} />
-          <div className="fx-search" style={{ flex: "1 1 220px", minWidth: 200, marginLeft: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
+          <div className="fx-search" style={{ flex: "1 1 260px", minWidth: 220 }}>
             <Svg w={15} d={<><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>} />
             <input type="text" placeholder="Axtar (ad, psixoloq, qeyd…)" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
+          <FilterPanel
+            statusOptions={[
+              { key: "ALL", label: "Hamısı", count: singleItems.length, active: allOnly },
+              ...(Object.keys(TAB_META) as Tab[]).map(tk => ({
+                key: tk, label: TAB_META[tk].label, count: counts[tk] ?? 0, active: statusActive(tk),
+              })),
+            ]}
+            onPickStatus={(key) => {
+              if (key === "ALL") {
+                setAllOnly(true); setOverdueOnly(false); setMineOnly(false);
+                setRescheduleOnly(false); setCancelOnly(false);
+              } else {
+                pickStatus(key as Tab);
+              }
+            }}
+            flagOptions={[
+              {
+                key: "overdue", label: "Gecikmiş", hint: "SLA vaxtı keçib", count: overdueCount, active: overdueOnly,
+                onToggle: () => { setAllOnly(false); setMineOnly(false); setRescheduleOnly(false); setCancelOnly(false); setOverdueOnly(o => !o); },
+              },
+              {
+                key: "cancelReq", label: "Ləğv tələbləri", hint: "Pasiyent ləğv istəyib", count: cancelReqCount, active: cancelOnly,
+                onToggle: () => { setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setRescheduleOnly(false); setCancelOnly(c => !c); },
+              },
+              {
+                key: "reschedule", label: "Vaxt dəyişikliyi", hint: "Yeni vaxt təklifi gözləyir", count: rescheduleCount, active: rescheduleOnly,
+                onToggle: () => { setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setCancelOnly(false); setRescheduleOnly(r => !r); },
+              },
+              {
+                key: "mine", label: t("staff.opMineFilter"), hint: "Sahibi mənəm", count: mineCount, active: mineOnly,
+                onToggle: () => { setAllOnly(false); setOverdueOnly(false); setRescheduleOnly(false); setCancelOnly(false); setMineOnly(m => !m); },
+              },
+            ]}
+            sort={sort}
+            dir={dir}
+            onSortChange={(key, d) => { setSort(key); setDir(d); }}
+            onReset={() => {
+              setAllOnly(false); setOverdueOnly(false); setMineOnly(false);
+              setRescheduleOnly(false); setCancelOnly(false);
+              setTab("PENDING"); setSort(null); setDir("desc");
+            }}
+          />
         </div>
       )}
 
@@ -698,38 +720,197 @@ function Chip({ label, count, active, dot, onClick }: { label: string; count: nu
   );
 }
 
-/** Az istifadə olunan, dar filtrləri ("Gecikmiş" və s.) bir dropdown-a yığır —
- *  filtr zolağını hər zaman görünən 6+ ayrı çip əvəzinə yığcam saxlayır. */
-function FilterMoreMenu({ options }: { options: { key: string; label: string; count: number; active: boolean; dot: string; onClick: () => void }[] }) {
+/* ─── Filtr paneli ───────────────────────────────────────────────────────────
+   Siyahı cədvəl strukturuna keçdikdən sonra 8 ayrı status/filtr çipi zolağı
+   artıq lazım deyil: hamısı bir "Filtrlər" düyməsinin altındakı popover-dədir.
+   Düymədəki sayğac neçə filtrin dəyişdirildiyini göstərir; panelin içində
+   status seçimi (tək), xüsusi filtrlər (çoxlu) və sıralama var. */
+
+type StatusOption = { key: string; label: string; count: number; active: boolean };
+type FlagOption = { key: string; label: string; hint?: string; count: number; active: boolean; onToggle: () => void };
+
+const SORT_OPTIONS: { key: AppointmentSortKey; label: string }[] = [
+  { key: "createdAt",        label: "Yaradılma tarixi" },
+  { key: "startAt",          label: "Seans vaxtı" },
+  { key: "status",           label: "Status" },
+  { key: "patientName",      label: "Pasiyent adı" },
+  { key: "psychologistName", label: "Psixoloq adı" },
+];
+
+function FilterPanel({
+  statusOptions, onPickStatus, flagOptions, sort, dir, onSortChange, onReset,
+}: {
+  statusOptions: StatusOption[];
+  onPickStatus: (key: string) => void;
+  flagOptions: FlagOption[];
+  sort: AppointmentSortKey | null;
+  dir: SortDir;
+  onSortChange: (key: AppointmentSortKey | null, dir: SortDir) => void;
+  onReset: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useCallback((node: HTMLDivElement | null) => {
     if (!node) return;
     const onDoc = (e: MouseEvent) => { if (!node.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
-  const activeOpt = options.find(o => o.active);
-  const totalCount = options.reduce((s, o) => s + o.count, 0);
+
+  const activeStatus = statusOptions.find(s => s.active);
+  const activeFlags = flagOptions.filter(f => f.active);
+  // Sayğac: default olmayan status + hər aktiv xüsusi filtr + sıralama.
+  const isDefaultStatus = activeStatus?.key === "PENDING";
+  const badge = (activeStatus && !isDefaultStatus ? 1 : 0) + activeFlags.length + (sort ? 1 : 0);
+
+  // Zolağın altında hansı filtrlərin işlədiyi düz mətnlə yazılır (çip yox).
+  const summary = [
+    activeStatus && !isDefaultStatus ? activeStatus.label : null,
+    ...activeFlags.map(f => f.label),
+    sort ? `${SORT_OPTIONS.find(s => s.key === sort)?.label} ${dir === "asc" ? "↑" : "↓"}` : null,
+  ].filter(Boolean) as string[];
+
+  const rowBase: React.CSSProperties = {
+    display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+    width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid transparent",
+    background: "transparent", fontSize: 13, fontWeight: 500, color: "var(--oxford)",
+    cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+  };
+  const activeRow: React.CSSProperties = {
+    background: "var(--brand-50, #F2F6FD)", borderColor: "var(--brand-200, #C3D6F6)",
+    color: "var(--brand-700, #082F6D)", fontWeight: 600,
+  };
+  const sectionTitle: React.CSSProperties = {
+    fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)", margin: "0 0 6px 2px",
+  };
+  const count: React.CSSProperties = {
+    fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)", fontVariantNumeric: "tabular-nums",
+  };
 
   return (
-    <div ref={ref} style={{ position: "relative", flex: "none" }}>
-      <button type="button" onClick={() => setOpen(o => !o)} className={`fx-toggle-chip${activeOpt ? " fx-toggle-chip--active" : ""}`}>
-        {activeOpt && <span className="fx-dot" style={{ background: activeOpt.dot }} />}
-        {activeOpt ? activeOpt.label : "Digər filtrlər"}
-        {totalCount > 0 && <span className="fx-num" style={{ opacity: 0.7, fontWeight: 700 }}>{totalCount}</span>}
+    <div ref={ref} style={{ position: "relative", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className={`fx-btn fx-btn--ghost${open ? " is-open" : ""}`}
+        aria-haspopup="dialog" aria-expanded={open}>
+        <Svg w={15} d={<><path d="M3 5h18" /><path d="M6 12h12" /><path d="M10 19h4" /></>} />
+        Filtrlər
+        {badge > 0 && (
+          <span style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            minWidth: 19, height: 19, padding: "0 6px", borderRadius: 999,
+            background: "var(--brand)", color: "#fff", fontSize: 11.5, fontWeight: 700,
+            fontVariantNumeric: "tabular-nums",
+          }}>{badge}</span>
+        )}
         <Svg w={12} sw={2.4} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .12s" }} d={<path d="M6 9l6 6 6-6" />} />
       </button>
+
+      {summary.length > 0 && (
+        <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>
+          {summary.join(" · ")}
+          <button type="button" onClick={onReset}
+            style={{ marginLeft: 8, background: "none", border: "none", padding: 0, color: "var(--brand)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+            Təmizlə
+          </button>
+        </span>
+      )}
+
       {open && (
-        <div className="fx-menu" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, minWidth: 210, zIndex: 20 }}>
-          {options.map(o => (
-            <button key={o.key} type="button" onClick={() => { o.onClick(); setOpen(false); }}
-              className="fx-menu-item" style={{ justifyContent: "space-between", background: o.active ? "var(--surface-muted)" : undefined }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: o.dot }} />{o.label}
-              </span>
-              <span className="fx-num" style={{ fontSize: 11.5, fontWeight: 700, color: "var(--oxford-60)" }}>{o.count}</span>
+        <div role="dialog" aria-label="Filtrlər" className="fx-card"
+          style={{
+            position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 40,
+            width: 320, maxWidth: "calc(100vw - 32px)", padding: 14,
+            boxShadow: "0 16px 40px rgba(0,33,71,.14)",
+            maxHeight: "min(70vh, 620px)", overflowY: "auto",
+          }}>
+
+          {/* Status — tək seçim */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={sectionTitle}>Status</div>
+            <div style={{ display: "grid", gap: 2 }}>
+              {statusOptions.map(s => (
+                <button key={s.key} type="button" onClick={() => onPickStatus(s.key)}
+                  style={{ ...rowBase, ...(s.active ? activeRow : {}) }}>
+                  <span>{s.label}</span>
+                  <span style={count}>{s.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Xüsusi filtrlər — çoxlu seçim */}
+          <div style={{ marginBottom: 14, borderTop: "1px solid var(--hairline)", paddingTop: 12 }}>
+            <div style={sectionTitle}>Xüsusi filtrlər</div>
+            <div style={{ display: "grid", gap: 2 }}>
+              {flagOptions.map(f => (
+                <button key={f.key} type="button" onClick={f.onToggle}
+                  style={{ ...rowBase, ...(f.active ? activeRow : {}), alignItems: "flex-start" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+                    <span style={{
+                      width: 15, height: 15, borderRadius: 4, flex: "none",
+                      border: `1.5px solid ${f.active ? "var(--brand)" : "var(--oxford-20, #C3D6F6)"}`,
+                      background: f.active ? "var(--brand)" : "#fff",
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {f.active && <Svg w={10} sw={3} stroke="#fff" d={<path d="M20 6L9 17l-5-5" />} />}
+                    </span>
+                    <span style={{ minWidth: 0 }}>
+                      {f.label}
+                      {f.hint && <span style={{ display: "block", fontSize: 11.5, fontWeight: 500, color: "var(--oxford-60)" }}>{f.hint}</span>}
+                    </span>
+                  </span>
+                  <span style={count}>{f.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Sıralama */}
+          <div style={{ borderTop: "1px solid var(--hairline)", paddingTop: 12 }}>
+            <div style={sectionTitle}>Sıralama</div>
+            <div style={{ display: "grid", gap: 2 }}>
+              <button type="button" onClick={() => onSortChange(null, "desc")}
+                style={{ ...rowBase, ...(sort === null ? activeRow : {}) }}>
+                <span>Standart (ən yeni əvvəl)</span>
+              </button>
+              {SORT_OPTIONS.map(s => {
+                const on = sort === s.key;
+                return (
+                  <div key={s.key} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <button type="button" onClick={() => onSortChange(s.key, on ? dir : "desc")}
+                      style={{ ...rowBase, ...(on ? activeRow : {}), flex: 1 }}>
+                      <span>{s.label}</span>
+                    </button>
+                    {on && (
+                      <button type="button" onClick={() => onSortChange(s.key, dir === "asc" ? "desc" : "asc")}
+                        title={dir === "asc" ? "Artan sıra" : "Azalan sıra"}
+                        style={{
+                          flex: "none", width: 34, height: 34, borderRadius: 9,
+                          border: "1px solid var(--brand-200, #C3D6F6)", background: "#fff",
+                          color: "var(--brand-700, #082F6D)", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        }}>
+                        {dir === "asc" ? "↑" : "↓"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Alt hissə */}
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 14, borderTop: "1px solid var(--hairline)", paddingTop: 12 }}>
+            <button type="button" onClick={onReset} className="fx-btn fx-btn--ghost" style={{ flex: 1 }}>
+              Sıfırla
             </button>
-          ))}
+            <button type="button" onClick={() => setOpen(false)} className="fx-btn fx-btn--primary" style={{ flex: 1 }}>
+              Tətbiq et
+            </button>
+          </div>
         </div>
       )}
     </div>

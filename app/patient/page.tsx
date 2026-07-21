@@ -200,83 +200,86 @@ export default function PatientDashboard() {
       ) : (
         <>
           {/* ── Engagement strip ─────────────────────────────────────── */}
-          <div className="pdash-stats">
+          <div className="pnl-stats">
             <StatTile
               label="Bu ay seans"
               value={monthStats.completed}
-              icon={<IconCheck />}
-              tone="brand"
               href="/patient/appointments"
             />
             <StatTile
               label="Aktiv tapşırıq"
               value={taskStats.pending}
-              icon={<IconTarget />}
-              tone={taskStats.overdue > 0 ? "warn" : "brand"}
               href="/patient/homework"
             />
             <StatTile
               label="Bitirilmiş tapşırıq"
               value={taskStats.completed}
-              icon={<IconAward />}
-              tone="good"
               href="/patient/homework"
             />
           </div>
 
-          {/* ── 2-column body ────────────────────────────────────────── */}
-          <div className="pdash-grid">
-            <div className="pdash-col">
-              <Card>
-                <CardHead
-                  title="Sizə tövsiyə olunan psixoloqlar"
-                  subtitle={favorites.length > 0 ? "Sevimlilərinizdən və yüksək reytinqlilərdən" : "Yüksək reytinqli mütəxəssislər"}
-                  link={{ href: "/patient/psychologists", label: "Hamısına bax →" }}
-                />
-                {recommended.length === 0 ? (
-                  <Empty msg="Hələ aktiv psixoloq yoxdur." />
-                ) : (
-                  <div className="pdash-psy-grid">
-                    {recommended.slice(0, 4).map(p => (
-                      <PsyRecCard key={p.id} p={p} favorite={favorites.some(f => f.id === p.id)} />
-                    ))}
-                  </div>
-                )}
-              </Card>
+          {/* ── Əsas: tövsiyələr | son aktivlik ──────────────────────────
+              Kartlar birbaşa şəbəkənin uşaqlarıdır → eyni hündürlüyə uzanır. */}
+          <div className="pnl-2col" style={{ marginBottom: 16 }}>
+            <Card>
+              <CardHead
+                title="Sizə tövsiyə olunan psixoloqlar"
+                subtitle={favorites.length > 0 ? "Sevimlilərinizdən və yüksək reytinqlilərdən" : "Yüksək reytinqli mütəxəssislər"}
+                link={{ href: "/patient/psychologists", label: "Hamısına bax →" }}
+              />
+              {recommended.length === 0 ? (
+                <Empty msg="Hələ aktiv psixoloq yoxdur." />
+              ) : (
+                <div>
+                  {recommended.slice(0, 4).map(p => (
+                    <PsyRecCard key={p.id} p={p} favorite={favorites.some(f => f.id === p.id)} />
+                  ))}
+                </div>
+              )}
+            </Card>
 
-              <Card>
-                <CardHead title="Son aktivlik" subtitle="Randevular və tapşırıqlar" />
-                {activityFeed.length === 0 ? (
-                  <Empty msg="Hələ aktivlik yoxdur. İlk randevunuzu alın." />
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {activityFeed.map((it, i) => (
-                      it.kind === "appt"
-                        ? <ApptActivityRow key={"a-" + it.a.id + "-" + i} a={it.a} />
-                        : <TaskActivityRow key={"t-" + it.t.id + "-" + i} t={it.t} />
-                    ))}
-                  </div>
-                )}
-              </Card>
-            </div>
+            <Card>
+              <CardHead title="Son aktivlik" subtitle="Randevular və tapşırıqlar" />
+              {activityFeed.length === 0 ? (
+                <Empty msg="Hələ aktivlik yoxdur. İlk randevunuzu alın." />
+              ) : (
+                <div>
+                  {activityFeed.map((it, i) => (
+                    it.kind === "appt"
+                      ? <ApptActivityRow key={"a-" + it.a.id + "-" + i} a={it.a} />
+                      : <TaskActivityRow key={"t-" + it.t.id + "-" + i} t={it.t} />
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
 
-            <div className="pdash-col">
+          {/* ── Şərti kartlar (hədəf / kurs / gecikmiş) ──────────────────
+              auto-fit: 1, 2 və ya 3 kart olsa da sıra tam dolur, boşluq qalmır. */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))",
+            gap: 12, alignItems: "stretch",
+          }}>
               {FEATURE_GOALS && activeGoals.length > 0 && (
                 <Card>
                   <CardHead
                     title="Aktiv hədəflərim"
-                    subtitle={`${activeGoals.length} açıq · ${goals.length} cəmi`}
+                    subtitle={`${goals.length} hədəfdən ${activeGoals.length}-i açıqdır`}
                     link={{ href: "/patient/goals", label: "Hamısına bax →" }}
                   />
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div>
                     {activeGoals.map(g => (
-                      <Link key={g.id} href="/patient/goals" className="pdash-goal">
-                        <div className="pdash-goal__title">{g.title}</div>
-                        <div className="pdash-goal__psy">{g.psychologistName ?? "Psixoloqunuz"}</div>
-                        <div className="pdash-goal__bar">
-                          <div className="pdash-goal__bar-fill" style={{ width: `${g.progressPct}%` }} />
+                      <Link key={g.id} href="/patient/goals" className="pnl-row"
+                        style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                          <span className="pnl-row__title" style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {g.title}
+                          </span>
+                          <span className="pnl-row__val" style={{ fontSize: 13 }}>{g.progressPct}%</span>
                         </div>
-                        <div className="pdash-goal__pct">{g.progressPct}%</div>
+                        <div className="pnl-row__meta">{g.psychologistName ?? "Psixoloqunuz"}</div>
+                        <ProgressBar pct={g.progressPct} />
                       </Link>
                     ))}
                   </div>
@@ -286,8 +289,8 @@ export default function PatientDashboard() {
               {activeCourse && (
                 <Card>
                   <CardHead title={t("course.dashboardTitle")} />
-                  <div className="pdash-course">
-                    <div className="pdash-course__line">
+                  <div>
+                    <div style={{ fontSize: 13.5, color: "var(--oxford-80)", lineHeight: 1.6 }}>
                       {activeCourse.upcoming
                         ? t("course.dashboardLine", {
                             done: activeCourse.done,
@@ -299,48 +302,27 @@ export default function PatientDashboard() {
                             total: activeCourse.total,
                           })}
                     </div>
-                    <div className="pdash-course__bar">
-                      <div className="pdash-course__bar-fill"
-                        style={{ width: `${activeCourse.total > 0 ? Math.round((activeCourse.done / activeCourse.total) * 100) : 0}%` }} />
-                    </div>
-                    <Link href="/patient/appointments" className="pdash-course__cta">
+                    <ProgressBar pct={activeCourse.total > 0 ? Math.round((activeCourse.done / activeCourse.total) * 100) : 0} />
+                    <Link href="/patient/appointments" className="pnl-link" style={{ marginTop: 12, display: "inline-block" }}>
                       {t("course.dashboardCta")}
                     </Link>
                   </div>
                 </Card>
               )}
 
-              <Card>
-                <CardHead title="Sürətli giriş" />
-                <div className="pdash-quick">
-                  <QuickLink href="/patient/psychologists" icon={<IconSearch />} label="Psixoloq tap" primary />
-                  <QuickLink href="/patient/appointments"  icon={<IconCalendar />} label="Randevular" />
-                  <QuickLink href="/patient/homework"      icon={<IconTarget />} label="Tapşırıqlar" badge={taskStats.pending || undefined} />
-                  {FEATURE_GOALS && (
-                    <QuickLink href="/patient/goals"         icon={<IconAward />} label="Hədəflərim" badge={activeGoals.length || undefined} />
-                  )}
-                  <QuickLink href="/patient/favorites"     icon={<IconHeart />} label="Sevimlilərim" />
-                  <QuickLink href="/patient/profile"       icon={<IconUser />} label="Profil" />
-                </div>
-              </Card>
+            {/* "Sürətli giriş" kartı silindi — sidebar onsuz da eyni keçidləri verir. */}
 
-              {taskStats.overdue > 0 && (
-                <Card tone="warn">
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <div className="pdash-alert-icon"><IconBell /></div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#9A3412" }}>
-                        {taskStats.overdue} gecikmiş tapşırığınız var
-                      </div>
-                      <div style={{ fontSize: 12, color: "#9A3412", marginTop: 3 }}>
-                        Vaxtı keçmiş tapşırıqları bağlayın və psixoloqunuza geri bildirim göndərin.
-                      </div>
-                      <Link href="/patient/homework" className="pdash-alert-cta">Tapşırıqlara bax →</Link>
-                    </div>
-                  </div>
-                </Card>
-              )}
-            </div>
+            {taskStats.overdue > 0 && (
+              <Card tone="warn">
+                <CardHead title={`${taskStats.overdue} gecikmiş tapşırıq`} />
+                <p style={{ margin: 0, fontSize: 13, color: "#92400E", lineHeight: 1.6 }}>
+                  Vaxtı keçmiş tapşırıqları bağlayın və psixoloqunuza geri bildirim göndərin.
+                </p>
+                <Link href="/patient/homework" className="pnl-link" style={{ marginTop: 12, display: "inline-block" }}>
+                  Tapşırıqlara bax →
+                </Link>
+              </Card>
+            )}
           </div>
         </>
       )}
@@ -358,61 +340,82 @@ function PatientHero({ userName, next }: { userName: string; next: AppointmentDe
     return `${days[today.getDay()]}, ${today.getDate()} ${months[today.getMonth()]}`;
   })();
 
+  const status = next ? STATUS_LABEL[next.status] : null;
+
   return (
-    <div className="pdash-hero">
-      <div className="pdash-hero__bg" aria-hidden />
-      <div className="pdash-hero__top">
+    <>
+      {/* Əvvəl burada gradient banner + uppercase "eyebrow" tarix + rəngli pill-lər
+          vardı. Psixoloq paneli ilə eyni sakit dil: başlıq, altında tarix, seans
+          isə adi kart. */}
+      <div className="pnl-head">
         <div>
-          <div className="pdash-hero__day">{dayLabel}</div>
-          <h1 className="pdash-hero__title">{greet()}, {userName}</h1>
-          <p className="pdash-hero__sub">
-            {next ? "Yaxınlaşan seansınız aşağıda. Yaxşı hazırlıq görün." : "Hələ planlaşdırılmış seans yoxdur. Sizə uyğun mütəxəssisi seçin."}
-          </p>
+          <h1 className="pnl-head__title">{greet()}, {userName}</h1>
+          <p className="pnl-head__sub">{dayLabel}</p>
         </div>
-        {!next && (
-          <Link href="/patient/psychologists" className="pdash-hero__cta">
-            Psixoloq tap →
+        <div className="pnl-head__actions">
+          <Link href="/patient/psychologists" className={next ? "pnl-btn pnl-btn--ghost" : "pnl-btn"}>
+            Psixoloq tap
           </Link>
-        )}
+        </div>
       </div>
 
-      {next && next.startAt && (
-        <div className="pdash-hero__next">
-          <div className="pdash-hero__next-time">
-            <div className="pdash-hero__next-day">{fmtDay(next.startAt)}</div>
-            <div className="pdash-hero__next-hr">{azFormatTime(next.startAt)}</div>
+      <div className="pnl-card" style={{ marginBottom: 16 }}>
+        <div className="pnl-card__head">
+          <div>
+            <h2 className="pnl-card__title">Yaxınlaşan seans</h2>
+            {!next && (
+              <p className="pnl-card__sub">
+                Hələ planlaşdırılmış seans yoxdur — sizə uyğun mütəxəssisi seçin.
+              </p>
+            )}
           </div>
-          <div className="pdash-hero__next-info">
-            <div className="pdash-hero__next-name">
-              {next.psychologistName ?? "Psixoloq təyin olunur"}
-            </div>
-            <div className="pdash-hero__next-meta">
-              <span className="pdash-hero__next-cd">
-                {timeUntil(new Date(next.startAt)).text}
-              </span>
-              <span className="pdash-hero__next-status"
-                style={{
-                  background: STATUS_LABEL[next.status]?.bg,
-                  color: STATUS_LABEL[next.status]?.fg,
-                }}>
-                {STATUS_LABEL[next.status]?.label ?? next.status}
-              </span>
-            </div>
-          </div>
-          <div className="pdash-hero__next-actions">
-            <Link href="/patient/appointments" className="pdash-hero__btn pdash-hero__btn--primary">
-              Detalları aç
-            </Link>
-          </div>
+          {next && (
+            <Link href="/patient/appointments" className="pnl-link">Detalları aç →</Link>
+          )}
         </div>
-      )}
-    </div>
+
+        {next && next.startAt && (
+          <div className="pnl-row">
+            {/* Vaxt öndədir — bu kartda oxunan ilk şey odur. */}
+            <span style={{ flex: "none", minWidth: 96 }}>
+              <span style={{
+                display: "block", fontSize: 18, fontWeight: 700, color: "var(--oxford)",
+                fontVariantNumeric: "tabular-nums", lineHeight: 1.15,
+              }}>
+                {azFormatTime(next.startAt)}
+              </span>
+              <span style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{fmtDay(next.startAt)}</span>
+            </span>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="pnl-row__title" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {next.psychologistName ?? "Psixoloq təyin olunur"}
+              </div>
+              <div className="pnl-row__meta">{timeUntil(new Date(next.startAt)).text}</div>
+            </div>
+
+            {/* Pill deyil — rəngli nöqtə + düz mətn. */}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}>
+              <span aria-hidden style={{
+                width: 6, height: 6, borderRadius: "50%",
+                background: status?.fg ?? "var(--oxford-60)",
+              }} />
+              <span style={{ fontSize: 12.5, color: "var(--oxford-60)", whiteSpace: "nowrap" }}>
+                {status?.label ?? next.status}
+              </span>
+            </span>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
 function Card({ children, tone }: { children: React.ReactNode; tone?: "warn" }) {
   return (
-    <div className="pdash-card" data-tone={tone}>
+    <div className="pnl-card" style={tone === "warn"
+      ? { borderColor: "#FDE68A", background: "#FFFBEB" }
+      : undefined}>
       {children}
     </div>
   );
@@ -424,67 +427,99 @@ function CardHead({ title, subtitle, link }: {
   link?: { href: string; label: string };
 }) {
   return (
-    <div className="pdash-card__head">
-      <div>
-        <div className="pdash-card__title">{title}</div>
-        {subtitle && <div className="pdash-card__sub">{subtitle}</div>}
+    <div className="pnl-card__head">
+      <div style={{ minWidth: 0 }}>
+        <h2 className="pnl-card__title">{title}</h2>
+        {subtitle && <p className="pnl-card__sub">{subtitle}</p>}
       </div>
-      {link && <Link href={link.href} className="pdash-card__link">{link.label}</Link>}
+      {link && <Link href={link.href} className="pnl-link">{link.label}</Link>}
     </div>
   );
 }
 
 function StatTile({
-  label, value, sub, icon, tone, href,
+  label, value, sub, href,
 }: {
   label: string;
   value: number;
   sub?: string;
-  icon: React.ReactNode;
-  tone: "brand" | "good" | "warn";
+  /** Artıq çəkilmir (ikon dairəsi götürüldü) — çağırış yerlərini pozmamaq üçün qalır. */
+  icon?: React.ReactNode;
+  tone?: "brand" | "good" | "warn";
   href?: string;
 }) {
+  // İkon dairəsi və uppercase etiket götürüldü — rəqəm əsas element olsun.
+  // (tone/icon proplar çağırış yerlərini pozmamaq üçün qalır, sadəcə çəkilmir.)
   const inner = (
     <>
-      <div className="pdash-stat__icon" data-tone={tone}>{icon}</div>
-      <div className="pdash-stat__body">
-        <div className="pdash-stat__label">{label}</div>
-        <div className="pdash-stat__val">{value}</div>
-        {sub && <div className="pdash-stat__sub">{sub}</div>}
-      </div>
+      <div className="pnl-stat__val">{value}</div>
+      <div className="pnl-stat__label">{label}</div>
+      {sub && <div className="pnl-stat__sub">{sub}</div>}
     </>
   );
   return href
-    ? <Link href={href} className="pdash-stat">{inner}</Link>
-    : <div className="pdash-stat">{inner}</div>;
+    ? <Link href={href} className="pnl-stat" style={{ textDecoration: "none" }}>{inner}</Link>
+    : <div className="pnl-stat">{inner}</div>;
 }
 
 function PsyRecCard({ p, favorite }: { p: Psychologist; favorite: boolean }) {
   return (
+    // Sətir formatı: avatar + ad/ixtisas, sağda reytinq. Əvvəlki "çip"lər və
+    // ayrıca kart çərçivəsi götürüldü — siyahı sakit oxunur.
     <Link href={p.slug ? `/patient/psychologists/${p.slug}` : "/patient/psychologists"}
-      className="pdash-psy-card">
-      <div className="pdash-psy-card__avatar">
-        {p.photoUrl ? (
-           
-          <img src={p.photoUrl} alt={p.name} />
-        ) : (
-          <span>{initials(p.name)}</span>
-        )}
-      </div>
-      <div className="pdash-psy-card__body">
-        <div className="pdash-psy-card__name">
-          {p.name}
-          {favorite && <span className="pdash-psy-card__fav" aria-label="Sevimli"><IconHeart small /></span>}
-        </div>
-        <div className="pdash-psy-card__title">{p.title}</div>
-        <div className="pdash-psy-card__meta">
-          <span className="pdash-psy-card__rating">★ {fmtRating(p.rating)}</span>
-          {p.specializations?.[0] && (
-            <span className="pdash-psy-card__chip">{p.specializations[0]}</span>
+      className="pnl-row" style={{ textDecoration: "none", color: "inherit" }}>
+      <span style={{
+        width: 38, height: 38, borderRadius: 10, flex: "none", overflow: "hidden",
+        background: "var(--brand-50)", color: "var(--brand-700)",
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        fontSize: 13, fontWeight: 700,
+      }}>
+        {p.photoUrl
+          ? <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          : initials(p.name)}
+      </span>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="pnl-row__title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+          {favorite && (
+            <span aria-label="Sevimli" style={{ color: "var(--rose, #C97D7D)", display: "inline-flex", flex: "none" }}>
+              <IconHeart small />
+            </span>
           )}
         </div>
+        <div className="pnl-row__meta" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {p.title}
+        </div>
       </div>
+
+      <span className="pnl-row__val" style={{ fontSize: 13.5 }}>{fmtRating(p.rating)}</span>
     </Link>
+  );
+}
+
+/** Nazik proqres zolağı — dekorativ qradient/kölgə yoxdur. */
+function ProgressBar({ pct }: { pct: number }) {
+  return (
+    <div style={{
+      marginTop: 8, height: 4, borderRadius: 999,
+      background: "var(--oxford-10)", overflow: "hidden",
+    }}>
+      <div style={{
+        width: `${Math.max(0, Math.min(100, pct))}%`, height: "100%",
+        background: "var(--brand)", borderRadius: 999,
+      }} />
+    </div>
+  );
+}
+
+/** Status — pill deyil, rəngli nöqtə + düz mətn (panel dili). */
+function FeedStatus({ color, label }: { color: string; label: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}>
+      <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: color }} />
+      <span style={{ fontSize: 12.5, color: "var(--oxford-60)", whiteSpace: "nowrap" }}>{label}</span>
+    </span>
   );
 }
 
@@ -492,17 +527,14 @@ function ApptActivityRow({ a }: { a: AppointmentDetail }) {
   const ts = a.startAt ?? a.createdAt;
   const meta = STATUS_LABEL[a.status] ?? { label: a.status, bg: "#F3F4F6", fg: "#374151" };
   return (
-    <Link href="/patient/appointments" className="pdash-feed-row">
-      <div className="pdash-feed-row__dot" style={{ background: "var(--brand)" }} />
-      <div className="pdash-feed-row__main">
-        <div className="pdash-feed-row__title">{a.psychologistName ?? "Psixoloq təyin olunur"}</div>
-        <div className="pdash-feed-row__meta">
-          {ts && <>{fmtDay(ts)} · {azFormatTime(ts)}</>}
+    <Link href="/patient/appointments" className="pnl-row" style={{ textDecoration: "none", color: "inherit" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="pnl-row__title" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {a.psychologistName ?? "Psixoloq təyin olunur"}
         </div>
+        <div className="pnl-row__meta">{ts && <>{fmtDay(ts)}, {azFormatTime(ts)}</>}</div>
       </div>
-      <span className="pdash-feed-row__badge" style={{ background: meta.bg, color: meta.fg }}>
-        {meta.label}
-      </span>
+      <FeedStatus color={meta.fg} label={meta.label} />
     </Link>
   );
 }
@@ -512,53 +544,42 @@ function TaskActivityRow({ t }: { t: Homework }) {
     : t.status === "IN_PROGRESS" ? { label: "Davam edir", bg: "#DBEAFE", fg: "#1E40AF" }
     : { label: "Gözləyir", bg: "#FEF3C7", fg: "#92400E" };
   return (
-    <Link href="/patient/homework" className="pdash-feed-row">
-      <div className="pdash-feed-row__dot" style={{ background: "#F59E0B" }} />
-      <div className="pdash-feed-row__main">
-        <div className="pdash-feed-row__title">{t.title}</div>
-        <div className="pdash-feed-row__meta">
-          {t.psychologistName ?? "Tapşırıq"} · {fmtDay(t.completedAt ?? t.createdAt)}
+    <Link href="/patient/homework" className="pnl-row" style={{ textDecoration: "none", color: "inherit" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="pnl-row__title" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {t.title}
+        </div>
+        <div className="pnl-row__meta">
+          {fmtDay(t.completedAt ?? t.createdAt)}
         </div>
       </div>
-      <span className="pdash-feed-row__badge" style={{ background: status.bg, color: status.fg }}>
-        {status.label}
-      </span>
+      <FeedStatus color={status.fg} label={status.label} />
     </Link>
   );
 }
 
-function QuickLink({
-  href, icon, label, badge, primary,
-}: {
-  href: string; icon: React.ReactNode; label: string; badge?: number; primary?: boolean;
-}) {
-  return (
-    <Link href={href} className={`pdash-quick__item${primary ? " is-primary" : ""}`}>
-      <span className="pdash-quick__icon">{icon}</span>
-      <span className="pdash-quick__label">{label}</span>
-      {badge != null && badge > 0 && (
-        <span className="pdash-quick__badge">{badge}</span>
-      )}
-    </Link>
-  );
-}
 
 function Empty({ msg }: { msg: string }) {
-  return <div className="pdash-empty">{msg}</div>;
+  return (
+    <div className="pnl-empty">
+      <div className="pnl-empty__body" style={{ marginTop: 0 }}>{msg}</div>
+    </div>
+  );
 }
 
+/** Skelet real düzümün formasını təkrarlayır (3 rəqəm + 2 kart) — məzmun
+ *  gələndə sıçrayış olmasın. */
 function SkeletonGrid() {
+  const box = (h: number) => (
+    <div className="pnl-card" style={{ height: h, gap: 10 }}>
+      <div style={{ width: "40%", height: 12, background: "var(--oxford-10)", borderRadius: 4 }} />
+      <div style={{ width: "70%", height: 20, background: "var(--brand-50)", borderRadius: 4 }} />
+    </div>
+  );
   return (
-    <div className="pdash-skel">
-      <div className="pdash-skel__row">
-        <div className="pdash-skel__box" style={{ height: 100 }} />
-        <div className="pdash-skel__box" style={{ height: 100 }} />
-        <div className="pdash-skel__box" style={{ height: 100 }} />
-      </div>
-      <div className="pdash-skel__row" style={{ gridTemplateColumns: "2fr 1fr" }}>
-        <div className="pdash-skel__box" style={{ height: 280 }} />
-        <div className="pdash-skel__box" style={{ height: 280 }} />
-      </div>
+    <div>
+      <div className="pnl-stats">{box(88)}{box(88)}{box(88)}</div>
+      <div className="pnl-2col">{box(280)}{box(280)}</div>
     </div>
   );
 }
@@ -570,28 +591,7 @@ const sw = {
   strokeLinecap: "round" as const, strokeLinejoin: "round" as const, viewBox: "0 0 24 24",
 };
 
-function IconCheck() {
-  return (<svg width="18" height="18" {...sw}><path d="M20 6L9 17l-5-5"/></svg>);
-}
-function IconTarget() {
-  return (<svg width="18" height="18" {...sw}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>);
-}
-function IconAward() {
-  return (<svg width="18" height="18" {...sw}><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>);
-}
-function IconSearch() {
-  return (<svg width="18" height="18" {...sw}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>);
-}
-function IconCalendar() {
-  return (<svg width="18" height="18" {...sw}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>);
-}
 function IconHeart({ small }: { small?: boolean } = {}) {
   const s = small ? 12 : 18;
   return (<svg width={s} height={s} {...sw}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>);
-}
-function IconUser() {
-  return (<svg width="18" height="18" {...sw}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>);
-}
-function IconBell() {
-  return (<svg width="22" height="22" {...sw}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>);
 }

@@ -61,12 +61,6 @@ function initials(name?: string | null): string {
   return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
 }
 
-function fmtRating(r: string | number | undefined | null): string {
-  if (r == null || r === "") return "—";
-  const n = typeof r === "string" ? parseFloat(r) : r;
-  return Number.isFinite(n) ? n.toFixed(1) : "—";
-}
-
 export default function PatientDashboard() {
   const { t } = useT();
   const user = getStoredUser();
@@ -464,8 +458,8 @@ function StatTile({
 
 function PsyRecCard({ p, favorite }: { p: Psychologist; favorite: boolean }) {
   return (
-    // Sətir formatı: avatar + ad/ixtisas, sağda reytinq. Əvvəlki "çip"lər və
-    // ayrıca kart çərçivəsi götürüldü — siyahı sakit oxunur.
+    // Sətir formatı: avatar + ad/ixtisas. Reytinq rəqəmi, "çip"lər və ayrıca
+    // kart çərçivəsi götürülüb — siyahı sakit oxunur.
     <Link href={p.slug ? `/patient/psychologists/${p.slug}` : "/patient/psychologists"}
       className="pnl-row" style={{ textDecoration: "none", color: "inherit" }}>
       <span style={{
@@ -492,8 +486,6 @@ function PsyRecCard({ p, favorite }: { p: Psychologist; favorite: boolean }) {
           {p.title}
         </div>
       </div>
-
-      <span className="pnl-row__val" style={{ fontSize: 13.5 }}>{fmtRating(p.rating)}</span>
     </Link>
   );
 }

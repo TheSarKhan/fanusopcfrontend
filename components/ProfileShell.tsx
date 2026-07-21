@@ -120,7 +120,8 @@ export default function ProfileShell({ extras, sideExtras, title = "Profil", sub
     <div className="uprof-page">
       <header className="uprof-page-head">
         <div>
-          <p className="uprof-eyebrow">{ROLE_LABEL[me.role] ?? me.role}</p>
+          {/* Rol etiketi (uppercase eyebrow) silindi — kit qaydası. Rol onsuz da
+              aşağıdakı kimlik kartında və "Hesab" siyahısında görünür. */}
           <h1 className="uprof-title">{title}</h1>
           {subtitle && <p className="uprof-sub">{subtitle}</p>}
         </div>

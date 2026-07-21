@@ -135,6 +135,8 @@ function PackageCard({ pkg, sessions, onScheduled }:
   const [time, setTime] = useState("");
   const [saving, setSaving] = useState(false);
   const [scheduled, setScheduled] = useState(false);
+  // Planlaşdırma forması daimi açıq idi — kartı ağırlaşdırırdı. İndi istəyə görə açılır.
+  const [formOpen, setFormOpen] = useState(false);
 
   const tone = STATUS_TONE[pkg.status] ?? STATUS_TONE.ACTIVE;
   const statusLabel = t(STATUS_LABEL[pkg.status] ?? "pkg.active");
@@ -156,10 +158,12 @@ function PackageCard({ pkg, sessions, onScheduled }:
     }
   };
 
+  const used = Math.max(0, pkg.total - pkg.remaining);
+  const usedPct = pkg.total > 0 ? Math.round((used / pkg.total) * 100) : 0;
+
   return (
-    // Sol rəngli kənar və kölgə götürüldü — digər kartlarla eyni sakit səth.
-    // Status rəngi pill yerinə nöqtə kimi qalır.
     <div className="pnl-card">
+      {/* 1) Kimlik — paket + psixoloq, sağda status. */}
       <div className="pnl-card__head">
         <div style={{ minWidth: 0 }}>
           <h2 className="pnl-card__title">{pkg.packageName}</h2>
@@ -171,42 +175,53 @@ function PackageCard({ pkg, sessions, onScheduled }:
         </span>
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
-        <Stat label={t("pkg.remaining")} value={`${pkg.remaining}/${pkg.total}`} />
-        <Stat label={t("pkg.pricePaid")} value={formatAzn(pkg.pricePaid)} />
-        <Stat label={t("pkg.purchasedAt")} value={azFormatDate(pkg.purchasedAt)} />
+      {/* 2) Əsas rəqəm — üç üzən "etiket/dəyər" cütü əvəzinə tək aydın cümlə + zolaq. */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--oxford)" }}>
+            {pkg.total} seansdan {used} istifadə olunub
+          </span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", fontVariantNumeric: "tabular-nums" }}>
+            {pkg.remaining} qalıb
+          </span>
+        </div>
+        <div style={{ marginTop: 8, height: 4, borderRadius: 999, background: "var(--oxford-10)", overflow: "hidden" }}>
+          <div style={{ width: `${usedPct}%`, height: "100%", background: "var(--brand)", borderRadius: 999 }} />
+        </div>
       </div>
 
-      {/* Bu paketdən planlanmış seanslar — əvvəl heç yerdə görünmürdü. */}
-      <div style={{ marginTop: 14, borderTop: "1px solid var(--oxford-10)", paddingTop: 12 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
-          Seans tarixləri
-        </div>
-        {sessions.length === 0 ? (
-          <p style={{ margin: 0, fontSize: 12.5, color: "var(--oxford-60)" }}>
-            Hələ seans planlaşdırılmayıb.
-          </p>
-        ) : (
-          <div>
-            {sessions.map((s, i) => (
-              <div key={s.id} className="pnl-row">
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)", fontVariantNumeric: "tabular-nums" }}>
-                  {s.startAt ? azFormatDateTime(s.startAt) : "Vaxt təyin edilməyib"}
-                </span>
-                <SessionStatus status={s.status} />
-              </div>
-            ))}
-          </div>
+      {/* 3) Əsas məzmun — seanslar. Düymə başlığın sağındadır, forma gizlidir. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>Seans tarixləri</span>
+        {canSchedule && !formOpen && (
+          <button type="button" onClick={() => setFormOpen(true)} className="pnl-btn pnl-btn--ghost" style={{ flex: "none" }}>
+            {t("pkg.scheduleSession")}
+          </button>
         )}
       </div>
 
-      {canSchedule && (
-        <div style={{ marginTop: 14, borderTop: "1px solid var(--oxford-10)", paddingTop: 12 }}>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
-            {t("pkg.scheduleSession")}
-          </label>
+      {sessions.length === 0 ? (
+        <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--oxford-60)" }}>
+          Hələ seans planlaşdırılmayıb.
+        </p>
+      ) : (
+        <div>
+          {sessions.map(sess => (
+            <div key={sess.id} className="pnl-row">
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)", fontVariantNumeric: "tabular-nums" }}>
+                {sess.startAt ? azFormatDateTime(sess.startAt) : "Vaxt təyin edilməyib"}
+              </span>
+              <SessionStatus status={sess.status} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 4) Planlaşdırma — yalnız istənəndə açılır (daimi forma kartı ağırlaşdırırdı). */}
+      {canSchedule && formOpen && (
+        <div style={{ marginTop: 12, background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 10, padding: 12 }}>
           {pkg.schedulingMode === "SCHEDULE_LATER" && (
-            <p style={{ fontSize: 12, color: "var(--oxford-60)", margin: "0 0 8px" }}>
+            <p style={{ fontSize: 12, color: "var(--oxford-60)", margin: "0 0 8px", lineHeight: 1.5 }}>
               {t("pkg.scheduleLaterHint")}
             </p>
           )}
@@ -217,30 +232,35 @@ function PackageCard({ pkg, sessions, onScheduled }:
               placeholder="gg.aa.iiii"
               theme="light"
               size="sm"
-              style={{ flex: "1 1 180px" }}
+              style={{ flex: "1 1 170px" }}
             />
             <TimePicker
               value={time}
               onChange={v => { setTime(v); setScheduled(false); }}
               theme="light"
               size="sm"
-              style={{ flex: "0 1 130px" }}
+              style={{ flex: "0 1 120px" }}
             />
-            <button
-              type="button"
-              onClick={submit}
-              disabled={saving}
-              className="pnl-btn" style={{ flex: "none" }}>
-              {saving ? "Göndərilir…" : t("pkg.scheduleSession")}
+            <button type="button" onClick={submit} disabled={saving} className="pnl-btn" style={{ flex: "none" }}>
+              {saving ? "Göndərilir…" : "Təsdiqlə"}
+            </button>
+            <button type="button" onClick={() => { setFormOpen(false); setDate(""); setTime(""); }}
+              className="pnl-btn pnl-btn--ghost" style={{ flex: "none" }}>
+              Ləğv
             </button>
           </div>
           {scheduled && (
-            <div style={{ background: "var(--brand-50)", color: "var(--brand-700)", padding: 10, borderRadius: 8, fontSize: 12, marginTop: 10 }}>
+            <p style={{ margin: "10px 0 0", fontSize: 12.5, color: "var(--brand-700)", lineHeight: 1.5 }}>
               {t("pkg.pendingNote")}
-            </div>
+            </p>
           )}
         </div>
       )}
+
+      {/* 5) Meta — ikinci dərəcəli, tək sətir. */}
+      <p style={{ margin: "12px 0 0", fontSize: 12, color: "var(--oxford-60)" }}>
+        {formatAzn(pkg.pricePaid)} ödənilib, {azFormatDate(pkg.purchasedAt)} tarixində alınıb
+      </p>
     </div>
   );
 }
@@ -266,16 +286,3 @@ function SessionStatus({ status }: { status: string }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  if (!value) return null;
-  return (
-    <div>
-      <div style={{ fontSize: 11, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 600 }}>
-        {label}
-      </div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)", marginTop: 2 }}>
-        {value}
-      </div>
-    </div>
-  );
-}

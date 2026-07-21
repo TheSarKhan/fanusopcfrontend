@@ -120,10 +120,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
           background: "var(--brand-50)", border: "1px solid var(--brand-100)",
           borderRadius: 12, padding: "16px 18px", marginBottom: 14, textAlign: "left",
         }}>
-          <div style={{
-            fontSize: 11, fontWeight: 700, color: "var(--brand)",
-            letterSpacing: ".04em", textTransform: "uppercase", marginBottom: 12,
-          }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0B1A35", marginBottom: 12 }}>
             Növbəti addımlar
           </div>
           {NEXT_STEPS.map((step, i) => (

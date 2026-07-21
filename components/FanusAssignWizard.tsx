@@ -1,17 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { meApi, submitSessionRequest } from "@/lib/api";
+import { meApi, patientApi } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
-import { azNowTime, azTodayIso, pastPreferredError } from "@/lib/datetime";
+import { azFormatDate, azNowTime, azTodayIso, pastPreferredError } from "@/lib/datetime";
 
 /**
  * "Fanus təyin etsin" — login olmuş pasiyent hansı psixoloqu seçəcəyini bilmirsə,
- * seçimi Fanus-a həvalə edir. Qonaq müraciəti ilə eyni sahələri toplayır, amma
- * mərhələ-mərhələ və ad/telefon/e-poçt profildən öncədən dolu gəlir.
- * Nəticə eyni yerə — operator hovuzuna (müraciətlərə) düşür.
+ * seçimi Fanus-a həvalə edir. Mərhələ-mərhələ soruşur; ad/telefon/e-poçt
+ * profildən öncədən dolu gəlir.
+ *
+ * Bu QONAQ müraciəti DEYİL — pasiyentin hesabı var, ona görə nəticə sayt
+ * müraciətlərinə yox, RANDEVU HOVUZUNA düşür: adi randevudur, sadəcə psixoloq
+ * seçilməyib və vaxt məcburi deyil. Toplanan əlavə məlumat (yaş, büdcə, vaxt
+ * tərcihi, qeyd) randevunun qeyd sahəsində operatora ötürülür.
  */
+
+/** Backend böhran açar-sözü aşkarlayanda qeydin əvvəlinə bu nişanı qoyur
+ *  (AppointmentService.CRISIS_NOTE_MARKER). */
+const CRISIS_NOTE_MARKER = "[TƏCİLİ]";
 
 const BUDGET_OPTIONS = [
   "50 AZN-dək",
@@ -116,24 +124,43 @@ export default function FanusAssignWizard({
     setError("");
     setSending(true);
     try {
-      const res = await submitSessionRequest({
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-        email: form.email.trim(),
-        age: form.age ? Number(form.age) : undefined,
-        reason: form.reason.trim(),
-        preferredDate: form.preferredDate || undefined,
-        preferredTime: form.preferredTime || undefined,
-        notes: form.notes.trim() || undefined,
-        budget: form.budget || undefined,
+      // Vaxt YALNIZ hər ikisi seçildikdə struktur sahəyə gedir; yarımçıq
+      // tərcih (tək tarix) qeyddə qalır ki, operator nəzərə alsın.
+      const requestedStartAt =
+        form.preferredDate && form.preferredTime
+          ? `${form.preferredDate}T${form.preferredTime}:00`
+          : undefined;
+
+      const timePref = form.preferredDate
+        ? `${azFormatDate(form.preferredDate)}${form.preferredTime ? ` ${form.preferredTime}` : ""}`
+        : "Fərq etmir";
+
+      const note = [
+        "Fanus təyin etsin — psixoloq seçimi platformaya həvalə edilib.",
+        "",
+        `Səbəb: ${form.reason.trim()}`,
+        form.age ? `Yaş: ${form.age}` : null,
+        `Büdcə: ${form.budget}`,
+        `Vaxt tərcihi: ${timePref}`,
+        form.notes.trim() ? `Əlavə qeyd: ${form.notes.trim()}` : null,
+        `Əlaqə: ${form.phone.trim()}, ${form.email.trim()}`,
+      ].filter(Boolean).join("\n");
+
+      const created = await patientApi.book({
+        note,
+        requestedPsychologistId: null,
+        requestedStartAt,
+        sessionKind: "STANDARD",
       });
-      setCrisisDetected(!!res?.crisisDetected);
+      setCrisisDetected(!!created?.note?.startsWith(CRISIS_NOTE_MARKER));
       setSuccess(true);
     } catch (err: unknown) {
       setError(
         err instanceof TypeError
           ? "Serverlə əlaqə qurula bilmədi. İnternet bağlantınızı yoxlayıb yenidən cəhd edin."
-          : ((err as Error)?.message || "Müraciət göndərilmədi. Yenidən cəhd edin.")
+          : (err instanceof Error && err.message
+              ? err.message
+              : "Müraciət göndərilmədi. Yenidən cəhd edin.")
       );
     } finally {
       setSending(false);
@@ -156,18 +183,22 @@ export default function FanusAssignWizard({
         maxHeight: "92vh", overflowY: "auto", padding: "28px 28px 24px",
         boxShadow: "0 20px 60px rgba(0,0,0,.2)",
       }}>
-        {/* Başlıq */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0B1A35" }}>
-              Fanus təyin etsin
-            </h2>
-            <p style={{ margin: "6px 0 0", fontSize: 13, color: "#52718F" }}>
-              {success
-                ? "Müraciətiniz qeydə alındı."
-                : "Bir neçə sual — ehtiyacınıza uyğun psixoloqu biz seçək."}
-            </p>
-          </div>
+        {/* Başlıq — uğur ekranında yalnız bağlama düyməsi qalır, mətn
+            mərkəzləşdirilmiş nəticə blokunun içindədir (qonaq müraciəti ilə eyni). */}
+        <div style={{
+          display: "flex", justifyContent: success ? "flex-end" : "space-between",
+          alignItems: "flex-start", marginBottom: success ? 0 : 18,
+        }}>
+          {!success && (
+            <div>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0B1A35" }}>
+                Fanus təyin etsin
+              </h2>
+              <p style={{ margin: "6px 0 0", fontSize: 13, color: "#52718F" }}>
+                Bir neçə sual — ehtiyacınıza uyğun psixoloqu biz seçək.
+              </p>
+            </div>
+          )}
           <button
             onClick={onClose}
             aria-label="Bağla"
@@ -180,27 +211,75 @@ export default function FanusAssignWizard({
         </div>
 
         {success ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {crisisDetected && (
-              <div style={{
-                background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10,
-                padding: "12px 14px", fontSize: 13, color: "#991B1B", lineHeight: 1.6,
-              }}>
-                Yazdıqlarınız təcili dəstək tələb edə bilər. Təhlükə hiss edirsinizsə,
-                dərhal <strong>112</strong> ilə əlaqə saxlayın.
-              </div>
-            )}
-            <div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0B1A35", marginBottom: 8 }}>
+          /* Nəticə ekranı qonaq müraciətindəki (QuickRequestForm) ilə eynidir —
+             eyni axının iki qapısı olduğu üçün eyni görünməlidir. */
+          <div style={{ textAlign: "center", padding: "8px 0 0" }}>
+            <div style={{
+              width: 60, height: 60, borderRadius: "50%",
+              background: "#D1FAE5", display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 16px",
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: "#065F46" }}>
+              Müraciətiniz qəbul edildi!
+            </h3>
+            <p style={{ margin: "0 0 20px", fontSize: 14, color: "#374151" }}>
+              Müraciətiniz operator komandamıza çatdı. Bundan sonra proses belə davam edir:
+            </p>
+
+            <div style={{
+              background: "var(--brand-50)", border: "1px solid var(--brand-100)",
+              borderRadius: 12, padding: "16px 18px", marginBottom: 14, textAlign: "left",
+            }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0B1A35", marginBottom: 12 }}>
                 Növbəti addımlar
               </div>
-              <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6 }}>
-                {NEXT_STEPS.map(s => (
-                  <li key={s} style={{ fontSize: 13, color: "#52718F", lineHeight: 1.6 }}>{s}</li>
-                ))}
-              </ol>
+              {NEXT_STEPS.map((step, i) => (
+                <div key={step} style={{
+                  display: "flex", gap: 12, alignItems: "flex-start",
+                  marginBottom: i === NEXT_STEPS.length - 1 ? 0 : 12,
+                }}>
+                  <span style={{
+                    flexShrink: 0, width: 24, height: 24, borderRadius: "50%",
+                    background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>{i + 1}</span>
+                  <span style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.5, paddingTop: 1 }}>{step}</span>
+                </div>
+              ))}
             </div>
-            <button type="button" onClick={onClose} className="fanus-btn fanus-btn-primary">
+
+            <p style={{ margin: "0 0 20px", fontSize: 12.5, color: "#6B7280", lineHeight: 1.5 }}>
+              Prosesin gedişatı və psixoloq təyinatı barədə e-poçtunuza bildiriş göndəriləcək.
+            </p>
+
+            {crisisDetected && (
+              <div style={{
+                background: "#FEF3C7", border: "1px solid #F59E0B",
+                borderRadius: 10, padding: "14px 16px", marginBottom: 20, textAlign: "left",
+              }}>
+                <strong style={{ display: "block", fontSize: 14, color: "#92400E", marginBottom: 6 }}>
+                  Təcili dəstəyə ehtiyacınız varsa
+                </strong>
+                <p style={{ margin: 0, fontSize: 13, color: "#78350F", lineHeight: 1.5 }}>
+                  Müraciətiniz prioritet olaraq qəbul edildi. Özünüzə zərər vermə düşüncələriniz
+                  varsa, gözləməyin — dərhal <strong>103</strong> Təcili Tibbi Yardım xəttinə və ya{" "}
+                  <strong>*1123</strong> Psixoloji Dəstək xəttinə zəng edin.
+                </p>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: "10px 28px", background: "var(--brand)", color: "#fff",
+                border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
+              }}
+            >
               Bağla
             </button>
           </div>

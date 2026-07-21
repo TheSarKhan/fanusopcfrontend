@@ -434,7 +434,7 @@ export default function PatientAppointmentsPage() {
                 <button key={key} type="button" role="tab" aria-selected={active} onClick={() => switchTab(key)}
                   style={{ display: "inline-flex", alignItems: "center", gap: 7, background: active ? "var(--brand)" : "transparent", color: active ? "#fff" : "var(--oxford)", border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
                   {label}
-                  <span style={{ background: active ? "rgba(255,255,255,.22)" : "var(--brand-50)", color: active ? "#fff" : "var(--brand-700)", fontSize: 11.5, fontWeight: 700, minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{count}</span>
+                  <span style={{ color: active ? "rgba(255,255,255,.75)" : "var(--oxford-60)", fontSize: 13, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{count}</span>
                 </button>
               );
             })}
@@ -612,105 +612,179 @@ function NextSessionHero({
   if (appt.patientPackageId != null) metaParts.push({ text: appt.packageName ? `Paket: ${appt.packageName}` : "Paket" });
   if (appt.sessionKind === "INTRO") metaParts.push({ text: "Seans növü: Tanışlıq" });
 
+  const endD = appt.endAt ? new Date(appt.endAt) : null;
+
   return (
-    // Gradient fon, radial parıltı və uppercase "eyebrow" götürüldü — sakit kart.
-    <div className="pnl-card" style={{ marginBottom: 16, borderColor: urgent ? "#FECACA" : undefined }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
-        <h2 className="pnl-card__title">Növbəti seans</h2>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "#082F6D" }}>
-            {relativeDayLabel(start, now)}, <strong>{fmtTime(start)}{appt.endAt ? ` – ${fmtTime(new Date(appt.endAt))}` : ""}</strong>
+    <div style={{
+      background: "#fff", border: "1px solid #EDF1F8", borderRadius: 16,
+      padding: 24, marginBottom: 16,
+    }}>
+      {/* Basliq: ikon + ad, sagda geri sayim */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <span style={{
+            width: 34, height: 34, borderRadius: 9, flex: "none",
+            background: "#EAF1FE", color: "var(--brand)",
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
           </span>
-          <span className={tu.expired ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: urgent ? "#DC2626" : "#059669", fontSize: 13, fontWeight: 700 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>{tu.text}
-          </span>
+          <span style={{ fontSize: 19, fontWeight: 700, color: "#0B1A35" }}>Növbəti seans</span>
+        </span>
+
+        {/* Badge/kapsul YOX — sadəcə ikon + mətn (qayda referansdan üstündür). */}
+        <span className={tu.expired ? "pa-live" : undefined} style={{
+          display: "inline-flex", alignItems: "center", gap: 7, flex: "none",
+          color: urgent ? "#DC2626" : "#15803D",
+          fontSize: 13.5, fontWeight: 600,
+        }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+          {tu.text}
         </span>
       </div>
 
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-        <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--brand-50)", color: "var(--brand-700)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, flex: "none", overflow: "hidden" }}>
-          {photoUrl ? (
+      <div style={{ height: 1, background: "#EDF1F8", margin: "18px 0" }} />
 
-            <img src={photoUrl} alt={appt.psychologistName ?? ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : initialsOf(appt.psychologistName)}
-        </span>
-        <div style={{ flex: 1, minWidth: 230 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: metaParts.length > 0 ? 3 : 8 }}>{appt.psychologistName ?? "Operator psixoloq təyin edəcək"}</div>
-          {metaParts.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 8 }}>
-              {metaParts.map((p, i) => (
-                <span key={i} style={{ fontSize: 13, fontWeight: 600, color: p.color ?? "var(--oxford-60)" }}>
-                  {p.text}
-                </span>
-              ))}
+      {/* Govde: solda psixoloq, sagda vaxt paneli */}
+      <div style={{ display: "flex", alignItems: "stretch", gap: 20, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flex: "1 1 320px", minWidth: 0 }}>
+          <span style={{
+            width: 72, height: 72, borderRadius: "50%", flex: "none", overflow: "hidden",
+            background: "var(--brand-50)", color: "var(--brand-700)",
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            fontSize: 22, fontWeight: 700,
+          }}>
+            {photoUrl
+              ? <img src={photoUrl} alt={appt.psychologistName ?? ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : initialsOf(appt.psychologistName)}
+          </span>
+
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 21, fontWeight: 700, color: "#0B1A35", marginBottom: 10 }}>
+              {appt.psychologistName ?? "Operator psixoloq təyin edəcək"}
             </div>
-          )}
-          {appt.note && (
-            <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 10, padding: "10px 12px", width: "100%", boxSizing: "border-box" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1051B7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-              <span style={{ fontSize: 13.5, color: "var(--oxford)", fontWeight: 500, lineHeight: 1.5 }}>Mövzunuz: <span style={{ fontStyle: "italic" }}>«{appt.note.slice(0, 140)}{appt.note.length > 140 ? "…" : ""}»</span></span>
-            </div>
-          )}
-          {cleanOperatorNote(appt.operatorNote) && (
-            <div style={{ display: "flex", gap: 9, alignItems: "flex-start", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 12px", width: "100%", boxSizing: "border-box", marginTop: 8 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
-              <span style={{ fontSize: 13.5, color: "#92400E", fontWeight: 500, lineHeight: 1.5 }}>Operator qeydi: <span style={{ fontStyle: "italic" }}>«{cleanOperatorNote(appt.operatorNote).slice(0, 140)}{cleanOperatorNote(appt.operatorNote).length > 140 ? "…" : ""}»</span></span>
-            </div>
-          )}
+            {(sessionNumber || appt.patientPackageId != null) && (
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+                background: "#F6F8FC", border: "1px solid #EDF1F8", borderRadius: 10,
+                padding: "9px 14px",
+              }}>
+                {sessionNumber && (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "#31425C" }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
+                    {azOrdinal(sessionNumber)} seans
+                  </span>
+                )}
+                {sessionNumber && appt.patientPackageId != null && (
+                  <span aria-hidden style={{ width: 1, height: 16, background: "#DDE5F0" }} />
+                )}
+                {appt.patientPackageId != null && (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "#31425C" }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /></svg>
+                    {appt.packageName ? `Paket: ${appt.packageName}` : "Paket"}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{
+          flex: "1 1 380px", minWidth: 0,
+          background: "#EEF4FE", border: "1px solid #DCE8FB", borderRadius: 14,
+          padding: "16px 22px",
+          display: "flex", flexDirection: "column", justifyContent: "center",
+        }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--brand)", fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+            {relativeDayLabel(start, now)}
+          </span>
+          <div style={{
+            display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap",
+            fontSize: 40, fontWeight: 700, color: "#0B1A35", lineHeight: 1.1,
+            fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em",
+          }}>
+            <span>{fmtTime(start)}</span>
+            {endD && <><span style={{ color: "#9FB3D0", fontWeight: 400 }}>&mdash;</span><span>{fmtTime(endD)}</span></>}
+          </div>
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 20 }}>
-        {showConfirm && !alreadyConfirmed && (
-          <div className="pa-hero-actions">
-            <button
-              disabled={busyId === appt.id}
-              onClick={() => onConfirm(appt)}
-              className="psy-hero__btn psy-hero__btn--primary">
-              {busyId === appt.id ? "…" : t("staff.cardConfirm")}
-            </button>
-            <button
-              onClick={() => onDispute(appt)}
-              className="psy-hero__btn psy-hero__btn--ghost">
-              {t("staff.cardDispute")}
-            </button>
-          </div>
-        )}
-        {showConfirm && alreadyConfirmed && (
-          <span className="psy-hero__btn psy-hero__btn--ghost" style={{ cursor: "default" }}>
-            {t("appt.youConfirmed")}
+      {appt.note && (
+        <div style={{
+          display: "flex", alignItems: "flex-start", gap: 12,
+          background: "#F1F5FE", border: "1px solid #E1E9FA", borderRadius: 12,
+          padding: "14px 16px", marginTop: 16,
+        }}>
+          <span style={{
+            width: 32, height: 32, borderRadius: "50%", flex: "none",
+            background: "var(--brand)", color: "#fff",
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
           </span>
-        )}
-        {cancelRequested ? (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
-            <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
-            Ləğv istəyiniz operator təsdiqini gözləyir
-          </div>
-        ) : !tu.expired && (
-          <>
-            {rescheduleRequested && (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
-                <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
-                Vaxt dəyişikliyi istəyiniz operatora göndərilib — sizinlə əlaqə saxlanılacaq
-              </div>
-            )}
-            <div className="pa-hero-actions">
-              <JoinSessionButton appointment={appt} variant="primary" />
-              <AddToCalendarMenu appointment={appt} />
-              {!rescheduleRequested && (
-                <button onClick={() => onReschedule(appt)} style={heroGhostBtn}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                  {t("staff.cardReschedule")}
-                </button>
-              )}
-              <button onClick={() => onCancel(appt)} style={heroDangerBtn}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                {t("staff.cardCancel")}
-              </button>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)", marginBottom: 3 }}>Mövzunuz</div>
+            <div style={{ fontSize: 14.5, color: "#0B1A35", lineHeight: 1.5 }}>
+              &laquo;{appt.note.slice(0, 160)}{appt.note.length > 160 ? "…" : ""}&raquo;
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
+
+      {cleanOperatorNote(appt.operatorNote) && (
+        <div style={{
+          display: "flex", alignItems: "flex-start", gap: 12,
+          background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 12,
+          padding: "14px 16px", marginTop: 12,
+        }}>
+          <span style={{
+            width: 32, height: 32, borderRadius: "50%", flex: "none",
+            background: "#B45309", color: "#fff",
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#92400E", marginBottom: 3 }}>Operator qeydi</div>
+            <div style={{ fontSize: 14.5, color: "#7C4A0B", lineHeight: 1.5 }}>
+              &laquo;{cleanOperatorNote(appt.operatorNote).slice(0, 160)}{cleanOperatorNote(appt.operatorNote).length > 160 ? "…" : ""}&raquo;
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cancelRequested ? (
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, marginTop: 18 }}>
+          <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
+          Ləğv istəyiniz operator təsdiqini gözləyir
+        </div>
+      ) : !tu.expired && (
+        <>
+          {rescheduleRequested && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, marginTop: 18 }}>
+              <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
+              Vaxt dəyişikliyi istəyiniz operatora göndərilib
+            </div>
+          )}
+          <div className="pa-hero-actions" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 18 }}>
+            <AddToCalendarMenu appointment={appt} />
+            {!rescheduleRequested && (
+              <button onClick={() => onReschedule(appt)} style={heroGhostBtn}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                {t("staff.cardReschedule")}
+              </button>
+            )}
+            <JoinSessionButton appointment={appt} variant="primary" />
+            <button onClick={() => onCancel(appt)} style={heroDangerBtn}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M15 9l-6 6M9 9l6 6" /></svg>
+              {t("staff.cardCancel")}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -743,7 +817,7 @@ function PackageProgramCard({
           </svg>
           Paket
         </span>
-        <span style={{ background: "#D1FAE5", color: "#065F46", fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>Aktiv</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}><span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "#16A34A" }} /><span style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Aktiv</span></span>
       </div>
 
       <div style={{ fontSize: 18, fontWeight: 700, color: "var(--oxford)", marginBottom: 4 }}>{pkg.packageName}</div>
@@ -806,7 +880,7 @@ function PastPackageRow({ pkg }: { pkg: PatientPackageItem }) {
       </div>
       <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>{used}/{pkg.total} seans istifadə olunub</span>
       <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>{formatAzn(pkg.pricePaid)}</span>
-      <span style={{ background: st.bg, color: st.color, fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>{st.label}</span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}><span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: st.color }} /><span style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{st.label}</span></span>
     </Link>
   );
 }
@@ -935,7 +1009,7 @@ function AgendaRow({
         )}
         {awaiting && when && <span style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>istədiyiniz vaxt</span>}
         {isToday && tu && !tu.expired && (
-          <span className={tu.urgent ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: tu.urgent ? "#FEE2E2" : "#ECFDF5", color: tu.urgent ? "#991B1B" : "#047857", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>
+          <span className={tu.urgent ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: tu.urgent ? "#991B1B" : "#047857", fontSize: 12, fontWeight: 600 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
             {tu.text}
           </span>
@@ -1162,7 +1236,7 @@ function SessionDetailModal({
                     : "Operator vaxtı təyin edəcək"}
               </span>
               {tu && !tu.expired && (
-                <span className={tu.urgent ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: tu.urgent ? "#FEE2E2" : "#ECFDF5", color: tu.urgent ? "#991B1B" : "#047857", fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>
+                <span className={tu.urgent ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: tu.urgent ? "#991B1B" : "#047857", fontSize: 12.5, fontWeight: 600 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
                   {tu.text}
                 </span>

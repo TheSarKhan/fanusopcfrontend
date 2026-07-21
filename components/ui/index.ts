@@ -17,7 +17,7 @@
  *  6. Tarixlər həmişə gg.aa.iiii (@/lib/datetime).
  */
 
-export { Button, ButtonLink, TextButton, IconButton } from "./Button";
+export { Button, ButtonLink, TextButton, IconButton, buttonClass, linkClass } from "./Button";
 export type { ButtonVariant } from "./Button";
 
 export { Card, CardHead, CardBody, CardFoot, CardPad } from "./Card";

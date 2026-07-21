@@ -17,6 +17,18 @@ const VARIANT_CLASS: Record<ButtonVariant, string> = {
   warnGhost: "fx-btn--warn-ghost",
 };
 
+/**
+ * Düymə sinifini qaytarır — Next `<Link>` düymə kimi görünməli olanda.
+ * Belə: `<Link href="/x" className={buttonClass("primary")}>Cədvəlim</Link>`
+ * Səhifədə `.fx-*` sinifi əl ilə yazmamaq üçün budur.
+ */
+export function buttonClass(
+  variant: ButtonVariant = "ghost",
+  opts: { size?: "sm" | "md"; block?: boolean; className?: string } = {},
+) {
+  return btnClass(variant, opts.size ?? "md", opts.block ?? false, opts.className);
+}
+
 function btnClass(
   variant: ButtonVariant,
   size: "sm" | "md",
@@ -32,6 +44,11 @@ function btnClass(
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+/** Eyni məntiq mətn bağlantısı üçün: `<Link className={linkClass()}>Hamısı</Link>` */
+export function linkClass(className?: string) {
+  return ["fx-link", className].filter(Boolean).join(" ");
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {

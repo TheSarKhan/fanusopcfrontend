@@ -17,6 +17,7 @@ import {
   isSlotConflict,
   isScheduleMismatch,
   CANCEL_REASONS,
+  reasonLabel,
   type AppointmentDetail,
   type AvailableSlot,
   type ClaimState,
@@ -85,14 +86,21 @@ function normalizePhone(raw: string | null | undefined): string | null {
 function whatsappLink(phone: string): string {
   return `https://wa.me/${phone.replace(/^\+/, "").replace(/[^\d]/g, "")}`;
 }
-/** "2s 14d" formatında yaş — SLA sayğacı üçün. */
+/** Gözləmə müddəti — açıq sözlə ("2 saat 14 dəqiqədir"), qısaltma YOX:
+ *  "36d" kimi yazılar oxunmurdu. */
 function ageLabel(fromIso: string, nowMs: number): string {
   const min = Math.max(0, Math.floor((nowMs - new Date(fromIso).getTime()) / 60000));
   const h = Math.floor(min / 60);
   const d = Math.floor(h / 24);
-  if (d > 0) return `${d}g ${h % 24}s`;
-  if (h > 0) return `${h}s ${min % 60}d`;
-  return `${min}d`;
+  if (d > 0) {
+    const restH = h % 24;
+    return restH > 0 ? `${d} gün ${restH} saatdır` : `${d} gündür`;
+  }
+  if (h > 0) {
+    const restM = min % 60;
+    return restM > 0 ? `${h} saat ${restM} dəqiqədir` : `${h} saatdır`;
+  }
+  return `${min} dəqiqədir`;
 }
 /** İnsani nisbi vaxt — "2 saat əvvəl"; 30 gündən köhnə → tam tarix. */
 function azFromNow(iso?: string | null, nowMs: number = Date.now()): string {
@@ -122,7 +130,10 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [claim, setClaim] = useState<ClaimState | null>(null);
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  // SSR-də və klientdə Date.now() fərqli dəyər verir → "36 dəqiqədir gözləyir"
+  // kimi mətnlər hydration uyğunsuzluğu yaradırdı. Ona görə ilkin dəyər 0-dır
+  // (hər iki tərəfdə eyni), həqiqi vaxt mount-dan sonra effektdə yazılır.
+  const [nowMs, setNowMs] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [reassignOpen, setReassignOpen] = useState(false);
   // Hovuza buraxma: NEW/PENDING-də birbaşa, digər statuslarda Admin təsdiqi
@@ -196,8 +207,9 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, meId]);
 
-  // ── SLA sayğacı: hər 30 saniyədən bir yenilə ──────────────────────────────
+  // ── SLA sayğacı: mount-da bir dəfə, sonra hər 30 saniyədən bir yenilə ─────
   useEffect(() => {
+    setNowMs(Date.now());
     const iv = setInterval(() => setNowMs(Date.now()), 30_000);
     return () => clearInterval(iv);
   }, []);
@@ -368,9 +380,8 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const isCancelReq = a.status === "CANCEL_REQUESTED";
   // CONFIRMED included so the assign block doubles as the reschedule / change-psychologist tool.
   const canAssign = !isCancelReq && !isFinal && ["PENDING", "NEW", "REJECTED", "ASSIGNED", "IN_REVIEW", "CONFIRMED"].includes(a.status);
-  // Görüş linki artıq təyin edilibsə vaxt/psixoloq dəyişikliyi bloklanır — link konkret
-  // vaxta bağlıdır, vaxt dəyişsə köhnəlmiş qalır (backend: guardNotRescheduleWhenLinked).
-  const timeLocked = canAssign && !!a.meetingLink;
+  // Qeyd: əvvəl link təyin ediləndə vaxt/psixoloq kilidlənirdi. Belə qayda
+  // biznes axınında yoxdur — həm backend guard-ı, həm də UI kilidi silindi.
   const canCancel = !isCancelReq && !isFinal && a.status !== "DISPUTED";
   const canResolve = a.status === "DISPUTED";
   // Tək (paketsiz) seans təyin/yaradılanda qiymət yoxdusa ödəniş yaranmır — belə
@@ -419,11 +430,11 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     if (a.status === "COMPLETED") return { tone: "done", title: "Seans tamamlanıb." };
     if (canResolve) return { tone: "warn", title: "Mübahisə açılıb — nəticəni qeyd edin.", btnLabel: "Mübahisəni həll et", action: "dispute" };
     if (isCancelReq) return { tone: "warn", title: "Pasiyent ləğv tələb edib — təsdiqləyin və ya rədd edin.", btnLabel: "Ləğv tələbinə bax", action: "cancelreq" };
-    if (canAssign && full.pendingRescheduleProposal?.initiator === "PSYCHOLOGIST" && full.pendingRescheduleProposal.options?.[0]?.startAt && !timeLocked)
+    if (canAssign && full.pendingRescheduleProposal?.initiator === "PSYCHOLOGIST" && full.pendingRescheduleProposal.options?.[0]?.startAt)
       return { tone: "action", title: "Bu psixoloq yeni vaxt təklif edib — təsdiqləyin.", sub: `Təklif olunan vaxt: ${fmtDateTime(full.pendingRescheduleProposal.options[0].startAt)}`, btnLabel: approving ? "…" : "Təsdiqlə və tətbiq et", action: "approve" };
-    if (canAssign && (a.rescheduleRequestedAt || full.pendingRescheduleProposal) && !timeLocked)
+    if (canAssign && (a.rescheduleRequestedAt || full.pendingRescheduleProposal))
       return { tone: "action", title: "Vaxt dəyişikliyi istənilib — yeni vaxt təyin edin.", btnLabel: "Vaxtı seç", action: "assign" };
-    if (canAssign && !isAssigned && !timeLocked)
+    if (canAssign && !isAssigned)
       return { tone: "action", title: "Bu müraciətə psixoloq və vaxt təyin edin.", btnLabel: "Təyin et", action: "assign" };
     // ── ÖDƏNİŞ mərhələsi — linkdən ƏVVƏL. Pasiyent ödəməsə link göndərilmir. ──
     if (paymentDue) {
@@ -460,7 +471,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   // Təyin/yenidən-planla forması (AssignBlock) birbaşa aşağıda tam görünürsə,
   // eyni "psixoloq və vaxt təyin edin" çağırışını təkrarlayan üst strip artıqdır —
   // onu gizlə (assign-dışı addımlarda: ödəniş/link/mübahisə strip QALIR).
-  const assignBlockVisible = !isFinal && canAssign && !timeLocked;
+  const assignBlockVisible = !isFinal && canAssign;
   // Terminal vəziyyətdə strip aşağıdakı «Vəziyyət» kartını təkrarlayır — gizlət.
   const hideNextStrip = isFinal || (assignBlockVisible && next.action === "assign");
 
@@ -469,7 +480,10 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const ownerColor = claim?.mine ? "var(--sage)" : claimedByOther ? "var(--status-pending-fg)" : "var(--oxford-60)";
 
   // Backend qaydası (OP-FR-04): yalnız toxunulmamış müraciət sərbəst buraxılır.
-  const canReleaseDirectly = a.status === "PENDING" || a.status === "NEW";
+  // Hovuza qaytarmaq yalnız TƏYİNATDAN ƏVVƏL mümkündür: psixoloq və ya vaxt
+  // təyin edilibsə randevu artıq müştəriyə söz verilib.
+  const canReleaseToPool = (a.status === "PENDING" || a.status === "NEW")
+    && !a.psychologistId && !a.startAt;
 
   const otherKeys: OtherActionKey[] = [];
   if (canResolve) otherKeys.push("dispute");
@@ -502,13 +516,18 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
               )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              {/* Sahiblik/SLA — çip deyil, ikon + mətn. */}
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: ownerColor, fontSize: 12, fontWeight: 600 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }} aria-hidden><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                {ownerLabel}
-              </span>
-              {/* Gözləmə müddəti ayrıca element — ayırıcı işarə yerinə boşluq. */}
-              {!isFinal && (
+              {/* Sahiblik — YALNIZ başqasının üzərində olanda göstərilir.
+                  Operator onsuz da yalnız öz müraciətlərini görür, ona görə
+                  "Sənin üzərində" heç bir məlumat vermirdi. */}
+              {!claim?.mine && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: ownerColor, fontSize: 12, fontWeight: 600 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }} aria-hidden><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                  {ownerLabel}
+                </span>
+              )}
+              {/* Gözləmə müddəti ayrıca element — ayırıcı işarə yerinə boşluq.
+                  nowMs mount-dan sonra dolur; 0 ikən "0 dəqiqədir" yazmırıq. */}
+              {!isFinal && nowMs > 0 && (
                 <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500 }}>
                   {ageLabel(a.createdAt, nowMs)} gözləyir
                 </span>
@@ -516,15 +535,16 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
               {unowned && (
                 <button onClick={takeOwnership} className="fx-btn fx-btn--primary fx-btn--sm">{t("staff.opTake")}</button>
               )}
-              {/* Öz üzərindədirsə geri buraxa bilsin — əvvəl bu seçim ümumiyyətlə yox idi. */}
-              {claim?.mine && (
+              {/* Hovuza qaytarmaq YALNIZ heç nə təyin edilməmiş müraciətdə
+                  mümkündür. Psixoloq/vaxt təyin ediləndən sonra randevu artıq
+                  müştəriyə söz verilib — belə sətri hovuza atmaq olmaz, ona görə
+                  düymə tamamilə gizlədilir (Admin təsdiqi yolu da göstərilmir). */}
+              {claim?.mine && canReleaseToPool && (
                 <button
-                  onClick={() => (canReleaseDirectly ? releaseToPool() : setReleaseOpen(true))}
+                  onClick={releaseToPool}
                   disabled={releaseBusy}
                   className="fx-btn fx-btn--ghost fx-btn--sm"
-                  title={canReleaseDirectly
-                    ? "Randevunu hovuza qaytar"
-                    : "Üzərində əməliyyat aparılıb — Admin təsdiqi ilə buraxılır"}
+                  title="Randevunu hovuza qaytar"
                 >
                   {releaseBusy ? "Buraxılır…" : "Hovuza geri burax"}
                 </button>
@@ -581,7 +601,6 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
                     <AssignBlock
                       key={`assign-${a.id}-${a.status}`}
                       appointment={a}
-                      timeLocked={timeLocked}
                       suggestions={full.suggestions}
                       cold={claimedByOther}
                       guardAction={guardAction}
@@ -1065,10 +1084,40 @@ function meetingLinkFromActivity(item: OperatorActivityItem): string | null {
   return m ? m[1] : null;
 }
 
+/** Audit sətrindəki xam ingilis hadisə adları → AZ cümlə. */
+const AUDIT_EVENT_LABEL: [RegExp, string][] = [
+  [/^Operator force-cancelled/i,   "Operator seansı ləğv etdi"],
+  [/^Operator cancelled/i,         "Operator seansı ləğv etdi"],
+  [/^Patient cancelled/i,          "Pasiyent seansı ləğv etdi"],
+  [/^Psy(chologist)? cancelled/i,  "Psixoloq seansı ləğv etdi"],
+  [/^Operator approved cancel/i,   "Operator ləğv tələbini təsdiqlədi"],
+  [/^Operator rejected cancel/i,   "Operator ləğv tələbini rədd etdi"],
+  [/^Operator marked no-?show/i,   "Operator gəlməmə qeyd etdi"],
+  [/^Auto-?completed/i,            "Seans avtomatik tamamlandı"],
+];
+
+/**
+ * Audit qeydi «Operator force-cancelled · reason=OPERATOR_PATIENT_REQUEST ·
+ * note=dwqdwq» şəklində gəlir — bu operatora göstərilə bilməz. Hadisə adı AZ
+ * cümləyə, səbəb kodu insan etiketinə çevrilir, qeyd sitat kimi əlavə olunur.
+ */
+function humanizeAuditText(raw: string): string | null {
+  const label = AUDIT_EVENT_LABEL.find(([re]) => re.test(raw))?.[1];
+  if (!label) return null;
+  const reasonCode = /reason=([A-Z_]+)/.exec(raw)?.[1];
+  const note = /note=([\s\S]+?)(?:\s*·\s*\w+=|$)/.exec(raw)?.[1]?.trim();
+  const parts = [label];
+  if (reasonCode) parts.push(`Səbəb: ${reasonLabel(reasonCode)}`);
+  if (note) parts.push(`Qeyd: ${note}`);
+  return parts.join(". ");
+}
+
 function activityLabel(item: OperatorActivityItem): string {
   if (item.action && MEETING_LINK_ACTIONS[item.action]) return MEETING_LINK_ACTIONS[item.action];
   const raw = item.text?.trim();
   if (raw) {
+    const humanized = humanizeAuditText(raw);
+    if (humanized) return humanized;
     // Backend audit qeydləri bəzən xam ingiliscə + ISO nanosaniyəli tarixlə gəlir
     // (məs. "Psy proposed 1 options · expires 2026-07-19T00:12:07.808…") — bunları
     // operatora insani AZ mətnə çeviririk, tanınmayanların ISO "quyruğunu" kəsirik.
@@ -1077,10 +1126,12 @@ function activityLabel(item: OperatorActivityItem): string {
     if (/^Psy rejected/i.test(raw)) return "Psixoloq təklifi rədd etdi";
     if (/^Patient rejected/i.test(raw)) return "Pasiyent təklifi rədd etdi";
     if (/^Patient proposed/i.test(raw)) return "Pasiyent alternativ vaxt təklif etdi";
-    // "· expires <ISO>" və ya sonrakı ISO damcı-timestamp quyruğunu təmizlə
+    // "· expires <ISO>" və ya sonrakı ISO damcı-timestamp quyruğunu təmizlə;
+    // tanınmayan sətirdə qalan orta nöqtələr də vergülə çevrilir.
     const cleaned = raw
       .replace(/\s*·\s*expires\s+\S+/i, "")
       .replace(/\s*\d{4}-\d{2}-\d{2}T[\d:.]+/g, "")
+      .replace(/\s*·\s*/g, ", ")
       .trim();
     return cleaned || "Yeniləndi";
   }
@@ -1162,6 +1213,7 @@ function ModalShell({ title, sub, badge, onClose, footer, maxWidth = 480, childr
  * etiketsiz mətn isə sitat kimi qalır.
  */
 function RequestNote({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
   const CRISIS = "[TƏCİLİ]";
   const rows: { k: string; v: string }[] = [];
   const free: string[] = [];
@@ -1200,12 +1252,53 @@ function RequestNote({ text }: { text: string }) {
             : <span className="fx-muted" style={{ fontSize: 12.5 }}>Müraciət məlumatı</span>}
         </div>
       </div>
-      {rows.map((r, i) => (
+      {/* Qısa dəyər iki sütunlu sətirdə qalır. Uzun dəyər (e-poçt, ünvan, uzun
+          səbəb) həmin dar sütunda kəsilirdi — ona görə etiket üstdə, dəyər
+          altda TAM ENİ ilə yazılır və sarılır. Heç nə gizlənmir. */}
+      {rows.map((r, i) => (r.v.length > 24 ? (
+        <div key={i} style={{ padding: "7px 0", borderBottom: "1px solid var(--hairline)" }}>
+          <div className="fx-section-label" style={{ marginBottom: 3 }}>{r.k}</div>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford)", lineHeight: 1.5, overflowWrap: "anywhere", userSelect: "text" }}>
+            {r.v}
+          </div>
+        </div>
+      ) : (
         <div key={i} className="opd-kv">
           <span className="opd-kv__k">{r.k}</span>
-          <span className="opd-kv__v" style={{ fontFamily: "inherit", overflowWrap: "anywhere" }}>{r.v}</span>
+          <span className="opd-kv__v" title={r.v} style={{ fontFamily: "inherit", overflowWrap: "anywhere", userSelect: "text" }}>{r.v}</span>
         </div>
-      ))}
+      )))}
+
+      {(rows.length > 0 || free.length > 0) && (
+        <button type="button" onClick={() => setOpen(true)}
+          style={{ marginTop: 8, background: "none", border: "none", padding: 0, color: "var(--brand)", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" /><circle cx="12" cy="12" r="3" /></svg>
+          Bax
+        </button>
+      )}
+
+      {open && (
+        <ModalShell title="Müraciət məlumatı" maxWidth={520} onClose={() => setOpen(false)}
+          footer={<button onClick={() => setOpen(false)} className="fx-btn fx-btn--primary" style={{ width: "100%" }}>Bağla</button>}>
+          {crisis && (
+            <div className="fx-banner fx-banner--warn" style={{ marginBottom: 14 }}>
+              <span style={{ fontWeight: 700, color: "#DC2626" }}>Böhran açar-sözü aşkarlandı — prioritet müraciət</span>
+            </div>
+          )}
+          {free.map((line, i) => (
+            <p key={i} style={{ margin: "0 0 12px", fontSize: 13.5, color: "var(--oxford)", lineHeight: 1.6, overflowWrap: "anywhere" }}>{line}</p>
+          ))}
+          {/* Burada dəyər kəsilmir: hər sahə tam eni ilə, etiketi üstündə. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {rows.map((r, i) => (
+              <div key={i}>
+                <div className="fx-section-label" style={{ marginBottom: 4 }}>{r.k}</div>
+                <div style={{ fontSize: 13.5, color: "var(--oxford)", lineHeight: 1.5, overflowWrap: "anywhere", userSelect: "text" }}>{r.v}</div>
+              </div>
+            ))}
+          </div>
+        </ModalShell>
+      )}
     </div>
   );
 }
@@ -1260,15 +1353,13 @@ function SummaryCell({ label, children }: { label: string; children: React.React
 }
 
 function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, onAssigned,
-  timeLocked = false, proposedStart = null, proposedEnd = null, proposedInitiator = null }: {
+  proposedStart = null, proposedEnd = null, proposedInitiator = null }: {
   appointment: AppointmentDetail;
   suggestions: OperatorAppointmentFull["suggestions"];
   cold: boolean;
   guardAction: (run: () => void) => void;
   selectRef: React.RefObject<HTMLButtonElement | null>;
   onAssigned: (a: AppointmentDetail) => void;
-  /** Görüş linki təyin edilib → vaxt/psixoloq dəyişdirilə bilməz (yalnız özət). */
-  timeLocked?: boolean;
   /** Gözləyən vaxt-dəyişmə təklifi varsa (psixoloq/operator/pasiyent) — onun ilk
    *  variantı "İstənilən vaxt" kimi işlədilir (banner + slot seçimi + manual seed). */
   proposedStart?: string | null;
@@ -1289,12 +1380,12 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   const [priceEditing, setPriceEditing] = useState(false);
   /** Standartdan fərqli məbləğ üçün MƏCBURİ əsas — qeydə yazılır ki, izlənə bilsin. */
   const [priceReason, setPriceReason] = useState("");
-  const [note, setNote] = useState(appointment.operatorNote ?? "");
+  // Operator qeydi sahəsi təyinat formasından ÇIXARILIB — formada yalnız
+  // əməliyyat üçün zəruri sahələr qalır. Mövcud qeyd itmir: payload-a olduğu
+  // kimi geri göndərilir, məbləğ dəqiqləşdirməsi də ona əlavə olunur.
+  const note = appointment.operatorNote ?? "";
   /** Təyin edilmiş randevu normalda ÖZƏT kimi göstərilir; forma yalnız «Dəyiş»lə açılır. */
   const [editing, setEditing] = useState(false);
-  /** Özətdəki qeydin son yadda saxlanmış vəziyyəti — «dirty» hesablamaq üçün. */
-  const [savedNote, setSavedNote] = useState(appointment.operatorNote ?? "");
-  const [noteSaving, setNoteSaving] = useState(false);
   // Seçilmiş vaxt psixoloqun iş qrafikinə düşmür — bloklayıcı deyil, xəbərdarlıq.
   // Operator psixoloqla razılaşıb "Yenə də təyin et" ilə təsdiqləyə bilər.
   const [scheduleWarn, setScheduleWarn] = useState<string | null>(null);
@@ -1525,7 +1616,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   // təyin edilmiş randevuda, həm də hələ təsdiqlənməmiş seçimdə. Forma yalnız
   // «Dəyiş» ilə açılır, belə olanda təsadüfən vaxt/psixoloq dəyişmir.
   const assigned = !!appointment.psychologistId && !!appointment.startAt && !!appointment.endAt;
-  if ((assigned || ready) && (!editing || timeLocked)) {
+  if ((assigned || ready) && !editing) {
     // Göstəriləcək vaxt: formada seçilmiş slot/manual vaxt üstündür (operator
     // onu indi seçib), yoxsa bazadakı təyin edilmiş vaxt.
     let effStart: string | null = null;
@@ -1551,44 +1642,17 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     const paid = appointment.paymentStatus === "PAID";
     // Statusun rəngi nöqtə ilə verilir — dolu fon/kapsul YOX.
     const statusDot = paid || appointment.status === "COMPLETED" ? "var(--sage)" : "#1051B7";
-    const noteDirty = note.trim() !== savedNote.trim();
-
-    // guardAction sahiblik yoxlamasını edir və callback-i özü çağırır — ona görə
-    // try/catch callback-in İÇİNDƏ olmalıdır, çölündə xəta tutulmur.
-    const saveNote = () => guardAction(async () => {
-      setNoteSaving(true);
-      try {
-        await operatorApi.setAppointmentNote(appointment.id, note.trim());
-        setSavedNote(note.trim());
-        globalToast("Qeyd yadda saxlanıldı", "success");
-      } catch (e) {
-        globalToast(e instanceof Error && e.message ? e.message : "Qeyd yadda saxlanılmadı", "error");
-      } finally {
-        setNoteSaving(false);
-      }
-    });
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div className={cold ? "opd-card op-det-card--cold" : "opd-card"} style={{ padding: 18 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
             <span className="opd-card__title">Seans məlumatı</span>
-            {!timeLocked && (
-              <button type="button" onClick={() => setEditing(true)} className="fx-btn fx-btn--ghost fx-btn--sm" style={{ flex: "none", display: "inline-flex", alignItems: "center", gap: 7 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 12a9 9 0 0 1 15.3-6.4L21 8" /><path d="M21 3v5h-5" /></svg>
-                Dəyiş
-              </button>
-            )}
+            <button type="button" onClick={() => setEditing(true)} className="fx-btn fx-btn--ghost fx-btn--sm" style={{ flex: "none", display: "inline-flex", alignItems: "center", gap: 7 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 12a9 9 0 0 1 15.3-6.4L21 8" /><path d="M21 3v5h-5" /></svg>
+              Dəyiş
+            </button>
           </div>
-
-          {/* Link təyin edildikdən sonra vaxt/psixoloq dondurulur — link konkret
-              vaxta bağlıdır, dəyişsə köhnəlmiş qalır (backend də bloklayır). */}
-          {timeLocked && (
-            <div className="fx-banner fx-banner--warn" style={{ marginBottom: 16 }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-              <span>Vaxt və psixoloq dəyişikliyi bloklanıb — seans linki artıq təyin edilib. Dəyişmək üçün əvvəlcə «Görüş linki» kartından linki geri çağırın.</span>
-            </div>
-          )}
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))", gap: 16 }}>
             <SummaryCell label="Psixoloq">
@@ -1676,32 +1740,6 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
           )}
         </div>
 
-        <div className="opd-card" style={{ padding: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-            <span className="opd-card__title">Operator qeydi</span>
-            <span className="fx-muted" style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-              Daxili istifadə üçün
-            </span>
-          </div>
-          <textarea className="fx-textarea" value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Təyinat haqqında daxili qeyd…" />
-          {!savedNote.trim() && !note.trim() && (
-            <span className="fx-help" style={{ marginTop: 6, display: "block" }}>Qeyd hələ yazılmayıb</span>
-          )}
-          {/* Təyinat düyməsi burada DEYİL — o, təsdiqlədiyi məlumatın (yuxarıdakı
-              seans kartının) altındadır. Burada yalnız qeydin öz əməliyyatı var. */}
-          {!assigned ? (
-            <span className="fx-help" style={{ marginTop: 6, display: "block" }}>
-              Qeyd təyinatla birlikdə yadda saxlanılır.
-            </span>
-          ) : noteDirty && (
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
-              <button type="button" onClick={saveNote} disabled={noteSaving} className="fx-btn fx-btn--primary fx-btn--sm">
-                {noteSaving ? "Saxlanılır…" : "Dəyişiklikləri yadda saxla"}
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     );
   }
@@ -1780,10 +1818,6 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
         );
       })()}
 
-      <label className="fx-field" style={{ marginBottom: 15 }}>
-        <span className="fx-label">Operator qeydi</span>
-        <textarea className="fx-textarea" value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Təyinat haqqında daxili qeyd…" />
-      </label>
 
       {!allowance?.packageName && priceLocked && (
         <div className="fx-field" style={{ marginBottom: 15 }}>

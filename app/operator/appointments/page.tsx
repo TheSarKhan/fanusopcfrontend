@@ -1098,7 +1098,9 @@ function AppointmentRow({ a, meId, overdue, hasPsyProposal, onTake, onOpen }: {
   const alert = buildAlert(a, hasPsyProposal);
   const claimMine = a.claimedByUserId != null && a.claimedByUserId === meId;
   const claimOther = a.claimedByUserId != null && !claimMine;
-  const showClaim = claimMine || (claimOther && !!a.claimedByName);
+  // Sahiblik nişanı YALNIZ başqasının üzərində olanda göstərilir — operator
+  // onsuz da yalnız öz sətirlərini görür, "Sənin üzərində" məlumat vermirdi.
+  const showClaim = claimOther && !!a.claimedByName;
   const claimLabel = claimMine ? t("staff.opClaimMine") : (a.claimedByName ? t("staff.opClaimWorking", { name: a.claimedByName }) : "");
   const hasSeries = a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null;
   const canClaim = a.claimedByUserId == null && isPoolEligible(a.status);
@@ -1553,7 +1555,9 @@ function AppointmentCard({
   const hasContact = !!(phone || a.patientEmail);
   const claimMine = a.claimedByUserId != null && a.claimedByUserId === meId;
   const claimOther = a.claimedByUserId != null && !claimMine;
-  const showClaim = claimMine || (claimOther && !!a.claimedByName);
+  // Sahiblik nişanı YALNIZ başqasının üzərində olanda göstərilir — operator
+  // onsuz da yalnız öz sətirlərini görür, "Sənin üzərində" məlumat vermirdi.
+  const showClaim = claimOther && !!a.claimedByName;
   const claimLabel = claimMine ? t("staff.opClaimMine") : (a.claimedByName ? t("staff.opClaimWorking", { name: a.claimedByName }) : "");
   const hasSeries = a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null;
   const lastOutcome = a.lastContactOutcome ? OUTCOME_LABEL[a.lastContactOutcome] : null;

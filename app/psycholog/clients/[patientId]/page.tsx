@@ -21,6 +21,19 @@ import { FEATURE_GOALS } from "@/lib/features";
 import { azFormatDate } from "@/lib/datetime";
 import { toast } from "@/components/Toast";
 import { confirmDialog } from "@/components/ConfirmDialog";
+import {
+  Avatar,
+  Button,
+  Card,
+  CardBody,
+  EmptyBlock,
+  Input,
+  Stat,
+  Stats,
+  Status,
+  Tabs,
+  type TabItem,
+} from "@/components/ui";
 
 const TAG_COLORS: { value: PatientTagColor; label: string; swatch: string }[] = [
   { value: "brand",   label: "Mavi",     swatch: "var(--brand)" },
@@ -449,114 +462,119 @@ export default function PatientDetailPage() {
 .m360-link:hover{text-decoration:underline}
 .m360-ghost:hover{border-color:var(--brand) !important;color:var(--brand) !important}
 .m360-tbl{width:100%;border-collapse:collapse;font-size:13px}
-.m360-tbl th{text-align:left;padding:11px 14px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8AAABF;border-bottom:1px solid #EDF1F8;white-space:nowrap;background:#FAFCFE}
-.m360-tbl td{padding:12px 14px;border-bottom:1px solid #F0F4FA;vertical-align:top;color:var(--oxford)}
+.m360-tbl th{text-align:left;padding:11px 14px;font-size:12.5px;font-weight:600;color:var(--oxford-60);border-bottom:1px solid var(--hairline);white-space:nowrap}
+.m360-tbl td{padding:12px 14px;border-bottom:1px solid var(--hairline);vertical-align:top;color:var(--oxford)}
 .m360-tbl tbody tr:last-child td{border-bottom:none}
-.m360-tbl tbody tr:hover{background:#F8FAFD}
-.m360-pgbtn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #D6E2F7;background:#fff;border-radius:8px;color:var(--oxford);cursor:pointer;font-family:inherit}
+.m360-tbl tbody tr:hover{background:var(--surface-muted)}
+.m360-pgbtn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--hairline);background:#fff;border-radius:8px;color:var(--oxford);cursor:pointer;font-family:inherit}
 .m360-pgbtn:disabled{opacity:.4;cursor:default}
 .m360-pgbtn:not(:disabled):hover{border-color:var(--brand);color:var(--brand)}
-.m360-soft:hover{background:#FEE2E2 !important}
-.m360-primary:hover{background:var(--brand-700) !important}
       `}</style>
 
-      <Link href="/psycholog/clients" className="m360-link" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 600, color: "var(--oxford-60)", textDecoration: "none", marginBottom: 16 }}>
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 18l-6-6 6-6" /></svg>
+      <Link href="/psycholog/clients" className="fx-link" style={{ display: "inline-flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
+        <svg className="fx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 18l-6-6 6-6" /></svg>
         Müştərilərə qayıt
       </Link>
 
       {loading ? (
-        <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)", border: "1px solid #EDF1F8" }}>Yüklənir…</div>
+        <PatientSkeleton />
       ) : !client ? (
-        <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)", border: "1px solid #EDF1F8" }}>Müştəri tapılmadı.</div>
+        <EmptyBlock
+          boxed
+          title="Müştəri tapılmadı"
+          body="Bu müştəri silinmiş ola bilər və ya sizin siyahınızda deyil. Müştərilər səhifəsindən yenidən seçin."
+        />
       ) : (
         <>
           {/* ── Hero ─────────────────────────────────────────────────────────── */}
-          <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 22, marginBottom: 14 }}>
-            <div style={{ display: "flex", gap: 18, alignItems: "flex-start", flexWrap: "wrap" }}>
-              <span style={{ width: 72, height: 72, borderRadius: 18, background: avatarTint(client.name).bg, color: avatarTint(client.name).fg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 700, flex: "none" }}>{initialsOf(client.name)}</span>
+          <Card style={{ marginBottom: 14 }}>
+            <CardBody style={{ paddingTop: 18 }}>
+            <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+              <Avatar name={client.name} size="xl" />
               <div style={{ flex: 1, minWidth: 240 }}>
-                <h1 style={{ margin: "0 0 5px", fontSize: 24, fontWeight: 800, letterSpacing: "-.02em", color: "var(--oxford)" }}>{client.name}</h1>
-                <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 11 }}>
+                <h1 className="fx-h1">{client.name}</h1>
+                <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", margin: "6px 0 14px" }}>
                   {client.email && (
-                    <a href={`mailto:${client.email}`} className="m360-link" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, textDecoration: "none" }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8AAABF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" /></svg>
+                    <a href={`mailto:${client.email}`} className="fx-row__meta" style={{ marginTop: 0 }}>
                       {client.email}
                     </a>
                   )}
                   {client.phone && (
-                    <a href={`tel:${client.phone}`} className="m360-link" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, textDecoration: "none", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8AAABF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+                    <a href={`tel:${client.phone}`} className="fx-row__meta fx-num" style={{ marginTop: 0 }}>
                       {client.phone}
                     </a>
                   )}
                 </div>
-                <div style={{ display: "flex", alignItems: "stretch", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-                  <HeroStat tint="brand" value={String(client.totalSessions)} label="seans"
-                    icon={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />
-                  <HeroStat tint="sage" value={String(client.completedSessions)} label="tamamlanan"
-                    icon={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></>} />
-                  {client.lastAppointmentAt && (
-                    <HeroStat tint="neutral" value={fmtShort(client.lastAppointmentAt)} label="son seans"
-                      icon={<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>} />
-                  )}
-                  {moodFromNotes !== null && (
-                    <HeroStat tint="gold" value={`${moodFromNotes}/10`} label="əhval-ruhiyyə"
-                      icon={<><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><path d="M9 9h.01M15 9h.01" /></>} />
-                  )}
-                </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {client.noShowCount > 0 && <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999 }}>{client.noShowCount} no-show</span>}
-                  {client.lateCancelCount > 0 && <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999 }}>{client.lateCancelCount} geç ləğv</span>}
-                  {flag && (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: flag.tone === "danger" ? "#FEE2E2" : "#FEF3C7", color: flag.tone === "danger" ? "#991B1B" : "#92400E", fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
-                      {flag.label}
-                    </span>
-                  )}
+                {/* Rozet çipləri yerinə vəziyyət mətni — diqqət tələb edən hallar rənglənir. */}
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                  {client.noShowCount > 0 && <Status tone="wait">{client.noShowCount} no-show</Status>}
+                  {client.lateCancelCount > 0 && <Status tone="wait">{client.lateCancelCount} geç ləğv</Status>}
+                  {flag && <Status tone={flag.tone === "danger" ? "risk" : "wait"}>{flag.label}</Status>}
                 </div>
               </div>
-              <button onClick={() => { reset(); setShowForm(true); setTab("notes"); }} className="m360-primary"
-                style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 16px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", boxShadow: "0 4px 12px rgba(16,81,183,.24)", flex: "none" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M12 5v14M5 12h14" /></svg>Qeyd əlavə et
-              </button>
+              <Button
+                variant="primary"
+                onClick={() => { reset(); setShowForm(true); setTab("notes"); }}
+                icon={
+                  <svg className="fx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M12 5v14M5 12h14" /></svg>
+                }
+              >
+                Qeyd əlavə et
+              </Button>
             </div>
 
+            <Stats style={{ marginTop: 18, marginBottom: 0 }}>
+              <Stat size="sm" value={String(client.totalSessions)} label="Seans" />
+              <Stat size="sm" value={String(client.completedSessions)} label="Tamamlanan" />
+              {client.lastAppointmentAt && (
+                <Stat size="sm" value={fmtShort(client.lastAppointmentAt)} label="Son seans" />
+              )}
+              {moodFromNotes !== null && (
+                <Stat size="sm" value={`${moodFromNotes}/10`} label="Əhval-ruhiyyə" />
+              )}
+            </Stats>
+
             {/* ── Etiketlər — hero kartının içində (ayrıca kart yığını azaldılıb) ── */}
-            <div style={{ borderTop: "1px solid #F0F4FA", marginTop: 16, paddingTop: 14, position: "relative" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)" }}>Etiketlər:</span>
+            <div className="fx-hairline" style={{ marginTop: 16 }} />
+            <div style={{ paddingTop: 14, position: "relative" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span className="fx-label">Etiketlər</span>
               {tags.length === 0 && !tagPickerOpen && (
-                <span style={{ fontSize: 12.5, color: "#A9B8CC", fontWeight: 500 }}>hələ etiket yoxdur</span>
+                <span className="fx-help">hələ etiket yoxdur</span>
               )}
               {tags.map(t => {
+                // Etiket rəngini psixoloq özü seçir — bu status işarəsi deyil,
+                // psixoloqun öz təsnifatıdır, ona görə rəng saxlanılır.
                 const tt = TAG_TINTS[t.color] ?? TAG_TINTS.neutral;
                 return (
-                  <span key={t.id} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: tt.bg, color: tt.color, border: `1px solid ${tt.border}`, fontSize: 12.5, fontWeight: 700, padding: "4px 8px 4px 11px", borderRadius: 999 }}>
+                  <span key={t.id} className="fx-tag" style={{ background: tt.bg, color: tt.color, borderColor: tt.border }}>
                     {t.label}
-                    <button type="button" onClick={() => removeTag(t.id)} aria-label={`${t.label} sil`}
-                      style={{ width: 16, height: 16, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.08)", border: "none", borderRadius: "50%", cursor: "pointer", color: "inherit" }}>
+                    <button type="button" onClick={() => removeTag(t.id)} aria-label={`${t.label} sil`}>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
                     </button>
                   </span>
                 );
               })}
               {!tagPickerOpen && (
-                <button type="button" onClick={() => { setTagPickerOpen(true); }} className="m360-ghost"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#fff", color: "var(--brand)", border: "1px dashed #B6C9E8", borderRadius: 999, padding: "5px 12px", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>+ etiket</button>
+                <Button variant="ghost" size="sm" onClick={() => setTagPickerOpen(true)}>Etiket əlavə et</Button>
               )}
             </div>
 
             {tagPickerOpen && (
-              <div style={{ position: "absolute", left: 0, top: 46, zIndex: 20, width: 330, maxWidth: "100%", background: "#fff", border: "1px solid #E1E9F5", borderRadius: 13, boxShadow: "0 12px 40px rgba(8,47,109,.18)", padding: 15, animation: "m360Fade .18s ease" }}>
-                <input value={tagDraft} onChange={e => setTagDraft(e.target.value)}
+              <div className="fx-menu" style={{ position: "absolute", left: 0, top: 46, zIndex: 20, width: 330, maxWidth: "100%", padding: 15, gap: 0 }}>
+                <Input
+                  value={tagDraft}
+                  onChange={e => setTagDraft(e.target.value)}
                   onKeyDown={e => {
                     if (e.key === "Enter") { e.preventDefault(); addTag(tagDraft); }
                     if (e.key === "Escape") { setTagPickerOpen(false); setTagDraft(""); }
                   }}
-                  placeholder="Etiket adı…" autoFocus maxLength={40}
-                  style={{ width: "100%", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 11px", fontSize: 13.5, fontWeight: 600, color: "var(--oxford)", fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box" }} />
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 8 }}>Rəng</div>
+                  placeholder="Etiket adı…"
+                  autoFocus
+                  maxLength={40}
+                  style={{ marginBottom: 12 }}
+                />
+                <div className="fx-label" style={{ marginBottom: 8 }}>Rəng</div>
                 <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                   {TAG_COLORS.map(c => {
                     const sel = tagColor === c.value;
@@ -568,46 +586,37 @@ export default function PatientDetailPage() {
                     );
                   })}
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 8 }}>Hazır</div>
+                <div className="fx-label" style={{ marginBottom: 8 }}>Hazır</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 15 }}>
                   {TAG_PRESETS.filter(p => !tags.some(t => t.label.toLowerCase() === p.toLowerCase())).map(p => (
-                    <button key={p} type="button" onClick={() => addTag(p)} disabled={tagSaving} className="m360-ghost"
-                      style={{ background: "#F2F6FD", color: "#082F6D", border: "1px solid #E4ECFA", borderRadius: 999, padding: "5px 11px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>{p}</button>
+                    <Button key={p} variant="ghost" size="sm" onClick={() => addTag(p)} disabled={tagSaving}>{p}</Button>
                   ))}
                 </div>
-                <div style={{ display: "flex", gap: 9 }}>
-                  <button type="button" onClick={() => { setTagPickerOpen(false); setTagDraft(""); }}
-                    style={{ flex: 1, background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, padding: 9, fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
-                  <button type="button" onClick={() => addTag(tagDraft)} disabled={tagSaving || !tagDraft.trim()} className="m360-primary"
-                    style={{ flex: 1, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: 9, fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>{tagSaving ? "Əlavə olunur…" : "Əlavə et"}</button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Button variant="ghost" block onClick={() => { setTagPickerOpen(false); setTagDraft(""); }}>Ləğv</Button>
+                  <Button variant="primary" block onClick={() => addTag(tagDraft)} disabled={tagSaving || !tagDraft.trim()}>
+                    {tagSaving ? "Əlavə olunur…" : "Əlavə et"}
+                  </Button>
                 </div>
               </div>
             )}
             </div>
-          </div>
+            </CardBody>
+          </Card>
 
           {/* ── Tabs (pill) — İcmal | Seanslar | Klinik qeydlər | Hədəflər ── */}
-          <div role="tablist" style={{ display: "inline-flex", maxWidth: "100%", overflowX: "auto", gap: 4, background: "#fff", border: "1px solid #EDF1F8", borderRadius: 12, padding: 5, boxShadow: "0 2px 12px rgba(0,0,0,.04)", marginBottom: 18 }}>
-            {(
-              [
-                ["overview", "İcmal", null],
-                ["history", "Seanslar", singleAppts.length],
-                ["packages", "Paketlər", packageGroups.length],
-                ["notes", "Klinik qeydlər", notes.length],
-                ...(FEATURE_GOALS ? ([["goals", "Hədəflər", goals.length]] as [Tab, string, number | null][]) : []),
-              ] as [Tab, string, number | null][]
-            ).map(([key, label, count]) => {
-              const active = tab === key;
-              return (
-                <button key={key} type="button" role="tab" aria-selected={active} onClick={() => setTab(key)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 7, background: active ? "var(--brand)" : "transparent", color: active ? "#fff" : "var(--oxford)", border: "none", borderRadius: 9, padding: "9px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap", flex: "none" }}>
-                  {label}
-                  {count != null && count > 0 && (
-                    <span style={{ background: active ? "rgba(255,255,255,.22)" : "var(--brand-50)", color: active ? "#fff" : "var(--brand-700)", fontSize: 11.5, fontWeight: 700, minWidth: 20, height: 20, padding: "0 6px", borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{count}</span>
-                  )}
-                </button>
-              );
-            })}
+          <div style={{ overflowX: "auto", marginBottom: 18 }}>
+            <Tabs
+              items={[
+                { key: "overview", label: "İcmal" },
+                { key: "history", label: "Seanslar", count: singleAppts.length },
+                { key: "packages", label: "Paketlər", count: packageGroups.length },
+                { key: "notes", label: "Klinik qeydlər", count: notes.length },
+                ...(FEATURE_GOALS ? [{ key: "goals" as Tab, label: "Hədəflər", count: goals.length }] : []),
+              ] as TabItem<Tab>[]}
+              value={tab}
+              onChange={setTab}
+            />
           </div>
 
           {/* ── İcmal tabı — KPI zolağı + son fəaliyyət lenti + yan kontekst + əhval trendi ── */}
@@ -1301,7 +1310,7 @@ function ActivityRow({ item, last }: { item: ActivityItem; last: boolean }) {
   );
 }
 
-function Stat({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
+function FactStat({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
   return (
     <div>
       <div style={{ fontSize: 10.5, fontWeight: 600, color: "#8AAABF", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 2 }}>{label}</div>
@@ -1405,9 +1414,9 @@ function PackageProgramCard({ appts }: { appts: AppointmentDetail[] }) {
       </div>
 
       <div style={{ display: "flex", gap: 18, flexWrap: "wrap", padding: "11px 0", borderTop: "1px solid #EDF1F8", borderBottom: "1px solid #EDF1F8", marginBottom: 14 }}>
-        <Stat label="Aralıq" value={`${rangeFrom} – ${rangeTo}`} />
-        <Stat label="Seans" value={String(total)} />
-        {cancelled > 0 && <Stat label="Ləğv" value={String(cancelled)} danger />}
+        <FactStat label="Aralıq" value={`${rangeFrom} – ${rangeTo}`} />
+        <FactStat label="Seans" value={String(total)} />
+        {cancelled > 0 && <FactStat label="Ləğv" value={String(cancelled)} danger />}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column" }}>
@@ -1710,5 +1719,36 @@ function MoodTrendChart({ points }: { points: { date: string; score: number }[] 
         <span>{azFormatDate(last.date)}</span>
       </div>
     </div>
+  );
+}
+
+/** Yüklənmə — "Yüklənir…" mətni yox, real düzümün skeleti. */
+function PatientSkeleton() {
+  return (
+    <>
+      <Card style={{ marginBottom: 14 }}>
+        <CardBody style={{ paddingTop: 18 }}>
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <div className="fx-skeleton fx-skeleton--circle" style={{ width: 64, height: 64, flex: "none" }} />
+            <div style={{ flex: 1 }}>
+              <div className="fx-skeleton" style={{ width: "40%", height: 20, marginBottom: 9 }} />
+              <div className="fx-skeleton" style={{ width: "60%", height: 12 }} />
+            </div>
+          </div>
+          <Stats style={{ marginTop: 18, marginBottom: 0 }}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="fx-stat">
+                <div className="fx-skeleton" style={{ width: "50%", height: 22, marginBottom: 10 }} />
+                <div className="fx-skeleton" style={{ width: "70%", height: 12 }} />
+              </div>
+            ))}
+          </Stats>
+        </CardBody>
+      </Card>
+      <div className="fx-2col">
+        <Card><CardBody style={{ paddingTop: 18 }}><div className="fx-skeleton" style={{ height: 220 }} /></CardBody></Card>
+        <Card><CardBody style={{ paddingTop: 18 }}><div className="fx-skeleton" style={{ height: 220 }} /></CardBody></Card>
+      </div>
+    </>
   );
 }

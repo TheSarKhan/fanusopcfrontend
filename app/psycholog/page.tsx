@@ -11,17 +11,32 @@ import {
 import { getStoredUser } from "@/lib/auth";
 import { formatAzn } from "@/lib/money";
 import { azFormatDate } from "@/lib/datetime";
+import {
+  buttonClass,
+  Card,
+  CardBody,
+  CardHead,
+  EmptyBlock,
+  linkClass,
+  PageHead,
+  Row,
+  Stat,
+  Stats,
+  Status,
+  type StatusTone,
+} from "@/components/ui";
 
-const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING:   { label: "Yeni",        color: "#92400E", bg: "#FEF3C7" },
-  ASSIGNED:  { label: "Sizə təyin",  color: "var(--brand-700)", bg: "var(--brand-100)" },
-  CONFIRMED: { label: "Təsdiqli",    color: "#0F766E", bg: "#CCFBF1" },
+/** Seans statusu — rəngli nöqtə/rozet yoxdur, mətndir. */
+const STATUS_LABEL: Record<string, { label: string; tone: StatusTone }> = {
+  PENDING:   { label: "Yeni",       tone: "wait" },
+  ASSIGNED:  { label: "Sizə təyin", tone: "neutral" },
+  CONFIRMED: { label: "Təsdiqli",   tone: "neutral" },
   // Keçmiş seans avtomatik tamamlanır — bütün panellərlə eyni etiket ("Tamamlandı").
   // Bu, seansın uğurla baş tutduğunu yox, vaxtının keçdiyini bildirir.
-  COMPLETED: { label: "Tamamlandı",  color: "var(--oxford-60)", bg: "var(--oxford-10)" },
-  DISPUTED:  { label: "Mübahisəli",  color: "#991B1B", bg: "#FEE2E2" },
-  CANCELLED: { label: "Ləğv",        color: "#991B1B", bg: "#FEE2E2" },
-  REJECTED:  { label: "Rədd",        color: "#92400E", bg: "#FEF3C7" },
+  COMPLETED: { label: "Tamamlandı", tone: "muted" },
+  DISPUTED:  { label: "Mübahisəli", tone: "risk" },
+  CANCELLED: { label: "Ləğv",       tone: "muted" },
+  REJECTED:  { label: "Rədd",       tone: "risk" },
 };
 
 function greet(): string {
@@ -116,24 +131,20 @@ export default function PsychologDashboard() {
       {/* ── Səhifə başlığı ────────────────────────────────────────────────────
           Əvvəl burada gradient "hero" banner var idi — panelin içində marketinq
           səthi. Onun yerinə sakit başlıq: kim, hansı gün, iki əsas keçid. */}
-      <div className="pnl-head">
-        <div>
-          <h1 className="pnl-head__title">
-            {greet()}, Dr. {user?.firstName ?? "Psixoloq"}
-          </h1>
-          <p className="pnl-head__sub">
-            {todayLabel()}
-          </p>
-        </div>
-        <div className="pnl-head__actions">
-          <Link href="/psycholog/calendar" className="pnl-btn">
-            <IconCalendar /> Cədvəlim
-          </Link>
-          <Link href="/psycholog/availability" className="pnl-btn pnl-btn--ghost">
-            <IconClock /> İş vaxtları
-          </Link>
-        </div>
-      </div>
+      <PageHead
+        title={`${greet()}, Dr. ${user?.firstName ?? "Psixoloq"}`}
+        sub={todayLabel()}
+        actions={
+          <>
+            <Link href="/psycholog/calendar" className={buttonClass("primary")}>
+              <IconCalendar /> Cədvəlim
+            </Link>
+            <Link href="/psycholog/availability" className={buttonClass("ghost")}>
+              <IconClock /> İş vaxtları
+            </Link>
+          </>
+        }
+      />
 
       {loading ? (
         <SkeletonGrid />
@@ -142,88 +153,77 @@ export default function PsychologDashboard() {
           {/* ── Rəqəmlər ───────────────────────────────────────────────────────
               Əvvəl burada halqa/qauge "engagement strip" + ayrıca ikonlu kart
               sırası vardı (iki səth, eyni məlumat). İndi tək sıra: dəyər + etiket. */}
-          <div className="pnl-stats">
-            <StatCard
+          <Stats>
+            <Stat
               label="Bu ay seans"
               value={stats?.thisMonthTotal ?? 0}
-              sub={`${stats?.thisMonthCompleted ?? 0} tamamlandı (${completionRate}%)`}
+              meta={`${stats?.thisMonthCompleted ?? 0} tamamlandı (${completionRate}%)`}
             />
-            <StatCard
-              label="Bu həftə"
-              value={stats?.thisWeekTotal ?? 0}
-              sub="planlaşdırılmış seans"
-            />
-            <StatCard
-              label="Yaxınlaşan"
-              value={stats?.upcomingCount ?? 0}
-              sub="növbəti randevular"
-            />
-            <StatCard
-              label="Aktiv müştəri"
-              value={stats?.activeClientsLast90Days ?? 0}
-              sub="son 90 gün"
-            />
-          </div>
+            <Stat label="Bu həftə" value={stats?.thisWeekTotal ?? 0} meta="planlaşdırılmış seans" />
+            <Stat label="Yaxınlaşan" value={stats?.upcomingCount ?? 0} meta="növbəti randevular" />
+            <Stat label="Aktiv müştəri" value={stats?.activeClientsLast90Days ?? 0} meta="son 90 gün" />
+          </Stats>
 
           {/* ── Əsas şəbəkə: 2 sütun × 2 sətir ─────────────────────────────────
               Kartlar birbaşa şəbəkənin uşaqlarıdır (aralıq "stack" sarğısı yoxdur),
               ona görə hər sətirdəki iki kart eyni hündürlüyə uzanır və sağ sütunun
               altında boşluq qalmır. Sıra: cədvəl | yaxınlaşan, qrafik | qiymət. */}
-          <div className="pnl-2col">
-            <Card>
-              <CardHeader
+          <div className="fx-2col fx-2col--even">
+            <Card fill>
+              <CardHead
                 title="Bu günkü cədvəl"
-                subtitle={today.length ? `${today.length} seans planlaşdırılıb` : "Bu gün heç bir seans yoxdur"}
-                right={<Link href="/psycholog/appointments" className="pnl-link">Hamısı →</Link>}
+                sub={today.length ? `${today.length} seans planlaşdırılıb` : "Bu gün heç bir seans yoxdur"}
+                action={<Link href="/psycholog/appointments" className={linkClass()}>Hamısı</Link>}
               />
-              {today.length === 0 ? (
-                <EmptyState
-                  title="Bu gün cədvəliniz boşdur"
-                  body="Sərbəst günü bilik artırmaq üçün istifadə edin və ya açıq vaxtlarınızı yeniləyin."
-                />
-              ) : (
-                <div>
-                  {today.slice(0, 6).map(a => <TodayRow key={a.id} a={a} />)}
-                </div>
-              )}
+              <CardBody>
+                {today.length === 0 ? (
+                  <EmptyBlock
+                    title="Bu gün cədvəliniz boşdur"
+                    body="Sərbəst günü bilik artırmaq üçün istifadə edin və ya açıq vaxtlarınızı yeniləyin."
+                  />
+                ) : (
+                  today.slice(0, 6).map(a => <TodayRow key={a.id} a={a} />)
+                )}
+              </CardBody>
             </Card>
 
-            <Card>
-              <CardHeader
+            <Card fill>
+              <CardHead
                 title="Yaxınlaşan randevular"
-                subtitle={upcoming.length ? "Növbəti günlər" : "Boşdur"}
-                right={<Link href="/psycholog/calendar" className="pnl-link">Cədvəl →</Link>}
+                sub={upcoming.length ? "Növbəti günlər" : "Boşdur"}
+                action={<Link href="/psycholog/calendar" className={linkClass()}>Cədvəl</Link>}
               />
-              {upcoming.length === 0 ? (
-                <EmptyState title="Yaxınlaşan seans yoxdur" body="Yeni randevular əlavə olunduqda burada görünəcək." />
-              ) : (
-                <div>
-                  {upcoming.map(a => <UpcomingRow key={a.id} a={a} />)}
-                </div>
-              )}
+              <CardBody>
+                {upcoming.length === 0 ? (
+                  <EmptyBlock title="Yaxınlaşan seans yoxdur" body="Yeni randevular əlavə olunduqda burada görünəcək." />
+                ) : (
+                  upcoming.map(a => <UpcomingRow key={a.id} a={a} />)
+                )}
+              </CardBody>
             </Card>
 
-            <Card>
-              <CardHeader
+            <Card fill>
+              <CardHead
                 title="Son 30 gün — gündəlik aktivlik"
-                subtitle={stats ? `Cəmi ${stats.last30Days.reduce((s, d) => s + d.count, 0)} seans` : "—"}
+                sub={stats ? `Cəmi ${stats.last30Days.reduce((s, d) => s + d.count, 0)} seans` : "—"}
               />
-              <DailyChart data={stats?.last30Days ?? []} />
+              <CardBody>
+                <DailyChart data={stats?.last30Days ?? []} />
+              </CardBody>
             </Card>
 
-            <Card>
-              <CardHeader
-                title="Müraciətin mənbəyi"
-                subtitle="Sizi kim seçib — müştəri, yoxsa Fanus"
-              />
-              <OriginDonut
-                direct={stats?.originDirectCount ?? 0}
-                matched={stats?.originMatchedCount ?? 0}
-              />
+            <Card fill>
+              <CardHead title="Müraciətin mənbəyi" sub="Sizi kim seçib — müştəri, yoxsa Fanus" />
+              <CardBody>
+                <OriginDonut
+                  direct={stats?.originDirectCount ?? 0}
+                  matched={stats?.originMatchedCount ?? 0}
+                />
+              </CardBody>
             </Card>
 
             {/* Son sətir tək kartdır — hər iki sütunu tutur ki, sağda boşluq qalmasın. */}
-            <div className="pnl-span-2" style={{ display: "flex" }}>
+            <div className="fx-span-2">
               <PricingSummaryCard pricing={pricing} packages={packages} />
             </div>
           </div>
@@ -235,79 +235,38 @@ export default function PsychologDashboard() {
 
 /* ─── Subcomponents ──────────────────────────────────────────────────────── */
 
-function Card({ children }: { children: React.ReactNode }) {
-  return <div className="pnl-card">{children}</div>;
-}
-
-function CardHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: React.ReactNode }) {
-  return (
-    <div className="pnl-card__head">
-      <div style={{ minWidth: 0 }}>
-        <h3 className="pnl-card__title">{title}</h3>
-        {subtitle && <p className="pnl-card__sub">{subtitle}</p>}
-      </div>
-      {right}
-    </div>
-  );
-}
-
-/** Rəqəm + etiket. Əvvəl ikon qutusu, sol brend zolağı və uppercase etiket vardı —
- *  üçü də dekorativ idi və rəqəmi kiçildirdi. */
-function StatCard({ label, value, sub }: { label: string; value: number; sub?: string }) {
-  return (
-    <div className="pnl-stat">
-      <div className="pnl-stat__val">{value}</div>
-      <div className="pnl-stat__label">{label}</div>
-      {sub && <div className="pnl-stat__sub">{sub}</div>}
-    </div>
-  );
-}
-
-/** Status rəngli NÖQTƏ + sadə mətn (pill deyil) — operator ekranı ilə eyni dil. */
-function StatusDot({ status }: { status: string }) {
-  const s = STATUS_BADGE[status] ?? { label: status, color: "var(--oxford-60)" };
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}>
-      <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: s.color }} />
-      <span style={{ fontSize: 12.5, color: "var(--oxford-60)", whiteSpace: "nowrap" }}>{s.label}</span>
-    </span>
-  );
+function SessionStatus({ status }: { status: string }) {
+  const s = STATUS_LABEL[status];
+  if (!s) return <Status tone="muted">{status}</Status>;
+  return <Status tone={s.tone}>{s.label}</Status>;
 }
 
 function TodayRow({ a }: { a: AppointmentDetail }) {
   return (
-    <div className="pnl-row">
-      {/* Vaxt öndədir — bu siyahıda oxunan ilk şey odur. */}
-      <span style={{
-        fontSize: 14, fontWeight: 700, color: "var(--oxford)",
-        fontVariantNumeric: "tabular-nums", flex: "none", minWidth: 44,
-      }}>
-        {formatTime(a.startAt)}
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="pnl-row__title" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {a.patientName ?? "Müştəri"}
-        </div>
-        <div className="pnl-row__meta">
-          {a.endAt ? `${formatTime(a.startAt)} – ${formatTime(a.endAt)}` : "Onlayn seans"}
-        </div>
-      </div>
-      <StatusDot status={a.status} />
-    </div>
+    <Row
+      // Vaxt öndədir — bu siyahıda oxunan ilk şey odur.
+      lead={
+        <span
+          className="fx-num"
+          style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)", flex: "none", minWidth: 44 }}
+        >
+          {formatTime(a.startAt)}
+        </span>
+      }
+      title={a.patientName ?? "Müştəri"}
+      meta={a.endAt ? `${formatTime(a.startAt)} – ${formatTime(a.endAt)}` : "Onlayn seans"}
+      status={<SessionStatus status={a.status} />}
+    />
   );
 }
 
 function UpcomingRow({ a }: { a: AppointmentDetail }) {
   return (
-    <Link href="/psycholog/appointments" className="pnl-row" style={{ textDecoration: "none", color: "inherit" }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="pnl-row__title" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {a.patientName ?? "Müştəri"}
-        </div>
-        <div className="pnl-row__meta">
-          {formatDayShort(a.startAt)}, {formatTime(a.startAt)}
-        </div>
-      </div>
+    <Link href="/psycholog/appointments" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+      <Row
+        title={a.patientName ?? "Müştəri"}
+        meta={`${formatDayShort(a.startAt)}, ${formatTime(a.startAt)}`}
+      />
     </Link>
   );
 }
@@ -322,44 +281,32 @@ function PricingSummaryCard({ pricing, packages }: {
   const active = packages.filter(p => p.active);
   return (
     <Card>
-      <CardHeader
+      <CardHead
         title="Qiymət və paketlər"
-        subtitle="Cari təklifləriniz"
-        right={<Link href="/psycholog/profile" className="pnl-link">Düzəlt →</Link>}
+        sub="Cari təklifləriniz"
+        action={<Link href="/psycholog/profile" className={linkClass()}>Düzəlt</Link>}
       />
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
-        padding: "10px 12px", borderRadius: 10,
-        background: "var(--brand-50)", border: "1px solid var(--brand-100)",
-        marginBottom: active.length ? 12 : 0,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ width: 32, height: 32, borderRadius: 9, background: "#fff", color: "var(--brand-700)", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--brand-100)" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-          </span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford)" }}>Fərdi seans</span>
-        </div>
-        <span style={{ fontSize: 14.5, fontWeight: 800, color: "var(--oxford)" }}>
-          {pricing?.individualPrice != null ? formatAzn(pricing.individualPrice) : "—"}
-        </span>
-      </div>
-      {active.length === 0 ? (
-        <div style={{ fontSize: 12, color: "var(--oxford-60)", textAlign: "center", padding: "4px 0" }}>Paket təyin edilməyib</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {active.slice(0, 4).map(p => (
-            <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}>
-              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--oxford)", fontWeight: 600 }}>
-                {p.name} <span style={{ color: "var(--oxford-60)", fontWeight: 500 }}>{p.sessionCount} seans</span>
-              </span>
-              <span style={{ fontWeight: 700, color: "var(--brand-700)", flex: "none" }}>{formatAzn(p.packagePrice)}</span>
-            </div>
-          ))}
-          {active.length > 4 && (
-            <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>+{active.length - 4} paket daha</div>
-          )}
-        </div>
-      )}
+      <CardBody>
+        <Row
+          title="Fərdi seans"
+          amount={pricing?.individualPrice != null ? formatAzn(pricing.individualPrice) : "—"}
+        />
+        {active.length === 0 ? (
+          <EmptyBlock
+            title="Paket təyin edilməyib"
+            body="Paket təklif etsəniz müştərilər bir neçə seansı birlikdə ala bilər. Profil səhifəsindən əlavə edin."
+          />
+        ) : (
+          <>
+            {active.slice(0, 4).map(p => (
+              <Row key={p.id} title={p.name} meta={`${p.sessionCount} seans`} amount={formatAzn(p.packagePrice)} />
+            ))}
+            {active.length > 4 && (
+              <Row title={`+${active.length - 4} paket daha`} />
+            )}
+          </>
+        )}
+      </CardBody>
     </Card>
   );
 }
@@ -367,7 +314,7 @@ function PricingSummaryCard({ pricing, packages }: {
 function DailyChart({ data }: { data: { date: string; count: number }[] }) {
   const max = Math.max(1, ...data.map(d => d.count));
   if (data.length === 0) {
-    return <EmptyState title="Məlumat yoxdur" body="Aktivliyiniz burada görünəcək." />;
+    return <EmptyBlock title="Məlumat yoxdur" body="Aktivliyiniz burada görünəcək." />;
   }
   // Bar hündürlüyü PİKSEL ilə hesablanır (faiz DEYİL): valideyn konteynerin
   // hündürlüyü qeyri-müəyyən olduğu üçün (row `alignItems: flex-end`) faizli
@@ -386,10 +333,11 @@ function DailyChart({ data }: { data: { date: string; count: number }[] }) {
               style={{
                 flex: 1,
                 height: `${barH}px`,
+                // Qradient yox — düz token rəngi. Bu gün tünd brend, qalan günlər açıq.
                 background: isToday
-                  ? "linear-gradient(180deg, var(--brand-700), var(--brand))"
+                  ? "var(--brand)"
                   : d.count > 0
-                    ? "linear-gradient(180deg, var(--brand-400), var(--brand-300))"
+                    ? "var(--brand-300)"
                     : "var(--hairline)",
                 borderRadius: 4,
                 minHeight: 3,
@@ -414,16 +362,6 @@ function shortDate(iso?: string) {
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function EmptyState({ title, body }: { title: string; body: string }) {
-  return (
-    // Mərkəzləşdirilmiş deyil — sola düzülür, mətn kimi oxunur.
-    <div className="pnl-empty">
-      <div className="pnl-empty__title">{title}</div>
-      <div className="pnl-empty__body">{body}</div>
-    </div>
-  );
-}
-
 /* ─── Müraciət mənbəyi (donut) ────────────────────────────────────────────
    İki kateqoriya: müştəri məhz bu psixoloqu seçib (DIRECT) vs Fanus yönləndirib
    (PLATFORM_MATCHED). Rənglər gözlə seçilməyib — brend mavisi + kəhrəba cütü
@@ -435,7 +373,7 @@ function OriginDonut({ direct, matched }: { direct: number; matched: number }) {
   const total = direct + matched;
   if (total === 0) {
     return (
-      <EmptyState
+      <EmptyBlock
         title="Hələ məlumat yoxdur"
         body="İlk seanslarınızdan sonra müraciətlərin nə qədərinin birbaşa sizə gəldiyi burada görünəcək."
       />
@@ -491,35 +429,37 @@ function OriginDonut({ direct, matched }: { direct: number; matched: number }) {
 function OriginLegendRow({ color, label, value, pct }:
   { color: string; label: string; value: number; pct: number }) {
   return (
-    <div className="pnl-row">
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-        <span aria-hidden style={{ width: 8, height: 8, borderRadius: 2, background: color, flex: "none" }} />
-        <span className="pnl-row__title" style={{ fontWeight: 500 }}>{label}</span>
-      </span>
-      <span className="pnl-row__val">
-        {value}
-        <span style={{ fontWeight: 500, color: "var(--oxford-60)", marginLeft: 6 }}>{pct}%</span>
-      </span>
-    </div>
+    <Row
+      // Rəngli kvadrat status işarəsi deyil — qrafik leqendidir, dilimə bağlıdır.
+      lead={<span aria-hidden style={{ width: 8, height: 8, borderRadius: 2, background: color, flex: "none" }} />}
+      title={label}
+      amount={
+        <>
+          {value} <small>{pct}%</small>
+        </>
+      }
+    />
   );
 }
 
 /** Yüklənmə skeleti — real düzümün eyni forması (4 rəqəm + 2×2 kart şəbəkəsi),
  *  ona görə məzmun gələndə sıçrayış olmur. */
 function SkeletonGrid() {
-  const block = (h: number) => (
-    <div className="pnl-card" style={{ height: h, gap: 10 }}>
-      <div style={{ width: "40%", height: 12, background: "var(--oxford-10)", borderRadius: 4 }} />
-      <div style={{ width: "70%", height: 22, background: "var(--brand-50)", borderRadius: 4 }} />
-    </div>
+  const block = (key: string, h: number) => (
+    <Card key={key} style={{ height: h }}>
+      <CardBody style={{ paddingTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="fx-skeleton" style={{ width: "40%", height: 12 }} />
+        <div className="fx-skeleton" style={{ width: "70%", height: 22 }} />
+      </CardBody>
+    </Card>
   );
   return (
     <div>
-      <div className="pnl-stats">
-        {block(96)}{block(96)}{block(96)}{block(96)}
-      </div>
-      <div className="pnl-2col">
-        {block(300)}{block(300)}{block(240)}{block(240)}
+      <Stats>
+        {block("s1", 96)}{block("s2", 96)}{block("s3", 96)}{block("s4", 96)}
+      </Stats>
+      <div className="fx-2col fx-2col--even">
+        {block("c1", 300)}{block("c2", 300)}{block("c3", 240)}{block("c4", 240)}
       </div>
     </div>
   );

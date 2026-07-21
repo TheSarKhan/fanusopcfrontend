@@ -4,12 +4,15 @@
  * OP-1: Triyaj siyahısı — "inbox" görünüşü. Sətirə klik müraciətin detal
  * səhifəsini açır (/operator/appointments/[id]); köhnə modal axınları detal
  * səhifəsinə köçüb. Burada yalnız toplu əməliyyat (bulk-assign) qalıb.
- * OP-2: claim çipləri ("● Sənin üzərində") + "Mənim üzərimdə" filtri, real-time.
+ * OP-2: sahiblik məlumatı (yalnız BAŞQASININ üzərində olanda) + "Mənim üzərimdə"
+ * filtri, real-time.
  *
- * Siyahı server səhifələməsi ilə yüklənir (createdAt DESC) — "Daha çox göstər"
- * növbəti səhifəni əlavə edir; tək-statuslu filtrlər serverə ötürülür.
- *
- * Görünüş "Operator Randevular.dc" maketinə uyğun redizayn edilib — məntiq eynidir.
+ * Cədvəllərin hamısı kitin <DataTable> komponentidir (əl ilə <table> yoxdur):
+ *   • əsas triyaj siyahısı — SERVER səhifələməsi (listAppointmentsPaged);
+ *   • yönləndirmələr və paketlər — client səhifələməsi (mənbə səhifələnmir);
+ *   • paketin açılan sətrindəki seans siyahısı — `renderExpanded`.
+ * Qeyd: Pagination komponenti 1-dən, backend `Paged.page` isə 0-dan başlayır —
+ * çevrilmə hər istifadə yerində açıq yazılıb.
  */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -25,7 +28,16 @@ import {
   type SortDir,
 } from "@/lib/api";
 import OnBehalfBookingModal from "@/components/OnBehalfBookingModal";
-import ErrorState from "@/components/ErrorState";
+import {
+  Button,
+  ButtonLink,
+  DataTable,
+  Pagination,
+  Status,
+  type Column,
+  type SortState,
+  type StatusTone,
+} from "@/components/ui";
 import { toast } from "@/components/Toast";
 import { getStoredUser } from "@/lib/auth";
 import { subscribeNotifications, subscribeOperatorClaims } from "@/lib/notificationsSocket";
@@ -47,20 +59,24 @@ const TAB_META: Record<Tab, { label: string; color: string }> = {
   CANCELLED:        { label: "Ləğv olunmuş",      color: "var(--status-refunded-fg)" },
 };
 
-/** Status siqnalı — sətirdə/kartda doldurulmuş rəngli pill əvəzinə kiçik nöqtə +
- *  adi mətn. Rəng mənbəyi statusMeta()-dır (bütün rollarda eyni), ona görə yeni
- *  rəng dili yaranmır, sadəcə vizual "səs-küy" azalır. */
-function DotLabel({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="or-status">
-      <span className="or-status__dot" style={{ background: color }} />
-      {label}
-    </span>
-  );
-}
-function StatusDot({ status }: { status?: string | null }) {
-  const meta = statusMeta(status);
-  return <DotLabel color={meta.fg} label={meta.label} />;
+/** Status siqnalı — rəngli pill və ya rəngli nöqtə YOX, kit qaydası ilə adi
+ *  <Status> mətni. Etiket mənbəyi statusMeta()-dır (bütün rollarda eyni), ton
+ *  isə kitin beş tonundan biridir. */
+const APPT_STATUS_TONE: Record<string, StatusTone> = {
+  PENDING:               "wait",
+  NEW:                   "wait",
+  REJECTED:              "wait",
+  IN_REVIEW:             "wait",
+  ASSIGNED:              "neutral",
+  CONFIRMED:             "positive",
+  AWAITING_CONFIRMATION: "wait",
+  DISPUTED:              "risk",
+  COMPLETED:             "muted",
+  CANCELLED:             "risk",
+  CANCEL_REQUESTED:      "wait",
+};
+function ApptStatus({ status }: { status?: string | null }) {
+  return <Status tone={APPT_STATUS_TONE[status ?? ""] ?? "neutral"}>{statusMeta(status).label}</Status>;
 }
 
 // Hər tab serverdə ifadə olunur: "INBOX" birləşmiş "Yeni müraciətlər" (yeni
@@ -105,20 +121,14 @@ function fmtDateTime(iso?: string | null) {
 const CHANNEL_LABEL: Record<string, string> = {
   CALL: "Zəng", WHATSAPP: "WhatsApp", SMS: "SMS", EMAIL: "Email", OTHER: "Digər",
 };
-const OUTCOME_LABEL: Record<string, { label: string; tone: "good" | "warn" | "danger" | "neutral" }> = {
-  ANSWERED:    { label: "Cavab verdi",    tone: "good" },
-  NO_ANSWER:   { label: "Cavab vermədi",  tone: "warn" },
-  BUSY:        { label: "Məşğul",         tone: "warn" },
-  REFUSED:     { label: "İmtina etdi",    tone: "danger" },
+// İzləmə nəticəsi meta-dır, status deyil — rəngli çip yerinə kitin <Status> mətni.
+const OUTCOME_LABEL: Record<string, { label: string; tone: StatusTone }> = {
+  ANSWERED:    { label: "Cavab verdi",    tone: "positive" },
+  NO_ANSWER:   { label: "Cavab vermədi",  tone: "wait" },
+  BUSY:        { label: "Məşğul",         tone: "wait" },
+  REFUSED:     { label: "İmtina etdi",    tone: "risk" },
   RESCHEDULED: { label: "Vaxt dəyişdi",   tone: "neutral" },
-  OTHER:       { label: "Digər",          tone: "neutral" },
-};
-// İzləmə nəticəsi meta-dır, status deyil — rəngli çip yerinə yalnız mətn tonu.
-const FOLLOW_COLOR: Record<"good" | "warn" | "danger" | "neutral", string> = {
-  good:    "var(--status-paid-fg)",
-  warn:    "var(--status-pending-fg)",
-  danger:  "var(--status-refunded-fg)",
-  neutral: "var(--oxford-60)",
+  OTHER:       { label: "Digər",          tone: "muted" },
 };
 
 function normalizePhone(raw: string | null | undefined): string | null {
@@ -183,6 +193,39 @@ function buildAlert(a: AppointmentDetail, hasPsyProposal = false): { tone: "red"
   return null;
 }
 
+/** Sətrin diqqət siqnalı: xəbərdarlıq varsa onun tonu, yoxsa SLA gecikməsi. */
+function rowAttention(a: AppointmentDetail, hasPsyProposal: boolean, overdue: boolean): { tone: "red" | "amber"; text: string } | null {
+  const alert = buildAlert(a, hasPsyProposal);
+  if (alert) return alert;
+  if (overdue) return { tone: "red", text: "SLA gecikməsi — hələ cavablandırılmayıb" };
+  return null;
+}
+
+/** Paket qrupundan (bir paketin bütün seansları) hesablanan ortaq göstəricilər —
+ *  cədvəl sətri, açılan alt-siyahı və kart eyni mənbədən oxuyur. */
+function packageInfo(sessions: AppointmentDetail[], now: number) {
+  const first = sessions[0];
+  const total = first.packageTotal ?? sessions.length;
+  const scheduledList = sessions
+    .filter(s => s.startAt && s.status !== "CANCELLED")
+    .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
+  const scheduled = scheduledList.length;
+  // completed = faktiki keçirilmiş seans; unscheduled = hələ vaxtı təyin olunmamış seans.
+  const completed = first.packageCompleted ?? scheduledList.filter(s => s.status === "COMPLETED").length;
+  const unscheduled = Math.max(0, total - scheduled);
+  const statusKey = first.packageStatus ?? "ACTIVE";
+  const st = PKG_STATUS[statusKey] ?? PKG_STATUS.ACTIVE;
+  const needsAttention = statusKey === "ACTIVE" && unscheduled > 0;
+  const upcoming = scheduledList.find(s => new Date(s.startAt!).getTime() >= now);
+  const nextS = upcoming ?? (scheduledList.length ? scheduledList[scheduledList.length - 1] : null);
+  const nextLabel = upcoming ? "Növbəti" : "Son seans";
+  const attnText = needsAttention ? `${unscheduled} seans planlaşdırılmayıb` : "";
+  return { first, total, scheduledList, completed, unscheduled, st, needsAttention, nextS, nextLabel, attnText };
+}
+
+/** Səhifədə göstərilən sətir sayı — serverdə səhifələnməyən (client) siyahılar üçün. */
+const CLIENT_PAGE_SIZE = 20;
+
 export default function OperatorAppointmentsPage() {
   const { t } = useT();
   const router = useRouter();
@@ -225,7 +268,17 @@ export default function OperatorAppointmentsPage() {
     return v === "referrals" || v === "packages" ? v : "appointments";
   });
   const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [refLoading, setRefLoading] = useState(true);
+  const [refError, setRefError] = useState(false);
   const refCount = referrals.length;
+  const loadReferrals = useCallback(() => {
+    setRefLoading(true);
+    setRefError(false);
+    operatorApi.pendingReferrals()
+      .then(setReferrals)
+      .catch(() => setRefError(true))
+      .finally(() => setRefLoading(false));
+  }, []);
   // Psixoloqun Cədvəldə (drag-and-drop) yaratdığı, operator təsdiqini gözləyən
   // təkliflərin randevu ID-ləri — bu məlumat AppointmentDetail-də olmadığı üçün
   // ayrıca çəkilir və randevu sətrinə xəbərdarlıq/filtr kimi bağlanır.
@@ -245,9 +298,9 @@ export default function OperatorAppointmentsPage() {
 
   useEffect(() => {
     operatorApi.stats().then(s => setSlaHours(s.slaHours)).catch(() => {});
-    operatorApi.pendingReferrals().then(setReferrals).catch(() => {});
+    loadReferrals();
     loadPsyProposals();
-  }, [loadPsyProposals]);
+  }, [loadPsyProposals, loadReferrals]);
 
   const [error, setError] = useState(false);
   const load = () => {
@@ -269,6 +322,12 @@ export default function OperatorAppointmentsPage() {
   // null = hələ yüklənir (skeleton).
   const [pagedItems, setPagedItems] = useState<AppointmentDetail[] | null>(null);
   const [pagedError, setPagedError] = useState(false);
+  // Serverdə səhifələnməyən siyahıların client səhifələri (hamısı 1-dən başlayır).
+  const [clientPage, setClientPage] = useState(1);
+  const [refPage, setRefPage] = useState(1);
+  const [refSort, setRefSort] = useState<SortState | null>(null);
+  const [pkgPage, setPkgPage] = useState(1);
+  const [pkgSort, setPkgSort] = useState<SortState | null>(null);
   const [pagedNonce, setPagedNonce] = useState(0);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
@@ -282,8 +341,11 @@ export default function OperatorAppointmentsPage() {
     && !allOnly && !overdueOnly && !mineOnly && !rescheduleOnly && !cancelOnly;
 
   // Tab / filtr / axtarış / sıralama / səhifə ölçüsü dəyişəndə həmişə 0-a qayıt.
+  // (`page` server səhifəsidir — 0-dan başlayır; `clientPage` isə Pagination
+  //  komponenti üçün 1-dən başlayan client səhifəsidir.)
   useEffect(() => {
     setPage(0);
+    setClientPage(1);
   }, [view, tab, allOnly, overdueOnly, mineOnly, rescheduleOnly, cancelOnly, debouncedSearch, sort, dir, size]);
 
   useEffect(() => {
@@ -325,9 +387,9 @@ export default function OperatorAppointmentsPage() {
       if (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_")) {
         load(); loadPsyProposals(); setPagedNonce(x => x + 1);
       }
-      if (n.type.startsWith("REFERRAL_")) operatorApi.pendingReferrals().then(setReferrals).catch(() => {});
+      if (n.type.startsWith("REFERRAL_")) loadReferrals();
     });
-  }, [loadPsyProposals]);
+  }, [loadPsyProposals, loadReferrals]);
 
   // OP-2: claim hadisələri çipləri canlı yeniləyir (səhifə reload-suz)
   useEffect(() => {
@@ -435,6 +497,51 @@ export default function OperatorAppointmentsPage() {
     });
   }, [allPackageGroups, pkgStatusF, pkgSearch]);
 
+  // Paketlər serverdə səhifələnmir — sıralama və səhifələmə client-side qalır.
+  const sortedPackages = useMemo(() => {
+    const get = pkgSort ? PACKAGE_SORT[pkgSort.key] : null;
+    if (!get || !pkgSort) return packageGroups;
+    const mul = pkgSort.dir === "asc" ? 1 : -1;
+    return [...packageGroups].sort((x, y) => {
+      const a = get(x), b = get(y);
+      return (a < b ? -1 : a > b ? 1 : 0) * mul;
+    });
+  }, [packageGroups, pkgSort]);
+  const pkgPageCount = Math.max(1, Math.ceil(sortedPackages.length / CLIENT_PAGE_SIZE));
+  // Siyahı kiçiləndə (canlı yenilənmə) cari səhifə diapazondan çıxa bilər — sıxılır.
+  const pkgPageSafe = Math.min(pkgPage, pkgPageCount);
+  const pkgRows = useMemo(
+    () => sortedPackages.slice((pkgPageSafe - 1) * CLIENT_PAGE_SIZE, pkgPageSafe * CLIENT_PAGE_SIZE),
+    [sortedPackages, pkgPageSafe]);
+  // Filtr / axtarış / sıralama dəyişəndə birinci səhifəyə qayıt.
+  useEffect(() => { setPkgPage(1); }, [pkgStatusF, pkgSearch, pkgSort]);
+
+  // Yönləndirmə mənbəyi də serverdə səhifələnmir — eyni client məntiqi.
+  const sortedReferrals = useMemo(() => {
+    const get = refSort ? REFERRAL_SORT[refSort.key] : null;
+    if (!get || !refSort) return referrals;
+    const mul = refSort.dir === "asc" ? 1 : -1;
+    return [...referrals].sort((x, y) => {
+      const a = get(x), b = get(y);
+      return (a < b ? -1 : a > b ? 1 : 0) * mul;
+    });
+  }, [referrals, refSort]);
+  const refPageCount = Math.max(1, Math.ceil(sortedReferrals.length / CLIENT_PAGE_SIZE));
+  const refPageSafe = Math.min(refPage, refPageCount);
+  const refRows = useMemo(
+    () => sortedReferrals.slice((refPageSafe - 1) * CLIENT_PAGE_SIZE, refPageSafe * CLIENT_PAGE_SIZE),
+    [sortedReferrals, refPageSafe]);
+  useEffect(() => { setRefPage(1); }, [refSort, view]);
+
+  // Kəsişən filtrlər aktiv olanda siyahı serverdən yox, yığılmış `items`-dən gəlir —
+  // sıralama və səhifələmə bu halda client-side olur (səhifə ölçüsü eynidir).
+  const clientRows = useMemo(() => sortRows(filtered, sort, dir), [filtered, sort, dir]);
+  const clientPageCount = Math.max(1, Math.ceil(clientRows.length / size));
+  const clientPageSafe = Math.min(clientPage, clientPageCount);
+  const clientRowsPage = useMemo(
+    () => clientRows.slice((clientPageSafe - 1) * size, clientPageSafe * size),
+    [clientRows, clientPageSafe, size]);
+
   const rescheduleCount = useMemo(() => items.filter(isRescheduleReq).length, [items, psyProposalApptIds]);
   const cancelReqCount = useMemo(() => items.filter(isCancelReq).length, [items]);
 
@@ -498,29 +605,262 @@ export default function OperatorAppointmentsPage() {
   const pickStatus = (tk: Tab) => { setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setRescheduleOnly(false); setCancelOnly(false); setTab(tk); };
   const statusActive = (tk: Tab) => !allOnly && !overdueOnly && !mineOnly && !rescheduleOnly && !cancelOnly && tab === tk;
 
+  // ─── Sütun təsvirləri (əl ilə <table> yazılmır — hamısı DataTable) ──────────
+
+  const apptColumns: Column<AppointmentDetail>[] = [
+    {
+      key: "attn",
+      header: "",
+      label: "Diqqət",
+      width: 34,
+      cell: a => {
+        const at = rowAttention(a, psyProposalApptIds.has(a.id), isOverdue(a));
+        return at ? <AttnMark tone={at.tone} title={at.text} /> : null;
+      },
+    },
+    {
+      key: "patientName",
+      header: "Pasiyent",
+      sortable: true,
+      cell: a => (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span className={`fx-avatar fx-avatar--${avatarTone(a.id)}`}>{initialsOf(a.patientName)}</span>
+          <div style={{ minWidth: 0 }}>
+            <div className="fx-row__title">{a.patientName ?? "—"}</div>
+            <div className="fx-muted fx-num" style={{ fontSize: 12 }}>#FNS-{String(a.id).padStart(4, "0")}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "startAt",
+      header: "Tarix / saat",
+      sortable: true,
+      cell: a => {
+        const when = a.startAt ?? a.requestedStartAt ?? null;
+        return (
+          <>
+            <div className="fx-num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>{when ? fmtDateTime(when) : "—"}</div>
+            {!a.startAt && a.requestedStartAt && <div className="fx-muted" style={{ fontSize: 11.5 }}>istənilən vaxt</div>}
+            {a.sessionKind === "INTRO" && <div className="fx-muted" style={{ fontSize: 11.5 }}>Tanışlıq, pulsuz</div>}
+          </>
+        );
+      },
+    },
+    {
+      key: "psychologistName",
+      header: "Psixoloq",
+      sortable: true,
+      cell: a => a.psychologistName ? (
+        <span style={{ fontSize: 12.5 }}>{a.psychologistName}</span>
+      ) : a.requestedPsychologistName ? (
+        <>
+          <div style={{ fontSize: 12.5, fontStyle: a.origin === "DIRECT" ? undefined : "italic" }}>{a.requestedPsychologistName}</div>
+          <div className="fx-muted" style={{ fontSize: 11.5 }}>{a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən"}</div>
+        </>
+      ) : (
+        <span className="fx-muted" style={{ fontSize: 12.5, fontStyle: "italic" }}>Təyin olunmayıb</span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      sortable: true,
+      cell: a => {
+        const claimMine = a.claimedByUserId != null && a.claimedByUserId === meId;
+        // Sahiblik nişanı YALNIZ başqasının üzərində olanda göstərilir — operator
+        // onsuz da yalnız öz sətirlərini görür, "Sənin üzərində" məlumat vermirdi.
+        const showClaim = a.claimedByUserId != null && !claimMine && !!a.claimedByName;
+        const hasSeries = a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null;
+        return (
+          <>
+            <ApptStatus status={a.status} />
+            {showClaim && (
+              <div className="fx-muted" style={{ fontSize: 11.5, marginTop: 4 }}>
+                {t("staff.opClaimWorking", { name: a.claimedByName ?? "" })}
+              </div>
+            )}
+            {hasSeries && (
+              <div className="fx-muted fx-num" style={{ fontSize: 11.5 }}>
+                {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal ?? 0 })}
+              </div>
+            )}
+          </>
+        );
+      },
+    },
+    {
+      key: "payment",
+      header: "Ödəniş",
+      cell: a => a.patientPackageId != null ? (
+        <span className="fx-muted" style={{ fontSize: 12.5 }}>Paket</span>
+      ) : a.paymentStatus === "PAID" ? (
+        <>
+          {!!a.paymentAmount && <div className="fx-num" style={{ fontSize: 12.5 }}>{a.paymentAmount} ₼</div>}
+          <div className="fx-muted" style={{ fontSize: 11.5 }}>Ödənilib</div>
+        </>
+      ) : a.paymentStatus === "PENDING" ? (
+        <span className="fx-muted" style={{ fontSize: 12.5 }}>Gözləyir</span>
+      ) : (
+        <span className="fx-muted">—</span>
+      ),
+    },
+    {
+      key: "createdAt",
+      header: "Gözləmə / diqqət",
+      sortable: true,
+      cell: a => {
+        const at = rowAttention(a, psyProposalApptIds.has(a.id), isOverdue(a));
+        const outcome = a.lastContactOutcome ? OUTCOME_LABEL[a.lastContactOutcome] : null;
+        return (
+          <>
+            <div className="fx-muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{timeAgo(a.createdAt) || fmtDateTime(a.createdAt)}</div>
+            {at && (
+              <div className="or-alert-txt" style={{ color: at.tone === "red" ? "var(--status-refunded-fg)" : "var(--status-pending-fg)" }}>{at.text}</div>
+            )}
+            {a.lastContactAt && (
+              <div className="fx-muted" style={{ fontSize: 11.5, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                <span>Son izləmə: {timeAgo(a.lastContactAt)}</span>
+                {outcome && <Status tone={outcome.tone}>{outcome.label}</Status>}
+              </div>
+            )}
+          </>
+        );
+      },
+    },
+  ];
+
+  const apptActions = (a: AppointmentDetail) => {
+    const canClaim = a.claimedByUserId == null && isPoolEligible(a.status);
+    return (
+      <>
+        <RowContact phone={a.patientPhone} email={a.patientEmail} />
+        {canClaim && (
+          <Button variant="primary" size="sm" onClick={() => takeOwnership(a.id)}>{t("staff.opTake")}</Button>
+        )}
+        <Button variant="ghost" size="sm" title={t("staff.opOpenTicket")} aria-label={t("staff.opOpenTicket")}
+          onClick={() => openDetail(a)}>
+          <Svg w={14} sw={2.4} d={<path d="M9 18l6-6-6-6" />} />
+        </Button>
+      </>
+    );
+  };
+
+  const pkgColumns: Column<AppointmentDetail[]>[] = [
+    {
+      key: "attn",
+      header: "",
+      label: "Diqqət",
+      width: 34,
+      cell: g => {
+        const i = packageInfo(g, now);
+        return i.needsAttention ? <AttnMark tone="amber" title={i.attnText} /> : null;
+      },
+    },
+    {
+      key: "packageName",
+      header: "Paket",
+      sortable: true,
+      cell: g => (
+        <>
+          <div className="fx-row__title">{g[0].packageName ?? "Paket"}</div>
+          <div className="fx-muted fx-num" style={{ fontSize: 11.5 }}>#{g[0].patientPackageId}</div>
+        </>
+      ),
+    },
+    {
+      key: "patientName",
+      header: "Pasiyent",
+      sortable: true,
+      cell: g => <span style={{ fontSize: 12.5 }}>{g[0].patientName ?? "—"}</span>,
+    },
+    {
+      key: "psychologistName",
+      header: "Psixoloq",
+      sortable: true,
+      cell: g => g[0].psychologistName
+        ? <span style={{ fontSize: 12.5 }}>{g[0].psychologistName}</span>
+        : <span className="fx-muted">—</span>,
+    },
+    {
+      key: "progress",
+      header: "İrəliləyiş",
+      cell: g => {
+        const i = packageInfo(g, now);
+        return (
+          <>
+            {/* İrəliləyiş = KEÇİRİLMİŞ seans / alınmış seans. */}
+            <span className="fx-num" style={{ fontSize: 13, fontWeight: 700, color: "var(--lilac)" }}>{i.completed}/{i.total}</span>
+            <div className="fx-muted" style={{ fontSize: 11.5 }}>keçirilib</div>
+            {i.attnText && <div className="or-alert-txt" style={{ color: "var(--status-pending-fg)" }}>{i.attnText}</div>}
+          </>
+        );
+      },
+    },
+    {
+      key: "next",
+      header: "Növbəti seans",
+      cell: g => {
+        const i = packageInfo(g, now);
+        return i.nextS ? (
+          <>
+            <div className="fx-num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>{fmtDateTime(i.nextS.startAt)}</div>
+            <div className="fx-muted" style={{ fontSize: 11.5 }}>{i.nextLabel}</div>
+          </>
+        ) : <span className="fx-muted">—</span>;
+      },
+    },
+    {
+      key: "packageStatus",
+      header: "Status",
+      sortable: true,
+      cell: g => {
+        const { st } = packageInfo(g, now);
+        return <Status tone={st.tone}>{st.label}</Status>;
+      },
+    },
+  ];
+
+  const openPackage = (g: AppointmentDetail[]) =>
+    router.push(`/operator/appointments/package/${g[0].patientPackageId}`);
+
   // Eyni siyahının iki görünüşü: geniş ekranda cədvəl, dar ekranda kart (CSS swap).
-  const renderAppointments = (list: AppointmentDetail[]) => (
+  // Səhifələmə hər iki görünüşdə var — cədvəldə DataTable altlığı, kartlarda CardsPager.
+  const renderAppointments = (
+    list: AppointmentDetail[],
+    paging: { page: number; pageCount: number; onChange: (p: number) => void },
+    totalLabel: string,
+  ) => (
     <ResponsiveList
       table={
-        <AppointmentTable
+        <DataTable
           rows={list}
-          meId={meId}
-          psyProposalApptIds={psyProposalApptIds}
-          isOverdue={isOverdue}
-          sort={sort}
-          dir={dir}
-          onSort={toggleSort}
-          onTake={takeOwnership}
-          onOpen={openDetail}
+          columns={apptColumns}
+          rowKey={a => a.id}
+          onRowClick={openDetail}
+          actions={apptActions}
+          sort={sort ? { key: sort, dir } : null}
+          onSortChange={next => toggleSort(next.key)}
+          pagination={{
+            ...paging,
+            pageSize: size,
+            onPageSizeChange: setSize,
+            pageSizeOptions: PAGE_SIZES,
+          }}
+          totalLabel={totalLabel}
+          minWidth={1080}
         />
       }
       cards={
-        <div style={GRID}>
-          {list.map(a => (
-            <AppointmentCard key={a.id} a={a} meId={meId} hasPsyProposal={psyProposalApptIds.has(a.id)}
-              onTake={() => takeOwnership(a.id)} onOpen={() => openDetail(a)} />
-          ))}
-        </div>
+        <>
+          <div style={GRID}>
+            {list.map(a => (
+              <AppointmentCard key={a.id} a={a} meId={meId} hasPsyProposal={psyProposalApptIds.has(a.id)}
+                onTake={() => takeOwnership(a.id)} onOpen={() => openDetail(a)} />
+            ))}
+          </div>
+          <CardsPager {...paging} totalLabel={totalLabel} />
+        </>
       }
     />
   );
@@ -626,11 +966,11 @@ export default function OperatorAppointmentsPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
           <Chip label="Hamısı" count={pkgCounts.ALL} active={pkgStatusF === "ALL"}
             onClick={() => setPkgStatusF("ALL")} />
-          <Chip label="Ödəniş gözlənilir" count={pkgCounts.PENDING_PAYMENT} active={pkgStatusF === "PENDING_PAYMENT"} dot="var(--amber)"
+          <Chip label="Ödəniş gözlənilir" count={pkgCounts.PENDING_PAYMENT} active={pkgStatusF === "PENDING_PAYMENT"}
             onClick={() => setPkgStatusF("PENDING_PAYMENT")} />
-          <Chip label="Aktiv" count={pkgCounts.ACTIVE} active={pkgStatusF === "ACTIVE"} dot="var(--sage)"
+          <Chip label="Aktiv" count={pkgCounts.ACTIVE} active={pkgStatusF === "ACTIVE"}
             onClick={() => setPkgStatusF("ACTIVE")} />
-          <Chip label="Tamamlanıb" count={pkgCounts.EXHAUSTED} active={pkgStatusF === "EXHAUSTED"} dot="var(--oxford-60)"
+          <Chip label="Tamamlanıb" count={pkgCounts.EXHAUSTED} active={pkgStatusF === "EXHAUSTED"}
             onClick={() => setPkgStatusF("EXHAUSTED")} />
           <div className="fx-search" style={{ flex: "1 1 220px", minWidth: 200, marginLeft: 4 }}>
             <Svg w={15} d={<><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>} />
@@ -639,87 +979,166 @@ export default function OperatorAppointmentsPage() {
         </div>
       )}
 
-      {/* RESULTS */}
+      {/* RESULTS
+          Yüklənmə / xəta / boş halları DataTable-ın öz bloklarıdır və hər ekran
+          enində eyni görünür — ona görə onlar ResponsiveList-dən kənarda, bir
+          dəfə göstərilir; məlumat gələndə geniş ekranda cədvəl, dar ekranda
+          kartlar açılır. */}
       {view === "referrals" ? (
-        referrals.length === 0 ? (
-          <EmptyCard text="Təsdiq gözləyən yönləndirmə yoxdur." />
+        refLoading || refError || sortedReferrals.length === 0 ? (
+          <DataTable
+            rows={[] as Referral[]}
+            columns={REFERRAL_COLUMNS}
+            rowKey={r => r.id}
+            loading={refLoading}
+            error={refError ? "Yönləndirmələr yüklənmədi. Bağlantı və ya server problemi ola bilər." : null}
+            onRetry={loadReferrals}
+            empty={{
+              title: "Təsdiq gözləyən yönləndirmə yoxdur",
+              body: "Psixoloqlar yeni yönləndirmə göndərəndə müraciət burada görünəcək.",
+            }}
+          />
         ) : (
           <ResponsiveList
-            table={<ReferralTable rows={referrals} onOpen={r => router.push(`/operator/referrals/${r.id}`)} />}
+            table={
+              <DataTable
+                rows={refRows}
+                columns={REFERRAL_COLUMNS}
+                rowKey={r => r.id}
+                onRowClick={r => router.push(`/operator/referrals/${r.id}`)}
+                actions={r => (
+                  <Button variant="ghost" size="sm" onClick={() => router.push(`/operator/referrals/${r.id}`)}>
+                    Ətraflı bax
+                    <Svg w={13} sw={2.2} d={<path d="M9 18l6-6-6-6" />} />
+                  </Button>
+                )}
+                sort={refSort}
+                onSortChange={setRefSort}
+                pagination={{ page: refPageSafe, pageCount: refPageCount, onChange: setRefPage }}
+                totalLabel={`Cəmi ${sortedReferrals.length} yönləndirmə`}
+                minWidth={980}
+              />
+            }
             cards={
-              <div style={GRID}>
-                {referrals.map(r => (
-                  <ReferralCard key={r.id} r={r} onOpen={() => router.push(`/operator/referrals/${r.id}`)} />
-                ))}
-              </div>
+              <>
+                <div style={GRID}>
+                  {refRows.map(r => (
+                    <ReferralCard key={r.id} r={r} onOpen={() => router.push(`/operator/referrals/${r.id}`)} />
+                  ))}
+                </div>
+                <CardsPager page={refPageSafe} pageCount={refPageCount} onChange={setRefPage}
+                  totalLabel={`Cəmi ${sortedReferrals.length} yönləndirmə`} />
+              </>
             }
           />
         )
       ) : serverMode ? (
-        // Əsas siyahı — server səhifələməsi (tab filtri + axtarış + sıralama serverdə)
-        pagedError ? (
-          <ErrorState
-            title="Randevular yüklənmədi"
-            sub="Bağlantı və ya server problemi ola bilər. Yenidən cəhd edin."
+        // Əsas siyahı — server səhifələməsi (tab filtri + axtarış + sıralama serverdə).
+        // Pagination komponenti 1-dən başlayır, backend `page` isə 0-dan — çevrilmə açıqdır.
+        pagedError || pagedItems == null || pagedItems.length === 0 ? (
+          <DataTable
+            rows={[] as AppointmentDetail[]}
+            columns={apptColumns}
+            rowKey={a => a.id}
+            loading={pagedItems == null && !pagedError}
+            error={pagedError ? "Randevular yüklənmədi. Bağlantı və ya server problemi ola bilər." : null}
             onRetry={() => setPagedNonce(n => n + 1)}
+            empty={{
+              title: "Bu kateqoriyada müraciət yoxdur",
+              body: "Filtri dəyişin və ya yeni müraciət gözləyin.",
+            }}
           />
-        ) : pagedItems == null ? (
-          <ResponsiveList table={<SkeletonTable />} cards={<SkeletonCards />} />
-        ) : pagedItems.length === 0 ? (
-          <EmptyCard />
         ) : (
-          <>
-            {renderAppointments(pagedItems)}
-            <Pager page={page} size={size} totalElements={totalElements} totalPages={totalPages}
-              onPage={setPage} onSize={setSize} />
-          </>
+          renderAppointments(
+            pagedItems,
+            { page: page + 1, pageCount: Math.max(1, totalPages), onChange: p => setPage(p - 1) },
+            `Cəmi ${totalElements} müraciət, ${page * size + 1}–${Math.min((page + 1) * size, totalElements)} göstərilir`,
+          )
         )
       ) : loading ? (
-        <ResponsiveList table={<SkeletonTable />} cards={<SkeletonCards />} />
+        <DataTable rows={[] as AppointmentDetail[]} columns={apptColumns} rowKey={a => a.id} loading />
       ) : error ? (
-        <ErrorState
-          title="Randevular yüklənmədi"
-          sub="Bağlantı və ya server problemi ola bilər. Yenidən cəhd edin."
+        <DataTable
+          rows={[] as AppointmentDetail[]}
+          columns={apptColumns}
+          rowKey={a => a.id}
+          error="Randevular yüklənmədi. Bağlantı və ya server problemi ola bilər."
           onRetry={load}
         />
       ) : view === "packages" ? (
-        packageGroups.length === 0 ? (
-          <EmptyCard text="Paket tapılmadı" sub="Filtri dəyişin və ya pasiyent adına yeni paket satın." />
+        sortedPackages.length === 0 ? (
+          <DataTable
+            rows={[] as AppointmentDetail[][]}
+            columns={pkgColumns}
+            rowKey={g => g[0].patientPackageId ?? g[0].id}
+            empty={{ title: "Paket tapılmadı", body: "Filtri dəyişin və ya pasiyent adına yeni paket satın." }}
+          />
         ) : (
           <ResponsiveList
             table={
-              <PackageTable
-                groups={packageGroups}
-                onOpen={g => router.push(`/operator/appointments/package/${g[0].patientPackageId}`)}
-                onOpenSession={openDetail}
+              <DataTable
+                rows={pkgRows}
+                columns={pkgColumns}
+                rowKey={g => g[0].patientPackageId ?? g[0].id}
+                onRowClick={openPackage}
+                actions={g => (
+                  <>
+                    <RowContact phone={g[0].patientPhone} email={g[0].patientEmail} />
+                    <Button variant="ghost" size="sm" title="Seansları aç" aria-label="Seansları aç"
+                      onClick={() => openPackage(g)}>
+                      <Svg w={14} sw={2.4} d={<path d="M9 18l6-6-6-6" />} />
+                    </Button>
+                  </>
+                )}
+                sort={pkgSort}
+                onSortChange={setPkgSort}
+                renderExpanded={g => <PackageSessions sessions={g} now={now} onOpenSession={openDetail} />}
+                pagination={{ page: pkgPageSafe, pageCount: pkgPageCount, onChange: setPkgPage }}
+                totalLabel={`Cəmi ${sortedPackages.length} paket`}
+                minWidth={1080}
               />
             }
             cards={
-              <div style={PKG_GRID}>
-                {packageGroups.map(sessions => (
-                  <PackageCard
-                    key={`pkg-${sessions[0].patientPackageId}`}
-                    sessions={sessions}
-                    onOpen={() => router.push(`/operator/appointments/package/${sessions[0].patientPackageId}`)}
-                  />
-                ))}
-              </div>
+              <>
+                <div style={PKG_GRID}>
+                  {pkgRows.map(sessions => (
+                    <PackageCard
+                      key={`pkg-${sessions[0].patientPackageId}`}
+                      sessions={sessions}
+                      now={now}
+                      onOpen={() => openPackage(sessions)}
+                    />
+                  ))}
+                </div>
+                <CardsPager page={pkgPageSafe} pageCount={pkgPageCount} onChange={setPkgPage}
+                  totalLabel={`Cəmi ${sortedPackages.length} paket`} />
+              </>
             }
           />
         )
-      ) : filtered.length === 0 ? (
-        <EmptyCard />
-      ) : renderAppointments(sortRows(filtered, sort, dir))}
+      ) : clientRows.length === 0 ? (
+        <DataTable
+          rows={[] as AppointmentDetail[]}
+          columns={apptColumns}
+          rowKey={a => a.id}
+          empty={{ title: "Bu kateqoriyada müraciət yoxdur", body: "Filtri dəyişin və ya yeni müraciət gözləyin." }}
+        />
+      ) : (
+        renderAppointments(
+          clientRowsPage,
+          { page: clientPageSafe, pageCount: clientPageCount, onChange: setClientPage },
+          `Cəmi ${clientRows.length} müraciət, ${(clientPageSafe - 1) * size + 1}–${Math.min(clientPageSafe * size, clientRows.length)} göstərilir`,
+        )
+      )}
     </div>
   );
 }
 
 // ─── Filtr çipi ───────────────────────────────────────────────────────────────
 
-function Chip({ label, count, active, dot, onClick }: { label: string; count: number; active: boolean; dot?: string; onClick: () => void }) {
+function Chip({ label, count, active, onClick }: { label: string; count: number; active: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className={`fx-toggle-chip${active ? " fx-toggle-chip--active" : ""}`} style={{ flex: "none" }}>
-      {dot && <span className="fx-dot" style={{ background: dot }} />}
       {label}<span className="fx-num" style={{ opacity: 0.7, fontWeight: 700 }}>{count}</span>
     </button>
   );
@@ -927,9 +1346,9 @@ function FilterPanel({
 }
 
 // ─── Cədvəl görünüşü ─────────────────────────────────────────────────────────
-// Geniş ekranda siyahılar `fx-table` cədvəlidir (operator/customers,
-// operator/psychologists, operator/session-requests ilə eyni konvensiya:
-// fx-card qabığı → overflowX konteyneri → fx-table, sətir klik = detal).
+// Geniş ekranda siyahıların hamısı kitin <DataTable> komponentidir (əl ilə
+// <table> yazmaq qadağandır): sıralama, səhifələmə, skeleton, boş və xəta
+// vəziyyəti komponentin içindədir, səhifə yalnız sütunları təsvir edir.
 // Dar ekranda eyni məlumat mövcud kart görünüşünə keçir — CSS media sorğusu ilə,
 // beləliklə heç bir davranış/hook dublikat olmur.
 
@@ -942,83 +1361,15 @@ function ResponsiveList({ table, cards }: { table: ReactNode; cards: ReactNode }
   );
 }
 
-/** Cədvəl qabığı — qonşu operator səhifələri ilə eyni struktur. */
-function TableCard({ children }: { children: ReactNode }) {
-  return (
-    <div className="fx-card" style={{ overflow: "hidden" }}>
-      <div style={{ overflowX: "auto" }}>
-        <table className="fx-table">{children}</table>
-      </div>
-    </div>
-  );
-}
-
-/** Sıralanan cədvəl başlığı — klik istiqaməti çevirir, aktiv istiqamət inline
- *  SVG ox (caret) ilə göstərilir. Həm server, həm client sıralamasında eyni. */
-function SortTh({ label, sortKey, sort, dir, onSort, style }: {
-  label: string; sortKey: string; sort: string | null; dir: SortDir;
-  onSort: (key: string) => void; style?: React.CSSProperties;
+/** Kart görünüşünün səhifələmə zolağı — DataTable altlığının qarşılığı, beləliklə
+ *  səhifələmə həm cədvəldə, həm dar ekrandakı kartlarda işləyir. */
+function CardsPager({ page, pageCount, onChange, totalLabel }: {
+  page: number; pageCount: number; onChange: (p: number) => void; totalLabel: ReactNode;
 }) {
-  const active = sort === sortKey;
   return (
-    <th style={style} aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}>
-      <button type="button" className="or-th" onClick={() => onSort(sortKey)}
-        title={`${label} — sıralamanı dəyiş`}>
-        {label}
-        <Svg w={11} sw={2.6} style={{ opacity: active ? 1 : 0.3, flex: "none" }}
-          d={active && dir === "asc" ? <path d="M18 15l-6-6-6 6" /> : <path d="M6 9l6 6 6-6" />} />
-      </button>
-    </th>
-  );
-}
-
-/** Səhifələmə zolağı — operator/session-requests səhifəsindəki konvensiyanın
- *  eynisi (Göstərilir · Əvvəlki/nömrələr/Sonrakı · Səhifə başı). */
-function Pager({ page, size, totalElements, totalPages, onPage, onSize }: {
-  page: number; size: number; totalElements: number; totalPages: number;
-  onPage: (p: number) => void; onSize: (s: number) => void;
-}) {
-  if (totalElements === 0) return null;
-  return (
-    <div className="fx-card" style={{ marginTop: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", flexWrap: "wrap", gap: 10 }}>
-        <span className="fx-muted fx-num" style={{ fontSize: 12 }}>
-          Göstərilir: {page * size + 1}–{Math.min((page + 1) * size, totalElements)} / {totalElements}
-        </span>
-
-        {totalPages > 1 && (
-          <div style={{ display: "flex", gap: 4 }}>
-            <button type="button" className="fx-btn fx-btn--ghost fx-btn--sm" disabled={page === 0} onClick={() => onPage(page - 1)}>
-              Əvvəlki
-            </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let p = i;
-              if (totalPages > 5 && page > 2) {
-                p = page - 2 + i;
-                if (p >= totalPages) p = totalPages - (5 - i);
-              }
-              if (p < 0 || p >= totalPages) return null;
-              return (
-                <button key={p} type="button"
-                  className={`fx-btn fx-btn--sm${page === p ? " fx-btn--primary" : " fx-btn--ghost"}`}
-                  onClick={() => onPage(p)}>
-                  {p + 1}
-                </button>
-              );
-            })}
-            <button type="button" className="fx-btn fx-btn--ghost fx-btn--sm" disabled={page >= totalPages - 1} onClick={() => onPage(page + 1)}>
-              Sonrakı
-            </button>
-          </div>
-        )}
-
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span className="fx-muted" style={{ fontSize: 12 }}>Səhifə başı:</span>
-          <select value={size} onChange={e => onSize(Number(e.target.value))} aria-label="Səhifə ölçüsü" className="fx-select fx-select--inline">
-            {PAGE_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-      </div>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+      <span style={{ fontSize: 12, fontWeight: 500, color: "var(--oxford-60)" }}>{totalLabel}</span>
+      <Pagination page={page} pageCount={pageCount} onChange={onChange} />
     </div>
   );
 }
@@ -1039,168 +1390,23 @@ function RowContact({ phone, email }: { phone?: string | null; email?: string | 
   const stop = (e: React.MouseEvent) => e.stopPropagation();
   return (
     <>
-      {p && <a href={`tel:${p}`} onClick={stop} title={`Zəng et: ${phone}`} className="fx-btn fx-btn--ghost fx-btn--sm"><IconPhone /></a>}
-      {p && <a href={whatsappLink(p)} target="_blank" rel="noopener noreferrer" onClick={stop} title={`WhatsApp: ${phone}`} className="fx-btn fx-btn--ghost fx-btn--sm"><IconWhatsApp /></a>}
-      {email && <a href={`mailto:${email}`} onClick={stop} title={email} className="fx-btn fx-btn--ghost fx-btn--sm"><IconMail /></a>}
+      {p && <ButtonLink variant="ghost" size="sm" href={`tel:${p}`} onClick={stop} title={`Zəng et: ${phone}`} aria-label={`Zəng et: ${phone}`}><IconPhone /></ButtonLink>}
+      {p && <ButtonLink variant="ghost" size="sm" href={whatsappLink(p)} target="_blank" rel="noopener noreferrer" onClick={stop} title={`WhatsApp: ${phone}`} aria-label={`WhatsApp: ${phone}`}><IconWhatsApp /></ButtonLink>}
+      {email && <ButtonLink variant="ghost" size="sm" href={`mailto:${email}`} onClick={stop} title={email} aria-label={`E-poçt: ${email}`}><IconMail /></ButtonLink>}
     </>
   );
 }
 
-// ─── Randevular cədvəli ───────────────────────────────────────────────────────
-
-function AppointmentTable({ rows, meId, psyProposalApptIds, isOverdue, sort, dir, onSort, onTake, onOpen }: {
-  rows: AppointmentDetail[];
-  meId: number | null;
-  psyProposalApptIds: Set<number>;
-  isOverdue: (a: AppointmentDetail) => boolean;
-  sort: AppointmentSortKey | null;
-  dir: SortDir;
-  onSort: (key: string) => void;
-  onTake: (id: number) => void;
-  onOpen: (a: AppointmentDetail) => void;
-}) {
-  return (
-    <TableCard>
-      <thead>
-        <tr>
-          <th style={{ width: 34 }} />
-          <SortTh label="Pasiyent" sortKey="patientName" sort={sort} dir={dir} onSort={onSort} />
-          <SortTh label="Tarix / saat" sortKey="startAt" sort={sort} dir={dir} onSort={onSort} />
-          <SortTh label="Psixoloq" sortKey="psychologistName" sort={sort} dir={dir} onSort={onSort} />
-          <SortTh label="Status" sortKey="status" sort={sort} dir={dir} onSort={onSort} />
-          <th>Ödəniş</th>
-          <SortTh label="Gözləmə / diqqət" sortKey="createdAt" sort={sort} dir={dir} onSort={onSort} />
-          <th style={{ width: 210 }} />
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map(a => (
-          <AppointmentRow
-            key={a.id}
-            a={a}
-            meId={meId}
-            hasPsyProposal={psyProposalApptIds.has(a.id)}
-            overdue={isOverdue(a)}
-            onTake={() => onTake(a.id)}
-            onOpen={() => onOpen(a)}
-          />
-        ))}
-      </tbody>
-    </TableCard>
-  );
-}
-
-function AppointmentRow({ a, meId, overdue, hasPsyProposal, onTake, onOpen }: {
-  a: AppointmentDetail; meId: number | null; overdue: boolean; hasPsyProposal: boolean;
-  onTake: () => void; onOpen: () => void;
-}) {
-  const { t } = useT();
-  const alert = buildAlert(a, hasPsyProposal);
-  const claimMine = a.claimedByUserId != null && a.claimedByUserId === meId;
-  const claimOther = a.claimedByUserId != null && !claimMine;
-  // Sahiblik nişanı YALNIZ başqasının üzərində olanda göstərilir — operator
-  // onsuz da yalnız öz sətirlərini görür, "Sənin üzərində" məlumat vermirdi.
-  const showClaim = claimOther && !!a.claimedByName;
-  const claimLabel = claimMine ? t("staff.opClaimMine") : (a.claimedByName ? t("staff.opClaimWorking", { name: a.claimedByName }) : "");
-  const hasSeries = a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null;
-  const canClaim = a.claimedByUserId == null && isPoolEligible(a.status);
-  const when = a.startAt ?? a.requestedStartAt ?? null;
-  // Diqqət tonu: xəbərdarlıq varsa onun tonu, yoxsa SLA gecikməsi.
-  const tone: "red" | "amber" | null = alert ? alert.tone : overdue ? "red" : null;
-  const attnText = alert?.text ?? (overdue ? "SLA gecikməsi — hələ cavablandırılmayıb" : "");
-
-  return (
-    <tr onClick={onOpen} style={{ cursor: "pointer" }} className={tone ? `or-tr--attn or-tr--attn-${tone}` : undefined}>
-      <td className="or-td-attn">{tone && <AttnMark tone={tone} title={attnText} />}</td>
-      <td>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span className={`fx-avatar fx-avatar--${avatarTone(a.id)}`}>{initialsOf(a.patientName)}</span>
-          <div style={{ minWidth: 0 }}>
-            <div className="fx-row__title">{a.patientName ?? "—"}</div>
-            <div className="fx-muted fx-num" style={{ fontSize: 12 }}>#FNS-{String(a.id).padStart(4, "0")}</div>
-          </div>
-        </div>
-      </td>
-      <td>
-        <div className="fx-num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>{when ? fmtDateTime(when) : "—"}</div>
-        {!a.startAt && a.requestedStartAt && <div className="fx-muted" style={{ fontSize: 11.5 }}>istənilən vaxt</div>}
-        {a.sessionKind === "INTRO" && <div className="fx-muted" style={{ fontSize: 11.5 }}>Tanışlıq, pulsuz</div>}
-      </td>
-      <td>
-        {a.psychologistName ? (
-          <span style={{ fontSize: 12.5 }}>{a.psychologistName}</span>
-        ) : a.requestedPsychologistName ? (
-          <>
-            <div style={{ fontSize: 12.5, fontStyle: a.origin === "DIRECT" ? undefined : "italic" }}>{a.requestedPsychologistName}</div>
-            <div className="fx-muted" style={{ fontSize: 11.5 }}>{a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən"}</div>
-          </>
-        ) : (
-          <span className="fx-muted" style={{ fontSize: 12.5, fontStyle: "italic" }}>Təyin olunmayıb</span>
-        )}
-      </td>
-      <td>
-        {/* Sətirdəki YEGANƏ status siqnalı: nöqtə + mətn (dolu pill deyil).
-            Sahiblik/seriya məlumatı susqun mətn sətirləri kimi qalır. */}
-        <StatusDot status={a.status} />
-        {showClaim && <div className="fx-muted" style={{ fontSize: 11.5, marginTop: 4 }}>{claimLabel}</div>}
-        {hasSeries && (
-          <div className="fx-muted fx-num" style={{ fontSize: 11.5 }}>
-            {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal ?? 0 })}
-          </div>
-        )}
-      </td>
-      <td>
-        {a.patientPackageId != null ? (
-          <span className="fx-muted" style={{ fontSize: 12.5 }}>Paket</span>
-        ) : a.paymentStatus === "PAID" ? (
-          <>
-            {!!a.paymentAmount && <div className="fx-num" style={{ fontSize: 12.5 }}>{a.paymentAmount} ₼</div>}
-            <div className="fx-muted" style={{ fontSize: 11.5 }}>Ödənilib</div>
-          </>
-        ) : a.paymentStatus === "PENDING" ? (
-          <span className="fx-muted" style={{ fontSize: 12.5 }}>Gözləyir</span>
-        ) : (
-          <span className="fx-muted">—</span>
-        )}
-      </td>
-      <td>
-        <div className="fx-muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{timeAgo(a.createdAt) || fmtDateTime(a.createdAt)}</div>
-        {attnText && (
-          <div className="or-alert-txt" style={{ color: tone === "red" ? "var(--status-refunded-fg)" : "var(--status-pending-fg)" }}>{attnText}</div>
-        )}
-        {a.lastContactAt && (
-          <div className="fx-muted" style={{ fontSize: 11.5, display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <span>Son izləmə: {timeAgo(a.lastContactAt)}</span>
-            {a.lastContactOutcome && OUTCOME_LABEL[a.lastContactOutcome]
-              ? <span style={{ color: FOLLOW_COLOR[OUTCOME_LABEL[a.lastContactOutcome].tone], fontWeight: 600 }}>{OUTCOME_LABEL[a.lastContactOutcome].label}</span>
-              : null}
-          </div>
-        )}
-      </td>
-      <td onClick={e => e.stopPropagation()}>
-        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
-          <RowContact phone={a.patientPhone} email={a.patientEmail} />
-          {canClaim && (
-            <button type="button" onClick={onTake} className="fx-btn fx-btn--primary fx-btn--sm">{t("staff.opTake")}</button>
-          )}
-          <button type="button" onClick={onOpen} title={t("staff.opOpenTicket")} className="fx-btn fx-btn--ghost fx-btn--sm">
-            <Svg w={14} sw={2.4} d={<path d="M9 18l6-6-6-6" />} />
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
-}
 
 // ─── Yönləndirmələr cədvəli ───────────────────────────────────────────────────
 
-// Status siqnalı burada da nöqtə + mətndir; rənglər mövcud status dəyişənləridir.
-const REFERRAL_STATUS_META: Record<string, { label: string; color: string }> = {
-  PENDING_OPERATOR: { label: "Operator təsdiqi", color: "var(--status-pending-fg)" },
-  PENDING_REVIEW:   { label: "Psixoloq baxışı",  color: "var(--brand)" },
-  ACCEPTED:         { label: "Qəbul edilib",     color: "var(--status-paid-fg)" },
-  DECLINED:         { label: "İmtina",           color: "var(--status-refunded-fg)" },
-  CANCELLED:        { label: "Ləğv edilib",      color: "var(--status-cancelled-fg)" },
+// Status siqnalı burada da adi <Status> mətnidir — rəngli nöqtə/pill yoxdur.
+const REFERRAL_STATUS_META: Record<string, { label: string; tone: StatusTone }> = {
+  PENDING_OPERATOR: { label: "Operator təsdiqi", tone: "wait" },
+  PENDING_REVIEW:   { label: "Psixoloq baxışı",  tone: "neutral" },
+  ACCEPTED:         { label: "Qəbul edilib",     tone: "positive" },
+  DECLINED:         { label: "İmtina",           tone: "risk" },
+  CANCELLED:        { label: "Ləğv edilib",      tone: "muted" },
 };
 
 /** Yönləndirmə mənbəyi (operatorApi.pendingReferrals) səhifələnmir — server
@@ -1212,75 +1418,59 @@ const REFERRAL_SORT: Record<string, (r: Referral) => string | number> = {
   status:      r => (REFERRAL_STATUS_META[r.status]?.label ?? r.status).toLowerCase(),
 };
 
-function ReferralTable({ rows, onOpen }: { rows: Referral[]; onOpen: (r: Referral) => void }) {
-  const [sort, setSort] = useState<string | null>(null);
-  const [dir, setDir] = useState<SortDir>("desc");
-  const onSort = (key: string) => {
-    if (key === sort) setDir(d => (d === "asc" ? "desc" : "asc"));
-    else { setSort(key); setDir("desc"); }
-  };
-  const sorted = useMemo(() => {
-    const get = sort ? REFERRAL_SORT[sort] : null;
-    if (!get) return rows;
-    const mul = dir === "asc" ? 1 : -1;
-    return [...rows].sort((x, y) => {
-      const a = get(x), b = get(y);
-      return (a < b ? -1 : a > b ? 1 : 0) * mul;
-    });
-  }, [rows, sort, dir]);
-
-  return (
-    <TableCard>
-      <thead>
-        <tr>
-          <SortTh label="Pasiyent" sortKey="patientName" sort={sort} dir={dir} onSort={onSort} />
-          <th>Yönləndirmə</th>
-          <th>Növ</th>
-          <th>Səbəb</th>
-          <SortTh label="Tarix" sortKey="createdAt" sort={sort} dir={dir} onSort={onSort} />
-          <SortTh label="Status" sortKey="status" sort={sort} dir={dir} onSort={onSort} />
-          <th style={{ width: 130 }} />
-        </tr>
-      </thead>
-      <tbody>
-        {sorted.map(r => {
-          const st = REFERRAL_STATUS_META[r.status] ?? { label: r.status, color: "var(--oxford-60)" };
-          return (
-            <tr key={r.id} onClick={() => onOpen(r)} style={{ cursor: "pointer" }}>
-              <td>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span className={`fx-avatar fx-avatar--${avatarTone(r.patientId)}`}>{initialsOf(r.patientName)}</span>
-                  <span className="fx-row__title">{r.patientName ?? "—"}</span>
-                </div>
-              </td>
-              <td>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 7, flexWrap: "wrap", fontSize: 12.5 }}>
-                  <span>{r.fromPsychologistName}</span>
-                  <Svg w={13} sw={2.4} stroke="var(--oxford-60)" d={<path d="M5 12h14M13 6l6 6-6 6" />} />
-                  <span>{r.toPsychologistName}</span>
-                </span>
-              </td>
-              <td><span className="fx-muted" style={{ fontSize: 12.5 }}>{REFERRAL_SUBJECT_META[r.subjectType].label}</span></td>
-              <td>
-                <div style={{ fontSize: 12.5, color: "var(--oxford-80)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 260 }} title={r.reason}>
-                  {r.reason}
-                </div>
-              </td>
-              <td><span className="fx-muted fx-num" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{timeAgo(r.createdAt) || fmtDateTime(r.createdAt)}</span></td>
-              <td><DotLabel color={st.color} label={st.label} /></td>
-              <td onClick={e => e.stopPropagation()} style={{ textAlign: "right" }}>
-                <button type="button" onClick={() => onOpen(r)} className="fx-btn fx-btn--ghost fx-btn--sm">
-                  Ətraflı bax
-                  <Svg w={13} sw={2.2} d={<path d="M9 18l6-6-6-6" />} />
-                </button>
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </TableCard>
-  );
-}
+const REFERRAL_COLUMNS: Column<Referral>[] = [
+  {
+    key: "patientName",
+    header: "Pasiyent",
+    sortable: true,
+    cell: r => (
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span className={`fx-avatar fx-avatar--${avatarTone(r.patientId)}`}>{initialsOf(r.patientName)}</span>
+        <span className="fx-row__title">{r.patientName ?? "—"}</span>
+      </div>
+    ),
+  },
+  {
+    key: "flow",
+    header: "Yönləndirmə",
+    cell: r => (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 7, flexWrap: "wrap", fontSize: 12.5 }}>
+        <span>{r.fromPsychologistName}</span>
+        <Svg w={13} sw={2.4} stroke="var(--oxford-60)" d={<path d="M5 12h14M13 6l6 6-6 6" />} />
+        <span>{r.toPsychologistName}</span>
+      </span>
+    ),
+  },
+  {
+    key: "subjectType",
+    header: "Növ",
+    cell: r => <span className="fx-muted" style={{ fontSize: 12.5 }}>{REFERRAL_SUBJECT_META[r.subjectType].label}</span>,
+  },
+  {
+    key: "reason",
+    header: "Səbəb",
+    cell: r => (
+      <div style={{ fontSize: 12.5, color: "var(--oxford-80)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 260 }} title={r.reason}>
+        {r.reason}
+      </div>
+    ),
+  },
+  {
+    key: "createdAt",
+    header: "Tarix",
+    sortable: true,
+    cell: r => <span className="fx-muted fx-num" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{timeAgo(r.createdAt) || fmtDateTime(r.createdAt)}</span>,
+  },
+  {
+    key: "status",
+    header: "Status",
+    sortable: true,
+    cell: r => {
+      const st = REFERRAL_STATUS_META[r.status];
+      return <Status tone={st?.tone ?? "neutral"}>{st?.label ?? r.status}</Status>;
+    },
+  },
+];
 
 // ─── Paketlər cədvəli — açılan sətir paketin seanslarını göstərir ─────────────
 
@@ -1293,157 +1483,62 @@ const PACKAGE_SORT: Record<string, (g: AppointmentDetail[]) => string | number> 
   packageStatus:    g => (g[0].packageStatus ?? "ACTIVE").toLowerCase(),
 };
 
-function PackageTable({ groups, onOpen, onOpenSession }: {
-  groups: AppointmentDetail[][];
-  onOpen: (g: AppointmentDetail[]) => void;
-  onOpenSession: (a: AppointmentDetail) => void;
+/** Paketin açılan sətrindəki seans siyahısı — DataTable-ın `renderExpanded`-i.
+ *  Bu iç-cədvəl bir paketin seansları ilə məhduddur (paket ölçüsü qədər sətir),
+ *  ona görə öz səhifələməsi yoxdur. */
+function PackageSessions({ sessions, now, onOpenSession }: {
+  sessions: AppointmentDetail[]; now: number; onOpenSession: (a: AppointmentDetail) => void;
 }) {
-  const [sort, setSort] = useState<string | null>(null);
-  const [dir, setDir] = useState<SortDir>("desc");
-  const onSort = (key: string) => {
-    if (key === sort) setDir(d => (d === "asc" ? "desc" : "asc"));
-    else { setSort(key); setDir("desc"); }
-  };
-  const sorted = useMemo(() => {
-    const get = sort ? PACKAGE_SORT[sort] : null;
-    if (!get) return groups;
-    const mul = dir === "asc" ? 1 : -1;
-    return [...groups].sort((x, y) => {
-      const a = get(x), b = get(y);
-      return (a < b ? -1 : a > b ? 1 : 0) * mul;
-    });
-  }, [groups, sort, dir]);
+  const { unscheduled } = packageInfo(sessions, now);
+  const columns: Column<AppointmentDetail>[] = [
+    {
+      key: "seq",
+      header: "Seans",
+      cell: s => (
+        <div className="fx-num" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <span>#{sessions.indexOf(s) + 1}</span>
+          <span>FNS-{String(s.id).padStart(4, "0")}</span>
+        </div>
+      ),
+    },
+    {
+      key: "startAt",
+      header: "Tarix / saat",
+      cell: s => s.startAt
+        ? <span className="fx-num" style={{ whiteSpace: "nowrap" }}>{fmtDateTime(s.startAt)}</span>
+        : <span className="fx-muted">Təyin edilməyib</span>,
+    },
+    {
+      key: "psychologistName",
+      header: "Psixoloq",
+      cell: s => s.psychologistName ?? <span className="fx-muted">—</span>,
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: s => <ApptStatus status={s.status} />,
+    },
+  ];
 
   return (
-    <TableCard>
-      <thead>
-        <tr>
-          <th style={{ width: 34 }} />
-          <th style={{ width: 40 }} />
-          <SortTh label="Paket" sortKey="packageName" sort={sort} dir={dir} onSort={onSort} />
-          <SortTh label="Pasiyent" sortKey="patientName" sort={sort} dir={dir} onSort={onSort} />
-          <SortTh label="Psixoloq" sortKey="psychologistName" sort={sort} dir={dir} onSort={onSort} />
-          <th>İrəliləyiş</th>
-          <th>Növbəti seans</th>
-          <SortTh label="Status" sortKey="packageStatus" sort={sort} dir={dir} onSort={onSort} />
-          <th style={{ width: 150 }} />
-        </tr>
-      </thead>
-      <tbody>
-        {sorted.map(g => (
-          <PackageRow key={`pkg-${g[0].patientPackageId}`} sessions={g} onOpen={() => onOpen(g)} onOpenSession={onOpenSession} />
-        ))}
-      </tbody>
-    </TableCard>
-  );
-}
-
-function PackageRow({ sessions, onOpen, onOpenSession }: {
-  sessions: AppointmentDetail[]; onOpen: () => void; onOpenSession: (a: AppointmentDetail) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [now] = useState(() => Date.now());
-  const first = sessions[0];
-  const total = first.packageTotal ?? sessions.length;
-  const scheduledList = sessions
-    .filter(s => s.startAt && s.status !== "CANCELLED")
-    .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
-  const scheduled = scheduledList.length;
-  // completed = faktiki keçirilmiş seans; unscheduled = hələ vaxtı təyin olunmamış seans.
-  const completed = first.packageCompleted ?? scheduledList.filter(s => s.status === "COMPLETED").length;
-  const unscheduled = Math.max(0, total - scheduled);
-  const statusKey = first.packageStatus ?? "ACTIVE";
-  const st = PKG_STATUS[statusKey] ?? PKG_STATUS.ACTIVE;
-  const needsAttention = statusKey === "ACTIVE" && unscheduled > 0;
-  const upcoming = scheduledList.find(s => new Date(s.startAt!).getTime() >= now);
-  const nextS = upcoming ?? (scheduledList.length ? scheduledList[scheduledList.length - 1] : null);
-  const nextLabel = upcoming ? "Növbəti" : "Son seans";
-  const attnText = needsAttention ? `${unscheduled} seans planlaşdırılmayıb` : "";
-  const panelId = `pkg-sessions-${first.patientPackageId}`;
-
-  return (
-    <>
-      <tr onClick={onOpen} style={{ cursor: "pointer" }} className={needsAttention ? "or-tr--attn or-tr--attn-amber" : undefined}>
-        <td className="or-td-attn">{needsAttention && <AttnMark tone="amber" title={attnText} />}</td>
-        <td onClick={e => e.stopPropagation()}>
-          <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-controls={panelId}
-            title={open ? "Seansları gizlət" : "Seansları göstər"} className="fx-btn fx-btn--ghost fx-btn--sm">
-            <Svg w={13} sw={2.4} style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform .12s" }} d={<path d="M9 18l6-6-6-6" />} />
-          </button>
-        </td>
-        <td>
-          <div className="fx-row__title">{first.packageName ?? "Paket"}</div>
-          <div className="fx-muted fx-num" style={{ fontSize: 11.5 }}>#{first.patientPackageId}</div>
-        </td>
-        <td><span style={{ fontSize: 12.5 }}>{first.patientName ?? "—"}</span></td>
-        <td>{first.psychologistName ? <span style={{ fontSize: 12.5 }}>{first.psychologistName}</span> : <span className="fx-muted">—</span>}</td>
-        <td>
-          {/* İrəliləyiş = KEÇİRİLMİŞ seans / alınmış seans. */}
-          <span className="fx-num" style={{ fontSize: 13, fontWeight: 700, color: "var(--lilac)" }}>{completed}/{total}</span>
-          <div className="fx-muted" style={{ fontSize: 11.5 }}>keçirilib</div>
-          {attnText && <div className="or-alert-txt" style={{ color: "var(--status-pending-fg)" }}>{attnText}</div>}
-        </td>
-        <td>
-          {nextS ? (
-            <>
-              <div className="fx-num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>{fmtDateTime(nextS.startAt)}</div>
-              <div className="fx-muted" style={{ fontSize: 11.5 }}>{nextLabel}</div>
-            </>
-          ) : <span className="fx-muted">—</span>}
-        </td>
-        <td><DotLabel color={st.color} label={st.label} /></td>
-        <td onClick={e => e.stopPropagation()} style={{ textAlign: "right" }}>
-          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-            <RowContact phone={first.patientPhone} email={first.patientEmail} />
-            <button type="button" onClick={onOpen} title="Seansları aç" className="fx-btn fx-btn--ghost fx-btn--sm">
-              <Svg w={14} sw={2.4} d={<path d="M9 18l6-6-6-6" />} />
-            </button>
-          </div>
-        </td>
-      </tr>
-      {open && (
-        <tr className="or-subrow">
-          <td colSpan={9} id={panelId}>
-            <table className="fx-table or-subtable">
-              <thead>
-                <tr>
-                  <th>Seans</th>
-                  <th>Tarix / saat</th>
-                  <th>Psixoloq</th>
-                  <th>Status</th>
-                  <th style={{ width: 60 }} />
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map((s, i) => (
-                  <tr key={s.id} onClick={() => onOpenSession(s)} style={{ cursor: "pointer" }}>
-                    <td className="fx-num">
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                        <span>#{i + 1}</span>
-                        <span>FNS-{String(s.id).padStart(4, "0")}</span>
-                      </div>
-                    </td>
-                    <td className="fx-num" style={{ whiteSpace: "nowrap" }}>{s.startAt ? fmtDateTime(s.startAt) : <span className="fx-muted">Təyin edilməyib</span>}</td>
-                    <td>{s.psychologistName ?? <span className="fx-muted">—</span>}</td>
-                    <td><StatusDot status={s.status} /></td>
-                    <td onClick={e => e.stopPropagation()} style={{ textAlign: "right" }}>
-                      <button type="button" onClick={() => onOpenSession(s)} title="Seansı aç" className="fx-btn fx-btn--ghost fx-btn--sm">
-                        <Svg w={13} sw={2.4} d={<path d="M9 18l6-6-6-6" />} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {unscheduled > 0 && (
-                  <tr>
-                    <td colSpan={5} className="fx-muted" style={{ fontStyle: "italic" }}>{unscheduled} seans hələ planlaşdırılmayıb</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </td>
-        </tr>
+    <div style={{ display: "grid", gap: 10 }}>
+      <DataTable
+        rows={sessions}
+        columns={columns}
+        rowKey={s => s.id}
+        onRowClick={onOpenSession}
+        actions={s => (
+          <Button variant="ghost" size="sm" title="Seansı aç" aria-label="Seansı aç" onClick={() => onOpenSession(s)}>
+            <Svg w={13} sw={2.4} d={<path d="M9 18l6-6-6-6" />} />
+          </Button>
+        )}
+      />
+      {unscheduled > 0 && (
+        <div style={{ fontSize: 12.5, fontStyle: "italic", color: "var(--oxford-60)" }}>
+          {unscheduled} seans hələ planlaşdırılmayıb
+        </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -1605,7 +1700,7 @@ function AppointmentCard({
           <span className="fx-num">#FNS-{String(a.id).padStart(4, "0")}</span>
           <span>{timeAgo(a.createdAt) || `${fmtDateTime(a.createdAt)} yaradılıb`}</span>
         </>}
-        aside={<StatusDot status={status} />}
+        aside={<ApptStatus status={status} />}
       />
 
       {subMeta && (
@@ -1643,7 +1738,7 @@ function AppointmentCard({
             <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
               <span>{timeAgo(a.lastContactAt)}</span>
               {a.lastContactChannel && <span>{CHANNEL_LABEL[a.lastContactChannel] ?? a.lastContactChannel}</span>}
-              {lastOutcome && <span style={{ color: FOLLOW_COLOR[lastOutcome.tone], fontWeight: 600 }}>{lastOutcome.label}</span>}
+              {lastOutcome && <Status tone={lastOutcome.tone}>{lastOutcome.label}</Status>}
             </span>
           ) : "yoxdur"}
         />
@@ -1728,39 +1823,23 @@ function ReferralCard({ r, onOpen }: { r: Referral; onOpen: () => void }) {
 
 // ─── Paket kartı — siyahıda adi kart; klik → paketin öz səhifəsi ─────────────
 
-// Fon (bg) artıq lazım deyil — status nöqtə + mətn kimi göstərilir.
-const PKG_STATUS: Record<string, { label: string; color: string }> = {
-  PENDING_PAYMENT: { label: "Ödəniş gözlənilir", color: "var(--status-pending-fg)" },
-  ACTIVE:    { label: "Aktiv",       color: "var(--status-paid-fg)" },
-  EXHAUSTED: { label: "Tamamlanıb",  color: "var(--status-cancelled-fg)" },
-  EXPIRED:   { label: "Vaxtı keçib", color: "var(--status-pending-fg)" },
-  CANCELLED: { label: "Ləğv",        color: "var(--status-refunded-fg)" },
+// Rəngli nöqtə/fon yoxdur — status kitin <Status> mətnidir, ton məna daşıyır.
+const PKG_STATUS: Record<string, { label: string; tone: StatusTone }> = {
+  PENDING_PAYMENT: { label: "Ödəniş gözlənilir", tone: "wait" },
+  ACTIVE:    { label: "Aktiv",       tone: "positive" },
+  EXHAUSTED: { label: "Tamamlanıb",  tone: "muted" },
+  EXPIRED:   { label: "Vaxtı keçib", tone: "wait" },
+  CANCELLED: { label: "Ləğv",        tone: "risk" },
 };
 
-function PackageCard({ sessions, onOpen }: { sessions: AppointmentDetail[]; onOpen: () => void }) {
-  const first = sessions[0];
-  const total = first.packageTotal ?? sessions.length;
-  const scheduledList = sessions
-    .filter(s => s.startAt && s.status !== "CANCELLED")
-    .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
-  const scheduled = scheduledList.length;
-  // completed = faktiki keçirilmiş seans; unscheduled = hələ vaxtı təyin olunmamış seans.
-  const completed = first.packageCompleted ?? scheduledList.filter(s => s.status === "COMPLETED").length;
-  const unscheduled = Math.max(0, total - scheduled);
-  const statusKey = first.packageStatus ?? "ACTIVE";
-  const st = PKG_STATUS[statusKey] ?? PKG_STATUS.ACTIVE;
-  const needsAttention = statusKey === "ACTIVE" && unscheduled > 0;
+function PackageCard({ sessions, now, onOpen }: { sessions: AppointmentDetail[]; now: number; onOpen: () => void }) {
+  const { first, total, scheduledList, completed, unscheduled, st, needsAttention, nextS, nextLabel } =
+    packageInfo(sessions, now);
 
   // Nöqtə-zolağı: hər dolu seans statusuna görə rəngli, planlaşdırılmamış xanalar amber halqa
   const dots: { key: string; kind: "completed" | "confirmed" | "empty" }[] = [];
   for (const s of scheduledList) dots.push({ key: `s${s.id}`, kind: s.status === "COMPLETED" ? "completed" : "confirmed" });
   for (let i = 0; i < unscheduled; i++) dots.push({ key: `e${i}`, kind: "empty" });
-
-  // Növbəti seans (gələcəkdə ən yaxın) — yoxdursa son keçmiş seans
-  const [now] = useState(() => Date.now());
-  const upcoming = scheduledList.find(s => new Date(s.startAt!).getTime() >= now);
-  const nextS = upcoming ?? (scheduledList.length ? scheduledList[scheduledList.length - 1] : null);
-  const nextLabel = upcoming ? "Növbəti" : "Son seans";
 
   return (
     <CardShell onOpen={onOpen} attention={needsAttention}>
@@ -1776,7 +1855,7 @@ function PackageCard({ sessions, onOpen }: { sessions: AppointmentDetail[]; onOp
           <span>{first.patientName ?? "—"}</span>
           {first.psychologistName && <span>{first.psychologistName}</span>}
         </>}
-        aside={<DotLabel color={st.color} label={st.label} />}
+        aside={<Status tone={st.tone}>{st.label}</Status>}
       />
 
       {/* Nöqtə-zolağı + say — paketin bir baxışda irəliləyişi */}
@@ -1829,71 +1908,8 @@ function PackageCard({ sessions, onOpen }: { sessions: AppointmentDetail[]; onOp
   );
 }
 
-// ─── Skeleton + boş ───────────────────────────────────────────────────────────
-
-/** Skeleton həqiqi kartın ritmini təkrarlayır (avatar → başlıq → faktlar → alt zolaq),
- *  ona görə yüklənmə bitəndə layout sıçramır. */
-function SkeletonCards() {
-  return (
-    <div style={GRID} aria-busy="true">
-      {[0, 1, 2, 3, 4].map(i => (
-        <div key={i} className="fx-card">
-          <div className="or-card__body">
-            <div className="or-head">
-              <div className="fx-skeleton fx-skeleton--circle" style={{ width: 30, height: 30 }} />
-              <div className="or-head__main">
-                <div className="fx-skeleton" style={{ width: "60%", height: 14, borderRadius: 6, marginBottom: 6 }} />
-                <div className="fx-skeleton" style={{ width: "42%", height: 10, borderRadius: 6 }} />
-              </div>
-              <div className="fx-skeleton" style={{ width: 62, height: 18, borderRadius: 999 }} />
-            </div>
-            <div className="or-facts">
-              <div className="fx-skeleton" style={{ width: "88%", height: 12, borderRadius: 6 }} />
-              <div className="fx-skeleton" style={{ width: "66%", height: 12, borderRadius: 6 }} />
-            </div>
-            <div className="or-foot">
-              <div className="fx-skeleton" style={{ width: 78, height: 28, borderRadius: 999 }} />
-              <div className="or-foot__actions">
-                <div className="fx-skeleton" style={{ width: 96, height: 30, borderRadius: 9 }} />
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** Cədvəl skeletonu — operator/customers səhifəsindəki sətir skeletonu ilə eyni ritm. */
-function SkeletonTable() {
-  return (
-    <div className="fx-card" style={{ overflow: "hidden" }} aria-busy="true">
-      {[0, 1, 2, 3, 4].map(i => (
-        <div key={i} className="fx-row" style={{ borderTop: "none", borderBottom: "1px solid var(--hairline)", cursor: "default" }}>
-          <div className="fx-skeleton fx-skeleton--circle" style={{ width: 34, height: 34 }} />
-          <div style={{ flex: 1 }}>
-            <div className="fx-skeleton" style={{ height: 12, width: "34%" }} />
-            <div className="fx-skeleton" style={{ height: 9, width: "20%", marginTop: 8 }} />
-          </div>
-          <div className="fx-skeleton" style={{ width: 84, height: 18, borderRadius: 999 }} />
-          <div className="fx-skeleton" style={{ width: 110, height: 30, borderRadius: 9, marginLeft: 12 }} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function EmptyCard({ text, sub }: { text?: string; sub?: string } = {}) {
-  return (
-    <div className="fx-card--empty" style={{ padding: "48px 24px" }}>
-      <div style={{ width: 54, height: 54, borderRadius: 15, background: "var(--brand-50)", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "var(--oxford-60)" }}>
-        <Svg w={27} sw={1.8} d={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />
-      </div>
-      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{text ?? "Bu kateqoriyada müraciət yoxdur"}</div>
-      <div className="fx-muted" style={{ fontSize: 13, fontWeight: 500 }}>{sub ?? "Filtri dəyişin və ya yeni müraciət gözləyin."}</div>
-    </div>
-  );
-}
+// Yüklənmə skeleti, boş və xəta blokları artıq DataTable-ın içindədir —
+// səhifədə ayrıca SkeletonTable / SkeletonCards / EmptyCard saxlanmır.
 
 // ─── İkonlar ─────────────────────────────────────────────────────────────────
 
@@ -1930,14 +1946,6 @@ const CSS = `
 /* İkinci dərəcəli meta (sahiblik / seriya / tanışlıq) — çip yox, susqun mətn */
 .or-submeta{display:flex;align-items:center;gap:4px 10px;flex-wrap:wrap;font-size:11.5px;font-weight:600;color:var(--oxford-60)}
 
-/* Status siqnalı — kiçik nöqtə + adi mətn (dolu pill əvəzi) */
-.or-status{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--oxford);white-space:nowrap}
-.or-status__dot{width:7px;height:7px;border-radius:50%;flex:none}
-
-/* Sıralanan cədvəl başlığı — th-ın öz tipoqrafiyasını miras alır */
-.or-th{display:inline-flex;align-items:center;gap:5px;background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer}
-.or-th:hover{color:var(--oxford)}
-
 /* Fakt sətirləri */
 .or-facts{display:flex;flex-direction:column;gap:7px}
 .or-fact{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;line-height:1.45;min-width:0}
@@ -1962,20 +1970,8 @@ const CSS = `
 .or-narrow{display:none}
 @media (max-width:1024px){.or-wide{display:none}.or-narrow{display:block}}
 
-/* Diqqət tələb edən cədvəl sətri — kartdakı fx-card--attention-in sətir qarşılığı */
-.or-td-attn{width:34px;padding-right:0!important;text-align:center}
-.or-tr--attn td{background:var(--status-pending-bg)}
-.or-tr--attn-red td{background:var(--status-refunded-bg)}
-.or-tr--attn td:first-child{box-shadow:inset 3px 0 0 var(--amber)}
-.or-tr--attn-red td:first-child{box-shadow:inset 3px 0 0 var(--rose)}
+/* Diqqət mətni — sətirdə xəbərdarlığın izahı (sətir fonu boyanmır) */
 .or-alert-txt{font-size:11.5px;font-weight:600;line-height:1.35;max-width:280px;margin-top:3px;white-space:normal}
-
-/* Paketin açılan seans siyahısı */
-.or-subrow>td{background:var(--surface-muted);padding:0!important}
-.or-subtable{font-size:12.5px}
-.or-subtable th{padding:8px 16px;background:transparent}
-.or-subtable td{padding:9px 16px}
-.or-subtable tbody tr:last-child td{border-bottom:none}
 
 /* Alt zolaq */
 .or-contact{display:flex;gap:6px;flex-wrap:wrap}

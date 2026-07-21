@@ -1,32 +1,52 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { adminApi, type PsyTestSummary } from "@/lib/api";
+import { toast } from "@/components/Toast";
+import { Button, ButtonLink, DataTable, Status, type Column } from "@/components/ui";
 import { IconPlus } from "../_components/icons";
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 export default function TestsPage() {
   const [items, setItems] = useState<PsyTestSummary[]>([]);
   const [pending, setPending] = useState<PsyTestSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  // Cədvəlin öz yükləmə xətası — toast-a yox, cədvəlin içindəki qutuya gedir.
+  const [tableError, setTableError] = useState<string | null>(null);
 
-  const load = () => {
+  // Serverdə səhifələnir: backend 0-dan sayır.
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [nonce, setNonce] = useState(0);
+
+  useEffect(() => {
     setLoading(true);
-    Promise.all([
-      adminApi.getPsychTests().catch(() => [] as PsyTestSummary[]),
-      adminApi.pendingTestShares().catch(() => [] as PsyTestSummary[]),
-    ])
-      .then(([all, pend]) => { setItems(all); setPending(pend); })
+    setTableError(null);
+    adminApi.getPsychTestsPaged({ page, size })
+      .then((res) => { setItems(res.content); setTotal(res.totalElements); })
+      .catch((e) => setTableError((e as Error).message || "Testlər yüklənmədi"))
       .finally(() => setLoading(false));
-  };
-  useEffect(() => { load(); }, []);
+  }, [page, size, nonce]);
+
+  // Paylaşım istəkləri ayrıca kart siyahısıdır — cədvəl deyil, səhifələnmir.
+  useEffect(() => {
+    adminApi.pendingTestShares()
+      .then(setPending)
+      .catch(() => setPending([]));
+  }, [nonce]);
+
+  const reload = () => setNonce((n) => n + 1);
+  const pageCount = Math.max(1, Math.ceil(total / size));
 
   const approveShare = async (t: PsyTestSummary) => {
     const note = prompt(`"${t.title}" testini təsdiqləyirsiniz. İstəyə bağlı qeyd:`, "") ?? undefined;
     try {
       await adminApi.approveTestShare(t.id, note || undefined);
       setPending((prev) => prev.filter((x) => x.id !== t.id));
-      load();
-    } catch (e) { alert((e as Error).message); }
+      reload();
+    } catch (e) { toast((e as Error).message || "Test təsdiqlənmədi", "error"); }
   };
 
   const rejectShare = async (t: PsyTestSummary) => {
@@ -35,18 +55,46 @@ export default function TestsPage() {
     try {
       await adminApi.rejectTestShare(t.id, note || undefined);
       setPending((prev) => prev.filter((x) => x.id !== t.id));
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { toast((e as Error).message || "Test rədd edilmədi", "error"); }
   };
 
   const remove = async (id: number) => {
     if (!confirm("Bu testi silmək istədiyinizə əminsiniz? Bu əməliyyat geri qaytarıla bilməz.")) return;
     try {
       await adminApi.deletePsychTest(id);
-      setItems((prev) => prev.filter((t) => t.id !== id));
+      reload();
     } catch (e) {
-      alert((e as Error).message);
+      toast((e as Error).message || "Test silinmədi", "error");
     }
   };
+
+  const columns: Column<PsyTestSummary>[] = useMemo(() => [
+    {
+      key: "title",
+      header: "Başlıq",
+      cell: (t) => <span style={{ fontWeight: 600 }}>{t.title || "Başlıqsız"}</span>,
+    },
+    {
+      key: "published",
+      header: "Status",
+      width: 120,
+      cell: (t) => (t.published ? <Status tone="positive">Yayımlanıb</Status> : <Status tone="wait">Qaralama</Status>),
+    },
+    {
+      key: "questionCount",
+      header: "Suallar",
+      numeric: true,
+      width: 100,
+      cell: (t) => t.questionCount,
+    },
+    {
+      key: "scaleCount",
+      header: "Şkalalar",
+      numeric: true,
+      width: 100,
+      cell: (t) => t.scaleCount,
+    },
+  ], []);
 
   return (
     <div className="page">
@@ -63,9 +111,7 @@ export default function TestsPage() {
         </div>
       </div>
 
-      {loading && <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Yüklənir…</div>}
-
-      {!loading && pending.length > 0 && (
+      {pending.length > 0 && (
         <div className="card" style={{ marginBottom: 18, borderColor: "#FDE68A" }}>
           <div className="card-pad">
             <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
@@ -97,60 +143,37 @@ export default function TestsPage() {
         </div>
       )}
 
-      {!loading && (
-        <div className="table-wrap">
-          <table className="t">
-            <thead>
-              <tr>
-                <th>Başlıq</th>
-                <th style={{ width: 120 }}>Status</th>
-                <th style={{ width: 100, textAlign: "right" }}>Suallar</th>
-                <th style={{ width: 100, textAlign: "right" }}>Şkalalar</th>
-                <th style={{ width: 160, textAlign: "right" }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ padding: 60, textAlign: "center" }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>
-                      Hələ test yoxdur
-                    </div>
-                    <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 16 }}>
-                      İlk psixoloji testi yaradın
-                    </div>
-                    <a className="btn primary" href="/admin/tests/new" style={{ display: "inline-flex" }}>
-                      <IconPlus size={14} style={{ stroke: "#fff" } as React.CSSProperties} />
-                      Yeni test
-                    </a>
-                  </td>
-                </tr>
-              ) : (
-                items.map((t) => (
-                  <tr key={t.id}>
-                    <td className="strong">{t.title || "Başlıqsız"}</td>
-                    <td>
-                      {t.published ? (
-                        <span className="pill sage"><span className="dot" />Yayımlanıb</span>
-                      ) : (
-                        <span className="pill gold"><span className="dot" />Qaralama</span>
-                      )}
-                    </td>
-                    <td className="num">{t.questionCount}</td>
-                    <td className="num">{t.scaleCount}</td>
-                    <td style={{ textAlign: "right" }}>
-                      <div className="row" style={{ gap: 4, justifyContent: "flex-end" }}>
-                        <a className="btn sm ghost" href={`/admin/tests/${t.id}/edit`}>Redaktə</a>
-                        <button className="btn sm danger" onClick={() => remove(t.id)}>Sil</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        rows={items}
+        columns={columns}
+        rowKey={(t) => t.id}
+        loading={loading}
+        error={tableError}
+        onRetry={reload}
+        minWidth={720}
+        empty={{
+          title: "Hələ test yoxdur",
+          body: "İlk psixoloji testi yaradın.",
+          actions: <ButtonLink variant="primary" size="sm" href="/admin/tests/new">Yeni test</ButtonLink>,
+        }}
+        actionsHeader="Əməliyyatlar"
+        actions={(t) => (
+          <>
+            <ButtonLink variant="ghost" size="sm" href={`/admin/tests/${t.id}/edit`}>Redaktə</ButtonLink>
+            <Button variant="dangerGhost" size="sm" onClick={() => remove(t.id)}>Sil</Button>
+          </>
+        )}
+        // Backend 0-dan sayır, Pagination 1-dən — çevirmə burada aparılır.
+        pagination={{
+          page: page + 1,
+          pageCount,
+          onChange: (p) => setPage(p - 1),
+          pageSize: size,
+          onPageSizeChange: (n) => { setSize(n); setPage(0); },
+          pageSizeOptions: PAGE_SIZE_OPTIONS,
+        }}
+        totalLabel={`${total ? page * size + 1 : 0}–${Math.min(total, (page + 1) * size)} / ${total}`}
+      />
     </div>
   );
 }

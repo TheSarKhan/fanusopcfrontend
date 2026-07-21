@@ -1,11 +1,21 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+// Admin — statistikalar və raportlar.
+// İki cədvəl (ən yüksək konversiyalı məqalələr, psixoloq performansı) artıq
+// <DataTable>-dır. API sadə massiv qaytarır, ona görə səhifələmə client-side:
+// tam massiv state-də saxlanılır, cari səhifə kəsilir.
+
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { adminApi, type ReportsData } from "@/lib/api";
+import { azFormatDate } from "@/lib/datetime";
+import { Avatar, DataTable, type Column } from "@/components/ui";
 import { IconCalendar, IconDownload } from "../_components/icons";
 
 const HEAT_COLORS = ["#F2F6FD", "#E4ECFA", "#C7DAF5", "#8FB0E3", "#3A74D6", "#082F6D", "#1051B7"];
 const DAYS = ["B.", "B.e.", "Ç.a.", "Ç.", "C.a.", "C.", "Ş."];
+
+type TopArticle = ReportsData["topConverting"][number];
+type Performance = ReportsData["performance"][number];
 
 function fmt(n: number) {
   return new Intl.NumberFormat("az-AZ").format(Math.round(n));
@@ -25,24 +35,85 @@ function Donut({ slices }: { slices: { color: string; percent: number }[] }) {
   );
 }
 
+const ARTICLE_COLUMNS: Column<TopArticle>[] = [
+  {
+    key: "title",
+    header: "Məqalə",
+    cell: a => (
+      <span className="fx-row__title" style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 280, whiteSpace: "nowrap" }}>
+        {a.title}
+      </span>
+    ),
+  },
+  { key: "views", header: "Baxış", numeric: true, cell: a => fmt(a.views) },
+  { key: "requests", header: "Müraciət", numeric: true, cell: a => fmt(a.requests) },
+  { key: "cr", header: "CR", numeric: true, cell: a => `${a.conversionRate.toFixed(1)}%` },
+];
+
+const PERFORMANCE_COLUMNS: Column<Performance>[] = [
+  {
+    key: "name",
+    header: "Psixoloq",
+    cell: p => (
+      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+        <Avatar name={p.name} size="sm" />
+        <span className="fx-row__title">{p.name}</span>
+      </div>
+    ),
+  },
+  { key: "sessions", header: "Sessiya", numeric: true, cell: p => p.sessions },
+  { key: "completion", header: "Tamamlanma", numeric: true, cell: p => `${p.completionPct}%` },
+  { key: "rating", header: "Rəy", numeric: true, cell: p => <strong>{p.rating.toFixed(1)}</strong> },
+];
+
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50];
+
 export default function ReportsPage() {
   const [data, setData] = useState<ReportsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
+
+  const [articlePage, setArticlePage] = useState(1);
+  const [articleSize, setArticleSize] = useState(5);
+  const [perfPage, setPerfPage] = useState(1);
+  const [perfSize, setPerfSize] = useState(5);
 
   useEffect(() => {
-    adminApi.getReports().then(setData).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+    let alive = true;
+    setLoading(true);
+    setError(null);
+    adminApi.getReports()
+      .then(d => { if (alive) setData(d); })
+      .catch(e => { if (alive) setError((e as Error).message || "Raport məlumatları yüklənmədi."); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [reloadNonce]);
+
+  const articles = useMemo(() => data?.topConverting ?? [], [data]);
+  const performance = useMemo(() => data?.performance ?? [], [data]);
+
+  const articlePageCount = Math.max(1, Math.ceil(articles.length / articleSize));
+  const perfPageCount = Math.max(1, Math.ceil(performance.length / perfSize));
+
+  const articleRows = useMemo(
+    () => articles.slice((articlePage - 1) * articleSize, articlePage * articleSize),
+    [articles, articlePage, articleSize]);
+  const perfRows = useMemo(
+    () => performance.slice((perfPage - 1) * perfSize, perfPage * perfSize),
+    [performance, perfPage, perfSize]);
+
+  // Səhifə ölçüsü və ya məlumat dəyişəndə boş səhifədə qalmamaq üçün 1-ə qayıt.
+  useEffect(() => { setArticlePage(1); }, [articleSize, articles]);
+  useEffect(() => { setPerfPage(1); }, [perfSize, performance]);
 
   const period = (() => {
     const to = new Date();
     const from = new Date(to.getFullYear(), to.getMonth(), 1);
-    const fmt = (d: Date) => {
-      const day = String(d.getDate()).padStart(2, "0");
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      return `${day}.${month}.${d.getFullYear()}`;
-    };
-    return `${fmt(from)} – ${fmt(to)}`;
+    return `${azFormatDate(from)} – ${azFormatDate(to)}`;
   })();
+
+  const retry = () => setReloadNonce(n => n + 1);
 
   return (
     <div className="page">
@@ -64,9 +135,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {loading && <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Yüklənir…</div>}
-
-      {!loading && data && (
+      {data && (
         <>
           <div className="stats-grid col-4">
             <Headline title="Konversiya (məqalə → randevu)" m={data.conversion} sparkColor="#10B981" />
@@ -151,79 +220,70 @@ export default function ReportsPage() {
               ))}
             </div>
           </div>
-
-          <div className="grid-2 mt-16">
-            <div className="card">
-              <div className="card-head">
-                <h3 className="card-title">Ən yüksək konversiyalı məqalələr</h3>
-                <span className="pill muted">Bu ay</span>
-              </div>
-              <table className="t">
-                <thead>
-                  <tr>
-                    <th>Məqalə</th>
-                    <th className="num">Baxış</th>
-                    <th className="num">Müraciət</th>
-                    <th className="num">CR</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.topConverting.length === 0 && (
-                    <tr><td colSpan={4} style={{ padding: 20, textAlign: "center", color: "var(--muted)" }}>Məlumat yoxdur</td></tr>
-                  )}
-                  {data.topConverting.map((a, i) => (
-                    <tr key={i}>
-                      <td className="strong" style={{ overflow: "hidden", textOverflow: "ellipsis", maxWidth: 280, whiteSpace: "nowrap" }}>{a.title}</td>
-                      <td className="num">{fmt(a.views)}</td>
-                      <td className="num">{fmt(a.requests)}</td>
-                      <td className="num">
-                        <span className={`pill ${a.conversionRate >= 4 ? "sage" : a.conversionRate >= 2.5 ? "gold" : "muted"}`} style={{ fontSize: 10.5 }}>
-                          {a.conversionRate.toFixed(1)}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="card">
-              <div className="card-head">
-                <h3 className="card-title">Psixoloq performansı</h3>
-                <span className="pill muted">Bu ay</span>
-              </div>
-              <table className="t">
-                <thead>
-                  <tr>
-                    <th>Psixoloq</th>
-                    <th className="num">Sessiya</th>
-                    <th className="num">Tamamlanma</th>
-                    <th className="num">Rəy</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.performance.length === 0 && (
-                    <tr><td colSpan={4} style={{ padding: 20, textAlign: "center", color: "var(--muted)" }}>Məlumat yoxdur</td></tr>
-                  )}
-                  {data.performance.map((p, i) => (
-                    <tr key={i}>
-                      <td>
-                        <div className="row-avatar">
-                          <div className="av" style={{ width: 24, height: 24, fontSize: 9, background: p.avatarColor }}>{p.initials}</div>
-                          <span className="strong">{p.name}</span>
-                        </div>
-                      </td>
-                      <td className="num">{p.sessions}</td>
-                      <td className="num">{p.completionPct}%</td>
-                      <td className="num"><strong>{p.rating.toFixed(1)}</strong></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </>
       )}
+
+      <div className="grid-2 mt-16">
+        <div className="card">
+          <div className="card-head">
+            <h3 className="card-title">Ən yüksək konversiyalı məqalələr</h3>
+            <span className="pill muted">Bu ay</span>
+          </div>
+          <div className="card-pad">
+            <DataTable
+              rows={articleRows}
+              columns={ARTICLE_COLUMNS}
+              rowKey={a => a.title}
+              loading={loading}
+              error={error}
+              onRetry={retry}
+              empty={{
+                title: "Bu ay konversiya qeydə alınmayıb",
+                body: "Məqalələrdən randevu müraciəti gəldikcə siyahı burada dolacaq.",
+              }}
+              pagination={{
+                page: articlePage,
+                pageCount: articlePageCount,
+                onChange: setArticlePage,
+                pageSize: articleSize,
+                onPageSizeChange: setArticleSize,
+                pageSizeOptions: PAGE_SIZE_OPTIONS,
+              }}
+              totalLabel={`${articles.length} məqalə`}
+            />
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <h3 className="card-title">Psixoloq performansı</h3>
+            <span className="pill muted">Bu ay</span>
+          </div>
+          <div className="card-pad">
+            <DataTable
+              rows={perfRows}
+              columns={PERFORMANCE_COLUMNS}
+              rowKey={p => p.name}
+              loading={loading}
+              error={error}
+              onRetry={retry}
+              empty={{
+                title: "Bu ay performans məlumatı yoxdur",
+                body: "Seanslar tamamlandıqca psixoloq göstəriciləri burada görünəcək.",
+              }}
+              pagination={{
+                page: perfPage,
+                pageCount: perfPageCount,
+                onChange: setPerfPage,
+                pageSize: perfSize,
+                onPageSizeChange: setPerfSize,
+                pageSizeOptions: PAGE_SIZE_OPTIONS,
+              }}
+              totalLabel={`${performance.length} psixoloq`}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,22 +1,116 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { psychologistApi, type PackageDto, type PackageStats } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { azFormatDate, azOrdinal } from "@/lib/datetime";
-import { STATUS_PT, avatarTint, initials, withPurchaseOrdinal } from "../../shared";
+import {
+  Avatar,
+  DataTable,
+  Progress,
+  Status,
+  type Column,
+  type SortState,
+  type StatusTone,
+} from "@/components/ui";
+import { STATUS_PT, withPurchaseOrdinal } from "../../shared";
+
+/** Cədvəl sətri — paket alışı + neçənci alış olduğu. */
+type PatientRow = ReturnType<typeof withPurchaseOrdinal>[number];
+
+const PAGE_SIZE = 10;
+
+/**
+ * Paket statusu rəngli rozetlə deyil, mətnlə göstərilir — rəng yalnız diqqət
+ * (`wait`) və risk (`risk`) hallarında məna daşıyır.
+ */
+const STATUS_TONE: Record<string, StatusTone> = {
+  PENDING_PAYMENT: "wait",
+  ACTIVE: "positive",
+  EXHAUSTED: "neutral",
+  EXPIRED: "wait",
+  CANCELLED: "risk",
+};
+
+/** Eyni pasiyent eyni paketi bir neçə dəfə ala bilər — açar alış tarixini də daşıyır. */
+const rowKeyOf = (p: PatientRow) => `${p.patientId}-${p.purchasedAt}-${p.ordinal}`;
+
+const COLUMNS: Column<PatientRow>[] = [
+  {
+    key: "patient",
+    header: "Pasiyent",
+    sortable: true,
+    sortValue: p => p.patientName ?? "",
+    cell: p => (
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        <Avatar name={p.patientName} size="sm" />
+        <div style={{ minWidth: 0 }}>
+          <Link
+            href={`/psycholog/clients/${p.patientId}`}
+            className="fx-link"
+            onClick={e => e.stopPropagation()}
+            style={{ fontWeight: 600 }}
+          >
+            {p.patientName}
+          </Link>
+          {p.purchaseCount > 1 && (
+            <div className="fx-row__meta" style={{ marginTop: 2 }}>{azOrdinal(p.ordinal)} dəfə alıb</div>
+          )}
+        </div>
+      </div>
+    ),
+  },
+  {
+    key: "purchasedAt",
+    header: "Alış tarixi",
+    sortable: true,
+    sortValue: p => new Date(p.purchasedAt).getTime(),
+    cell: p => <span style={{ whiteSpace: "nowrap" }}>{azFormatDate(p.purchasedAt)}</span>,
+  },
+  {
+    key: "progress",
+    header: "Keçirilib",
+    sortable: true,
+    sortValue: p => (p.total > 0 ? p.completed / p.total : 0),
+    cell: p => (
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ flex: 1, maxWidth: 110 }}>
+          <Progress value={p.completed} max={p.total} tone={p.status === "EXHAUSTED" ? "sage" : "brand"} />
+        </div>
+        <span className="fx-num" style={{ whiteSpace: "nowrap" }}>{p.completed}/{p.total}</span>
+      </div>
+    ),
+  },
+  {
+    key: "status",
+    header: "Status",
+    sortable: true,
+    sortValue: p => STATUS_PT[p.status]?.label ?? p.status,
+    cell: p => (
+      <Status tone={STATUS_TONE[p.status] ?? "neutral"}>
+        {STATUS_PT[p.status]?.label ?? p.status}
+      </Status>
+    ),
+  },
+];
 
 export default function PackagePatientsPage() {
   const params = useParams();
+  const router = useRouter();
   const packageId = Number(params.id);
 
   const [catalog, setCatalog] = useState<PackageDto[]>([]);
   const [statsById, setStatsById] = useState<Record<number, PackageStats>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortState>({ key: "purchasedAt", dir: "desc" });
+  const [page, setPage] = useState(1);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
     Promise.all([psychologistApi.myPackages(), psychologistApi.myPackageStats()])
       .then(([c, s]) => {
         setCatalog(c);
@@ -24,17 +118,36 @@ export default function PackagePatientsPage() {
         for (const st of s) map[st.packageId] = st;
         setStatsById(map);
       })
+      .catch(e => setError((e as Error).message || "Paket məlumatı yüklənmədi"))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const pkg = catalog.find(p => p.id === packageId);
   const stats = statsById[packageId];
 
   const rows = useMemo(() => {
-    if (!stats) return [];
-    return withPurchaseOrdinal(stats.patients)
-      .sort((a, b) => new Date(b.purchasedAt).getTime() - new Date(a.purchasedAt).getTime());
+    if (!stats) return [] as PatientRow[];
+    return withPurchaseOrdinal(stats.patients);
   }, [stats]);
+
+  // Sıralama bütün siyahı üzərində aparılır, səhifə YALNIZ ondan sonra kəsilir —
+  // əks halda sıralama tək səhifənin içində qalardı.
+  const sortedRows = useMemo(() => {
+    const get = COLUMNS.find(c => c.key === sort.key)?.sortValue;
+    if (!get) return rows;
+    const factor = sort.dir === "asc" ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      const va = get(a), vb = get(b);
+      if (typeof va === "number" && typeof vb === "number") return (va - vb) * factor;
+      return String(va).localeCompare(String(vb), "az") * factor;
+    });
+  }, [rows, sort]);
+
+  const pageCount = Math.max(1, Math.ceil(sortedRows.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageRows = sortedRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const backLink = (
     <Link href="/psycholog/packages" style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none", marginBottom: 14 }}>
@@ -48,6 +161,15 @@ export default function PackagePatientsPage() {
       <div className="panel-page">
         {backLink}
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>Yüklənir…</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="panel-page">
+        {backLink}
+        <DataTable rows={[]} columns={COLUMNS} rowKey={rowKeyOf} error={error} onRetry={load} />
       </div>
     );
   }
@@ -94,67 +216,23 @@ export default function PackagePatientsPage() {
         <div style={{ padding: "16px 20px", borderBottom: "1px solid #EDF1F8", fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>
           Bu paketi alan pasiyentlər ({rows.length})
         </div>
-        {rows.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center", fontSize: 13, color: "#9DB0CC", fontWeight: 600 }}>Hələ bu paketi alan yoxdur</div>
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#F8FAFD" }}>
-                  <Th>Pasiyent</Th>
-                  <Th>Alış tarixi</Th>
-                  <Th>Keçirilib</Th>
-                  <Th>Status</Th>
-                  <th style={{ width: 20 }} />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((p, i) => {
-                  const st = STATUS_PT[p.status] ?? STATUS_PT.ACTIVE;
-                  const pct = p.total > 0 ? Math.round((p.completed / p.total) * 100) : 0;
-                  const done = p.status === "EXHAUSTED";
-                  const fill = p.status === "CANCELLED" ? "#EF4444" : done ? "#10B981" : "linear-gradient(90deg,#1051B7,#3A74D6)";
-                  const tint = avatarTint(p.patientName);
-                  return (
-                    <tr key={`${p.patientId}-${p.purchasedAt}-${i}`}>
-                      <Td>
-                        <Link href={`/psycholog/clients/${p.patientId}`}
-                          style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-                          <span style={{ width: 34, height: 34, borderRadius: 10, background: tint.bg, color: tint.fg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flex: "none" }}>{initials(p.patientName)}</span>
-                          <span>
-                            <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{p.patientName}</div>
-                            {p.purchaseCount > 1 && (
-                              <div style={{ fontSize: 11, fontWeight: 700, color: "#B45309", marginTop: 1 }}>{azOrdinal(p.ordinal)} dəfə</div>
-                            )}
-                          </span>
-                        </Link>
-                      </Td>
-                      <Td>
-                        <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>{azFormatDate(p.purchasedAt)}</span>
-                      </Td>
-                      <Td>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ flex: 1, maxWidth: 110, height: 6, background: done ? "#D1FAE5" : "#E4ECFA", borderRadius: 999, overflow: "hidden" }}>
-                            <div style={{ width: `${pct}%`, height: "100%", background: fill, borderRadius: 999 }} />
-                          </div>
-                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--oxford-60)", whiteSpace: "nowrap" }}>{p.completed}/{p.total}</span>
-                        </div>
-                      </Td>
-                      <Td>
-                        <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>{st.label}</span>
-                      </Td>
-                      <Td>
-                        <Link href={`/psycholog/clients/${p.patientId}`} aria-label="Pasiyent profilinə keç" style={{ display: "inline-flex" }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-                        </Link>
-                      </Td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div style={{ padding: "6px 20px 16px" }}>
+          <DataTable
+            rows={pageRows}
+            columns={COLUMNS}
+            rowKey={rowKeyOf}
+            mobile="cards"
+            onRowClick={p => router.push(`/psycholog/clients/${p.patientId}`)}
+            sort={sort}
+            onSortChange={next => { setSort(next); setPage(1); }}
+            empty={{
+              title: "Hələ bu paketi alan yoxdur",
+              body: "Paket satıldıqca alış tarixi və gedişat burada görünəcək.",
+            }}
+            pagination={{ page: safePage, pageCount, onChange: setPage }}
+            totalLabel={`Cəmi ${sortedRows.length} alış`}
+          />
+        </div>
       </div>
     </div>
   );
@@ -167,11 +245,4 @@ function MiniStat({ label, value, color }: { label: string; value: string; color
       <div style={{ fontSize: 15, fontWeight: 800, color: color ?? "var(--oxford)" }}>{value}</div>
     </div>
   );
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return <th style={{ textAlign: "left", padding: "10px 20px", fontSize: 11, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "#8AAABF" }}>{children}</th>;
-}
-function Td({ children }: { children: React.ReactNode }) {
-  return <td style={{ padding: "12px 20px", borderTop: "1px solid #F0F4FA", verticalAlign: "middle" }}>{children}</td>;
 }

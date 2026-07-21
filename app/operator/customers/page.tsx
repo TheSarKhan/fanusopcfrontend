@@ -3,58 +3,56 @@
 // Modul H — operator "Müştərilər" direktoriyası (Fanus UI Kit).
 //  • Axtarış: operatorApi.search → pasiyent hitləri (ad / telefon / email).
 //  • Default: randevulardan törədilən "Son müştərilər" — zəngin sətir
-//    (Son seans · Paket · Psixoloq · No-show flag), seqment tabları + sıralama.
+//    (Son fəaliyyət, paket, psixoloq, no-show nişanı), seqment tabları + sıralama.
 //  • "Yeni müştəri": operatorApi.createPatient → yeni pasiyentin 360° profilinə keçid.
+//  • Cədvəl <DataTable>-dır; sıralama və səhifələmə tam siyahı üzərində
+//    aparılır (API sadə massiv qaytarır — client-side səhifələmə).
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { operatorApi, type OperatorSearchHit, type AppointmentDetail } from "@/lib/api";
+import { azFormatDate } from "@/lib/datetime";
 import { toast } from "@/components/Toast";
 import PageHeader from "@/components/PageHeader";
+import {
+  Avatar,
+  Button,
+  DataTable,
+  Status,
+  type Column,
+  type SortState,
+  type StatusTone,
+} from "@/components/ui";
 import { Icon } from "./icons";
 
 // ─── Köməkçilər ──────────────────────────────────────────────────────────────
-function avatarVariant(id: number) { return (Math.abs(id) % 4) + 1; }
-function initialsOf(name: string): string {
-  return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
-}
-function pad2(n: number) { return String(n).padStart(2, "0"); }
-function fmtDate(ts: number): string {
-  const d = new Date(ts);
-  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
-}
 function normalizePhone(raw?: string | null): string | null {
   if (!raw) return null;
   const digits = raw.replace(/[^\d+]/g, "");
   return digits || null;
 }
 
-type LastTone = "green" | "neutral" | "amber" | "muted";
-const LAST_TONE: Record<LastTone, { bg: string; fg: string }> = {
-  green:   { bg: "var(--sage-bg)", fg: "#2E6B54" },
-  neutral: { bg: "var(--bg-blue)", fg: "var(--oxford-80)" },
-  amber:   { bg: "var(--status-pending-bg)", fg: "var(--status-pending-fg)" },
-  muted:   { bg: "var(--surface-muted)", fg: "var(--oxford-60)" },
-};
-function lastSession(ts: number, now: number): { label: string; tone: LastTone } {
+function lastSession(ts: number, now: number): { label: string; tone: StatusTone } {
   if (!ts) return { label: "Heç seans yox", tone: "muted" };
   const days = Math.floor((now - ts) / 86_400_000);
   let label: string;
   if (days <= 0) label = "Bu gün";
   else if (days <= 7) label = `${days} gün öncə`;
-  else label = fmtDate(ts);
-  const tone: LastTone = days <= 3 ? "green" : days <= 30 ? "neutral" : "amber";
+  else label = azFormatDate(new Date(ts));
+  const tone: StatusTone = days <= 3 ? "positive" : days <= 30 ? "neutral" : "wait";
   return { label, tone };
 }
 
-interface RecentCustomer {
+interface CustomerRow {
   id: number;
   name: string;
   phone: string | null;
   email: string | null;
+  /** Yalnız axtarış nəticələrində — serverin hazır əlaqə sətri. */
+  contact: string | null;
   lastAt: number;
   lastLabel: string;
-  lastTone: LastTone;
+  lastTone: StatusTone;
   pkg: string | null;
   psych: string | null;
   flag: string | null;
@@ -64,7 +62,7 @@ interface RecentCustomer {
 const DONE_STATUSES = new Set(["CANCELLED", "REJECTED", "COMPLETED"]);
 
 /** Randevu siyahısından unikal müştəriləri zənginləşdirib son fəaliyyətə görə sıralayır. */
-function deriveRecent(appts: AppointmentDetail[]): RecentCustomer[] {
+function deriveRecent(appts: AppointmentDetail[]): CustomerRow[] {
   const now = Date.now();
   type Acc = {
     id: number; name: string; phone: string; email: string; lastAt: number;
@@ -105,20 +103,20 @@ function deriveRecent(appts: AppointmentDetail[]): RecentCustomer[] {
     if (!Number.isNaN(start) && start > now && !DONE_STATUSES.has(a.status)) e.upcoming = true;
   }
 
-  const out: RecentCustomer[] = [];
+  const out: CustomerRow[] = [];
   for (const e of map.values()) {
     const name = e.name || e.email || `Pasiyent #${e.id}`;
     const ls = lastSession(e.lastAt, now);
     out.push({
-      id: e.id, name, phone: e.phone || null, email: e.email || null, lastAt: e.lastAt,
-      lastLabel: ls.label, lastTone: ls.tone,
+      id: e.id, name, phone: e.phone || null, email: e.email || null, contact: null,
+      lastAt: e.lastAt, lastLabel: ls.label, lastTone: ls.tone,
       pkg: e.pkg, psych: e.psych,
       flag: e.noShow >= 2 ? "No-show riski" : null,
       hasUpcoming: e.upcoming,
     });
   }
   out.sort((x, y) => y.lastAt - x.lastAt);
-  return out.slice(0, 30);
+  return out;
 }
 
 type SegKey = "all" | "near" | "attention";
@@ -128,17 +126,29 @@ const SEGMENTS: { key: SegKey; label: string }[] = [
   { key: "attention", label: "Diqqət tələb edən" },
 ];
 
+/** Sıralama tam siyahı üzərində aparılır — səhifə kəsilməsi ondan sonra gəlir. */
+const SORT_VALUES: Record<string, (r: CustomerRow) => string | number> = {
+  name: r => r.name,
+  last: r => r.lastAt,
+};
+
 // ─── Səhifə ──────────────────────────────────────────────────────────────────
 export default function OperatorCustomersPage() {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [hits, setHits] = useState<OperatorSearchHit[] | null>(null);
+  const [hitsError, setHitsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [recent, setRecent] = useState<RecentCustomer[] | null>(null);
+  const [recent, setRecent] = useState<CustomerRow[] | null>(null);
+  const [recentError, setRecentError] = useState<string | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
+  const [searchNonce, setSearchNonce] = useState(0);
   const [newOpen, setNewOpen] = useState(false);
   const [tab, setTab] = useState<SegKey>("all");
-  const [sort, setSort] = useState<"activity" | "name">("activity");
+  const [sort, setSort] = useState<SortState>({ key: "last", dir: "desc" });
   const [psych, setPsych] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 30); }, []);
@@ -146,25 +156,28 @@ export default function OperatorCustomersPage() {
   // Default — son aktiv pasiyentlərin randevularından "son müştərilər" siyahısı.
   useEffect(() => {
     let alive = true;
+    setRecent(null);
+    setRecentError(null);
     operatorApi.listRecentCustomerAppointments(30)
       .then(a => { if (alive) setRecent(deriveRecent(a)); })
-      .catch(() => { if (alive) setRecent([]); });
+      .catch(e => { if (alive) { setRecent([]); setRecentError((e as Error).message || "Müştəri siyahısı yüklənmədi."); } });
     return () => { alive = false; };
-  }, []);
+  }, [reloadNonce]);
 
   // Debounced axtarış (server) — 2+ simvol.
   useEffect(() => {
     const term = q.trim();
-    if (term.length < 2) { setHits(null); setLoading(false); return; }
+    if (term.length < 2) { setHits(null); setHitsError(null); setLoading(false); return; }
     setLoading(true);
+    setHitsError(null);
     const id = window.setTimeout(() => {
       operatorApi.search(term, 12)
         .then(r => setHits(r.patients))
-        .catch(() => setHits([]))
+        .catch(e => { setHits([]); setHitsError((e as Error).message || "Axtarış nəticəsi yüklənmədi."); })
         .finally(() => setLoading(false));
     }, 220);
     return () => window.clearTimeout(id);
-  }, [q]);
+  }, [q, searchNonce]);
 
   const term = q.trim();
   const searching = term.length >= 2;
@@ -187,31 +200,95 @@ export default function OperatorCustomersPage() {
     attention: stats.attention,
   };
 
+  const hitRows = useMemo<CustomerRow[]>(() => (hits ?? []).map(h => ({
+    id: h.id, name: h.title, phone: null, email: null, contact: h.subtitle || null,
+    lastAt: 0, lastLabel: "", lastTone: "muted" as StatusTone,
+    pkg: null, psych: null, flag: null, hasUpcoming: false,
+  })), [hits]);
+
   const filteredRecents = useMemo(() => {
     let list = recents.filter(r =>
       tab === "all" ? true : tab === "near" ? r.hasUpcoming : !!r.flag);
     if (psych !== "all") list = list.filter(r => r.psych === psych);
-    if (sort === "name") list = [...list].sort((a, b) => a.name.localeCompare(b.name, "az"));
-    else list = [...list].sort((a, b) => b.lastAt - a.lastAt);
     return list;
-  }, [recents, tab, psych, sort]);
+  }, [recents, tab, psych]);
 
-  const goProfile = (id: number) => router.push(`/operator/customers/${id}`);
+  // Sıralama BÜTÜN siyahı üzərində — yalnız cari səhifə deyil.
+  const sortedRecents = useMemo(() => {
+    const get = SORT_VALUES[sort.key];
+    if (!get) return filteredRecents;
+    const factor = sort.dir === "asc" ? 1 : -1;
+    return [...filteredRecents].sort((a, b) => {
+      const va = get(a), vb = get(b);
+      if (typeof va === "number" && typeof vb === "number") return (va - vb) * factor;
+      return String(va).localeCompare(String(vb), "az") * factor;
+    });
+  }, [filteredRecents, sort]);
+
+  const allRows = searching ? hitRows : sortedRecents;
+  const pageCount = Math.max(1, Math.ceil(allRows.length / pageSize));
+  const pageRows = useMemo(
+    () => allRows.slice((page - 1) * pageSize, page * pageSize),
+    [allRows, page, pageSize]);
+
+  // Filtr/axtarış/sıralama dəyişəndə boş səhifədə qalmamaq üçün 1-ə qayıt.
+  useEffect(() => { setPage(1); }, [q, tab, psych, sort, pageSize]);
+
+  const goProfile = useCallback((id: number) => router.push(`/operator/customers/${id}`), [router]);
   const callPatient = (phone: string) => { const p = normalizePhone(phone); if (p) window.location.assign(`tel:${p}`); };
   const whatsapp = (phone: string) => { const p = normalizePhone(phone); if (p) window.open(`https://wa.me/${p.replace(/^\+/, "").replace(/[^\d]/g, "")}`, "_blank", "noopener"); };
 
-  // Boş/yüklənmə halları cədvəldən kənarda göstərilir (psychologists səhifəsi ilə eyni qayda) —
-  // cədvəl yalnız göstəriləcək sətir olduqda render olunur.
-  const isEmpty = searching ? (!loading && (!hits || hits.length === 0)) : (recent !== null && filteredRecents.length === 0);
-  const isLoading = searching ? loading : recent === null;
+  const nameColumn: Column<CustomerRow> = {
+    key: "name",
+    header: "Müştəri",
+    sortable: !searching,
+    cell: r => (
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Avatar name={r.name} size="sm" />
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+          <span className="fx-row__title">{r.name}</span>
+          {r.flag && <Status tone="risk">{r.flag}</Status>}
+        </div>
+      </div>
+    ),
+  };
 
-  const tableRows: ReactNode = searching
-    ? (hits ?? []).map(h => (
-        <HitRow key={h.id} id={h.id} name={h.title} contact={h.subtitle || "—"} onOpen={() => goProfile(h.id)} />
-      ))
-    : filteredRecents.map(r => (
-        <CustomerRow key={r.id} r={r} onOpen={() => goProfile(r.id)} onCall={() => r.phone && callPatient(r.phone)} onWa={() => r.phone && whatsapp(r.phone)} />
-      ));
+  const contactColumn: Column<CustomerRow> = {
+    key: "contact",
+    header: "Əlaqə",
+    cell: r => {
+      if (r.contact) return <span className="fx-subtitle">{r.contact}</span>;
+      if (!r.phone && !r.email) return <span className="fx-muted">—</span>;
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {r.phone && <span className="fx-subtitle fx-num">{r.phone}</span>}
+          {r.email && <span className="fx-subtitle">{r.email}</span>}
+        </div>
+      );
+    },
+  };
+
+  const recentColumns: Column<CustomerRow>[] = [
+    nameColumn,
+    contactColumn,
+    {
+      key: "last",
+      header: "Son fəaliyyət",
+      sortable: true,
+      cell: r => <Status tone={r.lastTone}>{r.lastLabel}</Status>,
+    },
+    {
+      key: "psych",
+      header: "Psixoloq",
+      hideOnMobile: true,
+      cell: r => (r.psych ? <Status tone="neutral">{r.psych}</Status> : <span className="fx-muted">—</span>),
+    },
+  ];
+
+  const hitColumns: Column<CustomerRow>[] = [nameColumn, contactColumn];
+
+  const isSearchLoading = searching && loading;
+  const isRecentLoading = !searching && recent === null;
 
   return (
     <div className="panel-page">
@@ -220,9 +297,9 @@ export default function OperatorCustomersPage() {
         title="Müştərilər"
         subtitle="Axtarış, seqment və sətir əməliyyatları üçün direktoriya"
         actions={
-          <button type="button" onClick={() => setNewOpen(true)} className="fx-btn fx-btn--primary">
-            <Icon name="plus" /> Yeni müştəri
-          </button>
+          <Button variant="primary" onClick={() => setNewOpen(true)} icon={<Icon name="plus" />}>
+            Yeni müştəri
+          </Button>
         }
       />
 
@@ -264,41 +341,56 @@ export default function OperatorCustomersPage() {
           )}
         </div>
 
-        {/* Sətirlər / hallar */}
-        {isLoading ? (
-          <SkeletonRows />
-        ) : isEmpty ? (
-          searching ? <NoResults query={term} /> : (
-            <div className="fx-card--empty" style={{ border: "none", padding: "48px 20px" }}>
-              <Icon name="users" className="fx-icon fx-icon--xl" style={{ color: "var(--brand-300)" }} />
-              <div style={{ fontSize: 13, fontWeight: 700 }}>{tab === "all" ? "Hələ müştəri yoxdur" : "Bu seqmentdə müştəri yoxdur"}</div>
-              <div style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>Yeni müştəri əlavə edin və ya axtarışdan istifadə edin</div>
-              <button type="button" onClick={() => setNewOpen(true)} className="fx-btn fx-btn--primary fx-btn--sm" style={{ marginTop: 4 }}>Yeni müştəri</button>
-            </div>
-          )
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table className="fx-table">
-              <thead>
-                <tr>
-                  <th onClick={() => setSort("name")} style={{ cursor: "pointer" }}>Müştəri {sort === "name" && "↑"}</th>
-                  <th>Əlaqə</th>
-                  <th onClick={() => setSort("activity")} style={{ cursor: "pointer" }}>Son fəaliyyət {sort === "activity" && "↓"}</th>
-                  <th>Psixoloq</th>
-                  <th style={{ width: 150 }} />
-                </tr>
-              </thead>
-              <tbody>{tableRows}</tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Alt sətir */}
-        {!searching && recent !== null && filteredRecents.length > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px" }}>
-            <span className="fx-muted fx-num" style={{ fontSize: 12 }}>{filteredRecents.length} müştəri göstərilir</span>
-          </div>
-        )}
+        {/* Cədvəl */}
+        <div style={{ padding: "0 20px 16px" }}>
+          <DataTable
+            rows={pageRows}
+            columns={searching ? hitColumns : recentColumns}
+            rowKey={r => r.id}
+            loading={isSearchLoading || isRecentLoading}
+            error={searching ? hitsError : recentError}
+            onRetry={searching ? () => setSearchNonce(n => n + 1) : () => setReloadNonce(n => n + 1)}
+            onRowClick={r => goProfile(r.id)}
+            sort={sort}
+            onSortChange={next => setSort(next)}
+            empty={searching ? {
+              title: `«${term}» üçün nəticə yoxdur`,
+              body: "Yazılışı yoxlayın və ya başqa açar sözlə cəhd edin.",
+            } : {
+              title: tab === "all" ? "Hələ müştəri yoxdur" : "Bu seqmentdə müştəri yoxdur",
+              body: "Yeni müştəri əlavə edin və ya axtarışdan istifadə edin.",
+              actions: <Button variant="primary" size="sm" onClick={() => setNewOpen(true)}>Yeni müştəri</Button>,
+            }}
+            actions={r => (
+              <>
+                {r.phone && (
+                  <Button variant="ghost" size="sm" title="Zəng" aria-label="Zəng" onClick={() => callPatient(r.phone!)}>
+                    <Icon name="phone" className="fx-icon fx-icon--sm" />
+                  </Button>
+                )}
+                {r.phone && (
+                  <Button variant="ghost" size="sm" title="WhatsApp" aria-label="WhatsApp" onClick={() => whatsapp(r.phone!)}>
+                    <Icon name="message" className="fx-icon fx-icon--sm" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" title="Profilə bax" onClick={() => goProfile(r.id)}>
+                  <Icon name="eye" className="fx-icon fx-icon--sm" />
+                  Profilə bax
+                </Button>
+              </>
+            )}
+            pagination={{
+              page,
+              pageCount,
+              onChange: setPage,
+              pageSize,
+              onPageSizeChange: setPageSize,
+            }}
+            totalLabel={searching
+              ? `${allRows.length} nəticə tapıldı`
+              : `${allRows.length} müştəri göstərilir`}
+          />
+        </div>
       </div>
 
       {newOpen && <CreatePatientModal onClose={() => setNewOpen(false)} onCreated={id => { setNewOpen(false); router.push(`/operator/customers/${id}`); }} />}
@@ -313,79 +405,6 @@ function Kpi({ label, value, meta, color }: { label: string; value: number; meta
       <span className="fx-label">{label}</span>
       <span className="fx-kpi__value fx-num" style={color ? { color } : undefined}>{value}</span>
       <span className="fx-kpi__meta">{meta}</span>
-    </div>
-  );
-}
-
-function CustomerRow({ r, onOpen, onCall, onWa }: { r: RecentCustomer; onOpen: () => void; onCall: () => void; onWa: () => void }) {
-  const tone = LAST_TONE[r.lastTone];
-  return (
-    <tr onClick={onOpen} style={{ cursor: "pointer" }}>
-      <td>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span className={`fx-avatar fx-avatar--${avatarVariant(r.id)}`} style={r.flag ? { boxShadow: "0 0 0 2px var(--surface), 0 0 0 3.5px rgba(201,125,125,.55)" } : undefined}>{initialsOf(r.name)}</span>
-          <span className="fx-row__title">{r.name}</span>
-        </div>
-      </td>
-      <td>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {r.phone && <span className="fx-muted fx-num" style={{ fontSize: 12.5, display: "inline-flex", alignItems: "center", gap: 5 }}><Icon name="phone" className="fx-icon fx-icon--sm" style={{ width: 11, height: 11 }} />{r.phone}</span>}
-          {r.email && <span className="fx-muted" style={{ fontSize: 12.5, display: "inline-flex", alignItems: "center", gap: 5 }}><Icon name="mail" className="fx-icon fx-icon--sm" style={{ width: 11, height: 11 }} />{r.email}</span>}
-          {!r.phone && !r.email && <span className="fx-muted">—</span>}
-        </div>
-      </td>
-      <td><span className="fx-pill fx-num" style={{ background: tone.bg, color: tone.fg }}>{r.lastLabel}</span></td>
-      <td>{r.psych ? <span className="fx-pill fx-pill--neutral">{r.psych}</span> : <span className="fx-muted">—</span>}</td>
-      <td onClick={e => e.stopPropagation()}>
-        <div style={{ display: "flex", gap: 6 }}>
-          {r.phone && <button type="button" onClick={onCall} title="Zəng" className="fx-btn fx-btn--ghost fx-btn--sm"><Icon name="phone" className="fx-icon fx-icon--sm" /></button>}
-          {r.phone && <button type="button" onClick={onWa} title="WhatsApp" className="fx-btn fx-btn--ghost fx-btn--sm"><Icon name="message" className="fx-icon fx-icon--sm" /></button>}
-          <button type="button" onClick={onOpen} title="Profilə bax" className="fx-btn fx-btn--ghost fx-btn--sm"><Icon name="eye" className="fx-icon fx-icon--sm" /></button>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-function HitRow({ id, name, contact, onOpen }: { id: number; name: string; contact: string; onOpen: () => void }) {
-  return (
-    <tr onClick={onOpen} style={{ cursor: "pointer" }}>
-      <td>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span className={`fx-avatar fx-avatar--${avatarVariant(id)}`}>{initialsOf(name)}</span>
-          <span className="fx-row__title">{name}</span>
-        </div>
-      </td>
-      <td colSpan={5} className="fx-muted" style={{ fontSize: 12.5 }}>{contact}</td>
-      <td onClick={e => e.stopPropagation()}>
-        <button type="button" onClick={onOpen} className="fx-btn fx-btn--ghost fx-btn--sm"><Icon name="eye" className="fx-icon fx-icon--sm" />Profilə bax</button>
-      </td>
-    </tr>
-  );
-}
-
-function NoResults({ query }: { query: string }) {
-  return (
-    <div className="fx-card--empty" style={{ border: "none", padding: "48px 20px" }}>
-      <Icon name="search" className="fx-icon fx-icon--xl" style={{ color: "var(--brand-300)" }} />
-      <div style={{ fontSize: 13, fontWeight: 700 }}>«{query}» üçün nəticə yoxdur</div>
-      <div style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>Yazılışı yoxlayın və ya başqa açar sözlə cəhd edin</div>
-    </div>
-  );
-}
-
-function SkeletonRows() {
-  return (
-    <div>
-      {[0, 1, 2, 3, 4].map(i => (
-        <div key={i} className="fx-row" style={{ borderTop: "none", borderBottom: "1px solid var(--hairline)", cursor: "default" }}>
-          <div className="fx-skeleton fx-skeleton--circle" style={{ width: 38, height: 38 }} />
-          <div style={{ flex: 1 }}>
-            <div className="fx-skeleton" style={{ height: 12, width: "45%" }} />
-            <div className="fx-skeleton" style={{ height: 9, width: "30%", marginTop: 8 }} />
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -437,8 +456,8 @@ function CreatePatientModal({ onClose, onCreated }: { onClose: () => void; onCre
           <input className="fx-input fx-num" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+994 __ ___ __ __" />
         </div>
         <div className="fx-modal__actions">
-          <button type="button" onClick={onClose} className="fx-btn fx-btn--ghost">Ləğv</button>
-          <button type="button" onClick={submit} disabled={!emailOk || busy} className="fx-btn fx-btn--primary">{busy ? "Yaradılır…" : "Yarat və aç"}</button>
+          <Button variant="ghost" onClick={onClose}>Ləğv</Button>
+          <Button variant="primary" onClick={submit} disabled={!emailOk || busy}>{busy ? "Yaradılır…" : "Yarat və aç"}</Button>
         </div>
       </div>
     </div>

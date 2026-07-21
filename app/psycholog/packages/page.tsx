@@ -9,8 +9,10 @@ import {
   type PackageStats,
   type PackageReq,
   type Psychologist,
+  type PsychologistEarnings,
+  type PsychologistEarningRow,
 } from "@/lib/api";
-import { DataTable, SectionTitle, Status, type Column } from "@/components/ui";
+import { DataTable, PaymentStatus, SectionTitle, Status, Tabs, type Column } from "@/components/ui";
 import { azFormatDate } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
 import PageHeader from "@/components/PageHeader";
@@ -18,6 +20,11 @@ import { confirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "@/components/Toast";
 
 /* ═══ Page ════════════════════════════════════════════════════════════════ */
+
+/** Faiz təyin olunmayıbsa komissiya hesablanmır — bunu "0%" yazmaq yanıldıcı olardı. */
+function pct(value: number | null | undefined) {
+  return value == null ? "—" : `${value}%`;
+}
 
 export default function PsychologPackagesPage() {
   const [catalog, setCatalog] = useState<PackageDto[]>([]);
@@ -29,6 +36,11 @@ export default function PsychologPackagesPage() {
 
   /** Kataloqda qarşılığı olmayan satışlar — ayrıca siyahıda göstərilir. */
   const [customSales, setCustomSales] = useState<CustomPackageSale[]>([]);
+  /** Platformanın tutduğu pay — qiymətin bir hissəsi olduğu üçün bu səhifədədir. */
+  const [earnings, setEarnings] = useState<PsychologistEarnings | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [tab, setTab] = useState<"catalog" | "custom">("catalog");
+  const hasCustom = customSales.length > 0;
   const [indivPrice, setIndivPrice] = useState<number | null>(null);
   const [priceEditing, setPriceEditing] = useState(false);
   const [priceBusy, setPriceBusy] = useState(false);
@@ -46,8 +58,10 @@ export default function PsychologPackagesPage() {
       psychologistApi.myPricing(),
       psychologistApi.me(),
       psychologistApi.myCustomPackageSales(),
-    ]).then(([c, s, p, m, cs]) => {
+      psychologistApi.myEarnings(),
+    ]).then(([c, s, p, m, cs, e]) => {
       if (cs.status === "fulfilled") setCustomSales(cs.value);
+      if (e.status === "fulfilled") setEarnings(e.value);
       if (c.status === "fulfilled") setCatalog(c.value);
       if (s.status === "fulfilled") {
         const map: Record<number, PackageStats> = {};
@@ -106,18 +120,15 @@ export default function PsychologPackagesPage() {
     {
       key: "progress",
       header: "Gedişat",
-      cell: r => (
-        <span>
-          {r.completed}/{r.total} keçirilib
-          {r.remaining > 0 ? <Status tone="muted">{r.remaining} planlaşdırılmayıb</Status> : null}
-        </span>
-      ),
+      cell: r => `${r.completed}/${r.total} keçirilib`,
     },
     {
+      // Psixoloqa satış qiyməti deyil, platforma payı çıxıldıqdan sonra ona
+      // qalan məbləğ göstərilir — panelin qalanı ilə eyni məntiq.
       key: "price",
-      header: "Məbləğ",
+      header: "Qazancınız",
       numeric: true,
-      cell: r => (r.pricePaid != null ? formatAzn(r.pricePaid) : "—"),
+      cell: r => (r.netAmount != null ? formatAzn(r.netAmount) : "—"),
     },
     {
       key: "status",
@@ -139,6 +150,57 @@ export default function PsychologPackagesPage() {
     },
   ];
 
+  // Qazanc sətirləri — hər ödənişdə platformanın payı və psixoloqa qalan.
+  const earningColumns: Column<PsychologistEarningRow>[] = [
+    {
+      key: "patient",
+      header: "Müştəri",
+      cell: r => r.patientName ?? "—",
+    },
+    {
+      key: "kind",
+      header: "Nəyə görə",
+      cell: r => (r.kind === "PACKAGE" ? (r.packageName ?? "Paket") : "Tək seans"),
+      hideOnMobile: true,
+    },
+    {
+      key: "date",
+      header: "Tarix",
+      cell: r => azFormatDate(r.paidAt ?? r.createdAt),
+      sortable: true,
+      sortValue: r => r.paidAt ?? r.createdAt,
+      hideOnMobile: true,
+    },
+    {
+      key: "amount",
+      header: "Müştəri ödəyib",
+      numeric: true,
+      sortable: true,
+      sortValue: r => r.amount,
+      cell: r => formatAzn(r.amount),
+    },
+    {
+      key: "commission",
+      header: "Platforma payı",
+      numeric: true,
+      cell: r => formatAzn(r.commissionAmount),
+    },
+    {
+      key: "net",
+      header: "Qazancınız",
+      numeric: true,
+      sortable: true,
+      sortValue: r => r.net,
+      cell: r => formatAzn(r.net),
+    },
+    {
+      key: "status",
+      header: "Vəziyyət",
+      cell: r => <PaymentStatus value={r.status} />,
+      hideOnMobile: true,
+    },
+  ];
+
   return (
     <div className="panel-page">
       <style>{`@keyframes pkFade{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
@@ -153,11 +215,21 @@ export default function PsychologPackagesPage() {
       <PageHeader
         title="Qiymətlər & Paketlər"
         subtitle="Paket təklifləriniz, satış və istifadə statistikası"
-        actions={!isFanus && (
-          <button onClick={() => setNewOpen(true)}
-            style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 17px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
-            <IPlus />Yeni paket
-          </button>
+        actions={(
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {earnings && (
+              <button onClick={() => setShareOpen(true)} className="pk-icobtn"
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 17px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
+                <IDollar s={16} />Platforma payı
+              </button>
+            )}
+            {!isFanus && (
+              <button onClick={() => setNewOpen(true)}
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 17px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
+                <IPlus />Yeni paket
+              </button>
+            )}
+          </div>
         )}
       />
 
@@ -201,12 +273,18 @@ export default function PsychologPackagesPage() {
         )}
       </div>
 
+      {/* Platforma payı bütövlükdə popup-dadır — səhifənin əsas işi qiymət və
+          paket idarəsidir, komissiya isə arabir baxılan məlumatdır. */}
+      {shareOpen && earnings && (
+        <PlatformShareModal data={earnings} columns={earningColumns} onClose={() => setShareOpen(false)} />
+      )}
+
       {/* Summary stat strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(180px, 100%), 1fr))", gap: 13, marginBottom: 20 }}>
         <StatCard bg="#E4ECFA" color="#1051B7" icon={<ICube s={19} />} value={String(catalog.length)} label="Cəmi paket" />
         <StatCard bg="#E4ECFA" color="#1051B7" icon={<ICart s={19} />} value={statsReady ? String(sold) : "—"} label="Satılıb" />
         <StatCard bg="#D1FAE5" color="#065F46" icon={<ICheckCircle s={19} c="#065F46" />} value={statsReady ? String(active) : "—"} label="Davam edən" />
-        <StatCard bg="#E4ECFA" color="#082F6D" icon={<IDollar s={19} c="#082F6D" />} value={statsReady ? formatAzn(revenue) : "—"} label="Ümumi gəlir" valueColor="#082F6D" />
+        <StatCard bg="#E4ECFA" color="#082F6D" icon={<IDollar s={19} c="#082F6D" />} value={statsReady ? formatAzn(revenue) : "—"} label="Qazancınız" valueColor="#082F6D" />
       </div>
 
       {!statsReady && !loading && (
@@ -220,7 +298,29 @@ export default function PsychologPackagesPage() {
         <PackageFormModal busy={busy} onSave={create} onClose={() => setNewOpen(false)} />
       )}
 
-      {loading ? (
+      {/* Xüsusi satış tab-ı yalnız belə satış varsa görünür — yoxdursa səhifə
+          tək siyahılı qalır, boş tab əlavə etmirik. */}
+      {hasCustom && (
+        <div style={{ marginBottom: 18 }}>
+          <Tabs
+            items={[
+              { key: "catalog", label: "Paketlər", count: catalog.length },
+              { key: "custom", label: "Xüsusi satılan paketlər", count: customSales.length },
+            ]}
+            value={tab}
+            onChange={setTab}
+          />
+        </div>
+      )}
+
+      {tab === "custom" && hasCustom ? (
+        <DataTable
+          rows={customSales}
+          columns={customColumns}
+          rowKey={r => r.id}
+          empty={{ title: "Xüsusi satış yoxdur" }}
+        />
+      ) : loading ? (
         <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #EDF1F8", padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>Yüklənir…</div>
       ) : catalog.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #EDF1F8", boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: "44px 24px", textAlign: "center" }}>
@@ -240,21 +340,69 @@ export default function PsychologPackagesPage() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* Kataloqda olmayan (operatorun xüsusi qurduğu) satışlar. Yuxarıdakı
-          kartlar kataloq paketlərinə görə qruplaşır, ona görə belə satış orada
-          heç vaxt görünmür — psixoloq özünə satılmış paketdən xəbərsiz qalırdı. */}
-      {customSales.length > 0 && (
-        <>
-          <SectionTitle>Xüsusi satılmış paketlər</SectionTitle>
+/* ─── Platforma payı popup-u ──────────────────────────────────────────────── */
+function PlatformShareModal({ data, columns, onClose }: {
+  data: PsychologistEarnings;
+  columns: Column<PsychologistEarningRow>[];
+  onClose: () => void;
+}) {
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(8,47,109,.45)", backdropFilter: "blur(4px)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "pkFade .18s ease" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "min(880px, 100%)", maxHeight: "88vh", overflow: "auto", boxShadow: "0 24px 70px rgba(8,47,109,.28)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "20px 22px 16px", borderBottom: "1px solid #F0F4FA" }}>
+          <span style={{ width: 38, height: 38, borderRadius: 11, background: "#E4ECFA", color: "#1051B7", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+            <IDollar s={19} c="#1051B7" />
+          </span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>Platforma payı</div>
+            <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--oxford-60)", marginTop: 2 }}>
+              Müştərinin ödədiyi qiymət dəyişmir — pay yalnız sizə keçən məbləğdən tutulur.
+            </div>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Bağla"
+            style={{ width: 34, height: 34, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F2F6FD", border: "none", borderRadius: 9, color: "var(--oxford-60)", cursor: "pointer" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <div style={{ padding: "18px 22px 22px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(160px, 100%), 1fr))", gap: 13, marginBottom: 16 }}>
+            <MiniStat label="Müştərilərin ödədiyi" value={formatAzn(data.grossTotal)} />
+            <MiniStat label="Platforma payı" value={formatAzn(data.commissionTotal)} />
+            <MiniStat label="Qazancınız" value={formatAzn(data.netTotal)} color="#082F6D" />
+            <MiniStat label="Ödənilməmiş qalıq" value={formatAzn(data.balance)} />
+          </div>
+
+          <div style={{ display: "grid", gap: 6, background: "#F6FAFF", border: "1px solid #E9F1FC", borderRadius: 12, padding: "13px 16px", fontSize: 12.5, fontWeight: 500, color: "var(--oxford-60)", lineHeight: 1.6, marginBottom: 18 }}>
+            <div>Müştəri sizi özü seçəndə tutulan pay: <b style={{ color: "var(--oxford)" }}>{pct(data.directCommissionPercent)}</b></div>
+            <div>Fanus sizi təyin edəndə tutulan pay: <b style={{ color: "var(--oxford)" }}>{pct(data.currentCommissionPercent)}</b></div>
+            <div>Faiz ödəniş təsdiqlənən anda möhürlənir — qayda sonradan dəyişsə, keçmiş ödənişlər toxunulmaz qalır.</div>
+            <div>Cəmlərə yalnız təsdiqlənmiş ödənişlər daxildir. Artıq ödənilib: <b style={{ color: "var(--oxford)" }}>{formatAzn(data.paidOut)}</b></div>
+          </div>
+
+          <SectionTitle>Ödəniş sətirləri</SectionTitle>
           <DataTable
-            rows={customSales}
-            columns={customColumns}
-            rowKey={r => r.id}
-            empty={{ title: "Xüsusi satış yoxdur" }}
+            rows={data.rows}
+            columns={columns}
+            rowKey={r => r.paymentId}
+            empty={{ title: "Hələ ödəniş yoxdur", body: "Seanslarınız ödənildikcə burada görünəcək." }}
           />
-        </>
-      )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Komissiya kartının kiçik rəqəmi ─────────────────────────────────────── */
+function MiniStat({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div style={{ background: "#F6FAFF", border: "1px solid #E9F1FC", borderRadius: 11, padding: "11px 13px" }}>
+      <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1, color: color ?? "var(--oxford)", whiteSpace: "nowrap" }}>{value}</div>
     </div>
   );
 }
@@ -363,7 +511,7 @@ function PackageCard({ pkg, stats, busy, onUpdate, onDelete, onToggleActive, rea
           <Stat label="Davam edən" value={s ? String(s.active) : "—"} color="#059669" />
           <Stat label="Tamamlanıb" value={s ? String(s.completed) : "—"} />
           {(!s || s.cancelled > 0) && <Stat label="Ləğv" value={s ? String(s.cancelled) : "—"} color="#991B1B" />}
-          <Stat label="Gəlir" value={s ? formatAzn(s.revenue) : "—"} color="#1051B7" />
+          <Stat label="Qazancınız" value={s ? formatAzn(s.revenue) : "—"} color="#1051B7" />
         </div>
         <CompletionRing pct={s?.completionPct ?? 0} />
       </div>

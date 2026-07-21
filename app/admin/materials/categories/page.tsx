@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+// Admin — material kateqoriyaları.
+// Cədvəl <DataTable>-dır; API sadə massiv qaytarır, ona görə səhifələmə
+// client-side: tam siyahı state-də saxlanılır, cari səhifə kəsilir.
+
+import { useEffect, useMemo, useState } from "react";
 import { adminApi, type MaterialCategory, type MaterialCategoryReq } from "@/lib/api";
+import { toast } from "@/components/Toast";
+import { Button, DataTable, Status, type Column } from "@/components/ui";
 import { IconPlus } from "../../_components/icons";
 
 const EMPTY: MaterialCategoryReq = {
@@ -25,14 +31,29 @@ function slugify(s: string) {
 export default function MaterialCategoriesPage() {
   const [items, setItems] = useState<MaterialCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<{ item: MaterialCategoryReq; id?: number } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const load = () => {
     setLoading(true);
-    adminApi.getMaterialCategories().then(setItems).catch(() => {}).finally(() => setLoading(false));
+    setError(null);
+    adminApi.getMaterialCategories()
+      .then(setItems)
+      .catch(e => setError((e as Error).message || "Kateqoriyalar yüklənmədi."))
+      .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
+
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize));
+  const pageRows = useMemo(
+    () => items.slice((page - 1) * pageSize, page * pageSize),
+    [items, page, pageSize]);
+
+  // Siyahı və ya səhifə ölçüsü dəyişəndə boş səhifədə qalmamaq üçün 1-ə qayıt.
+  useEffect(() => { setPage(1); }, [items, pageSize]);
 
   const openCreate = () => setModal({ item: { ...EMPTY } });
   const openEdit = (c: MaterialCategory) =>
@@ -51,9 +72,9 @@ export default function MaterialCategoriesPage() {
 
   const save = async () => {
     if (!modal) return;
-    if (!modal.item.name.trim()) { alert("Ad tələb olunur."); return; }
+    if (!modal.item.name.trim()) { toast("Ad tələb olunur.", "error"); return; }
     const slug = modal.item.slug.trim() || slugify(modal.item.name);
-    if (!slug) { alert("Slug tələb olunur."); return; }
+    if (!slug) { toast("Slug tələb olunur.", "error"); return; }
     setSaving(true);
     try {
       const payload: MaterialCategoryReq = { ...modal.item, name: modal.item.name.trim(), slug };
@@ -61,15 +82,38 @@ export default function MaterialCategoriesPage() {
       else await adminApi.createMaterialCategory(payload);
       close();
       load();
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { toast((e as Error).message || "Kateqoriya saxlanmadı", "error"); }
     finally { setSaving(false); }
   };
 
   const remove = async (id: number) => {
     if (!confirm("Bu kateqoriyanı silmək istədiyinizə əminsiniz?")) return;
     try { await adminApi.deleteMaterialCategory(id); load(); }
-    catch (e) { alert((e as Error).message); }
+    catch (e) { toast((e as Error).message || "Kateqoriya silinmədi", "error"); }
   };
+
+  const columns: Column<MaterialCategory>[] = [
+    { key: "name", header: "Ad", cell: c => <span className="fx-row__title">{c.name}</span> },
+    { key: "slug", header: "Slug", cell: c => <span className="mono fx-subtitle">{c.slug}</span> },
+    {
+      key: "colors",
+      header: "Rənglər",
+      hideOnMobile: true,
+      cell: c => (
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <span style={{ width: 16, height: 16, borderRadius: 4, border: "1px solid var(--border)", background: c.color ?? "#1051B7" }} />
+          <span style={{ width: 16, height: 16, borderRadius: 4, border: "1px solid var(--border)", background: c.bg ?? "#F2F6FD" }} />
+          <span className="mono fx-subtitle" style={{ fontSize: 11 }}>{c.color ?? "—"} / {c.bg ?? "—"}</span>
+        </div>
+      ),
+    },
+    { key: "sortOrder", header: "Sıra", numeric: true, cell: c => c.sortOrder },
+    {
+      key: "status",
+      header: "Status",
+      cell: c => (c.active ? <Status tone="positive">Aktiv</Status> : <Status tone="muted">Deaktiv</Status>),
+    },
+  ];
 
   return (
     <div className="page">
@@ -87,69 +131,43 @@ export default function MaterialCategoriesPage() {
         </div>
       </div>
 
-      {loading && <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Yüklənir…</div>}
-
-      {!loading && (
-        <div className="table-wrap">
-          <table className="t">
-            <thead>
-              <tr>
-                <th>Ad</th>
-                <th>Slug</th>
-                <th>Rənglər</th>
-                <th>Sıra</th>
-                <th>Status</th>
-                <th style={{ textAlign: "right" }}>Əməliyyatlar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 && (
-                <tr>
-                  <td colSpan={6} style={{ padding: 60, textAlign: "center" }}>
-                    <div style={{ fontWeight: 600, fontSize: 16 }}>Hələ kateqoriya yoxdur</div>
-                    <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>İlk kateqoriyanı əlavə edin.</div>
-                    <button className="btn primary mt-16" onClick={openCreate}>Yeni kateqoriya</button>
-                  </td>
-                </tr>
-              )}
-              {items.map((c) => (
-                <tr key={c.id} style={{ opacity: c.active ? 1 : 0.6 }}>
-                  <td>
-                    <span className="pill" style={{ background: c.bg ?? "#F2F6FD", color: c.color ?? "#1051B7" }}>{c.name}</span>
-                  </td>
-                  <td style={{ fontSize: 13, color: "var(--muted)" }}>{c.slug}</td>
-                  <td>
-                    <div className="row" style={{ gap: 6, alignItems: "center" }}>
-                      <span style={{ width: 16, height: 16, borderRadius: 4, border: "1px solid var(--border)", background: c.color ?? "#1051B7" }} />
-                      <span style={{ width: 16, height: 16, borderRadius: 4, border: "1px solid var(--border)", background: c.bg ?? "#F2F6FD" }} />
-                      <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{c.color ?? "—"} / {c.bg ?? "—"}</span>
-                    </div>
-                  </td>
-                  <td style={{ fontSize: 13 }}>{c.sortOrder}</td>
-                  <td>
-                    {c.active
-                      ? <span className="pill sage"><span className="dot" />Aktiv</span>
-                      : <span className="pill muted"><span className="dot" />Deaktiv</span>}
-                  </td>
-                  <td style={{ textAlign: "right" }}>
-                    <div className="row" style={{ gap: 4, justifyContent: "flex-end" }}>
-                      <button className="btn sm ghost" onClick={() => openEdit(c)}>Redaktə</button>
-                      <button className="btn sm danger" onClick={() => remove(c.id)}>Sil</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        rows={pageRows}
+        columns={columns}
+        rowKey={c => c.id}
+        loading={loading}
+        error={error}
+        onRetry={load}
+        actionsHeader="Əməliyyatlar"
+        empty={{
+          title: "Hələ kateqoriya yoxdur",
+          body: "İlk kateqoriyanı əlavə edin.",
+          actions: <Button variant="primary" size="sm" onClick={openCreate}>Yeni kateqoriya</Button>,
+        }}
+        actions={c => (
+          <>
+            <Button variant="ghost" size="sm" onClick={() => openEdit(c)}>Redaktə</Button>
+            <Button variant="dangerGhost" size="sm" onClick={() => remove(c.id)}>Sil</Button>
+          </>
+        )}
+        pagination={{
+          page,
+          pageCount,
+          onChange: setPage,
+          pageSize,
+          onPageSizeChange: setPageSize,
+        }}
+        totalLabel={`${items.length} kateqoriya`}
+      />
 
       {modal && (
         <div className="admin-shell-modal" onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
           <div className="modal">
             <div className="modal-head">
               <div className="modal-title">{modal.id ? "Kateqoriyanı redaktə et" : "Yeni kateqoriya"}</div>
-              <button className="btn ghost icon-only sm" onClick={close}>✕</button>
+              <button className="btn ghost icon-only sm" onClick={close} aria-label="Bağla">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
             </div>
             <div className="modal-body">
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>

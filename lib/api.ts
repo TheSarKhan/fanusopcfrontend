@@ -1388,6 +1388,9 @@ export const adminApi = {
 
   // Blog
   getBlogPosts: () => authedRequest<BlogPost[]>("GET", "/admin/blog-posts"),
+  /** Səhifələnmiş — q başlıq/xülasə/kateqoriya/müəllif üzrə axtarır (createdAt DESC). */
+  getBlogPostsPaged: (opts: { page?: number; size?: number; q?: string } = {}) =>
+    authedRequest<Paged<BlogPost>>("GET", `/admin/blog-posts/paged${pagedQuery(opts)}`),
   getBlogPostById: (id: number) => authedRequest<BlogPost>("GET", `/admin/blog-posts/${id}`),
   createBlogPost: (data: Omit<BlogPost, "id">) =>
     authedRequest<BlogPost>("POST", "/admin/blog-posts", data).then(p => { revalidateBlogCache(p.slug); return p; }),
@@ -1427,6 +1430,9 @@ export const adminApi = {
 
   // Psychologist Applications
   getApplications: () => authedRequest<PsychologistApplication[]>("GET", "/admin/applications"),
+  /** Səhifələnmiş — status filtri + ad/e-poçt axtarışı (yaradılma tarixi DESC). */
+  getApplicationsPaged: (opts: { page?: number; size?: number; status?: string; q?: string } = {}) =>
+    authedRequest<Paged<PsychologistApplication>>("GET", `/admin/applications/paged${pagedQuery(opts)}`),
   approveApplication: (id: number, adminNote?: string) =>
     authedRequest<PsychologistApplication>("PUT", `/admin/applications/${id}/approve`, { adminNote }),
   rejectApplication: (id: number, adminNote?: string) =>
@@ -1603,6 +1609,9 @@ export const adminApi = {
   updateMaterialCategory: (id: number, data: MaterialCategoryReq) => authedRequest<MaterialCategory>("PUT", `/admin/material-categories/${id}`, data),
   deleteMaterialCategory: (id: number) => authedRequest<void>("DELETE", `/admin/material-categories/${id}`),
   getMaterials: () => authedRequest<Material[]>("GET", "/admin/materials"),
+  /** Səhifələnmiş — sıralama getMaterials ilə eynidir (sortOrder, sonra başlıq). */
+  getMaterialsPaged: (opts: { page?: number; size?: number } = {}) =>
+    authedRequest<Paged<Material>>("GET", `/admin/materials/paged${pagedQuery(opts)}`),
   createMaterial: (data: MaterialReq) => authedRequest<Material>("POST", "/admin/materials", data),
   updateMaterial: (id: number, data: MaterialReq) => authedRequest<Material>("PUT", `/admin/materials/${id}`, data),
   deleteMaterial: (id: number) => authedRequest<void>("DELETE", `/admin/materials/${id}`),
@@ -1616,6 +1625,9 @@ export const adminApi = {
 
   // ─── Modul F: psixoloji testlər ──────────────────────────────────────────
   getPsychTests: () => authedRequest<PsyTestSummary[]>("GET", "/admin/psych-tests"),
+  /** Səhifələnmiş — sıralama getPsychTests ilə eynidir (createdAt DESC). */
+  getPsychTestsPaged: (opts: { page?: number; size?: number } = {}) =>
+    authedRequest<Paged<PsyTestSummary>>("GET", `/admin/psych-tests/paged${pagedQuery(opts)}`),
   getPsychTest: (id: number) => authedRequest<PsyTest>("GET", `/admin/psych-tests/${id}`),
   createPsychTest: (data: PsyTestReq) => authedRequest<PsyTest>("POST", "/admin/psych-tests", data),
   updatePsychTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("PUT", `/admin/psych-tests/${id}`, data),
@@ -1859,6 +1871,9 @@ export interface CustomPackageSale {
   completed: number;
   status: string;
   pricePaid: number | null;
+  /** Platforma payı çıxıldıqdan sonra psixoloqa qalan. */
+  netAmount: number | null;
+  commissionPercent: number | null;
   currency: string;
   purchasedAt: string;
 }
@@ -2478,6 +2493,10 @@ export const psychologistApi = {
     authedRequest<Paged<ClientSummary>>("GET", `/psychologist/clients/paged${pagedQuery(opts)}`),
   notesForPatient: (patientId: number) =>
     authedRequest<ClientNote[]>("GET", `/psychologist/clients/${patientId}/notes`),
+  /** Səhifələnmiş — q başlıq və qeyd mətnində axtarır (yaradılma tarixi DESC). */
+  notesForPatientPaged: (patientId: number, opts: { page?: number; size?: number; q?: string } = {}) =>
+    authedRequest<Paged<ClientNote>>(
+      "GET", `/psychologist/clients/${patientId}/notes/paged${pagedQuery(opts)}`),
   /** Bu seansa yazılmış qeyd — yoxdursa `null` (backend 204 qaytarır). */
   noteForAppointment: (appointmentId: number) =>
     authedRequest<ClientNote | undefined>("GET", `/psychologist/appointments/${appointmentId}/note`)
@@ -2730,6 +2749,10 @@ export const psychologistApi = {
   /** All submissions for one assignment — a public link collects many takers. */
   testSubmissions: (assignmentId: number) =>
     authedRequest<TestResult[]>("GET", `/psychologist/psych-tests/assignments/${assignmentId}/results`),
+  /** Səhifələnmiş — eyni sıralama (göndərilmə tarixi, yenidən köhnəyə). */
+  testSubmissionsPaged: (assignmentId: number, opts: { page?: number; size?: number } = {}) =>
+    authedRequest<Paged<TestResult>>(
+      "GET", `/psychologist/psych-tests/assignments/${assignmentId}/results/paged${pagedQuery(opts)}`),
   closeTestLink: (assignmentId: number) =>
     authedRequest<TestAssignment>("POST", `/psychologist/psych-tests/assignments/${assignmentId}/close`),
 
@@ -3413,6 +3436,9 @@ export const operatorApi = {
     authedRequest<AppointmentDetail[]>("GET", `/operator/appointments/recent-customers?patients=${patients}`),
   // ─── Psixoloqlar arası yönləndirmə təsdiqi ───────────────────────────────
   pendingReferrals: () => authedRequest<Referral[]>("GET", "/operator/referrals"),
+  /** Səhifələnmiş — eyni filtr (operator təsdiqi gözləyənlər) və sıralama (köhnədən yeniyə). */
+  pendingReferralsPaged: (opts: { page?: number; size?: number } = {}) =>
+    authedRequest<Paged<Referral>>("GET", `/operator/referrals/paged${pagedQuery(opts)}`),
   /** Psixoloqun Cədvəldə (drag-and-drop) yaratdığı, pasiyentin cavabını gözləyən təkliflər. */
   pendingPsychologistProposals: () =>
     authedRequest<RescheduleProposal[]>("GET", "/operator/reschedule-proposals/pending"),

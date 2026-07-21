@@ -2,66 +2,133 @@
 
 // ============================================================================
 // Seans tarixçəsi — tamamlanmış / ləğv edilmiş / rədd edilmiş seansların
-// server-səhifələnmiş cədvəli (datatable). Rəy yazmaq artıq "Psixoloqlar"
+// server-səhifələnmiş cədvəli (DataTable). Rəy yazmaq artıq "Psixoloqlar"
 // bölməsindən verilir; bu səhifə yalnız oxu-tarixçədir.
 // ============================================================================
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   patientApi,
   reasonLabel,
   type AppointmentDetail,
 } from "@/lib/api";
 import { azFormatDate } from "@/lib/datetime";
-import { STATUS, PA_STYLE } from "../shared";
+import { Card, DataTable, Status, type Column, type StatusTone } from "@/components/ui";
+import { STATUS } from "../shared";
 
 const PAGE_SIZE = 30;
 
-const HIST_STYLE = `
-.hist-tbl{width:100%;border-collapse:collapse;font-size:13.5px}
-.hist-tbl th{text-align:left;padding:11px 16px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--oxford-60);border-bottom:1px solid #EDF1F8;white-space:nowrap;background:#FAFCFE}
-.hist-tbl td{padding:13px 16px;border-bottom:1px solid #F0F4FA;color:var(--oxford);vertical-align:top}
-.hist-tbl tbody tr:last-child td{border-bottom:none}
-.hist-tbl tbody tr:hover td{background:#F8FAFD}
-`;
+/** Statusun tonu — rəngli nöqtə/rozet YOXDUR, yalnız mətn tonu. */
+const STATUS_TONE: Record<string, StatusTone> = {
+  PENDING: "wait",
+  ASSIGNED: "neutral",
+  CONFIRMED: "neutral",
+  AWAITING_CONFIRMATION: "wait",
+  DISPUTED: "risk",
+  COMPLETED: "neutral",
+  CANCELLED: "risk",
+  CANCEL_REQUESTED: "wait",
+  REJECTED: "wait",
+};
+
+function cancelledByLabel(by?: string | null): string {
+  if (by === "PATIENT") return "Siz ləğv etdiniz";
+  if (by === "PSYCHOLOGIST") return "Psixoloq ləğv etdi";
+  if (by === "OPERATOR") return "Operator ləğv etdi";
+  return "Ləğv edildi";
+}
+
+function kindOf(a: AppointmentDetail): string {
+  if (a.sessionKind === "INTRO") return "Tanışlıq, pulsuz";
+  if (a.patientPackageId != null) return a.packageName || "Paket seansı";
+  return "Fərdi seans";
+}
+
+const COLUMNS: Column<AppointmentDetail>[] = [
+  {
+    key: "date",
+    header: "Tarix",
+    cell: a => (
+      <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+        {azFormatDate((a.startAt ?? a.endAt)!)}
+      </span>
+    ),
+  },
+  {
+    key: "psychologist",
+    header: "Psixoloq",
+    cell: a => {
+      const isCancelled = a.status === "CANCELLED";
+      const reasonTxt =
+        a.cancelReasonCode && a.cancelReasonCode !== "PATIENT_OTHER"
+          ? reasonLabel(a.cancelReasonCode)
+          : "";
+      const showCancelMeta = isCancelled && (a.cancelledBy || reasonTxt || a.cancelReasonText);
+      return (
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>{a.psychologistName ?? "Psixoloq"}</div>
+          {showCancelMeta && (
+            // Ayrı sətirlər — çip və ya "·" ayırıcısı işlədilmir.
+            <div className="fx-row__meta" style={{ marginTop: 3 }}>
+              <div>{cancelledByLabel(a.cancelledBy)}</div>
+              {reasonTxt ? <div>{reasonTxt}</div> : null}
+              {a.cancelReasonText ? <div>«{a.cancelReasonText}»</div> : null}
+            </div>
+          )}
+        </div>
+      );
+    },
+  },
+  {
+    key: "kind",
+    header: "Növ",
+    hideOnMobile: true,
+    cell: a => <span style={{ whiteSpace: "nowrap" }}>{kindOf(a)}</span>,
+  },
+  {
+    key: "status",
+    header: "Status",
+    cell: a => {
+      const meta = STATUS[a.status] ?? STATUS.COMPLETED;
+      return <Status tone={STATUS_TONE[a.status] ?? "neutral"}>{meta.label}</Status>;
+    },
+  },
+];
 
 export default function PatientAppointmentHistoryPage() {
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
+  // Backend `Paged.page` 0-dan başlayır; Pagination komponenti 1-dən.
   const [page, setPage] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
-    patientApi.myAppointmentsPaged({ scope: "history", page: 0, size: PAGE_SIZE })
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    patientApi.myAppointmentsPaged({ scope: "history", page, size: PAGE_SIZE })
       .then(res => {
+        if (cancelled) return;
         setItems(res.content);
         setTotalElements(res.totalElements);
+        setTotalPages(res.totalPages);
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+      .catch(e => { if (!cancelled) setError((e as Error).message || "Seans tarixçəsi yüklənmədi"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [page, reloadNonce]);
 
-  const loadMore = () => {
-    if (loadingMore) return;
-    setLoadingMore(true);
-    patientApi.myAppointmentsPaged({ scope: "history", page: page + 1, size: PAGE_SIZE })
-      .then(res => {
-        setItems(prev => [...prev, ...res.content]);
-        setPage(res.page);
-        setTotalElements(res.totalElements);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingMore(false));
-  };
-
-  // Server tarixçə statuslarına görə filtrləyib DESC sıralayır — tarixi olmayan sətirlər buraxılır.
+  // Tarixi olmayan sətirlər göstərilmir — server siyahısının içindəki filtrdir.
   const rows = useMemo(() => items.filter(a => a.startAt || a.endAt), [items]);
+
+  const retry = useCallback(() => setReloadNonce(n => n + 1), []);
 
   return (
     <div className="psy-appt-page">
-      <style>{PA_STYLE}{HIST_STYLE}</style>
       <header style={{ marginBottom: 22 }}>
         <Link href="/patient/appointments" style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none", marginBottom: 10 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
@@ -73,82 +140,27 @@ export default function PatientAppointmentHistoryPage() {
         </p>
       </header>
 
-      {loading ? (
-        <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>
-          Yüklənir…
-        </div>
-      ) : rows.length === 0 ? (
-        <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: 40, textAlign: "center", fontSize: 14, color: "var(--oxford-60)", fontWeight: 600 }}>
-          Hələ tamamlanmış seansınız yoxdur
-        </div>
-      ) : (
-        <>
-          <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", overflow: "hidden" }}>
-            <div style={{ overflowX: "auto" }}>
-              <table className="hist-tbl">
-                <thead>
-                  <tr>
-                    <th>Tarix</th>
-                    <th>Psixoloq</th>
-                    <th>Növ</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map(a => <HistoryRow key={a.id} a={a} />)}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {items.length < totalElements && (
-            <div style={{ textAlign: "center", marginTop: 16 }}>
-              <button type="button" onClick={loadMore} disabled={loadingMore}
-                style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "default" : "pointer", opacity: loadingMore ? .6 : 1 }}>
-                {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
-              </button>
-            </div>
-          )}
-        </>
-      )}
+      <Card>
+        <DataTable
+          rows={rows}
+          columns={COLUMNS}
+          rowKey={a => a.id}
+          loading={loading}
+          error={error}
+          onRetry={retry}
+          mobile="cards"
+          empty={{
+            title: "Hələ tamamlanmış seansınız yoxdur",
+            body: "Seans keçirildikdən və ya ləğv edildikdən sonra qeyd burada görünəcək.",
+          }}
+          pagination={{
+            page: page + 1,
+            pageCount: Math.max(1, totalPages),
+            onChange: p => setPage(p - 1),
+          }}
+          totalLabel={`Cəmi ${totalElements} seans`}
+        />
+      </Card>
     </div>
-  );
-}
-
-/* ─── Cədvəl sətri — bir seans ────────────────────────────────────────────── */
-
-function HistoryRow({ a }: { a: AppointmentDetail }) {
-  const ref = a.startAt ?? a.endAt;
-  if (!ref) return null;
-  const status = STATUS[a.status] ?? STATUS.COMPLETED;
-  const isCancelled = a.status === "CANCELLED";
-  const cancelWho = a.cancelledBy === "PATIENT" ? "Siz ləğv etdiniz"
-    : a.cancelledBy === "PSYCHOLOGIST" ? "Psixoloq ləğv etdi"
-    : a.cancelledBy === "OPERATOR" ? "Operator ləğv etdi" : "Ləğv edildi";
-  const cancelReasonTxt = a.cancelReasonCode && a.cancelReasonCode !== "PATIENT_OTHER" ? reasonLabel(a.cancelReasonCode) : "";
-  const kind = a.sessionKind === "INTRO" ? "Tanışlıq, pulsuz"
-    : a.patientPackageId != null ? (a.packageName || "Paket seansı")
-    : "Fərdi seans";
-  return (
-    <tr>
-      <td style={{ whiteSpace: "nowrap", fontWeight: 700 }}>{azFormatDate(ref)}</td>
-      <td>
-        <span style={{ fontWeight: 600 }}>{a.psychologistName ?? "Psixoloq"}</span>
-        {isCancelled && (a.cancelledBy || cancelReasonTxt || a.cancelReasonText) && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 12, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3 }}>
-            <span style={{ color: "#991B1B", fontWeight: 600 }}>{cancelWho}</span>
-            {cancelReasonTxt && <span>{cancelReasonTxt}</span>}
-            {a.cancelReasonText && <span>«{a.cancelReasonText}»</span>}
-          </div>
-        )}
-      </td>
-      <td style={{ color: "var(--oxford-60)", whiteSpace: "nowrap" }}>{kind}</td>
-      <td style={{ whiteSpace: "nowrap" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontWeight: 600 }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: status.color, flex: "none" }} aria-hidden />
-          {status.label}
-        </span>
-      </td>
-    </tr>
   );
 }

@@ -11,13 +11,23 @@ import {
   type TestStatsSummary,
 } from "@/lib/api";
 import AssignTestModal from "@/components/AssignTestModal";
+import { toast } from "@/components/Toast";
+import { azFormatDateTime } from "@/lib/datetime";
+import {
+  Avatar,
+  Button,
+  DataTable,
+  IconButton,
+  SearchInput,
+  Status,
+  type Column,
+} from "@/components/ui";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
+/** Bütün tarixlər gg.aa.iiii formatındadır (@/lib/datetime). */
 function fmtDateTime(iso?: string | null) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  return azFormatDateTime(iso);
 }
 
 const PANEL_SUBS = new Set(["patient", "psycholog", "operator", "admin"]);
@@ -77,6 +87,9 @@ export default function PsyTestStatsPage() {
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Cədvəlin öz yükləmə xətası — toast-a yox, cədvəlin içindəki qutuya gedir.
+  const [tableError, setTableError] = useState<string | null>(null);
+  const [tableNonce, setTableNonce] = useState(0);
 
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
@@ -111,11 +124,12 @@ export default function PsyTestStatsPage() {
   useEffect(() => {
     if (!Number.isFinite(id)) return;
     setTableLoading(true);
+    setTableError(null);
     psychologistApi.testResultsPaged(id, { page, size, q: debounced })
       .then((p) => { setRows(p.content); setTotal(p.totalElements); })
-      .catch(() => {})
+      .catch((e) => setTableError((e as Error).message || "Nəticələr yüklənmədi"))
       .finally(() => setTableLoading(false));
-  }, [id, page, size, debounced]);
+  }, [id, page, size, debounced, tableNonce]);
 
   const reloadStats = () => {
     psychologistApi.testStatsSummary(id).then(setSummary).catch(() => {});
@@ -144,25 +158,77 @@ export default function PsyTestStatsPage() {
     if (link) return;
     setLinkBusy(true);
     try { const res = await psychologistApi.createTestLink({ testId: id }); setLink({ url: toPublicUrl(res.url), token: res.token }); }
-    catch (e) { alert((e as Error).message); }
+    catch (e) { toast((e as Error).message, "error"); }
     finally { setLinkBusy(false); }
   };
   const copyLink = async () => {
     if (!link) return;
     try { await navigator.clipboard.writeText(link.url); setCopied(true); setTimeout(() => setCopied(false), 1800); }
-    catch { alert("Kopyalamaq alınmadı"); }
+    catch { toast("Kopyalamaq alınmadı", "error"); }
   };
   const openDetail = async (resultId: number) => {
     setDetailBusy(resultId);
     try { setDetail(await psychologistApi.testResultDetail(resultId)); }
-    catch (e) { alert((e as Error).message); }
+    catch (e) { toast((e as Error).message, "error"); }
     finally { setDetailBusy(null); }
   };
   const onDelete = async (resultId: number) => {
     if (!confirm("Bu nəticəni silmək istəyirsiniz?")) return;
     try { await psychologistApi.deleteTestResult(resultId); reloadStats(); }
-    catch (e) { alert((e as Error).message); }
+    catch (e) { toast((e as Error).message, "error"); }
   };
+
+  /**
+   * Sütunlar — səhifənin cədvəl üçün yazdığı yeganə şeydir.
+   * Test nəticəsi HEÇ VAXT rənglənmir: "Nəticə" neytral mətndir.
+   */
+  const columns: Column<TestResultRow>[] = useMemo(() => [
+    {
+      key: "respondent",
+      header: "İştirakçı",
+      cell: (r) => {
+        const name = r.respondentName?.trim() || "Anonim";
+        return (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <Avatar name={name} size="sm" />
+            <span style={{ fontWeight: 600 }}>{name}</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: "submittedAt",
+      header: "Tarix",
+      cell: (r) => <span className="fx-num" style={{ whiteSpace: "nowrap" }}>{fmtDateTime(r.submittedAt)}</span>,
+    },
+    {
+      key: "source",
+      header: "Mənbə",
+      hideOnMobile: true,
+      cell: (r) => <Status tone="muted">{r.publicLink ? "Public link" : "Təyinat"}</Status>,
+    },
+    {
+      key: "score",
+      header: "Bal",
+      numeric: true,
+      cell: (r) => (
+        <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+          {r.totalScore} <span className="fx-muted" style={{ fontWeight: 600 }}>/ {r.maxScore}</span>
+        </span>
+      ),
+    },
+    {
+      key: "scale",
+      header: "Nəticə",
+      cell: (r) => (r.scaleLabel ? <Status>{r.scaleLabel}</Status> : <span className="fx-muted">—</span>),
+    },
+    {
+      key: "status",
+      header: "Status",
+      hideOnMobile: true,
+      cell: () => <Status>Tam yoxlanılıb</Status>,
+    },
+  ], []);
 
   const exportCsv = async () => {
     const all = await psychologistApi.testResults(id).catch(() => rows);
@@ -247,77 +313,61 @@ export default function PsyTestStatsPage() {
           {/* Participants table (backend-paged) */}
           <div style={{ background: "#fff", border: "1px solid #EEF2F7", borderRadius: 16, overflow: "hidden" }}>
             <div style={{ padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", borderBottom: "1px solid #EEF2F7" }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 700, color: "#1A2535" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#1A2535" }}>
                 Bütün iştirakçılar
-                <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 8px", borderRadius: 999, background: "#F1F5F9", color: "#64748B" }}>{total}</span>
               </div>
-              <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} placeholder="Ad ilə axtar…"
-                style={{ padding: "8px 12px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 13, minWidth: 200, boxSizing: "border-box" }} />
+              <div style={{ minWidth: 200 }}>
+                <SearchInput
+                  aria-label="İştirakçı axtar"
+                  placeholder="Ad ilə axtar…"
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                />
+              </div>
             </div>
 
-            {rows.length === 0 ? (
-              <div style={{ padding: 40, textAlign: "center", color: "#52718F", fontSize: 13 }}>{tableLoading ? "Yüklənir…" : "Nəticə tapılmadı."}</div>
-            ) : (
-              <div style={{ overflowX: "auto", opacity: tableLoading ? 0.6 : 1, transition: "opacity .15s" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 720 }}>
-                  <thead>
-                    <tr style={{ background: "#F8FAFC", textAlign: "left" }}>
-                      <th style={th}>İştirakçı</th>
-                      <th style={th}>Tarix</th>
-                      <th style={th}>Mənbə</th>
-                      <th style={th}>Bal</th>
-                      <th style={th}>Nəticə</th>
-                      <th style={th}>Status</th>
-                      <th style={{ ...th, textAlign: "right" }}>Əməliyyat</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r) => (
-                      <tr key={r.resultId} style={{ borderTop: "1px solid #EEF2F7" }}>
-                        <td style={td}>
-                          <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-                            <span style={{ width: 28, height: 28, borderRadius: 999, background: "#EEF4F9", color: "#3B6FA5", fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{(r.respondentName?.trim()?.[0] ?? "A").toUpperCase()}</span>
-                            <span style={{ fontWeight: 600, color: "#1A2535" }}>{r.respondentName?.trim() || "Anonim"}</span>
-                          </div>
-                        </td>
-                        <td style={{ ...td, color: "#52718F" }}>{fmtDateTime(r.submittedAt)}</td>
-                        <td style={td}>
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, color: r.publicLink ? "#3730A3" : "var(--brand-700, #2F4A63)", background: r.publicLink ? "#E0E7FF" : "var(--brand-50, #EEF4F9)" }}>{r.publicLink ? "Public link" : "Təyinat"}</span>
-                        </td>
-                        <td style={{ ...td, fontWeight: 700, color: "#1A2535" }}>{r.totalScore} <span style={{ color: "#8AAABF", fontWeight: 600 }}>/ {r.maxScore}</span></td>
-                        <td style={td}>{r.scaleLabel ? <span style={{ fontSize: 12.5, fontWeight: 600, color: "#065F46" }}>{r.scaleLabel}</span> : <span style={{ color: "#9AAFC4" }}>—</span>}</td>
-                        <td style={td}><span style={{ fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999, color: "#065F46", background: "#D1FAE5" }}>Tam yoxlanılıb</span></td>
-                        <td style={{ ...td, textAlign: "right" }}>
-                          <div style={{ display: "inline-flex", alignItems: "center", gap: 12, justifyContent: "flex-end" }}>
-                            <button type="button" onClick={() => openDetail(r.resultId)} disabled={detailBusy === r.resultId} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "var(--brand)", background: "transparent", border: "none", cursor: "pointer" }}><IconEye /> {detailBusy === r.resultId ? "…" : "Bax"}</button>
-                            <button type="button" onClick={() => onDelete(r.resultId)} aria-label="Sil" style={{ color: "#991B1B", background: "transparent", border: "none", cursor: "pointer", display: "inline-flex" }}><IconTrash /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {total > 0 && (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "12px 18px", borderTop: "1px solid #EEF2F7", flexWrap: "wrap" }}>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#52718F" }}>
-                  Sətir sayı:
-                  <select value={size} onChange={(e) => { setSize(Number(e.target.value)); setPage(0); }} style={{ padding: "5px 8px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 12.5 }}>
-                    {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </div>
-                <div style={{ fontSize: 12.5, color: "#52718F" }}>{total ? page * size + 1 : 0}–{Math.min(total, (page + 1) * size)} / {total}</div>
-                <div style={{ display: "inline-flex", gap: 4 }}>
-                  <PagerBtn disabled={page === 0} onClick={() => setPage(0)}>«</PagerBtn>
-                  <PagerBtn disabled={page === 0} onClick={() => setPage(page - 1)}>‹</PagerBtn>
-                  <span style={{ fontSize: 12.5, color: "#52718F", padding: "0 8px", alignSelf: "center" }}>{page + 1} / {pageCount}</span>
-                  <PagerBtn disabled={page >= pageCount - 1} onClick={() => setPage(page + 1)}>›</PagerBtn>
-                  <PagerBtn disabled={page >= pageCount - 1} onClick={() => setPage(pageCount - 1)}>»</PagerBtn>
-                </div>
-              </div>
-            )}
+            <DataTable
+              rows={rows}
+              columns={columns}
+              rowKey={(r) => r.resultId}
+              loading={tableLoading}
+              error={tableError}
+              onRetry={() => setTableNonce((n) => n + 1)}
+              minWidth={720}
+              empty={{
+                title: debounced ? "Axtarışa uyğun nəticə tapılmadı" : "Hələ nəticə yoxdur",
+                body: debounced
+                  ? "Başqa ad yazın və ya axtarışı təmizləyin."
+                  : "Testi paylaşdıqdan və ya pasiyentə təyin etdikdən sonra iştirakçı nəticələri burada siyahılanacaq.",
+              }}
+              actionsHeader="Əməliyyat"
+              actions={(r) => (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={<IconEye />}
+                    disabled={detailBusy === r.resultId}
+                    onClick={() => openDetail(r.resultId)}
+                  >
+                    {detailBusy === r.resultId ? "…" : "Bax"}
+                  </Button>
+                  <IconButton aria-label="Nəticəni sil" onClick={() => onDelete(r.resultId)}>
+                    <IconTrash />
+                  </IconButton>
+                </>
+              )}
+              // Backend 0-dan sayır, Pagination 1-dən — çevirmə burada aparılır.
+              pagination={{
+                page: page + 1,
+                pageCount,
+                onChange: (p) => setPage(p - 1),
+                pageSize: size,
+                onPageSizeChange: (n) => { setSize(n); setPage(0); },
+                pageSizeOptions: [10, 20, 50, 100],
+              }}
+              totalLabel={`${total ? page * size + 1 : 0}–${Math.min(total, (page + 1) * size)} / ${total}`}
+            />
           </div>
         </div>
       )}
@@ -332,9 +382,6 @@ export default function PsyTestStatsPage() {
     </div>
   );
 }
-
-const th: React.CSSProperties = { padding: "11px 16px", fontSize: 11, fontWeight: 700, color: "#52718F", textTransform: "uppercase", letterSpacing: 0.4, whiteSpace: "nowrap" };
-const td: React.CSSProperties = { padding: "12px 16px", verticalAlign: "middle" };
 
 function ScalePie({ groups }: { groups: { label: string; color: string; count: number }[] }) {
   const total = groups.reduce((s, g) => s + g.count, 0);
@@ -363,15 +410,6 @@ function ScalePie({ groups }: { groups: { label: string; color: string; count: n
         ))}
       </div>
     </div>
-  );
-}
-
-function PagerBtn({ children, disabled, onClick }: { children: React.ReactNode; disabled?: boolean; onClick: () => void }) {
-  return (
-    <button type="button" disabled={disabled} onClick={onClick}
-      style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", color: disabled ? "#CBD5E1" : "#52718F", cursor: disabled ? "default" : "pointer", fontSize: 15 }}>
-      {children}
-    </button>
   );
 }
 

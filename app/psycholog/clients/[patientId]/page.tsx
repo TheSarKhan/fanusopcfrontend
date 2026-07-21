@@ -18,7 +18,7 @@ import {
   type PatientTagColor,
 } from "@/lib/api";
 import { FEATURE_GOALS } from "@/lib/features";
-import { azFormatDate } from "@/lib/datetime";
+import { azFormatDate, azFormatDateTime, azFormatTime } from "@/lib/datetime";
 import { toast } from "@/components/Toast";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import {
@@ -26,12 +26,16 @@ import {
   Button,
   Card,
   CardBody,
+  DataTable,
   EmptyBlock,
   Input,
   Stat,
   Stats,
   Status,
   Tabs,
+  type Column,
+  type SortState,
+  type StatusTone,
   type TabItem,
 } from "@/components/ui";
 
@@ -120,6 +124,37 @@ const STATUS: Record<string, { label: string; color: string; bg: string; accent:
   CANCEL_REQUESTED:      { label: "Ləğv gözlənir", color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
   REJECTED:              { label: "Rədd",          color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
 };
+
+/**
+ * Cədvəldə status rəngli rozetlə deyil, <Status> mətni ilə göstərilir.
+ * Rəng yalnız diqqət (`wait`) və risk (`risk`) hallarında məna daşıyır.
+ */
+const STATUS_TONE: Record<string, StatusTone> = {
+  PENDING: "wait",
+  ASSIGNED: "neutral",
+  CONFIRMED: "positive",
+  AWAITING_CONFIRMATION: "wait",
+  DISPUTED: "risk",
+  COMPLETED: "neutral",
+  CANCELLED: "risk",
+  CANCEL_REQUESTED: "wait",
+  REJECTED: "risk",
+};
+
+/**
+ * Client-side sıralama — bütün siyahı üzərində işləyir və səhifə YALNIZ ondan
+ * sonra kəsilir (əks halda sıralama tək səhifənin içində qalardı).
+ */
+function sortRows<T>(rows: T[], columns: Column<T>[], sort: SortState): T[] {
+  const get = columns.find(c => c.key === sort.key)?.sortValue;
+  if (!get) return rows;
+  const factor = sort.dir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const va = get(a), vb = get(b);
+    if (typeof va === "number" && typeof vb === "number") return (va - vb) * factor;
+    return String(va).localeCompare(String(vb), "az") * factor;
+  });
+}
 
 const FLAG_META: Record<string, { label: string; tone: string }> = {
   HIGH_NO_SHOW:     { label: "Yüksək no-show",      tone: "danger" },
@@ -461,14 +496,6 @@ export default function PatientDetailPage() {
 @keyframes m360Sheet{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 .m360-link:hover{text-decoration:underline}
 .m360-ghost:hover{border-color:var(--brand) !important;color:var(--brand) !important}
-.m360-tbl{width:100%;border-collapse:collapse;font-size:13px}
-.m360-tbl th{text-align:left;padding:11px 14px;font-size:12.5px;font-weight:600;color:var(--oxford-60);border-bottom:1px solid var(--hairline);white-space:nowrap}
-.m360-tbl td{padding:12px 14px;border-bottom:1px solid var(--hairline);vertical-align:top;color:var(--oxford)}
-.m360-tbl tbody tr:last-child td{border-bottom:none}
-.m360-tbl tbody tr:hover{background:var(--surface-muted)}
-.m360-pgbtn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--hairline);background:#fff;border-radius:8px;color:var(--oxford);cursor:pointer;font-family:inherit}
-.m360-pgbtn:disabled{opacity:.4;cursor:default}
-.m360-pgbtn:not(:disabled):hover{border-color:var(--brand);color:var(--brand)}
       `}</style>
 
       <Link href="/psycholog/clients" className="fx-link" style={{ display: "inline-flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
@@ -1083,99 +1110,107 @@ function sessionSummary(a: AppointmentDetail): string {
   return "—";
 }
 
+/** Seansın nişanları — rəngli rozet yox, sadə vəziyyət mətnləri. */
+function sessionMarks(a: AppointmentDetail): { label: string; tone: StatusTone }[] {
+  const marks: { label: string; tone: StatusTone }[] = [];
+  if (a.cancelReasonCode && a.cancelReasonCode.includes("NO_SHOW")) marks.push({ label: "No-show", tone: "risk" });
+  if (a.lateCancel) marks.push({ label: "Geç ləğv", tone: "wait" });
+  if (a.status === "COMPLETED" && a.patientConfirmedAt && a.psychologistConfirmedAt && !a.autoConfirmedAt) {
+    marks.push({ label: "Qarşılıqlı təsdiq", tone: "positive" });
+  }
+  return marks;
+}
+
+/** Seans cədvəlinin sütunları — «Qeydə bax» detal popup-unu açır. */
+function sessionColumns(onView: (a: AppointmentDetail) => void): Column<AppointmentDetail>[] {
+  const whenOf = (a: AppointmentDetail) => a.startAt ?? a.requestedStartAt ?? a.createdAt;
+  return [
+    {
+      key: "date",
+      header: "Tarix",
+      sortable: true,
+      sortValue: a => new Date(whenOf(a)).getTime(),
+      cell: a => <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{azFormatDate(whenOf(a))}</span>,
+    },
+    {
+      key: "time",
+      header: "Vaxt",
+      sortable: true,
+      sortValue: a => new Date(whenOf(a)).getTime(),
+      cell: a => <span className="fx-num" style={{ whiteSpace: "nowrap" }}>{azFormatTime(whenOf(a))}</span>,
+    },
+    {
+      key: "status",
+      header: "Status",
+      sortable: true,
+      sortValue: a => (STATUS[a.status] ?? STATUS.ASSIGNED).label,
+      cell: a => (
+        <Status tone={STATUS_TONE[a.status] ?? "neutral"}>{(STATUS[a.status] ?? STATUS.ASSIGNED).label}</Status>
+      ),
+    },
+    {
+      key: "marks",
+      header: "Nişan",
+      cell: a => {
+        const marks = sessionMarks(a);
+        if (marks.length === 0) return <span style={{ color: "var(--oxford-60)" }}>—</span>;
+        // Ayrı sətirlər — çip və ya "·" ayırıcısı işlədilmir.
+        return (
+          <div>
+            {marks.map(m => <div key={m.label}><Status tone={m.tone}>{m.label}</Status></div>)}
+          </div>
+        );
+      },
+    },
+    {
+      key: "note",
+      header: "Qeyd",
+      cell: a =>
+        sessionSummary(a) !== "—" ? (
+          <Button variant="ghost" size="sm" onClick={() => onView(a)}>Qeydə bax</Button>
+        ) : (
+          <span style={{ color: "var(--oxford-60)" }}>—</span>
+        ),
+    },
+  ];
+}
+
 function SessionsSection({ items }: { items: AppointmentDetail[] }) {
-  const [page, setPage] = useState(0);
+  // Pagination komponenti 1-dən başlayır.
+  const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<SortState>({ key: "date", dir: "desc" });
   const [detailAppt, setDetailAppt] = useState<AppointmentDetail | null>(null);
 
-  if (items.length === 0) {
-    return (
-      <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "32px 24px", textAlign: "center", animation: "m360Fade .2s ease" }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Tək seans yoxdur</div>
-        <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>Bu müştəri ilə paketdən kənar seans təyin olunduqda burada görünəcək.</p>
-      </div>
-    );
-  }
+  const columns = useMemo(() => sessionColumns(setDetailAppt), []);
+  const sorted = useMemo(() => sortRows(items, columns, sort), [items, columns, sort]);
 
-  const totalPages = Math.max(1, Math.ceil(items.length / SESSIONS_PAGE_SIZE));
-  const safePage = Math.min(page, totalPages - 1);
-  const start = safePage * SESSIONS_PAGE_SIZE;
-  const rows = items.slice(start, start + SESSIONS_PAGE_SIZE);
+  const pageCount = Math.max(1, Math.ceil(sorted.length / SESSIONS_PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const rows = sorted.slice((safePage - 1) * SESSIONS_PAGE_SIZE, safePage * SESSIONS_PAGE_SIZE);
 
   return (
-    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", overflow: "hidden", animation: "m360Fade .2s ease" }}>
-      <div style={{ overflowX: "auto" }}>
-        <table className="m360-tbl">
-          <thead>
-            <tr>
-              <th>Tarix</th>
-              <th>Vaxt</th>
-              <th>Status</th>
-              <th>Nişan</th>
-              <th>Qeyd</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(a => <SessionRow key={a.id} a={a} onView={setDetailAppt} />)}
-          </tbody>
-        </table>
-      </div>
-
-      {items.length > SESSIONS_PAGE_SIZE && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", padding: "11px 16px", borderTop: "1px solid #F0F4FA" }}>
-          <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
-            {start + 1}–{Math.min(start + SESSIONS_PAGE_SIZE, items.length)} / {items.length} seans
-          </span>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button type="button" className="m360-pgbtn" disabled={safePage === 0} onClick={() => setPage(safePage - 1)} aria-label="Əvvəlki">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 18l-6-6 6-6" /></svg>
-            </button>
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--oxford)", minWidth: 44, textAlign: "center" }}>{safePage + 1} / {totalPages}</span>
-            <button type="button" className="m360-pgbtn" disabled={safePage >= totalPages - 1} onClick={() => setPage(safePage + 1)} aria-label="Növbəti">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 18l6-6-6-6" /></svg>
-            </button>
-          </div>
-        </div>
-      )}
+    <div style={{ animation: "m360Fade .2s ease" }}>
+      <Card>
+        <CardBody style={{ paddingTop: 18 }}>
+          <DataTable
+            rows={rows}
+            columns={columns}
+            rowKey={a => a.id}
+            mobile="cards"
+            sort={sort}
+            onSortChange={next => { setSort(next); setPage(1); }}
+            empty={{
+              title: "Tək seans yoxdur",
+              body: "Bu müştəri ilə paketdən kənar seans təyin olunduqda burada görünəcək.",
+            }}
+            pagination={{ page: safePage, pageCount, onChange: setPage }}
+            totalLabel={`Cəmi ${sorted.length} seans`}
+          />
+        </CardBody>
+      </Card>
 
       {detailAppt && <SessionDetailModal a={detailAppt} onClose={() => setDetailAppt(null)} />}
     </div>
-  );
-}
-
-/** Cədvəl sətri — bir seans. */
-function SessionRow({ a, onView }: { a: AppointmentDetail; onView: (a: AppointmentDetail) => void }) {
-  const st = STATUS[a.status] ?? STATUS.ASSIGNED;
-  const when = a.startAt ?? a.requestedStartAt ?? a.createdAt;
-  const d = new Date(when);
-  const hasBadges = (!!a.cancelReasonCode && a.cancelReasonCode.includes("NO_SHOW"))
-    || !!a.lateCancel
-    || (a.status === "COMPLETED" && !!a.patientConfirmedAt && !!a.psychologistConfirmedAt && !a.autoConfirmedAt);
-  const hasDetail = sessionSummary(a) !== "—";
-  return (
-    <tr>
-      <td style={{ whiteSpace: "nowrap", fontWeight: 700 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: st.accent, flex: "none" }} aria-hidden />
-          {fmtShort(when)}
-        </span>
-      </td>
-      <td style={{ whiteSpace: "nowrap", fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: "var(--oxford-60)" }}>{fmtTime(d)}</td>
-      <td><span style={{ display: "inline-block", background: st.bg, color: st.color, fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999, whiteSpace: "nowrap" }}>{st.label}</span></td>
-      <td>
-        {hasBadges
-          ? <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}><SessionBadges a={a} /></div>
-          : <span style={{ color: "#B9C6D8" }}>—</span>}
-      </td>
-      <td>
-        {hasDetail ? (
-          <button type="button" onClick={() => onView(a)} className="m360-link"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", padding: 0, color: "var(--brand)", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-            Qeydə bax
-          </button>
-        ) : <span style={{ color: "#B9C6D8" }}>—</span>}
-      </td>
-    </tr>
   );
 }
 
@@ -1471,6 +1506,53 @@ function PackageRemainingRow({ index, last }: { index: number; last: boolean }) 
 
 /* ─── Notes section ──────────────────────────────────────────────────────── */
 
+const NOTES_PAGE_SIZE = 10;
+
+/** Klinik qeyd cədvəlinin sütunları — əməliyyat düymələri `actions` ilə verilir. */
+const NOTE_COLUMNS: Column<ClientNote>[] = [
+  {
+    key: "createdAt",
+    header: "Tarix",
+    sortable: true,
+    sortValue: n => new Date(n.createdAt).getTime(),
+    cell: n => {
+      const edited = !!n.updatedAt && n.updatedAt !== n.createdAt;
+      return (
+        <div>
+          <div style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{azFormatDateTime(n.createdAt)}</div>
+          {edited && <div className="fx-row__meta" style={{ marginTop: 2 }}>düzəldildi</div>}
+        </div>
+      );
+    },
+  },
+  {
+    key: "note",
+    header: "Qeyd",
+    cell: n => {
+      const preview = n.body.replace(/\s+/g, " ").trim();
+      return (
+        <div style={{ minWidth: 220 }}>
+          {n.title && <div style={{ fontWeight: 700, marginBottom: 2 }}>{n.title}</div>}
+          <span className="fx-row__meta">
+            {preview ? (preview.length > 72 ? preview.slice(0, 72) + "…" : preview) : "—"}
+          </span>
+        </div>
+      );
+    },
+  },
+  {
+    key: "mood",
+    header: "Əhval",
+    numeric: true,
+    sortable: true,
+    sortValue: n => (typeof n.moodScore === "number" ? n.moodScore : -1),
+    cell: n =>
+      typeof n.moodScore === "number"
+        ? <strong style={{ fontWeight: 800 }}>{n.moodScore}/10</strong>
+        : <span style={{ color: "var(--oxford-60)" }}>—</span>,
+  },
+];
+
 function NotesSection(props: {
   notes: ClientNote[];
   filteredNotes: ClientNote[];
@@ -1497,6 +1579,18 @@ function NotesSection(props: {
           setTitle, setBody, setMood, onSave, onCancel, onEdit, onDelete, onAddNew, onApplyTemplate,
           customTemplates, onCreateTemplate, onDeleteCustomTemplate } = props;
   const [viewNote, setViewNote] = useState<ClientNote | null>(null);
+  // Pagination komponenti 1-dən başlayır.
+  const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<SortState>({ key: "createdAt", dir: "desc" });
+
+  const sortedNotes = useMemo(() => sortRows(filteredNotes, NOTE_COLUMNS, sort), [filteredNotes, sort]);
+
+  // Axtarış dəyişəndə səhifə əvvələ qayıdır.
+  useEffect(() => { setPage(1); }, [search]);
+
+  const pageCount = Math.max(1, Math.ceil(sortedNotes.length / NOTES_PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageNotes = sortedNotes.slice((safePage - 1) * NOTES_PAGE_SIZE, safePage * NOTES_PAGE_SIZE);
 
   return (
     <div style={{ animation: "m360Fade .2s ease" }}>
@@ -1572,59 +1666,39 @@ function NotesSection(props: {
         </div>
       )}
 
-      {notes.length === 0 ? (
-        <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "32px 24px", textAlign: "center" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Hələ klinik qeyd yoxdur</div>
-          <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>Bu müştəri üçün ilk qeydinizi yazın.</p>
-        </div>
-      ) : filteredNotes.length === 0 ? (
-        <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #EDF1F8", padding: 24, textAlign: "center", fontSize: 13, color: "var(--oxford-60)" }}>«{search}» üzrə uyğun qeyd tapılmadı.</div>
-      ) : (
-        <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", overflow: "hidden" }}>
-          <div style={{ overflowX: "auto" }}>
-            <table className="m360-tbl">
-              <thead>
-                <tr>
-                  <th>Tarix</th>
-                  <th>Qeyd</th>
-                  <th>Əhval</th>
-                  <th style={{ textAlign: "right" }}>Əməliyyat</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredNotes.map(n => {
-                  const preview = n.body.replace(/\s+/g, " ").trim();
-                  const edited = !!n.updatedAt && n.updatedAt !== n.createdAt;
-                  return (
-                    <tr key={n.id}>
-                      <td style={{ whiteSpace: "nowrap", fontWeight: 700 }}>
-                        {fmtDateTime(n.createdAt)}
-                        {edited && <div style={{ fontSize: 10.5, fontWeight: 600, color: "var(--oxford-60)", marginTop: 2 }}>düzəldildi</div>}
-                      </td>
-                      <td style={{ minWidth: 220 }}>
-                        {n.title && <div style={{ fontWeight: 700, marginBottom: 2 }}>{n.title}</div>}
-                        <span style={{ color: "var(--oxford-60)", fontWeight: 500 }}>{preview ? (preview.length > 72 ? preview.slice(0, 72) + "…" : preview) : "—"}</span>
-                      </td>
-                      <td style={{ whiteSpace: "nowrap" }}>
-                        {typeof n.moodScore === "number"
-                          ? <strong style={{ fontWeight: 800 }}>{n.moodScore}/10</strong>
-                          : <span style={{ color: "#B9C6D8" }}>—</span>}
-                      </td>
-                      <td>
-                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                          <button onClick={() => setViewNote(n)} className="m360-ghost" style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 8, padding: "6px 11px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}>Bax</button>
-                          <button onClick={() => onEdit(n)} className="m360-ghost" style={{ background: "#fff", color: "#082F6D", border: "1px solid #D6E2F7", borderRadius: 8, padding: "6px 11px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}>Düzəlt</button>
-                          <button onClick={() => onDelete(n.id)} className="m360-soft" style={{ background: "#fff", color: "#991B1B", border: "1px solid #F3D6D6", borderRadius: 8, padding: "6px 11px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}>Sil</button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <Card>
+        <CardBody style={{ paddingTop: 18 }}>
+          <DataTable
+            rows={pageNotes}
+            columns={NOTE_COLUMNS}
+            rowKey={n => n.id}
+            mobile="cards"
+            sort={sort}
+            onSortChange={next => { setSort(next); setPage(1); }}
+            actionsHeader="Əməliyyat"
+            actions={n => (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => setViewNote(n)}>Bax</Button>
+                <Button variant="ghost" size="sm" onClick={() => onEdit(n)}>Düzəlt</Button>
+                <Button variant="dangerGhost" size="sm" onClick={() => onDelete(n.id)}>Sil</Button>
+              </>
+            )}
+            empty={
+              search.trim()
+                ? {
+                    title: `«${search}» üzrə uyğun qeyd tapılmadı`,
+                    body: "Axtarış sözünü dəyişin və ya axtarışı təmizləyin.",
+                  }
+                : {
+                    title: "Hələ klinik qeyd yoxdur",
+                    body: "Bu müştəri üçün ilk qeydinizi yazın.",
+                  }
+            }
+            pagination={{ page: safePage, pageCount, onChange: setPage }}
+            totalLabel={`Cəmi ${sortedNotes.length} qeyd`}
+          />
+        </CardBody>
+      </Card>
 
       {viewNote && <NoteViewModal n={viewNote} onClose={() => setViewNote(null)} onEdit={(n) => { setViewNote(null); onEdit(n); }} />}
     </div>

@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { adminApi, type BlogPost } from "@/lib/api";
 import { IconSearch, IconPlus, IconDownload } from "../_components/icons";
 import DatePicker from "@/components/DatePicker";
+import { Button, DataTable, Status, type Column } from "@/components/ui";
+import { toast } from "@/components/Toast";
+import { azFormatDate } from "@/lib/datetime";
 
 type Tab = "articles" | "home" | "categories" | "media";
 type StatusFilter = "all" | "published" | "draft" | "archived";
@@ -22,6 +25,9 @@ const EMPTY_POST: Omit<BlogPost, "id"> = {
   active: true,
   status: "PUBLISHED",
 };
+
+const PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 const AV_COLORS = ["#6366F1", "#10B981", "#F59E0B", "#3A74D6", "#082F6D"];
 
@@ -55,12 +61,24 @@ export default function ContentPage() {
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [modal, setModal] = useState<{ open: boolean; item: Omit<BlogPost, "id">; id?: number } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Səhifələmə client tərəfdədir — status/kateqoriya sayğacları və filtrlər
+  // BÜTÜN məqalələr üzərində işləsin deyə tam siyahı bir dəfə yüklənir.
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(PAGE_SIZE);
 
   const load = () => {
     setLoading(true);
-    adminApi.getBlogPosts().then(setItems).catch(() => {}).finally(() => setLoading(false));
+    setError(null);
+    adminApi.getBlogPosts()
+      .then(setItems)
+      .catch((e) => setError((e as Error).message || "Məqalələr yüklənmədi"))
+      .finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
+
+  // Filtr və ya axtarış dəyişəndə boş səhifədə qalmamaq üçün başa qayıdırıq.
+  useEffect(() => { setPage(1); }, [search, filter, size]);
 
   const counts = useMemo(() => {
     const c = { all: items.length, published: 0, draft: 0, archived: 0, views: 0 };
@@ -76,6 +94,10 @@ export default function ContentPage() {
       return true;
     });
   }, [items, search, filter]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / size));
+  const safePage = Math.min(page, pageCount);
+  const pageRows = filtered.slice((safePage - 1) * size, safePage * size);
 
   const openCreate = () => setModal({ open: true, item: { ...EMPTY_POST } });
   const openEdit = (p: BlogPost) => setModal({ open: true, item: { ...p }, id: p.id });
@@ -94,7 +116,7 @@ export default function ContentPage() {
       close();
       load();
     } catch (e) {
-      alert((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
       setSaving(false);
     }
@@ -105,15 +127,54 @@ export default function ContentPage() {
     try {
       await adminApi.deleteBlogPost(id, slug);
       load();
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
   };
 
   const toggleActive = async (p: BlogPost) => {
     try {
       await adminApi.updateBlogPost(p.id, { ...p, active: !p.active });
       load();
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
   };
+
+  const columns: Column<BlogPost>[] = [
+    {
+      key: "title",
+      header: "Başlıq",
+      cell: (p) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 22 }} aria-hidden="true">{p.emoji}</span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>{p.title}</div>
+            <div className="fx-subtitle">/blog/{p.slug}</div>
+            <div className="fx-subtitle">{p.readTimeMinutes} dəq oxu</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (p) => {
+        const s = statusOf(p);
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Status tone={s === "published" ? "neutral" : s === "draft" ? "wait" : "muted"}>
+              {s === "published" ? "Dərc" : s === "draft" ? "Draft" : "Arxiv"}
+            </Status>
+            {p.featured && <span className="fx-subtitle">Öne çıxarılıb</span>}
+          </div>
+        );
+      },
+    },
+    { key: "category", header: "Kateqoriya", cell: (p) => p.category, hideOnMobile: true },
+    { key: "readTime", header: "Oxuma", numeric: true, cell: (p) => `${p.readTimeMinutes} dəq` },
+    {
+      key: "publishedDate",
+      header: "Dərc tarixi",
+      cell: (p) => (p.publishedDate ? azFormatDate(p.publishedDate) : <span className="fx-subtitle">—</span>),
+    },
+  ];
 
   return (
     <div className="page">
@@ -191,66 +252,41 @@ export default function ContentPage() {
               <div className="toolbar-spacer" />
             </div>
 
-            <table className="t">
-              <thead>
-                <tr>
-                  <th>Başlıq</th>
-                  <th>Status</th>
-                  <th>Kateqoriya</th>
-                  <th className="num">Oxuma</th>
-                  <th>Dərc tarixi</th>
-                  <th style={{ width: 140 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "var(--muted)" }}>Yüklənir…</td></tr>}
-                {!loading && filtered.length === 0 && (
-                  <tr><td colSpan={6} style={{ padding: 24, textAlign: "center", color: "var(--muted)" }}>Məqalə tapılmadı</td></tr>
-                )}
-                {!loading && filtered.map((p) => {
-                  const status = statusOf(p);
-                  return (
-                    <tr key={p.id}>
-                      <td>
-                        <div className="row" style={{ gap: 10 }}>
-                          <span style={{ fontSize: 22 }}>{p.emoji}</span>
-                          <div>
-                            <div className="strong">{p.title}</div>
-                            <div className="row" style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, gap: 10, flexWrap: "wrap" }}>
-                              <span>/blog/{p.slug}</span>
-                              <span>{p.readTimeMinutes} dəq oxu</span>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        {status === "published" && <span className="pill sage"><span className="dot" />Dərc</span>}
-                        {status === "draft" && <span className="pill gold"><span className="dot" />Draft</span>}
-                        {status === "archived" && <span className="pill muted"><span className="dot" />Arxiv</span>}
-                        {p.featured && <span className="pill ox" style={{ marginLeft: 4 }}>öne</span>}
-                      </td>
-                      <td><span className="pill ox">{p.category}</span></td>
-                      <td className="num strong">{p.readTimeMinutes} dəq</td>
-                      <td>
-                        {p.publishedDate ? (() => {
-                          const d = new Date(p.publishedDate);
-                          const day = String(d.getDate()).padStart(2, "0");
-                          const month = String(d.getMonth() + 1).padStart(2, "0");
-                          return `${day}.${month}.${d.getFullYear()}`;
-                        })() : <span className="text-muted">—</span>}
-                      </td>
-                      <td>
-                        <div className="row" style={{ gap: 4 }}>
-                          <button className="btn sm ghost" onClick={() => openEdit(p)}>Redaktə</button>
-                          <button className="btn sm ghost" onClick={() => toggleActive(p)}>{p.active ? "Arxivlə" : "Aktivləşdir"}</button>
-                          <button className="btn sm danger" onClick={() => remove(p.id, p.slug)}>Sil</button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <DataTable
+              rows={pageRows}
+              columns={columns}
+              rowKey={(p) => p.id}
+              loading={loading}
+              error={error}
+              onRetry={load}
+              empty={{
+                title: "Məqalə tapılmadı",
+                body: "Seçilmiş status filtrinə və axtarışa uyğun məqalə yoxdur. Filtri dəyişib yenidən yoxlayın.",
+                actions: (
+                  <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setFilter("all"); }}>
+                    Filtrləri təmizlə
+                  </Button>
+                ),
+              }}
+              actions={(p) => (
+                <>
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(p)}>Redaktə</Button>
+                  <Button variant="ghost" size="sm" onClick={() => toggleActive(p)}>
+                    {p.active ? "Arxivlə" : "Aktivləşdir"}
+                  </Button>
+                  <Button variant="dangerGhost" size="sm" onClick={() => remove(p.id, p.slug)}>Sil</Button>
+                </>
+              )}
+              pagination={{
+                page: safePage,
+                pageCount,
+                onChange: setPage,
+                pageSize: size,
+                onPageSizeChange: setSize,
+                pageSizeOptions: PAGE_SIZE_OPTIONS,
+              }}
+              totalLabel={`Göstərilir: ${(safePage - 1) * size + 1}–${Math.min(safePage * size, filtered.length)} / ${filtered.length}`}
+            />
           </div>
         </>
       )}

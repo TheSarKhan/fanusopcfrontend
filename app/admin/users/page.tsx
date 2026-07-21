@@ -5,6 +5,18 @@ import { useSearchParams } from "next/navigation";
 import { adminApi, type UserRecord, type Psychologist, type PagedUsersResponse, type PsychologistApplication } from "@/lib/api";
 import { IconSearch, IconChevron, IconUser, IconUsers, IconSettings, IconClock, IconEye, IconCheck, IconX, IconAlert, IconDownload } from "../_components/icons";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { toast } from "@/components/Toast";
+import { azFormatDate, azFormatDateTime } from "@/lib/datetime";
+import {
+  Avatar,
+  Button,
+  DataTable,
+  IconButton,
+  Status,
+  Switch,
+  type Column,
+  type StatusTone,
+} from "@/components/ui";
 
 // ── Types ────────────────────────────────────────────────────────
 type RoleFilter = "all" | "PATIENT" | "PSYCHOLOGIST" | "OPERATOR" | "ADMIN";
@@ -22,9 +34,6 @@ const ROLES: { k: RoleFilter; label: string }[] = [
 const ROLE_LABELS: Record<string, string> = {
   PATIENT: "Pasiyent", PSYCHOLOGIST: "Psixoloq", OPERATOR: "Operator", ADMIN: "Admin",
 };
-const ROLE_COLORS: Record<string, string> = {
-  PATIENT: "muted", PSYCHOLOGIST: "sage", OPERATOR: "gold", ADMIN: "ox",
-};
 const ROLE_ICONS: Record<string, React.ReactNode> = {
   PATIENT: <IconUser size={14} />,
   PSYCHOLOGIST: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a4.5 4.5 0 0 0-4.5 4.5c0 .5.08.98.23 1.43A3.5 3.5 0 0 0 5 11.5a3.5 3.5 0 0 0 1.5 2.87V15a3 3 0 0 0 3 3h.5v3"/><path d="M12 2a4.5 4.5 0 0 1 4.5 4.5c0 .5-.08.98-.23 1.43A3.5 3.5 0 0 1 19 11.5a3.5 3.5 0 0 1-1.5 2.87V15a3 3 0 0 1-3 3H14v3"/></svg>,
@@ -34,6 +43,17 @@ const ROLE_ICONS: Record<string, React.ReactNode> = {
 
 const AV_COLORS = ["#6366F1", "#10B981", "#F59E0B", "#3A74D6", "#082F6D", "#5d6b85"];
 
+const USER_PAGE_SIZE_OPTIONS = [10, 20, 50];
+const APP_PAGE_SIZE = 20;
+const APP_PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+/** Müraciət statusu — rəngli rozet yox, mətn. */
+const APP_STATUS_META: Record<string, { label: string; tone: StatusTone }> = {
+  PENDING:  { label: "Gözləmədə",  tone: "wait" },
+  APPROVED: { label: "Təsdiqlənib", tone: "positive" },
+  REJECTED: { label: "Rədd edilib", tone: "risk" },
+};
+
 // ── Helpers ──────────────────────────────────────────────────────
 function initials(u: UserRecord) {
   const parts = [u.firstName, u.lastName].filter(Boolean);
@@ -42,21 +62,13 @@ function initials(u: UserRecord) {
 function avatarColor(seed: string) {
   return AV_COLORS[Array.from(seed).reduce((s, c) => s + c.charCodeAt(0), 0) % AV_COLORS.length];
 }
+/** gg.aa.iiii — boş dəyər üçün tire. */
 function fmtDate(s?: string | null) {
-  if (!s) return "—";
-  const d = new Date(s);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  return `${day}.${month}.${d.getFullYear()}`;
+  return s ? azFormatDate(s) : "—";
 }
+/** gg.aa.iiii ss:dd — boş dəyər üçün tire. */
 function fmtDateTime(s?: string | null) {
-  if (!s) return "—";
-  const d = new Date(s);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const hours = String(d.getHours()).padStart(2, "0");
-  const mins = String(d.getMinutes()).padStart(2, "0");
-  return `${day}.${month}.${d.getFullYear()} ${hours}:${mins}`;
+  return s ? azFormatDateTime(s) : "—";
 }
 function fullName(u: UserRecord) {
   return [u.firstName, u.lastName].filter(Boolean).join(" ") || "—";
@@ -88,7 +100,8 @@ export default function UsersPage() {
 
   const [data, setData]         = useState<PagedUsersResponse | null>(null);
   const [loading, setLoading]   = useState(true);
-  
+  const [error, setError]       = useState<string | null>(null);
+
   // Params
   const searchParams = useSearchParams();
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
@@ -129,12 +142,21 @@ export default function UsersPage() {
   const [saving, setSaving]     = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Application List state
+  // Application List state — serverdə səhifələnir (status + axtarış da server parametridir)
   const [mainTab, setMainTab] = useState<MainTab>("users");
   const [apps, setApps] = useState<PsychologistApplication[]>([]);
   const [appsLoading, setAppsLoading] = useState(true);
+  const [appsError, setAppsError] = useState<string | null>(null);
   const [appFilter, setAppFilter] = useState<AppFilter>("PENDING");
   const [appSearch, setAppSearch] = useState("");
+  const debouncedAppSearch = useDebounce(appSearch, 300);
+  // Backend `Paged.page` 0-dan başlayır; Pagination komponenti 1-dən.
+  const [appPage, setAppPage] = useState(0);
+  const [appSize, setAppSize] = useState(APP_PAGE_SIZE);
+  const [appTotalElements, setAppTotalElements] = useState(0);
+  const [appTotalPages, setAppTotalPages] = useState(0);
+  /** Tab nişanındakı say — filtrdən asılı olmasın deyə ayrıca sorğu ilə alınır. */
+  const [pendingCount, setPendingCount] = useState(0);
   const [detailApp, setDetailApp] = useState<PsychologistApplication | null>(null);
   const [rejectModal, setRejectModal] = useState<{ id: number; firstName: string } | null>(null);
   const [rejectNote, setRejectNote] = useState("");
@@ -143,6 +165,7 @@ export default function UsersPage() {
   // Load Data
   const load = useCallback(() => {
     setLoading(true);
+    setError(null);
     adminApi.getUsers({
       role: roleFilter === "all" ? undefined : roleFilter,
       q: debouncedSearch,
@@ -156,7 +179,7 @@ export default function UsersPage() {
       if (res.totalPages > 0 && page >= res.totalPages) {
         setPage(0);
       }
-    }).catch(() => {})
+    }).catch(e => setError((e as Error).message || "İstifadəçilər yüklənmədi"))
       .finally(() => setLoading(false));
   }, [roleFilter, debouncedSearch, page, size, sort, dir]);
 
@@ -164,8 +187,29 @@ export default function UsersPage() {
 
   const loadApplications = useCallback(() => {
     setAppsLoading(true);
-    adminApi.getApplications().then(setApps).catch(() => {}).finally(() => setAppsLoading(false));
+    setAppsError(null);
+    adminApi.getApplicationsPaged({
+      page: appPage,
+      size: appSize,
+      status: appFilter === "all" ? undefined : appFilter,
+      q: debouncedAppSearch || undefined,
+    }).then(res => {
+      setApps(res.content);
+      setAppTotalElements(res.totalElements);
+      setAppTotalPages(res.totalPages);
+      if (res.totalPages > 0 && appPage >= res.totalPages) setAppPage(0);
+    }).catch(e => setAppsError((e as Error).message || "Müraciətlər yüklənmədi"))
+      .finally(() => setAppsLoading(false));
+  }, [appPage, appSize, appFilter, debouncedAppSearch]);
+
+  /** Nişandakı "gözləyən" sayı — açıq filtrdən asılı olmadan serverdən alınır. */
+  const loadPendingCount = useCallback(() => {
+    adminApi.getApplicationsPaged({ page: 0, size: 1, status: "PENDING" })
+      .then(res => setPendingCount(res.totalElements))
+      .catch(() => {});
   }, []);
+
+  useEffect(() => { loadPendingCount(); }, [loadPendingCount]);
 
   useEffect(() => {
     if (mainTab === "applications") loadApplications();
@@ -176,15 +220,10 @@ export default function UsersPage() {
     setPage(0);
   }, [roleFilter, debouncedSearch]);
 
-  // Handlers
-  const handleSort = (field: string) => {
-    if (sort === field) {
-      setDir(dir === "asc" ? "desc" : "asc");
-    } else {
-      setSort(field);
-      setDir("asc");
-    }
-  };
+  // Server filtri dəyişəndə boş səhifədə qalmamaq üçün başa qayıdırıq.
+  useEffect(() => {
+    setAppPage(0);
+  }, [appFilter, debouncedAppSearch, appSize]);
 
   const openDrawer = (u: UserRecord) => {
     setAccForm({ firstName: u.firstName ?? "", lastName: u.lastName ?? "", phone: u.phone ?? "", role: u.role, emailVerified: u.emailVerified });
@@ -233,7 +272,7 @@ export default function UsersPage() {
       await adminApi.updateUser(editUser.id, accForm);
       load(); // Reload table
       closeDrawer();
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 
@@ -250,10 +289,10 @@ export default function UsersPage() {
         active: profData.active ?? true
       };
       await adminApi.updateUserPsychologistProfile(editUser.id, pData);
-      alert("Profil yadda saxlanıldı!");
+      toast("Profil yadda saxlanıldı", "success");
       load();
       closeDrawer();
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
     finally { setSaving(false); }
   };
 
@@ -261,10 +300,10 @@ export default function UsersPage() {
     if (!editUser) return;
     try {
       const res = await adminApi.addToPsychologists(editUser.id);
-      alert(res.message || "Uğurla əlavə edildi");
+      toast(res.message || "Uğurla əlavə edildi", "success");
       load();
       closeDrawer();
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
   };
 
   // Application actions
@@ -274,9 +313,10 @@ export default function UsersPage() {
     try {
       await adminApi.approveApplication(id);
       loadApplications();
+      loadPendingCount();
       load();
       setDetailApp(null);
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
     finally { setActionLoading(false); }
   };
 
@@ -287,9 +327,10 @@ export default function UsersPage() {
     try {
       await adminApi.rejectApplication(rejectModal.id, rejectNote || undefined);
       loadApplications();
+      loadPendingCount();
       setRejectModal(null);
       setDetailApp(null);
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
     finally { setActionLoading(false); }
   };
 
@@ -303,7 +344,7 @@ export default function UsersPage() {
       if (editUser?.id === updated.id) {
         setEditUser(updated);
       }
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
   };
 
   const remove = async (u: UserRecord) => {
@@ -313,7 +354,7 @@ export default function UsersPage() {
       await adminApi.deleteUser(u.id);
       load();
       closeDrawer();
-    } catch (e) { alert((e as Error).message); }
+    } catch (e) { toast((e as Error).message, "error"); }
     finally { setDeleting(false); }
   };
 
@@ -333,24 +374,96 @@ export default function UsersPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert("İxrac zamanı xəta baş verdi: " + (e as Error).message);
+      toast("İxrac zamanı xəta baş verdi: " + (e as Error).message, "error");
     } finally {
       setExporting(false);
     }
   };
 
-  const rolePill = (role: string) => (
-    <span className={`pill ${ROLE_COLORS[role] ?? "muted"}`}>
-      {ROLE_LABELS[role] ?? role}
-    </span>
+  // Rol rəngli rozetlə deyil, mətnlə göstərilir.
+  const roleLabel = (role: string) => (
+    <Status tone="muted">{ROLE_LABELS[role] ?? role}</Status>
   );
 
-  const sortIndicator = (field: string) => {
-    if (sort !== field) return <span style={{ opacity: 0.3, marginLeft: 4 }}>↕</span>;
-    return <span style={{ marginLeft: 4, color: "var(--ox)" }}>{dir === "asc" ? "↑" : "↓"}</span>;
-  };
-
   const roleCounts = data?.roleCounts ?? {};
+
+  // ── İstifadəçi cədvəlinin sütunları (sıralama serverdədir) ──────
+  const userColumns: Column<UserRecord>[] = [
+    {
+      key: "firstName",
+      header: "İstifadəçi",
+      sortable: true,
+      cell: (u) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Avatar name={fullName(u) !== "—" ? fullName(u) : u.email} size="sm" />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>{fullName(u)}</div>
+            <div className="fx-subtitle">{u.email}</div>
+          </div>
+        </div>
+      ),
+    },
+    { key: "role", header: "Rol", sortable: true, cell: (u) => roleLabel(u.role) },
+    { key: "phone", header: "Telefon", cell: (u) => u.phone || "—", hideOnMobile: true },
+    {
+      key: "active",
+      header: "Status",
+      cell: (u) => (
+        // Açar sətir klikini (drawer) tetikləməməlidir.
+        <span
+          style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Switch
+            checked={u.active}
+            onChange={() => toggleActiveInline(u)}
+            aria-label={u.active ? "Hesabı deaktiv et" : "Hesabı aktivləşdir"}
+          />
+          <Status tone={u.active ? "positive" : "muted"}>{u.active ? "Aktiv" : "Deaktiv"}</Status>
+        </span>
+      ),
+    },
+    {
+      key: "lastLogin",
+      header: "Son giriş",
+      sortable: true,
+      hideOnMobile: true,
+      cell: (u) => (u.lastLogin ? (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <IconClock size={12} /> {fmtDate(u.lastLogin)}
+        </span>
+      ) : "—"),
+    },
+    { key: "createdAt", header: "Qeydiyyat", sortable: true, cell: (u) => fmtDate(u.createdAt) },
+  ];
+
+  // ── Müraciət cədvəlinin sütunları ──────────────────────────────
+  const appColumns: Column<PsychologistApplication>[] = [
+    {
+      key: "applicant",
+      header: "Müraciətçi",
+      cell: (a) => (
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>{a.firstName} {a.lastName}</div>
+          <div className="fx-subtitle">{a.email}</div>
+        </div>
+      ),
+    },
+    {
+      key: "education",
+      header: "Universitet / dərəcə",
+      hideOnMobile: true,
+      cell: (a) => (
+        <div style={{ minWidth: 0 }}>
+          <div>{a.university}</div>
+          <div className="fx-subtitle">{a.degree} ({a.graduationYear})</div>
+        </div>
+      ),
+    },
+    { key: "experience", header: "Təcrübə", cell: (a) => `${a.experienceYears} il` },
+    { key: "createdAt", header: "Tarix", cell: (a) => fmtDate(a.createdAt) },
+    { key: "status", header: "Status", cell: (a) => <AppStatus status={a.status} /> },
+  ];
   
   // Drawer animations
   const drawerStyle: React.CSSProperties = {
@@ -379,12 +492,7 @@ export default function UsersPage() {
               {t("staff.adminUsersTitle")}
             </button>
             <button className={`btn sm ${mainTab === "applications" ? "primary" : "ghost"}`} onClick={() => setMainTab("applications")}>
-              Psixoloq müraciətləri
-              {apps.filter(a => a.status === "PENDING").length > 0 && (
-                <span className="pill danger" style={{ marginLeft: 6, fontSize: 10, padding: "2px 6px" }}>
-                  {apps.filter(a => a.status === "PENDING").length}
-                </span>
-              )}
+              Psixoloq müraciətləri{pendingCount > 0 ? ` (${pendingCount})` : ""}
             </button>
           </div>
         </div>
@@ -454,128 +562,46 @@ export default function UsersPage() {
           </div>
 
         {/* ── Table ── */}
-        <table className="t">
-          <thead>
-            <tr>
-              <th onClick={() => handleSort("firstName")} style={{ cursor: "pointer" }}>İstifadəçi {sortIndicator("firstName")}</th>
-              <th onClick={() => handleSort("role")} style={{ cursor: "pointer" }}>Rol {sortIndicator("role")}</th>
-              <th>Telefon</th>
-              <th>Status</th>
-              <th onClick={() => handleSort("lastLogin")} style={{ cursor: "pointer" }}>Son giriş {sortIndicator("lastLogin")}</th>
-              <th onClick={() => handleSort("createdAt")} style={{ cursor: "pointer" }}>Qeydiyyat {sortIndicator("createdAt")}</th>
-              <th style={{ width: 60, textAlign: "right" }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Yüklənir…</td></tr>
-            )}
-            {!loading && (!data?.content || data.content.length === 0) && (
-              <tr>
-                <td colSpan={7} style={{ padding: 60, textAlign: "center" }}>
-                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 16, color: "var(--muted)" }}><IconSearch size={40} /></div>
-                  <div style={{ fontWeight: 600, fontSize: 16 }}>Nəticə tapılmadı</div>
-                  <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>Axtarışa və ya filtrlərə uyğun istifadəçi yoxdur.</div>
-                  <button className="btn mt-16" onClick={() => {setSearch(""); setRoleFilter("all");}}>Filtrləri təmizlə</button>
-                </td>
-              </tr>
-            )}
-            {!loading && data?.content?.map((u) => (
-              <tr key={u.id} style={{ opacity: u.active ? 1 : 0.6, cursor: "pointer", transition: "background 0.2s" }} onClick={() => openDrawer(u)} className="hover-row">
-                <td>
-                  <div className="row-avatar">
-                    <div className="av" style={{ background: avatarColor(u.email) }}>{initials(u)}</div>
-                    <div>
-                      <div className="nm" style={{ fontWeight: 600 }}>{fullName(u)}</div>
-                      <div style={{ fontSize: 12, color: "var(--muted)" }}>{u.email}</div>
-                    </div>
-                  </div>
-                </td>
-                <td>{rolePill(u.role)}</td>
-                <td style={{ fontSize: 13 }}>{u.phone || "—"}</td>
-                <td onClick={(e) => e.stopPropagation()}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <button 
-                      onClick={() => toggleActiveInline(u)}
-                      className={`switch${u.active ? " on" : ""}`} 
-                      style={{ transform: "scale(0.85)", transformOrigin: "left center" }}
-                    />
-                    <span style={{ fontSize: 12, color: u.active ? "var(--sage)" : "var(--muted)", fontWeight: 500 }}>
-                      {u.active ? "Aktiv" : "Deaktiv"}
-                    </span>
-                  </div>
-                </td>
-                <td style={{ fontSize: 12.5, color: "var(--muted)" }}>
-                  {u.lastLogin ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      <IconClock size={12} /> {fmtDate(u.lastLogin)}
-                    </div>
-                  ) : "—"}
-                </td>
-                <td style={{ fontSize: 12.5, color: "var(--muted)" }}>{fmtDate(u.createdAt)}</td>
-                <td style={{ textAlign: "right" }}>
-                  <IconChevron size={16} style={{ color: "var(--muted)", transform: "rotate(-90deg)" }} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* ── Pagination ── */}
-        {data && data.totalPages > 1 && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderTop: "1px solid var(--border)" }}>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>
-              Göstərilir: {data.page * data.size + 1} - {Math.min((data.page + 1) * data.size, data.totalElements)} / {data.totalElements}
-            </div>
-            <div style={{ display: "flex", gap: 4 }}>
-              <button 
-                className="btn sm ghost" 
-                disabled={data.page === 0} 
-                onClick={() => setPage(p => p - 1)}
-              >
-                Əvvəlki
-              </button>
-              {Array.from({ length: Math.min(5, data.totalPages) }, (_, i) => {
-                // Show sliding window of 5 pages
-                let p = i;
-                if (data.totalPages > 5 && data.page > 2) {
-                  p = data.page - 2 + i;
-                  if (p >= data.totalPages) p = data.totalPages - (5 - i); // adjust end bounds
-                }
-                if (p < 0 || p >= data.totalPages) return null;
-                return (
-                  <button 
-                    key={p} 
-                    className={`btn sm ${data.page === p ? "primary" : "ghost"}`}
-                    onClick={() => setPage(p)}
-                  >
-                    {p + 1}
-                  </button>
-                );
-              })}
-              <button 
-                className="btn sm ghost" 
-                disabled={data.page >= data.totalPages - 1} 
-                onClick={() => setPage(p => p + 1)}
-              >
-                Sonrakı
-              </button>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>Səhifə başı:</span>
-              <select 
-                className="input sm" 
-                value={size} 
-                onChange={(e) => {setSize(Number(e.target.value)); setPage(0);}}
-                style={{ padding: "4px 8px", height: "auto" }}
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
-            </div>
-          </div>
-        )}
+        <DataTable
+          rows={data?.content ?? []}
+          columns={userColumns}
+          rowKey={(u) => u.id}
+          loading={loading}
+          error={error}
+          onRetry={load}
+          onRowClick={openDrawer}
+          empty={{
+            title: "Nəticə tapılmadı",
+            body: "Axtarışa və ya filtrlərə uyğun istifadəçi yoxdur.",
+            actions: (
+              <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setRoleFilter("all"); }}>
+                Filtrləri təmizlə
+              </Button>
+            ),
+          }}
+          // Sıralama serverdədir — sütun açarları backend sahə adlarıdır.
+          sort={{ key: sort, dir }}
+          onSortChange={(s) => { setSort(s.key); setDir(s.dir); setPage(0); }}
+          actions={(u) => (
+            <IconButton aria-label="İstifadəçi kartını aç" onClick={() => openDrawer(u)}>
+              <IconChevron size={16} style={{ transform: "rotate(-90deg)" }} />
+            </IconButton>
+          )}
+          // Backend `page` 0-dan, Pagination komponenti 1-dən başlayır.
+          pagination={{
+            page: page + 1,
+            pageCount: Math.max(1, data?.totalPages ?? 1),
+            onChange: (p) => setPage(p - 1),
+            pageSize: size,
+            onPageSizeChange: (s) => { setSize(s); setPage(0); },
+            pageSizeOptions: USER_PAGE_SIZE_OPTIONS,
+          }}
+          totalLabel={
+            data && data.totalElements > 0
+              ? `Göstərilir: ${data.page * data.size + 1}–${Math.min((data.page + 1) * data.size, data.totalElements)} / ${data.totalElements}`
+              : undefined
+          }
+        />
         </div>
       )}
 
@@ -595,54 +621,45 @@ export default function UsersPage() {
               ))}
             </div>
           </div>
-          <table className="t">
-            <thead>
-              <tr>
-                <th>Müraciətçi</th>
-                <th>Universitet / Dərəcə</th>
-                <th>Təcrübə</th>
-                <th>Tarix</th>
-                <th>Status</th>
-                <th style={{ width: 80 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {appsLoading && (
-                <tr><td colSpan={6} style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Yüklənir…</td></tr>
-              )}
-              {!appsLoading && apps
-                .filter(a => {
-                   if (appFilter !== "all" && a.status !== appFilter) return false;
-                   if (appSearch) {
-                      const q = appSearch.toLowerCase();
-                      return `${a.firstName} ${a.lastName} ${a.email}`.toLowerCase().includes(q);
-                   }
-                   return true;
-                })
-                .map((a) => (
-                <tr key={a.id}>
-                  <td>
-                    <div className="nm" style={{ fontWeight: 600 }}>{a.firstName} {a.lastName}</div>
-                    <div style={{ fontSize: 12, color: "var(--muted)" }}>{a.email}</div>
-                  </td>
-                  <td>
-                    <div style={{ fontSize: 13 }}>{a.university}</div>
-                    <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{a.degree} ({a.graduationYear})</div>
-                  </td>
-                  <td style={{ fontSize: 13 }}>{a.experienceYears} il</td>
-                  <td style={{ fontSize: 13 }}>{fmtDate(a.createdAt)}</td>
-                  <td>{statusPill(a.status)}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button className="btn sm ghost icon-only" onClick={() => setDetailApp(a)}>
-                      <IconEye size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            rows={apps}
+            columns={appColumns}
+            rowKey={(a) => a.id}
+            loading={appsLoading}
+            error={appsError}
+            onRetry={loadApplications}
+            empty={{
+              title: "Müraciət tapılmadı",
+              body: "Seçilmiş statusa və axtarışa uyğun psixoloq müraciəti yoxdur.",
+              actions: (
+                <Button variant="ghost" size="sm" onClick={() => { setAppSearch(""); setAppFilter("all"); }}>
+                  Filtrləri təmizlə
+                </Button>
+              ),
+            }}
+            actions={(a) => (
+              <IconButton aria-label="Müraciəti aç" onClick={() => setDetailApp(a)}>
+                <IconEye size={16} />
+              </IconButton>
+            )}
+            // Backend `page` 0-dan, Pagination komponenti 1-dən başlayır.
+            pagination={{
+              page: appPage + 1,
+              pageCount: Math.max(1, appTotalPages),
+              onChange: (p) => setAppPage(p - 1),
+              pageSize: appSize,
+              onPageSizeChange: (s) => { setAppSize(s); setAppPage(0); },
+              pageSizeOptions: APP_PAGE_SIZE_OPTIONS,
+            }}
+            totalLabel={
+              appTotalElements > 0
+                ? `Göstərilir: ${appPage * appSize + 1}–${Math.min((appPage + 1) * appSize, appTotalElements)} / ${appTotalElements}`
+                : undefined
+            }
+          />
         </div>
       )}
+
 
       {/* ─── Application detail modal (Review Mode) ────────────────────────── */}
       {detailApp && (
@@ -651,7 +668,7 @@ export default function UsersPage() {
             <div className="modal-head">
               <div className="modal-title">Müraciət Review — {detailApp.firstName} {detailApp.lastName}</div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  {statusPill(detailApp.status)}
+                  <AppStatus status={detailApp.status} />
                   <button className="btn ghost icon-only sm" onClick={() => setDetailApp(null)}>✕</button>
               </div>
             </div>
@@ -858,7 +875,7 @@ export default function UsersPage() {
                   <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {fullName(editUser)}
                   </h2>
-                  {rolePill(editUser.role)}
+                  {roleLabel(editUser.role)}
                 </div>
                 <div style={{ fontSize: 13, color: "var(--muted)" }}>{editUser.email}</div>
                 <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
@@ -1077,9 +1094,7 @@ export default function UsersPage() {
                         <div>
                             <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Müraciət statusu</div>
                             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                               <span className={`pill ${appData.status === "APPROVED" ? "sage" : appData.status === "REJECTED" ? "ox" : "gold"}`}>
-                                    {appData.status === "APPROVED" ? "Təsdiqlənib" : appData.status === "REJECTED" ? "Rədd edilib" : "Gözləmədə"}
-                               </span>
+                               <AppStatus status={appData.status} />
                                <span style={{ fontSize: 12, color: "var(--muted)" }}>Tarix: {fmtDateTime(appData.createdAt)}</span>
                             </div>
                         </div>
@@ -1155,11 +1170,6 @@ export default function UsersPage() {
         )}
       </div>
 
-      <style jsx global>{`
-        .hover-row:hover {
-          background-color: var(--surface);
-        }
-      `}</style>
     </div>
   );
 }
@@ -1185,13 +1195,11 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function statusPill(status: string) {
-  switch (status) {
-    case "PENDING": return <span className="pill gold">Gözləmədə</span>;
-    case "APPROVED": return <span className="pill sage">Təsdiqlənib</span>;
-    case "REJECTED": return <span className="pill ox">Rədd edilib</span>;
-    default: return <span className="pill muted">{status}</span>;
-  }
+/** Müraciət statusu — rəngli rozet yox, mətn. */
+function AppStatus({ status }: { status: string }) {
+  const meta = APP_STATUS_META[status];
+  if (!meta) return <Status tone="muted">{status}</Status>;
+  return <Status tone={meta.tone}>{meta.label}</Status>;
 }
 
 function ConsentLine({ ok, label }: { ok?: boolean; label: string }) {

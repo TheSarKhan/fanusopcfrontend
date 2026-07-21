@@ -289,8 +289,8 @@ function PsyCard({
   const { t } = useT();
   const verified = p.psychologistType === "FANUS";
   const specs = p.specializations ?? [];
+  // Yalnız ilk üç ixtisas göstərilir; qalanı profil səhifəsindədir.
   const shown = specs.slice(0, 3);
-  const more = specs.length - shown.length;
   const rating = ratingNum(p.rating);
   const years = experienceNum(p.experience);
   const sessions = p.displayedSessionCount ?? sessionsNum(p.sessionsCount);
@@ -299,107 +299,118 @@ function PsyCard({
   const bookHref = p.slug ? `/patient/book/${p.slug}` : "/patient/psychologists";
 
   return (
-    <div style={{ position: "relative", width: "100%", maxWidth: 420, background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 22, display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "relative", width: "100%", maxWidth: 460, background: "#fff", borderRadius: 20, boxShadow: "0 2px 14px rgba(8,47,109,.06)", border: "1px solid #EDF1F8", padding: 24, display: "flex", flexDirection: "column" }}>
       <button
         type="button"
         onClick={onToggleFav}
         disabled={busy}
         title={favorite ? "Sevimlilərdən sil" : "Sevimliyə əlavə et"}
         aria-label={favorite ? "Sevimlilərdən sil" : "Sevimliyə əlavə et"}
-        style={{ position: "absolute", top: 16, right: 16, width: 38, height: 38, display: "inline-flex", alignItems: "center", justifyContent: "center", background: favorite ? "var(--brand-100)" : "#fff", border: `1px solid ${favorite ? "var(--brand-100)" : "#E1E9F5"}`, borderRadius: 11, cursor: busy ? "wait" : "pointer" }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill={favorite ? "var(--brand)" : "none"} stroke={favorite ? "var(--brand)" : "#9DB0CC"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        style={{ position: "absolute", top: 22, right: 22, width: 44, height: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", background: favorite ? "var(--brand-50)" : "#fff", border: "1.5px solid var(--brand-100)", borderRadius: 13, cursor: busy ? "wait" : "pointer" }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill={favorite ? "var(--brand)" : "none"} stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
         </svg>
       </button>
 
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 16, paddingRight: 44 }}>
-        <span style={{ width: 56, height: 56, borderRadius: 16, background: p.accentColor || "var(--brand-700)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, flex: "none", overflow: "hidden" }}>
-          {p.photoUrl ? (
-             
-            <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : initialsOf(p.name)}
+      {/* Kimlik — dairəvi şəkil, təsdiq nişanı şəklin üstündə (ad yanında ayrıca
+          etiket deyil), sonra ad və ixtisas. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18, paddingRight: 56 }}>
+        <span style={{ position: "relative", flex: "none" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 76, height: 76, borderRadius: "50%", background: p.accentColor || "var(--brand-700)", color: "#fff", fontSize: 22, fontWeight: 700, overflow: "hidden", boxShadow: "0 0 0 4px #fff, 0 0 0 5px #EDF1F8" }}>
+            {p.photoUrl ? (
+
+              <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : initialsOf(p.name)}
+          </span>
+          {verified && (
+            <span
+              title="Fanus təsdiqli psixoloq"
+              aria-label="Fanus təsdiqli psixoloq"
+              style={{ position: "absolute", right: -1, bottom: -1, width: 24, height: 24, borderRadius: "50%", background: "#10B981", border: "3px solid #fff", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+            </span>
+          )}
         </span>
-        <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", marginBottom: 3 }}>
-            <span style={{ fontSize: 16.5, fontWeight: 700, color: "var(--oxford)", lineHeight: 1.2 }}>{p.name}</span>
-            {verified && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--brand-100)", color: "var(--brand-700)", fontSize: 10, fontWeight: 800, letterSpacing: ".06em", padding: "3px 8px", borderRadius: 999 }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2l7 3v6c0 4.5-3 8.3-7 9.5C8 19.3 5 15.5 5 11V5z" /><path d="M9 12l2 2 4-4" />
-                </svg>
-                FANUS
-              </span>
-            )}
-          </div>
-          <div style={{ fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 600 }}>{p.title}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 21, fontWeight: 800, color: "var(--oxford)", lineHeight: 1.2, letterSpacing: "-.01em", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+          <div style={{ fontSize: 14.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 4 }}>{p.title}</div>
         </div>
       </div>
 
       {specs.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginBottom: 18 }}>
           {shown.map(s => (
-            <span key={s} style={{ background: "var(--brand-50)", color: "var(--brand-700)", border: "1px solid var(--brand-100)", fontSize: 12, fontWeight: 600, padding: "5px 11px", borderRadius: 8 }}>{s}</span>
+            <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--brand-50)", color: "var(--brand-700)", fontSize: 13, fontWeight: 600, padding: "8px 14px", borderRadius: 11 }}>
+              <SpecIcon name={s} />{s}
+            </span>
           ))}
-          {more > 0 && (
-            <span style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid var(--brand-100)", fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 8 }}>+{more}</span>
-          )}
         </div>
       )}
 
-      <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "13px 0", borderTop: "1px solid #F0F4FA", borderBottom: "1px solid #F0F4FA", marginBottom: 14, flexWrap: "wrap" }}>
+      {/* Rəqəmlər — dəyər üstdə, izah altda; aralarında nazik ayırıcı. */}
+      <div style={{ display: "flex", alignItems: "stretch", padding: "16px 0", borderTop: "1px solid #F0F4FA", borderBottom: "1px solid #F0F4FA", marginBottom: 16 }}>
         {rating > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" strokeWidth="1.5" strokeLinejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
-            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--oxford)" }}>{rating.toFixed(1)}</span>
-            <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>{(p.ratingCount ?? 0) > 0 ? `${p.ratingCount} rəy` : "Reytinq"}</span>
-          </div>
+          <StatCell
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="#F5B400" stroke="#F5B400" strokeWidth="1.5" strokeLinejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /></svg>}
+            value={rating.toFixed(1)}
+            label={(p.ratingCount ?? 0) > 0 ? `${p.ratingCount} rəy` : "Reytinq"}
+            first
+          />
         )}
         {years > 0 && (
-          <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--oxford)" }}>{years}</span>
-            <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>il təcrübə</span>
-          </div>
+          <StatCell
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.8L3 21l1.9-5A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z" /></svg>}
+            value={`${years} il`}
+            label="təcrübə"
+          />
+        )}
+        {p.defaultSessionMinutes && (
+          <StatCell
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M3 10h18M8 2v4M16 2v4" /></svg>}
+            value={`${p.defaultSessionMinutes} dəq`}
+            label="seans"
+          />
         )}
         {sessions > 0 && (
-          <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--oxford)" }}>{sessions}</span>
-            <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>seans</span>
-          </div>
+          <StatCell
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /></svg>}
+            value={String(sessions)}
+            label="seans"
+          />
         )}
       </div>
 
-      {(p.languages || p.defaultSessionMinutes) && (
-        <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 16, flexWrap: "wrap" }}>
+      {/* Detallar — ayırıcı nöqtə yoxdur, hər məlumat öz sətrindədir. */}
+      {(p.languages || p.defaultSessionMinutes || hasPackages) && (
+        <div style={{ background: "#F6F8FC", borderRadius: 14, padding: "16px 18px", marginBottom: 18, display: "grid", gap: 13 }}>
           {p.languages && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></svg>
-              {p.languages}
-            </span>
+            <InfoLine
+              icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></svg>}
+              text={p.languages}
+            />
           )}
-          {p.languages && p.defaultSessionMinutes && <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#CBD5E6" }} />}
           {p.defaultSessionMinutes && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-              {p.defaultSessionMinutes} dəq seans
-            </span>
+            <InfoLine
+              icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>}
+              text={`${p.defaultSessionMinutes} dəq seans`}
+            />
+          )}
+          {hasPackages && (
+            <InfoLine
+              icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.27 6.96L12 12.01l8.73-5.05" /></svg>}
+              text="Paket təklifi var"
+            />
           )}
         </div>
       )}
 
-      {hasPackages && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 18 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#D1FAE5", color: "#065F46", fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.27 6.96L12 12.01l8.73-5.05" /></svg>
-            Paketlər var
-          </span>
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
-        <Link href={profileHref} style={{ flex: 1, textAlign: "center", background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 0", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+      <div style={{ display: "flex", gap: 12, marginTop: "auto" }}>
+        <Link href={profileHref} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, background: "#fff", color: "var(--brand)", border: "1.5px solid var(--brand-100)", borderRadius: 13, padding: "14px 0", fontSize: 15, fontWeight: 600, textDecoration: "none" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
           {t("patPsy.viewProfile")}
         </Link>
-        <Link href={bookHref} style={{ flex: 1, textAlign: "center", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 0", fontSize: 14, fontWeight: 600, textDecoration: "none", boxShadow: "0 4px 12px rgba(16,81,183,.24)" }}>
+        <Link href={bookHref} style={{ flex: 1.4, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, background: "var(--brand)", color: "#fff", border: "1.5px solid var(--brand)", borderRadius: 13, padding: "14px 0", fontSize: 15, fontWeight: 700, textDecoration: "none" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M3 10h18M8 2v4M16 2v4" /></svg>
           {t("patPsy.book")}
         </Link>
       </div>
@@ -408,21 +419,61 @@ function PsyCard({
         type="button"
         onClick={onReview}
         disabled={reviewChecking}
-        style={{ marginTop: 10, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "transparent", color: "var(--oxford-60)", border: "none", padding: "6px 0", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: reviewChecking ? "wait" : "pointer" }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill={reviewed ? "#F59E0B" : "none"} stroke={reviewed ? "#F59E0B" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
+        style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #F0F4FA", width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, background: "transparent", color: "var(--oxford-60)", border: "none", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: reviewChecking ? "wait" : "pointer" }}>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill={reviewed ? "#F5B400" : "none"} stroke={reviewed ? "#F5B400" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
         {reviewChecking ? "Yoxlanılır…" : reviewed ? "Rəyinizi düzəldin" : "Rəy yaz"}
       </button>
     </div>
   );
 }
 
+/** Rəqəm xanası — dəyər üstdə, izah altda, solunda nazik ayırıcı. */
+function StatCell({ icon, value, label, first }: {
+  icon: React.ReactNode; value: string; label: string; first?: boolean;
+}) {
+  return (
+    <div style={{ flex: 1, minWidth: 0, textAlign: "center", padding: "0 6px", borderLeft: first ? "none" : "1px solid #F0F4FA" }}>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+        {icon}
+        <span style={{ fontSize: 17, fontWeight: 800, color: "var(--oxford)", whiteSpace: "nowrap" }}>{value}</span>
+      </div>
+      <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 3 }}>{label}</div>
+    </div>
+  );
+}
+
+/** Detal sətri — ikon + mətn, ayırıcı işarə işlədilmir. */
+function InfoLine({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14, fontWeight: 600, color: "var(--oxford)" }}>
+      <span style={{ flex: "none", display: "inline-flex" }}>{icon}</span>
+      <span style={{ minWidth: 0 }}>{text}</span>
+    </div>
+  );
+}
+
+/** İxtisas çipinin ikonu — ada görə seçilir, tapılmasa ümumi işarə. */
+function SpecIcon({ name }: { name: string }) {
+  const s = name.toLocaleLowerCase("az");
+  const sw = { width: 15, height: 15, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (s.includes("depress"))
+    return <svg {...sw} aria-hidden><path d="M12 4a4 4 0 0 0-4 4 3 3 0 0 0-1 5.8V16a3 3 0 0 0 5 2.2A3 3 0 0 0 17 16v-2.2A3 3 0 0 0 16 8a4 4 0 0 0-4-4z" /><path d="M12 4v15" /></svg>;
+  if (s.includes("anksi") || s.includes("stres") || s.includes("təşviş"))
+    return <svg {...sw} aria-hidden><circle cx="12" cy="12" r="9" /><path d="M8.5 14.5a4.5 4.5 0 0 1 7 0" /><path d="M9 9h.01M15 9h.01" /></svg>;
+  if (s.includes("münasibət") || s.includes("ailə") || s.includes("cütlük"))
+    return <svg {...sw} aria-hidden><path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1z" /></svg>;
+  if (s.includes("uşaq") || s.includes("yeniyetmə"))
+    return <svg {...sw} aria-hidden><circle cx="12" cy="8" r="4" /><path d="M5 21a7 7 0 0 1 14 0" /></svg>;
+  return <svg {...sw} aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></svg>;
+}
+
 /* ─── Loading skeleton card ──────────────────────────────────────────────── */
 
 function SkeletonCard() {
   return (
-    <div style={{ width: "100%", maxWidth: 420, background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 22 }}>
-      <div style={{ display: "flex", gap: 14, marginBottom: 18 }}>
-        <div className="psy-skel" style={{ width: 56, height: 56, borderRadius: 16, flex: "none" }} />
+    <div style={{ width: "100%", maxWidth: 460, background: "#fff", borderRadius: 20, boxShadow: "0 2px 14px rgba(8,47,109,.06)", border: "1px solid #EDF1F8", padding: 24 }}>
+      <div style={{ display: "flex", gap: 16, marginBottom: 18, alignItems: "center" }}>
+        <div className="psy-skel" style={{ width: 76, height: 76, borderRadius: "50%", flex: "none" }} />
         <div style={{ flex: 1, paddingTop: 4 }}>
           <div className="psy-skel" style={{ width: "70%", height: 15, borderRadius: 6, marginBottom: 9 }} />
           <div className="psy-skel" style={{ width: "45%", height: 12, borderRadius: 6 }} />

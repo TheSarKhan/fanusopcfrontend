@@ -22,7 +22,10 @@ export const STATUS: Record<string, { label: string; color: string; bg: string; 
 };
 
 export const PKG_STATUS: Record<string, { label: string; color: string; bg: string }> = {
+  // PENDING_PAYMENT normalda pasiyentə göstərilmir — yalnız ehtiyat etiket.
+  PENDING_PAYMENT: { label: "Ödəniş gözlənilir", color: "#92400E", bg: "#FEF3C7" },
   ACTIVE:    { label: "Aktiv",         color: "#065F46", bg: "#D1FAE5" },
+  // EXHAUSTED = bütün seanslar keçirilib.
   EXHAUSTED: { label: "Bitib",         color: "#374151", bg: "#F3F4F6" },
   EXPIRED:   { label: "Müddəti keçib", color: "#92400E", bg: "#FEF3C7" },
   CANCELLED: { label: "Ləğv edilib",   color: "#991B1B", bg: "#FEE2E2" },

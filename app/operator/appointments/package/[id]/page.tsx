@@ -16,6 +16,7 @@ import { statusMeta } from "@/lib/appointmentStatus";
 import { azLocalToISO, azFormatDate, azFormatTime, azFormatDateTime, isoToAzLocal } from "@/lib/datetime";
 
 const PKG_STATUS: Record<string, { label: string; bg: string; color: string }> = {
+  PENDING_PAYMENT: { label: "Ödəniş gözlənilir", bg: "var(--status-pending-bg)", color: "var(--status-pending-fg)" },
   ACTIVE:    { label: "Aktiv",       bg: "var(--status-paid-bg)",      color: "var(--status-paid-fg)" },
   EXHAUSTED: { label: "Tamamlanıb",  bg: "var(--status-cancelled-bg)", color: "var(--status-cancelled-fg)" },
   EXPIRED:   { label: "Vaxtı keçib", bg: "var(--status-pending-bg)",   color: "var(--status-pending-fg)" },
@@ -101,15 +102,19 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
 
   const first = sessions[0];
   const total = first.packageTotal ?? sessions.length;
-  const remaining = first.packageRemaining ?? 0;
+  // packageRemaining = hələ PLANLAŞDIRILMAMIŞ (rezervasiya balansı) seans sayı,
+  // "keçirilməmiş seans" DEYİL. Ona görə dəyişən adı da "unscheduled"dir.
+  const unscheduled = Math.max(0, first.packageRemaining ?? 0);
+  // packageCompleted = faktiki KEÇİRİLMİŞ (COMPLETED) seans sayı.
+  const completed = first.packageCompleted ?? 0;
   const scheduledCount = sessions.filter(s => s.startAt).length;
   const emptyCount = Math.max(0, total - scheduledCount);
-  const pct = total > 0 ? Math.round((scheduledCount / total) * 100) : 0;
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
   const st = PKG_STATUS[first.packageStatus ?? "ACTIVE"] ?? PKG_STATUS.ACTIVE;
   const active = first.packageStatus == null || first.packageStatus === "ACTIVE";
   // Balans "+" xanaları: mövcud seans sətirlərini ikiqat saymamaq üçün ümumi
   // seans sayından mövcud sətirləri çıxırıq (balansla məhdudlaşdırılmış).
-  const balanceTiles = active ? Math.max(0, Math.min(remaining, total - sessions.length)) : 0;
+  const balanceTiles = active ? Math.max(0, Math.min(unscheduled, total - sessions.length)) : 0;
 
   return (
     <div>
@@ -135,10 +140,15 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
             </div>
           </div>
           <div style={{ textAlign: "right", flex: "none" }}>
-            <div className="fx-num" style={{ fontSize: 22, fontWeight: 800, color: "var(--lilac)", lineHeight: 1 }}>{scheduledCount}/{total}</div>
+            {/* Əsas rəqəm = KEÇİRİLMİŞ seans / alınmış seans. Planlaşdırma vəziyyəti
+                ayrıca sətirlərdə göstərilir ki, "qalıb" ilə qarışmasın. */}
+            <div className="fx-num" style={{ fontSize: 22, fontWeight: 800, color: "var(--lilac)", lineHeight: 1 }}>{completed}/{total}</div>
             <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginTop: 3, display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 10 }}>
-              <span>{scheduledCount} təyin</span>
-              <span>{emptyCount} boş</span>
+              <span>seans keçirilib</span>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3, display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 10 }}>
+              <span>{scheduledCount} təyin edilib</span>
+              {emptyCount > 0 && <span>{emptyCount} planlaşdırılmayıb</span>}
             </div>
           </div>
         </div>
@@ -339,7 +349,7 @@ function AddPackageSessionModal({ sessions, onClose, onDone }: {
           <h3 className="fx-h3">Paket seansı əlavə et</h3>
           <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3, display: "flex", flexWrap: "wrap", gap: 10 }}>
             <span>{first.packageName}</span>
-            <span>{first.packageRemaining ?? 0} seans qalıb</span>
+            <span>{Math.max(0, first.packageRemaining ?? 0)} seans planlaşdırılmayıb</span>
             {first.psychologistName && <span>{first.psychologistName}</span>}
           </div>
         </div>

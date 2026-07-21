@@ -209,10 +209,10 @@ export default function PatientAppointmentsPage() {
 
   }, []);
 
-  // Paketin hələ CANLI (gələcək/gözləyən) seansı varmı? SCHEDULE_NOW paketi alınan
-  // kimi bütün seanslar rezerv olunub remaining=0 → backend statusu EXHAUSTED edir,
-  // ödəniş operator təsdiqindən keçməsə də. Seanslar hələ irəlidə (və ya PENDING)
-  // olduğundan belə paket "bitmiş" deyil — canlı seansa görə aktiv sayılır.
+  // Paketin hələ CANLI (gələcək/gözləyən) seansı varmı? Backend artıq EXHAUSTED
+  // statusunu yalnız BÜTÜN seanslar KEÇİRİLƏNDƏ (COMPLETED) verir — remaining=0
+  // (yəni hamısı rezerv olunub) artıq paketi bitmiş saymır. Bu yoxlama yenə də
+  // müdafiə xətti kimi qalır: canlı seansı olan paket "bitmiş" göstərilməsin.
   const pkgHasLiveSessions = useMemo(() => {
     const live = new Set<number>();
     for (const a of items) {
@@ -831,7 +831,8 @@ function PackageProgramCard({
       <div style={{ marginBottom: 18 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>
-            {pkg.total} seansdan {completed} tamamlanıb, <span style={{ color: "var(--brand)" }}>{pkg.remaining} qalıb</span>
+            {/* "qalıb" yazmırıq: pkg.remaining planlaşdırılmamış rezervdir, aşağıdakı ayırmada göstərilir. */}
+            {pkg.total} seansdan {completed} keçirilib
           </span>
           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>{Math.round(completedPct)}%</span>
         </div>
@@ -840,7 +841,7 @@ function PackageProgramCard({
           <div style={{ width: `${plannedPct}%`, height: "100%", background: "#9DBCEB" }} />
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)", flexWrap: "wrap" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1051B7", flex: "none" }} />{completed} tamamlanıb</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1051B7", flex: "none" }} />{completed} keçirilib</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#9DBCEB", flex: "none" }} />{planned} planlanıb</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--brand-100)", flex: "none" }} />{pkg.remaining} planlanmamış</span>
         </div>
@@ -870,7 +871,8 @@ function PackageProgramCard({
 
 function PastPackageRow({ pkg }: { pkg: PatientPackageItem }) {
   const st = PKG_STATUS[pkg.status] ?? PKG_STATUS.EXHAUSTED;
-  const used = Math.max(0, pkg.total - pkg.remaining);
+  // İstifadə = FAKTİKİ keçirilmiş seans (pkg.completed), rezerv fərqi deyil.
+  const used = pkg.completed;
   return (
     <Link href={`/patient/appointments/packages/${pkg.id}`} style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", borderTop: "1px solid #F0F4FA", padding: "13px 12px", textDecoration: "none", color: "inherit" }}>
       <span style={{ fontSize: 13.5, fontWeight: 700, minWidth: 100 }}>{azFormatDate(pkg.purchasedAt)}</span>
@@ -878,7 +880,7 @@ function PastPackageRow({ pkg }: { pkg: PatientPackageItem }) {
         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{pkg.packageName}</div>
         <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 2 }}>{pkg.psychologistName}</div>
       </div>
-      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>{used}/{pkg.total} seans istifadə olunub</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>{used}/{pkg.total} seans keçirilib</span>
       <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>{formatAzn(pkg.pricePaid)}</span>
       <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}><span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: st.color }} /><span style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{st.label}</span></span>
     </Link>
@@ -1252,8 +1254,9 @@ function SessionDetailModal({
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: "var(--brand-700)" }}>
                   <PackageBadge name={a.packageName} />
                   {a.packageName ?? "Paket seansı"}
-                  {a.packageTotal != null && a.packageRemaining != null && (
-                    <span style={{ fontWeight: 600, color: "var(--oxford-60)", fontSize: 12.5 }}>{a.packageRemaining} seans qalıb</span>
+                  {/* Gedişat = keçirilmiş seans / alınmış seans. */}
+                  {a.packageTotal != null && a.packageCompleted != null && (
+                    <span style={{ fontWeight: 600, color: "var(--oxford-60)", fontSize: 12.5 }}>{a.packageCompleted}/{a.packageTotal} seans keçirilib</span>
                   )}
                 </span>
                 <Link href={`/patient/appointments/packages/${a.patientPackageId}`} style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", textDecoration: "none", whiteSpace: "nowrap" }}>

@@ -40,7 +40,6 @@ export default function PatientPsychologistsPage() {
   const [favIds, setFavIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [spec, setSpec] = useState<string | null>(null);
   const [onlyFavs, setOnlyFavs] = useState(false);
   const [sort, setSort] = useState<SortMode>("recommended");
   const [busyFav, setBusyFav] = useState<number | null>(null);
@@ -84,23 +83,10 @@ export default function PatientPsychologistsPage() {
 
   const itemsWithSlug = useMemo(() => withSlugs(items), [items]);
 
-  // Specialization chips with counts
-  const specChips = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const p of itemsWithSlug) {
-      for (const s of p.specializations ?? []) {
-        if (!s) continue;
-        map.set(s, (map.get(s) ?? 0) + 1);
-      }
-    }
-    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
-  }, [itemsWithSlug]);
-
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
     let list = itemsWithSlug.filter(p => {
       if (onlyFavs && !favIds.has(p.id)) return false;
-      if (spec && !(p.specializations ?? []).some(s => s === spec)) return false;
       if (query) {
         const hay = [p.name, p.title, ...(p.specializations ?? [])].join(" ").toLowerCase();
         if (!hay.includes(query)) return false;
@@ -126,7 +112,7 @@ export default function PatientPsychologistsPage() {
       }
     });
     return list;
-  }, [itemsWithSlug, q, spec, onlyFavs, sort, favIds]);
+  }, [itemsWithSlug, q, onlyFavs, sort, favIds]);
 
   const toggleFav = async (psyId: number) => {
     setBusyFav(psyId);
@@ -144,15 +130,14 @@ export default function PatientPsychologistsPage() {
     }
   };
 
-  const clearAll = () => { setQ(""); setSpec(null); setOnlyFavs(false); setSort("recommended"); };
-  const hasFilters = q.trim() !== "" || spec !== null || onlyFavs;
+  const clearAll = () => { setQ(""); setOnlyFavs(false); setSort("recommended"); };
+  const hasFilters = q.trim() !== "" || onlyFavs;
 
   return (
     <div style={{ width: "100%" }}>
       <style>{`
         @keyframes psyShimmer { 0% { background-position: -340px 0 } 100% { background-position: 340px 0 } }
         .psy-skel { background: linear-gradient(90deg,#EEF2F9 25%,#E2E9F4 37%,#EEF2F9 63%); background-size: 680px 100%; animation: psyShimmer 1.4s infinite linear; }
-        .psy-chips::-webkit-scrollbar { height: 0 }
       `}</style>
 
       {/* 1. HEADER + SEARCH */}
@@ -176,17 +161,7 @@ export default function PatientPsychologistsPage() {
         }
       />
 
-      {/* 2. SPECIALIZATION CHIPS */}
-      {specChips.length > 0 && (
-        <div className="psy-chips" style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, marginBottom: 18 }}>
-          <ChipButton label="Hamısı" count={itemsWithSlug.length} active={spec === null} onClick={() => setSpec(null)} />
-          {specChips.slice(0, 12).map(([label, count]) => (
-            <ChipButton key={label} label={label} count={count} active={spec === label} onClick={() => setSpec(spec === label ? null : label)} />
-          ))}
-        </div>
-      )}
-
-      {/* 3. TOOLBAR */}
+      {/* 2. TOOLBAR */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 22 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <button
@@ -295,27 +270,6 @@ export default function PatientPsychologistsPage() {
         />
       )}
     </div>
-  );
-}
-
-/* ─── Specialization chip ────────────────────────────────────────────────── */
-
-function ChipButton({
-  label, count, active, onClick,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{ flex: "none", display: "inline-flex", alignItems: "center", gap: 8, border: `1px solid ${active ? "var(--brand)" : "#D6E2F7"}`, background: active ? "var(--brand)" : "#fff", color: active ? "#fff" : "var(--oxford)", borderRadius: 999, padding: "9px 14px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}>
-      {label}
-      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 20, height: 20, padding: "0 6px", background: active ? "rgba(255,255,255,.22)" : "var(--brand-50)", color: active ? "#fff" : "var(--brand-700)", fontSize: 11, fontWeight: 700, borderRadius: 999 }}>{count}</span>
-    </button>
   );
 }
 

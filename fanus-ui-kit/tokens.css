@@ -1,7 +1,9 @@
 /* ============================================================
    FANUS UI KIT — DESIGN TOKENS
-   fanusopc.com operator paneli üçün vahid dizayn tokenləri.
+   fanusopc.com BÜTÜN panelləri (admin / operator / psixoloq /
+   pasiyent) üçün vahid dizayn tokenləri.
    Bütün komponentlər yalnız bu dəyərlərdən istifadə etməlidir.
+   Yeni rəng / radius / kölgə uydurmaq QADAĞANDIR.
    ============================================================ */
 
 :root {
@@ -64,25 +66,25 @@
   --radius-btn: 8px;
   --radius-input: 8px;
   --radius-chip: 999px;
-  --radius-card: 16px;
-  --radius-lg: 20px;
+  --radius-card: 12px;
+  --radius-lg: 14px;
 
   /* ---------- Tipoqrafiya ---------- */
   /* Bütün başlıq və mətn Poppins-dir — sayt boyu tək font */
   --font-sans: var(--font-poppins, 'Poppins'), system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-serif: var(--font-sans);
 
-  --text-h1: 30px;          /* səhifə başlığı (serif, 500) */
-  --text-h2: 26px;          /* hero başlıq (serif, 500) */
-  --text-h3: 19px;          /* modal / drawer başlıq (serif, 500) */
-  --text-kpi: 28px;         /* KPI rəqəmi (sans, 800) */
-  --text-kpi-sm: 23px;
-  --text-amount: 17px;      /* sətirdə məbləğ (700) */
-  --text-body: 13px;
+  --text-h1: 22px;          /* səhifə başlığı (700, cümlə formasında) */
+  --text-h2: 18px;          /* bölmə başlığı (700) */
+  --text-h3: 16px;          /* modal / drawer başlıq (700) */
+  --text-kpi: 26px;         /* statistika rəqəmi (700, tabular) */
+  --text-kpi-sm: 22px;
+  --text-amount: 15px;      /* sətirdə məbləğ (700) */
+  --text-body: 13.5px;
   --text-body-lg: 14px;
-  --text-caption: 12px;
-  --text-micro: 11.5px;
-  --text-label: 11px;       /* uppercase etiket */
+  --text-caption: 12.5px;
+  --text-micro: 12px;
+  --text-label: 13px;       /* sahə etiketi — UPPERCASE DEYİL */
 
   /* ---------- Boşluq şkalası ---------- */
   --space-1: 4px;

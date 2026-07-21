@@ -397,7 +397,7 @@ export interface PackagePatient {
   patientName: string;
   completed: number;
   total: number;
-  status: string; // ACTIVE | EXHAUSTED | EXPIRED | CANCELLED
+  status: string; // PENDING_PAYMENT | ACTIVE | EXHAUSTED | EXPIRED | CANCELLED
   purchasedAt: string;
 }
 
@@ -585,6 +585,8 @@ export interface AppointmentDetail {
   packageTotal?: number | null;
   packageRemaining?: number | null;
   packageStatus?: string | null;
+  /** Paketin faktiki KEÇİRİLMİŞ seans sayı (COMPLETED). */
+  packageCompleted?: number | null;
   // Ödəniş statusu (yalnız tək seans ödənişi; paket seanslarında null)
   // null = ödəniş qeydi yoxdur; "PENDING" = operator hələ təsdiqləməyib; "PAID" = təsdiqlənib
   paymentStatus?: string | null;
@@ -1828,7 +1830,13 @@ export interface PatientPackageItem {
   psychologistName: string;
   packageName: string;
   total: number;
+  /** Hələ PLANLAŞDIRILMAMIŞ seans sayı (rezerv balansı) — "istifadə olunub" DEYİL. */
   remaining: number;
+  /** Ləğv edilməmiş, vaxtı təyin olunmuş seans sayı. */
+  scheduled: number;
+  /** Faktiki KEÇİRİLMİŞ seans sayı — "istifadə olunub" göstəricisinin mənbəyi. */
+  completed: number;
+  /** 'PENDING_PAYMENT' | 'ACTIVE' | 'EXHAUSTED' | 'EXPIRED' | 'CANCELLED' */
   status: string;
   schedulingMode: "SCHEDULE_NOW" | "SCHEDULE_LATER";
   pricePaid: number;
@@ -3240,7 +3248,9 @@ export interface CustomerProfile {
   cancelledCount: number;
   appointments: PatientHistory["recent"];
   payments: { id: number; amount: number; currency: string; status: string; method: string; paidAt?: string | null; createdAt?: string | null; patientPackageId?: number | null; appointmentId?: number | null; patientName?: string | null; refundedAmount?: number | null; statusNote?: string | null }[];
-  packages: { id: number; psychologistId?: number | null; psychologistName?: string | null; packageName: string; total: number; remaining: number; status: string; pricePaid?: number | null; currency?: string | null; purchasedAt?: string | null }[];
+  // remaining = hələ PLANLAŞDIRILMAMIŞ (rezerv) seans; completed = faktiki KEÇİRİLMİŞ seans;
+  // scheduled = ləğv edilməmiş, vaxtı təyin olunmuş seans.
+  packages: { id: number; psychologistId?: number | null; psychologistName?: string | null; packageName: string; total: number; remaining: number; scheduled: number; completed: number; status: string; pricePaid?: number | null; currency?: string | null; purchasedAt?: string | null }[];
   testResults: { assignmentId: number; resultId?: number | null; testTitle: string; status: string; totalScore?: number | null; maxScore?: number | null; percentage?: number | null; scaleLabel?: string | null; submittedAt?: string | null }[];
   reviewsGiven: { id: number; psychologistName?: string | null; rating: number; comment?: string | null; status: string; createdAt?: string | null }[];
   activity: { type: "AUDIT" | "SUPPORT" | "APPOINTMENT" | "TEST"; action?: string | null; summary?: string | null; at: string }[];

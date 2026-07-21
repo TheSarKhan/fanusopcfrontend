@@ -124,8 +124,8 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
         <div style={{ marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
             <span style={{ display: "inline-flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>
-              <span>{completed}/{pkg.total} tamamlanıb</span>
-              <span style={{ color: "var(--brand)" }}>{pkg.remaining} seans qalıb</span>
+              {/* pkg.remaining = planlaşdırılmamış rezerv; "qalıb" kimi oxunmasın deyə aşağıda ayrıca göstərilir. */}
+              <span>{completed}/{pkg.total} seans keçirilib</span>
             </span>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>{Math.round(completedPct)}%</span>
           </div>
@@ -134,7 +134,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
             <div style={{ width: `${plannedPct}%`, height: "100%", background: "#9DBCEB" }} />
           </div>
           <div style={{ display: "flex", gap: 12, marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)", flexWrap: "wrap" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1051B7", flex: "none" }} />{completed} tamamlanıb</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1051B7", flex: "none" }} />{completed} keçirilib</span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#9DBCEB", flex: "none" }} />{planned} planlanıb</span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--brand-100)", flex: "none" }} />{pkg.remaining} planlanmamış</span>
           </div>

@@ -95,6 +95,7 @@ const PILL_CLASS: Record<string, string> = {
 function pillClass(status: string) { return PILL_CLASS[status] ?? "fx-pill--neutral"; }
 
 const PKG_TEXT: Record<string, { label: string; color: string }> = {
+  PENDING_PAYMENT: { label: "Ödəniş gözlənilir", color: "var(--amber)" },
   ACTIVE: { label: "Aktiv", color: "var(--sage)" },
   EXHAUSTED: { label: "Tamamlanıb", color: "var(--oxford-60)" },
   EXPIRED: { label: "Vaxtı keçib", color: "var(--amber)" },
@@ -248,8 +249,11 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
     const avgSession = profile.completedCount > 0 ? Math.round(ltv / profile.completedCount) : null;
     const pendingBalance = profile.payments.filter(p => p.status === "PENDING").reduce((a, p) => a + p.amount, 0);
 
-    const activePkgs = profile.packages.filter(p => p.status === "ACTIVE");
-    const pkgRemaining = activePkgs.reduce((a, p) => a + p.remaining, 0);
+    // Ödənişi hələ təsdiqlənməmiş paket də operator üçün "cari"dir — KPI-dan yox olmasın.
+    const activePkgs = profile.packages.filter(p => p.status === "ACTIVE" || p.status === "PENDING_PAYMENT");
+    // remaining = planlaşdırılmamış (rezerv) seans; completed = faktiki keçirilmiş seans.
+    const pkgUnscheduled = activePkgs.reduce((a, p) => a + p.remaining, 0);
+    const pkgCompleted = activePkgs.reduce((a, p) => a + p.completed, 0);
     const pkgTotal = activePkgs.reduce((a, p) => a + p.total, 0);
 
     const upcoming = profile.appointments
@@ -352,7 +356,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
       ? `Tövsiyə: ${h.rejectedCount} rədd — uyğun psixoloq təklifini yenidən nəzərdən keçirin.`
       : "";
 
-    return { ltv, avgSession, pendingBalance, pkgRemaining, pkgTotal, nextSession, events, careDetail, careTip };
+    return { ltv, avgSession, pendingBalance, pkgUnscheduled, pkgCompleted, pkgTotal, nextSession, events, careDetail, careTip };
   }, [profile, nowTs]);
 
   if (loading) {
@@ -454,7 +458,6 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
           <div className="fx-kpi">
             <span className="fx-label">Ümumi xərc</span>
             <span className="fx-kpi__value--sm fx-num">{fmtNum(derived.ltv)} <span className="fx-kpi__unit">AZN</span></span>
-            <span style={{ fontSize: 11.5, color: "var(--sage)", fontWeight: 600 }}>LTV</span>
           </div>
           <div className="fx-kpi">
             <span className="fx-label">Tamamlanmış</span>
@@ -462,9 +465,14 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
             <span className="fx-kpi__meta" style={{ gap: 8, flexWrap: "wrap" }}><span>seans</span><span>{profile.activeCount} aktiv</span></span>
           </div>
           <div className="fx-kpi">
-            <span className="fx-label">Paket balansı</span>
-            <span className="fx-kpi__value--sm fx-num">{derived.pkgTotal > 0 ? <>{derived.pkgRemaining} <span className="fx-kpi__unit">/ {derived.pkgTotal}</span></> : "—"}</span>
-            <span className="fx-kpi__meta">{derived.pkgTotal > 0 ? "seans qalıb" : "aktiv paket yoxdur"}</span>
+            <span className="fx-label">Paket gedişatı</span>
+            <span className="fx-kpi__value--sm fx-num">{derived.pkgTotal > 0 ? <>{derived.pkgCompleted} <span className="fx-kpi__unit">/ {derived.pkgTotal}</span></> : "—"}</span>
+            {/* Əsas rəqəm keçirilmiş seansdır; planlaşdırılmamış balans ayrıca sətirdə. */}
+            <span className="fx-kpi__meta" style={{ gap: 8, flexWrap: "wrap" }}>
+              {derived.pkgTotal > 0
+                ? <><span>seans keçirilib</span>{derived.pkgUnscheduled > 0 && <span>{derived.pkgUnscheduled} planlaşdırılmayıb</span>}</>
+                : "cari paket yoxdur"}
+            </span>
           </div>
           <div className="fx-kpi">
             <span className="fx-label">Son giriş</span>
@@ -600,8 +608,11 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
                   {profile.packages.map(pkg => {
                     const pay = profile.payments.find(pm => pm.patientPackageId === pkg.id);
                     const paid = pay?.status === "PAID";
-                    const used = Math.max(0, pkg.total - pkg.remaining);
-                    const pct = pkg.total > 0 ? Math.round((used / pkg.total) * 100) : 0;
+                    // Proqres = FAKTİKİ keçirilmiş seans. pkg.remaining yalnız
+                    // "hələ planlaşdırılmayıb" mənasını daşıyır.
+                    const completed = pkg.completed;
+                    const unscheduled = Math.max(0, pkg.remaining);
+                    const pct = pkg.total > 0 ? Math.round((completed / pkg.total) * 100) : 0;
                     const done = pkg.status === "EXHAUSTED";
                     const txt = PKG_TEXT[pkg.status] ?? PKG_TEXT.ACTIVE;
                     return (
@@ -614,13 +625,13 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
                               <span key={si} style={{ fontWeight: 400, color: "var(--oxford-60)" }}>{s}</span>
                             ))}
                           </span>
-                          <span className="fx-num" style={{ fontSize: 12, fontWeight: 600, color: "var(--brand-600)" }}>{pkg.remaining} / {pkg.total} qalıb</span>
+                          <span className="fx-num" style={{ fontSize: 12, fontWeight: 600, color: "var(--brand-600)" }}>{completed} / {pkg.total} keçirilib</span>
                         </div>
                         <div className="fx-progress">
                           <div className={`fx-progress__fill${done ? " fx-progress__fill--sage" : ""}`} style={{ width: `${pct}%` }} />
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, color: "var(--oxford-60)", flexWrap: "wrap", gap: 8 }} className="fx-num">
-                          <span>{used} istifadə olunub</span>
+                          <span>{unscheduled > 0 ? `${unscheduled} seans planlaşdırılmayıb` : "Bütün seanslar planlaşdırılıb"}</span>
                           <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <span style={{ fontWeight: 600, color: txt.color }}>{txt.label}</span>
                             <span className={`fx-pill ${paid ? "fx-pill--paid" : "fx-pill--pending"}`}>
@@ -1278,7 +1289,7 @@ function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
           <div style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)" }}>Paket seansı planla</div>
           <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3, display: "flex", flexWrap: "wrap", gap: 10 }}>
             <span>{pkg.packageName}</span>
-            <span>{pkg.remaining} seans qalıb</span>
+            <span>{Math.max(0, pkg.remaining)} seans planlaşdırılmayıb</span>
             {pkg.psychologistName && <span>{pkg.psychologistName}</span>}
           </div>
         </div>

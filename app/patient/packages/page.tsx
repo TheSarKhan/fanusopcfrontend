@@ -158,7 +158,12 @@ function PackageCard({ pkg, sessions, onScheduled }:
     }
   };
 
-  const used = Math.max(0, pkg.total - pkg.remaining);
+  // "İstifadə olunub" = KEÇİRİLMİŞ seans. Əvvəl total-remaining işlədilirdi,
+  // o isə REZERV sayıdır: paket alınıb bütün vaxtlar seçiləndə kart dərhal
+  // "hamısı istifadə olunub, 0 qalıb" göstərirdi, halbuki heç bir seans
+  // keçirilməmişdi. İki fərqli rəqəm var və ikisi də ayrıca göstərilir.
+  const used = pkg.completed;
+  const unscheduled = pkg.remaining;
   const usedPct = pkg.total > 0 ? Math.round((used / pkg.total) * 100) : 0;
 
   return (
@@ -179,10 +184,10 @@ function PackageCard({ pkg, sessions, onScheduled }:
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: "var(--oxford)" }}>
-            {pkg.total} seansdan {used} istifadə olunub
+            {pkg.total} seansdan {used} keçirilib
           </span>
           <span style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", fontVariantNumeric: "tabular-nums" }}>
-            {pkg.remaining} qalıb
+            {unscheduled > 0 ? `${unscheduled} seans planlaşdırılmayıb` : "Bütün seanslar planlaşdırılıb"}
           </span>
         </div>
         <div style={{ marginTop: 8, height: 4, borderRadius: 999, background: "var(--oxford-10)", overflow: "hidden" }}>

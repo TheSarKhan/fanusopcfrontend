@@ -231,8 +231,10 @@ export function SessionMeta({ a, extra }: { a: AppointmentDetail; extra?: React.
   }
   if (a.patientPackageId != null) {
     items.push(<MetaItem icon={<IBox />}><b>{a.packageName ?? "Seans paketi"}</b></MetaItem>);
-    if (a.packageRemaining != null) {
-      items.push(<MetaItem icon={<ICheck s={13} c="#9DB0CC" />}>{a.packageRemaining} seans qalıb</MetaItem>);
+    // Paket gedişatı = KEÇİRİLMİŞ seans / alınmış seans (packageRemaining yalnız
+    // planlaşdırılmamış rezerv balansıdır, "qalıb" mənasını vermir).
+    if (a.packageCompleted != null && a.packageTotal != null) {
+      items.push(<MetaItem icon={<ICheck s={13} c="#9DB0CC" />}>{a.packageCompleted}/{a.packageTotal} seans keçirilib</MetaItem>);
     }
   }
   if (!items.length) return null;

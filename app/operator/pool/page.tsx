@@ -319,6 +319,7 @@ function PoolApptCard({
 }
 
 const PKG_STATUS: Record<string, { label: string; pill: string }> = {
+  PENDING_PAYMENT: { label: "Ödəniş gözlənilir", pill: "fx-pill--pending" },
   ACTIVE:    { label: "Aktiv",       pill: "fx-pill--paid" },
   EXHAUSTED: { label: "Tamamlanıb",  pill: "fx-pill--cancelled" },
   EXPIRED:   { label: "Vaxtı keçib", pill: "fx-pill--pending" },
@@ -344,9 +345,11 @@ function PoolPackageCard({
   const first = sessions[0];
   const phone = normalizePhone(first.patientPhone);
   const total = first.packageTotal ?? sessions.length;
-  const remaining = first.packageRemaining ?? sessions.length;
-  const used = Math.max(0, total - remaining);
-  const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+  // completed = faktiki KEÇİRİLMİŞ seans (COMPLETED). Proqres bunun üzərində qurulur.
+  const completed = first.packageCompleted ?? 0;
+  // remaining = hələ PLANLAŞDIRILMAMIŞ (rezervasiya balansı) seans sayı — "qalıb" DEYİL.
+  const unscheduled = Math.max(0, first.packageRemaining ?? 0);
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
   const st = PKG_STATUS[first.packageStatus ?? "ACTIVE"] ?? PKG_STATUS.ACTIVE;
 
   return (
@@ -373,12 +376,16 @@ function PoolPackageCard({
 
       <div style={{ background: "var(--surface-muted)", border: "1px solid var(--hairline)", borderRadius: 10, padding: "11px 13px", marginBottom: 13 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford)" }}>İstifadə olunub: <span className="fx-num">{used}/{total}</span></span>
-          <span className="fx-num" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--brand-700)" }}>{remaining} qalıb</span>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford)" }}><span className="fx-num">{completed}/{total}</span> seans keçirilib</span>
         </div>
         <div className="fx-progress">
           <div className="fx-progress__fill" style={{ width: `${pct}%` }} />
         </div>
+        {unscheduled > 0 && (
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginTop: 7 }}>
+            <span className="fx-num">{unscheduled}</span> seans planlaşdırılmayıb
+          </div>
+        )}
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 13 }}>

@@ -103,7 +103,7 @@ export default function PackagePatientsPage() {
                 <tr style={{ background: "#F8FAFD" }}>
                   <Th>Pasiyent</Th>
                   <Th>Alış tarixi</Th>
-                  <Th>Seans</Th>
+                  <Th>Keçirilib</Th>
                   <Th>Status</Th>
                   <th style={{ width: 20 }} />
                 </tr>

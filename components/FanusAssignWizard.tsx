@@ -135,15 +135,18 @@ export default function FanusAssignWizard({
         ? `${azFormatDate(form.preferredDate)}${form.preferredTime ? ` ${form.preferredTime}` : ""}`
         : "Fərq etmir";
 
+      // Operator detal səhifəsi bu mətni «Etiket: dəyər» sətirlərinə görə
+      // səliqəli cüt-cüt göstərir (bax RequestNote) — ona görə hər məlumat
+      // AYRI sətirdə və qısa etiketlə gedir, sərbəst mətn birinci sətirdədir.
       const note = [
-        "Fanus təyin etsin — psixoloq seçimi platformaya həvalə edilib.",
-        "",
+        "Psixoloq seçimi Fanusa həvalə edilib",
         `Səbəb: ${form.reason.trim()}`,
         form.age ? `Yaş: ${form.age}` : null,
         `Büdcə: ${form.budget}`,
         `Vaxt tərcihi: ${timePref}`,
         form.notes.trim() ? `Əlavə qeyd: ${form.notes.trim()}` : null,
-        `Əlaqə: ${form.phone.trim()}, ${form.email.trim()}`,
+        `Telefon: ${form.phone.trim()}`,
+        `E-poçt: ${form.email.trim()}`,
       ].filter(Boolean).join("\n");
 
       const created = await patientApi.book({

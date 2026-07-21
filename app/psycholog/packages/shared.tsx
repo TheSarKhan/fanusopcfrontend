@@ -2,7 +2,9 @@ import type { PackagePatient } from "@/lib/api";
 
 /** Pasiyent paketi statusu — kart və pasiyent siyahısı səhifəsi arasında paylaşılır. */
 export const STATUS_PT: Record<string, { label: string; bg: string; color: string }> = {
+  PENDING_PAYMENT: { label: "Ödəniş gözlənilir", bg: "#FEF3C7", color: "#92400E" },
   ACTIVE:    { label: "Aktiv",       bg: "#D1FAE5", color: "#065F46" },
+  // EXHAUSTED = paketin BÜTÜN seansları keçirilib (faktiki bitib).
   EXHAUSTED: { label: "Tamamlanıb",  bg: "#F3F4F6", color: "#374151" },
   EXPIRED:   { label: "Vaxtı keçib", bg: "#FEF3C7", color: "#92400E" },
   CANCELLED: { label: "Ləğv",        bg: "#FEE2E2", color: "#991B1B" },

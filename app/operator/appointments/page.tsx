@@ -201,7 +201,11 @@ export default function OperatorAppointmentsPage() {
     const fromUrl = searchParams.get("tab");
     return fromUrl && fromUrl in TAB_META ? (fromUrl as Tab) : "PENDING";
   });
-  const [allOnly, setAllOnly] = useState(false);
+  // Default: BÜTÜN randevular görünür (status filtri müvəqqəti yığışdırılıb).
+  // Dashboard-dan gələn dərin keçidlər (?filter/?tab/?queue) istisnadır — onlar
+  // konkret bölmə istəyir, ona görə "hamısı" rejimini söndürür.
+  const [allOnly, setAllOnly] = useState(() =>
+    !searchParams.get("filter") && !searchParams.get("tab") && !searchParams.get("queue"));
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   // GAP-01: dashboard "Gecikmiş" badge deep-links here with ?filter=overdue
   const [overdueOnly, setOverdueOnly] = useState(() => searchParams.get("filter") === "overdue");
@@ -393,7 +397,7 @@ export default function OperatorAppointmentsPage() {
   // ─── Paketlər tabı ───────────────────────────────────────────────────────────
   // Paket kartı BÜTÖV paketi əks etdirir: seans siyahısı/sayğacları həmişə paketin
   // BÜTÜN seanslarından (items) qurulur — operator paket haqqında tam mənzərəni görür.
-  const [pkgStatusF, setPkgStatusF] = useState<"ALL" | "ACTIVE" | "EXHAUSTED">("ALL");
+  const [pkgStatusF, setPkgStatusF] = useState<"ALL" | "PENDING_PAYMENT" | "ACTIVE" | "EXHAUSTED">("ALL");
   const [pkgSearch, setPkgSearch] = useState("");
 
   const allPackageGroups = useMemo(() => {
@@ -410,10 +414,11 @@ export default function OperatorAppointmentsPage() {
   }, [items]);
 
   const pkgCounts = useMemo(() => {
-    const c = { ALL: allPackageGroups.length, ACTIVE: 0, EXHAUSTED: 0 };
+    const c = { ALL: allPackageGroups.length, PENDING_PAYMENT: 0, ACTIVE: 0, EXHAUSTED: 0 };
     for (const g of allPackageGroups) {
       const st = g[0].packageStatus ?? "ACTIVE";
-      if (st === "ACTIVE") c.ACTIVE++;
+      if (st === "PENDING_PAYMENT") c.PENDING_PAYMENT++;
+      else if (st === "ACTIVE") c.ACTIVE++;
       else if (st === "EXHAUSTED") c.EXHAUSTED++;
     }
     return c;
@@ -573,13 +578,11 @@ export default function OperatorAppointmentsPage() {
             <Svg w={15} d={<><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>} />
             <input type="text" placeholder="Axtar (ad, psixoloq, qeyd…)" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
+          {/* Status filtri müvəqqəti yığışdırılıb — bütün randevular default
+              göstərilir. Bölmələrə ayırma sonra ayrıca işlənəcək; `pickStatus`
+              və TAB_META saxlanılır ki, qaytarmaq bir sətirlik olsun. */}
           <FilterPanel
-            statusOptions={[
-              { key: "ALL", label: "Hamısı", count: singleItems.length, active: allOnly },
-              ...(Object.keys(TAB_META) as Tab[]).map(tk => ({
-                key: tk, label: TAB_META[tk].label, count: counts[tk] ?? 0, active: statusActive(tk),
-              })),
-            ]}
+            statusOptions={[]}
             onPickStatus={(key) => {
               if (key === "ALL") {
                 setAllOnly(true); setOverdueOnly(false); setMineOnly(false);
@@ -623,6 +626,8 @@ export default function OperatorAppointmentsPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
           <Chip label="Hamısı" count={pkgCounts.ALL} active={pkgStatusF === "ALL"}
             onClick={() => setPkgStatusF("ALL")} />
+          <Chip label="Ödəniş gözlənilir" count={pkgCounts.PENDING_PAYMENT} active={pkgStatusF === "PENDING_PAYMENT"} dot="var(--amber)"
+            onClick={() => setPkgStatusF("PENDING_PAYMENT")} />
           <Chip label="Aktiv" count={pkgCounts.ACTIVE} active={pkgStatusF === "ACTIVE"} dot="var(--sage)"
             onClick={() => setPkgStatusF("ACTIVE")} />
           <Chip label="Tamamlanıb" count={pkgCounts.EXHAUSTED} active={pkgStatusF === "EXHAUSTED"} dot="var(--oxford-60)"
@@ -829,22 +834,25 @@ function FilterPanel({
             maxHeight: "min(70vh, 620px)", overflowY: "auto",
           }}>
 
-          {/* Status — tək seçim */}
-          <div style={{ marginBottom: 14 }}>
-            <div style={sectionTitle}>Status</div>
-            <div style={{ display: "grid", gap: 2 }}>
-              {statusOptions.map(s => (
-                <button key={s.key} type="button" onClick={() => onPickStatus(s.key)}
-                  style={{ ...rowBase, ...(s.active ? activeRow : {}) }}>
-                  <span>{s.label}</span>
-                  <span style={count}>{s.count}</span>
-                </button>
-              ))}
+          {/* Status — tək seçim. statusOptions boş göndərilsə bölmə göstərilmir
+              (hazırda randevular siyahısı belədir: hamısı görünür). */}
+          {statusOptions.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={sectionTitle}>Status</div>
+              <div style={{ display: "grid", gap: 2 }}>
+                {statusOptions.map(s => (
+                  <button key={s.key} type="button" onClick={() => onPickStatus(s.key)}
+                    style={{ ...rowBase, ...(s.active ? activeRow : {}) }}>
+                    <span>{s.label}</span>
+                    <span style={count}>{s.count}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Xüsusi filtrlər — çoxlu seçim */}
-          <div style={{ marginBottom: 14, borderTop: "1px solid var(--hairline)", paddingTop: 12 }}>
+          <div style={{ marginBottom: 14, borderTop: statusOptions.length > 0 ? "1px solid var(--hairline)" : "none", paddingTop: statusOptions.length > 0 ? 12 : 0 }}>
             <div style={sectionTitle}>Xüsusi filtrlər</div>
             <div style={{ display: "grid", gap: 2 }}>
               {flagOptions.map(f => (
@@ -1339,14 +1347,16 @@ function PackageRow({ sessions, onOpen, onOpenSession }: {
     .filter(s => s.startAt && s.status !== "CANCELLED")
     .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
   const scheduled = scheduledList.length;
-  const empty = Math.max(0, total - scheduled);
+  // completed = faktiki keçirilmiş seans; unscheduled = hələ vaxtı təyin olunmamış seans.
+  const completed = first.packageCompleted ?? scheduledList.filter(s => s.status === "COMPLETED").length;
+  const unscheduled = Math.max(0, total - scheduled);
   const statusKey = first.packageStatus ?? "ACTIVE";
   const st = PKG_STATUS[statusKey] ?? PKG_STATUS.ACTIVE;
-  const needsAttention = statusKey === "ACTIVE" && empty > 0;
+  const needsAttention = statusKey === "ACTIVE" && unscheduled > 0;
   const upcoming = scheduledList.find(s => new Date(s.startAt!).getTime() >= now);
   const nextS = upcoming ?? (scheduledList.length ? scheduledList[scheduledList.length - 1] : null);
   const nextLabel = upcoming ? "Növbəti" : "Son seans";
-  const attnText = needsAttention ? `${empty} boş seans — təyin edilməli` : "";
+  const attnText = needsAttention ? `${unscheduled} seans planlaşdırılmayıb` : "";
   const panelId = `pkg-sessions-${first.patientPackageId}`;
 
   return (
@@ -1366,7 +1376,9 @@ function PackageRow({ sessions, onOpen, onOpenSession }: {
         <td><span style={{ fontSize: 12.5 }}>{first.patientName ?? "—"}</span></td>
         <td>{first.psychologistName ? <span style={{ fontSize: 12.5 }}>{first.psychologistName}</span> : <span className="fx-muted">—</span>}</td>
         <td>
-          <span className="fx-num" style={{ fontSize: 13, fontWeight: 700, color: "var(--lilac)" }}>{scheduled}/{total}</span>
+          {/* İrəliləyiş = KEÇİRİLMİŞ seans / alınmış seans. */}
+          <span className="fx-num" style={{ fontSize: 13, fontWeight: 700, color: "var(--lilac)" }}>{completed}/{total}</span>
+          <div className="fx-muted" style={{ fontSize: 11.5 }}>keçirilib</div>
           {attnText && <div className="or-alert-txt" style={{ color: "var(--status-pending-fg)" }}>{attnText}</div>}
         </td>
         <td>
@@ -1419,9 +1431,9 @@ function PackageRow({ sessions, onOpen, onOpenSession }: {
                     </td>
                   </tr>
                 ))}
-                {empty > 0 && (
+                {unscheduled > 0 && (
                   <tr>
-                    <td colSpan={5} className="fx-muted" style={{ fontStyle: "italic" }}>{empty} boş seans — hələ təyin edilməyib</td>
+                    <td colSpan={5} className="fx-muted" style={{ fontStyle: "italic" }}>{unscheduled} seans hələ planlaşdırılmayıb</td>
                   </tr>
                 )}
               </tbody>
@@ -1714,6 +1726,7 @@ function ReferralCard({ r, onOpen }: { r: Referral; onOpen: () => void }) {
 
 // Fon (bg) artıq lazım deyil — status nöqtə + mətn kimi göstərilir.
 const PKG_STATUS: Record<string, { label: string; color: string }> = {
+  PENDING_PAYMENT: { label: "Ödəniş gözlənilir", color: "var(--status-pending-fg)" },
   ACTIVE:    { label: "Aktiv",       color: "var(--status-paid-fg)" },
   EXHAUSTED: { label: "Tamamlanıb",  color: "var(--status-cancelled-fg)" },
   EXPIRED:   { label: "Vaxtı keçib", color: "var(--status-pending-fg)" },
@@ -1727,15 +1740,17 @@ function PackageCard({ sessions, onOpen }: { sessions: AppointmentDetail[]; onOp
     .filter(s => s.startAt && s.status !== "CANCELLED")
     .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
   const scheduled = scheduledList.length;
-  const empty = Math.max(0, total - scheduled);
+  // completed = faktiki keçirilmiş seans; unscheduled = hələ vaxtı təyin olunmamış seans.
+  const completed = first.packageCompleted ?? scheduledList.filter(s => s.status === "COMPLETED").length;
+  const unscheduled = Math.max(0, total - scheduled);
   const statusKey = first.packageStatus ?? "ACTIVE";
   const st = PKG_STATUS[statusKey] ?? PKG_STATUS.ACTIVE;
-  const needsAttention = statusKey === "ACTIVE" && empty > 0;
+  const needsAttention = statusKey === "ACTIVE" && unscheduled > 0;
 
-  // Nöqtə-zolağı: hər dolu seans statusuna görə rəngli, boş xanalar amber halqa
+  // Nöqtə-zolağı: hər dolu seans statusuna görə rəngli, planlaşdırılmamış xanalar amber halqa
   const dots: { key: string; kind: "completed" | "confirmed" | "empty" }[] = [];
   for (const s of scheduledList) dots.push({ key: `s${s.id}`, kind: s.status === "COMPLETED" ? "completed" : "confirmed" });
-  for (let i = 0; i < empty; i++) dots.push({ key: `e${i}`, kind: "empty" });
+  for (let i = 0; i < unscheduled; i++) dots.push({ key: `e${i}`, kind: "empty" });
 
   // Növbəti seans (gələcəkdə ən yaxın) — yoxdursa son keçmiş seans
   const [now] = useState(() => Date.now());
@@ -1764,7 +1779,7 @@ function PackageCard({ sessions, onOpen }: { sessions: AppointmentDetail[]; onOp
       <div className="or-dots">
         <div className="or-dots__strip">
           {dots.map(dot => (
-            <span key={dot.key} title={dot.kind === "empty" ? "Boş — təyin edilməli" : dot.kind === "completed" ? "Tamamlanıb" : "Təyin olunub"}
+            <span key={dot.key} title={dot.kind === "empty" ? "Planlaşdırılmayıb" : dot.kind === "completed" ? "Keçirilib" : "Təyin olunub"}
               style={{
                 width: 11, height: 11, borderRadius: 999, flex: "none",
                 background: dot.kind === "completed" ? "var(--sage)" : dot.kind === "confirmed" ? "var(--brand)" : "transparent",
@@ -1773,13 +1788,14 @@ function PackageCard({ sessions, onOpen }: { sessions: AppointmentDetail[]; onOp
               }} />
           ))}
         </div>
-        <span className="fx-num or-dots__count">{scheduled}/{total}</span>
+        {/* Sayğac = keçirilmiş seans / alınmış seans. */}
+        <span className="fx-num or-dots__count">{completed}/{total}</span>
       </div>
 
       {/* Vəziyyət siqnalı — müraciət kartındakı bannerlə eyni komponent */}
       {needsAttention
-        ? <CardBanner tone="warn" text={`${empty} boş seans — təyin edilməli`} />
-        : <CardBanner tone="success" text="Bütün seanslar təyin olunub" />}
+        ? <CardBanner tone="warn" text={`${unscheduled} seans planlaşdırılmayıb`} />
+        : <CardBanner tone="success" text="Bütün seanslar planlaşdırılıb" />}
 
       {nextS && (
         <div className="or-facts">

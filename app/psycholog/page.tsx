@@ -294,7 +294,8 @@ function PricingSummaryCard({ pricing, packages }: {
         {active.length === 0 ? (
           <EmptyBlock
             title="Paket təyin edilməyib"
-            body="Paket təklif etsəniz müştərilər bir neçə seansı birlikdə ala bilər. Profil səhifəsindən əlavə edin."
+            body="Paket təklif etsəniz müştərilər bir neçə seansı birlikdə ala bilər. «Qiymətlər & Paketlər» səhifəsindən əlavə edin."
+            actions={<Link href="/psycholog/packages" className={buttonClass("ghost", { size: "sm" })}>Qiymətlər &amp; Paketlər</Link>}
           />
         ) : (
           <>

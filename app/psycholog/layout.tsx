@@ -55,7 +55,12 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
     { key: "reviews",      href: "/psycholog/reviews",      label: t("nav.reviews"),      icon: "star" },
   ];
 
-  const nav: PanelNavItem[] = allNav.filter((item) => PSYCHOLOG_MODULES[item.key]);
+  // Profil modul deyil — kilid mexanizmindən kənardır və həmişə görünür
+  // (səhifə /psycholog/profile onsuz da mövcud idi, yalnız naviqasiyada yox idi).
+  const nav: PanelNavItem[] = [
+    ...allNav.filter((item) => PSYCHOLOG_MODULES[item.key]),
+    { href: "/psycholog/profile", label: t("nav.profile"), icon: "user" },
+  ];
 
   return (
     <PanelShell

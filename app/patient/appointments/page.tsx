@@ -906,7 +906,7 @@ function AgendaRow({
     ? "Operator sizə yeni psixoloq təyin edəcək"
     : "Operatorumuz müraciətinizi nəzərdən keçirir";
   return (
-    <div className={`psy-card psy-card--today${isNext ? " psy-card--next" : ""}`} style={{ borderLeft: `3px solid ${status.accent}`, display: "flex", flexDirection: "column" }}>
+    <div className={`psy-card psy-card--today${isNext ? " psy-card--next" : ""}`} style={{ display: "flex", flexDirection: "column" }}>
       {/* Şəkil + ad, sağda 3 nöqtə menyu */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
         <div className="psy-card__avatar" style={{ width: 46, height: 46, overflow: "hidden", ...(photoUrl ? {} : { background: "#082F6D", color: "#fff", border: "none" }) }}>

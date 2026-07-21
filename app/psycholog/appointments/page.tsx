@@ -984,7 +984,7 @@ function PatientRescheduleRequestCard({
   const busy = busyOption !== null || rejecting;
 
   return (
-    <div style={{ background: "#fff", border: "1px solid var(--oxford-10)", borderLeft: "3px solid #E0A33E", borderRadius: 14, padding: 20, boxShadow: "0 1px 2px rgba(0,33,71,.04)", animation: "gorFade .25s ease" }}>
+    <div style={{ background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 14, padding: 20, animation: "gorFade .25s ease" }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 11, marginBottom: 14 }}>
         <IRefresh s={18} c="#B45309" />
         <div style={{ minWidth: 0 }}>

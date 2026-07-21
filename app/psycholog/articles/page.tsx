@@ -826,7 +826,6 @@ function StatCell({ label, value, tone }: { label: string; value: number; tone: 
     <div style={{
       background: "#fff", borderRadius: 10, padding: "12px 16px",
       border: "1px solid var(--oxford-10)",
-      borderLeft: `3px solid ${p.color}`,
     }}>
       <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 800, color: "var(--oxford)", marginTop: 2 }}>{value}</div>

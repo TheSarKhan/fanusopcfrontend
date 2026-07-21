@@ -482,7 +482,6 @@ function OverridesCard({ overrides, onAdd, onDelete }: {
                 padding: 13, borderRadius: 11,
                 background: block ? "#FEF2F2" : "#ECFDF5",
                 border: `1px solid ${block ? "#FECACA" : "#A7F3D0"}`,
-                borderLeft: `3px solid ${block ? "#991B1B" : "#065F46"}`,
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{
@@ -1084,7 +1083,6 @@ function StatCell({ label, value, tone }: {
       background: p.bg, borderRadius: 14, padding: "15px 17px",
       boxShadow: "0 2px 12px rgba(0,0,0,.06)",
       border: `1px solid ${p.border}`,
-      borderLeft: `3px solid ${p.accent}`,
     }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: p.label, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 5 }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 800, color: p.num }}>{value}</div>

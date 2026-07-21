@@ -636,7 +636,6 @@ function PsyHomeworkRow({ h, onOpen, onDelete }: {
       background: "#fff", borderRadius: 12, padding: 14,
       boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
       border: `1px solid ${overdue ? "#FCA5A5" : "var(--oxford-10)"}`,
-      borderLeft: `4px solid ${PRIORITY_COLOR[h.priority]}`,
       cursor: "pointer", transition: "box-shadow 0.15s, border-color 0.15s",
     }}
       onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 4px 14px rgba(15,23,42,0.08)")}
@@ -731,7 +730,6 @@ function StatCell({ label, value, tone, highlight, suffix }: {
     <div style={{
       background: "#fff", borderRadius: 10, padding: 12,
       border: `1px solid ${highlight ? p.color : "var(--oxford-10)"}`,
-      borderLeft: `3px solid ${p.color}`,
       boxShadow: highlight ? `0 0 0 1px ${p.color}` : "none",
     }}>
       <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</div>

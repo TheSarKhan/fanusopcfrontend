@@ -248,7 +248,6 @@ function KanbanCard({
         background: "#fff", borderRadius: 10, padding: 12,
         boxShadow: "0 1px 3px rgba(15,23,42,0.06)",
         border: `1px solid ${overdue ? "#FCA5A5" : "var(--oxford-10)"}`,
-        borderLeft: `3px solid ${PRIORITY_COLOR[h.priority]}`,
         cursor: "grab",
         transition: "transform 0.1s, box-shadow 0.1s",
       }}

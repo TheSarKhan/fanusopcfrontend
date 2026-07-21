@@ -333,7 +333,7 @@ export default function PsychologClientsPage() {
 
       {/* Needs attention */}
       {!loading && filter === "ALL" && !tagFilter && attention.length > 0 && (
-        <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #FCE7A8", borderLeft: "3px solid #B45309", padding: 17, marginBottom: 20 }}>
+        <div style={{ background: "#FFFBEB", borderRadius: 14, border: "1px solid #FDE68A", padding: 16, marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>

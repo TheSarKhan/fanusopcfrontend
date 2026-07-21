@@ -157,33 +157,29 @@ function PackageCard({ pkg, sessions, onScheduled }:
   };
 
   return (
-    <div style={{
-      background: "#fff", borderRadius: 14, padding: 18,
-      boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-      borderLeft: `4px solid ${tone.color}`,
-    }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+    // Sol rəngli kənar və kölgə götürüldü — digər kartlarla eyni sakit səth.
+    // Status rəngi pill yerinə nöqtə kimi qalır.
+    <div className="pnl-card">
+      <div className="pnl-card__head">
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{pkg.packageName}</div>
-          <div style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 2 }}>{pkg.psychologistName}</div>
+          <h2 className="pnl-card__title">{pkg.packageName}</h2>
+          <p className="pnl-card__sub">{pkg.psychologistName}</p>
         </div>
-        <span style={{
-          fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999,
-          color: tone.color, background: tone.bg, whiteSpace: "nowrap",
-        }}>
-          {statusLabel}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}>
+          <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: tone.color }} />
+          <span style={{ fontSize: 12.5, color: "var(--oxford-60)", whiteSpace: "nowrap" }}>{statusLabel}</span>
         </span>
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 18, marginTop: 14 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
         <Stat label={t("pkg.remaining")} value={`${pkg.remaining}/${pkg.total}`} />
         <Stat label={t("pkg.pricePaid")} value={formatAzn(pkg.pricePaid)} />
         <Stat label={t("pkg.purchasedAt")} value={azFormatDate(pkg.purchasedAt)} />
       </div>
 
       {/* Bu paketdən planlanmış seanslar — əvvəl heç yerdə görünmürdü. */}
-      <div style={{ marginTop: 16, borderTop: "1px solid var(--brand-100)", paddingTop: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 8 }}>
+      <div style={{ marginTop: 14, borderTop: "1px solid var(--oxford-10)", paddingTop: 12 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
           Seans tarixləri
         </div>
         {sessions.length === 0 ? (
@@ -193,12 +189,8 @@ function PackageCard({ pkg, sessions, onScheduled }:
         ) : (
           <div>
             {sessions.map((s, i) => (
-              <div key={s.id} style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                gap: 12, padding: "8px 0",
-                borderBottom: i < sessions.length - 1 ? "1px solid var(--oxford-10)" : "none",
-              }}>
-                <span style={{ fontSize: 13, color: "var(--oxford)", fontVariantNumeric: "tabular-nums" }}>
+              <div key={s.id} className="pnl-row">
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)", fontVariantNumeric: "tabular-nums" }}>
                   {s.startAt ? azFormatDateTime(s.startAt) : "Vaxt təyin edilməyib"}
                 </span>
                 <SessionStatus status={s.status} />
@@ -209,7 +201,7 @@ function PackageCard({ pkg, sessions, onScheduled }:
       </div>
 
       {canSchedule && (
-        <div style={{ marginTop: 16, borderTop: "1px solid var(--brand-100)", paddingTop: 14 }}>
+        <div style={{ marginTop: 14, borderTop: "1px solid var(--oxford-10)", paddingTop: 12 }}>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
             {t("pkg.scheduleSession")}
           </label>
@@ -238,10 +230,7 @@ function PackageCard({ pkg, sessions, onScheduled }:
               type="button"
               onClick={submit}
               disabled={saving}
-              style={{
-                padding: "8px 18px", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600,
-                background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1,
-              }}>
+              className="pnl-btn" style={{ flex: "none" }}>
               {saving ? "Göndərilir…" : t("pkg.scheduleSession")}
             </button>
           </div>

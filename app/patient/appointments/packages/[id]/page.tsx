@@ -213,7 +213,7 @@ function SessionRow({ a, ordinal, now }: { a: AppointmentDetail; ordinal: number
     && (a.status === "ASSIGNED" || a.status === "CONFIRMED");
   const isDone = a.status === "COMPLETED";
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "#fff", border: "1px solid #EDF1F8", borderLeft: `3px solid ${st.accent}`, borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.05)", padding: "12px 15px", opacity: isDone ? .8 : 1 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: "12px 15px", opacity: isDone ? .8 : 1 }}>
       <span style={{ fontSize: 13, fontWeight: 700, color: isDone ? "var(--oxford-60)" : "var(--oxford)", minWidth: 74 }}>{azOrdinal(ordinal)} seans</span>
       <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>
         {when ? `${azFormatDate(when)} · ${azFormatTime(when)}` : "Operator vaxtı təyin edəcək"}

@@ -134,8 +134,9 @@ export default function AdminAuditLogsPage() {
                   <span>
                     <strong>Aktor:</strong>{" "}
                     {e.actorEmail ?? "—"}
-                    {e.actorRole ? ` · ${e.actorRole}` : ""}
                   </span>
+                  {/* Rol ayrıca span — audit-meta onsuz da flex gap-lidir */}
+                  {e.actorRole && <span>{e.actorRole}</span>}
                   {e.ip && <span><strong>IP:</strong> {e.ip}</span>}
                 </div>
               </div>

@@ -283,7 +283,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
         events.push({
           key: `pkg-${pkg.id}`,
           title: `Paket alışı — ${pkg.packageName}`,
-          detail: [pkg.psychologistName, pkg.pricePaid != null ? formatAzn(pkg.pricePaid) : null].filter(Boolean).join(" · ") || "—",
+          detail: [pkg.psychologistName, pkg.pricePaid != null ? formatAzn(pkg.pricePaid) : null].filter(Boolean).join(", ") || "—",
           at: pkg.purchasedAt, dot: "pkg",
         });
       }
@@ -293,7 +293,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
         events.push({
           key: `test-${tr.assignmentId}`,
           title: `Test tamamlandı — ${tr.testTitle}`,
-          detail: [tr.totalScore != null && tr.maxScore != null ? `${tr.totalScore}/${tr.maxScore}` : null, tr.scaleLabel].filter(Boolean).join(" · ") || "—",
+          detail: [tr.totalScore != null && tr.maxScore != null ? `${tr.totalScore}/${tr.maxScore}` : null, tr.scaleLabel].filter(Boolean).join(", ") || "—",
           at: tr.submittedAt, dot: "test",
         });
       }
@@ -303,7 +303,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
         events.push({
           key: `rev-${r.id}`,
           title: `Rəy verildi — ${r.rating} ulduz`,
-          detail: [r.psychologistName, r.comment ? `«${r.comment}»` : null].filter(Boolean).join(" · ") || "—",
+          detail: [r.psychologistName, r.comment ? `«${r.comment}»` : null].filter(Boolean).join(", ") || "—",
           at: r.createdAt, dot: "seans",
         });
       }
@@ -394,7 +394,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
           patientId={patientId}
           initialMode={sellMode}
           onClose={() => setSellOpen(false)}
-          onDone={(name, isSingle) => { setSellOpen(false); setReloadKey(k => k + 1); toast(isSingle ? "Tək seans satıldı · ödəniş PENDING" : `Paket satıldı: ${name} · ödəniş PENDING`, "success"); }}
+          onDone={(name, isSingle) => { setSellOpen(false); setReloadKey(k => k + 1); toast(isSingle ? "Tək seans satıldı, ödəniş PENDING" : `Paket satıldı: ${name}, ödəniş PENDING`, "success"); }}
         />
       )}
       {schedulePkg && (
@@ -402,7 +402,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
           patientId={patientId}
           pkg={schedulePkg}
           onClose={() => setSchedulePkg(null)}
-          onDone={() => { setSchedulePkg(null); setReloadKey(k => k + 1); toast("Seans planlandı · təsdiqləndi", "success"); }}
+          onDone={() => { setSchedulePkg(null); setReloadKey(k => k + 1); toast("Seans planlandı, təsdiqləndi", "success"); }}
         />
       )}
       {bookOpen && (
@@ -459,7 +459,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
           <div className="fx-kpi">
             <span className="fx-label">Tamamlanmış</span>
             <span className="fx-kpi__value--sm fx-num">{profile.completedCount}</span>
-            <span className="fx-kpi__meta">seans · {profile.activeCount} aktiv</span>
+            <span className="fx-kpi__meta" style={{ gap: 8, flexWrap: "wrap" }}><span>seans</span><span>{profile.activeCount} aktiv</span></span>
           </div>
           <div className="fx-kpi">
             <span className="fx-label">Paket balansı</span>
@@ -469,7 +469,9 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
           <div className="fx-kpi">
             <span className="fx-label">Son giriş</span>
             <span className="fx-kpi__value--sm fx-num">{lastLoginDays == null ? "—" : lastLoginDays <= 0 ? "Bu gün" : <>{lastLoginDays} <span className="fx-kpi__unit">gün</span></>}</span>
-            <span className="fx-kpi__meta">{profile.lastLogin ? `əvvəl · ${fmtDate(profile.lastLogin)}` : "heç vaxt"}</span>
+            <span className="fx-kpi__meta" style={{ gap: 8, flexWrap: "wrap" }}>
+              {profile.lastLogin ? <><span>əvvəl</span><span>{fmtDate(profile.lastLogin)}</span></> : "heç vaxt"}
+            </span>
           </div>
         </div>
       </div>
@@ -501,7 +503,9 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
         {derived.nextSession && (
           <div className="fx-flex" style={{ background: "var(--surface)", border: "1px solid var(--hairline)", borderRadius: 10, padding: "8px 14px", fontSize: 12.5, color: "var(--oxford-80)" }}>
             <Icon name="clock" style={{ color: "var(--brand)" }} />
-            <span>Növbəti seans: <b className="fx-num">{fmtShortTime(derived.nextSession.startAt)}</b>{derived.nextSession.psychologistName ? ` · ${derived.nextSession.psychologistName}` : ""}</span>
+            {/* Vaxt və psixoloq ayrı span-larda — ayırıcı işarə yox. */}
+            <span>Növbəti seans: <b className="fx-num">{fmtShortTime(derived.nextSession.startAt)}</b></span>
+            {derived.nextSession.psychologistName && <span style={{ color: "var(--oxford-60)" }}>{derived.nextSession.psychologistName}</span>}
           </div>
         )}
         <span className="fx-spacer" />
@@ -603,9 +607,13 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
                     return (
                       <div key={pkg.id} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13, gap: 10, flexWrap: "wrap" }}>
-                          <span style={{ fontWeight: 600 }}>{pkg.packageName} <span style={{ fontWeight: 400, color: "var(--oxford-60)" }}>
-                            {[pkg.psychologistName, pkg.pricePaid != null ? formatAzn(pkg.pricePaid) : null].filter(Boolean).map(s => ` · ${s}`).join("")}
-                          </span></span>
+                          {/* Paket adı + detallar ayrı span-larda — ayırıcı işarə yox, flex boşluğu ayırır. */}
+                          <span style={{ display: "inline-flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                            <span style={{ fontWeight: 600 }}>{pkg.packageName}</span>
+                            {[pkg.psychologistName, pkg.pricePaid != null ? formatAzn(pkg.pricePaid) : null].filter(Boolean).map((s, si) => (
+                              <span key={si} style={{ fontWeight: 400, color: "var(--oxford-60)" }}>{s}</span>
+                            ))}
+                          </span>
                           <span className="fx-num" style={{ fontSize: 12, fontWeight: 600, color: "var(--brand-600)" }}>{pkg.remaining} / {pkg.total} qalıb</span>
                         </div>
                         <div className="fx-progress">
@@ -651,7 +659,8 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
                   {tr.totalScore != null && tr.maxScore != null ? (
                     <>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span className="fx-num" style={{ fontSize: 16, fontWeight: 800 }}>{tr.totalScore} <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>/ {tr.maxScore}{tr.percentage != null ? ` · ${Math.round(tr.percentage)}%` : ""}</span></span>
+                        <span className="fx-num" style={{ fontSize: 16, fontWeight: 800 }}>{tr.totalScore} <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>/ {tr.maxScore}</span></span>
+                        {tr.percentage != null && <span className="fx-num" style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>{Math.round(tr.percentage)}%</span>}
                         {tr.scaleLabel && <span className="fx-pill fx-pill--neutral">{tr.scaleLabel}</span>}
                       </div>
                       <div className="fx-progress" style={{ maxWidth: 320 }}>
@@ -745,7 +754,10 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
               notes.map(n => (
                 <div key={n.id} style={{ padding: "14px 22px", borderBottom: "1px solid var(--hairline)", display: "flex", flexDirection: "column", gap: 5 }}>
                   <span style={{ fontSize: 13, color: "var(--oxford-80)", lineHeight: 1.5 }}>{n.text}</span>
-                  <span className="fx-num" style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>{n.authorName ?? "Operator"} · {fmtDate(n.createdAt)}</span>
+                  <span className="fx-num" style={{ fontSize: 11.5, color: "var(--oxford-60)", display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    <span>{n.authorName ?? "Operator"}</span>
+                    <span>{fmtDate(n.createdAt)}</span>
+                  </span>
                 </div>
               ))
             )}
@@ -765,9 +777,9 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <span className="fx-avatar fx-avatar--2">{initialsOf(h.emergencyContactName)}</span>
                 <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>
-                    {h.emergencyContactName}
-                    {h.emergencyContactRelation && <span style={{ fontWeight: 400, color: "var(--oxford-60)" }}> · {h.emergencyContactRelation}</span>}
+                  <span style={{ fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                    <span>{h.emergencyContactName}</span>
+                    {h.emergencyContactRelation && <span style={{ fontWeight: 400, color: "var(--oxford-60)" }}>{h.emergencyContactRelation}</span>}
                   </span>
                   <span className="fx-num" style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{h.emergencyContactPhone ?? "—"}</span>
                 </div>
@@ -993,23 +1005,25 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
   };
 
   const selCat = catalog.find(c => c.id === catalogId) ?? null;
-  let summaryName = "—", summaryMeta = "";
+  // Xülasə meta-sı hissə-hissə saxlanılır — ayırıcı işarə yox, flex boşluğu ayırır.
+  let summaryName = "—";
+  let summaryMeta: string[] = [];
   let hasSelection = false;
   if (mode === "single") {
     hasSelection = psyId != null;
     summaryName = singleName.trim() || "Tək seans";
-    summaryMeta = `1 seans · ${formatAzn(Number(singlePrice) || 0)} · ${singleStart ? fmtDateTime(singleStart) : "tarix seçilməyib"}`;
+    summaryMeta = ["1 seans", formatAzn(Number(singlePrice) || 0), singleStart ? fmtDateTime(singleStart) : "tarix seçilməyib"];
   } else if (mode === "custom") {
     const s = Number(sessions) || 0, pr = Number(price) || 0;
     hasSelection = s > 0 || pr > 0 || !!name.trim();
     if (hasSelection) {
       summaryName = name.trim() || "Xüsusi paket";
-      summaryMeta = `${s} seans · ${formatAzn(pr)} · seans başına ≈ ${s ? formatAzn(Math.round(pr / s)) : "—"}`;
+      summaryMeta = [`${s} seans`, formatAzn(pr), `seans başına ≈ ${s ? formatAzn(Math.round(pr / s)) : "—"}`];
     }
   } else if (selCat) {
     hasSelection = true;
     summaryName = selCat.name;
-    summaryMeta = `${selCat.sessionCount} seans · ${formatAzn(selCat.packagePrice)} · seans başına ≈ ${formatAzn(selCat.perSessionPrice)}`;
+    summaryMeta = [`${selCat.sessionCount} seans`, formatAzn(selCat.packagePrice), `seans başına ≈ ${formatAzn(selCat.perSessionPrice)}`];
   }
   const emptyHint = mode === "single" ? "Psixoloq və seans tarixini seçin"
     : mode === "custom" ? "Seans sayı və qiyməti daxil edin"
@@ -1084,7 +1098,10 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{c.name}</div>
-                        <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginTop: 1 }}>{c.sessionCount} seans · seans başına ≈ {formatAzn(c.perSessionPrice)}</div>
+                        <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginTop: 1, display: "flex", flexWrap: "wrap", gap: 10 }}>
+                          <span>{c.sessionCount} seans</span>
+                          <span>seans başına ≈ {formatAzn(c.perSessionPrice)}</span>
+                        </div>
                       </div>
                       <span style={{ fontSize: 16, fontWeight: 800, color: "#082F6D", flex: "none" }}>{formatAzn(c.packagePrice)}</span>
                     </button>
@@ -1134,7 +1151,12 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
                     <DatePicker withTime theme="light" size="sm" value={singleStart} onChange={v => { setSingleStart(v); setSingleEnd(addMinutes(v, sessionMin)); }} style={{ width: "100%" }} />
                   </label>
                 )}
-                {singleStart && <div style={{ fontSize: 12, color: "#065F46", fontWeight: 600, marginTop: 8 }}>Seçilmiş vaxt: {fmtDateTime(singleStart)} · ~{sessionMin} dəq</div>}
+                {singleStart && (
+                  <div style={{ fontSize: 12, color: "#065F46", fontWeight: 600, marginTop: 8, display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    <span>Seçilmiş vaxt: {fmtDateTime(singleStart)}</span>
+                    <span>~{sessionMin} dəq</span>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -1163,7 +1185,9 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{summaryName}</div>
-                  <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 2 }}>{summaryMeta}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 2, display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    {summaryMeta.map((m, mi) => <span key={mi}>{m}</span>)}
+                  </div>
                 </div>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#FEF3C7", color: "#92400E", fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>Ödəniş: PENDING
@@ -1252,8 +1276,10 @@ function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
       <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, background: "#fff", borderRadius: 16, boxShadow: "0 24px 70px rgba(8,47,109,.3)", display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
         <div style={{ padding: "18px 22px", borderBottom: "1px solid #F0F4FA" }}>
           <div style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)" }}>Paket seansı planla</div>
-          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3 }}>
-            {pkg.packageName} · {pkg.remaining} seans qalıb{pkg.psychologistName ? ` · ${pkg.psychologistName}` : ""}
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3, display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <span>{pkg.packageName}</span>
+            <span>{pkg.remaining} seans qalıb</span>
+            {pkg.psychologistName && <span>{pkg.psychologistName}</span>}
           </div>
         </div>
         <div style={{ padding: "18px 22px", overflowY: "auto" }}>
@@ -1303,7 +1329,8 @@ function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
 
           {start && end && (
             <div style={{ fontSize: 12.5, color: "#065F46", fontWeight: 600, marginTop: 12, background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 9, padding: "9px 12px" }}>
-              Seçilmiş vaxt: {azFormatDate(azLocalToISO(start))} · {azFormatTime(azLocalToISO(start))} – {azFormatTime(azLocalToISO(end))}
+              {/* Tarix və vaxt aralığı bir cümlə kimi oxunur — vergüllə. */}
+              Seçilmiş vaxt: {azFormatDate(azLocalToISO(start))}, {azFormatTime(azLocalToISO(start))} – {azFormatTime(azLocalToISO(end))}
             </div>
           )}
 

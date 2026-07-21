@@ -95,7 +95,7 @@ export default function OperatorAnalyticsPage() {
       { label: "Gözləyən məbləğ", value: formatAzn(summary.pendingSum), sub: `${summary.pendingCount} ödəniş`, accent: "#92400E", icon: I_CLOCK, href: "/operator/payments" },
       { label: "Bu ay geri qaytarılıb", value: formatAzn(summary.refundedMonthSum), sub: "bu ay", accent: "#991B1B", icon: I_UNDO },
       { label: "Geri qaytarma faizi", value: `${String(rate).replace(".", ",")}%`, sub: `${formatAzn(summary.refundedMonthSum)} / ${formatAzn(gross)}`, accent: "#991B1B", icon: I_TREND },
-      { label: "Bu ay ödəniş sayı", value: String(summary.paidMonthCount + summary.pendingCount), sub: `${summary.paidMonthCount} ödənilib · ${summary.pendingCount} gözləyir`, accent: "#082F6D", icon: I_LIST },
+      { label: "Bu ay ödəniş sayı", value: String(summary.paidMonthCount + summary.pendingCount), sub: `${summary.paidMonthCount} ödənilib, ${summary.pendingCount} gözləyir`, accent: "#082F6D", icon: I_LIST },
     ];
   }, [summary]);
 
@@ -105,7 +105,7 @@ export default function OperatorAnalyticsPage() {
   if (!stats) return <div className="op-error">{t("common.error")}</div>;
 
   const opKpis: { label: string; value: string; sub: string; numColor: string; subColor: string; href?: string }[] = [
-    { label: "Cavabsız müraciət", value: String(stats.pendingNow), sub: stats.unansweredOver24h > 0 ? `${stats.unansweredOver24h} · 24 saatdan çox` : "tarixçə təmiz", numColor: stats.unansweredOver24h > 0 ? "#991B1B" : "#92400E", subColor: stats.unansweredOver24h > 0 ? "#991B1B" : "#9DB0CC", href: "/operator/appointments" },
+    { label: "Cavabsız müraciət", value: String(stats.pendingNow), sub: stats.unansweredOver24h > 0 ? `${stats.unansweredOver24h} müraciət 24 saatdan çox` : "tarixçə təmiz", numColor: stats.unansweredOver24h > 0 ? "#991B1B" : "#92400E", subColor: stats.unansweredOver24h > 0 ? "#991B1B" : "#9DB0CC", href: "/operator/appointments" },
     { label: "Seansa çevrilmə", value: fmtPct(stats.conversionRatePct), sub: `${stats.completedThisMonth}/${stats.totalThisMonth} bu ay`, numColor: "#047857", subColor: "#9DB0CC" },
     { label: "Orta cavab vaxtı", value: fmtMin(stats.avgResponseMinutes), sub: "müraciət → təyin", numColor: "#082F6D", subColor: "#9DB0CC" },
     { label: "Bu gün təyin edilib", value: String(stats.assignedToday), sub: "randevu", numColor: "#082F6D", subColor: "#9DB0CC" },
@@ -216,7 +216,11 @@ export default function OperatorAnalyticsPage() {
       {/* TRIAGE 30 GÜN */}
       <div style={{ ...CARD, padding: 20, marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
-          <div style={{ fontSize: 15.5, fontWeight: 700, flex: 1, color: "var(--oxford)" }}>Son 30 gün · Triyaj</div>
+          {/* Başlıq və dövr ayrı span-larda — ayırıcı işarə yox. */}
+          <div style={{ fontSize: 15.5, fontWeight: 700, flex: 1, color: "var(--oxford)", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+            <span>Triyaj</span>
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford-60)" }}>Son 30 gün</span>
+          </div>
           <Legend dot items={[{ c: "#3B82F6", t: "Gələn" }, { c: "#10B981", t: "Təyin" }, { c: "#F59E0B", t: "Rədd" }]} inline />
         </div>
         {stats.last30Days.length === 0 ? <Empty msg="Məlumat yoxdur" /> : <TriageBars data={stats.last30Days} />}
@@ -236,7 +240,10 @@ export default function OperatorAnalyticsPage() {
                   <span style={{ width: 38, height: 38, borderRadius: 11, background: a.bg, color: a.color, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flex: "none" }}>{initials(r.name)}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{r.name}</div>
-                    <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>{r.completedSessions} tamamlanmış seans{r.activePatients > 0 ? ` · ${r.activePatients} aktiv müraciətçi` : ""}</div>
+                    <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 10 }}>
+                      <span>{r.completedSessions} tamamlanmış seans</span>
+                      {r.activePatients > 0 && <span>{r.activePatients} aktiv müraciətçi</span>}
+                    </div>
                   </div>
                   <div style={{ flex: 1, maxWidth: 220, minWidth: 80 }}><Bar pct={(r.completedSessions / max) * 100} delay={i} /></div>
                 </Link>
@@ -261,7 +268,10 @@ export default function OperatorAnalyticsPage() {
                     <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 5, color: "var(--oxford)" }}>{o.name}</div>
                     <Bar pct={(o.assignedCount / max) * 100} delay={i} />
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, flex: "none" }}>{o.assignedCount} təyinat · orta cavab: {fmtMin(o.avgResponseMinutes)}</div>
+                  <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, flex: "none", display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    <span>{o.assignedCount} təyinat</span>
+                    <span>orta cavab: {fmtMin(o.avgResponseMinutes)}</span>
+                  </div>
                 </div>
               );
             })}
@@ -272,7 +282,7 @@ export default function OperatorAnalyticsPage() {
       {/* DİQQƏT TƏLƏB EDƏNLƏR */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(320px, 100%), 1fr))", gap: 18, marginBottom: 24 }}>
         <div style={{ ...CARD, padding: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "var(--oxford)" }}>Diqqət · Müraciətçilər</div>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "var(--oxford)" }}>Diqqət tələb edən müraciətçilər</div>
           {stats.patientsNeedingAttention.length === 0 ? <Empty msg="İşarələnmiş müraciətçi yoxdur" /> : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {stats.patientsNeedingAttention.map(p => <FlagPatient key={p.patientId} p={p} />)}
@@ -280,7 +290,7 @@ export default function OperatorAnalyticsPage() {
           )}
         </div>
         <div style={{ ...CARD, padding: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "var(--oxford)" }}>Diqqət · Psixoloqlar</div>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "var(--oxford)" }}>Diqqət tələb edən psixoloqlar</div>
           {stats.psyConcerns.length === 0 ? <Empty msg="Problemli psixoloq yoxdur" /> : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {stats.psyConcerns.map(c => <FlagPsy key={c.psychologistId} c={c} />)}
@@ -341,7 +351,10 @@ function SourceRow({ color, amount, total, label }: { color: string; amount: num
       <span style={{ width: 11, height: 11, borderRadius: 3, background: color, flex: "none" }} />
       <div>
         <div className="an-num" style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{formatAzn(amount)}</div>
-        <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>{label} · {pct}%</div>
+        <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <span>{label}</span>
+          <span>{pct}%</span>
+        </div>
       </div>
     </div>
   );
@@ -426,8 +439,10 @@ function FlagPatient({ p }: { p: PatientFlagged }) {
           <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{p.name}</span>
           <span style={{ background: m.bg, color: m.fg, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{m.text}</span>
         </div>
-        <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 2 }}>
-          {[p.noShowCount > 0 && `${p.noShowCount} no-show`, p.lateCancelCount > 0 && `${p.lateCancelCount} geç ləğv`, p.rejectCount > 0 && `${p.rejectCount} rədd`, p.lastIncidentAt && `son: ${fmtAgo(p.lastIncidentAt)}`].filter(Boolean).join(" · ")}
+        {/* Hər fakt öz span-ında — ayırıcı işarə yox, flex boşluğu ayırır. */}
+        <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 2, display: "flex", flexWrap: "wrap", gap: 10 }}>
+          {([p.noShowCount > 0 && `${p.noShowCount} no-show`, p.lateCancelCount > 0 && `${p.lateCancelCount} geç ləğv`, p.rejectCount > 0 && `${p.rejectCount} rədd`, p.lastIncidentAt && `son: ${fmtAgo(p.lastIncidentAt)}`].filter(Boolean) as string[])
+            .map((s, si) => <span key={si}>{s}</span>)}
         </div>
       </div>
     </Link>
@@ -443,7 +458,7 @@ function FlagPsy({ c }: { c: PsychologistConcern }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{c.name}</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-          {c.rejected > 0 && <span style={{ background: rejTone.bg, color: rejTone.fg, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{c.rejected} rədd · {fmtPct(c.rejectionRatePct)}</span>}
+          {c.rejected > 0 && <span style={{ background: rejTone.bg, color: rejTone.fg, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{c.rejected} rədd, {fmtPct(c.rejectionRatePct)}</span>}
           <span style={{ background: "#F3F4F6", color: "#374151", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>təsdiq: {fmtMin(c.avgConfirmMinutes)}</span>
         </div>
       </div>
@@ -464,7 +479,11 @@ function CrisisRow({ c, acking, onAck }: { c: OperatorCrisisCheckIn; acking: boo
           <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{c.patientName}</span>
           {c.riskLevel && <span style={{ background: "#FEE2E2", color: "#991B1B", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{c.riskLevel === "CRITICAL" ? "Kritik" : c.riskLevel === "HIGH" ? "Yüksək" : c.riskLevel}</span>}
         </div>
-        <div style={{ fontSize: 12, color: "var(--oxford-60)", fontStyle: "italic", fontWeight: 500, marginTop: 3 }}>{c.note ? `«${c.note.length > 90 ? c.note.slice(0, 90) + "…" : c.note}» · ` : ""}{azFormatDateTime(c.createdAt)}</div>
+        {/* Qeyd və tarix ayrı sətirlərdə — ayırıcı işarə yox. */}
+        <div style={{ fontSize: 12, color: "var(--oxford-60)", fontStyle: "italic", fontWeight: 500, marginTop: 3 }}>
+          {c.note && <div>«{c.note.length > 90 ? c.note.slice(0, 90) + "…" : c.note}»</div>}
+          <div style={{ fontStyle: "normal" }}>{azFormatDateTime(c.createdAt)}</div>
+        </div>
       </div>
       <div style={{ display: "flex", gap: 7, flex: "none" }}>
         {c.patientPhone && <a href={`tel:${c.patientPhone}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#fff", color: "#047857", border: "1px solid #A7F3D0", fontSize: 11.5, fontWeight: 600, padding: "6px 11px", borderRadius: 9, textDecoration: "none" }}>Zəng</a>}

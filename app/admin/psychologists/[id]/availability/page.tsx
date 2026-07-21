@@ -136,9 +136,10 @@ export default function AdminPsychologistAvailabilityPage() {
               <div style={{ display: "grid", gap: 6 }}>
                 {slots.map(s => (
                   <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--line)" }}>
-                    <div style={{ flex: 1, fontSize: 13 }}>
-                      <strong>{dayLabel(s.dayOfWeek)}</strong> · {trimSec(s.startTime)}–{trimSec(s.endTime)}
-                      {!s.active && <span style={{ marginLeft: 8, fontSize: 11, color: "var(--muted)" }}>(deaktiv)</span>}
+                    <div style={{ flex: 1, fontSize: 13, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                      <strong>{dayLabel(s.dayOfWeek)}</strong>
+                      <span>{trimSec(s.startTime)}–{trimSec(s.endTime)}</span>
+                      {!s.active && <span style={{ fontSize: 11, color: "var(--muted)" }}>(deaktiv)</span>}
                     </div>
                     <button onClick={() => deleteSlot(s.id)} className="btn" style={{ fontSize: 11, color: "var(--rose)" }}>Sil</button>
                   </div>
@@ -176,10 +177,10 @@ export default function AdminPsychologistAvailabilityPage() {
                     <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 999, background: o.overrideType === "BLOCK" ? "#FEF2F2" : "#ECFDF5", color: o.overrideType === "BLOCK" ? "#991B1B" : "#065F46", fontWeight: 600 }}>
                       {o.overrideType}
                     </span>
-                    <div style={{ flex: 1, fontSize: 13 }}>
+                    <div style={{ flex: 1, fontSize: 13, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                       <strong>{o.overrideDate}</strong>
-                      {o.startTime && o.endTime && <span> · {trimSec(o.startTime)}–{trimSec(o.endTime)}</span>}
-                      {o.note && <span style={{ color: "var(--muted)", marginLeft: 6 }}>· {o.note}</span>}
+                      {o.startTime && o.endTime && <span>{trimSec(o.startTime)}–{trimSec(o.endTime)}</span>}
+                      {o.note && <span style={{ color: "var(--muted)" }}>{o.note}</span>}
                     </div>
                     <button onClick={() => deleteOverride(o.id)} className="btn" style={{ fontSize: 11, color: "var(--rose)" }}>Sil</button>
                   </div>

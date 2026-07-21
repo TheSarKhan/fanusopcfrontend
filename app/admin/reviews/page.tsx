@@ -173,8 +173,10 @@ export default function AdminReviewsPage() {
                     )}
                     {r.moderationNote && (
                       <div style={{ marginTop: 10, fontSize: 12, color: "#52718F" }}>
-                        <strong>Admin qeydi:</strong> {r.moderationNote}
-                        {r.moderatedByEmail && <> · {r.moderatedByEmail}</>}
+                        <div><strong>Admin qeydi:</strong> {r.moderationNote}</div>
+                        {r.moderatedByEmail && (
+                          <div style={{ fontSize: 11.5, color: "var(--oxford-60)", marginTop: 2 }}>{r.moderatedByEmail}</div>
+                        )}
                       </div>
                     )}
                   </div>

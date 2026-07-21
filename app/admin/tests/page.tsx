@@ -82,8 +82,9 @@ export default function TestsPage() {
                 }}>
                   <div style={{ flex: 1, minWidth: 180 }}>
                     <div style={{ fontWeight: 600, color: "var(--ink)" }}>{t.title}</div>
-                    <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
-                      {t.questionCount} sual · {t.scaleCount} şkala
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+                      <span>{t.questionCount} sual</span>
+                      <span>{t.scaleCount} şkala</span>
                     </div>
                   </div>
                   <a className="btn sm ghost" href={`/admin/tests/${t.id}/edit`}>Bax</a>

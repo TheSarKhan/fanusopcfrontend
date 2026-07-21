@@ -234,7 +234,7 @@ export const az = {
     extendCta: "Atlanan {n} həftəni əvəzlə",
     extending: "Əlavə edilir…",
     extendDone: "{n} əlavə randevu yaradıldı",
-    courseLine: "Paket · {ordinal} sessiya / {total}",
+    courseLine: "Paket, {ordinal} sessiya / {total}",
   },
 
   course: {
@@ -251,8 +251,8 @@ export const az = {
     sessionFuture: "gələcək",
     sessionCancelled: "ləğv",
     dashboardTitle: "Paketiniz",
-    dashboardLine: "{done}/{total} · növbəti: {next}",
-    dashboardNoNext: "{done}/{total} · növbəti seans planlaşdırılmayıb",
+    dashboardLine: "{done}/{total}, növbəti: {next}",
+    dashboardNoNext: "{done}/{total}, növbəti seans planlaşdırılmayıb",
     dashboardCta: "Paketə bax →",
   },
 
@@ -291,7 +291,7 @@ export const az = {
     proposalBannerBody: "{psy} {n} alternativ saat təklif edir. Birini seçin və ya hamısını rədd edin.",
     proposalBannerAction: "Bax və seç",
     sessionNumber: "{ordinal} seans",
-    youConfirmed: "✓ Siz təsdiqlədiniz · psixoloqdan gözlənilir",
+    youConfirmed: "✓ Siz təsdiqlədiniz, psixoloqdan gözlənilir",
     sessionsCount: "{count} seans",
   },
 
@@ -463,7 +463,7 @@ export const az = {
     filterAll: "Hamısı",
     filterAnxiety: "Narahatlıq",
     filterTrauma: "Travma",
-    filterFamily: "Münasibət · Ailə",
+    filterFamily: "Münasibət, Ailə",
     filterDepression: "Depressiya",
     filterYouth: "Yeniyetmə",
     filterAddiction: "Asılılıq",
@@ -548,7 +548,7 @@ export const az = {
     newsletter: "Aylıq məqalə bülleteni",
     newsletterText: "Hər ay Fanus psixoloqlarının seçilmiş yazıları e-poçtunuza gəlsin.",
     newsletterThanks: "Təşəkkürlər!",
-    rights: "© 2026 Fanus OPC · Bütün hüquqlar qorunur",
+    rights: "© 2026 Fanus OPC, bütün hüquqlar qorunur",
     privacy: "Məxfilik",
     terms: "İstifadə şərtləri",
     ethics: "Etika kodeksi",
@@ -620,7 +620,7 @@ export const az = {
     // Pool sahibliyi
     opTake: "Götür",
     opPoolFilter: "Pool",
-    opReleaseToPool: "Pool-a burax",
+    opReleaseToPool: "Hovuza geri burax",
     opReleaseLockedBySession: "Seans/paket sizdədir — ödəniş tək başına buraxıla bilməz",
     opClaimBlocked: "Bu müraciət {name} üzərindədir — əvvəlcə ondan alınmalıdır",
     opReassign: "Başqasına ver",

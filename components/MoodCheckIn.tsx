@@ -412,9 +412,9 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="fanus-mm-psyc-card__name">{p.name}</div>
-                    <div className="fanus-mm-psyc-card__spec">
-                      {(p.specializations ?? []).slice(0, 2).join(", ") || p.title}
-                      {p.experience ? ` · ${p.experience} ${t("psyList.yearsExp")}` : ""}
+                    <div className="fanus-mm-psyc-card__spec" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                      <span>{(p.specializations ?? []).slice(0, 2).join(", ") || p.title}</span>
+                      {p.experience ? <span>{p.experience} {t("psyList.yearsExp")}</span> : null}
                     </div>
                     {p.sessionTypes && (
                       <div className="fanus-mm-psyc-card__types">

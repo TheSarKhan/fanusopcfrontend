@@ -313,7 +313,10 @@ export default async function PsychologistProfilePage(
                       <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
                         <h3 style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: "var(--oxford)", lineHeight: 1.35 }}>{post.title}</h3>
                         {post.excerpt && <p style={{ margin: 0, fontSize: 13, color: "var(--oxford-60)", lineHeight: 1.5, flex: 1 }}>{post.excerpt}</p>}
-                        <div style={{ fontSize: 12, color: "#9DB0CC", fontWeight: 600 }}>{post.readTimeMinutes} dəq · {formatDate(post.publishedDate)}</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 12, color: "#9DB0CC", fontWeight: 600 }}>
+                          <span>{post.readTimeMinutes} dəq</span>
+                          <span>{formatDate(post.publishedDate)}</span>
+                        </div>
                       </div>
                     </a>
                   ))}

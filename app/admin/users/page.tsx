@@ -1203,7 +1203,7 @@ function ConsentLine({ ok, label }: { ok?: boolean; label: string }) {
         color: "#fff",
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: 10, fontWeight: 700, flexShrink: 0,
-      }}>{ok ? "✓" : "·"}</span>
+      }}>{ok ? "✓" : ""}</span>
       <span style={{ color: ok ? "var(--ink)" : "var(--muted)" }}>{label}</span>
     </div>
   );
@@ -1225,7 +1225,7 @@ function EducationList({ json, fallback }: {
         <div key={i} style={{ background: "var(--surface)", padding: 12, borderRadius: 10, border: "1px solid var(--border)", minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", overflowWrap: "anywhere", wordBreak: "break-word" }}>{r.institution}</div>
           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-            {[r.degree, r.graduationYear].filter(Boolean).join(" · ") || "—"}
+            {[r.degree, r.graduationYear].filter(Boolean).join(", ") || "—"}
           </div>
         </div>
       ))}
@@ -1255,7 +1255,7 @@ function CertificateList({ json, legacyCerts }: { json?: string; legacyCerts?: s
           </div>
           {(r.issuer || r.year) && (
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflowWrap: "anywhere", wordBreak: "break-word" }}>
-              {[r.issuer, r.year].filter(Boolean).join(" · ")}
+              {[r.issuer, r.year].filter(Boolean).join(", ")}
             </div>
           )}
         </div>

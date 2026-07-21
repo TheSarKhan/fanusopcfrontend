@@ -240,7 +240,7 @@ export default function OperatorPaymentsPage() {
       try { await operatorApi.markPaymentPaid(p.id); patch(p.id, { status: "PAID", paidAt: new Date().toISOString() }); done++; } catch { /* davam et */ }
     }
     setSelected({});
-    uiToast(`${done} ödəniş təsdiqləndi${done < targets.length ? ` · ${targets.length - done} alınmadı` : ""}`, done > 0 ? "success" : "error");
+    uiToast(`${done} ödəniş təsdiqləndi${done < targets.length ? `, ${targets.length - done} alınmadı` : ""}`, done > 0 ? "success" : "error");
   };
 
   const onCancelled = (p: PaymentItem) => { setCancelFor(null); patch(p.id, p); uiToast(`${p.patientName} — ödəniş ləğv edildi`, "success"); };
@@ -283,7 +283,12 @@ export default function OperatorPaymentsPage() {
       {/* Başlıq */}
       <PageHeader
         title="Ödənişlər"
-        subtitle={<>Maliyyə əməliyyatları · {fmtToday()}</>}
+        subtitle={
+          <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 10 }}>
+            <span>Maliyyə əməliyyatları</span>
+            <span>{fmtToday()}</span>
+          </span>
+        }
         actions={
           <>
             <button type="button" onClick={() => exportExcel(rows)} className="fx-btn fx-btn--ghost">
@@ -304,8 +309,18 @@ export default function OperatorPaymentsPage() {
           <div className="fx-card fx-card--lg fx-kpi-row pm-kpi" style={{ gridTemplateColumns: "repeat(4,1fr)", marginBottom: 16 }}>
             <Kpi label="Bu gün yığılan" value={todaySum} sub={`${paidItems.filter(p => p.paidAt && isToday(p.paidAt)).length} ödəniş`} />
             <Kpi label="Bu ay gəlir" value={paidMonthSum} sub={`${paidItems.length} ödəniş`} />
-            <Kpi label="Gözləyən məbləğ" value={pendingSum} sub={<><span style={{ color: "var(--amber)", fontWeight: 600 }}>{overdue.length} gecikmiş</span> · {pending.length} ödəniş</>} />
-            <Kpi label="Geri qaytarılan" value={refundedSum} sub={`bu ay · ${items.filter(p => (p.refundedAmount ?? 0) > 0).length} əməliyyat`} />
+            <Kpi label="Gözləyən məbləğ" value={pendingSum} sub={
+              <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 10 }}>
+                <span style={{ color: "var(--amber)", fontWeight: 600 }}>{overdue.length} gecikmiş</span>
+                <span>{pending.length} ödəniş</span>
+              </span>
+            } />
+            <Kpi label="Geri qaytarılan" value={refundedSum} sub={
+              <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 10 }}>
+                <span>bu ay</span>
+                <span>{items.filter(p => (p.refundedAmount ?? 0) > 0).length} əməliyyat</span>
+              </span>
+            } />
           </div>
 
           {/* Qrafiklər */}
@@ -373,7 +388,10 @@ export default function OperatorPaymentsPage() {
                 </span>
                 <div style={{ flex: 1 }}>
                   <div className="fx-card-title">Diqqət tələb edən ödənişlər</div>
-                  <div className="fx-num" style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{pending.length} ödəniş · {fmtNum(pendingSum)} AZN yığılmayıb</div>
+                  <div className="fx-num" style={{ fontSize: 12.5, color: "var(--oxford-60)", display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    <span>{pending.length} ödəniş</span>
+                    <span>{fmtNum(pendingSum)} AZN yığılmayıb</span>
+                  </div>
                 </div>
                 {overdue.length > 0 && <span className="fx-pill fx-pill--pending fx-num">{overdue.length} gecikmiş (24+ saat)</span>}
               </div>
@@ -385,7 +403,10 @@ export default function OperatorPaymentsPage() {
                     <span className={`fx-avatar fx-avatar--sm ${avatarClassOf(p.id)}`}>{initialsOf(p.patientName)}</span>
                     <div style={{ display: "flex", flexDirection: "column", minWidth: 170 }}>
                       <span style={{ fontSize: 13.5, fontWeight: 600 }}><DeletedMark p={p} />{p.patientName}</span>
-                      <span style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>{linkLabel(p)}{p.psychologistName ? ` · ${p.psychologistName}` : ""}</span>
+                      <span style={{ fontSize: 11.5, color: "var(--oxford-60)", display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        <span>{linkLabel(p)}</span>
+                        {p.psychologistName && <span>{p.psychologistName}</span>}
+                      </span>
                     </div>
                     <span className={`fx-pill ${agePillClass} fx-num`} style={{ whiteSpace: "nowrap" }}>{ageLabel(h)}</span>
                     <div className="fx-spacer" />
@@ -623,10 +644,11 @@ function PayRow({ p, selected, onToggle, onOpen, onPay, onCancel, onRefund }: {
       <span className={`fx-avatar ${avatarClassOf(p.id)}`}>{initialsOf(p.patientName)}</span>
       <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 210 }}>
         <span className="fx-row__title"><DeletedMark p={p} />{p.patientName}</span>
-        <div className="fx-row__meta">
+        {/* Meta dəyərləri ayrı span-larda — ayırıcı işarə yox, flex boşluğu ayırır. */}
+        <div className="fx-row__meta" style={{ gap: 10, flexWrap: "wrap" }}>
           <MethodIcon method={p.method} />
-          <span>{p.method}</span><span className="fx-sep">·</span>
-          <span className="fx-num">{fmtDay(p.createdAt)}</span><span className="fx-sep">·</span>
+          <span>{p.method}</span>
+          <span className="fx-num">{fmtDay(p.createdAt)}</span>
           <span>{linkLabel(p)}</span>
         </div>
         {showNote && <span style={{ fontSize: 11.5, color: "var(--status-partial-fg)", fontStyle: "italic" }}>«{p.statusNote}»</span>}
@@ -636,7 +658,12 @@ function PayRow({ p, selected, onToggle, onOpen, onPay, onCancel, onRefund }: {
       <div className="fx-spacer" />
       <div className="fx-row__amount" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, minWidth: 130 }}>
         <span className="fx-num">{fmtNum(p.amount)} <small>AZN</small></span>
-        {refunded > 0 && <span className="fx-num" style={{ fontSize: 11.5, color: "var(--status-partial-fg)", fontWeight: 400 }}>qaytarılıb {fmtNum(refunded)} · qalıq {fmtNum(p.amount - refunded)}</span>}
+        {refunded > 0 && (
+          <span className="fx-num" style={{ fontSize: 11.5, color: "var(--status-partial-fg)", fontWeight: 400, display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 8 }}>
+            <span>qaytarılıb {fmtNum(refunded)}</span>
+            <span>qalıq {fmtNum(p.amount - refunded)}</span>
+          </span>
+        )}
         {st === "PAID" && <span className="fx-num" style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 400 }}>komissiya {fmtNum(commOf(p))} AZN</span>}
       </div>
       <div style={{ display: "flex", gap: 8, alignItems: "center", minWidth: 196, justifyContent: "flex-end" }} onClick={e => e.stopPropagation()}>
@@ -708,7 +735,10 @@ function Drawer({ p, onClose, onCall, onWhatsapp, onViewLinked }: { p: PaymentIt
                 </div>
                 <div className="fx-tl-body">
                   <span className="fx-tl-title">{ev.title}</span>
-                  <span className="fx-tl-meta">{ev.who}{ev.time ? ` · ${fmtDay(ev.time)}` : ""}</span>
+                  <span className="fx-tl-meta" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    <span>{ev.who}</span>
+                    {ev.time && <span>{fmtDay(ev.time)}</span>}
+                  </span>
                   {ev.note && <span className="fx-tl-note">«{ev.note}»</span>}
                 </div>
               </div>
@@ -832,7 +862,11 @@ function RefundModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
 
   return (
     <ModalShell icon="rose" iconD={["M1 4v6h6", "M3.51 15a9 9 0 1 0 2.13-9.36L1 10"]} title="İadə tələbi" onClose={onClose}>
-      <div className="fx-modal__text">{payment.patientName} · ödəniş {formatAzn(payment.amount)} · qalıq {formatAzn(remaining)}</div>
+      <div className="fx-modal__text" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+        <span>{payment.patientName}</span>
+        <span>ödəniş {formatAzn(payment.amount)}</span>
+        <span>qalıq {formatAzn(remaining)}</span>
+      </div>
       <ModalField label="Geri qaytarılacaq məbləğ (₼)">
         <input type="number" min={0} step="0.01" max={remaining} value={amount} onChange={e => setAmount(e.target.value)} className="fx-input" style={{ fontSize: 15 }} autoFocus />
       </ModalField>
@@ -866,7 +900,11 @@ function CancelModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
 
   return (
     <ModalShell icon="rose" iconD={["M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z", "M12 9v4", "M12 17h.01"]} title="Ödənişi ləğv et" onClose={onClose}>
-      <div className="fx-modal__text">{payment.patientName} · {formatAzn(payment.amount)} · gözləyən ödəniş</div>
+      <div className="fx-modal__text" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+        <span>{payment.patientName}</span>
+        <span>{formatAzn(payment.amount)}</span>
+        <span>gözləyən ödəniş</span>
+      </div>
       <ModalField label="Ləğv səbəbi (məcburi)">
         <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)} placeholder="Ləğv səbəbi…" className="fx-textarea" autoFocus />
       </ModalField>

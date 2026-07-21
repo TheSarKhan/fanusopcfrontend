@@ -132,20 +132,24 @@ export default function AdminApprovalsPage() {
               return (
                 <div className="list-item" key={r.id}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="li-title">
-                      Ödəniş #{r.paymentId}
-                      {r.patientName && <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {r.patientName}</span>}
-                      <span className={`pill ${pill.cls}`} style={{ marginLeft: 8 }}>{pill.label}</span>
+                    <div className="li-title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span>Ödəniş #{r.paymentId}</span>
+                      {r.patientName && <span style={{ color: "var(--muted)", fontWeight: 400 }}>{r.patientName}</span>}
+                      <span className={`pill ${pill.cls}`}>{pill.label}</span>
                     </div>
                     <div className="li-meta">
-                      İadə məbləği: <strong>{r.amount} AZN</strong>
-                      {r.paymentAmount != null && <> · ödəniş {r.paymentAmount} AZN</>}
-                      {r.alreadyRefunded > 0 && <> · əvvəl qaytarılıb {r.alreadyRefunded} AZN</>}
-                      <br />
-                      Səbəb: {r.reason}
-                      <br />
-                      Tələb edən: {r.requestedByName ?? "—"} · {azFormatDateTime(r.createdAt)}
-                      {r.decisionNote && <> · Qərar qeydi: {r.decisionNote}</>}
+                      {/* Ayırıcı işarə əvəzinə flex boşluğu */}
+                      <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                        <span>İadə məbləği: <strong>{r.amount} AZN</strong></span>
+                        {r.paymentAmount != null && <span>ödəniş {r.paymentAmount} AZN</span>}
+                        {r.alreadyRefunded > 0 && <span>əvvəl qaytarılıb {r.alreadyRefunded} AZN</span>}
+                      </div>
+                      <div>Səbəb: {r.reason}</div>
+                      <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                        <span>Tələb edən: {r.requestedByName ?? "—"}</span>
+                        <span>{azFormatDateTime(r.createdAt)}</span>
+                      </div>
+                      {r.decisionNote && <div>Qərar qeydi: {r.decisionNote}</div>}
                     </div>
                   </div>
                   {r.status === "PENDING" && (
@@ -176,16 +180,19 @@ export default function AdminApprovalsPage() {
               return (
                 <div className="list-item" key={r.id}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="li-title">
-                      Müraciət #{r.appointmentId}
-                      {r.patientName && <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {r.patientName}</span>}
-                      {r.appointmentStatus && <span className="pill ox" style={{ marginLeft: 8 }}>{r.appointmentStatus}</span>}
-                      <span className={`pill ${pill.cls}`} style={{ marginLeft: 4 }}>{pill.label}</span>
+                    <div className="li-title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span>Müraciət #{r.appointmentId}</span>
+                      {r.patientName && <span style={{ color: "var(--muted)", fontWeight: 400 }}>{r.patientName}</span>}
+                      {r.appointmentStatus && <span className="pill ox">{r.appointmentStatus}</span>}
+                      <span className={`pill ${pill.cls}`}>{pill.label}</span>
                     </div>
                     <div className="li-meta">
-                      Operator: {r.operatorName ?? "—"} · {azFormatDateTime(r.createdAt)}
-                      {r.reason && <><br />Səbəb: {r.reason}</>}
-                      {r.decisionNote && <><br />Qərar qeydi: {r.decisionNote}</>}
+                      <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                        <span>Operator: {r.operatorName ?? "—"}</span>
+                        <span>{azFormatDateTime(r.createdAt)}</span>
+                      </div>
+                      {r.reason && <div>Səbəb: {r.reason}</div>}
+                      {r.decisionNote && <div>Qərar qeydi: {r.decisionNote}</div>}
                     </div>
                   </div>
                   {r.status === "PENDING" && (

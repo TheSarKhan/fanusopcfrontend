@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { Testimonial } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -21,14 +21,14 @@ const STATS = [
 ];
 
 const FALLBACK: Testimonial[] = [
-  { id: 1, quote: "Fanusda ilk seansdan sonra çiynimdə nə qədər ağırlıq daşıdığımı anladım. İndi nəfəs almaq daha asandır.", authorName: "Aynurə K.", authorRole: "Bakı · Narahatlıq", initials: "AK", gradient: "linear-gradient(135deg,#5089E0,#1051B7)", rating: 5, active: true },
-  { id: 2, quote: "Onlayn olduğu üçün başlamağa cəsarət etdim. Psixoloqumla 6 ay keçib və mən artıq əvvəlki insan deyiləm.", authorName: "Rauf M.", authorRole: "Sumqayıt · Depressiya", initials: "RM", gradient: "linear-gradient(135deg,#0B3F90,#2A6BD0)", rating: 5, active: true },
-  { id: 3, quote: "Anketdən sonra 3 psixoloq təklif edildi. İlk söhbətdən hiss etdim ki, bu doğru insandır. Bu detal vacibdir.", authorName: "Səbinə H.", authorRole: "Gəncə · Münasibətlər", initials: "SH", gradient: "linear-gradient(135deg,#F5B946,#C97D2E)", rating: 5, active: true },
-  { id: 4, quote: "Gecə yarısı panik atak vaxtı yaza bildiyim biri var idi. Bu hiss qiymətsizdir.", authorName: "Elvin T.", authorRole: "Bakı · Panik", initials: "ET", gradient: "linear-gradient(135deg,#88AEEC,#1051B7)", rating: 5, active: true },
-  { id: 5, quote: "İlk dəfə özümü hökmsüz dinləyən birini tapdım. Mən susanda da o yanımda idi.", authorName: "Nigar A.", authorRole: "Bakı · Travma", initials: "NA", gradient: "linear-gradient(135deg,#1051B7,#082F6D)", rating: 5, active: true },
-  { id: 6, quote: "Cütlük seansları nikahımızı xilas etdi desəm yalan olmaz. Bir-birimizi yenidən tanımağı öyrəndik.", authorName: "Tural & Ayşə", authorRole: "Bakı · Ailə", initials: "TA", gradient: "linear-gradient(135deg,#5089E0,#0B3F90)", rating: 5, active: true },
-  { id: 7, quote: "Yeniyetmə oğlumla əlaqəm tamamilə dəyişdi. Psixoloq hər ikimizə eşidilməyi öyrətdi.", authorName: "Lalə V.", authorRole: "Mingəçevir · Valideynlik", initials: "LV", gradient: "linear-gradient(135deg,#2A6BD0,#1A3B7A)", rating: 5, active: true },
-  { id: 8, quote: "İş yerində burnout-dan çıxış yolu tapmışdım. İndi sərhəd qoymağı bilirəm.", authorName: "Cavid R.", authorRole: "Bakı · Burnout", initials: "CR", gradient: "linear-gradient(135deg,#3D70C8,#0B3F90)", rating: 5, active: true },
+  { id: 1, quote: "Fanusda ilk seansdan sonra çiynimdə nə qədər ağırlıq daşıdığımı anladım. İndi nəfəs almaq daha asandır.", authorName: "Aynurə K.", authorRole: "Bakı, Narahatlıq", initials: "AK", gradient: "linear-gradient(135deg,#5089E0,#1051B7)", rating: 5, active: true },
+  { id: 2, quote: "Onlayn olduğu üçün başlamağa cəsarət etdim. Psixoloqumla 6 ay keçib və mən artıq əvvəlki insan deyiləm.", authorName: "Rauf M.", authorRole: "Sumqayıt, Depressiya", initials: "RM", gradient: "linear-gradient(135deg,#0B3F90,#2A6BD0)", rating: 5, active: true },
+  { id: 3, quote: "Anketdən sonra 3 psixoloq təklif edildi. İlk söhbətdən hiss etdim ki, bu doğru insandır. Bu detal vacibdir.", authorName: "Səbinə H.", authorRole: "Gəncə, Münasibətlər", initials: "SH", gradient: "linear-gradient(135deg,#F5B946,#C97D2E)", rating: 5, active: true },
+  { id: 4, quote: "Gecə yarısı panik atak vaxtı yaza bildiyim biri var idi. Bu hiss qiymətsizdir.", authorName: "Elvin T.", authorRole: "Bakı, Panik", initials: "ET", gradient: "linear-gradient(135deg,#88AEEC,#1051B7)", rating: 5, active: true },
+  { id: 5, quote: "İlk dəfə özümü hökmsüz dinləyən birini tapdım. Mən susanda da o yanımda idi.", authorName: "Nigar A.", authorRole: "Bakı, Travma", initials: "NA", gradient: "linear-gradient(135deg,#1051B7,#082F6D)", rating: 5, active: true },
+  { id: 6, quote: "Cütlük seansları nikahımızı xilas etdi desəm yalan olmaz. Bir-birimizi yenidən tanımağı öyrəndik.", authorName: "Tural & Ayşə", authorRole: "Bakı, Ailə", initials: "TA", gradient: "linear-gradient(135deg,#5089E0,#0B3F90)", rating: 5, active: true },
+  { id: 7, quote: "Yeniyetmə oğlumla əlaqəm tamamilə dəyişdi. Psixoloq hər ikimizə eşidilməyi öyrətdi.", authorName: "Lalə V.", authorRole: "Mingəçevir, Valideynlik", initials: "LV", gradient: "linear-gradient(135deg,#2A6BD0,#1A3B7A)", rating: 5, active: true },
+  { id: 8, quote: "İş yerində burnout-dan çıxış yolu tapmışdım. İndi sərhəd qoymağı bilirəm.", authorName: "Cavid R.", authorRole: "Bakı, Burnout", initials: "CR", gradient: "linear-gradient(135deg,#3D70C8,#0B3F90)", rating: 5, active: true },
 ];
 
 function shortName(full?: string): string {

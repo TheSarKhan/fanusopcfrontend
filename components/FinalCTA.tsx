@@ -96,7 +96,10 @@ export default function FinalCTA() {
 
             <div className={`cta-stamp${stamped ? " show" : ""}`} aria-hidden>
               <span className="cta-stamp-ring" />
-              <span className="cta-stamp-text">QƏBUL · {today.toUpperCase()}</span>
+              <span className="cta-stamp-text" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                <span>QƏBUL</span>
+                <span>{today.toUpperCase()}</span>
+              </span>
             </div>
           </div>
 
@@ -132,7 +135,10 @@ export default function FinalCTA() {
           <div className="cta-ticket" aria-hidden>
             <div className="cta-tk-perf cta-tk-perf-top" />
             <div className="cta-tk-row1">
-              <span className="cta-tk-label">Seans · 50 dəqiqə</span>
+              <span className="cta-tk-label" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <span>Seans</span>
+                <span>50 dəqiqə</span>
+              </span>
               <span className="cta-tk-no">№ 0001</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", margin: "18px 0 14px" }}>

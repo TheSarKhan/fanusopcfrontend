@@ -216,8 +216,9 @@ export default function ContentPage() {
                           <span style={{ fontSize: 22 }}>{p.emoji}</span>
                           <div>
                             <div className="strong">{p.title}</div>
-                            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                              /blog/{p.slug} · {p.readTimeMinutes} dəq oxu
+                            <div className="row" style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, gap: 10, flexWrap: "wrap" }}>
+                              <span>/blog/{p.slug}</span>
+                              <span>{p.readTimeMinutes} dəq oxu</span>
                             </div>
                           </div>
                         </div>
@@ -282,7 +283,7 @@ export default function ContentPage() {
                       onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, title: e.target.value, slug: m.id ? m.item.slug : slugify(e.target.value) } }))} />
                   </Field>
                   <div style={{ marginTop: 12 }} />
-                  <Field label={`Slug · /blog/${modal.item.slug || "yeni-meqale"}`}>
+                  <Field label={`Slug, /blog/${modal.item.slug || "yeni-meqale"}`}>
                     <input className="input mono" value={modal.item.slug}
                       onChange={(e) => setModal((m) => m && ({ ...m, item: { ...m.item, slug: e.target.value } }))} />
                   </Field>

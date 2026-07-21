@@ -323,8 +323,9 @@ function DeletionRequestModal({ review, onClose, onSaved }: {
         </div>
         <div style={{ padding: 22 }}>
           <div style={{ background: "#F8FAFC", border: "1px solid #EEF2F7", padding: 12, borderRadius: 8, marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#52718F", marginBottom: 4 }}>
-              {review.patientName} · <Stars value={review.rating} size={12} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, fontWeight: 600, color: "#52718F", marginBottom: 4 }}>
+              <span>{review.patientName}</span>
+              <Stars value={review.rating} size={12} />
             </div>
             <p style={{ fontSize: 13, color: "#374151", margin: 0, whiteSpace: "pre-wrap" }}>{review.comment}</p>
           </div>
@@ -398,8 +399,9 @@ function ReplyModal({ review, onClose, onSaved }: {
         </div>
         <div style={{ padding: 22 }}>
           <div style={{ background: "#F8FAFC", border: "1px solid #EEF2F7", padding: 12, borderRadius: 8, marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#52718F", marginBottom: 4 }}>
-              {review.patientName} · <Stars value={review.rating} size={12} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, fontWeight: 600, color: "#52718F", marginBottom: 4 }}>
+              <span>{review.patientName}</span>
+              <Stars value={review.rating} size={12} />
             </div>
             <p style={{ fontSize: 13, color: "#374151", margin: 0, whiteSpace: "pre-wrap" }}>{review.comment}</p>
           </div>

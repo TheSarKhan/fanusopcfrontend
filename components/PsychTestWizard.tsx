@@ -636,7 +636,13 @@ function SaveIndicator({
   if (state === "saving")
     return <span style={{ ...base, color: "var(--muted, #6B7A8D)" }}><Dot color="#C7A24A" pulse /> Yadda saxlanılır…</span>;
   if (state === "saved")
-    return <span style={{ ...base, color: "#065F46" }}><Dot color="#065F46" /> Saxlanıldı{time ? ` · ${time}` : ""}</span>;
+    return (
+      <span style={{ ...base, gap: 8, color: "#065F46" }}>
+        <Dot color="#065F46" />
+        <span>Saxlanıldı</span>
+        {time ? <span>{time}</span> : null}
+      </span>
+    );
   if (state === "error")
     return (
       <span style={{ ...base, color: "#991B1B" }}>
@@ -1150,8 +1156,12 @@ function ScalesStep(props: {
               background: "var(--surface-2)",
             }}
           >
-            Hələ zolaq yoxdur. Nümunə: <b style={{ color: "#16A34A" }}>0–13 Minimal</b> ·{" "}
-            <b style={{ color: "#CA8A04" }}>14–19 Yüngül</b> · <b style={{ color: "#DC2626" }}>20–28 Orta</b>
+            Hələ zolaq yoxdur. Nümunə:{" "}
+            <span style={{ display: "inline-flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: 10 }}>
+              <b style={{ color: "#16A34A" }}>0–13 Minimal</b>
+              <b style={{ color: "#CA8A04" }}>14–19 Yüngül</b>
+              <b style={{ color: "#DC2626" }}>20–28 Orta</b>
+            </span>
             <br />
             İstəsəniz bu addımı keçə bilərsiniz.
           </div>

@@ -377,9 +377,14 @@ function ResourceCard({ r, onView, onEdit, onDelete, showShare, onRequestShare }
             ) : initials(r.authorName)}
           </div>
           <span style={{
-            fontSize: 11.5, color: "var(--oxford-60)", overflow: "hidden",
-            textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>{r.authorName || "Psixoloq"} · {fmtDate(r.createdAt)}</span>
+            fontSize: 11.5, color: "var(--oxford-60)",
+            display: "inline-flex", gap: 8, minWidth: 0,
+          }}>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {r.authorName || "Psixoloq"}
+            </span>
+            <span style={{ whiteSpace: "nowrap" }}>{fmtDate(r.createdAt)}</span>
+          </span>
         </div>
         {r.mine && (
           <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>

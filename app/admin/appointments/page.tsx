@@ -385,9 +385,9 @@ export default function AdminAppointmentsPage() {
                       <span className="ticket-time">{a.startAt ? azFormatDate(a.startAt) : relTime(a.createdAt)}</span>
                     </div>
                     {a.psychologistName && (
-                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
-                        {a.psychologistName}
-                        {a.assignedByOperatorName && <span style={{ color: "var(--muted-2)" }}> · op: {a.assignedByOperatorName}</span>}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
+                        <span>{a.psychologistName}</span>
+                        {a.assignedByOperatorName && <span style={{ color: "var(--muted-2)" }}>op: {a.assignedByOperatorName}</span>}
                       </div>
                     )}
                   </div>
@@ -584,17 +584,23 @@ function DetailDrawer({
 
           {isCancelReq && (
             <div style={{ background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 8, padding: 10, fontSize: 12.5, color: "#92400E" }}>
-              <strong>Pasient ləğv tələb edib</strong> · {fmtDT(appt.cancelRequestedAt)}
-              {appt.cancelRequestReasonCode && <> · kod: <code>{appt.cancelRequestReasonCode}</code></>}
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                <strong>Pasient ləğv tələb edib</strong>
+                <span>{fmtDT(appt.cancelRequestedAt)}</span>
+                {appt.cancelRequestReasonCode && <span>kod: <code>{appt.cancelRequestReasonCode}</code></span>}
+              </div>
               {appt.cancelRequestReasonText && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{appt.cancelRequestReasonText}»</div>}
             </div>
           )}
 
           {s === "CANCELLED" && (
             <div style={{ background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 8, padding: 10, fontSize: 12.5 }}>
-              <strong>Ləğv:</strong> {appt.cancelledBy ?? "—"} · {fmtDT(appt.cancelledAt)}
-              {appt.cancelReasonCode && <> · <code>{appt.cancelReasonCode}</code></>}
-              {appt.lateCancel && <span className="pill rose" style={{ marginLeft: 6 }}>gec ləğv</span>}
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+                <span><strong>Ləğv:</strong> {appt.cancelledBy ?? "—"}</span>
+                <span>{fmtDT(appt.cancelledAt)}</span>
+                {appt.cancelReasonCode && <code>{appt.cancelReasonCode}</code>}
+                {appt.lateCancel && <span className="pill rose">gec ləğv</span>}
+              </div>
               {appt.cancelReasonText && <div style={{ marginTop: 4, fontStyle: "italic" }}>«{appt.cancelReasonText}»</div>}
             </div>
           )}
@@ -607,17 +613,21 @@ function DetailDrawer({
                 <span style={{ fontSize: 11, color: "var(--muted)" }}>seriya #{appt.seriesId}</span>
               </div>
               {series && (
-                <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>
-                  {series.createdAppointments} seans yaradılıb
-                  {series.cancelledAt ? " · seriya ləğv edilib" : ""}
+                <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 10, fontSize: 12, color: "var(--muted)" }}>
+                  <span>{series.createdAppointments} seans yaradılıb</span>
+                  {series.cancelledAt && <span>seriya ləğv edilib</span>}
                 </div>
               )}
               {seriesCancelPending && (
                 <div style={{ marginTop: 8 }}>
                   <div style={{ color: "#92400E", fontWeight: 600, marginBottom: 6 }}>
                     Seriya üzrə ləğv tələbi gözləyir
-                    {series?.cancelRequestReasonText && <span style={{ fontWeight: 400 }}> · «{series.cancelRequestReasonText}»</span>}
                   </div>
+                  {series?.cancelRequestReasonText && (
+                    <div style={{ fontWeight: 400, fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+                      «{series.cancelRequestReasonText}»
+                    </div>
+                  )}
                   <div style={{ display: "flex", gap: 6 }}>
                     <button className="btn danger" onClick={approveSeriesCancel}>Seriyanın ləğvini təsdiqlə</button>
                     <button className="btn" onClick={rejectSeriesCancel}>Rədd et</button>
@@ -790,8 +800,10 @@ function AssignModal({
                       padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
                       border: psyId === sg.psychologistId ? "2px solid #10B981" : "1px solid #BBF7D0",
                       background: psyId === sg.psychologistId ? "#fff" : "#FAFEFC", color: "#065F46",
+                      display: "inline-flex", alignItems: "center", gap: 8,
                     }}>
-                    {sg.name} · {sg.score}
+                    <span>{sg.name}</span>
+                    <span>{sg.score}</span>
                   </button>
                 ))}
               </div>
@@ -802,7 +814,8 @@ function AssignModal({
           <select value={psyId ?? ""} onChange={(e) => { setPsyId(Number(e.target.value) || null); setPickedSlot(null); setConflict(null); }}
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid var(--line)", fontSize: 13.5, marginBottom: 14 }}>
             <option value="">— Seç —</option>
-            {psychologists.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.title}</option>)}
+            {/* <option> daxilində markup mümkün deyil — vergüllə ayrılır */}
+            {psychologists.map((p) => <option key={p.id} value={p.id}>{p.name}, {p.title}</option>)}
           </select>
 
           {psyId && (
@@ -869,14 +882,15 @@ function AssignModal({
               <div style={{ fontSize: 12.5, fontWeight: 700, color: "#9A3412", marginBottom: 6 }}>
                 Bu vaxtı tutan randevu
               </div>
-              <div style={{ fontSize: 12.5, color: "var(--ink)" }}>
-                <strong>#{conflict.appointmentId}</strong> · {conflict.patientName ?? "—"}
-                {conflict.patientPhone && <> · {conflict.patientPhone}</>}
-                <span className="pill ox" style={{ marginLeft: 6 }}>{STATUS_LABEL[conflict.status] ?? conflict.status}</span>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--ink)" }}>
+                <strong>#{conflict.appointmentId}</strong>
+                <span>{conflict.patientName ?? "—"}</span>
+                {conflict.patientPhone && <span>{conflict.patientPhone}</span>}
+                <span className="pill ox">{STATUS_LABEL[conflict.status] ?? conflict.status}</span>
               </div>
-              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                {fmtDT(conflict.startAt)} – {conflict.endAt ? azFormatTime(conflict.endAt) : ""}
-                {conflict.rescheduleCount > 0 && <> · {conflict.rescheduleCount} dəfə vaxt dəyişib</>}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                <span>{fmtDT(conflict.startAt)} – {conflict.endAt ? azFormatTime(conflict.endAt) : ""}</span>
+                {conflict.rescheduleCount > 0 && <span>{conflict.rescheduleCount} dəfə vaxt dəyişib</span>}
               </div>
               {conflict.seriesId != null && (
                 <div style={{ marginTop: 6, fontSize: 12, color: "#9A3412", fontWeight: 600 }}>
@@ -1044,7 +1058,10 @@ function AdminCancelModal({
       <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: "min(460px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
         <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--line)" }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)", margin: 0 }}>Randevunu ləğv et</h2>
-          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>#{appointment.id} · {appointment.patientName ?? "—"}</p>
+          <p style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+            <span>#{appointment.id}</span>
+            <span>{appointment.patientName ?? "—"}</span>
+          </p>
         </div>
         <div style={{ padding: 20 }}>
           <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>Səbəb</label>
@@ -1255,11 +1272,12 @@ function AdminReassignModal({
       <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, width: "min(440px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
         <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--line)" }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--ink)", margin: 0 }}>Operatoru dəyiş</h2>
-          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-            #FNS-{String(appointment.id).padStart(4, "0")} · {appointment.patientName ?? "—"}
+          <p style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+            <span>#FNS-{String(appointment.id).padStart(4, "0")}</span>
+            <span>{appointment.patientName ?? "—"}</span>
             {appointment.claimedByName
-              ? <> · hazırkı sahib: <strong>{appointment.claimedByName}</strong></>
-              : <> · hazırda sahibsizdir</>}
+              ? <span>hazırkı sahib: <strong>{appointment.claimedByName}</strong></span>
+              : <span>hazırda sahibsizdir</span>}
           </p>
         </div>
         <div style={{ padding: 20 }}>

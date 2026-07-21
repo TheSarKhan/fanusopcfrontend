@@ -123,8 +123,9 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
 
         <div style={{ marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>
-              {completed}/{pkg.total} tamamlanıb · <span style={{ color: "var(--brand)" }}>{pkg.remaining} seans qalıb</span>
+            <span style={{ display: "inline-flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>
+              <span>{completed}/{pkg.total} tamamlanıb</span>
+              <span style={{ color: "var(--brand)" }}>{pkg.remaining} seans qalıb</span>
             </span>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>{Math.round(completedPct)}%</span>
           </div>
@@ -216,7 +217,7 @@ function SessionRow({ a, ordinal, now }: { a: AppointmentDetail; ordinal: number
     <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: "12px 15px", opacity: isDone ? .8 : 1 }}>
       <span style={{ fontSize: 13, fontWeight: 700, color: isDone ? "var(--oxford-60)" : "var(--oxford)", minWidth: 74 }}>{azOrdinal(ordinal)} seans</span>
       <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>
-        {when ? `${azFormatDate(when)} · ${azFormatTime(when)}` : "Operator vaxtı təyin edəcək"}
+        {when ? `${azFormatDate(when)}, ${azFormatTime(when)}` : "Operator vaxtı təyin edəcək"}
       </span>
       <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>{st.label}</span>
       <span style={{ flex: 1 }} />

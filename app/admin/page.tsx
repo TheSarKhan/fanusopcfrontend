@@ -199,14 +199,17 @@ function CrisisPanel({ onAcked }: { onAcked: () => void }) {
           {items.map((c) => (
             <div className="list-item" key={c.id}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="li-title">
-                  {c.patientName} · əhval {c.moodScore}/5
-                  {c.acknowledgedAt && <span className="pill sage" style={{ marginLeft: 8 }}>baxılıb</span>}
+                <div className="li-title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span>{c.patientName}</span>
+                  <span>əhval {c.moodScore}/5</span>
+                  {c.acknowledgedAt && <span className="pill sage">baxılıb</span>}
                 </div>
                 <div className="li-meta">
-                  {ageLabel(c.createdAt) ?? ""} əvvəl
-                  {c.note ? ` · «${c.note.slice(0, 80)}»` : ""}
-                  {c.acknowledgedByName ? ` · baxdı: ${c.acknowledgedByName}` : ""}
+                  <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                    <span>{ageLabel(c.createdAt) ?? ""} əvvəl</span>
+                    {c.acknowledgedByName && <span>baxdı: {c.acknowledgedByName}</span>}
+                  </div>
+                  {c.note && <div>«{c.note.slice(0, 80)}»</div>}
                 </div>
               </div>
               <div className="row" style={{ gap: 6 }}>
@@ -295,7 +298,7 @@ export default function AdminDashboard() {
             queue={cc.cancelRequests}
             tone="gold"
             href="/admin/appointments?filter=CANCEL_REQUESTED"
-            sub={cc.cancelRequestSeries > 0 ? `${cc.cancelRequestAppointments} randevu · ${cc.cancelRequestSeries} seriya` : null}
+            sub={cc.cancelRequestSeries > 0 ? `${cc.cancelRequestAppointments} randevu, ${cc.cancelRequestSeries} seriya` : null}
           />
           <QueueCard
             title="Mübahisəli"
@@ -450,7 +453,10 @@ export default function AdminDashboard() {
                 <div className={`li-rank${a.rank === 1 ? " gold" : ""}`}>{a.rank}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="li-title" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</div>
-                  <div className="li-meta">{a.author} · {a.category}</div>
+                  <div className="li-meta row" style={{ gap: 10, flexWrap: "wrap" }}>
+                    <span>{a.author}</span>
+                    <span>{a.category}</span>
+                  </div>
                 </div>
                 <div>
                   <div className="li-stat">{formatNumber(a.views)}</div>

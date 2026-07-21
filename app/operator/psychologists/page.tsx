@@ -105,7 +105,7 @@ export default function OperatorPsychologistsPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(180px, 100%), 1fr))", gap: 13, marginBottom: 18 }}>
             <Kpi label="Ümumi psixoloq" value={kpis.total} sub="qeydiyyatda" color="#082F6D" iconColor="#1051B7" icon={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></>} />
             <Kpi label="Aktiv" value={kpis.active} sub="seans qəbul edir" color="#047857" iconColor="#047857" icon={<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3" />} />
-            <Kpi label="Diqqət tələb edən" value={kpis.attention} sub="yüksək rədd · qiymət yox · dayandırılıb" color="#92400E" iconColor="#C97D2E" icon={<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></>} />
+            <Kpi label="Diqqət tələb edən" value={kpis.attention} sub="yüksək rədd, qiymət yox, dayandırılıb" color="#92400E" iconColor="#C97D2E" icon={<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></>} />
             <Kpi label="Məzuniyyətdə" value={kpis.vacation} sub="hazırda əlçatan deyil" color="#5B21B6" iconColor="#8C7DC9" icon={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />
           </div>
 

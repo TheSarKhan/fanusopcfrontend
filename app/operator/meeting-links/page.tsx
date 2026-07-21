@@ -222,7 +222,7 @@ function MeetingLinkCard({ a, onSent, onUpdated, mode = "pending" }: {
         </span>
         {hasLink && (
           <span className="fx-pill fx-pill--pending">
-            <IconClock /> Link var · göndərilməyib
+            <IconClock /> Link var, göndərilməyib
           </span>
         )}
       </div>
@@ -233,8 +233,9 @@ function MeetingLinkCard({ a, onSent, onUpdated, mode = "pending" }: {
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", letterSpacing: "-.01em", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {a.patientName ?? "—"}
           </div>
-          <div className="fx-row__meta">
-            {a.psychologistName && <><span style={{ fontWeight: 600, color: "var(--oxford-80)" }}>{a.psychologistName}</span><span className="fx-sep">·</span></>}
+          {/* Ad və tarix ayrı span-larda — ayırıcı işarə yox, flex boşluğu ayırır. */}
+          <div className="fx-row__meta" style={{ gap: 10, flexWrap: "wrap" }}>
+            {a.psychologistName && <span style={{ fontWeight: 600, color: "var(--oxford-80)" }}>{a.psychologistName}</span>}
             <span className="fx-num">{a.startAt ? azFormatDateTime(a.startAt) : "—"}</span>
           </div>
         </div>
@@ -271,7 +272,9 @@ function MeetingLinkCard({ a, onSent, onUpdated, mode = "pending" }: {
               placeholder="https://…"
               onClick={e => e.stopPropagation()}
             />
-            <span className="fx-help">Zoom, Google Meet və ya Jitsi linki · https:// ilə başlamalıdır</span>
+            {/* İki ayrı sətir — ayırıcı işarəyə ehtiyac yoxdur. */}
+            <span className="fx-help">Zoom, Google Meet və ya Jitsi linki</span>
+            <span className="fx-help">https:// ilə başlamalıdır</span>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

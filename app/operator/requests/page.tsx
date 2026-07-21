@@ -254,8 +254,9 @@ export default function OperatorRequestsPage() {
                 <div className="fx-flex" style={{ marginBottom: 10, flexWrap: "wrap" }}>
                   <span className="fx-row__title">{r.psychologistName}</span>
                   <span className={`fx-pill ${badge.cls}`}>{badge.label}</span>
-                  <span className="fx-muted fx-num" style={{ fontSize: "var(--text-caption)", marginLeft: "auto" }}>
-                    #{r.id} · {fmt(r.createdAt)}
+                  <span className="fx-muted fx-num" style={{ fontSize: "var(--text-caption)", marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <span>#{r.id}</span>
+                    <span>{fmt(r.createdAt)}</span>
                   </span>
                 </div>
 
@@ -297,7 +298,9 @@ export default function OperatorRequestsPage() {
                   </div>
                 ) : (
                   <div className="fx-muted" style={{ fontSize: "var(--text-caption)" }}>
-                    Qərar: {fmt(r.decidedAt)}{r.decisionNote ? ` · ${r.decisionNote}` : ""}
+                    <div>Qərar: {fmt(r.decidedAt)}</div>
+                    {/* Qeyd ikinci sətirdə — ayırıcı işarəyə ehtiyac yoxdur. */}
+                    {r.decisionNote && <div style={{ marginTop: 2, color: "var(--oxford-60)" }}>{r.decisionNote}</div>}
                   </div>
                 )}
               </div>

@@ -50,7 +50,10 @@ export default function RelatedPosts({ posts }: { posts: BlogPost[] }) {
                   </div>
                   <div>
                     <div className="bl-author-name">{post.authorName ?? "Fanus Redaksiyası"}</div>
-                    <div className="bl-author-date">{post.readTimeMinutes} dəq · {formatDate(post.publishedDate)}</div>
+                    <div className="bl-author-date" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      <span>{post.readTimeMinutes} dəq</span>
+                      <span>{formatDate(post.publishedDate)}</span>
+                    </div>
                   </div>
                 </div>
               </div>

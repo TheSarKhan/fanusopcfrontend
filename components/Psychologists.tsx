@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import type { Psychologist } from "@/lib/api";
@@ -21,12 +21,12 @@ interface CardItem {
 }
 
 const FALLBACK: CardItem[] = [
-  { id: 1, slug: "aysel-memmedova", name: "Aysel Məmmədova", title: "Klinik psixoloq",      specs: ["Narahatlıq", "OKD", "Panik"],  exp: 8,  rating: "4.9", sessions: "210", lang: "AZ · RU",      sessionMinutes: 50 },
-  { id: 2, slug: "resad-quliyev",   name: "Rəşad Quliyev",   title: "Travma terapevti",     specs: ["Travma", "TSSP"],              exp: 11, rating: "4.8", sessions: "315", lang: "AZ · EN",      sessionMinutes: 50 },
+  { id: 1, slug: "aysel-memmedova", name: "Aysel Məmmədova", title: "Klinik psixoloq",      specs: ["Narahatlıq", "OKD", "Panik"],  exp: 8,  rating: "4.9", sessions: "210", lang: "AZ, RU",      sessionMinutes: 50 },
+  { id: 2, slug: "resad-quliyev",   name: "Rəşad Quliyev",   title: "Travma terapevti",     specs: ["Travma", "TSSP"],              exp: 11, rating: "4.8", sessions: "315", lang: "AZ, EN",      sessionMinutes: 50 },
   { id: 3, slug: "lale-huseynova",  name: "Lalə Hüseynova",  title: "Ailə terapevti",       specs: ["Münasibətlər", "Ailə"],        exp: 6,  rating: "4.7", sessions: "140", lang: "AZ",           sessionMinutes: 50 },
-  { id: 4, slug: "elnur-seferov",   name: "Elnur Səfərov",   title: "Klinik psixoloq",      specs: ["Depressiya", "Burnout"],       exp: 9,  rating: "4.9", sessions: "260", lang: "AZ · RU",      sessionMinutes: 50 },
+  { id: 4, slug: "elnur-seferov",   name: "Elnur Səfərov",   title: "Klinik psixoloq",      specs: ["Depressiya", "Burnout"],       exp: 9,  rating: "4.9", sessions: "260", lang: "AZ, RU",      sessionMinutes: 50 },
   { id: 5, slug: "nigar-kazimova",  name: "Nigar Kazımova",  title: "Uşaq psixoloqu",       specs: ["Yeniyetmə", "Valideyn"],       exp: 7,  rating: "4.8", sessions: "180", lang: "AZ",           sessionMinutes: 50 },
-  { id: 6, slug: "tural-babayev",   name: "Tural Babayev",   title: "Asılılıq mütəxəssisi", specs: ["Asılılıq", "İmpuls"],          exp: 10, rating: "4.7", sessions: "240", lang: "AZ · RU",      sessionMinutes: 50 },
+  { id: 6, slug: "tural-babayev",   name: "Tural Babayev",   title: "Asılılıq mütəxəssisi", specs: ["Asılılıq", "İmpuls"],          exp: 10, rating: "4.7", sessions: "240", lang: "AZ, RU",      sessionMinutes: 50 },
 ];
 
 function getInitials(name: string) {
@@ -45,7 +45,7 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
         exp: parseInt(p.experience ?? "5", 10) || 5,
         rating: p.rating ?? "—",
         sessions: p.sessionsCount ?? "0",
-        lang: (p.languages || "AZ").split(",").map((l) => l.trim()).filter(Boolean).join(" · ") || "AZ",
+        lang: (p.languages || "AZ").split(",").map((l) => l.trim()).filter(Boolean).join(", ") || "AZ",
         sessionMinutes: p.defaultSessionMinutes ?? 50,
         photoUrl: p.photoUrl?.trim() || undefined,
         statsSource: p.statsSource,
@@ -128,7 +128,6 @@ function PsyCard({ p }: { p: CardItem }) {
             <div className="pp-card__rating">
               <Stars value={filledStars} />
               <strong>{p.rating}</strong>
-              {sessionLabel && <span className="pp-card__rating-sep">·</span>}
               {sessionLabel && <span className="pp-card__rating-sub">{sessionLabel}</span>}
             </div>
           )}
@@ -227,11 +226,10 @@ function PsyCard({ p }: { p: CardItem }) {
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         .pp-card__rating {
-          display: inline-flex; align-items: center; gap: 6px;
+          display: inline-flex; align-items: center; gap: 8px;
           font-size: 12.5px; color: var(--fanus-ink-3);
         }
         .pp-card__rating strong { color: var(--fanus-ink); font-weight: 700; }
-        .pp-card__rating-sep { opacity: .5; }
         .pp-card__rating-sub { color: var(--fanus-ink-3); }
 
         .pp-card__tags {

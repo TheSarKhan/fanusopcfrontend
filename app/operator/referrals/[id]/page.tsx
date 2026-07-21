@@ -30,7 +30,7 @@ const STATUS_META: Record<string, { label: string; bg: string; color: string }> 
 function fmtDate(d?: string | null) {
   if (!d) return "—";
   const dt = new Date(d);
-  return `${String(dt.getDate()).padStart(2, "0")}.${String(dt.getMonth() + 1).padStart(2, "0")}.${dt.getFullYear()} · ${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+  return `${String(dt.getDate()).padStart(2, "0")}.${String(dt.getMonth() + 1).padStart(2, "0")}.${dt.getFullYear()}, ${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
 }
 
 export default function OperatorReferralDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -59,7 +59,7 @@ export default function OperatorReferralDetailPage({ params }: { params: Promise
     if (!r) return;
     const ok = await confirmDialog({
       title: "Yönləndirməni təsdiqlə",
-      message: `${r.fromPsychologistName} → ${r.toPsychologistName} · ${r.subjectLabel ?? ""}. Təsdiqdən sonra qarşı psixoloq görəcək.`,
+      message: `${r.fromPsychologistName} → ${r.toPsychologistName}${r.subjectLabel ? `, ${r.subjectLabel}` : ""}. Təsdiqdən sonra qarşı psixoloq görəcək.`,
       confirmLabel: "Təsdiqlə",
     });
     if (!ok) return;
@@ -79,7 +79,7 @@ export default function OperatorReferralDetailPage({ params }: { params: Promise
     if (!r) return;
     const ok = await confirmDialog({
       title: "Yönləndirməni rədd et",
-      message: `${r.fromPsychologistName} → ${r.toPsychologistName} · ${r.subjectLabel ?? ""}. Göndərən psixoloqa bildiriş gedəcək.`,
+      message: `${r.fromPsychologistName} → ${r.toPsychologistName}${r.subjectLabel ? `, ${r.subjectLabel}` : ""}. Göndərən psixoloqa bildiriş gedəcək.`,
       confirmLabel: "Rədd et",
       danger: true,
     });

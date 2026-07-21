@@ -128,13 +128,18 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
               <span className="fx-h3">{first.packageName ?? "Paket"}</span>
               <span className="fx-pill" style={{ background: st.bg, color: st.color }}>{st.label}</span>
             </div>
-            <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>
-              {first.patientName ?? "—"}{first.psychologistName ? ` · ${first.psychologistName}` : ""}
+            {/* Pasiyent və psixoloq ayrı span-larda — ayırıcı işarə yox. */}
+            <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 10 }}>
+              <span>{first.patientName ?? "—"}</span>
+              {first.psychologistName && <span>{first.psychologistName}</span>}
             </div>
           </div>
           <div style={{ textAlign: "right", flex: "none" }}>
             <div className="fx-num" style={{ fontSize: 22, fontWeight: 800, color: "var(--lilac)", lineHeight: 1 }}>{scheduledCount}/{total}</div>
-            <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginTop: 3 }}>{scheduledCount} təyin · {emptyCount} boş</div>
+            <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginTop: 3, display: "flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 10 }}>
+              <span>{scheduledCount} təyin</span>
+              <span>{emptyCount} boş</span>
+            </div>
           </div>
         </div>
         <div className="fx-progress" style={{ marginTop: 14 }}>
@@ -332,15 +337,18 @@ function AddPackageSessionModal({ sessions, onClose, onDone }: {
       <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 480, background: "var(--surface)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-float)", display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
         <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--hairline)" }}>
           <h3 className="fx-h3">Paket seansı əlavə et</h3>
-          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3 }}>
-            {first.packageName} · {first.packageRemaining ?? 0} seans qalıb{first.psychologistName ? ` · ${first.psychologistName}` : ""}
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3, display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <span>{first.packageName}</span>
+            <span>{first.packageRemaining ?? 0} seans qalıb</span>
+            {first.psychologistName && <span>{first.psychologistName}</span>}
           </div>
         </div>
         <div style={{ padding: "18px 22px", overflowY: "auto" }}>
           {/* Psixoloq seçimi — paketin psixoloqu varsa default, yoxdursa operator seçir. */}
           <div style={{ marginBottom: 16 }}>
-            <span className="fx-label" style={{ display: "block", marginBottom: 7 }}>
-              Psixoloq{pkgPsyId == null && <span style={{ color: "var(--amber)" }}> · pasiyent seçməyib</span>}
+            <span className="fx-label" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 7 }}>
+              <span>Psixoloq</span>
+              {pkgPsyId == null && <span style={{ color: "var(--amber)" }}>pasiyent seçməyib</span>}
             </span>
             <select value={psyId ?? ""} onChange={e => selectPsy(e.target.value ? Number(e.target.value) : null)}
               className="fx-select" style={{ fontWeight: 600, cursor: "pointer" }}>
@@ -407,7 +415,8 @@ function AddPackageSessionModal({ sessions, onClose, onDone }: {
 
           {start && end && (
             <div style={{ fontSize: 12.5, color: "var(--status-paid-fg)", fontWeight: 600, marginTop: 12, background: "var(--sage-bg)", border: "1px solid rgba(74,155,127,.35)", borderRadius: 9, padding: "9px 12px" }}>
-              Seçilmiş vaxt: {azFormatDate(azLocalToISO(start))} · {azFormatTime(azLocalToISO(start))} – {azFormatTime(azLocalToISO(end))}
+              {/* Tarix və vaxt aralığı bir cümlə kimi oxunur — vergüllə. */}
+              Seçilmiş vaxt: {azFormatDate(azLocalToISO(start))}, {azFormatTime(azLocalToISO(start))} – {azFormatTime(azLocalToISO(end))}
             </div>
           )}
 

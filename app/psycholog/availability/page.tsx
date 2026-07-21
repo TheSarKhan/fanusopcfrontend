@@ -496,7 +496,7 @@ function OverridesCard({ overrides, onAdd, onDelete }: {
                     {fmtDate(o.overrideDate)}
                     {o.startTime && o.endTime && (
                       <span style={{ fontWeight: 600, color: "var(--oxford-60)" }}>
-                        {` · ${trimSeconds(o.startTime)}–${trimSeconds(o.endTime)}`}
+                        {`, ${trimSeconds(o.startTime)}–${trimSeconds(o.endTime)}`}
                       </span>
                     )}
                   </div>
@@ -695,9 +695,10 @@ function AddSlotModal({ initialDay, existingSlots, onClose, onCreated }: {
           padding: "8px 12px", borderRadius: 8,
           background: "var(--brand-50)", border: "1px solid var(--brand-100)",
           fontSize: 11.5, color: "var(--brand-700)",
+          display: "flex", flexWrap: "wrap", gap: 10,
         }}>
-          Müddət: <b>{fmtHours(diffMinutes(start, end))}</b>
-          {days.length > 1 && <> · Cəmi: <b>{fmtHours(diffMinutes(start, end) * days.length)}</b> ({days.length} gün)</>}
+          <span>Müddət: <b>{fmtHours(diffMinutes(start, end))}</b></span>
+          {days.length > 1 && <span>Cəmi: <b>{fmtHours(diffMinutes(start, end) * days.length)}</b> ({days.length} gün)</span>}
         </div>
       )}
 
@@ -868,8 +869,9 @@ function AddVacationModal({ onClose, onCreated }: {
                     <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>
                       {a.patientName ?? "Pasient"}
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--oxford-60)" }}>
-                      {a.startAt ? azFormatDateTime(a.startAt) : "—"} · {a.status}
+                    <div style={{ fontSize: 12, color: "var(--oxford-60)", display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      <span>{a.startAt ? azFormatDateTime(a.startAt) : "—"}</span>
+                      <span>{a.status}</span>
                     </div>
                   </div>
                   {resolved ? (

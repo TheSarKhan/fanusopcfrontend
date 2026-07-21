@@ -40,8 +40,9 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 /** Kiçik böyük hərflərlə bölmə başlığı — sol/sağ sütunları alt-seksiyalara ayırır. */
 function SectionLabel({ children, first = false }: { children: React.ReactNode; first?: boolean }) {
   return (
+    /* Addım nömrəsi ilə başlıq arasında ayırıcı işarə yox — flex boşluğu ayırır. */
     <div className="fx-section-label"
-      style={{ marginTop: first ? 0 : 20, paddingTop: first ? 0 : 20, borderTop: first ? "none" : "1px solid var(--hairline)", marginBottom: 12 }}>
+      style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginTop: first ? 0 : 20, paddingTop: first ? 0 : 20, borderTop: first ? "none" : "1px solid var(--hairline)", marginBottom: 12 }}>
       {children}
     </div>
   );
@@ -448,7 +449,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                         <div className="fx-error-text" style={{ marginBottom: 12 }}><IconAlert className="fx-icon--sm" />{convertError}</div>
                       )}
 
-                      <SectionLabel first>1 · Psixoloq və seans</SectionLabel>
+                      <SectionLabel first><span className="fx-num">1</span><span>Psixoloq və seans</span></SectionLabel>
                       {psySelect}
 
                       <div className="fx-field" style={{ marginTop: 12 }}>
@@ -502,7 +503,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                         </div>
                       )}
 
-                      <SectionLabel>2 · Tarix və qeydlər</SectionLabel>
+                      <SectionLabel><span className="fx-num">2</span><span>Tarix və qeydlər</span></SectionLabel>
                       <div className="fx-field">
                         <label className="fx-label">Seans tarixi/saatı * — boş saatlardan seçin</label>
                         {!psyId ? (
@@ -560,10 +561,10 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                         <div className="fx-error-text" style={{ marginBottom: 12 }}><IconAlert className="fx-icon--sm" />{pkgError}</div>
                       )}
 
-                      <SectionLabel first>1 · Psixoloq</SectionLabel>
+                      <SectionLabel first><span className="fx-num">1</span><span>Psixoloq</span></SectionLabel>
                       {psySelect}
 
-                      <SectionLabel>2 · Paket</SectionLabel>
+                      <SectionLabel><span className="fx-num">2</span><span>Paket</span></SectionLabel>
                       <div className="fx-segmented" style={{ width: "100%", marginBottom: 12 }}>
                         <button type="button" style={{ flex: 1 }} className={pkgMode === "catalog" ? "fx-seg--active" : ""} onClick={() => setPkgMode("catalog")}>
                           Kataloqdan

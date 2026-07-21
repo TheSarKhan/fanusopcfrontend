@@ -639,8 +639,9 @@ export default function BookPsychologistPage() {
                 ))}
                 {result.conflicts.map(c => (
                   <div key={c.slot} style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 0", borderTop: "1px solid #EDF1F8" }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "#92400E" }}>
-                      {dayLabelFull(c.slot)}, saat {fmtTime(c.slot)} · <em>{t("book.basketTaken")}</em>
+                    <span style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 13, fontWeight: 600, color: "#92400E" }}>
+                      <span>{dayLabelFull(c.slot)}, saat {fmtTime(c.slot)}</span>
+                      <em>{t("book.basketTaken")}</em>
                     </span>
                     <span style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {c.alternatives.length === 0
@@ -842,7 +843,7 @@ export default function BookPsychologistPage() {
                             selected={mode === "SINGLE" && sessionKind === "INTRO"}
                             badge="Pulsuz"
                             label="Tanışlıq görüşü"
-                            note="15 dəq · Pulsuz"
+                            note="15 dəq, pulsuz"
                             onClick={chooseIntro}
                           />
                         )}
@@ -1022,7 +1023,10 @@ export default function BookPsychologistPage() {
                       {/* selected-times basket */}
                       {basket.length > 0 && (
                         <div style={{ marginTop: 18, borderTop: "1px solid #F0F4FA", paddingTop: 16 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 10 }}>{t("book.basketTitle")} · {basket.length}</div>
+                          <div style={{ display: "flex", gap: 8, fontSize: 12, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 10 }}>
+                            <span>{t("book.basketTitle")}</span>
+                            <span>{basket.length}</span>
+                          </div>
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             {basket.map(item => (
                               <div key={item.startAt}
@@ -1141,16 +1145,18 @@ export default function BookPsychologistPage() {
 
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                       <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>Seans müddəti</span>
-                      <span style={{ fontSize: 13.5, fontWeight: 700, textAlign: "right" }}>
-                        {sessionKind === "INTRO" ? 15 : (psychologist.defaultSessionMinutes ?? 50)} dəq · Onlayn (video)
+                      <span style={{ display: "inline-flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 8, fontSize: 13.5, fontWeight: 700, textAlign: "right" }}>
+                        <span>{sessionKind === "INTRO" ? 15 : (psychologist.defaultSessionMinutes ?? 50)} dəq</span>
+                        <span>Onlayn (video)</span>
                       </span>
                     </div>
 
                     {mode === "PACKAGE" && selectedPackage && (
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                         <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>Paket</span>
-                        <span style={{ fontSize: 13.5, fontWeight: 700, textAlign: "right" }}>
-                          {selectedPackage.name} · {selectedPackage.sessionCount} seans
+                        <span style={{ display: "inline-flex", flexWrap: "wrap", justifyContent: "flex-end", gap: 8, fontSize: 13.5, fontWeight: 700, textAlign: "right" }}>
+                          <span>{selectedPackage.name}</span>
+                          <span>{selectedPackage.sessionCount} seans</span>
                         </span>
                       </div>
                     )}

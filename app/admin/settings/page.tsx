@@ -322,13 +322,21 @@ export default function SettingsPage() {
               </div>
             </Row>
             <Row title="Nəzərə alınan amillər" help="Yönləndirmə alqoritmi bu siqnalları çəkir">
+              {/* Ayırıcı işarə əvəzinə etiket ilə faiz arasında flex boşluğu */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                <span className="pill ox">İxtisas uyğunluğu · 35%</span>
-                <span className="pill ox">Mövcudluq · 25%</span>
-                <span className="pill ox">Reytinq · 15%</span>
-                <span className="pill ox">Dil · 10%</span>
-                <span className="pill ox">İş yükü · 10%</span>
-                <span className="pill ox">Coğrafiya · 5%</span>
+                {[
+                  ["İxtisas uyğunluğu", "35%"],
+                  ["Mövcudluq", "25%"],
+                  ["Reytinq", "15%"],
+                  ["Dil", "10%"],
+                  ["İş yükü", "10%"],
+                  ["Coğrafiya", "5%"],
+                ].map(([label, weight]) => (
+                  <span key={label} className="pill ox" style={{ gap: 8 }}>
+                    <span>{label}</span>
+                    <span>{weight}</span>
+                  </span>
+                ))}
               </div>
             </Row>
           </div>

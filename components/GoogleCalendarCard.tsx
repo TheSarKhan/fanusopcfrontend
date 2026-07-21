@@ -179,7 +179,7 @@ function Connected({
           </div>
           <div style={{ fontSize: 11, color: "#047857", marginTop: 2 }}>
             {status.lastSyncAt
-              ? `Son sinxronizasiya · ${azFormatDateTime(status.lastSyncAt)}`
+              ? `Son sinxronizasiya: ${azFormatDateTime(status.lastSyncAt)}`
               : "Aktiv"}
           </div>
         </div>

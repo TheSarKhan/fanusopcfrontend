@@ -261,10 +261,10 @@ function ReceivedCard({ r, busy, onRespond }: {
         </div>
         <span style={badge(sm)}>{sm.label}</span>
       </div>
-      <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>
-        Yönləndirən: <b style={{ color: "var(--oxford)" }}>{r.fromPsychologistName}</b>
-        {r.patientName ? <> · Klient: <b style={{ color: "var(--oxford)" }}>{r.patientName}</b></> : null}
-        {" · "}{fmtDate(r.createdAt)}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, fontSize: 12.5, color: "var(--oxford-60)" }}>
+        <span>Yönləndirən: <b style={{ color: "var(--oxford)" }}>{r.fromPsychologistName}</b></span>
+        {r.patientName ? <span>Klient: <b style={{ color: "var(--oxford)" }}>{r.patientName}</b></span> : null}
+        <span>{fmtDate(r.createdAt)}</span>
       </div>
       <MoneyTag label="Yönləndirilən dəyər" amount={r.referredAmount} currency={r.currency} />
       <InfoBlock label="Səbəb" text={r.reason} />
@@ -299,9 +299,10 @@ function SentCard({ r, busy, onCancel }: { r: Referral; busy: boolean; onCancel:
         </div>
         <span style={badge(sm)}>{sm.label}</span>
       </div>
-      <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>
-        {r.subjectLabel ? <>{r.subjectLabel} · </> : null}
-        Klient: <b style={{ color: "var(--oxford)" }}>{r.patientName || "Klient"}</b> · {fmtDate(r.createdAt)}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, fontSize: 12.5, color: "var(--oxford-60)" }}>
+        {r.subjectLabel ? <span>{r.subjectLabel}</span> : null}
+        <span>Klient: <b style={{ color: "var(--oxford)" }}>{r.patientName || "Klient"}</b></span>
+        <span>{fmtDate(r.createdAt)}</span>
       </div>
       <MoneyTag label="Ötürülən dəyər" amount={r.referredAmount} currency={r.currency} />
       <InfoBlock label="Səbəb" text={r.reason} />
@@ -381,7 +382,7 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
   });
 
   const subjLabel = (s: ReferableSubject) =>
-    `${s.label}${s.patientName ? ` · ${s.patientName}` : ""}${s.amount != null ? ` · ${formatAzn(s.amount)}` : ""}`;
+    `${s.label}${s.patientName ? `, ${s.patientName}` : ""}${s.amount != null ? `, ${formatAzn(s.amount)}` : ""}`;
 
   return (
     <Modal onClose={onClose}>

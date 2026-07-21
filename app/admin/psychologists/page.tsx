@@ -913,8 +913,9 @@ function FanusPricingSection({ psyId, initialType }: { psyId: number; initialTyp
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
                       {!p.active && <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "#F1F5F9", color: "#6B7280" }}>Passiv</span>}
                     </div>
-                    <div style={{ fontSize: 11.5, color: "#8AAABF", marginTop: 2 }}>
-                      {p.sessionCount} × · {formatAzn(p.perSessionPrice)}{t("pricing.perSession")}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 11.5, color: "#8AAABF", marginTop: 2 }}>
+                      <span>{p.sessionCount} ×</span>
+                      <span>{formatAzn(p.perSessionPrice)}{t("pricing.perSession")}</span>
                     </div>
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 800, color: "#1A2535", whiteSpace: "nowrap" }}>{formatAzn(p.packagePrice)}</div>

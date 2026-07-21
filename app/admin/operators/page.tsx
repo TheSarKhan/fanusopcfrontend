@@ -48,8 +48,10 @@ export default function AdminOperatorsPage() {
       <div className="page-head">
         <div>
           <h1 className="page-title">Operatorlar</h1>
-          <p className="page-sub">
-            Komanda: bu gün {totals.today} təyin · son 7 gün {totals.week} · son 30 gündə {totals.sla} SLA pozuntusu
+          <p className="page-sub" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <span>Komanda: bu gün {totals.today} təyin</span>
+            <span>son 7 gün {totals.week}</span>
+            <span>son 30 gündə {totals.sla} SLA pozuntusu</span>
           </p>
         </div>
         <div className="page-actions">
@@ -80,8 +82,9 @@ export default function AdminOperatorsPage() {
                   <Link href={`/admin/users/${op.userId}`}>{op.name}</Link>
                   {!op.active && <span className="pill rose" style={{ marginLeft: 6 }}>deaktiv</span>}
                 </div>
-                <div className="li-meta">
-                  {op.email} · son giriş: {op.lastLogin ? azFormatDateTime(op.lastLogin) : "—"}
+                <div className="li-meta row" style={{ gap: 10, flexWrap: "wrap" }}>
+                  <span>{op.email}</span>
+                  <span>son giriş: {op.lastLogin ? azFormatDateTime(op.lastLogin) : "—"}</span>
                 </div>
               </div>
               <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontWeight: 600 }}>

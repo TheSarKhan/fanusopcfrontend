@@ -229,8 +229,9 @@ function PayoutsSection() {
           <div className="list-item" key={b.psychologistId}>
             <div style={{ flex: 1 }}>
               <div className="li-title">{b.psychologistName}</div>
-              <div className="li-meta">
-                Qazanc (net): {b.earnedNet} AZN · Ödənilib: {b.paidOut} AZN ·{" "}
+              <div className="li-meta row" style={{ gap: 10, flexWrap: "wrap" }}>
+                <span>Qazanc (net): {b.earnedNet} AZN</span>
+                <span>Ödənilib: {b.paidOut} AZN</span>
                 <strong style={{ color: b.balance > 0 ? "#065F46" : undefined }}>Qalıq: {b.balance} AZN</strong>
               </div>
             </div>
@@ -257,9 +258,10 @@ function PayoutsSection() {
                 {p.psychologistName ?? `Psixoloq #${p.psychologistId}`}
                 <span className="pill sage" style={{ marginLeft: 8 }}>Ödənildi</span>
               </div>
-              <div className="li-meta">
-                {p.amount} AZN · {azFormatDateTime(p.paidAt ?? p.createdAt)}
-                {p.note && <> · {p.note}</>}
+              <div className="li-meta row" style={{ gap: 10, flexWrap: "wrap" }}>
+                <span>{p.amount} AZN</span>
+                <span>{azFormatDateTime(p.paidAt ?? p.createdAt)}</span>
+                {p.note && <span>{p.note}</span>}
               </div>
             </div>
           </div>
@@ -351,9 +353,9 @@ function PlansSection() {
                   {p.active ? "Aktiv" : "Deaktiv"}
                 </span>
               </div>
-              <div className="li-meta">
-                {p.price} AZN / {p.period === "YEARLY" ? "illik" : "aylıq"}
-                {p.perks && <> · {p.perks}</>}
+              <div className="li-meta row" style={{ gap: 10, flexWrap: "wrap" }}>
+                <span>{p.price} AZN / {p.period === "YEARLY" ? "illik" : "aylıq"}</span>
+                {p.perks && <span>{p.perks}</span>}
               </div>
             </div>
             <button className="btn sm" onClick={() => togglePlan(p)} disabled={busy}>
@@ -377,16 +379,17 @@ function PlansSection() {
         ) : subs.map(s => (
           <div className="list-item" key={s.id}>
             <div style={{ flex: 1 }}>
-              <div className="li-title">
-                {s.psychologistName ?? `Psixoloq #${s.psychologistId}`}
-                <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {s.planName ?? `Plan #${s.planId}`}</span>
-                <span className={`pill ${s.status === "ACTIVE" ? "sage" : s.status === "OVERDUE" ? "gold" : "muted"}`} style={{ marginLeft: 8 }}>
+              <div className="li-title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span>{s.psychologistName ?? `Psixoloq #${s.psychologistId}`}</span>
+                <span style={{ color: "var(--muted)", fontWeight: 400 }}>{s.planName ?? `Plan #${s.planId}`}</span>
+                <span className={`pill ${s.status === "ACTIVE" ? "sage" : s.status === "OVERDUE" ? "gold" : "muted"}`}>
                   {s.status}
                 </span>
               </div>
-              <div className="li-meta">
-                Başlanğıc: {s.startedAt} · Bitmə: {s.expiresAt ?? "—"}
-                {s.planPrice != null && <> · {s.planPrice} AZN</>}
+              <div className="li-meta row" style={{ gap: 10, flexWrap: "wrap" }}>
+                <span>Başlanğıc: {s.startedAt}</span>
+                <span>Bitmə: {s.expiresAt ?? "—"}</span>
+                {s.planPrice != null && <span>{s.planPrice} AZN</span>}
               </div>
             </div>
             <button className="btn sm" onClick={() => setSubStatus(s)} disabled={busy}>Statusu dəyiş</button>

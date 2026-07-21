@@ -47,7 +47,7 @@ export default function OperatorReferralsView({ onPendingCount }: { onPendingCou
   const approve = async (r: Referral) => {
     const ok = await confirmDialog({
       title: "Yönləndirməni təsdiqlə",
-      message: `${r.fromPsychologistName} → ${r.toPsychologistName} · ${r.subjectLabel ?? ""}. Təsdiqdən sonra qarşı psixoloq görəcək.`,
+      message: `${r.fromPsychologistName} → ${r.toPsychologistName}, ${r.subjectLabel ?? ""}. Təsdiqdən sonra qarşı psixoloq görəcək.`,
       confirmLabel: "Təsdiqlə",
     });
     if (!ok) return;
@@ -66,7 +66,7 @@ export default function OperatorReferralsView({ onPendingCount }: { onPendingCou
   const reject = async (r: Referral) => {
     const ok = await confirmDialog({
       title: "Yönləndirməni rədd et",
-      message: `${r.fromPsychologistName} → ${r.toPsychologistName} · ${r.subjectLabel ?? ""}. Göndərən psixoloqa bildiriş gedəcək.`,
+      message: `${r.fromPsychologistName} → ${r.toPsychologistName}, ${r.subjectLabel ?? ""}. Göndərən psixoloqa bildiriş gedəcək.`,
       confirmLabel: "Rədd et",
       danger: true,
     });

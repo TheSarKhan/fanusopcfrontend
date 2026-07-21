@@ -143,9 +143,12 @@ export default function Stats({ stats }: { stats: Stat[] }) {
             width: 7, height: 7, borderRadius: "50%",
             background: "var(--sage)", display: "inline-block",
           }} />
-          <p style={{ fontSize: 13.5, color: "var(--oxford-60)" }}>
-            <span style={{ color: "var(--oxford)", fontWeight: 600 }}>İş saatları:</span>
-            {" "}B.ertəsi – Şənbə, 09:00–20:00 · Onlayn 7/24
+          <p style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, fontSize: 13.5, color: "var(--oxford-60)" }}>
+            <span>
+              <span style={{ color: "var(--oxford)", fontWeight: 600 }}>İş saatları:</span>
+              {" "}B.ertəsi – Şənbə, 09:00–20:00
+            </span>
+            <span>Onlayn 7/24</span>
           </p>
         </div>
       </div>

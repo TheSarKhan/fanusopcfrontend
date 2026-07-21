@@ -218,7 +218,7 @@ export default function OperatorCustomersPage() {
       {/* Başlıq */}
       <PageHeader
         title="Müştərilər"
-        subtitle="Direktoriya · axtar, seqmentlə, sətirdən əməliyyat et"
+        subtitle="Axtarış, seqment və sətir əməliyyatları üçün direktoriya"
         actions={
           <button type="button" onClick={() => setNewOpen(true)} className="fx-btn fx-btn--primary">
             <Icon name="plus" /> Yeni müştəri

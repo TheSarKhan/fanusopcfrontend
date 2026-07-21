@@ -664,7 +664,10 @@ export default function PatientDetailPage() {
                       </span>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{fmtShort(upcoming.startAt)}</div>
-                        <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>{fmtTime(new Date(upcoming.startAt))} · {agoLabel(upcoming.startAt)}</div>
+                        <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          <span>{fmtTime(new Date(upcoming.startAt))}</span>
+                          <span>{agoLabel(upcoming.startAt)}</span>
+                        </div>
                       </div>
                     </div>
                     <Link href="/psycholog/calendar" className="m360-link" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none", marginTop: 12 }}>
@@ -818,9 +821,9 @@ function CrisisHistoryCard({ items }: { items: CrisisCheckIn[] }) {
           </span>
           <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>Böhran check-in tarixçəsi</span>
         </div>
-        <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
-          Son 30 gündə <strong style={{ color: "var(--oxford)" }}>{recent.length} check-in</strong>
-          {lowCount > 0 && <> · <strong style={{ color: "#991B1B" }}>{lowCount} aşağı əhval</strong></>}
+        <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
+          <span>Son 30 gündə <strong style={{ color: "var(--oxford)" }}>{recent.length} check-in</strong></span>
+          {lowCount > 0 && <strong style={{ color: "#991B1B" }}>{lowCount} aşağı əhval</strong>}
         </span>
       </div>
       <svg viewBox={`0 0 ${sparkW} ${sparkH}`} preserveAspectRatio="none" style={{ width: "100%", height: 40, display: "block", marginBottom: 14 }}>
@@ -831,7 +834,7 @@ function CrisisHistoryCard({ items }: { items: CrisisCheckIn[] }) {
         {dots.map((d, i) => (
           <circle key={i} cx={d.x} cy={d.y} r="3"
             fill={d.mood <= 2 ? "#DC2626" : d.mood === 3 ? "#F59E0B" : "#10B981"}>
-            <title>{`${d.mood}/5 · ${azFormatDate(d.ts)}`}</title>
+            <title>{`${d.mood}/5, ${azFormatDate(d.ts)}`}</title>
           </circle>
         ))}
       </svg>
@@ -941,10 +944,15 @@ function GoalCard({ g, onEdit, onDelete }: { g: PatientGoal; onEdit: () => void;
         <span style={{ fontSize: 12, fontWeight: 700, color: achieved ? "#065F46" : "#082F6D" }}>{g.progressPct}%</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: overdue ? 700 : 600, color: overdue ? "#991B1B" : "var(--oxford-60)" }}>
+        <span style={{ fontSize: 12, fontWeight: overdue ? 700 : 600, color: overdue ? "#991B1B" : "var(--oxford-60)", display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
           {g.achievedAt
-            ? `Tamamlandı: ${fmtShort(g.achievedAt)}`
-            : g.targetDate ? `Hədəf: ${fmtShort(g.targetDate)}${overdue ? " · gecikib" : ""}` : "—"}
+            ? <span>Tamamlandı: {fmtShort(g.achievedAt)}</span>
+            : g.targetDate ? (
+              <>
+                <span>Hədəf: {fmtShort(g.targetDate)}</span>
+                {overdue && <span>gecikib</span>}
+              </>
+            ) : "—"}
         </span>
         <div style={{ display: "flex", gap: 6 }}>
           <button onClick={onEdit} className="m360-ghost" style={{ ...miniBtn, color: "#082F6D", border: "1px solid #D6E2F7" }}>Redaktə</button>
@@ -1058,7 +1066,7 @@ function sessionSummary(a: AppointmentDetail): string {
   if (a.note) return a.note;
   if (a.status === "CANCELLED") {
     const r = a.cancelReasonCode ? REASON_LABELS[a.cancelReasonCode] ?? a.cancelReasonCode : null;
-    return `Ləğv${r ? ` · ${r}` : ""}`;
+    return `Ləğv${r ? `, ${r}` : ""}`;
   }
   if (a.status === "DISPUTED" && a.disputeReason) return `Mübahisə: ${a.disputeReason}`;
   const op = cleanOperatorNote(a.operatorNote);
@@ -1262,10 +1270,10 @@ function ActivityRow({ item, last }: { item: ActivityItem; last: boolean }) {
     icon = done
       ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></>
       : <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>;
-    title = `Seans · ${stx.label}`;
+    title = `Seans, ${stx.label}`;
     sub = a.note ? `«${a.note.length > 90 ? a.note.slice(0, 90) + "…" : a.note}»` : null;
     italic = true;
-    dateStr = `${fmtShort(when)} · ${fmtTime(new Date(when))}`;
+    dateStr = `${fmtShort(when)}, ${fmtTime(new Date(when))}`;
   } else {
     const n = item.note;
     tint = "gold";
@@ -1335,10 +1343,10 @@ function SessionDetail({ a }: { a: AppointmentDetail }) {
         <div style={{ fontSize: 12.5, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 8, padding: "7px 10px", marginTop: 7, lineHeight: 1.45 }}>«{a.note}»</div>
       )}
       {a.status === "CANCELLED" && (
-        <div style={{ fontSize: 12, color: "#991B1B", fontWeight: 600, marginTop: 6 }}>
-          Ləğv: {cancelledBy}
-          {a.cancelReasonCode && <> · «{REASON_LABELS[a.cancelReasonCode] ?? a.cancelReasonCode}»</>}
-          {a.cancelledAt && <> · {fmtDateTime(a.cancelledAt)}</>}
+        <div style={{ fontSize: 12, color: "#991B1B", fontWeight: 600, marginTop: 6, display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <span>Ləğv: {cancelledBy}</span>
+          {a.cancelReasonCode && <span>«{REASON_LABELS[a.cancelReasonCode] ?? a.cancelReasonCode}»</span>}
+          {a.cancelledAt && <span>{fmtDateTime(a.cancelledAt)}</span>}
         </div>
       )}
       {a.cancelReasonText && (
@@ -1623,10 +1631,10 @@ function NoteViewModal({ n, onClose, onEdit }: { n: ClientNote; onClose: () => v
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "18px 22px 14px", borderBottom: "1px solid #F0F4FA", flex: "none" }}>
           <div>
             <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{n.title || "Klinik qeyd"}</h3>
-            <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
-              {fmtDateTime(n.createdAt)}
-              {edited && ` · düzəldildi ${fmtDateTime(n.updatedAt!)}`}
-              {typeof n.moodScore === "number" && ` · əhval-ruhiyyə ${n.moodScore}/10`}
+            <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <span>{fmtDateTime(n.createdAt)}</span>
+              {edited && <span>düzəldildi {fmtDateTime(n.updatedAt!)}</span>}
+              {typeof n.moodScore === "number" && <span>əhval-ruhiyyə {n.moodScore}/10</span>}
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Bağla"

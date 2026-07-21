@@ -293,9 +293,16 @@ export default function OperatorPsychologistDetailPage() {
                 </button>
                 {historyOpen && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+                    {/* Dəyişiklik üst sətirdə, kim/nə vaxt alt sətirdə — ayırıcı işarə yox. */}
                     {priceHistory.map(h => (
                       <div key={h.id} style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500 }}>
-                        {h.target === "PACKAGE" ? "Paket" : "Fərdi"}: {h.oldPrice != null ? formatAzn(h.oldPrice) : "—"} → <b style={{ color: "var(--oxford)" }}>{formatAzn(h.newPrice)}</b> · {h.changedByRole} · {fmtDate(h.createdAt)}
+                        <div>
+                          {h.target === "PACKAGE" ? "Paket" : "Fərdi"}: {h.oldPrice != null ? formatAzn(h.oldPrice) : "—"} → <b style={{ color: "var(--oxford)" }}>{formatAzn(h.newPrice)}</b>
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 2, fontSize: 11 }}>
+                          <span>{h.changedByRole}</span>
+                          <span>{fmtDate(h.createdAt)}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -330,7 +337,10 @@ export default function OperatorPsychologistDetailPage() {
               ) : notes.map(n => (
                 <div key={n.id} style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>
                   <div style={{ fontSize: 13, color: "var(--oxford)", fontWeight: 500, marginBottom: 6, whiteSpace: "pre-wrap" }}>{n.text}</div>
-                  <div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600 }}>{n.authorName ?? "Operator"} · {fmtDate(n.createdAt)}</div>
+                  <div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    <span>{n.authorName ?? "Operator"}</span>
+                    <span>{fmtDate(n.createdAt)}</span>
+                  </div>
                 </div>
               ))}
             </div>

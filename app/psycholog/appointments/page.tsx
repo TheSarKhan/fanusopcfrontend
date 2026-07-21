@@ -702,7 +702,7 @@ function SessionDetailModal({
             <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
                 {start
-                  ? `${pad2(start.getDate())} ${MONTHS_AZ[start.getMonth()]} ${start.getFullYear()} · ${fmtTime(start)}${a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}`
+                  ? `${pad2(start.getDate())} ${MONTHS_AZ[start.getMonth()]} ${start.getFullYear()}, ${fmtTime(start)}${a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}`
                   : "Vaxt təyin edilməyib"}
               </span>
               {tu && !tu.expired && (
@@ -735,8 +735,10 @@ function SessionDetailModal({
               <div style={labelStyle}>Müştəri konteksti</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 7, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 13px" }}>
                 {client && (
-                  <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
-                    {client.completedSessions} tamamlanmış seans{client.noteCount > 0 ? ` · ${client.noteCount} klinik qeyd` : ""}{note?.moodScore ? ` · son əhval ${note.moodScore}/10` : ""}
+                  <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    <span>{client.completedSessions} tamamlanmış seans</span>
+                    {client.noteCount > 0 && <span>{client.noteCount} klinik qeyd</span>}
+                    {note?.moodScore ? <span>son əhval {note.moodScore}/10</span> : null}
                   </div>
                 )}
                 {note?.body && (
@@ -874,7 +876,7 @@ function PackageBlock({ pkg, ordinal, now, busyId, h }: {
       <div style={{ display: "flex", gap: 18, flexWrap: "wrap", padding: "11px 0", borderTop: "1px solid #EDF1F8", borderBottom: "1px solid #EDF1F8" }}>
         <div>
           <div style={pkgStatLab}>Növbəti</div>
-          <div style={pkgStatVal}>{upcoming && upcoming.startAt ? `${fmtDM(upcoming.startAt)} · ${fmtTime(new Date(upcoming.startAt))}` : "—"}</div>
+          <div style={pkgStatVal}>{upcoming && upcoming.startAt ? `${fmtDM(upcoming.startAt)}, ${fmtTime(new Date(upcoming.startAt))}` : "—"}</div>
           {upcoming && <div style={{ marginTop: 3 }}><StatusText status={upcoming.status} size={12.5} /></div>}
         </div>
         <div><div style={pkgStatLab}>Planlanmamış</div><div style={pkgStatVal}>{remaining}</div></div>
@@ -956,7 +958,7 @@ function PatientRescheduleRequestCard({
 
   const fmtOpt = (startIso: string, endIso: string) => {
     const s = new Date(startIso), e = new Date(endIso);
-    return `${pad2(s.getDate())} ${MONTHS_AZ[s.getMonth()]} · ${fmtTime(s)}–${fmtTime(e)}`;
+    return `${pad2(s.getDate())} ${MONTHS_AZ[s.getMonth()]}, ${fmtTime(s)}–${fmtTime(e)}`;
   };
 
   const accept = async (idx: number) => {

@@ -21,7 +21,7 @@ function fmtDateTime(d?: string | null) {
   const dt = new Date(d);
   const date = `${String(dt.getDate()).padStart(2, "0")}.${String(dt.getMonth() + 1).padStart(2, "0")}.${dt.getFullYear()}`;
   const time = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
-  return `${date} · ${time}`;
+  return `${date}, ${time}`;
 }
 function initials(name?: string | null) {
   return (name || "").split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? "").join("") || "P";
@@ -138,13 +138,10 @@ export default function CommunityArticleReaderPage() {
                     </span>
                   </span>
                 )}
-                <span className="pread-meta__dot">·</span>
+                {/* Ayırıcı işarə yoxdur — .pread-meta flex boşluğu elementləri ayırır */}
                 <span className="pread-meta__date">{fmtDateTime(post.publishedDate || post.createdAt)}</span>
                 {post.readTimeMinutes > 0 && (
-                  <>
-                    <span className="pread-meta__dot">·</span>
-                    <span className="pread-meta__read">{post.readTimeMinutes} dəq oxu</span>
-                  </>
+                  <span className="pread-meta__read">{post.readTimeMinutes} dəq oxu</span>
                 )}
               </div>
 
@@ -321,8 +318,9 @@ function CommentNode({ c, postId, onChanged, depth }: {
           <div className="pcmt-bubble">
             <div className="pcmt-head">
               <span className="pcmt-name">{c.deleted ? "Silinmiş şərh" : (c.authorName || "Psixoloq")}</span>
-              <span className="pcmt-time">
-                {fmtDateTime(c.createdAt)}{c.editedAt && !c.deleted ? " · redaktə olunub" : ""}
+              <span className="pcmt-time" style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
+                <span>{fmtDateTime(c.createdAt)}</span>
+                {c.editedAt && !c.deleted && <span>redaktə olunub</span>}
               </span>
             </div>
 

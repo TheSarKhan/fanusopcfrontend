@@ -201,8 +201,10 @@ export default function MaterialsPage() {
                           <span style={{ color: "var(--muted)" }}>—</span>
                         )}
                         {m.latestFileName && (
-                          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 3 }}>
-                            v{m.latestVersionNo} · {m.latestFileName} · {fmtSize(m.latestFileSize)}
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 11, color: "var(--muted)", marginTop: 3 }}>
+                            <span>v{m.latestVersionNo}</span>
+                            <span>{m.latestFileName}</span>
+                            <span>{fmtSize(m.latestFileSize)}</span>
                           </div>
                         )}
                       </td>

@@ -74,8 +74,10 @@ export default function PackagePatientsPage() {
           <span style={{ fontSize: 18, fontWeight: 800, color: "var(--oxford)" }}>{pkg.name}</span>
           <span style={{ background: pkg.active ? "#D1FAE5" : "#F3F4F6", color: pkg.active ? "#065F46" : "#6B7280", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>{pkg.active ? "Aktiv" : "Deaktiv"}</span>
         </div>
-        <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, marginBottom: stats ? 16 : 0 }}>
-          {pkg.sessionCount} seans · {formatAzn(pkg.packagePrice)} · seans başına ≈ {formatAzn(pkg.perSessionPrice)}
+        <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, marginBottom: stats ? 16 : 0, display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <span>{pkg.sessionCount} seans</span>
+          <span>{formatAzn(pkg.packagePrice)}</span>
+          <span>seans başına ≈ {formatAzn(pkg.perSessionPrice)}</span>
         </div>
         {stats && (
           <div style={{ display: "flex", gap: 22, flexWrap: "wrap", paddingTop: 14, borderTop: "1px solid #EDF1F8" }}>

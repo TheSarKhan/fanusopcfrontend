@@ -140,8 +140,9 @@ function PsyCard({ p, idx, onOpen }: { p: PsychologistFeedbackSummary; idx: numb
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {p.psychologistName}
           </div>
-          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 1 }}>
-            <span style={{ color: "#F59E0B" }}>★</span> {fmtRating(p.avgRating)} · {p.totalCount} rəy
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 1, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+            <span><span style={{ color: "#F59E0B" }}>★</span> {fmtRating(p.avgRating)}</span>
+            <span>{p.totalCount} rəy</span>
           </div>
         </div>
       </div>
@@ -251,8 +252,9 @@ function PsychologistDetail({ psy, onBack, onDelta }: {
           <h1 style={{ fontSize: 19, fontWeight: 700, color: "var(--oxford)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{psy.name}</h1>
         </div>
         {rows && rows.length > 0 && (
-          <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, flex: "none" }}>
-            <span style={{ color: "#F59E0B" }}>★</span> {fmtRating(avg)} · {rows.length} rəy
+          <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, flex: "none", display: "inline-flex", alignItems: "center", gap: 10 }}>
+            <span><span style={{ color: "#F59E0B" }}>★</span> {fmtRating(avg)}</span>
+            <span>{rows.length} rəy</span>
           </span>
         )}
       </div>
@@ -331,8 +333,9 @@ function FeedbackRow({ fb, busy, onStatus, onSeen }: {
         </div>
         {fb.comment && <div className="opf-row-comment">«{fb.comment}»</div>}
         <div className="opf-row-meta">
-          {timeAgo(fb.createdAt)} · {azFormatDateTime(fb.createdAt)}
-          {fb.appointmentStartAt && <> · seans: {azFormatDate(fb.appointmentStartAt)}</>}
+          <span>{timeAgo(fb.createdAt)}</span>
+          <span>{azFormatDateTime(fb.createdAt)}</span>
+          {fb.appointmentStartAt && <span>seans: {azFormatDate(fb.appointmentStartAt)}</span>}
         </div>
       </div>
       <div className="opf-row-actions">

@@ -293,9 +293,11 @@ function PoolApptCard({
       )}
 
       {a.requestedPsychologistName ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 600, color: a.origin === "DIRECT" ? "#15803D" : "var(--brand-700)", marginBottom: 15 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12.5, fontWeight: 600, color: a.origin === "DIRECT" ? "#15803D" : "var(--brand-700)", marginBottom: 15 }}>
           <IconUser />
-          <span>{a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən"}: {a.requestedPsychologistName}{a.requestedStartAt && ` · ${fmtDt(a.requestedStartAt)}`}</span>
+          {/* Ad və istənilən vaxt ayrı span-larda — flex boşluğu ayırır. */}
+          <span>{a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən"}: {a.requestedPsychologistName}</span>
+          {a.requestedStartAt && <span className="fx-num" style={{ color: "var(--oxford-60)" }}>{fmtDt(a.requestedStartAt)}</span>}
         </div>
       ) : (
         <div style={{ fontSize: 12.5, fontStyle: "italic", color: "var(--oxford-60)", fontWeight: 500, marginBottom: 15 }}>Psixoloq seçilməyib — operator təyin edəcək</div>

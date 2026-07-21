@@ -362,7 +362,7 @@ function HeroArticle({ p, onEdit, onView, onToggle, onDelete, isToggling }: {
             marginBottom: 10,
           }}>
             <IconSparkle /> Ən son
-            {p.category && <span style={{ opacity: 0.8 }}>· {p.category}</span>}
+            {p.category && <span style={{ opacity: 0.8 }}>{p.category}</span>}
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, lineHeight: 1.25, color: "#fff" }}>
             {p.title || "Başlıqsız"}
@@ -379,7 +379,7 @@ function HeroArticle({ p, onEdit, onView, onToggle, onDelete, isToggling }: {
         <div>
           <div style={{ display: "flex", gap: 12, fontSize: 11.5, color: "rgba(255,255,255,0.85)", marginBottom: 12, flexWrap: "wrap" }}>
             <span>{p.publishedDate ? fmtDate(p.publishedDate) : (p.createdAt ? timeAgo(p.createdAt) : "—")}</span>
-            <span>· {readTime} dəq oxunma</span>
+            <span>{readTime} dəq oxunma</span>
             <span style={{
               padding: "1px 8px", borderRadius: 999,
               background: published ? "rgba(16, 185, 129, 0.25)" : "rgba(251, 191, 36, 0.25)",

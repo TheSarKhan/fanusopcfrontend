@@ -3379,6 +3379,9 @@ export const operatorApi = {
   /** Linki artıq göndərilmiş yaxın seanslar — mövcud linki redaktə etmək üçün. */
   sentMeetingLinks: () =>
     authedRequest<AppointmentDetail[]>("GET", "/operator/meeting-links/sent"),
+  /** Daxili operator qeydi — təyinat axınından ayrı saxlanılır. */
+  setAppointmentNote: (id: number, note: string) =>
+    authedRequest<AppointmentDetail>("PUT", `/operator/appointments/${id}/note`, { note }),
   setMeetingLink: (id: number, meetingLink: string) =>
     authedRequest<AppointmentDetail>("PUT", `/operator/appointments/${id}/meeting-link`, { meetingLink }),
   revokeMeetingLink: (id: number) =>

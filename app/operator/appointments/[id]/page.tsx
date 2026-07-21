@@ -494,15 +494,21 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
               {/* Əsl status rozeti — dizayn sistemi pili. */}
               <span className={`fx-pill ${statusPillClass(a.status)}`}>{statusLabel(a.status)}</span>
               {a.sessionKind === "INTRO" && (
-                <span style={{ fontSize: 12, color: "var(--oxford-60)" }}>Tanışlıq · pulsuz</span>
+                <span style={{ fontSize: 12, color: "var(--oxford-60)" }}>Pulsuz tanışlıq görüşü</span>
               )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               {/* Sahiblik/SLA — çip deyil, ikon + mətn. */}
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: ownerColor, fontSize: 12, fontWeight: 600 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }} aria-hidden><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                {ownerLabel}{!isFinal ? ` · ${ageLabel(a.createdAt, nowMs)} gözləyir` : ""}
+                {ownerLabel}
               </span>
+              {/* Gözləmə müddəti ayrıca element — ayırıcı işarə yerinə boşluq. */}
+              {!isFinal && (
+                <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500 }}>
+                  {ageLabel(a.createdAt, nowMs)} gözləyir
+                </span>
+              )}
               {unowned && (
                 <button onClick={takeOwnership} className="fx-btn fx-btn--primary fx-btn--sm">{t("staff.opTake")}</button>
               )}
@@ -516,7 +522,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
                     ? "Randevunu hovuza qaytar"
                     : "Üzərində əməliyyat aparılıb — Admin təsdiqi ilə buraxılır"}
                 >
-                  {releaseBusy ? "Buraxılır…" : "Pool-a burax"}
+                  {releaseBusy ? "Buraxılır…" : "Hovuza geri burax"}
                 </button>
               )}
               {isAdmin && !unowned && (
@@ -566,21 +572,12 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
             ) : (
               <>
                 {/* ── 3. Təyinat ───────────────────────────────────────────── */}
-                {timeLocked ? (
-                  <div className="opd-card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div className="opd-card__title">Təyin / yenidən planla</div>
-                    <div className="fx-banner fx-banner--warn">
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
-                      <div>
-                        <strong>Vaxt/psixoloq dəyişikliyi bloklanıb</strong> — seans linki artıq təyin edilib. Dəyişmək üçün əvvəlcə «Görüş linki» kartından linki geri çağırın.
-                      </div>
-                    </div>
-                  </div>
-                ) : canAssign && (
+                {canAssign && (
                   <div ref={assignCardRef}>
                     <AssignBlock
                       key={`assign-${a.id}-${a.status}`}
                       appointment={a}
+                      timeLocked={timeLocked}
                       suggestions={full.suggestions}
                       cold={claimedByOther}
                       guardAction={guardAction}
@@ -597,15 +594,18 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
                 )}
 
                 {/* ── 4. Ödəniş (linkdən ƏVVƏL — link ödənişdən asılıdır) ──── */}
-                <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                    <span className="opd-card__title">Ödəniş</span>
-                    {a.paymentAmount != null && a.paymentAmount > 0 && (
-                      <span className={`fx-pill ${a.paymentStatus === "PAID" ? "fx-pill--paid" : "fx-pill--pending"}`}>
-                        {a.paymentStatus === "PAID" ? "Ödənilib" : "Gözləyir"}
-                      </span>
-                    )}
-                  </div>
+                <SectionCard
+                  title="Ödəniş"
+                  tone="sage"
+                  icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="13" rx="2" /><path d="M2 10h20M6 15h4" /></svg>}
+                  right={a.paymentAmount != null && a.paymentAmount > 0 ? (
+                    /* Ödəniş vəziyyəti kapsul deyil — rəngli nöqtə + mətn. */
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: a.paymentStatus === "PAID" ? "var(--sage)" : "var(--oxford-60)" }}>
+                      <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: a.paymentStatus === "PAID" ? "var(--sage)" : "#C97D2E", flex: "none" }} />
+                      {a.paymentStatus === "PAID" ? "Ödənilib" : "Gözləyir"}
+                    </span>
+                  ) : undefined}
+                >
                   {a.paymentAmount != null && a.paymentAmount > 0 ? (
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                       <div style={{ minWidth: 0 }}>
@@ -628,11 +628,13 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
                   ) : (
                     <span className="fx-muted" style={{ fontSize: 13 }}>{a.patientPackageId ? "Paket seansı" : "Ödəniş tələb olunmur"}</span>
                   )}
-                </div>
+                </SectionCard>
 
                 {/* ── 5. Görüş linki ───────────────────────────────────────── */}
-                <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div className="opd-card__title">Görüş linki</div>
+                <SectionCard
+                  title="Görüş linki"
+                  icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" /></svg>}
+                >
                   {a.meetingLink ? (
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                       <a href={a.meetingLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "var(--brand)", wordBreak: "break-all", minWidth: 0 }}>{a.meetingLink}</a>
@@ -653,12 +655,15 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
                       <button onClick={() => setLinkModalOpen(true)} className="fx-btn fx-btn--primary fx-btn--sm" style={{ flex: "none" }}>Link əlavə et</button>
                     </div>
                   )}
-                </div>
+                </SectionCard>
 
-                {/* ── 6. Digər əməliyyatlar — sakit sətir ──────────────────── */}
+                {/* ── 6. Digər əməliyyatlar ────────────────────────────────── */}
                 {otherKeys.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div className="fx-section-label">Digər əməliyyatlar</div>
+                  <SectionCard
+                    title="Digər əməliyyatlar"
+                    tone="danger"
+                    icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>}
+                  >
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {otherKeys.map(k => (
                         <button key={k} onClick={() => setOtherAction(k)} className={`fx-btn fx-btn--sm ${OTHER_ACTION_META[k].btnClass}`}>
@@ -666,7 +671,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
                         </button>
                       ))}
                     </div>
-                  </div>
+                  </SectionCard>
                 )}
               </>
             )}
@@ -847,7 +852,7 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", overflow: "hidden", textOverflow: "ellipsis" }}>{a.patientName ?? "—"}</div>
             <div className="fx-muted" style={{ fontSize: 12, marginTop: 2 }}>
-              {a.patientId ? t("staff.opDetRegistered") : t("staff.opDetAnonymous")}{h?.blocked ? " · Bloklanıb" : ""}
+              {a.patientId ? t("staff.opDetRegistered") : t("staff.opDetAnonymous")}{h?.blocked ? ", bloklanıb" : ""}
             </div>
           </div>
         </div>
@@ -904,8 +909,8 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
           <div className="opd-card" style={{ padding: 16 }}>
             <div className="opd-card__title" style={{ marginBottom: 10 }}>Müştərinin seansları</div>
             {others.slice(0, 6).map((r, i, arr) => {
-              // İki sətir: başlıq (Seans/Tanışlıq · psixoloq — tam eni, sığmasa "…")
-              // + altında boz "tarix · status". Bir sətirdə hamısı sığmır, kəsilirdi.
+              // İki sətir: üstdə psixoloqun adı, altda boz tarix və rəngli status.
+              // Ayırıcı işarə yoxdur — sətir bölgüsü və boşluq ayırır.
               const when = r.startAt ?? r.createdAt;
               const statusColor = r.status === "COMPLETED" ? "var(--sage)"
                 : (r.status === "CANCELLED" || r.status === "REJECTED") ? "var(--rose)" : "var(--oxford-60)";
@@ -913,10 +918,12 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
                 <Link key={r.id} href={`/operator/appointments/${r.id}${suffix}`}
                   style={{ display: "block", padding: "8px 0", borderBottom: i === arr.length - 1 ? "none" : "1px solid var(--hairline)", textDecoration: "none" }}>
                   <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {r.sessionKind === "INTRO" ? "Tanışlıq" : "Seans"}{r.psychologistName ? ` · ${r.psychologistName}` : ""}
+                    {r.psychologistName ?? (r.sessionKind === "INTRO" ? "Tanışlıq görüşü" : "Seans")}
+                    {r.psychologistName && r.sessionKind === "INTRO" ? " (tanışlıq)" : ""}
                   </div>
-                  <div className="fx-muted" style={{ fontSize: 11, marginTop: 3 }}>
-                    {when ? azFormatDate(when) : "—"} · <span style={{ color: statusColor, fontWeight: 600 }}>{statusLabel(r.status)}</span>
+                  <div className="fx-muted" style={{ fontSize: 11, marginTop: 3, display: "flex", gap: 10 }}>
+                    <span>{when ? azFormatDate(when) : "—"}</span>
+                    <span style={{ color: statusColor, fontWeight: 600 }}>{statusLabel(r.status)}</span>
                   </div>
                 </Link>
               );
@@ -929,14 +936,25 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
       {a.seriesId != null && full.seriesSiblings.length > 0 && (
         <div className="opd-card" style={{ padding: 16 }}>
           <div className="opd-card__title" style={{ display: "block", marginBottom: 10 }}>
-            {t("staff.opDetGroupContext")} · {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal ?? full.seriesSiblings.length })}
+            <span style={{ display: "inline-flex", gap: 10, flexWrap: "wrap" }}>
+              <span>{t("staff.opDetGroupContext")}</span>
+              <span style={{ color: "var(--oxford-60)", fontWeight: 500 }}>
+                {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal ?? full.seriesSiblings.length })}
+              </span>
+            </span>
           </div>
           <div style={{ display: "grid", gap: 4 }}>
             {full.seriesSiblings.map(s => (
               <Link key={s.id} href={`/operator/appointments/${s.id}${suffix}`}
                 className={s.id === a.id ? "op-det-sibling op-det-sibling--current" : "op-det-sibling"}>
-                <span className="fx-num">#{s.id} · {azOrdinal((s.seriesIndex ?? 0) + 1)} seans</span>
-                <span style={{ color: "var(--oxford-60)" }}>{s.startAt ? azFormatDate(s.startAt) : "—"} · {statusLabel(s.status)}</span>
+                <span className="fx-num" style={{ display: "inline-flex", gap: 8 }}>
+                  <span>#{s.id}</span>
+                  <span>{azOrdinal((s.seriesIndex ?? 0) + 1)} seans</span>
+                </span>
+                <span style={{ color: "var(--oxford-60)", display: "inline-flex", gap: 8 }}>
+                  <span>{s.startAt ? azFormatDate(s.startAt) : "—"}</span>
+                  <span>{statusLabel(s.status)}</span>
+                </span>
               </Link>
             ))}
           </div>
@@ -1121,14 +1139,65 @@ function ModalShell({ title, sub, badge, onClose, footer, maxWidth = 480, childr
   );
 }
 
+/** Detal səhifəsinin bölmə kartı: rəngli ikon + başlıq, sağda əməliyyat,
+ *  yığıla bilən gövdə. Rozet/kapsul işlətmir. */
+function SectionCard({ icon, tone = "brand", title, right, children }: {
+  icon: React.ReactNode;
+  tone?: "brand" | "sage" | "danger";
+  title: string;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+  const toneColor = tone === "sage" ? "var(--sage)" : tone === "danger" ? "#DC2626" : "var(--brand)";
+  return (
+    <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: open ? 10 : 0 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+          <span aria-hidden style={{
+            width: 26, height: 26, borderRadius: 8, flex: "none", color: toneColor,
+            background: "var(--surface-2, #F6F8FC)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>{icon}</span>
+          <span className="opd-card__title">{title}</span>
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flex: "none" }}>
+          {right}
+          <button type="button" onClick={() => setOpen(o => !o)} className="fx-iconbtn"
+            aria-expanded={open} aria-label={open ? "Bölməni yığ" : "Bölməni aç"}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .12s" }}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+        </span>
+      </div>
+      {open && children}
+    </div>
+  );
+}
+
+/** Seans özətindəki bir sütun: kiçik boz etiket + altında dəyər.
+ *  Kapsul/rozet işlətmir — dəyərlər sadə mətndir. */
+function SummaryCell({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div className="fx-section-label" style={{ marginBottom: 7 }}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
 function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, onAssigned,
-  proposedStart = null, proposedEnd = null, proposedInitiator = null }: {
+  timeLocked = false, proposedStart = null, proposedEnd = null, proposedInitiator = null }: {
   appointment: AppointmentDetail;
   suggestions: OperatorAppointmentFull["suggestions"];
   cold: boolean;
   guardAction: (run: () => void) => void;
   selectRef: React.RefObject<HTMLButtonElement | null>;
   onAssigned: (a: AppointmentDetail) => void;
+  /** Görüş linki təyin edilib → vaxt/psixoloq dəyişdirilə bilməz (yalnız özət). */
+  timeLocked?: boolean;
   /** Gözləyən vaxt-dəyişmə təklifi varsa (psixoloq/operator/pasiyent) — onun ilk
    *  variantı "İstənilən vaxt" kimi işlədilir (banner + slot seçimi + manual seed). */
   proposedStart?: string | null;
@@ -1145,7 +1214,16 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   const [manualStart, setManualStart] = useState("");
   const [manualEnd, setManualEnd] = useState("");
   const [singlePrice, setSinglePrice] = useState("");  // yalnız tək (paketsiz) seans ödənişi üçün opsional
+  /** Məbləğ standartdan fərqləndirilir — yalnız operator dəqiqləşdirəndən sonra açılır. */
+  const [priceEditing, setPriceEditing] = useState(false);
+  /** Standartdan fərqli məbləğ üçün MƏCBURİ əsas — qeydə yazılır ki, izlənə bilsin. */
+  const [priceReason, setPriceReason] = useState("");
   const [note, setNote] = useState(appointment.operatorNote ?? "");
+  /** Təyin edilmiş randevu normalda ÖZƏT kimi göstərilir; forma yalnız «Dəyiş»lə açılır. */
+  const [editing, setEditing] = useState(false);
+  /** Özətdəki qeydin son yadda saxlanmış vəziyyəti — «dirty» hesablamaq üçün. */
+  const [savedNote, setSavedNote] = useState(appointment.operatorNote ?? "");
+  const [noteSaving, setNoteSaving] = useState(false);
   // Seçilmiş vaxt psixoloqun iş qrafikinə düşmür — bloklayıcı deyil, xəbərdarlıq.
   // Operator psixoloqla razılaşıb "Yenə də təyin et" ilə təsdiqləyə bilər.
   const [scheduleWarn, setScheduleWarn] = useState<string | null>(null);
@@ -1185,6 +1263,20 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   // Seans məbləği bir dəfə təyin olunandan sonra kilidlənir — yenidən təyinatda da
   // dəyişdirilə bilməz (mövcud ödənişin üzərinə yazılmasın).
   const priceLocked = (appointment.paymentAmount ?? 0) > 0;
+
+  /** Seçilmiş psixoloqun standart tək seans qiyməti — məbləğin etalonu. */
+  const standardPrice = psyId != null
+    ? (psychologists.find(p => p.id === psyId)?.individualPrice ?? null)
+    : null;
+
+  // Məbləği AVTOMATİK doldur: pasiyent psixoloqu özü seçib gəldikdə operator
+  // sahəni əl ilə doldurmamalıdır. Yalnız sahə boş olduqda işə düşür — operatorun
+  // yazdığının üzərinə yazmır. (Psixoloqu operator dəyişəndə onPsychChange sıfırlayır.)
+  useEffect(() => {
+    if (priceLocked || allowance?.packageName) return;
+    if (standardPrice == null) return;
+    setSinglePrice(prev => (prev.trim() ? prev : String(standardPrice)));
+  }, [standardPrice, priceLocked, allowance?.packageName]);
 
   // Mövcud təyin olunmuş vaxtı (startAt) — varsa — və ya müştərinin istədiyi vaxtı avtomatik göstər.
   // Təyin edilmiş randevuda startAt artıq booked-dur → açıq slotlarda görünmür → manual sahə ilə əks olunur,
@@ -1270,10 +1362,24 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
       return;
     }
 
+    // Standartdan fərqli məbləğ yalnız yazılı dəqiqləşdirmə ilə keçir — operator
+    // öz mülahizəsi ilə qiyməti dəyişə bilməz.
+    const priceChanged = !priceLocked && !allowance?.packageName
+      && standardPrice != null && singlePrice.trim() !== "" && Number(singlePrice) !== standardPrice;
+    if (priceChanged && !priceReason.trim()) {
+      globalToast("Standartdan fərqli məbləğ üçün dəqiqləşdirmənin əsasını yazın", "error");
+      return;
+    }
+
+    const noteWithPrice = priceChanged
+      ? [note.trim(), `Məbləğ dəqiqləşdirildi: ${standardPrice} ₼ → ${Number(singlePrice)} ₼. Əsas: ${priceReason.trim()}`]
+          .filter(Boolean).join("\n")
+      : note;
+
     setSaving(true);
     try {
       const updated = await operatorApi.assignSlots(appointment.id, {
-        psychologistId: psyId, slots: payloadSlots, operatorNote: note || null,
+        psychologistId: psyId, slots: payloadSlots, operatorNote: noteWithPrice || null,
         // Tək (paketsiz) seans üçün opsional qiymət override-i; paketdə göndərilmir.
         // Məbləğ bir dəfə təyin olunubsa yenidən göndərilmir — mövcud ödənişin
         // üzərinə yazılmasın (yenidən təyin edərkən də dəyişməz qalır).
@@ -1307,7 +1413,10 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     setManualEnd("");
     setScheduleWarn(null); // psixoloq dəyişdi — qrafik xəbərdarlığı yeni psixoloqa aid deyil
     const psy = id !== null ? psychologists.find(p => p.id === id) : null;
+    // Yeni psixoloq → yeni standart qiymət; əvvəlki dəqiqləşdirmə də sıfırlanır.
     setSinglePrice(psy?.individualPrice != null ? String(psy.individualPrice) : "");
+    setPriceEditing(false);
+    setPriceReason("");
   };
 
   // "İstənilən vaxt" = gözləyən təklifin vaxtı (varsa) → pasiyentin ilkin istədiyi vaxt.
@@ -1318,10 +1427,10 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
         const slot = slots.find(x => x.startAt === st);
         // Tam aralığı göstər (başlama – bitmə) ki, operator seansın neçə dəqiqə
         // olduğunu birbaşa görsün — məs. 90 dəq seans üçün "10:00 – 11:30".
-        return { key: st, label: slot ? `${azFormatDate(slot.startAt)} · ${azFormatTime(slot.startAt)} – ${azFormatTime(slot.endAt)}` : st, onRemove: () => toggleSlot(st) };
+        return { key: st, label: slot ? `${azFormatDate(slot.startAt)}, ${azFormatTime(slot.startAt)} – ${azFormatTime(slot.endAt)}` : st, onRemove: () => toggleSlot(st) };
       })
     : (manualStart && manualEnd
-        ? [{ key: "manual", label: `${azFormatDate(azLocalToISO(manualStart))} · ${azFormatTime(azLocalToISO(manualStart))} – ${azFormatTime(azLocalToISO(manualEnd))}`, onRemove: () => { setManualStart(""); setManualEnd(""); } }]
+        ? [{ key: "manual", label: `${azFormatDate(azLocalToISO(manualStart))}, ${azFormatTime(azLocalToISO(manualStart))} – ${azFormatTime(azLocalToISO(manualEnd))}`, onRemove: () => { setManualStart(""); setManualEnd(""); } }]
         : []);
 
   const selectedPsy = psychologists.find(p => p.id === psyId) ?? null;
@@ -1337,22 +1446,164 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
 
   const modalPrimary: React.CSSProperties = { width: "100%" };
 
+  // ── Özət görünüşü ───────────────────────────────────────────────────────────
+  // Randevu artıq tam təyin edilibsə (psixoloq + vaxt), operatora hər dəfə boş
+  // forma yox, oxunaqlı özət göstərilir. Forma yalnız «Dəyiş» ilə açılır — belə
+  // olanda təsadüfən vaxt/psixoloq dəyişdirmək mümkün deyil.
+  const assigned = !!appointment.psychologistId && !!appointment.startAt && !!appointment.endAt;
+  if (assigned && (!editing || timeLocked)) {
+    const durationMin = Math.round(
+      (new Date(appointment.endAt!).getTime() - new Date(appointment.startAt!).getTime()) / 60_000
+    );
+    const amount = appointment.paymentAmount ?? standardPrice;
+    const paid = appointment.paymentStatus === "PAID";
+    // Statusun rəngi nöqtə ilə verilir — dolu fon/kapsul YOX.
+    const statusDot = paid || appointment.status === "COMPLETED" ? "var(--sage)" : "#1051B7";
+    const noteDirty = note.trim() !== savedNote.trim();
+
+    // guardAction sahiblik yoxlamasını edir və callback-i özü çağırır — ona görə
+    // try/catch callback-in İÇİNDƏ olmalıdır, çölündə xəta tutulmur.
+    const saveNote = () => guardAction(async () => {
+      setNoteSaving(true);
+      try {
+        await operatorApi.setAppointmentNote(appointment.id, note.trim());
+        setSavedNote(note.trim());
+        globalToast("Qeyd yadda saxlanıldı", "success");
+      } catch (e) {
+        globalToast(e instanceof Error && e.message ? e.message : "Qeyd yadda saxlanılmadı", "error");
+      } finally {
+        setNoteSaving(false);
+      }
+    });
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className={cold ? "opd-card op-det-card--cold" : "opd-card"} style={{ padding: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+            <span className="opd-card__title">Seans məlumatı</span>
+            {!timeLocked && (
+              <button type="button" onClick={() => setEditing(true)} className="fx-btn fx-btn--ghost fx-btn--sm" style={{ flex: "none", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M3 12a9 9 0 0 1 15.3-6.4L21 8" /><path d="M21 3v5h-5" /></svg>
+                Dəyiş
+              </button>
+            )}
+          </div>
+
+          {/* Link təyin edildikdən sonra vaxt/psixoloq dondurulur — link konkret
+              vaxta bağlıdır, dəyişsə köhnəlmiş qalır (backend də bloklayır). */}
+          {timeLocked && (
+            <div className="fx-banner fx-banner--warn" style={{ marginBottom: 16 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+              <span>Vaxt və psixoloq dəyişikliyi bloklanıb — seans linki artıq təyin edilib. Dəyişmək üçün əvvəlcə «Görüş linki» kartından linki geri çağırın.</span>
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))", gap: 16 }}>
+            <SummaryCell label="Psixoloq">
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                {selectedPsy?.photoUrl ? (
+                  <img src={selectedPsy.photoUrl} alt="" width={38} height={38}
+                    style={{ width: 38, height: 38, borderRadius: "50%", objectFit: "cover", flex: "none" }} />
+                ) : (
+                  <span style={{
+                    width: 38, height: 38, borderRadius: "50%", flex: "none", background: "var(--brand-50, #EEF4FE)",
+                    color: "var(--brand)", fontWeight: 700, fontSize: 15,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>{(psychName || "?").charAt(0)}</span>
+                )}
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "var(--oxford)", overflow: "hidden", textOverflow: "ellipsis" }}>{psychName}</span>
+                  <span className="fx-muted" style={{ display: "block", fontSize: 12, marginTop: 1 }}>{selectedPsy?.title ?? "Psixoloq"}</span>
+                </span>
+              </div>
+            </SummaryCell>
+
+            <SummaryCell label="Tarix və vaxt">
+              <span className="fx-num" style={{ display: "block", fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
+                {azFormatDate(appointment.startAt!)}
+              </span>
+              <span className="fx-num" style={{ display: "block", fontSize: 13.5, color: "var(--oxford)", marginTop: 2 }}>
+                {azFormatTime(appointment.startAt!)} – {azFormatTime(appointment.endAt!)}
+              </span>
+              <span className="fx-muted" style={{ display: "block", fontSize: 12, marginTop: 3 }}>{durationMin} dəqiqə</span>
+            </SummaryCell>
+
+            <SummaryCell label="Seans məbləği">
+              {amount != null ? (
+                <>
+                  <span className="fx-num" style={{ display: "block", fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{amount} ₼</span>
+                  <span className="fx-muted" style={{ display: "block", fontSize: 12, marginTop: 3 }}>
+                    {standardPrice != null && Number(amount) === standardPrice ? "Standart qiymət" : "Dəqiqləşdirilmiş məbləğ"}
+                  </span>
+                </>
+              ) : (
+                <span className="fx-muted" style={{ fontSize: 13 }}>
+                  {allowance?.packageName ? "Paket seansı" : "Təyin edilməyib"}
+                </span>
+              )}
+            </SummaryCell>
+
+            <SummaryCell label="Status">
+              <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: statusDot, flex: "none" }} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{statusLabel(appointment.status)}</span>
+              </span>
+              <span className="fx-muted" style={{ display: "block", fontSize: 12, marginTop: 3 }}>
+                {allowance?.packageName ? "Paket seansı" : paid ? "Ödəniş təsdiqlənib" : "Ödəniş gözləyir"}
+              </span>
+            </SummaryCell>
+          </div>
+        </div>
+
+        <div className="opd-card" style={{ padding: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+            <span className="opd-card__title">Operator qeydi</span>
+            <span className="fx-muted" style={{ fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+              Daxili istifadə üçün
+            </span>
+          </div>
+          <textarea className="fx-textarea" value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Təyinat haqqında daxili qeyd…" />
+          {!savedNote.trim() && !note.trim() && (
+            <span className="fx-help" style={{ marginTop: 6, display: "block" }}>Qeyd hələ yazılmayıb</span>
+          )}
+          {noteDirty && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+              <button type="button" onClick={saveNote} disabled={noteSaving} className="fx-btn fx-btn--primary fx-btn--sm">
+                {noteSaving ? "Saxlanılır…" : "Dəyişiklikləri yadda saxla"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cold ? "opd-card op-det-card--cold" : "opd-card"} style={{ padding: 18 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 9, marginBottom: 14, flexWrap: "wrap" }}>
         <span className="opd-card__title">
           {(appointment.status === "CONFIRMED" || appointment.status === "ASSIGNED") ? "Təyin / yenidən planla" : t("staff.opDetAssignBlock")}
         </span>
-        {ready
-          ? <span className="fx-pill fx-pill--paid">Təyinata hazır</span>
-          : <span className="fx-pill fx-pill--pending">Tamamlanmamış</span>}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          {/* Hazırlıq göstəricisi kapsul deyil — rəngli nöqtə + mətn. */}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: ready ? "var(--sage)" : "var(--oxford-60)" }}>
+            <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: ready ? "var(--sage)" : "var(--oxford-40, #9AA8BC)", flex: "none" }} />
+            {ready ? "Təyinata hazır" : "Tamamlanmamış"}
+          </span>
+          {assigned && (
+            <button type="button" onClick={() => setEditing(false)} className="fx-btn fx-btn--ghost fx-btn--sm" style={{ flex: "none" }}>
+              Ləğv et
+            </button>
+          )}
+        </span>
       </div>
 
       {/* Pasiyentin ilkin istəyi — təyinat seçimləri üçün istinad. */}
       {!ready && appointment.requestedStartAt && (
         <div className="fx-info" style={{ marginBottom: 12, fontWeight: 600 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z" /></svg>
-          Pasiyentin istəyi: {appointment.requestedPsychologistName ?? appointment.psychologistName ?? "—"} · {fmtDateTime(appointment.requestedStartAt)}
+          Pasiyentin istəyi: {appointment.requestedPsychologistName ?? appointment.psychologistName ?? "—"}, {fmtDateTime(appointment.requestedStartAt)}
         </div>
       )}
 
@@ -1409,8 +1660,31 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
         </div>
       )}
 
-      {!allowance?.packageName && !priceLocked && (
-        <label className="fx-field" style={{ marginBottom: 15 }}>
+      {/* Məbləğ psixoloqun standart qiymətindən avtomatik dolur və NORMALDA
+          bağlıdır — operator öz istəyi ilə artırıb-azalda bilməsin. Dəyişmək
+          üçün açıq şəkildə «Dəyiş»ə basmalı və əsasını yazmalıdır; əsas operator
+          qeydinə düşür ki, sonradan izlənə bilsin. */}
+      {!allowance?.packageName && !priceLocked && standardPrice != null && !priceEditing && (
+        <div className="fx-field" style={{ marginBottom: 15 }}>
+          <span className="fx-label">Seans məbləği (₼)</span>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <span className="fx-num" style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
+              {singlePrice || standardPrice} ₼
+            </span>
+            <button type="button" onClick={() => setPriceEditing(true)} className="fx-btn fx-btn--ghost fx-btn--sm" style={{ flex: "none" }}>
+              Dəyiş
+            </button>
+          </div>
+          <span className="fx-help">
+            {Number(singlePrice) === standardPrice
+              ? "Psixoloqun standart tək seans qiyməti avtomatik tətbiq olundu."
+              : `Standart qiymət ${standardPrice} ₼ — dəqiqləşdirilmiş məbləğ tətbiq olunur.`}
+          </span>
+        </div>
+      )}
+
+      {!allowance?.packageName && !priceLocked && (standardPrice == null || priceEditing) && (
+        <div className="fx-field" style={{ marginBottom: 15 }}>
           <span className="fx-label">Seans məbləği (₼)</span>
           <input
             className="fx-input fx-num"
@@ -1419,10 +1693,35 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
             step="0.01"
             value={singlePrice}
             onChange={e => setSinglePrice(e.target.value)}
-            placeholder={selectedPsy?.individualPrice != null ? String(selectedPsy.individualPrice) : "məs. 80"}
+            placeholder={standardPrice != null ? String(standardPrice) : "məs. 80"}
           />
-          <span className="fx-help">Boş qalarsa ödəniş yaranmır — psixoloqun standart tək seans qiyməti tətbiq olunur. PENDING ödəniş «Ödənişlər → Gözləyir»də görünür.</span>
-        </label>
+          {standardPrice != null && Number(singlePrice) !== standardPrice ? (
+            <>
+              <input
+                className="fx-input"
+                style={{ marginTop: 8 }}
+                value={priceReason}
+                onChange={e => setPriceReason(e.target.value)}
+                placeholder="Məbləğ niyə dəyişdirilir? (psixoloqla dəqiqləşdirmə, endirim və s.)"
+              />
+              <span className="fx-help">
+                Standart qiymət {standardPrice} ₼. Fərqli məbləğ yalnız dəqiqləşdirmədən sonra tətbiq olunur — əsas operator qeydinə yazılır.
+              </span>
+            </>
+          ) : (
+            <span className="fx-help">Boş qalarsa ödəniş yaranmır — psixoloqun standart tək seans qiyməti tətbiq olunur. PENDING ödəniş «Ödənişlər → Gözləyir»də görünür.</span>
+          )}
+          {standardPrice != null && (
+            <button
+              type="button"
+              onClick={() => { setSinglePrice(String(standardPrice)); setPriceReason(""); setPriceEditing(false); }}
+              className="fx-btn fx-btn--ghost fx-btn--sm"
+              style={{ marginTop: 8, alignSelf: "flex-start" }}
+            >
+              Standart qiymətə qaytar
+            </button>
+          )}
+        </div>
       )}
 
       {/* İş-qrafiki xəbərdarlığı — bloklamır. Operator psixoloqla əlaqə saxlayıb
@@ -1472,7 +1771,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{s.name}</div>
-                        <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1 }}>{s.reasons.join(" · ")}</div>
+                        <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1 }}>{s.reasons.join(", ")}</div>
                       </div>
                       <span style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: "none" }}>
                         <span className="fx-num" style={{ fontSize: 17, fontWeight: 800, color: "var(--sage)", lineHeight: 1 }}>{s.score}</span>
@@ -1489,7 +1788,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
             <select className="fx-select" value={psyId ?? ""} onChange={e => selectPsy(Number(e.target.value) || null)}
               style={{ appearance: "none", WebkitAppearance: "none", background: "var(--surface)", padding: "11px 38px 11px 13px", fontWeight: 600, cursor: "pointer" }}>
               <option value="">Psixoloq seçin…</option>
-              {psychologists.map(p => <option key={p.id} value={p.id}>{p.name} · {p.title}</option>)}
+              {psychologists.map(p => <option key={p.id} value={p.id}>{p.name}, {p.title}</option>)}
             </select>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--oxford-60)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}><path d="M6 9l6 6 6-6" /></svg>
           </div>
@@ -1521,7 +1820,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                 allowance.packageName ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--lilac-bg)", border: "1px solid rgba(140,125,201,.35)", borderRadius: 10, padding: "10px 13px", marginBottom: 13, fontSize: 12.5, fontWeight: 700, color: "var(--lilac)" }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.27 6.96L12 12.01l8.73-5.05" /></svg>
-                    <span className="fx-num">Paket: {allowance.packageName} · {allowance.remainingSessions} qalıb — {maxSlots} vaxta qədər seçə bilərsiniz</span>
+                    <span className="fx-num">Paket: {allowance.packageName}. {allowance.remainingSessions} seans qalıb, {maxSlots} vaxta qədər seçə bilərsiniz</span>
                   </div>
                 ) : (
                   <div className="fx-alert" style={{ alignItems: "center", marginBottom: 13, fontSize: 12.5, fontWeight: 700, color: "var(--status-pending-fg)" }}>

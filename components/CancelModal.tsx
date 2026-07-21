@@ -72,10 +72,10 @@ export default function CancelModal({ appointment, role, mode = "cancel", onClos
         <div className="cm-head">
           <h2 className="cm-title">{headerLabel}</h2>
           {appointment.psychologistName || appointment.patientName ? (
-            <p className="cm-sub">
-              {role === "PATIENT" ? appointment.psychologistName : appointment.patientName}
+            <p className="cm-sub" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+              <span>{role === "PATIENT" ? appointment.psychologistName : appointment.patientName}</span>
               {appointment.startAt && (
-                <span> · {azFormatDateTime(appointment.startAt)}</span>
+                <span>{azFormatDateTime(appointment.startAt)}</span>
               )}
             </p>
           ) : null}

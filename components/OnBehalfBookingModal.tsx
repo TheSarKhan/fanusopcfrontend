@@ -375,7 +375,7 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
                       {!dup.blocking && (
                         <>
                           <div style={{ fontSize: 12, color: "#52718F", lineHeight: 1.45 }}>
-                            {dup.email}{dup.phone ? ` · ${dup.phone}` : ""} — yeni hesab yaradılmayacaq, randevu mövcud pasiyentə yazılacaq.
+                            {dup.email}{dup.phone ? `, ${dup.phone}` : ""} — yeni hesab yaradılmayacaq, randevu mövcud pasiyentə yazılacaq.
                           </div>
                           {dup.patientId != null && (
                             <button type="button" onClick={useExistingPatient}
@@ -464,7 +464,7 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
                       ) : (
                         <select value={catalogId ?? ""} onChange={e => setCatalogId(e.target.value ? Number(e.target.value) : null)} style={{ ...inp, background: "#fff" }}>
                           <option value="">Paket seçin…</option>
-                          {catalog.map(c => <option key={c.id} value={c.id}>{c.name} · {c.sessionCount} seans · {c.packagePrice} {c.currency}</option>)}
+                          {catalog.map(c => <option key={c.id} value={c.id}>{c.name}, {c.sessionCount} seans, {c.packagePrice} {c.currency}</option>)}
                         </select>
                       )
                     ) : (

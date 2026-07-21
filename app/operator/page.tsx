@@ -164,7 +164,13 @@ export default function OperatorDashboard() {
       {/* HEADER */}
       <div className="fx-label" style={{ color: "var(--brand)", marginBottom: 7 }}>{todayLabel()}</div>
       <PageHeader
-        title={<>İdarə paneli{user?.firstName ? ` · ${user.firstName}` : ""}</>}
+        title={
+          /* Ad ayrıca span-da — ayırıcı işarə yox, flex boşluğu ayırır. */
+          <span style={{ display: "inline-flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+            <span>İdarə paneli</span>
+            {user?.firstName && <span style={{ color: "var(--oxford-60)", fontWeight: 600 }}>{user.firstName}</span>}
+          </span>
+        }
         subtitle={t("staff.opDashSub")}
         actions={
           <>

@@ -163,13 +163,13 @@ function buildAlert(a: AppointmentDetail, hasPsyProposal = false): { tone: "red"
   }
   if (a.status === "AWAITING_CONFIRMATION") {
     let text = "Təsdiq gözlənir";
-    if (a.patientConfirmedAt) text += " · pasient təsdiqlədi";
-    if (a.psychologistConfirmedAt) text += " · psixoloq təsdiqlədi";
+    if (a.patientConfirmedAt) text += ", pasient təsdiqlədi";
+    if (a.psychologistConfirmedAt) text += ", psixoloq təsdiqlədi";
     return { tone: "amber", text };
   }
   if (a.status === "CANCEL_REQUESTED") {
-    let text = "Pasient ləğv tələb edib.";
-    if (a.cancelRequestReasonCode) text += ` · ${reasonLabel(a.cancelRequestReasonCode)}`;
+    let text = "Pasient ləğv tələb edib";
+    if (a.cancelRequestReasonCode) text += `, ${reasonLabel(a.cancelRequestReasonCode)}`;
     if (a.cancelRequestReasonText) text += ` — «${a.cancelRequestReasonText}»`;
     return { tone: "amber", text };
   }
@@ -809,9 +809,10 @@ function FilterPanel({
         <Svg w={12} sw={2.4} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .12s" }} d={<path d="M6 9l6 6 6-6" />} />
       </button>
 
+      {/* Hər filtr öz span-ında — ayırıcı işarə yox, flex boşluğu ayırır. */}
       {summary.length > 0 && (
-        <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>
-          {summary.join(" · ")}
+        <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, display: "inline-flex", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          {summary.map((s, si) => <span key={si}>{s}</span>)}
           <button type="button" onClick={onReset}
             style={{ marginLeft: 8, background: "none", border: "none", padding: 0, color: "var(--brand)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             Təmizlə
@@ -1113,7 +1114,7 @@ function AppointmentRow({ a, meId, overdue, hasPsyProposal, onTake, onOpen }: {
       <td>
         <div className="fx-num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>{when ? fmtDateTime(when) : "—"}</div>
         {!a.startAt && a.requestedStartAt && <div className="fx-muted" style={{ fontSize: 11.5 }}>istənilən vaxt</div>}
-        {a.sessionKind === "INTRO" && <div className="fx-muted" style={{ fontSize: 11.5 }}>Tanışlıq · pulsuz</div>}
+        {a.sessionKind === "INTRO" && <div className="fx-muted" style={{ fontSize: 11.5 }}>Tanışlıq, pulsuz</div>}
       </td>
       <td>
         {a.psychologistName ? (
@@ -1158,10 +1159,10 @@ function AppointmentRow({ a, meId, overdue, hasPsyProposal, onTake, onOpen }: {
           <div className="or-alert-txt" style={{ color: tone === "red" ? "var(--status-refunded-fg)" : "var(--status-pending-fg)" }}>{attnText}</div>
         )}
         {a.lastContactAt && (
-          <div className="fx-muted" style={{ fontSize: 11.5 }}>
-            Son izləmə: {timeAgo(a.lastContactAt)}
+          <div className="fx-muted" style={{ fontSize: 11.5, display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <span>Son izləmə: {timeAgo(a.lastContactAt)}</span>
             {a.lastContactOutcome && OUTCOME_LABEL[a.lastContactOutcome]
-              ? <> · <span style={{ color: FOLLOW_COLOR[OUTCOME_LABEL[a.lastContactOutcome].tone], fontWeight: 600 }}>{OUTCOME_LABEL[a.lastContactOutcome].label}</span></>
+              ? <span style={{ color: FOLLOW_COLOR[OUTCOME_LABEL[a.lastContactOutcome].tone], fontWeight: 600 }}>{OUTCOME_LABEL[a.lastContactOutcome].label}</span>
               : null}
           </div>
         )}
@@ -1402,7 +1403,12 @@ function PackageRow({ sessions, onOpen, onOpenSession }: {
               <tbody>
                 {sessions.map((s, i) => (
                   <tr key={s.id} onClick={() => onOpenSession(s)} style={{ cursor: "pointer" }}>
-                    <td className="fx-num">#{i + 1} · FNS-{String(s.id).padStart(4, "0")}</td>
+                    <td className="fx-num">
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        <span>#{i + 1}</span>
+                        <span>FNS-{String(s.id).padStart(4, "0")}</span>
+                      </div>
+                    </td>
                     <td className="fx-num" style={{ whiteSpace: "nowrap" }}>{s.startAt ? fmtDateTime(s.startAt) : <span className="fx-muted">Təyin edilməyib</span>}</td>
                     <td>{s.psychologistName ?? <span className="fx-muted">—</span>}</td>
                     <td><StatusDot status={s.status} /></td>
@@ -1543,14 +1549,25 @@ function AppointmentCard({
   const canClaim = a.claimedByUserId == null && isPoolEligible(a.status) && !!onTake;
 
   // Təyinat sətri — "Etiket: dəyər" formasına bölünür (etiket + dəyər + vaxt)
-  let assignLabel: string, assignValue: string, assignColor: string, assignItalic: boolean;
+  // Ad və vaxt ayrı span-larda — ayırıcı işarə yox, flex boşluğu ayırır.
+  let assignLabel: string, assignValue: ReactNode, assignColor: string, assignItalic: boolean;
   if (a.psychologistName) {
     assignLabel = "Təyin olundu";
-    assignValue = `${a.psychologistName} · ${fmtDateTime(a.startAt)}`;
+    assignValue = (
+      <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
+        <span>{a.psychologistName}</span>
+        <span className="fx-num">{fmtDateTime(a.startAt)}</span>
+      </span>
+    );
     assignColor = "var(--oxford)"; assignItalic = false;
   } else if (a.requestedPsychologistName) {
     assignLabel = a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən";
-    assignValue = `${a.requestedPsychologistName}${a.requestedStartAt ? ` · ${fmtDateTime(a.requestedStartAt)}` : ""}`;
+    assignValue = (
+      <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
+        <span>{a.requestedPsychologistName}</span>
+        {a.requestedStartAt && <span className="fx-num">{fmtDateTime(a.requestedStartAt)}</span>}
+      </span>
+    );
     assignColor = a.origin === "DIRECT" ? "#15803D" : "var(--oxford-60)"; assignItalic = a.origin !== "DIRECT";
   } else {
     assignLabel = "";
@@ -1570,7 +1587,6 @@ function AppointmentCard({
         title={a.patientName ?? "—"}
         meta={<>
           <span className="fx-num">#FNS-{String(a.id).padStart(4, "0")}</span>
-          <span className="fx-sep">·</span>
           <span>{timeAgo(a.createdAt) || `${fmtDateTime(a.createdAt)} yaradılıb`}</span>
         </>}
         aside={<StatusDot status={status} />}
@@ -1584,7 +1600,7 @@ function AppointmentCard({
               {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal ?? 0 })}
             </span>
           )}
-          {a.sessionKind === "INTRO" && <span>Tanışlıq · Pulsuz</span>}
+          {a.sessionKind === "INTRO" && <><span>Tanışlıq</span><span>Pulsuz</span></>}
         </div>
       )}
 
@@ -1607,11 +1623,13 @@ function AppointmentCard({
           icon={<Svg w={14} d={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} />}
           label="Son izləmə"
           color="var(--oxford-60)"
-          value={a.lastContactAt ? <>
-            {timeAgo(a.lastContactAt)}
-            {a.lastContactChannel ? ` · ${CHANNEL_LABEL[a.lastContactChannel] ?? a.lastContactChannel}` : ""}
-            {lastOutcome && <> · <span style={{ color: FOLLOW_COLOR[lastOutcome.tone], fontWeight: 600 }}>{lastOutcome.label}</span></>}
-          </> : "yoxdur"}
+          value={a.lastContactAt ? (
+            <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
+              <span>{timeAgo(a.lastContactAt)}</span>
+              {a.lastContactChannel && <span>{CHANNEL_LABEL[a.lastContactChannel] ?? a.lastContactChannel}</span>}
+              {lastOutcome && <span style={{ color: FOLLOW_COLOR[lastOutcome.tone], fontWeight: 600 }}>{lastOutcome.label}</span>}
+            </span>
+          ) : "yoxdur"}
         />
       </div>
 
@@ -1737,7 +1755,7 @@ function PackageCard({ sessions, onOpen }: { sessions: AppointmentDetail[]; onOp
         title={first.packageName ?? "Paket"}
         meta={<>
           <span>{first.patientName ?? "—"}</span>
-          {first.psychologistName && <><span className="fx-sep">·</span><span>{first.psychologistName}</span></>}
+          {first.psychologistName && <span>{first.psychologistName}</span>}
         </>}
         aside={<DotLabel color={st.color} label={st.label} />}
       />
@@ -1768,7 +1786,12 @@ function PackageCard({ sessions, onOpen }: { sessions: AppointmentDetail[]; onOp
           <Fact
             icon={<Svg w={14} sw={2} stroke="var(--brand)" d={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />}
             label={nextLabel}
-            value={`${fmtDateTime(nextS.startAt)}${nextS.psychologistName ? ` · ${nextS.psychologistName}` : ""}`}
+            value={
+              <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
+                <span className="fx-num">{fmtDateTime(nextS.startAt)}</span>
+                {nextS.psychologistName && <span>{nextS.psychologistName}</span>}
+              </span>
+            }
           />
         </div>
       )}
@@ -1882,7 +1905,7 @@ const CSS = `
 .or-head__aside{flex:none;display:flex;align-items:center;gap:6px}
 .or-title{font-size:14.5px;font-weight:700;color:var(--oxford);line-height:1.3;overflow-wrap:anywhere}
 .or-title__flow{display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap}
-.or-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;font-size:12px;font-weight:600;color:var(--oxford-60)}
+.or-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:2px;font-size:12px;font-weight:600;color:var(--oxford-60)}
 .or-meta .fx-sep{color:var(--brand-200)}
 /* İkinci dərəcəli meta (sahiblik / seriya / tanışlıq) — çip yox, susqun mətn */
 .or-submeta{display:flex;align-items:center;gap:4px 10px;flex-wrap:wrap;font-size:11.5px;font-weight:600;color:var(--oxford-60)}

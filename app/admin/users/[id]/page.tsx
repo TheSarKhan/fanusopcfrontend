@@ -73,7 +73,10 @@ export default function AdminUserCardPage() {
             <span className="pill ox" style={{ marginLeft: 10, verticalAlign: "middle" }}>{ROLE_LABEL[user.role] ?? user.role}</span>
             {!user.active && <span className="pill rose" style={{ marginLeft: 6, verticalAlign: "middle" }}>deaktiv</span>}
           </h1>
-          <p className="page-sub">{user.email}{user.phone ? ` · ${user.phone}` : ""}</p>
+          <p className="page-sub" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <span>{user.email}</span>
+            {user.phone && <span>{user.phone}</span>}
+          </p>
         </div>
       </div>
 
@@ -159,7 +162,10 @@ function PatientCardView({ userId }: { userId: number }) {
     <>
       {card.deletionRequestedAt && (
         <div style={{ background: "#FEE2E2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 12.5, color: "#991B1B", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span><strong>Silinmə istəyi gözləyir</strong> · {fmtDT(card.deletionRequestedAt)} (V33, 30 günlük pəncərə)</span>
+          <span style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+            <strong>Silinmə istəyi gözləyir</strong>
+            <span>{fmtDT(card.deletionRequestedAt)} (V33, 30 günlük pəncərə)</span>
+          </span>
           <Link className="btn sm" href="/admin/deletion-requests">Silinmə istəklərinə bax →</Link>
         </div>
       )}
@@ -249,9 +255,10 @@ function PatientCardView({ userId }: { userId: number }) {
               {card.appointments.map((a: AppointmentDetail) => (
                 <div className="list-item" key={a.id}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="li-title">
-                      #{a.id} · {a.psychologistName ?? a.requestedPsychologistName ?? "psixoloq seçilməyib"}
-                      {a.seriesId != null && <span className="pill ox" style={{ marginLeft: 6, fontSize: 10 }}>Kurs {(a.seriesIndex ?? 0) + 1}/{a.seriesTotal ?? "?"}</span>}
+                    <div className="li-title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span>#{a.id}</span>
+                      <span>{a.psychologistName ?? a.requestedPsychologistName ?? "psixoloq seçilməyib"}</span>
+                      {a.seriesId != null && <span className="pill ox" style={{ fontSize: 10 }}>Kurs {(a.seriesIndex ?? 0) + 1}/{a.seriesTotal ?? "?"}</span>}
                     </div>
                     <div className="li-meta">{a.startAt ? fmtDT(a.startAt) : `yaradılıb ${fmtDT(a.createdAt)}`}</div>
                   </div>
@@ -272,10 +279,16 @@ function PatientCardView({ userId }: { userId: number }) {
               {card.series.map((s) => (
                 <div className="list-item" key={s.id}>
                   <div style={{ flex: 1 }}>
-                    <div className="li-title">Seriya #{s.id} · {s.totalCount} seans · {s.requestedPsychologistName ?? "—"}</div>
-                    <div className="li-meta">
-                      {fmtD(s.createdAt)}
-                      {s.cancelledAt ? " · ləğv edilib" : s.cancelRequestedAt ? " · ləğv tələbi gözləyir" : ""}
+                    <div className="li-title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span>Seriya #{s.id}</span>
+                      <span>{s.totalCount} seans</span>
+                      <span>{s.requestedPsychologistName ?? "—"}</span>
+                    </div>
+                    <div className="li-meta row" style={{ gap: 10, flexWrap: "wrap" }}>
+                      <span>{fmtD(s.createdAt)}</span>
+                      {s.cancelledAt
+                        ? <span>ləğv edilib</span>
+                        : s.cancelRequestedAt ? <span>ləğv tələbi gözləyir</span> : null}
                     </div>
                   </div>
                   {s.cancelledAt
@@ -310,7 +323,10 @@ function PatientCardView({ userId }: { userId: number }) {
                 <div className="list-item" key={n.id}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="li-title" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</div>
-                    <div className="li-meta">{fmtDT(n.createdAt)}{n.readAt ? " · oxunub" : " · oxunmayıb"}</div>
+                    <div className="li-meta row" style={{ gap: 10, flexWrap: "wrap" }}>
+                      <span>{fmtDT(n.createdAt)}</span>
+                      <span>{n.readAt ? "oxunub" : "oxunmayıb"}</span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -374,7 +390,7 @@ function ClinicalSection({ userId, grant, onGranted }: {
       <div className="card-head">
         <h3 className="card-title" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Klinik data</h3>
         {active
-          ? <span className="pill sage">açıqdır · bitmə {fmtDT(grant!.expiresAt)}</span>
+          ? <span className="pill sage" style={{ gap: 8 }}><span>açıqdır</span><span>bitmə {fmtDT(grant!.expiresAt)}</span></span>
           : <span className="pill muted">bağlıdır</span>}
       </div>
 
@@ -409,8 +425,10 @@ function ClinicalSection({ userId, grant, onGranted }: {
 
       {active && (
         <div className="card-pad" style={{ display: "grid", gap: 12 }}>
-          <div style={{ fontSize: 11, color: "var(--muted)" }}>
-            Səbəb: «{grant!.reason}» · read-only · jurnal serverde saxlanmır (yalnız cihazda)
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 11, color: "var(--muted)" }}>
+            <span>Səbəb: «{grant!.reason}»</span>
+            <span>read-only</span>
+            <span>jurnal serverde saxlanmır (yalnız cihazda)</span>
           </div>
           {err && <div style={{ fontSize: 12, color: "#991B1B" }}>{err}</div>}
           {!data ? (
@@ -424,7 +442,10 @@ function ClinicalSection({ userId, grant, onGranted }: {
                       <span>{n.title ?? "Qeyd"}</span>
                       <span style={{ color: "var(--muted-2)" }}>{fmtDT(n.createdAt)}</span>
                     </div>
-                    <div style={{ color: "var(--muted)", marginTop: 2 }}>{n.psychologistName ?? "—"}{n.moodScore != null ? ` · əhval ${n.moodScore}/5` : ""}</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, color: "var(--muted)", marginTop: 2 }}>
+                      <span>{n.psychologistName ?? "—"}</span>
+                      {n.moodScore != null && <span>əhval {n.moodScore}/5</span>}
+                    </div>
                     {n.body && <div style={{ marginTop: 6, whiteSpace: "pre-wrap" }}>{n.body}</div>}
                   </div>
                 ))}
@@ -436,7 +457,10 @@ function ClinicalSection({ userId, grant, onGranted }: {
                       <span>{h.title}</span>
                       <span className="pill muted">{h.status}</span>
                     </div>
-                    <div style={{ color: "var(--muted)", marginTop: 2 }}>{h.psychologistName ?? "—"}{h.completedAt ? ` · tamamlanıb ${fmtDT(h.completedAt)}` : ""}</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, color: "var(--muted)", marginTop: 2 }}>
+                      <span>{h.psychologistName ?? "—"}</span>
+                      {h.completedAt && <span>tamamlanıb {fmtDT(h.completedAt)}</span>}
+                    </div>
                     {h.completionNote && <div style={{ marginTop: 6, fontStyle: "italic" }}>«{h.completionNote}»</div>}
                   </div>
                 ))}
@@ -508,8 +532,10 @@ function PsychologistCardView({ userId }: { userId: number }) {
             <Stat label="Ort. təsdiq" valueStr={perf.avgConfirmMinutes != null ? `${Math.round(perf.avgConfirmMinutes)} dəq` : "—"} />
             <Stat label="7 gün doluluq" valueStr={perf.next7FullnessPct != null ? `${perf.next7FullnessPct}%` : "—"} />
           </div>
-          <div className="card-pad" style={{ paddingTop: 0, fontSize: 11.5, color: "var(--muted)" }}>
-            Son 30 gün: {perf.received30} qəbul · {perf.rejected30} rədd · Gələn 7 gün: {perf.next7Booked} tutulu / {perf.next7FreeSlots} boş slot
+          <div className="card-pad" style={{ paddingTop: 0, display: "flex", flexWrap: "wrap", gap: 10, fontSize: 11.5, color: "var(--muted)" }}>
+            <span>Son 30 gün: {perf.received30} qəbul</span>
+            <span>{perf.rejected30} rədd</span>
+            <span>Gələn 7 gün: {perf.next7Booked} tutulu / {perf.next7FreeSlots} boş slot</span>
           </div>
         </div>
 
@@ -555,7 +581,7 @@ function SuspendCard({ card, onChanged }: { card: PsychologistCard; onChanged: (
       <div className="card-head">
         <h3 className="card-title">Status</h3>
         {suspended
-          ? <span className="pill rose">SUSPENDED · {fmtDT(card.suspendedAt)}</span>
+          ? <span className="pill rose" style={{ gap: 8 }}><span>SUSPENDED</span><span>{fmtDT(card.suspendedAt)}</span></span>
           : card.active ? <span className="pill sage">aktiv</span> : <span className="pill muted">deaktiv</span>}
       </div>
       <div className="card-pad">
@@ -622,9 +648,9 @@ function VacationsCard({ psyId, vacations, onChanged }: {
           <div className="list-item" key={v.id}>
             <div style={{ flex: 1 }}>
               <div className="li-title">{v.startDate} → {v.endDate}</div>
-              <div className="li-meta">
-                {v.reason ?? "səbəb yazılmayıb"}
-                {v.affectedAppointments > 0 ? ` · ${v.affectedAppointments} randevuya təsir` : ""}
+              <div className="li-meta row" style={{ gap: 10, flexWrap: "wrap" }}>
+                <span>{v.reason ?? "səbəb yazılmayıb"}</span>
+                {v.affectedAppointments > 0 && <span>{v.affectedAppointments} randevuya təsir</span>}
               </div>
             </div>
             <button className="btn ghost sm" onClick={() => remove(v.id)}>Sil</button>

@@ -356,7 +356,10 @@ export default function PsychologClientsPage() {
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{c.name}</div>
                     {flag && <span style={{ display: "inline-block", background: flag.tone === "danger" ? "#FEE2E2" : "#FEF3C7", color: flag.tone === "danger" ? "#991B1B" : "#92400E", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999, margin: "3px 0 2px" }}>{flag.label}</span>}
-                    <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>{c.totalSessions} seans{days !== null && ` · son ${days} gün`}</div>
+                    <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      <span>{c.totalSessions} seans</span>
+                      {days !== null && <span>son {days} gün</span>}
+                    </div>
                   </div>
                 </Link>
               );
@@ -520,7 +523,10 @@ function ClientCard({ c, tags }: { c: ClientSummary; tags: PatientTag[] }) {
             </span>
           )}
         </div>
-        <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1 }}>{c.email}{c.phone ? ` · ${c.phone}` : ""}</div>
+        <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1, display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <span>{c.email}</span>
+          {c.phone ? <span>{c.phone}</span> : null}
+        </div>
       </div>
       {tags.length > 0 && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: "none", maxWidth: 230 }}>

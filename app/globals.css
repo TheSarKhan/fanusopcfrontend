@@ -11122,7 +11122,8 @@ a.contact-chip:hover {
   margin-top: 6px; line-height: 1.5;
   font-style: italic;
 }
-.opf-row-meta { font-size: 11.5px; color: var(--oxford-60); margin-top: 6px; }
+/* Meta sətri: ayırıcı işarə yox — flex boşluğu dəyərləri ayırır. */
+.opf-row-meta { font-size: 11.5px; color: var(--oxford-60); margin-top: 6px; display: flex; flex-wrap: wrap; gap: 10px; }
 .opf-row-actions { flex-shrink: 0; }
 .opf-flag--info { background: #DBEAFE; color: #1E40AF; }
 .opf-btn-ghost {

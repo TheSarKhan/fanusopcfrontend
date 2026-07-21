@@ -185,7 +185,7 @@ export default function HomeworkCreateModal({
         const uploaded: typeof created.attachments = [...(created.attachments ?? [])];
         for (let i = 0; i < draftFiles.length; i++) {
           const f = draftFiles[i];
-          setSavingStage(`Fayl yüklənir (${i + 1}/${draftFiles.length}) · ${f.name}`);
+          setSavingStage(`Fayl yüklənir (${i + 1}/${draftFiles.length}): ${f.name}`);
           try {
             const att = await psychologistApi.homeworkUploadAttachment(created.id, f);
             uploaded.push(att);
@@ -392,8 +392,9 @@ export default function HomeworkCreateModal({
                           fontSize: 12.5, fontWeight: 600, color: "var(--oxford)",
                           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>{f.name}</div>
-                        <div style={{ fontSize: 10.5, color: "var(--oxford-60)", marginTop: 1 }}>
-                          {fmtBytes(f.size)}{f.type ? ` · ${f.type}` : ""}
+                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, fontSize: 10.5, color: "var(--oxford-60)", marginTop: 1 }}>
+                          <span>{fmtBytes(f.size)}</span>
+                          {f.type ? <span>{f.type}</span> : null}
                         </div>
                       </div>
                       <button onClick={() => removeFile(i)}
@@ -550,8 +551,9 @@ export default function HomeworkCreateModal({
           background: "#fff",
           display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
         }}>
-          <div style={{ fontSize: 11, color: "var(--oxford-60)" }}>
-            <kbd style={kbd}>Esc</kbd> bağla · <kbd style={kbd}>⌘</kbd>+<kbd style={kbd}>Enter</kbd> saxla
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, fontSize: 11, color: "var(--oxford-60)" }}>
+            <span><kbd style={kbd}>Esc</kbd> bağla</span>
+            <span><kbd style={kbd}>⌘</kbd>+<kbd style={kbd}>Enter</kbd> saxla</span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={onClose}

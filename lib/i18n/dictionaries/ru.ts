@@ -230,7 +230,7 @@ export const ru: typeof az = {
     extendCta: "Дозаписать {n} пропущенных недель",
     extending: "Добавление…",
     extendDone: "Создано {n} новых сессий",
-    courseLine: "Курс · сессия {index} / {total}",
+    courseLine: "Курс, сессия {index} / {total}",
   },
 
   course: {
@@ -247,8 +247,8 @@ export const ru: typeof az = {
     sessionFuture: "будущая",
     sessionCancelled: "отменена",
     dashboardTitle: "Ваш курс",
-    dashboardLine: "{done}/{total} · следующая: {next}",
-    dashboardNoNext: "{done}/{total} · будущих сессий нет",
+    dashboardLine: "{done}/{total}, следующая: {next}",
+    dashboardNoNext: "{done}/{total}, будущих сессий нет",
     dashboardCta: "К курсу →",
   },
 
@@ -287,7 +287,7 @@ export const ru: typeof az = {
     proposalBannerBody: "{psy} предлагает {n} альтернативных времени. Выберите один или отклоните все.",
     proposalBannerAction: "Посмотреть",
     sessionNumber: "Сессия №{n}",
-    youConfirmed: "✓ Вы подтвердили · ожидаем психолога",
+    youConfirmed: "✓ Вы подтвердили, ожидаем психолога",
     sessionsCount: "{count} сессий",
   },
 
@@ -439,7 +439,7 @@ export const ru: typeof az = {
     step3Text: "Выбор за вами. Начните онлайн-сессию с понравившимся специалистом — когда удобно.",
     finalTitle: "Сделайте первый шаг сегодня, чтобы почувствовать себя лучше.",
     cta: "Начать сейчас",
-    ctaNote: "Первая встреча бесплатна · Никаких обязательств",
+    ctaNote: "Первая встреча бесплатна, никаких обязательств",
   },
 
   psyList: {
@@ -458,7 +458,7 @@ export const ru: typeof az = {
     filterAll: "Все",
     filterAnxiety: "Тревога",
     filterTrauma: "Травма",
-    filterFamily: "Отношения · Семья",
+    filterFamily: "Отношения, Семья",
     filterDepression: "Депрессия",
     filterYouth: "Подростки",
     filterAddiction: "Зависимость",
@@ -542,7 +542,7 @@ export const ru: typeof az = {
     newsletter: "Рассылка",
     newsletterText: "Раз в месяц — только статьи, которые стоит читать.",
     newsletterThanks: "Спасибо!",
-    rights: "© 2026 Fanus OPC · Все права защищены",
+    rights: "© 2026 Fanus OPC, все права защищены",
     privacy: "Конфиденциальность",
     terms: "Условия использования",
     ethics: "Этический кодекс",

@@ -72,10 +72,13 @@ export default function AdminPaymentsPage() {
       <div className="page-head">
         <div>
           <h1 className="page-title">Ödəniş sahibliyi</h1>
-          <p className="page-sub">
+          <p className="page-sub" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             {summary
-              ? `Gözləyən: ${summary.pendingCount} (${formatAzn(summary.pendingSum)}) · bu ay ödənilən: ${summary.paidMonthCount} (${formatAzn(summary.paidMonthSum)})`
-              : "Ödəniş pool-unun sahiblik görünüşü — əməliyyatlar operator panelindədir."}
+              ? <>
+                  <span>Gözləyən: {summary.pendingCount} ({formatAzn(summary.pendingSum)})</span>
+                  <span>bu ay ödənilən: {summary.paidMonthCount} ({formatAzn(summary.paidMonthSum)})</span>
+                </>
+              : <span>Ödəniş pool-unun sahiblik görünüşü — əməliyyatlar operator panelindədir.</span>}
           </p>
         </div>
         <div className="page-actions">
@@ -120,18 +123,20 @@ export default function AdminPaymentsPage() {
             return (
               <div className="list-item" key={p.id}>
                 <div style={{ flex: 2, minWidth: 0 }}>
-                  <div className="li-title">
-                    #PAY-{String(p.id).padStart(4, "0")} ·{" "}
-                    {/* Ad snapshot-dan gəlir — hesab silinibsə adın önündə bunu bildir. */}
-                    {p.patientAccountDeleted && <span style={{ color: "#B91C1C", fontWeight: 500 }}>(silinmiş) </span>}
-                    {p.patientName || "—"}
-                    <span className="pill ox" style={{ marginLeft: 6 }}>
+                  <div className="li-title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span>#PAY-{String(p.id).padStart(4, "0")}</span>
+                    <span>
+                      {/* Ad snapshot-dan gəlir — hesab silinibsə adın önündə bunu bildir. */}
+                      {p.patientAccountDeleted && <span style={{ color: "#B91C1C", fontWeight: 500 }}>(silinmiş) </span>}
+                      {p.patientName || "—"}
+                    </span>
+                    <span className="pill ox">
                       {p.patientPackageId != null ? "Paket" : "Seans"}
                     </span>
                   </div>
-                  <div className="li-meta">
-                    yaradılıb: {azFormatDateTime(p.createdAt)}
-                    {p.paidAt && <> · ödənilib: {azFormatDateTime(p.paidAt)}</>}
+                  <div className="li-meta row" style={{ gap: 10, flexWrap: "wrap" }}>
+                    <span>yaradılıb: {azFormatDateTime(p.createdAt)}</span>
+                    {p.paidAt && <span>ödənilib: {azFormatDateTime(p.paidAt)}</span>}
                   </div>
                 </div>
                 <div style={{ flex: 1, textAlign: "center", fontSize: 13, fontWeight: 600 }}>
@@ -145,7 +150,10 @@ export default function AdminPaymentsPage() {
                 </div>
                 <div style={{ flex: 1.4, fontSize: 13 }}>
                   {p.claimedByName
-                    ? <>{p.claimedByName}{p.claimedAt && <span style={{ color: "var(--muted-2)", fontSize: 11 }}> · {azFormatDateTime(p.claimedAt)}</span>}</>
+                    ? <>
+                        <div>{p.claimedByName}</div>
+                        {p.claimedAt && <div style={{ color: "var(--muted-2)", fontSize: 11 }}>{azFormatDateTime(p.claimedAt)}</div>}
+                      </>
                     : <span style={{ color: "var(--muted)" }}>Sahibsiz — Müraciətlər pool-unda</span>}
                 </div>
               </div>

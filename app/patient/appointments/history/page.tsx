@@ -126,7 +126,7 @@ function HistoryRow({ a }: { a: AppointmentDetail }) {
     : a.cancelledBy === "PSYCHOLOGIST" ? "Psixoloq ləğv etdi"
     : a.cancelledBy === "OPERATOR" ? "Operator ləğv etdi" : "Ləğv edildi";
   const cancelReasonTxt = a.cancelReasonCode && a.cancelReasonCode !== "PATIENT_OTHER" ? reasonLabel(a.cancelReasonCode) : "";
-  const kind = a.sessionKind === "INTRO" ? "Tanışlıq · pulsuz"
+  const kind = a.sessionKind === "INTRO" ? "Tanışlıq, pulsuz"
     : a.patientPackageId != null ? (a.packageName || "Paket seansı")
     : "Fərdi seans";
   return (
@@ -135,10 +135,10 @@ function HistoryRow({ a }: { a: AppointmentDetail }) {
       <td>
         <span style={{ fontWeight: 600 }}>{a.psychologistName ?? "Psixoloq"}</span>
         {isCancelled && (a.cancelledBy || cancelReasonTxt || a.cancelReasonText) && (
-          <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 12, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3 }}>
             <span style={{ color: "#991B1B", fontWeight: 600 }}>{cancelWho}</span>
-            {cancelReasonTxt && <> · {cancelReasonTxt}</>}
-            {a.cancelReasonText && <> · «{a.cancelReasonText}»</>}
+            {cancelReasonTxt && <span>{cancelReasonTxt}</span>}
+            {a.cancelReasonText && <span>«{a.cancelReasonText}»</span>}
           </div>
         )}
       </td>

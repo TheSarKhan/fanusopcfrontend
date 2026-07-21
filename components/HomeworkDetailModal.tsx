@@ -204,9 +204,10 @@ export default function HomeworkDetailModal({
             <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>
               {homework.title}
             </h2>
-            <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>
-              {homework.patientName} · {formatDateTime(homework.createdAt)}
-              {homework.dueDate && <> · son tarix: {azFormatDate(homework.dueDate)}</>}
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>
+              <span>{homework.patientName}</span>
+              <span>{formatDateTime(homework.createdAt)}</span>
+              {homework.dueDate && <span>son tarix: {azFormatDate(homework.dueDate)}</span>}
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -310,8 +311,9 @@ export default function HomeworkDetailModal({
                           style={{ flex: 1, fontSize: 12.5, color: "var(--oxford)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {att.fileName}
                         </a>
-                        <span style={{ fontSize: 10, color: "var(--oxford-60)" }}>
-                          {att.uploadedByRole === role ? "Siz" : (att.uploadedByRole === "PSYCHOLOGIST" ? "Psixoloq" : "Pasiyent")} · {formatFileSize(att.fileSize)}
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 10, color: "var(--oxford-60)", flexShrink: 0 }}>
+                          <span>{att.uploadedByRole === role ? "Siz" : (att.uploadedByRole === "PSYCHOLOGIST" ? "Psixoloq" : "Pasiyent")}</span>
+                          <span>{formatFileSize(att.fileSize)}</span>
                         </span>
                         {canDelete && (
                           <button onClick={() => deleteAttachment(att)}

@@ -200,8 +200,11 @@ function GoalCard({
         {g.targetDate && (
           <span className={`pgoal-card__date${overdue ? " is-overdue" : ""}`}>
             Hədəf tarixi: {fmtDate(g.targetDate)}
-            {overdue && " · gecikib"}
           </span>
+        )}
+        {/* gecikmə ayrıca sətir elementi — meta sıra flex gap ilə ayırır */}
+        {g.targetDate && overdue && (
+          <span style={{ color: "#991B1B", fontWeight: 700 }}>gecikib</span>
         )}
         {g.achievedAt && (
           <span style={{ color: "#065F46", fontWeight: 600 }}>Tamamlandı: {fmtDate(g.achievedAt)}</span>

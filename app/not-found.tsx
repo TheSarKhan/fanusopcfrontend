@@ -21,7 +21,11 @@ export default function NotFound() {
         </div>
 
         <div className="nf-copy">
-          <p className="nf-eyebrow">404 · Səhifə tapılmadı</p>
+          {/* 404 və izah ayrı elementlərdir — flex boşluğu ayırıcı rolunu oynayır */}
+          <p className="nf-eyebrow" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <span>404</span>
+            <span>Səhifə tapılmadı</span>
+          </p>
           <h1 className="nf-title">
             Bu səhifə yoxa çıxıb<span className="fanus-serif-accent"> görünür.</span>
           </h1>

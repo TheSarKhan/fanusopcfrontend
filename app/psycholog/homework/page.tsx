@@ -382,11 +382,12 @@ function PatientRow({ p, active, onClick }: {
           fontSize: 13, fontWeight: 600, color: active ? "var(--brand-700)" : "var(--oxford)",
           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
         }}>{p.patientName}</div>
-        <div style={{ fontSize: 10.5, color: "var(--oxford-60)", marginTop: 2 }}>
+        <div style={{ fontSize: 10.5, color: "var(--oxford-60)", marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
           {p.total === 0 ? "Hələ tapşırıq yox" : (
             <>
-              {p.completed}/{p.total} bitib · {p.completionRate}%
-              {p.lastActivityAt && <> · {formatTimeAgo(new Date(p.lastActivityAt).toISOString())}</>}
+              <span>{p.completed}/{p.total} bitib</span>
+              <span>{p.completionRate}%</span>
+              {p.lastActivityAt && <span>{formatTimeAgo(new Date(p.lastActivityAt).toISOString())}</span>}
             </>
           )}
         </div>
@@ -567,10 +568,9 @@ function OverviewPanel({
                 <Avatar name={b.patientName} active={false} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford)" }}>{b.patientName}</div>
-                  <div style={{ fontSize: 11, color: "var(--oxford-60)" }}>
-                    {b.overdue > 0 && `${b.overdue} gecikən tapşırıq`}
-                    {b.overdue > 0 && (b.daysSinceActivity ?? 0) > 14 && " · "}
-                    {(b.daysSinceActivity ?? 0) > 14 && `${b.daysSinceActivity} gündür aktivlik yoxdur`}
+                  <div style={{ fontSize: 11, color: "var(--oxford-60)", display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {b.overdue > 0 && <span>{b.overdue} gecikən tapşırıq</span>}
+                    {(b.daysSinceActivity ?? 0) > 14 && <span>{b.daysSinceActivity} gündür aktivlik yoxdur</span>}
                   </div>
                 </div>
                 <span style={{ fontSize: 14, color: "var(--brand)" }}>›</span>
@@ -680,7 +680,10 @@ function PsyHomeworkRow({ h, onOpen, onDelete }: {
         <div style={{ marginTop: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--oxford-60)", marginBottom: 4 }}>
             <span>Alt-tapşırıq gedişatı</span>
-            <span style={{ fontWeight: 600, color: "var(--brand-700)" }}>{h.checklistCompleted}/{h.checklistTotal} · {progress}%</span>
+            <span style={{ display: "inline-flex", gap: 8, fontWeight: 600, color: "var(--brand-700)" }}>
+              <span>{h.checklistCompleted}/{h.checklistTotal}</span>
+              <span>{progress}%</span>
+            </span>
           </div>
           <div style={{ height: 4, background: "var(--brand-50)", borderRadius: 2, overflow: "hidden" }}>
             <div style={{ width: `${progress}%`, height: "100%", background: "var(--brand)", transition: "width 0.2s" }} />

@@ -389,7 +389,7 @@ export default function ArticleEditorPage({
             {saveStatus === "error" ? (
               <span title={saveError ?? undefined}
                 style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "#B91C1C", background: "#FEE2E2", padding: "3px 10px", borderRadius: 20, border: "1px solid #FECACA" }}>
-                <SaveErrorIcon /> Saxlanmadı{saveError ? ` · ${truncate(saveError, 40)}` : ""}
+                <SaveErrorIcon /> Saxlanmadı{saveError ? `, ${truncate(saveError, 40)}` : ""}
                 <button onClick={() => flushSave()}
                   style={{ background: "transparent", border: "none", color: "#991B1B", fontWeight: 700, cursor: "pointer", fontSize: 11, padding: 0, textDecoration: "underline" }}>
                   Yenidən cəhd et
@@ -587,9 +587,10 @@ export default function ArticleEditorPage({
                   <h1 style={{ fontSize: "2rem", fontWeight: 800, color: "#0F1C2E", lineHeight: 1.25, margin: "0 0 8px" }}>
                     {form.title || "Başlıqsız məqalə"}
                   </h1>
-                  <p style={{ fontSize: 13, color: "#8AAABF", margin: "0 0 28px" }}>
-                    {formatDate(form.publishedDate)} · {estimateReadTime(form.content)} dəq oxu
-                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, fontSize: 13, color: "#8AAABF", margin: "0 0 28px" }}>
+                    <span>{formatDate(form.publishedDate)}</span>
+                    <span>{estimateReadTime(form.content)} dəq oxu</span>
+                  </div>
                   <div
                     className="article-content"
                     dangerouslySetInnerHTML={{ __html: form.content || "<p style='color:#9AB0C8'>Məzmun hələ yazılmayıb.</p>" }}

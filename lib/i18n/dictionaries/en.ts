@@ -80,7 +80,7 @@ export const en: typeof az = {
   },
 
   home: {
-    heroEyebrow: "Online psychological support · Azerbaijan",
+    heroEyebrow: "Online psychological support, Azerbaijan",
     heroTitle: "Find the right therapist and start your first session within a day.",
     heroSub: "Certified psychologists. Our human team — not an algorithm — selects the right specialist for you. The first 15-minute introductory call is free.",
     heroCta: "Choose a therapist",
@@ -227,7 +227,7 @@ export const en: typeof az = {
     extendCta: "Replace {n} skipped weeks",
     extending: "Adding…",
     extendDone: "{n} extra sessions created",
-    courseLine: "Course · session {index} / {total}",
+    courseLine: "Course, session {index} / {total}",
   },
 
   course: {
@@ -244,8 +244,8 @@ export const en: typeof az = {
     sessionFuture: "upcoming",
     sessionCancelled: "cancelled",
     dashboardTitle: "Your course",
-    dashboardLine: "{done}/{total} · next: {next}",
-    dashboardNoNext: "{done}/{total} · no upcoming session scheduled",
+    dashboardLine: "{done}/{total}, next: {next}",
+    dashboardNoNext: "{done}/{total}, no upcoming session scheduled",
     dashboardCta: "View course →",
   },
 
@@ -284,7 +284,7 @@ export const en: typeof az = {
     proposalBannerBody: "{psy} is proposing {n} alternative times. Pick one or reject all.",
     proposalBannerAction: "View & pick",
     sessionNumber: "Session #{n}",
-    youConfirmed: "✓ You confirmed · waiting on therapist",
+    youConfirmed: "✓ You confirmed, waiting on therapist",
     sessionsCount: "{count} sessions",
   },
 
@@ -436,7 +436,7 @@ export const en: typeof az = {
     step3Text: "The choice is yours. Start an online session with your preferred therapist whenever you want.",
     finalTitle: "Take the first step today to feel better.",
     cta: "Get started",
-    ctaNote: "First conversation is free · No commitment",
+    ctaNote: "First conversation is free, no commitment",
   },
 
   psyList: {
@@ -455,7 +455,7 @@ export const en: typeof az = {
     filterAll: "All",
     filterAnxiety: "Anxiety",
     filterTrauma: "Trauma",
-    filterFamily: "Relationships · Family",
+    filterFamily: "Relationships, Family",
     filterDepression: "Depression",
     filterYouth: "Teens",
     filterAddiction: "Addiction",
@@ -539,7 +539,7 @@ export const en: typeof az = {
     newsletter: "Newsletter",
     newsletterText: "Once a month — only articles worth reading.",
     newsletterThanks: "Thank you!",
-    rights: "© 2026 Fanus OPC · All rights reserved",
+    rights: "© 2026 Fanus OPC, all rights reserved",
     privacy: "Privacy",
     terms: "Terms of use",
     ethics: "Ethics code",

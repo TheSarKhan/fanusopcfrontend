@@ -59,7 +59,7 @@ function fmtHM(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
 
 function fmtFullDateTime(d: Date) {
   const dayLabel = DAYS_AZ_FULL[(d.getDay() + 6) % 7];
-  return `${dayLabel} · ${fmtDay(d)} · ${fmtHM(d)}`;
+  return `${dayLabel}, ${fmtDay(d)}, ${fmtHM(d)}`;
 }
 
 const STATUS_COLOR: Record<string, { bg: string; fg: string; dashed?: boolean }> = {
@@ -690,8 +690,9 @@ export default function PsychologCalendarPage() {
                               {ex.ev.title}
                             </div>
                             {height >= 36 && (
-                              <div style={{ fontSize: 9.5, opacity: 0.7, marginTop: 1 }}>
-                                {fmtHM(ex.start)}–{fmtHM(ex.end)} · Google
+                              <div style={{ fontSize: 9.5, opacity: 0.7, marginTop: 1, display: "flex", gap: 8 }}>
+                                <span>{fmtHM(ex.start)}–{fmtHM(ex.end)}</span>
+                                <span>Google</span>
                               </div>
                             )}
                           </a>
@@ -743,7 +744,7 @@ export default function PsychologCalendarPage() {
                             draggable={draggable}
                             onDragStart={e => handleDragStart(a, e)}
                             onDragEnd={handleDragEnd}
-                            title={`${a.patientName ?? "—"} · ${fmtHM(ev.start)}–${fmtHM(ev.end)} · ${a.status}${hasConflict ? "\nGoogle Calendar ilə zaman üst-üstə düşür" : ""}${draggable ? "\nSürükləyib başqa vaxta burax" : ""}`}
+                            title={`${a.patientName ?? "—"}, ${fmtHM(ev.start)}–${fmtHM(ev.end)}, ${a.status}${hasConflict ? "\nGoogle Calendar ilə zaman üst-üstə düşür" : ""}${draggable ? "\nSürükləyib başqa vaxta burax" : ""}`}
                             style={{
                               position: "absolute",
                               top,
@@ -998,17 +999,19 @@ function GoogleStatusBanner({
         <div style={{ fontWeight: 700 }}>
           {status.email || "Google Calendar qoşulub"}
         </div>
-        <div style={{ fontSize: 11.5, marginTop: 2, opacity: 0.85 }}>
-          {loading
-            ? "Yüklənir…"
-            : eventCount > 0
-              ? `Bu həftədə ${eventCount} hadisə`
-              : "Bu həftədə hadisə yoxdur"}
+        <div style={{ fontSize: 11.5, marginTop: 2, opacity: 0.85, display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <span>
+            {loading
+              ? "Yüklənir…"
+              : eventCount > 0
+                ? `Bu həftədə ${eventCount} hadisə`
+                : "Bu həftədə hadisə yoxdur"}
+          </span>
           {conflictCount > 0 && (
-            <> · <strong style={{ color: "#B45309" }}>{conflictCount} konflikt</strong></>
+            <strong style={{ color: "#B45309" }}>{conflictCount} konflikt</strong>
           )}
           {status.lastSyncAt && (
-            <> · son sinxron {azFormatDateTime(status.lastSyncAt)}</>
+            <span>son sinxron {azFormatDateTime(status.lastSyncAt)}</span>
           )}
         </div>
       </div>
@@ -1279,7 +1282,7 @@ function ConflictModal({
                     {fmtFullDateTime(p.start)}–{fmtHM(p.end)}
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 600, color: "#1A2535" }}>
-                    · {a.patientName ?? "Pasiyent"}
+                    {a.patientName ?? "Pasiyent"}
                   </span>
                   <span style={{ background: colors.bg, color: colors.fg, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>
                     {STATUS_LABEL[a.status] ?? a.status}

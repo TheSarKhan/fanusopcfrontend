@@ -447,7 +447,10 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
                   </div>
                 )}
                 {!photoFile && (
-                  <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>JPG/PNG · sürüşdür və zoom et</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>
+                    <span>JPG/PNG</span>
+                    <span>sürüşdür və zoom et</span>
+                  </div>
                 )}
               </div>
             </div>

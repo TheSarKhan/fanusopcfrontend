@@ -7,11 +7,11 @@ const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul",
 function pad2(n: number) { return String(n).padStart(2, "0"); }
 function fmtFull(iso: string) {
   const d = new Date(iso);
-  return `${pad2(d.getDate())} ${MONTHS_AZ[d.getMonth()]} ${d.getFullYear()} · ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return `${pad2(d.getDate())} ${MONTHS_AZ[d.getMonth()]} ${d.getFullYear()}, ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 function fmtRange(start: string, end: string) {
   const a = new Date(start), b = new Date(end);
-  return `${pad2(a.getDate())} ${MONTHS_AZ[a.getMonth()]} · ${pad2(a.getHours())}:${pad2(a.getMinutes())}–${pad2(b.getHours())}:${pad2(b.getMinutes())}`;
+  return `${pad2(a.getDate())} ${MONTHS_AZ[a.getMonth()]}, ${pad2(a.getHours())}:${pad2(a.getMinutes())}–${pad2(b.getHours())}:${pad2(b.getMinutes())}`;
 }
 function fmtRemaining(expiresAt: string) {
   const ms = new Date(expiresAt).getTime() - Date.now();

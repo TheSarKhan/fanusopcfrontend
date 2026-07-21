@@ -58,8 +58,9 @@ export default function AdminResourcesPage() {
               <div className="card-pad" style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 220 }}>
                   <div style={{ fontWeight: 700, color: "var(--ink)" }}>{r.title}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                    {r.category} · {r.authorName ?? "Psixoloq"}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                    <span>{r.category}</span>
+                    <span>{r.authorName ?? "Psixoloq"}</span>
                   </div>
                   {r.description && (
                     <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.5 }}>{r.description}</div>

@@ -95,7 +95,7 @@ export default function PsychologProfilePage() {
                 <div>
                   <dt style={{ color: "var(--oxford-60)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4 }}>İxtisaslar</dt>
                   <dd style={{ margin: "4px 0 0", color: "var(--oxford)", fontWeight: 500 }}>
-                    {me.specializations?.slice(0, 4).join(" · ") || "—"}
+                    {me.specializations?.slice(0, 4).join(", ") || "—"}
                   </dd>
                 </div>
                 <div>
@@ -317,7 +317,7 @@ function PricingCard({ editable }: { editable: boolean }) {
       <div className="uprof-card-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div>
           <h2>{t("pricing.sectionTitle")}</h2>
-          <p>{editable ? t("pricing.individual") + " · " + t("pricing.packages") : t("pricing.managedByAdmin")}</p>
+          <p>{editable ? t("pricing.individual") + ", " + t("pricing.packages") : t("pricing.managedByAdmin")}</p>
         </div>
         {savedFlash && (
           <span style={{
@@ -405,8 +405,9 @@ function PricingCard({ editable }: { editable: boolean }) {
                       }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{p.name}</div>
-                          <div style={{ fontSize: 11.5, color: "var(--oxford-60)", marginTop: 2 }}>
-                            {p.sessionCount} {t("pricing.sessionCount").toLowerCase()} · {formatAzn(p.perSessionPrice)}{t("pricing.perSession")}
+                          <div style={{ fontSize: 11.5, color: "var(--oxford-60)", marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                            <span>{p.sessionCount} {t("pricing.sessionCount").toLowerCase()}</span>
+                            <span>{formatAzn(p.perSessionPrice)}{t("pricing.perSession")}</span>
                           </div>
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 800, color: "var(--brand-700)", whiteSpace: "nowrap" }}>

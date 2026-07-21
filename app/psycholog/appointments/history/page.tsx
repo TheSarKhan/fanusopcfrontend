@@ -233,7 +233,7 @@ function HistoryCard({
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="psy-card__name">{a.patientName ?? "Pasiyent"}</div>
-          <div className="psy-card__nth">{pad2(d.getDate())}.{pad2(d.getMonth() + 1)}.{d.getFullYear()} · {fmtTime(d)}</div>
+          <div className="psy-card__nth">{pad2(d.getDate())}.{pad2(d.getMonth() + 1)}.{d.getFullYear()}, {fmtTime(d)}</div>
         </div>
         {menu.length > 0 && <RowMenu items={menu} />}
       </div>
@@ -244,9 +244,9 @@ function HistoryCard({
       </div>
 
       {cancelReason && (
-        <div style={{ marginTop: 12, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
-          Səbəb: <span style={{ color: "var(--oxford)" }}>{cancelReason}</span>
-          {a.cancelledBy && <span style={{ color: "var(--oxford-60)" }}> · {a.cancelledBy === "PATIENT" ? "pasiyent" : a.cancelledBy === "PSYCHOLOGIST" ? "sizin tərəfdən" : "operator"}</span>}
+        <div style={{ marginTop: 12, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <span>Səbəb: <span style={{ color: "var(--oxford)" }}>{cancelReason}</span></span>
+          {a.cancelledBy && <span style={{ color: "var(--oxford-60)" }}>{a.cancelledBy === "PATIENT" ? "pasiyent" : a.cancelledBy === "PSYCHOLOGIST" ? "sizin tərəfdən" : "operator"}</span>}
         </div>
       )}
       {a.status === "COMPLETED" && a.note && (

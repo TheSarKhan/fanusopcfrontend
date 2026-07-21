@@ -65,16 +65,16 @@ export default function DeletionRequestsPage() {
           {items.map((r) => (
             <div className="list-item" key={r.userId}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="li-title">
+                <div className="li-title" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <Link href={`/admin/users/${r.userId}`}>{(r.firstName ?? "") + " " + (r.lastName ?? "")}</Link>
-                  <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {r.email}</span>
-                  <span className="pill ox" style={{ marginLeft: 8 }}>{r.role}</span>
-                  {r.blocked && <span className="pill rose" style={{ marginLeft: 4 }}>bloklu</span>}
+                  <span style={{ color: "var(--muted)", fontWeight: 400 }}>{r.email}</span>
+                  <span className="pill ox">{r.role}</span>
+                  {r.blocked && <span className="pill rose">bloklu</span>}
                 </div>
-                <div className="li-meta">
-                  İstək: {azFormatDateTime(r.requestedAt)} ·
+                <div className="li-meta row" style={{ gap: 10, flexWrap: "wrap" }}>
+                  <span>İstək: {azFormatDateTime(r.requestedAt)}</span>
                   <span style={{ color: r.daysLeft <= 5 ? "#991B1B" : undefined, fontWeight: 600 }}>
-                    {" "}avtomatik silinməyə {r.daysLeft} gün qalıb
+                    avtomatik silinməyə {r.daysLeft} gün qalıb
                   </span>
                 </div>
               </div>

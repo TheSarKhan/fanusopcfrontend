@@ -20,7 +20,7 @@ function isoDateOnly(d: Date) {
 }
 function dayLabel(iso: string) {
   const d = new Date(iso);
-  return `${WEEKDAYS_AZ[(d.getDay() + 6) % 7]} · ${pad2(d.getDate())} ${MONTHS_AZ[d.getMonth()]}`;
+  return `${WEEKDAYS_AZ[(d.getDay() + 6) % 7]}, ${pad2(d.getDate())} ${MONTHS_AZ[d.getMonth()]}`;
 }
 function timeLabel(startIso: string, endIso: string) {
   const s = new Date(startIso), e = new Date(endIso);

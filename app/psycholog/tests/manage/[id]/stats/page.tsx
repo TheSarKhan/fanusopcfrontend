@@ -413,7 +413,11 @@ function ResultDetailModal({ result, onClose }: { result: TestResult; onClose: (
         <div style={{ padding: "16px 22px", borderBottom: "1px solid #EFF2F7", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
           <div>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: 0 }}>{result.respondentName?.trim() || "Anonim"}</h2>
-            <p style={{ fontSize: 12.5, color: "#52718F", margin: "4px 0 0" }}>Bal: <b style={{ color: "#1A2535" }}>{result.totalScore} / {result.maxScore}</b> · {pct}%{result.scaleLabel ? <> · <b style={{ color: "#065F46" }}>{result.scaleLabel}</b></> : null}</p>
+            <p style={{ fontSize: 12.5, color: "#52718F", margin: "4px 0 0", display: "flex", flexWrap: "wrap", gap: 10 }}>
+              <span>Bal: <b style={{ color: "#1A2535" }}>{result.totalScore} / {result.maxScore}</b></span>
+              <span>{pct}%</span>
+              {result.scaleLabel ? <b style={{ color: "#065F46" }}>{result.scaleLabel}</b> : null}
+            </p>
           </div>
           <button onClick={onClose} aria-label="Bağla" style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid #EEF2F7", background: "#fff", color: "#52718F", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
         </div>

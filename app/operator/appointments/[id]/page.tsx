@@ -73,17 +73,6 @@ function statusPillClass(status?: string | null): string {
 }
 
 
-// Status → nöqtə rəngi (header-də badge əvəzinə rəngli nöqtə + düz mətn üçün).
-function statusDotColor(status?: string | null): string {
-  switch (status) {
-    case "CONFIRMED": return "#16A34A";
-    case "ASSIGNED":  return "#2563EB";
-    case "COMPLETED": return "#64748B";
-    case "DISPUTED":
-    case "CANCELLED": return "#DC2626";
-    default:          return "#D97706"; // PENDING/NEW/REJECTED/IN_REVIEW/AWAITING/CANCEL_REQUESTED
-  }
-}
 function fmtDateTime(iso?: string | null) { return iso ? azFormatDateTime(iso) : "—"; }
 function isoDateOnly(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -136,10 +125,14 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [toast, setToast] = useState<string | null>(null);
   const [reassignOpen, setReassignOpen] = useState(false);
+  // Hovuza buraxma: NEW/PENDING-də birbaşa, digər statuslarda Admin təsdiqi
+  // tələb olunur (OP-FR-04/05) — ona görə səbəb soruşan modal açılır.
+  const [releaseOpen, setReleaseOpen] = useState(false);
+  const [releaseReason, setReleaseReason] = useState("");
+  const [releaseBusy, setReleaseBusy] = useState(false);
   const assignFocusRef = useRef<HTMLButtonElement | null>(null);
   const assignCardRef = useRef<HTMLDivElement | null>(null);
   const [approving, setApproving] = useState(false);
-  const [approveErr, setApproveErr] = useState<string | null>(null);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -234,6 +227,29 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     operatorApi.claim(id).then(setClaim).catch(e => setToast((e as Error).message));
   }, [id]);
 
+  // ── Pool-a geri burax ─────────────────────────────────────────────────────
+  // Toxunulmamış müraciət (NEW/PENDING) dərhal buraxılır; üzərində əməliyyat
+  // aparılıbsa backend 409 verir, ona görə həmin halda səbəblə tələb göndərilir.
+  const releaseToPool = useCallback(() => {
+    setReleaseBusy(true);
+    operatorApi.claimRelease(id)
+      .then(c => { setClaim(c); setToast("Randevu hovuza buraxıldı"); backToList(); })
+      .catch(e => globalToast((e as Error).message, "error"))
+      .finally(() => setReleaseBusy(false));
+  }, [id, backToList]);
+
+  const sendReleaseRequest = useCallback(() => {
+    setReleaseBusy(true);
+    operatorApi.releaseRequest(id, releaseReason.trim() || undefined)
+      .then(() => {
+        setReleaseOpen(false);
+        setReleaseReason("");
+        globalToast("Buraxma tələbi göndərildi — Admin təsdiqi gözlənilir", "success");
+      })
+      .catch(e => globalToast((e as Error).message, "error"))
+      .finally(() => setReleaseBusy(false));
+  }, [id, releaseReason]);
+
   // ── Əməliyyat qoruması: sahibsizsə avtomatik götür, başqasınınkındadırsa blokla ─
   const guardAction = useCallback((run: () => void) => {
     if (claim?.mine) { run(); return; }
@@ -260,9 +276,9 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     const appt = full?.appointment;
     if (!p || !opt?.startAt || !opt?.endAt || !appt) return;
     const psyId = appt.psychologistId ?? p.psychologistId;
-    if (!psyId) { setApproveErr("Bu randevuya psixoloq təyin olunmayıb"); return; }
+    if (!psyId) { globalToast("Bu randevuya psixoloq təyin olunmayıb", "error"); return; }
     guardAction(async () => {
-      setApproving(true); setApproveErr(null);
+      setApproving(true);
       try {
         await operatorApi.assignSlots(appt.id, {
           psychologistId: psyId,
@@ -273,7 +289,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
         globalToast("Təklif təsdiqləndi — vaxt yeniləndi", "success");
         backToList();
       } catch (e) {
-        setApproveErr((e as Error).message);
+        globalToast((e as Error).message, "error");
       } finally {
         setApproving(false);
       }
@@ -429,26 +445,27 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     else if (action === "dispute") setOtherAction("dispute");
     else if (action === "cancelreq") setOtherAction("cancelreq");
   };
-  const nextTone = {
-    action: { bg: "#EFF6FF", border: "#DBEAFE", iconBg: "#FFFFFF", icon: "#2563EB" },
-    warn:   { bg: "#FFFBEB", border: "#FDE68A", iconBg: "#FFFFFF", icon: "#D97706" },
-    muted:  { bg: "#F8FAFC", border: "#EDF1F8", iconBg: "#FFFFFF", icon: "#94A3B8" },
-    done:   { bg: "#ECFDF3", border: "#BBF7D0", iconBg: "#BBF7D0", icon: "#16A34A" },
+  // Ton → mövcud fx-banner variantı (yeni rəng icad edilmir).
+  const nextBannerClass = {
+    action: "fx-banner--info",
+    warn:   "fx-banner--warn",
+    muted:  "fx-banner--info",
+    done:   "fx-banner--success",
   }[next.tone];
 
   // Təyin/yenidən-planla forması (AssignBlock) birbaşa aşağıda tam görünürsə,
   // eyni "psixoloq və vaxt təyin edin" çağırışını təkrarlayan üst strip artıqdır —
   // onu gizlə (assign-dışı addımlarda: ödəniş/link/mübahisə strip QALIR).
   const assignBlockVisible = !isFinal && canAssign && !timeLocked;
-  const hideNextStrip = assignBlockVisible && next.action === "assign";
+  // Terminal vəziyyətdə strip aşağıdakı «Vəziyyət» kartını təkrarlayır — gizlət.
+  const hideNextStrip = isFinal || (assignBlockVisible && next.action === "assign");
 
-  // Claim çipi (sağ header) — sahiblik + SLA vəziyyəti tək kompakt nişanda.
+  // Sahiblik meta sətri — çip DEYİL, ikon + mətn (dizayn qaydası).
   const ownerLabel = claim?.mine ? "Sənin üzərində" : claimedByOther ? `${claim?.claimedByName ?? "?"} işləyir` : "Sahibsiz";
-  const ownerChip = claim?.mine
-    ? { bg: "#ECFDF3", fg: "#15803D", dot: "#16A34A" }
-    : claimedByOther
-      ? { bg: "#FFFBEB", fg: "#B45309", dot: "#D97706" }
-      : { bg: "#F1F5F9", fg: "#64748B", dot: "#94A3B8" };
+  const ownerColor = claim?.mine ? "var(--sage)" : claimedByOther ? "var(--status-pending-fg)" : "var(--oxford-60)";
+
+  // Backend qaydası (OP-FR-04): yalnız toxunulmamış müraciət sərbəst buraxılır.
+  const canReleaseDirectly = a.status === "PENDING" || a.status === "NEW";
 
   const otherKeys: OtherActionKey[] = [];
   if (canResolve) otherKeys.push("dispute");
@@ -467,92 +484,94 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
 
         {/* ── Sağ: iş zonası ────────────────────────────────────────────────── */}
         <main className="opd__right">
+          {/* ── 1. Kimlik + status ────────────────────────────────────────── */}
           <div className="opd__header">
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minWidth: 0 }}>
-              <button onClick={backToList} title={t("staff.opDetBackToList")} aria-label={t("staff.opDetBackToList")}
-                style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid #E2E8F5", background: "#fff", borderRadius: 9, cursor: "pointer", color: "#475569", flex: "none" }}>
+              <button onClick={backToList} className="fx-iconbtn" title={t("staff.opDetBackToList")} aria-label={t("staff.opDetBackToList")} style={{ flex: "none" }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
               </button>
-              <span style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontWeight: 700, fontSize: 18, color: "#1E293B" }}>#FNS-{String(id).padStart(4, "0")}</span>
-              {/* Badge deyil — rəngli nöqtə + düz mətn (status rəng ilə oxunur, amma çip yox). */}
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "#334155" }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusDotColor(a.status), flex: "none" }} />
-                {statusLabel(a.status)}
-              </span>
+              <span className="fx-num" style={{ fontWeight: 700, fontSize: 17, color: "var(--oxford)" }}>#FNS-{String(id).padStart(4, "0")}</span>
+              {/* Əsl status rozeti — dizayn sistemi pili. */}
+              <span className={`fx-pill ${statusPillClass(a.status)}`}>{statusLabel(a.status)}</span>
               {a.sessionKind === "INTRO" && (
-                <>
-                  <span style={{ width: 1, height: 13, background: "#E2E8F5", flex: "none" }} />
-                  <span style={{ fontSize: 12.5, color: "#94A3B8" }}>Tanışlıq · pulsuz</span>
-                </>
+                <span style={{ fontSize: 12, color: "var(--oxford-60)" }}>Tanışlıq · pulsuz</span>
               )}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              {/* Sahiblik/SLA — çip deyil, ikon + mətn. */}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: ownerColor, fontSize: 12, fontWeight: 600 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }} aria-hidden><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                {ownerLabel}{!isFinal ? ` · ${ageLabel(a.createdAt, nowMs)} gözləyir` : ""}
+              </span>
               {unowned && (
                 <button onClick={takeOwnership} className="fx-btn fx-btn--primary fx-btn--sm">{t("staff.opTake")}</button>
               )}
-              {isAdmin && !unowned && (
-                <button onClick={() => setReassignOpen(true)} className="opd-ghost-btn">{t("staff.opReassign")}</button>
+              {/* Öz üzərindədirsə geri buraxa bilsin — əvvəl bu seçim ümumiyyətlə yox idi. */}
+              {claim?.mine && (
+                <button
+                  onClick={() => (canReleaseDirectly ? releaseToPool() : setReleaseOpen(true))}
+                  disabled={releaseBusy}
+                  className="fx-btn fx-btn--ghost fx-btn--sm"
+                  title={canReleaseDirectly
+                    ? "Randevunu hovuza qaytar"
+                    : "Üzərində əməliyyat aparılıb — Admin təsdiqi ilə buraxılır"}
+                >
+                  {releaseBusy ? "Buraxılır…" : "Pool-a burax"}
+                </button>
               )}
-              {/* Badge deyil — rəngli nöqtə + düz mətn (sahiblik/SLA). */}
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: ownerChip.fg, fontSize: 12.5, fontWeight: 600 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: ownerChip.dot, flex: "none" }} />
-                {ownerLabel}{!isFinal ? ` · ${ageLabel(a.createdAt, nowMs)} gözləyir` : ""}
-              </span>
+              {isAdmin && !unowned && (
+                <button onClick={() => setReassignOpen(true)} className="fx-btn fx-btn--ghost fx-btn--sm">{t("staff.opReassign")}</button>
+              )}
             </div>
           </div>
 
           <div className="opd__body">
 
-            {/* Müraciət mətni — operatorun oxuması üçün (varsa) */}
-            {a.note && (
-              <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#F8FAFC", border: "1px solid #EDF1F8", borderRadius: 12, padding: "13px 15px" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 2 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                <span style={{ fontSize: 13.5, color: "#334155", fontStyle: "italic", lineHeight: 1.5 }}>«{a.note}»</span>
-              </div>
-            )}
-
-            {/* Sonrakı addım — AssignBlock aşağıda göründükdə təkrar strip gizlədilir */}
+            {/* ── 2. İndi nə lazımdır ────────────────────────────────────────
+                AssignBlock aşağıda tam görünürsə və ya müraciət bağlanıbsa,
+                eyni çağırışı təkrarlayan strip gizlədilir. */}
             {!hideNextStrip && (
-            <div style={{ background: nextTone.bg, border: `1px solid ${nextTone.border}`, borderRadius: 14, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-                <span style={{ width: 34, height: 34, borderRadius: "50%", background: nextTone.iconBg, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-                  {next.tone === "done"
-                    ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={nextTone.icon} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-                    : <span style={{ width: 9, height: 9, borderRadius: "50%", background: nextTone.icon }} />}
-                </span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#1E293B" }}>{next.title}</div>
-                  {next.sub && <div style={{ fontSize: 12.5, color: "#5C6B85", marginTop: 2 }}>{next.sub}</div>}
-                  {approveErr && next.action === "approve" && <div style={{ fontSize: 12.5, color: "#B91C1C", marginTop: 4, fontWeight: 600 }}>{approveErr}</div>}
+              <div className={`fx-banner ${nextBannerClass}`} style={{ alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+                  {next.tone === "done" ? (
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 6L9 17l-5-5" /></svg>
+                  ) : next.tone === "warn" ? (
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+                  ) : (
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M10 8l4 4-4 4" /></svg>
+                  )}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700 }}>{next.title}</div>
+                    {next.sub && <div style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 2 }}>{next.sub}</div>}
+                  </div>
                 </div>
+                {next.btnLabel && next.action && (
+                  <button onClick={() => runNextAction(next.action!)} disabled={approving && next.action === "approve"}
+                    className="fx-btn fx-btn--primary fx-btn--sm" style={{ flex: "none" }}>
+                    {next.btnLabel}
+                  </button>
+                )}
               </div>
-              {next.btnLabel && next.action && (
-                <button onClick={() => runNextAction(next.action!)} disabled={approving && next.action === "approve"}
-                  style={{ background: next.tone === "warn" ? "#D97706" : "#2563EB", color: "#fff", border: "none", borderRadius: 9, padding: "10px 18px", fontSize: 13.5, fontWeight: 700, cursor: "pointer", flex: "none" }}>
-                  {next.btnLabel}
-                </button>
-              )}
-            </div>
             )}
 
             {isFinal ? (
               /* Terminal vəziyyət kartı */
-              <div className="opd-card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Vəziyyət</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#1E293B" }}>{statusLabel(a.status)}</div>
+              <div className="opd-card" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+                <div className="opd-card__title">Vəziyyət</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{statusLabel(a.status)}</div>
                 {cleanOperatorNote(a.operatorNote) && (
-                  <div style={{ fontSize: 13, color: "#5C6B85" }}>Qeyd: {cleanOperatorNote(a.operatorNote)}</div>
+                  <div className="fx-muted" style={{ fontSize: 13 }}>Qeyd: {cleanOperatorNote(a.operatorNote)}</div>
                 )}
               </div>
             ) : (
               <>
-                {/* TƏYİN / YENİDƏN PLANLA */}
+                {/* ── 3. Təyinat ───────────────────────────────────────────── */}
                 {timeLocked ? (
-                  <div className="opd-card" style={{ padding: 18 }}>
-                    <div className="opd-card__title" style={{ marginBottom: 10 }}>Təyin / yenidən planla</div>
-                    <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 11, padding: "13px 15px" }}>
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
-                      <div style={{ fontSize: 13, color: "#92400E", fontWeight: 500, lineHeight: 1.5 }}>
+                  <div className="opd-card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div className="opd-card__title">Təyin / yenidən planla</div>
+                    <div className="fx-banner fx-banner--warn">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+                      <div>
                         <strong>Vaxt/psixoloq dəyişikliyi bloklanıb</strong> — seans linki artıq təyin edilib. Dəyişmək üçün əvvəlcə «Görüş linki» kartından linki geri çağırın.
                       </div>
                     </div>
@@ -577,68 +596,75 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
                   </div>
                 )}
 
-                {/* İkincili: Görüş linki + Ödəniş */}
-                <div className="opd__secondary-grid">
-                  <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div className="opd-card__title">Görüş linki</div>
-                    {a.meetingLink ? (
-                      <>
-                        <a href={a.meetingLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "#2563EB", wordBreak: "break-all" }}>{a.meetingLink}</a>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={() => setLinkModalOpen(true)} className="opd-ghost-btn">Dəyiş</button>
-                          <button onClick={() => guardAction(async () => { try { await operatorApi.revokeMeetingLink(a.id); load(true); setToast("Link silindi"); } catch (e) { globalToast((e as Error).message, "error"); } })}
-                            style={{ background: "transparent", border: "1px solid #FCA5A5", color: "#DC2626", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Sil</button>
+                {/* ── 4. Ödəniş (linkdən ƏVVƏL — link ödənişdən asılıdır) ──── */}
+                <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <span className="opd-card__title">Ödəniş</span>
+                    {a.paymentAmount != null && a.paymentAmount > 0 && (
+                      <span className={`fx-pill ${a.paymentStatus === "PAID" ? "fx-pill--paid" : "fx-pill--pending"}`}>
+                        {a.paymentStatus === "PAID" ? "Ödənilib" : "Gözləyir"}
+                      </span>
+                    )}
+                  </div>
+                  {a.paymentAmount != null && a.paymentAmount > 0 ? (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="fx-num" style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)" }}>{a.paymentAmount} ₼</div>
+                        <div className="fx-muted" style={{ fontSize: 12, marginTop: 2 }}>
+                          {a.paymentStatus === "PAID" ? "Ödəniş təsdiqlənib" : "Müştəri ödəməlidir — link ödənişdən sonra göndərilir"}
                         </div>
-                      </>
-                    ) : !a.paymentConfirmed ? (
-                      <div style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, color: "#B45309", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 12px" }}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                        <span>Əvvəlcə ödəniş təsdiqlənməlidir — müştəri ödəyəndən sonra link əlavə oluna və göndərilə bilər.</span>
                       </div>
-                    ) : (
-                      <>
-                        <div style={{ fontSize: 13, color: "#94A3B8" }}>Görüş linki hələ əlavə edilməyib</div>
-                        <button onClick={() => setLinkModalOpen(true)} style={{ alignSelf: "flex-start", background: "#EFF6FF", border: "1px solid #DBEAFE", color: "#1D4ED8", borderRadius: 8, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>Link əlavə et</button>
-                      </>
-                    )}
-                  </div>
-                  <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div className="opd-card__title">Ödəniş</div>
-                    {a.paymentAmount != null && a.paymentAmount > 0 ? (
-                      <>
-                        <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: "#1E293B" }}>{a.paymentAmount} ₼</div>
-                        <div style={{ fontSize: 12, color: a.paymentStatus === "PAID" ? "#15803D" : "#B45309", fontWeight: 600 }}>{a.paymentStatus === "PAID" ? "Ödənilib" : "Gözləyir — müştəri ödəməlidir"}</div>
-                        {canMarkPaid && (
-                          <button onClick={markPaid} disabled={paying} style={{ alignSelf: "flex-start", background: "#ECFDF3", border: "1px solid #BBF7D0", color: "#15803D", borderRadius: 8, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, cursor: paying ? "wait" : "pointer", opacity: paying ? 0.7 : 1 }}>
-                            {paying ? "…" : "Ödənildi olaraq işarələ"}
-                          </button>
-                        )}
-                      </>
-                    ) : needsPayment ? (
-                      <>
-                        <div style={{ fontSize: 13, color: "#94A3B8" }}>Bu seans üçün ödəniş qeydi yoxdur</div>
-                        <button onClick={() => setPaymentModalOpen(true)} style={{ alignSelf: "flex-start", background: "#ECFDF3", border: "1px solid #BBF7D0", color: "#15803D", borderRadius: 8, padding: "7px 14px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>Məbləği təyin et</button>
-                      </>
-                    ) : (
-                      <div style={{ fontSize: 13, color: "#94A3B8" }}>{a.patientPackageId ? "Paket seansı" : "Ödəniş tələb olunmur"}</div>
-                    )}
-                  </div>
+                      {canMarkPaid && (
+                        <button onClick={markPaid} disabled={paying} className="fx-btn fx-btn--primary fx-btn--sm" style={{ flex: "none" }}>
+                          {paying ? "…" : "Ödənildi olaraq işarələ"}
+                        </button>
+                      )}
+                    </div>
+                  ) : needsPayment ? (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                      <span className="fx-muted" style={{ fontSize: 13 }}>Bu seans üçün ödəniş qeydi yoxdur</span>
+                      <button onClick={() => setPaymentModalOpen(true)} className="fx-btn fx-btn--primary fx-btn--sm" style={{ flex: "none" }}>Məbləği təyin et</button>
+                    </div>
+                  ) : (
+                    <span className="fx-muted" style={{ fontSize: 13 }}>{a.patientPackageId ? "Paket seansı" : "Ödəniş tələb olunmur"}</span>
+                  )}
                 </div>
 
-                {/* Digər əməliyyatlar — sakit sətir */}
+                {/* ── 5. Görüş linki ───────────────────────────────────────── */}
+                <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div className="opd-card__title">Görüş linki</div>
+                  {a.meetingLink ? (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                      <a href={a.meetingLink} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "var(--brand)", wordBreak: "break-all", minWidth: 0 }}>{a.meetingLink}</a>
+                      <div style={{ display: "flex", gap: 8, flex: "none" }}>
+                        <button onClick={() => setLinkModalOpen(true)} className="fx-btn fx-btn--ghost fx-btn--sm">Dəyiş</button>
+                        <button onClick={() => guardAction(async () => { try { await operatorApi.revokeMeetingLink(a.id); load(true); setToast("Link silindi"); } catch (e) { globalToast((e as Error).message, "error"); } })}
+                          className="fx-btn fx-btn--danger-ghost fx-btn--sm">Sil</button>
+                      </div>
+                    </div>
+                  ) : !a.paymentConfirmed ? (
+                    <div className="fx-banner fx-banner--warn">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                      <span>Əvvəlcə ödəniş təsdiqlənməlidir — müştəri ödəyəndən sonra link əlavə oluna və göndərilə bilər.</span>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                      <span className="fx-muted" style={{ fontSize: 13 }}>Görüş linki hələ əlavə edilməyib</span>
+                      <button onClick={() => setLinkModalOpen(true)} className="fx-btn fx-btn--primary fx-btn--sm" style={{ flex: "none" }}>Link əlavə et</button>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── 6. Digər əməliyyatlar — sakit sətir ──────────────────── */}
                 {otherKeys.length > 0 && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#94A3B8" }}>Digər əməliyyatlar</div>
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      {otherKeys.map(k => {
-                        const m = OTHER_ACTION_META[k];
-                        return (
-                          <button key={k} onClick={() => setOtherAction(k)}
-                            style={{ background: "transparent", border: `1px solid ${m.border}`, color: m.fg, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                            {m.label}
-                          </button>
-                        );
-                      })}
+                    <div className="fx-section-label">Digər əməliyyatlar</div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {otherKeys.map(k => (
+                        <button key={k} onClick={() => setOtherAction(k)} className={`fx-btn fx-btn--sm ${OTHER_ACTION_META[k].btnClass}`}>
+                          {OTHER_ACTION_META[k].label}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -672,6 +698,33 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
       )}
 
       {/* ── Admin: başqa operatora keçir (reassign) modalı ─────────────────── */}
+      {releaseOpen && (
+        <ModalShell
+          title="Hovuza buraxma tələbi"
+          sub="Bu randevu üzərində artıq əməliyyat aparılıb, ona görə buraxma Admin təsdiqindən keçir."
+          onClose={() => setReleaseOpen(false)}
+          footer={
+            <div className="fx-modal__actions" style={{ marginTop: 0 }}>
+              <button onClick={() => setReleaseOpen(false)} className="fx-btn fx-btn--ghost">Ləğv</button>
+              <button onClick={sendReleaseRequest} disabled={releaseBusy} className="fx-btn fx-btn--primary">
+                {releaseBusy ? "Göndərilir…" : "Tələbi göndər"}
+              </button>
+            </div>
+          }
+        >
+          <label className="fx-field">
+            <span className="fx-label">Səbəb (opsional)</span>
+            <textarea
+              className="fx-textarea"
+              rows={4}
+              value={releaseReason}
+              onChange={e => setReleaseReason(e.target.value)}
+              placeholder="Məsələn: müştəri ilə əlaqə qurula bilmir, başqa operatora uyğundur…"
+            />
+          </label>
+        </ModalShell>
+      )}
+
       {reassignOpen && (
         <ReassignModal
           id={id}
@@ -684,9 +737,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
 
       {/* ── Toast ──────────────────────────────────────────────────────────── */}
       {toast && (
-        <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "var(--oxford)", color: "#fff", padding: "10px 20px", borderRadius: 10, fontSize: 13, fontWeight: 600, zIndex: 90, boxShadow: "var(--shadow-lg)" }}>
-          {toast}
-        </div>
+        <div className="fx-toast" style={{ background: "var(--oxford)" }}>{toast}</div>
       )}
     </div>
   );
@@ -791,14 +842,17 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
       {/* Pasiyent kartı */}
       <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
         <div className="opd-card__title">{t("staff.opDetPatientCard")}</div>
-        <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#1E293B" }}>{a.patientName ?? "—"}</div>
-          <div style={{ fontSize: 12, color: "#94A3B8", marginTop: 2 }}>
-            {a.patientId ? t("staff.opDetRegistered") : t("staff.opDetAnonymous")}{h?.blocked ? " · Bloklanıb" : ""}
+        <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0 }}>
+          <span className="fx-avatar fx-avatar--1" aria-hidden>{(a.patientName ?? "?").trim().charAt(0).toUpperCase()}</span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", overflow: "hidden", textOverflow: "ellipsis" }}>{a.patientName ?? "—"}</div>
+            <div className="fx-muted" style={{ fontSize: 12, marginTop: 2 }}>
+              {a.patientId ? t("staff.opDetRegistered") : t("staff.opDetAnonymous")}{h?.blocked ? " · Bloklanıb" : ""}
+            </div>
           </div>
         </div>
         {a.patientPhone && (
-          <div style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 12.5, color: "#5C6B85" }}>{a.patientPhone}</div>
+          <div className="fx-num" style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{a.patientPhone}</div>
         )}
         {(phone || a.patientEmail) && (
           <div style={{ display: "flex", gap: 8 }}>
@@ -832,6 +886,13 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
         </div>
         {a.startAt && <div className="opd-kv"><span className="opd-kv__k">Təyin edilmiş vaxt</span><span className="opd-kv__v">{fmtDateTime(a.startAt)}</span></div>}
         <div className="opd-kv"><span className="opd-kv__k">Yaradılıb</span><span className="opd-kv__v">{fmtDateTime(a.createdAt)}</span></div>
+        {/* Müraciət mətni — kontekstdir, əməliyyat deyil: xülasənin altında. */}
+        {a.note && (
+          <div style={{ marginTop: 2, paddingTop: 10, borderTop: "1px solid var(--hairline)", display: "flex", gap: 9, alignItems: "flex-start" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--oxford-60)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 2 }} aria-hidden><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+            <span style={{ fontSize: 12.5, color: "var(--oxford-80)", lineHeight: 1.5, overflowWrap: "anywhere" }}>«{a.note}»</span>
+          </div>
+        )}
       </div>
 
       {/* Bu müştərinin digər seansları — cross-appointment kontekst (Son fəaliyyət
@@ -846,15 +907,15 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
               // İki sətir: başlıq (Seans/Tanışlıq · psixoloq — tam eni, sığmasa "…")
               // + altında boz "tarix · status". Bir sətirdə hamısı sığmır, kəsilirdi.
               const when = r.startAt ?? r.createdAt;
-              const statusColor = r.status === "COMPLETED" ? "#15803D"
-                : (r.status === "CANCELLED" || r.status === "REJECTED") ? "#B91C1C" : "#94A3B8";
+              const statusColor = r.status === "COMPLETED" ? "var(--sage)"
+                : (r.status === "CANCELLED" || r.status === "REJECTED") ? "var(--rose)" : "var(--oxford-60)";
               return (
                 <Link key={r.id} href={`/operator/appointments/${r.id}${suffix}`}
-                  style={{ display: "block", padding: "8px 0", borderBottom: i === arr.length - 1 ? "none" : "1px solid #F1F5F9", textDecoration: "none" }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  style={{ display: "block", padding: "8px 0", borderBottom: i === arr.length - 1 ? "none" : "1px solid var(--hairline)", textDecoration: "none" }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {r.sessionKind === "INTRO" ? "Tanışlıq" : "Seans"}{r.psychologistName ? ` · ${r.psychologistName}` : ""}
                   </div>
-                  <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 3 }}>
+                  <div className="fx-muted" style={{ fontSize: 11, marginTop: 3 }}>
                     {when ? azFormatDate(when) : "—"} · <span style={{ color: statusColor, fontWeight: 600 }}>{statusLabel(r.status)}</span>
                   </div>
                 </Link>
@@ -867,7 +928,7 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
       {/* Kurs konteksti */}
       {a.seriesId != null && full.seriesSiblings.length > 0 && (
         <div className="opd-card" style={{ padding: 16 }}>
-          <div className="op-det-card__title">
+          <div className="opd-card__title" style={{ display: "block", marginBottom: 10 }}>
             {t("staff.opDetGroupContext")} · {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal ?? full.seriesSiblings.length })}
           </div>
           <div style={{ display: "grid", gap: 4 }}>
@@ -912,7 +973,8 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
       {/* Son fəaliyyət — insaniləşdirilmiş lent (rəngli nöqtə + nisbi vaxt) */}
       {full.activity.length > 0 && (
         <div className="opd-card" style={{ padding: 16 }}>
-          <div className="opd-card__title" style={{ marginBottom: 12 }}>Son fəaliyyət</div>
+          <div className="opd-card__title" style={{ display: "block", marginBottom: 12 }}>Son fəaliyyət</div>
+          <div className="fx-timeline">
           {full.activity.slice(0, 6).map((item, i, arr) => {
             // Görüş linki hadisələri: xam link ("meetingLink=https://…") ekranı daşırırdı.
             // İndi "Link təyin edildi" kimi göstərilir; link varsa mavi + klikləyəndə kopyalanır.
@@ -927,27 +989,28 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
                 .catch(() => globalToast("Kopyalamaq alınmadı", "error"));
             };
             return (
-              <div key={i} style={{ display: "flex", gap: 10, paddingBottom: i === arr.length - 1 ? 0 : 14 }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: activityDotColor(item), flex: "none", marginTop: 4 }} />
-                  {i !== arr.length - 1 && <div style={{ width: 1, flex: 1, background: "#E2E8F5", marginTop: 2 }} />}
+              <div key={i} className="fx-tl-item">
+                <div className="fx-tl-rail">
+                  <span className={`fx-tl-dot ${activityDotClass(item)}`} />
+                  {i !== arr.length - 1 && <span className="fx-tl-line" />}
                 </div>
-                <div style={{ minWidth: 0 }}>
+                <div className="fx-tl-body" style={{ paddingBottom: i === arr.length - 1 ? 0 : 14, minWidth: 0 }}>
                   {copyLink ? (
                     <div onClick={doCopy} role="button" tabIndex={0}
                       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); doCopy(); } }}
                       title="Klikləyin — link kopyalanır"
-                      style={{ fontSize: 12.5, color: "#2563EB", fontWeight: 600, lineHeight: 1.4, cursor: "pointer" }}>
+                      className="fx-tl-title" style={{ fontSize: 12.5, color: "var(--brand)", cursor: "pointer" }}>
                       {activityLabel(item)}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 12.5, color: "#1E293B", lineHeight: 1.4, overflowWrap: "anywhere" }}>{activityLabel(item)}</div>
+                    <div className="fx-tl-title" style={{ fontSize: 12.5, fontWeight: 500, color: "var(--oxford)", overflowWrap: "anywhere" }}>{activityLabel(item)}</div>
                   )}
-                  <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 2 }} title={azFormatDateTime(item.createdAt)}>{azFromNow(item.createdAt, nowMs)}</div>
+                  <div className="fx-tl-meta" style={{ fontSize: 11 }} title={azFormatDateTime(item.createdAt)}>{azFromNow(item.createdAt, nowMs)}</div>
                 </div>
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
@@ -994,27 +1057,27 @@ function activityLabel(item: OperatorActivityItem): string {
     default: return item.action ?? "Yeniləndi";
   }
 }
-/** Fəaliyyət növü → nöqtə rəngi (dizaynın lent nöqtələri). */
-function activityDotColor(item: OperatorActivityItem): string {
+/** Fəaliyyət növü → fx-timeline nöqtə variantı (dizayn sistemi sinifləri). */
+function activityDotClass(item: OperatorActivityItem): string {
   const raw = (item.text ?? "").toLowerCase();
-  if (item.kind === "CREATED") return "#94A3B8";
-  if (/təklif|proposed/.test(raw)) return "#D97706";
-  if (/təsdiq|confirm|qəbul|accepted/.test(raw)) return "#16A34A";
-  if (/ləğv|cancel|rədd|reject|no-show|gəlmə/.test(raw)) return "#DC2626";
-  if (/təyin|assign|vaxt|link|ödəniş|məbləğ/.test(raw)) return "#2563EB";
-  return "#94A3B8";
+  if (item.kind === "CREATED") return "fx-tl-dot--muted";
+  if (/təklif|proposed/.test(raw)) return "fx-tl-dot--amber";
+  if (/təsdiq|confirm|qəbul|accepted/.test(raw)) return "fx-tl-dot--sage";
+  if (/ləğv|cancel|rədd|reject|no-show|gəlmə/.test(raw)) return "fx-tl-dot--rose";
+  if (/təyin|assign|vaxt|link|ödəniş|məbləğ/.test(raw)) return "fx-tl-dot--brand";
+  return "fx-tl-dot--muted";
 }
 
 // "Digər əməliyyatlar" açarları + sakit sətir/modal meta məlumatı.
 type OtherActionKey = "dispute" | "cancelreq" | "noshow" | "cancel";
 const OTHER_ACTION_META: Record<OtherActionKey, {
-  label: string; border: string; fg: string;
-  title: string; sub: string; badge: { label: string; bg: string; color: string };
+  label: string; btnClass: string;
+  title: string; sub: string; badge: { label: string; pillClass: string };
 }> = {
-  dispute:   { label: "Mübahisəni həll et", border: "#FDE68A", fg: "#B45309", title: "Mübahisəni həll et", sub: "Seans baş tutdumu? Nəticəni qeyd edin.", badge: { label: "Mübahisəli", bg: "#FFFBEB", color: "#B45309" } },
-  cancelreq: { label: "Ləğv tələbi",         border: "#FDE68A", fg: "#B45309", title: "Ləğv tələbi",         sub: "Pasiyentin ləğv tələbini emal edin.",  badge: { label: "Gözlənilir", bg: "#FEF3C7", color: "#92400E" } },
-  noshow:    { label: "No-show",             border: "#E2E8F5", fg: "#5C6B85", title: "No-show işarələ",     sub: "Seansa kim gəlmədi?",                  badge: { label: "No-show",    bg: "#F1F5F9", color: "#475569" } },
-  cancel:    { label: "Seansı ləğv et",      border: "#FCA5A5", fg: "#DC2626", title: "Seansı ləğv et",      sub: "Bu seansı bağlayın.",                  badge: { label: "Ləğv",       bg: "#FEE2E2", color: "#991B1B" } },
+  dispute:   { label: "Mübahisəni həll et", btnClass: "fx-btn--warn-ghost",   title: "Mübahisəni həll et", sub: "Seans baş tutdumu? Nəticəni qeyd edin.", badge: { label: "Mübahisəli", pillClass: "fx-pill--pending" } },
+  cancelreq: { label: "Ləğv tələbi",        btnClass: "fx-btn--warn-ghost",   title: "Ləğv tələbi",        sub: "Pasiyentin ləğv tələbini emal edin.",    badge: { label: "Gözlənilir", pillClass: "fx-pill--pending" } },
+  noshow:    { label: "No-show",            btnClass: "fx-btn--ghost",        title: "No-show işarələ",    sub: "Seansa kim gəlmədi?",                    badge: { label: "No-show",    pillClass: "fx-pill--cancelled" } },
+  cancel:    { label: "Seansı ləğv et",     btnClass: "fx-btn--danger-ghost", title: "Seansı ləğv et",     sub: "Bu seansı bağlayın.",                    badge: { label: "Ləğv",       pillClass: "fx-pill--refunded" } },
 };
 
 /* ─── Mərkəz: təyinat bloku (köhnə AssignModal-ın səhifə bloku) ────────────── */
@@ -1024,7 +1087,7 @@ const OTHER_ACTION_META: Record<OtherActionKey, {
 function ModalShell({ title, sub, badge, onClose, footer, maxWidth = 480, children }: {
   title: string;
   sub?: string;
-  badge?: { label: string; bg: string; color: string };
+  badge?: { label: string; pillClass: string };
   onClose: () => void;
   footer?: React.ReactNode;
   maxWidth?: number;
@@ -1043,11 +1106,11 @@ function ModalShell({ title, sub, badge, onClose, footer, maxWidth = 480, childr
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
               <span className="fx-h3">{title}</span>
-              {badge && <span className="fx-pill" style={{ background: badge.bg, color: badge.color }}>{badge.label}</span>}
+              {badge && <span className={`fx-pill ${badge.pillClass}`}>{badge.label}</span>}
             </div>
             {sub && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3 }}>{sub}</div>}
           </div>
-          <button onClick={onClose} aria-label="Bağla" style={{ width: 30, height: 30, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)", border: "none", borderRadius: 8, cursor: "pointer", flex: "none", color: "var(--oxford-60)" }}>
+          <button onClick={onClose} aria-label="Bağla" className="fx-iconbtn" style={{ flex: "none" }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>
@@ -1119,6 +1182,9 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   }, [psyId, appointment.id]);
 
   const maxSlots = allowance?.maxSlots ?? 1;
+  // Seans məbləği bir dəfə təyin olunandan sonra kilidlənir — yenidən təyinatda da
+  // dəyişdirilə bilməz (mövcud ödənişin üzərinə yazılmasın).
+  const priceLocked = (appointment.paymentAmount ?? 0) > 0;
 
   // Mövcud təyin olunmuş vaxtı (startAt) — varsa — və ya müştərinin istədiyi vaxtı avtomatik göstər.
   // Təyin edilmiş randevuda startAt artıq booked-dur → açıq slotlarda görünmür → manual sahə ilə əks olunur,
@@ -1209,7 +1275,9 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
       const updated = await operatorApi.assignSlots(appointment.id, {
         psychologistId: psyId, slots: payloadSlots, operatorNote: note || null,
         // Tək (paketsiz) seans üçün opsional qiymət override-i; paketdə göndərilmir.
-        sessionPrice: (!allowance?.packageName && singlePrice.trim()) ? Number(singlePrice) : null,
+        // Məbləğ bir dəfə təyin olunubsa yenidən göndərilmir — mövcud ödənişin
+        // üzərinə yazılmasın (yenidən təyin edərkən də dəyişməz qalır).
+        sessionPrice: (!priceLocked && !allowance?.packageName && singlePrice.trim()) ? Number(singlePrice) : null,
         allowOutsideSchedule,
       });
       const primary = updated.find(u => u.id === appointment.id) ?? updated[0];
@@ -1267,11 +1335,11 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
   const atCap = maxSlots > 1 && pickedSlots.length >= maxSlots;
   const slotComplete = maxSlots === 1 ? timeN === 1 : timeN === maxSlots;
 
-  const modalPrimary: React.CSSProperties = { width: "100%", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 11, padding: 13, fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" };
+  const modalPrimary: React.CSSProperties = { width: "100%" };
 
   return (
     <div className={cold ? "opd-card op-det-card--cold" : "opd-card"} style={{ padding: 18 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 9, marginBottom: 14, flexWrap: "wrap" }}>
         <span className="opd-card__title">
           {(appointment.status === "CONFIRMED" || appointment.status === "ASSIGNED") ? "Təyin / yenidən planla" : t("staff.opDetAssignBlock")}
         </span>
@@ -1280,37 +1348,38 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
           : <span className="fx-pill fx-pill--pending">Tamamlanmamış</span>}
       </div>
 
-      {/* özət sətirlər */}
+      {/* Pasiyentin ilkin istəyi — təyinat seçimləri üçün istinad. */}
+      {!ready && appointment.requestedStartAt && (
+        <div className="fx-info" style={{ marginBottom: 12, fontWeight: 600 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z" /></svg>
+          Pasiyentin istəyi: {appointment.requestedPsychologistName ?? appointment.psychologistName ?? "—"} · {fmtDateTime(appointment.requestedStartAt)}
+        </div>
+      )}
+
+      {/* özət sətirlər — psixoloq + vaxt seçimi */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 13 }}>
         <div className="opd-row">
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, color: "#5C6B85" }}>Psixoloq</div>
+            <div style={{ fontSize: 11, color: "var(--oxford-60)" }}>Psixoloq</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 2 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: psyId ? "#1E293B" : "#94A3B8" }}>{psychName}</span>
-              {psychScore && <span className="fx-pill fx-num" style={{ background: "var(--sage-bg)", color: "var(--sage)" }}>{psychScore}</span>}
+              <span style={{ fontSize: 14, fontWeight: 700, color: psyId ? "var(--oxford)" : "var(--oxford-60)" }}>{psychName}</span>
+              {psychScore && <span className="fx-num" style={{ fontSize: 12, fontWeight: 600, color: "var(--sage)" }}>{psychScore}</span>}
             </div>
           </div>
-          <button ref={selectRef} type="button" onClick={() => setPsychModalOpen(true)} className="opd-ghost-btn">
+          <button ref={selectRef} type="button" onClick={() => setPsychModalOpen(true)} className="fx-btn fx-btn--ghost fx-btn--sm">
             {psyId ? "Dəyiş" : "Seç"}
           </button>
         </div>
         <div className="opd-row">
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, color: "#5C6B85" }}>Vaxt</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: timeN ? "#1E293B" : "#94A3B8", marginTop: 2, fontFamily: timeN ? "'JetBrains Mono', ui-monospace, monospace" : "inherit" }}>{timeSummary}</div>
+            <div style={{ fontSize: 11, color: "var(--oxford-60)" }}>Vaxt</div>
+            <div className={timeN ? "fx-num" : undefined} style={{ fontSize: 14, fontWeight: 700, color: timeN ? "var(--oxford)" : "var(--oxford-60)", marginTop: 2 }}>{timeSummary}</div>
           </div>
-          <button type="button" onClick={() => { if (!psyId) { setPsychModalOpen(true); return; } setTimeModalOpen(true); }} className="opd-ghost-btn">
+          <button type="button" onClick={() => { if (!psyId) { setPsychModalOpen(true); return; } setTimeModalOpen(true); }} className="fx-btn fx-btn--ghost fx-btn--sm">
             {timeN ? "Dəyiş" : "Seç"}
           </button>
         </div>
       </div>
-
-      {!ready && appointment.requestedStartAt && (
-        <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 10, padding: "9px 13px", marginBottom: 15, fontSize: 12, fontWeight: 600, color: "var(--brand-700)" }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7.4-6.3-4.6L5.7 21 8 14 2 9.4h7.6z" /></svg>
-          Pasiyentin istəyi: {appointment.requestedPsychologistName ?? appointment.psychologistName ?? "—"} · {fmtDateTime(appointment.requestedStartAt)}
-        </div>
-      )}
 
       {(() => {
         if (appointment.sessionKind === "INTRO") return null; // pulsuz tanışlıq — 15 dəq sabitdir, psixoloqun standartı ilə müqayisə olunmur
@@ -1325,16 +1394,24 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
         );
       })()}
 
-      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", margin: "6px 0 6px" }}>Operator qeydi</div>
-      <textarea className="fx-textarea" value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Təyinat haqqında daxili qeyd…"
-        style={{ marginBottom: 15 }} />
+      <label className="fx-field" style={{ marginBottom: 15 }}>
+        <span className="fx-label">Operator qeydi</span>
+        <textarea className="fx-textarea" value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="Təyinat haqqında daxili qeyd…" />
+      </label>
 
-      {!allowance?.packageName && (
-        <div style={{ marginBottom: 15 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 6 }}>
-            Seans məbləği (₼)
-            <span style={{ color: "var(--oxford-60)", fontWeight: 400 }}> — boş qalarsa ödəniş yaranmır</span>
+      {!allowance?.packageName && priceLocked && (
+        <div className="fx-field" style={{ marginBottom: 15 }}>
+          <span className="fx-label">Seans məbləği (₼)</span>
+          <div className="fx-num" style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
+            {appointment.paymentAmount} ₼
           </div>
+          <span className="fx-help">Məbləğ təyin olunub və yenidən təyin edilə bilməz — yenidən təyinatda dəyişməz qalır.</span>
+        </div>
+      )}
+
+      {!allowance?.packageName && !priceLocked && (
+        <label className="fx-field" style={{ marginBottom: 15 }}>
+          <span className="fx-label">Seans məbləği (₼)</span>
           <input
             className="fx-input fx-num"
             type="number"
@@ -1344,26 +1421,28 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
             onChange={e => setSinglePrice(e.target.value)}
             placeholder={selectedPsy?.individualPrice != null ? String(selectedPsy.individualPrice) : "məs. 80"}
           />
-        </div>
+          <span className="fx-help">Boş qalarsa ödəniş yaranmır — psixoloqun standart tək seans qiyməti tətbiq olunur. PENDING ödəniş «Ödənişlər → Gözləyir»də görünür.</span>
+        </label>
       )}
 
       {/* İş-qrafiki xəbərdarlığı — bloklamır. Operator psixoloqla əlaqə saxlayıb
           "Yenə də təyin et" ilə qrafikdən kənar vaxtı təsdiqləyə bilər. */}
       {scheduleWarn && (
-        <div className="fx-alert" style={{ alignItems: "flex-start", marginBottom: 12, fontSize: 12.5, fontWeight: 600, color: "var(--status-pending-fg)" }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
-          <div>
-            {scheduleWarn}
-            <div style={{ fontWeight: 500, marginTop: 4, opacity: 0.9 }}>
-              Psixoloqla əlaqə saxlayıb yenə də təsdiqləyə bilərsiniz.
+        <div className="fx-alert" style={{ alignItems: "flex-start", marginBottom: 12 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+          <div style={{ minWidth: 0 }}>
+            <div className="fx-alert__title">{scheduleWarn}</div>
+            <div className="fx-alert__text" style={{ marginTop: 3 }}>
+              Psixoloqla əlaqə saxlayıb «Yenə də təyin et» ilə qrafikdən kənar vaxtı təsdiqləyə bilərsiniz.
             </div>
           </div>
         </div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 14, marginTop: 4, paddingTop: 14, borderTop: "1px solid #EDF1F8" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 14, marginTop: 4, paddingTop: 14, borderTop: "1px solid var(--hairline)" }}>
         <button onClick={() => guardAction(() => doSubmit(!!scheduleWarn))} disabled={saving || !ready}
-          style={{ background: (saving || !ready) ? "#A9BEE2" : scheduleWarn ? "#D97706" : "#2563EB", color: "#fff", border: "none", borderRadius: 9, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: (saving || !ready) ? "not-allowed" : "pointer" }}>
+          className={`fx-btn ${scheduleWarn ? "fx-btn--warn-ghost" : "fx-btn--primary"}`}
+          style={{ opacity: (saving || !ready) ? 0.55 : 1, cursor: (saving || !ready) ? "not-allowed" : "pointer" }}>
           {saving ? "Saxlanılır…"
             : scheduleWarn ? "Yenə də təyin et"
             : pickedSlots.length > 1 ? `${pickedSlots.length} seans təyin et`
@@ -1374,7 +1453,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
       {/* PSİXOLOQ MODALI */}
       {psychModalOpen && (
         <ModalShell title="Psixoloq seç" sub="Tövsiyədən seçin və ya siyahıdan tapın." onClose={() => setPsychModalOpen(false)}
-          footer={<button onClick={() => setPsychModalOpen(false)} style={modalPrimary}>{psyId ? "Hazırdır" : "Bağla"}</button>}>
+          footer={<button onClick={() => setPsychModalOpen(false)} className="fx-btn fx-btn--primary" style={modalPrimary}>{psyId ? "Hazırdır" : "Bağla"}</button>}>
           {suggestions.length > 0 && (
             <div style={{ background: "var(--sage-bg)", border: "1px solid rgba(74,155,127,.35)", borderRadius: 12, padding: 13, marginBottom: 15 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--sage)", marginBottom: 11 }}>
@@ -1420,15 +1499,15 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
       {/* VAXT MODALI */}
       {timeModalOpen && (
         <ModalShell title="Vaxt seç" sub="Açıq slotlardan seçin və ya əl ilə daxil edin." maxWidth={500} onClose={() => setTimeModalOpen(false)}
-          footer={<button onClick={() => setTimeModalOpen(false)} style={modalPrimary}>{slotComplete ? "Hazırdır" : "Bağla"}</button>}>
+          footer={<button onClick={() => setTimeModalOpen(false)} className="fx-btn fx-btn--primary" style={modalPrimary}>{slotComplete ? "Hazırdır" : "Bağla"}</button>}>
           {!psyId ? (
             <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 500 }}>Əvvəlcə psixoloq seçin.</div>
           ) : (
             <>
               {desiredStart && (
-                <div style={{ display: "flex", gap: 9, alignItems: "center", background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 10, padding: "10px 13px", marginBottom: 11 }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--brand-700)" }}>
+                <div className="fx-info" style={{ marginBottom: 11 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                  <span style={{ fontWeight: 600 }}>
                     {proposedStart
                       ? `${proposedInitiator === "PSYCHOLOGIST" ? "Psixoloqun təklif etdiyi vaxt"
                           : proposedInitiator === "PATIENT" ? "Pasiyentin təklif etdiyi vaxt"
@@ -1459,18 +1538,18 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                 {maxSlots === 1 ? "Tək seans — yalnız 1 vaxt seçin" : `${timeN}/${maxSlots} seçildi`}
               </div>
 
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#8AAABF", marginBottom: 11 }}>Açıq vaxtlar</div>
+              <div className="fx-section-label" style={{ marginBottom: 11 }}>Açıq vaxtlar</div>
               {loadingSlots ? (
                 <div style={{ fontSize: 12, color: "var(--oxford-60)", marginBottom: 12 }}>Yüklənir…</div>
               ) : groupedSlots.length === 0 ? (
-                <div style={{ background: "#FEF3C7", border: "1px solid #FCE7A8", borderRadius: 10, padding: 11, fontSize: 12, color: "#92400E", marginBottom: 12 }}>
+                <div className="fx-banner fx-banner--warn" style={{ marginBottom: 12 }}>
                   Açıq slot yoxdur. Aşağıda əl ilə vaxt yazın.
                 </div>
               ) : (
                 <div style={{ display: "grid", gap: 13, marginBottom: 13 }}>
                   {groupedSlots.map(([day, daySlots]) => (
                     <div key={day}>
-                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", color: "#8AAABF", marginBottom: 8, textTransform: "uppercase" }}>{day}</div>
+                      <div className="fx-section-label" style={{ marginBottom: 8 }}>{day}</div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                         {daySlots.map(s => {
                           const slotMs = new Date(s.startAt).getTime();
@@ -1484,15 +1563,15 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                               disabled={disabled}
                               onClick={disabled ? undefined : () => toggleSlot(s.startAt)}
                               style={{ position: "relative", padding: "9px 15px", borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.55 : 1, fontFamily: "inherit",
-                                border: active ? "1.5px solid var(--brand)" : disabled ? "1.5px solid #E5E7EB" : isRequested ? "1.5px solid #047857" : "1.5px solid #D6E2F7",
-                                background: active ? "#E4ECFA" : disabled ? "#F3F4F6" : isRequested ? "#ECFDF5" : "#fff",
-                                color: active ? "#082F6D" : disabled ? "#C0C9D6" : isRequested ? "#047857" : "var(--oxford)" }}>
-                              {azFormatTime(s.startAt)} – {azFormatTime(s.endAt)}
+                                border: active ? "1.5px solid var(--brand)" : disabled ? "1.5px solid var(--hairline)" : isRequested ? "1.5px solid var(--sage)" : "1.5px solid var(--brand-200)",
+                                background: active ? "var(--brand-100)" : disabled ? "var(--status-cancelled-bg)" : isRequested ? "var(--sage-bg)" : "var(--surface)",
+                                color: active ? "var(--brand-700)" : disabled ? "var(--oxford-20)" : isRequested ? "var(--sage)" : "var(--oxford)" }}>
+                              <span className="fx-num">{azFormatTime(s.startAt)} – {azFormatTime(s.endAt)}</span>
                               {maxSlots > 1 && active && (
                                 <span style={{ position: "absolute", top: -7, right: -7, width: 18, height: 18, background: "var(--brand)", color: "#fff", border: "2px solid #fff", borderRadius: "50%", fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{order}</span>
                               )}
                               {isRequested && !active && (
-                                <span style={{ position: "absolute", top: -5, right: -5, width: 9, height: 9, background: "#047857", border: "2px solid #fff", borderRadius: "50%" }} />
+                                <span style={{ position: "absolute", top: -5, right: -5, width: 9, height: 9, background: "var(--sage)", border: "2px solid var(--surface)", borderRadius: "50%" }} />
                               )}
                             </button>
                           );
@@ -1508,17 +1587,17 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: (manualOpen || !!manualStart) ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .2s" }}><path d="M6 9l6 6 6-6" /></svg>
               </button>
               {(manualOpen || !!manualStart) && (
-                <div style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 11, padding: 13, marginBottom: 14 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <div style={{ background: "var(--surface-muted)", border: "1px solid var(--hairline)", borderRadius: 11, padding: 13, marginBottom: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 }}>
                     <label style={{ display: "block" }}>
-                      <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 5 }}>Başlama vaxtı</span>
+                      <span className="fx-label" style={{ display: "block", marginBottom: 5 }}>Başlama vaxtı</span>
                       {/* Vaxt dəyişdi → köhnə qrafik xəbərdarlığı keçərsizdir (toggleSlot /
                           selectPsy ilə eyni davranış). Əks halda düymə "Yenə də təyin et"
                           qalıb artıq düzəldilmiş vaxtı da məcburi göndərirdi. */}
                       <DatePicker withTime theme="light" size="sm" value={manualStart} onChange={v => { setManualStart(v); setPickedSlots([]); setScheduleWarn(null); }} style={{ width: "100%" }} />
                     </label>
                     <label style={{ display: "block" }}>
-                      <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 5 }}>Bitmə vaxtı</span>
+                      <span className="fx-label" style={{ display: "block", marginBottom: 5 }}>Bitmə vaxtı</span>
                       <DatePicker withTime theme="light" size="sm" value={manualEnd} onChange={v => { setManualEnd(v); setPickedSlots([]); setScheduleWarn(null); }} style={{ width: "100%" }} />
                     </label>
                   </div>
@@ -1526,35 +1605,20 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
               )}
 
               {chosenSlots.length === 0 ? (
-                <div style={{ fontSize: 12.5, color: "#9DB0CC", fontWeight: 500, background: "#F8FAFD", border: "1px dashed #D6E2F7", borderRadius: 10, padding: "11px 13px" }}>
+                <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, background: "var(--surface-muted)", border: "1px dashed var(--brand-200)", borderRadius: 10, padding: "11px 13px" }}>
                   Vaxt seçilməyib — yuxarıdan slot seçin və ya əl ilə tarix daxil edin.
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {chosenSlots.map((c, i) => (
-                    <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 10, background: "#E4ECFA", border: "1px solid #C7DBF6", borderRadius: 10, padding: "9px 12px" }}>
-                      <span style={{ width: 22, height: 22, borderRadius: 6, background: "var(--brand)", color: "#fff", fontSize: 12, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{i + 1}</span>
-                      <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: "var(--brand-700)" }}>{c.label}</span>
-                      <button type="button" onClick={c.onRemove} title="Sil" style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "#991B1B", border: "1px solid #F3D6D6", borderRadius: 8, cursor: "pointer", flex: "none" }}>
+                    <div key={c.key} style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--brand-100)", border: "1px solid var(--brand-200)", borderRadius: 10, padding: "9px 12px" }}>
+                      <span className="fx-num" style={{ width: 22, height: 22, borderRadius: 6, background: "var(--brand)", color: "#fff", fontSize: 12, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{i + 1}</span>
+                      <span className="fx-num" style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, color: "var(--brand-700)" }}>{c.label}</span>
+                      <button type="button" onClick={c.onRemove} title="Sil" aria-label="Sil" style={{ width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "var(--surface)", color: "var(--rose)", border: "1px solid rgba(201,125,125,.4)", borderRadius: 8, cursor: "pointer", flex: "none" }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
                       </button>
                     </div>
                   ))}
-                </div>
-              )}
-
-              {/* Tək (paketsiz) seans → opsional qiymət; ödəniş "Ödənişlər → Gözləyir"də yaranır. */}
-              {!allowance?.packageName && (
-                <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #EDF1F8" }}>
-                  <label style={{ display: "block" }}>
-                    <span style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "#8AAABF", marginBottom: 8 }}>Seans qiyməti (₼)</span>
-                    <input type="number" min={0} step="0.01" value={singlePrice} onChange={e => setSinglePrice(e.target.value)}
-                      placeholder="Psixoloqun standart qiyməti"
-                      style={{ width: "100%", padding: "10px 12px", borderRadius: 9, border: "1px solid #D6E2F7", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" }} />
-                  </label>
-                  <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 6, lineHeight: 1.5 }}>
-                    Boş buraxsan psixoloqun standart tək seans qiyməti tətbiq olunur. PENDING ödəniş «Ödənişlər → Gözləyir»də yaranır.
-                  </div>
                 </div>
               )}
             </>
@@ -1589,69 +1653,48 @@ function ResolveDisputeBlock({ appointment, guardAction, onDone }: {
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-        <button type="button" onClick={() => setDecision("COMPLETE")}
-          style={{
-            padding: 10, borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: "pointer", textAlign: "left",
-            border: decision === "COMPLETE" ? "2px solid #10B981" : "1px solid #E5E7EB",
-            background: decision === "COMPLETE" ? "#D1FAE5" : "#fff",
-            color: decision === "COMPLETE" ? "#065F46" : "#1A2535",
-          }}>
-          <div style={{ fontWeight: 700 }}>Tamamlanmış say</div>
-          <div style={{ fontSize: 10.5, opacity: 0.85, marginTop: 2 }}>Seans baş tutdu</div>
-        </button>
-        <button type="button" onClick={() => setDecision("CANCEL")}
-          style={{
-            padding: 10, borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: "pointer", textAlign: "left",
-            border: decision === "CANCEL" ? "2px solid #DC2626" : "1px solid #E5E7EB",
-            background: decision === "CANCEL" ? "#FEE2E2" : "#fff",
-            color: decision === "CANCEL" ? "#991B1B" : "#1A2535",
-          }}>
-          <div style={{ fontWeight: 700 }}>Ləğv et</div>
-          <div style={{ fontSize: 10.5, opacity: 0.85, marginTop: 2 }}>Seans baş tutmadı</div>
-        </button>
+      <div className="fx-field" style={{ marginBottom: 12 }}>
+        <span className="fx-label">Nəticə</span>
+        <div className="fx-segmented" style={{ display: "flex", width: "100%" }}>
+          <button type="button" onClick={() => setDecision("COMPLETE")} style={{ flex: 1 }}
+            className={decision === "COMPLETE" ? "fx-seg--active" : undefined}>Tamamlanmış say</button>
+          <button type="button" onClick={() => setDecision("CANCEL")} style={{ flex: 1 }}
+            className={decision === "CANCEL" ? "fx-seg--active" : undefined}>Ləğv et</button>
+        </div>
+        <span className="fx-help">{decision === "COMPLETE" ? "Seans baş tutdu." : "Seans baş tutmadı."}</span>
       </div>
 
       {decision === "CANCEL" && (
-        <>
-          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
-            Kim "no-show" sayğacına işlənsin?
-          </label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 12 }}>
+        <div className="fx-field" style={{ marginBottom: 12 }}>
+          <span className="fx-label">Kim «no-show» sayğacına işlənsin?</span>
+          <div className="fx-segmented" style={{ display: "flex", width: "100%" }}>
             {([
-              { v: "NONE", label: "Heç kim", sub: "Texniki" },
-              { v: "PATIENT", label: "Pasient", sub: "Gəlmədi" },
-              { v: "PSYCHOLOGIST", label: "Psixoloq", sub: "Gəlmədi" },
+              { v: "NONE", label: "Heç kim" },
+              { v: "PATIENT", label: "Pasient" },
+              { v: "PSYCHOLOGIST", label: "Psixoloq" },
             ] as const).map(o => (
-              <button key={o.v} type="button" onClick={() => setBlameSide(o.v)}
-                style={{
-                  padding: 8, borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "left",
-                  border: blameSide === o.v ? "2px solid var(--brand)" : "1px solid #E5E7EB",
-                  background: blameSide === o.v ? "var(--brand-50)" : "#fff",
-                  color: blameSide === o.v ? "var(--brand-700)" : "#1A2535",
-                }}>
-                <div style={{ fontWeight: 700 }}>{o.label}</div>
-                <div style={{ fontSize: 10, opacity: 0.85 }}>{o.sub}</div>
+              <button key={o.v} type="button" onClick={() => setBlameSide(o.v)} style={{ flex: 1 }}
+                className={blameSide === o.v ? "fx-seg--active" : undefined}>
+                {o.label}
               </button>
             ))}
           </div>
-        </>
+          <span className="fx-help">«Heç kim» = texniki səbəb; digərləri seçilən tərəfin no-show sayğacını artırır.</span>
+        </div>
       )}
 
-      <textarea rows={2} value={note} onChange={e => setNote(e.target.value)}
-        placeholder="Operator qeydi (məcburi deyil)"
-        style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, fontFamily: "inherit", marginBottom: 10, boxSizing: "border-box" }} />
+      <label className="fx-field" style={{ marginBottom: 14 }}>
+        <span className="fx-label">Operator qeydi (məcburi deyil)</span>
+        <textarea className="fx-textarea" rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Qısa izah…" />
+      </label>
 
-      <button onClick={() => guardAction(doSubmit)} disabled={saving}
-        style={{
-          width: "100%", padding: 12, borderRadius: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit",
-          background: decision === "COMPLETE" ? "#ECFDF5" : "#FEE2E2",
-          color: decision === "COMPLETE" ? "#047857" : "#991B1B",
-          border: decision === "COMPLETE" ? "1.5px solid #A7D8BC" : "1.5px solid #F3D6D6",
-          cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1,
-        }}>
-        {saving ? "Göndərilir…" : decision === "COMPLETE" ? "Tamamlanmış say" : "Ləğv et"}
-      </button>
+      <div className="fx-modal__actions" style={{ marginTop: 0 }}>
+        <button onClick={() => guardAction(doSubmit)} disabled={saving}
+          className={`fx-btn ${decision === "COMPLETE" ? "fx-btn--primary" : "fx-btn--danger"}`}
+          style={{ opacity: saving ? 0.7 : 1, cursor: saving ? "wait" : "pointer" }}>
+          {saving ? "Göndərilir…" : decision === "COMPLETE" ? "Tamamlanmış say" : "Ləğv et"}
+        </button>
+      </div>
     </>
   );
 }
@@ -1678,39 +1721,34 @@ function NoShowBlock({ appointment, guardAction, onDone }: {
 
   return (
     <>
-      <p style={{ fontSize: 12, color: "#52718F", margin: "0 0 10px" }}>
+      <p className="fx-modal__text" style={{ margin: "0 0 12px" }}>
         Seans avtomatik tamamlandı, amma əslində baş tutmayıbsa, buradan no-show kimi işarələyin —
         seçilən tərəfin no-show sayğacı artacaq.
       </p>
-      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
-        Kim gəlmədi?
-      </label>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 12 }}>
-        {([
-          { v: "PATIENT", label: "Pasient" },
-          { v: "PSYCHOLOGIST", label: "Psixoloq" },
-        ] as const).map(o => (
-          <button key={o.v} type="button" onClick={() => setBlameSide(o.v)}
-            style={{
-              padding: 10, borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: "pointer", textAlign: "left",
-              border: blameSide === o.v ? "2px solid var(--brand)" : "1px solid #E5E7EB",
-              background: blameSide === o.v ? "var(--brand-50)" : "#fff",
-              color: blameSide === o.v ? "var(--brand-700)" : "#1A2535",
-            }}>
-            {o.label}
-          </button>
-        ))}
+      <div className="fx-field" style={{ marginBottom: 12 }}>
+        <span className="fx-label">Kim gəlmədi?</span>
+        <div className="fx-segmented" style={{ display: "flex", width: "100%" }}>
+          {([
+            { v: "PATIENT", label: "Pasient" },
+            { v: "PSYCHOLOGIST", label: "Psixoloq" },
+          ] as const).map(o => (
+            <button key={o.v} type="button" onClick={() => setBlameSide(o.v)} style={{ flex: 1 }}
+              className={blameSide === o.v ? "fx-seg--active" : undefined}>
+              {o.label}
+            </button>
+          ))}
+        </div>
       </div>
-      <textarea rows={2} value={note} onChange={e => setNote(e.target.value)}
-        placeholder="Qeyd (məcburi deyil)"
-        style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, fontFamily: "inherit", marginBottom: 10, boxSizing: "border-box" }} />
-      <button onClick={() => guardAction(doSubmit)} disabled={saving}
-        style={{
-          width: "100%", padding: 12, borderRadius: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit",
-          background: "#FEE2E2", color: "#991B1B", border: "1.5px solid #F3D6D6", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1,
-        }}>
-        {saving ? "Göndərilir…" : "No-show işarələ"}
-      </button>
+      <label className="fx-field" style={{ marginBottom: 14 }}>
+        <span className="fx-label">Qeyd (məcburi deyil)</span>
+        <textarea className="fx-textarea" rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Qısa izah…" />
+      </label>
+      <div className="fx-modal__actions" style={{ marginTop: 0 }}>
+        <button onClick={() => guardAction(doSubmit)} disabled={saving}
+          className="fx-btn fx-btn--danger" style={{ cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+          {saving ? "Göndərilir…" : "No-show işarələ"}
+        </button>
+      </div>
     </>
   );
 }
@@ -1738,17 +1776,19 @@ function CancelRequestBlock({ appointment, guardAction, onDone }: {
 
   return (
     <>
-      <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
-        placeholder="Pasiyentə qeyd (təsdiqdə məcburi deyil, rəddə tövsiyə olunur)"
-        style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box" }} />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <button onClick={() => guardAction(run(true))} disabled={saving}
-          style={{ padding: 12, border: "1.5px solid #F3D6D6", borderRadius: 11, fontSize: 14, fontWeight: 700, fontFamily: "inherit", background: "#FEE2E2", color: "#991B1B", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
-          Ləğvi təsdiqlə
-        </button>
+      <label className="fx-field" style={{ marginBottom: 14 }}>
+        <span className="fx-label">Pasiyentə qeyd</span>
+        <textarea className="fx-textarea" rows={3} value={note} onChange={e => setNote(e.target.value)}
+          placeholder="Təsdiqdə məcburi deyil, rəddə tövsiyə olunur" />
+      </label>
+      <div className="fx-modal__actions" style={{ marginTop: 0 }}>
         <button onClick={() => guardAction(run(false))} disabled={saving}
-          style={{ padding: 12, border: "1px solid #D6E2F7", borderRadius: 11, fontSize: 14, fontWeight: 600, fontFamily: "inherit", background: "#fff", color: "var(--oxford)", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+          className="fx-btn fx-btn--ghost" style={{ cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
           Tələbi rədd et
+        </button>
+        <button onClick={() => guardAction(run(true))} disabled={saving}
+          className="fx-btn fx-btn--danger" style={{ cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+          Ləğvi təsdiqlə
         </button>
       </div>
     </>
@@ -1779,21 +1819,20 @@ function CancelBlock({ appointment, guardAction, onClose, onDone }: {
 
   return (
     <>
-      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>Səbəb</label>
-      <select value={reasonCode} onChange={e => setReasonCode(e.target.value)}
-        style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, marginBottom: 10 }}>
-        {reasons.map(r => <option key={r.code} value={r.code}>{r.label}</option>)}
-      </select>
-      <textarea rows={2} value={note} onChange={e => setNote(e.target.value)}
-        placeholder="Qeyd (məcburi deyil)"
-        style={{ width: "100%", padding: 8, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 12.5, fontFamily: "inherit", marginBottom: 10, boxSizing: "border-box" }} />
-      <div style={{ display: "flex", gap: 8 }}>
-        <button onClick={onClose}
-          style={{ flex: 1, padding: "9px 14px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 12.5, fontWeight: 600, background: "#fff", cursor: "pointer" }}>
-          Bağla
-        </button>
+      <label className="fx-field" style={{ marginBottom: 12 }}>
+        <span className="fx-label">Səbəb</span>
+        <select className="fx-select" value={reasonCode} onChange={e => setReasonCode(e.target.value)}>
+          {reasons.map(r => <option key={r.code} value={r.code}>{r.label}</option>)}
+        </select>
+      </label>
+      <label className="fx-field" style={{ marginBottom: 14 }}>
+        <span className="fx-label">Qeyd (məcburi deyil)</span>
+        <textarea className="fx-textarea" rows={2} value={note} onChange={e => setNote(e.target.value)} placeholder="Qısa izah…" />
+      </label>
+      <div className="fx-modal__actions" style={{ marginTop: 0 }}>
+        <button onClick={onClose} className="fx-btn fx-btn--ghost">Bağla</button>
         <button onClick={() => guardAction(doSubmit)} disabled={saving}
-          style={{ flex: 1, padding: 11, border: "1.5px solid #F3D6D6", borderRadius: 10, fontSize: 13, fontWeight: 700, fontFamily: "inherit", background: "#FEE2E2", color: "#991B1B", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
+          className="fx-btn fx-btn--danger" style={{ cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
           {saving ? "Göndərilir…" : "Ləğv et"}
         </button>
       </div>
@@ -1823,17 +1862,17 @@ function LinkEditModal({ appointment, onClose, onSaved }: {
   return (
     <ModalShell title={appointment.meetingLink ? "Görüş linkini dəyiş" : "Görüş linki əlavə et"} onClose={onClose}
       footer={
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-          <button onClick={onClose} className="opd-ghost-btn">İmtina</button>
-          <button onClick={submit} disabled={saving}
-            style={{ background: "#2563EB", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
+        <div className="fx-modal__actions" style={{ marginTop: 0 }}>
+          <button onClick={onClose} className="fx-btn fx-btn--ghost">İmtina</button>
+          <button onClick={submit} disabled={saving} className="fx-btn fx-btn--primary" style={{ opacity: saving ? 0.7 : 1 }}>
             {saving ? "…" : "Yadda saxla"}
           </button>
         </div>
       }>
-      <label style={{ display: "block", fontSize: 12, color: "#5C6B85", fontWeight: 600, marginBottom: 6 }}>Görüş linki</label>
-      <input type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://meet.google.com/..." autoFocus
-        style={{ width: "100%", border: "1px solid #E2E8F5", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#1E293B", boxSizing: "border-box", fontFamily: "inherit" }} />
+      <label className="fx-field">
+        <span className="fx-label">Görüş linki</span>
+        <input className="fx-input" type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://meet.google.com/..." autoFocus />
+      </label>
     </ModalShell>
   );
 }
@@ -1860,17 +1899,17 @@ function PaymentEditModal({ appointment, onClose, onSaved }: {
   return (
     <ModalShell title="Seans məbləğini təyin et" sub="PENDING ödəniş yaranır və «Ödənişlər»də görünür." onClose={onClose}
       footer={
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-          <button onClick={onClose} className="opd-ghost-btn">İmtina</button>
-          <button onClick={submit} disabled={saving}
-            style={{ background: "#15803D", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
+        <div className="fx-modal__actions" style={{ marginTop: 0 }}>
+          <button onClick={onClose} className="fx-btn fx-btn--ghost">İmtina</button>
+          <button onClick={submit} disabled={saving} className="fx-btn fx-btn--primary" style={{ opacity: saving ? 0.7 : 1 }}>
             {saving ? "…" : "Yadda saxla"}
           </button>
         </div>
       }>
-      <label style={{ display: "block", fontSize: 12, color: "#5C6B85", fontWeight: 600, marginBottom: 6 }}>Seans məbləği (₼)</label>
-      <input type="number" min={0} step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="məs. 80" autoFocus
-        style={{ width: "100%", border: "1px solid #E2E8F5", borderRadius: 8, padding: "9px 12px", fontSize: 13.5, fontFamily: "'JetBrains Mono', ui-monospace, monospace", color: "#1E293B", boxSizing: "border-box" }} />
+      <label className="fx-field">
+        <span className="fx-label">Seans məbləği (₼)</span>
+        <input className="fx-input fx-num" type="number" min={0} step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="məs. 80" autoFocus />
+      </label>
     </ModalShell>
   );
 }

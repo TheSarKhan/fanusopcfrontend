@@ -221,9 +221,13 @@ export default function DatePicker({
     const el = wrapRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    const width = Math.max(r.width, 290);
-    const estH = withTime ? 414 : 348;
+    // Panel input-un eninə uyğunlaşır, AMMA yuxarı həddi var: geniş sahədə
+    // (məs. paket kartındakı tam enli input) təqvim bütün ekranı tutur,
+    // gün xanaları nəhəngləşir və bəzi günlər görünmür/seçilmir olurdu.
+    // Təqvim üçün ~330px kifayətdir; dar ekranda viewport-a sığdırılır.
     const vw = window.innerWidth, vh = window.innerHeight;
+    const width = clamp(r.width, Math.min(290, vw - 16), Math.min(330, vw - 16));
+    const estH = withTime ? 414 : 348;
     let left = r.left;
     let top = r.bottom + 6;
     if (top + estH > vh - 8 && r.top - estH - 6 > 8) top = r.top - estH - 6;

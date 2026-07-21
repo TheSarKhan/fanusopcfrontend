@@ -155,6 +155,31 @@ export function azNowLocal(): string {
   return isoToAzLocal(new Date().toISOString());
 }
 
+/** Bu gün (Asia/Baku) "YYYY-MM-DD" — DatePicker `min` üçün. */
+export function azTodayIso(): string {
+  return azNowLocal().slice(0, 10);
+}
+
+/** İndiki saat (Asia/Baku) "HH:MM" — TimePicker `min` üçün. */
+export function azNowTime(): string {
+  return azNowLocal().slice(11, 16);
+}
+
+/**
+ * Üstünlük verilən tarix/saat keçmişdədirsə xəta mətni, əks halda null.
+ * Seans müraciəti formalarında (Fanus təyin etsin, sürətli müraciət) istifadə
+ * olunur — keçmiş vaxta müraciət göndərmək mümkün olmamalıdır.
+ */
+export function pastPreferredError(date?: string | null, time?: string | null): string | null {
+  if (!date) return null;
+  const today = azTodayIso();
+  if (date < today) return "Keçmiş tarixə seans müraciəti göndərmək mümkün deyil";
+  if (date === today && time && time < azNowTime()) {
+    return "Seçilmiş saat artıq keçib — bu gün üçün daha gec saat seçin";
+  }
+  return null;
+}
+
 // Sıra sayı şəkilçisi — son rəqəmə görə sait ahəngi:
 // 0→cı  1→ci  2→ci  3→cü  4→cü  5→ci  6→cı  7→ci  8→ci  9→cu
 const AZ_ORDINAL: Record<number, string> = {

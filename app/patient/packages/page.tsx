@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { patientApi, type PatientPackageItem } from "@/lib/api";
+import { patientApi, type PatientPackageItem, type AppointmentDetail } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
+import TimePicker from "@/components/TimePicker";
 import PageHeader from "@/components/PageHeader";
 import { toast } from "@/components/Toast";
-import { azLocalToISO, azFormatDate } from "@/lib/datetime";
+import { azLocalToISO, azFormatDate, azFormatDateTime } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
@@ -35,6 +36,28 @@ export default function PatientPackagesPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // Paketdən planlanmış seanslar: randevular `patientPackageId` daşıyır, ona görə
+  // bir dəfə çəkib paket üzrə qruplaşdırırıq (backend dəyişikliyi lazım deyil).
+  // Əvvəl kartda yalnız "qalan/ümumi" vardı — hansı tarixlərin seçildiyi görünmürdü.
+  const [byPackage, setByPackage] = useState<Record<number, AppointmentDetail[]>>({});
+
+  const loadSessions = () => {
+    patientApi.myAppointments()
+      .then(list => {
+        const map: Record<number, AppointmentDetail[]> = {};
+        for (const a of list) {
+          if (a.patientPackageId == null) continue;
+          (map[a.patientPackageId] ??= []).push(a);
+        }
+        for (const k of Object.keys(map)) {
+          map[Number(k)].sort((x, y) =>
+            new Date(x.startAt ?? 0).getTime() - new Date(y.startAt ?? 0).getTime());
+        }
+        setByPackage(map);
+      })
+      .catch(() => {});
+  };
+
   const load = () => {
     setLoading(true);
     patientApi.myPackagesPaged({ page: 0, size: PAGE_SIZE })
@@ -45,6 +68,7 @@ export default function PatientPackagesPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+    loadSessions();
   };
 
   useEffect(load, []);
@@ -83,7 +107,7 @@ export default function PatientPackagesPage() {
         <>
           <div style={{ display: "grid", gap: 12 }}>
             {items.map(p => (
-              <PackageCard key={p.id} pkg={p} onScheduled={load} />
+              <PackageCard key={p.id} pkg={p} sessions={byPackage[p.id] ?? []} onScheduled={load} />
             ))}
           </div>
 
@@ -101,9 +125,14 @@ export default function PatientPackagesPage() {
   );
 }
 
-function PackageCard({ pkg, onScheduled }: { pkg: PatientPackageItem; onScheduled: () => void }) {
+function PackageCard({ pkg, sessions, onScheduled }:
+  { pkg: PatientPackageItem; sessions: AppointmentDetail[]; onScheduled: () => void }) {
   const { t } = useT();
-  const [datetime, setDatetime] = useState("");
+  // Tarix və saat AYRI sahələrdir. Əvvəl tək `withTime` DatePicker vardı: saat
+  // sətri təqvimin altında qaldığı üçün gözə dəymirdi və seçilməyəndə cari
+  // vaxt (məs. 15:28) möhürlənirdi. İndi saat açıq şəkildə seçilir.
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const [saving, setSaving] = useState(false);
   const [scheduled, setScheduled] = useState(false);
 
@@ -112,12 +141,13 @@ function PackageCard({ pkg, onScheduled }: { pkg: PatientPackageItem; onSchedule
   const canSchedule = pkg.status === "ACTIVE" && pkg.remaining > 0;
 
   const submit = async () => {
-    if (!datetime) { toast("Vaxt seçin", "error"); return; }
+    if (!date) { toast("Tarix seçin", "error"); return; }
+    if (!time) { toast("Saat seçin", "error"); return; }
     setSaving(true);
     try {
-      await patientApi.schedulePackageSession(pkg.id, { startAt: azLocalToISO(datetime) });
+      await patientApi.schedulePackageSession(pkg.id, { startAt: azLocalToISO(`${date}T${time}`) });
       setScheduled(true);
-      setDatetime("");
+      setDate(""); setTime("");
       onScheduled();
     } catch (e) {
       toast((e as Error).message, "error");
@@ -151,6 +181,33 @@ function PackageCard({ pkg, onScheduled }: { pkg: PatientPackageItem; onSchedule
         <Stat label={t("pkg.purchasedAt")} value={azFormatDate(pkg.purchasedAt)} />
       </div>
 
+      {/* Bu paketdən planlanmış seanslar — əvvəl heç yerdə görünmürdü. */}
+      <div style={{ marginTop: 16, borderTop: "1px solid var(--brand-100)", paddingTop: 14 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 8 }}>
+          Seans tarixləri
+        </div>
+        {sessions.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 12.5, color: "var(--oxford-60)" }}>
+            Hələ seans planlaşdırılmayıb.
+          </p>
+        ) : (
+          <div>
+            {sessions.map((s, i) => (
+              <div key={s.id} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: 12, padding: "8px 0",
+                borderBottom: i < sessions.length - 1 ? "1px solid var(--oxford-10)" : "none",
+              }}>
+                <span style={{ fontSize: 13, color: "var(--oxford)", fontVariantNumeric: "tabular-nums" }}>
+                  {s.startAt ? azFormatDateTime(s.startAt) : "Vaxt təyin edilməyib"}
+                </span>
+                <SessionStatus status={s.status} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {canSchedule && (
         <div style={{ marginTop: 16, borderTop: "1px solid var(--brand-100)", paddingTop: 14 }}>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
@@ -163,12 +220,19 @@ function PackageCard({ pkg, onScheduled }: { pkg: PatientPackageItem; onSchedule
           )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <DatePicker
-              withTime
-              value={datetime}
-              onChange={v => { setDatetime(v); setScheduled(false); }}
+              value={date}
+              onChange={v => { setDate(v); setScheduled(false); }}
+              placeholder="gg.aa.iiii"
               theme="light"
               size="sm"
-              style={{ flex: "1 1 220px" }}
+              style={{ flex: "1 1 180px" }}
+            />
+            <TimePicker
+              value={time}
+              onChange={v => { setTime(v); setScheduled(false); }}
+              theme="light"
+              size="sm"
+              style={{ flex: "0 1 130px" }}
             />
             <button
               type="button"
@@ -189,6 +253,27 @@ function PackageCard({ pkg, onScheduled }: { pkg: PatientPackageItem; onSchedule
         </div>
       )}
     </div>
+  );
+}
+
+/** Seans statusu — pill deyil, rəngli nöqtə + düz mətn (panel dili ilə eyni). */
+const SESSION_STATUS: Record<string, { label: string; color: string }> = {
+  PENDING:   { label: "Gözləyir",   color: "#D97706" },
+  ASSIGNED:  { label: "Təyin olunub", color: "#2563EB" },
+  CONFIRMED: { label: "Təsdiqli",   color: "#16A34A" },
+  COMPLETED: { label: "Tamamlandı", color: "#64748B" },
+  CANCELLED: { label: "Ləğv",       color: "#991B1B" },
+  REJECTED:  { label: "Rədd",       color: "#991B1B" },
+  DISPUTED:  { label: "Mübahisəli", color: "#991B1B" },
+};
+
+function SessionStatus({ status }: { status: string }) {
+  const s = SESSION_STATUS[status] ?? { label: status, color: "var(--oxford-60)" };
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}>
+      <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: s.color }} />
+      <span style={{ fontSize: 12.5, color: "var(--oxford-60)", whiteSpace: "nowrap" }}>{s.label}</span>
+    </span>
   );
 }
 

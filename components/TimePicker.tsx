@@ -29,6 +29,9 @@ export interface TimePickerProps {
   onChange: (value: string) => void;
   /** Dəqiqə addımı (popup siyahısı üçün). Default 5. */
   minuteStep?: number;
+  /** Ən erkən seçilə bilən vaxt "HH:MM" — daha erkən saatlar sönük və klikləməz.
+   *  Məs. bu gün üçün müraciət formasında keçmiş saatları bağlamaq üçün. */
+  min?: string;
   placeholder?: string;
   disabled?: boolean;
   /** Sahənin içində təmizlə (×) düyməsi göstər. */
@@ -135,6 +138,7 @@ export default function TimePicker({
   value,
   onChange,
   minuteStep = 5,
+  min,
   placeholder,
   disabled = false,
   clearable = false,
@@ -168,6 +172,18 @@ export default function TimePicker({
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const selected = useMemo(() => parseValue(value), [value]);
+  const minP = useMemo(() => (min ? parseValue(min) : null), [min]);
+
+  /** Verilmiş saat tamamilə hədddən aşağıdırsa (bütün dəqiqələri keçib) sönükdür. */
+  const hourDisabled = useCallback(
+    (hh: number) => minP != null && hh < minP.hh,
+    [minP],
+  );
+  /** Seçilmiş saat həddin saatıdırsa, ondan əvvəlki dəqiqələr sönükdür. */
+  const minuteDisabled = useCallback(
+    (mm: number) => minP != null && (selected?.hh ?? minP.hh) === minP.hh && mm < minP.mm,
+    [minP, selected],
+  );
 
   const hours = useMemo(() => Array.from({ length: 24 }, (_, i) => i), []);
   const minutes = useMemo(() => {
@@ -255,16 +271,52 @@ export default function TimePicker({
     };
   }, [open]);
 
-  /* — Seçim köməkçiləri — */
+  /* — Seçim köməkçiləri —
+     Popup seçim tamamlananda ÖZÜ bağlanır. Qayda: hər iki hissə (saat + dəqiqə)
+     məlum olan kimi bağlanır — yəni popup açılanda dəyər artıq var idisə bir klik,
+     boşdursa hər iki sütundan birər klik kifayətdir. Əks halda istifadəçi seçimi
+     edib qalırdı və paneli əl ilə bağlamalı olurdu. */
+  const pickedRef = useRef({ h: false, m: false });
+  const hadValueRef = useRef(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      pickedRef.current = { h: false, m: false };
+      hadValueRef.current = parseValue(value) != null;
+    }
+    return () => { if (closeTimer.current) clearTimeout(closeTimer.current); };
+    // `value` qəsdən asılılıqda deyil — yalnız açılış anındakı vəziyyət lazımdır.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  /** Seçim göz önündə qalsın deyə qısa gecikmə ilə bağla. */
+  const finishPick = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => {
+      setOpen(false);
+      inputRef.current?.blur();
+    }, 160);
+  };
+
   const pickHour = (hh: number) => {
-    const next = { hh, mm: selected?.mm ?? 0 };
+    if (hourDisabled(hh)) return;
+    // Hədd saatına keçəndə dəqiqə də hədddən aşağı qalmasın.
+    let mm = selected?.mm ?? 0;
+    if (minP && hh === minP.hh && mm < minP.mm) mm = minP.mm;
+    const next = { hh, mm };
     onChange(toValue(next));
     setText(toValue(next));
+    pickedRef.current.h = true;
+    if (hadValueRef.current || pickedRef.current.m) finishPick();
   };
   const pickMinute = (mm: number) => {
-    const next = { hh: selected?.hh ?? 0, mm };
+    if (minuteDisabled(mm)) return;
+    const next = { hh: selected?.hh ?? minP?.hh ?? 0, mm };
     onChange(toValue(next));
     setText(toValue(next));
+    pickedRef.current.m = true;
+    if (hadValueRef.current || pickedRef.current.h) finishPick();
   };
 
   const clear = () => { onChange(""); setText(""); };
@@ -384,6 +436,7 @@ export default function TimePicker({
               items={hours}
               selectedVal={selected?.hh}
               onPick={pickHour}
+              isDisabled={hourDisabled}
               pal={pal}
               itemClass={itemClass}
             />
@@ -395,6 +448,7 @@ export default function TimePicker({
               items={minutes}
               selectedVal={selected?.mm}
               onPick={pickMinute}
+              isDisabled={minuteDisabled}
               pal={pal}
               itemClass={itemClass}
             />
@@ -418,12 +472,13 @@ export default function TimePicker({
 
 /* ─── Sütun ───────────────────────────────────────────────────────────────── */
 
-function Column({ colRef, label, items, selectedVal, onPick, pal, itemClass }: {
+function Column({ colRef, label, items, selectedVal, onPick, isDisabled, pal, itemClass }: {
   colRef: React.RefObject<HTMLDivElement | null>;
   label: string;
   items: number[];
   selectedVal: number | undefined;
   onPick: (n: number) => void;
+  isDisabled?: (n: number) => boolean;
   pal: Palette;
   itemClass: string;
 }) {
@@ -444,11 +499,14 @@ function Column({ colRef, label, items, selectedVal, onPick, pal, itemClass }: {
       >
         {items.map(n => {
           const isSel = selectedVal === n;
+          const off = isDisabled?.(n) ?? false;
           return (
             <button
               key={n}
               type="button"
               data-sel={isSel ? "1" : "0"}
+              disabled={off}
+              title={off ? "Bu vaxt artıq keçib" : undefined}
               onClick={() => onPick(n)}
               className={`${itemClass}-btn`}
               style={{
@@ -456,9 +514,11 @@ function Column({ colRef, label, items, selectedVal, onPick, pal, itemClass }: {
                 padding: "7px 0",
                 background: isSel ? undefined : "transparent",
                 backgroundImage: isSel ? pal.accentGrad : "none",
-                color: isSel ? pal.onAccent : pal.text,
+                color: off ? pal.textFaint : (isSel ? pal.onAccent : pal.text),
                 fontSize: 13.5, fontWeight: isSel ? 700 : 500,
-                cursor: "pointer",
+                cursor: off ? "not-allowed" : "pointer",
+                opacity: off ? 0.5 : 1,
+                textDecoration: off ? "line-through" : "none",
                 fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
                 transition: "background .12s, color .12s",
               }}

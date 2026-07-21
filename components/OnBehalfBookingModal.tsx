@@ -10,10 +10,20 @@
  */
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { operatorApi, getPsychologistAvailability, type OperatorSearchHit, type PackageDto, type IntroEligibility, type AvailableSlot } from "@/lib/api";
+import { operatorApi, getPsychologistAvailability, type OperatorSearchHit, type PackageDto, type IntroEligibility, type AvailableSlot, type PatientLookupResult } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import { azFormatDate, azFormatTime, azFormatWeekday, isoToAzLocal } from "@/lib/datetime";
 import { toast as uiToast } from "@/components/Toast";
+
+/** Dublikat xəbərdarlığında rolun Azərbaycanca adı. */
+function roleLabel(role?: string | null): string {
+  switch (role) {
+    case "PSYCHOLOGIST": return "psixoloq";
+    case "OPERATOR": return "operator";
+    case "ADMIN": return "admin";
+    default: return "başqa";
+  }
+}
 
 /** Yerli tarixi YYYY-MM-DD formatına salır (availability sorğu sərhədləri üçün). */
 function ymd(d: Date): string {
@@ -47,6 +57,12 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // "Yeni pasiyent" formasında email/telefon artıq bazadadırsa — operator dublikat
+  // yaratdığını düşünməsin deyə forma yazılarkən xəbərdarlıq göstərilir.
+  const [dup, setDup] = useState<PatientLookupResult | null>(null);
+  // Paketsiz tək seansın qiyməti — ilkin dəyər psixoloqun fərdi qiyməti, operator dəyişə bilər.
+  const [price, setPrice] = useState("");
+  const [priceBase, setPriceBase] = useState<number | null>(null);
   // Pasient bu psixoloqu özü seçib müraciət edibsə komissiyasız/azaldılmış faiz tətbiq olunur.
   const [patientChoseDirectly, setPatientChoseDirectly] = useState(false);
   // Pulsuz tanışlıq (INTRO, 15 dəq) görüşü — yalnız pasiyent məlum olduqda yoxlanır.
@@ -141,6 +157,46 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
   const setExtraEnd = (i: number, v: string) => {
     setExtraTimes(prev => prev.map((t, idx) => idx === i ? { ...t, end: v } : t));
   };
+  // Psixoloq seçiləndə onun cari seans qiymətini gətir (operator dəyişə bilər).
+  useEffect(() => {
+    setPrice(""); setPriceBase(null);
+    if (!psyId) return;
+    let cancelled = false;
+    operatorApi.psychologistPricing(psyId)
+      .then(p => {
+        if (cancelled) return;
+        setPriceBase(p.individualPrice ?? null);
+        setPrice(p.individualPrice != null ? String(p.individualPrice) : "");
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [psyId]);
+
+  // Yeni pasiyent formasında email/telefon yazıldıqca dublikat yoxlaması.
+  useEffect(() => {
+    if (locked || mode !== "new") { setDup(null); return; }
+    const e = email.trim(), p = phone.trim();
+    if (e.length < 5 && p.length < 7) { setDup(null); return; }
+    let cancelled = false;
+    const h = setTimeout(() => {
+      operatorApi.lookupPatient({ email: e || undefined, phone: p || undefined })
+        .then(r => { if (!cancelled) setDup(r.found ? r : null); })
+        .catch(() => { if (!cancelled) setDup(null); });
+    }, 400);
+    return () => { cancelled = true; clearTimeout(h); };
+  }, [email, phone, mode, locked]);
+
+  /** Tapılan mövcud pasiyentə keç — forma "mövcud pasiyent" rejiminə qayıdır. */
+  const useExistingPatient = () => {
+    if (!dup?.patientId) return;
+    setPatientId(dup.patientId);
+    setPatientLabel(dup.name ?? dup.email ?? `#${dup.patientId}`);
+    setQ(dup.email ?? dup.name ?? "");
+    setMode("search");
+    setDup(null);
+    setErr(null);
+  };
+
   useEffect(() => {
     if (locked || mode !== "search") return;
     const term = q.trim();
@@ -187,8 +243,19 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
       let pid = patientId;
       if (!locked && mode === "new") {
         if (!email.trim()) { setErr("Email tələb olunur"); setSaving(false); return; }
+        // Email başqa rola aiddirsə hesab pasiyent kimi istifadə edilə bilməz.
+        if (dup?.blocking) {
+          setErr(dup.blockReason ?? `Bu email ${roleLabel(dup.role)} hesabına aiddir — istifadə edilə bilməz.`);
+          setSaving(false); return;
+        }
+        // Mövcud pasiyentdirsə operator bunu təsdiqləməlidir (yuxarıdakı düymə ilə).
+        if (dup?.found && dup.patientId) {
+          setErr("Bu pasiyent artıq sistemdədir — «Mövcud pasiyenti seç» düyməsi ilə davam edin.");
+          setSaving(false); return;
+        }
         const r = await operatorApi.createPatient({ firstName, lastName, phone, email: email.trim() });
         pid = r.patientId;
+        if (!r.created) uiToast("Bu email artıq mövcud idi — həmin pasiyentə bağlandı", "info");
       }
       if (!pid) { setErr("Pasiyent seçin"); setSaving(false); return; }
 
@@ -226,10 +293,16 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
           }
         }
       } else {
+        const priceNum = price.trim() === "" ? null : Number(price);
+        if (priceNum != null && (!Number.isFinite(priceNum) || priceNum < 0)) {
+          setErr("Seans qiyməti düzgün deyil"); setSaving(false); return;
+        }
         await operatorApi.createOnBehalf({
           patientId: pid, psychologistId: psyId, startAt, endAt, note: note.trim() || undefined,
           patientPackageId: null, patientChoseDirectly,
           sessionKind: sessionKind === "INTRO" ? "INTRO" : undefined,
+          // INTRO pulsuzdur — qiymət göndərilmir.
+          sessionPrice: sessionKind === "INTRO" ? null : priceNum,
         });
       }
       onDone();
@@ -237,6 +310,8 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
   };
 
   const inp: CSSProperties = { width: "100%", padding: 9, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, boxSizing: "border-box" };
+
+  const priceChanged = priceBase != null && price.trim() !== "" && Number(price) !== priceBase;
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(10,22,51,0.55)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
@@ -274,11 +349,44 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
                   )}
                 </div>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Ad" style={inp} />
-                  <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Soyad" style={inp} />
-                  <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Telefon" style={inp} />
-                  <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email (claim üçün)" style={inp} />
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Ad" style={inp} />
+                    <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Soyad" style={inp} />
+                    <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Telefon" style={inp} />
+                    <input value={email} onChange={e => setEmail(e.target.value)}
+                      placeholder="Email (claim üçün)"
+                      style={{ ...inp, ...(dup ? { border: "1px solid #E0A33E" } : {}) }} />
+                  </div>
+
+                  {/* Dublikat xəbərdarlığı — mövcud hesab sükutla təkrar istifadə olunmasın */}
+                  {dup && (
+                    <div style={{
+                      background: dup.blocking ? "#FBF1F1" : "#FFFBEB",
+                      border: `1px solid ${dup.blocking ? "#EBC9C9" : "#F0DDB4"}`,
+                      borderRadius: 10, padding: "10px 12px", display: "grid", gap: 8,
+                    }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: dup.blocking ? "#B4534F" : "#8A5A15", lineHeight: 1.45 }}>
+                        {dup.blocking
+                          ? (dup.blockReason ?? `Bu ${dup.matchedBy === "PHONE" ? "telefon" : "email"} ${roleLabel(dup.role)} hesabına aiddir.`)
+                            + " Bu hesabla randevu yaradıla bilməz."
+                          : `Bu ${dup.matchedBy === "PHONE" ? "telefon" : "email"} artıq sistemdədir: ${dup.name}`}
+                      </div>
+                      {!dup.blocking && (
+                        <>
+                          <div style={{ fontSize: 12, color: "#52718F", lineHeight: 1.45 }}>
+                            {dup.email}{dup.phone ? ` · ${dup.phone}` : ""} — yeni hesab yaradılmayacaq, randevu mövcud pasiyentə yazılacaq.
+                          </div>
+                          {dup.patientId != null && (
+                            <button type="button" onClick={useExistingPatient}
+                              style={{ justifySelf: "start", padding: "8px 13px", borderRadius: 9, border: "none", background: "var(--brand)", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+                              Mövcud pasiyenti seç
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -308,6 +416,30 @@ export default function OnBehalfBookingModal({ onClose, onDone, presetPatientId,
                 Pulsuz tanışlıq görüşü <span style={{ color: "#52718F", fontWeight: 500 }}>(15 dəq, ödənişsiz{introStatus.usedCount === 1 ? " — 2-ci pulsuz seans, əməliyyatdan sonra icazə söndürülür" : ""})</span>
               </span>
             </label>
+          )}
+
+          {/* Tək seansın qiyməti — psixoloqun qiyməti ilkin dəyərdir, operator dəyişə bilər.
+              Paket satışında qiymət paketdən gəlir, INTRO isə pulsuzdur. */}
+          {psyId && !sellPkg && sessionKind !== "INTRO" && (
+            <div style={{ border: "1px solid #E5E7EB", borderRadius: 10, padding: 12, display: "grid", gap: 7 }}>
+              <label style={{ fontSize: 12.5, fontWeight: 600, color: "#1A2535" }}>Seans qiyməti (AZN)</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <input value={price} onChange={e => setPrice(e.target.value)} type="number" min={0} step="0.01"
+                  placeholder={priceBase != null ? String(priceBase) : "0.00"}
+                  style={{ ...inp, width: 140 }} />
+                {priceChanged && (
+                  <button type="button" onClick={() => setPrice(priceBase != null ? String(priceBase) : "")}
+                    style={{ padding: "7px 11px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", fontSize: 12, fontWeight: 600, color: "#52718F", cursor: "pointer" }}>
+                    Psixoloqun qiymətinə qaytar
+                  </button>
+                )}
+              </div>
+              <div style={{ fontSize: 11.5, color: "#52718F", lineHeight: 1.45 }}>
+                {priceBase != null
+                  ? <>Psixoloqun cari qiyməti: <strong>{priceBase} AZN</strong>. {priceChanged ? "Bu randevu üçün fərqli qiymət tətbiq olunacaq — psixoloqun qiyməti dəyişmir." : "Dəyişdirsəniz yalnız bu randevuya tətbiq olunur."}</>
+                  : "Psixoloqun fərdi qiyməti təyin edilməyib — bu seans üçün qiymət yazın."}
+              </div>
+            </div>
           )}
 
           {/* Opsional paket satışı */}

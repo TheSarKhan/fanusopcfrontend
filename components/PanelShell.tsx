@@ -15,6 +15,8 @@ export interface PanelNavItem {
   label: string;
   icon: IconName;
   badge?: number;
+  /** Nişanəni təcili tonda (kəhrəba) göstərir — təsdiq/silinmə kimi modullar. */
+  badgeTone?: "default" | "warn";
   /** Extra route prefixes that also mark this item active (e.g. sibling
    *  routes grouped under one nav entry). Matched by exact path or prefix. */
   match?: string[];
@@ -179,7 +181,13 @@ export default function PanelShell({
                 <PanelIcon name={item.icon} size={18} stroke={1.8} />
                 <span>{item.label}</span>
                 {item.badge !== undefined && item.badge > 0 && (
-                  <span className="ps-nav__badge">{item.badge}</span>
+                  <span
+                    className={`ps-nav__badge${item.badgeTone === "warn" ? " ps-nav__badge--warn" : ""}`}
+                    title={`${item.badge} gözləyən`}
+                    aria-label={`${item.badge} gözləyən`}
+                  >
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
                 )}
               </Link>
             );

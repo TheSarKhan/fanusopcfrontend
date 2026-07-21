@@ -19,11 +19,14 @@ import {
   operatorApi,
   reasonLabel,
   type AppointmentDetail,
+  type AppointmentSortKey,
   type Referral,
   type RescheduleProposal,
+  type SortDir,
 } from "@/lib/api";
 import OnBehalfBookingModal from "@/components/OnBehalfBookingModal";
 import ErrorState from "@/components/ErrorState";
+import { toast } from "@/components/Toast";
 import { getStoredUser } from "@/lib/auth";
 import { subscribeNotifications, subscribeOperatorClaims } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -44,24 +47,55 @@ const TAB_META: Record<Tab, { label: string; color: string }> = {
   CANCELLED:        { label: "Ləğv olunmuş",      color: "var(--status-refunded-fg)" },
 };
 
-// Appointment status → Fanus UI Kit pill variant (rənglər statusMeta() ilə eynidir,
-// beləliklə vizual reqressiya və rollar arası fərq yaranmır).
-function statusPillClass(status?: string | null): string {
-  switch (status) {
-    case "CONFIRMED": return "fx-pill--paid";
-    case "ASSIGNED": return "fx-pill--info";
-    case "DISPUTED":
-    case "CANCELLED": return "fx-pill--refunded";
-    case "COMPLETED": return "fx-pill--cancelled";
-    default: return "fx-pill--pending"; // PENDING/NEW/REJECTED/IN_REVIEW/AWAITING_CONFIRMATION/CANCEL_REQUESTED
-  }
+/** Status siqnalı — sətirdə/kartda doldurulmuş rəngli pill əvəzinə kiçik nöqtə +
+ *  adi mətn. Rəng mənbəyi statusMeta()-dır (bütün rollarda eyni), ona görə yeni
+ *  rəng dili yaranmır, sadəcə vizual "səs-küy" azalır. */
+function DotLabel({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="or-status">
+      <span className="or-status__dot" style={{ background: color }} />
+      {label}
+    </span>
+  );
+}
+function StatusDot({ status }: { status?: string | null }) {
+  const meta = statusMeta(status);
+  return <DotLabel color={meta.fg} label={meta.label} />;
 }
 
-// Server status filtri yalnız tək-statuslu tablar üçün mümkündür; PENDING
-// ("Yeni müraciətlər") və CONFIRMED birləşmiş/törəmə statusları əhatə etdiyindən
-// onların filtri yığılmış items üzərində client-side qalır.
-const SERVER_STATUS_TABS: readonly Tab[] = ["DISPUTED", "COMPLETED", "CANCELLED"];
+// Hər tab serverdə ifadə olunur: "INBOX" birləşmiş "Yeni müraciətlər" (yeni
+// müraciətlər + ləğv tələbi + vaxt dəyişikliyi siqnalı), qalanları status dəsti.
+// Beləliklə siyahı SERVER səhifələməsi ilə gəlir; yalnız kəsişən xüsusi filtrlər
+// (Gecikmiş / Mənim üzərimdə / Ləğv tələbləri / Vaxt dəyişikliyi / Hamısı)
+// client-side qalır — onlar server sorğusu ilə ifadə olunmur.
+const TAB_STATUS_PARAM: Record<Tab, string> = {
+  PENDING:   "INBOX",
+  CONFIRMED: "CONFIRMED,AWAITING_CONFIRMATION,ASSIGNED",
+  DISPUTED:  "DISPUTED",
+  COMPLETED: "COMPLETED",
+  CANCELLED: "CANCELLED",
+};
 const PAGE_SIZE = 30;
+const PAGE_SIZES = [15, 30, 50, 100];
+
+/** Client-side sıralama (xüsusi filtrlər aktiv olanda) — server ağ siyahısının
+ *  eyni açarları, beləliklə başlıqlar hər iki rejimdə eyni işləyir. */
+const SORT_VALUE: Record<AppointmentSortKey, (a: AppointmentDetail) => string | number> = {
+  createdAt:        a => new Date(a.createdAt).getTime(),
+  startAt:          a => new Date(a.startAt ?? a.requestedStartAt ?? 0).getTime(),
+  status:           a => statusMeta(a.status).label.toLowerCase(),
+  patientName:      a => (a.patientName ?? "").toLowerCase(),
+  psychologistName: a => (a.psychologistName ?? a.requestedPsychologistName ?? "").toLowerCase(),
+};
+function sortRows(rows: AppointmentDetail[], sort: AppointmentSortKey | null, dir: SortDir): AppointmentDetail[] {
+  if (!sort) return rows;
+  const get = SORT_VALUE[sort];
+  const mul = dir === "asc" ? 1 : -1;
+  return [...rows].sort((x, y) => {
+    const a = get(x), b = get(y);
+    return (a < b ? -1 : a > b ? 1 : 0) * mul;
+  });
+}
 
 function fmtDateTime(iso?: string | null) {
   if (!iso) return "—";
@@ -79,11 +113,12 @@ const OUTCOME_LABEL: Record<string, { label: string; tone: "good" | "warn" | "da
   RESCHEDULED: { label: "Vaxt dəyişdi",   tone: "neutral" },
   OTHER:       { label: "Digər",          tone: "neutral" },
 };
-const FOLLOW_TONE: Record<"good" | "warn" | "danger" | "neutral", { bg: string; color: string }> = {
-  good:    { bg: "var(--status-paid-bg)",      color: "var(--status-paid-fg)" },
-  warn:    { bg: "var(--status-pending-bg)",   color: "var(--status-pending-fg)" },
-  danger:  { bg: "var(--status-refunded-bg)",  color: "var(--status-refunded-fg)" },
-  neutral: { bg: "var(--status-cancelled-bg)", color: "var(--status-cancelled-fg)" },
+// İzləmə nəticəsi meta-dır, status deyil — rəngli çip yerinə yalnız mətn tonu.
+const FOLLOW_COLOR: Record<"good" | "warn" | "danger" | "neutral", string> = {
+  good:    "var(--status-paid-fg)",
+  warn:    "var(--status-pending-fg)",
+  danger:  "var(--status-refunded-fg)",
+  neutral: "var(--oxford-60)",
 };
 
 function normalizePhone(raw: string | null | undefined): string | null {
@@ -147,10 +182,6 @@ function buildAlert(a: AppointmentDetail, hasPsyProposal = false): { tone: "red"
   }
   return null;
 }
-const ALERT_STYLE = {
-  red:   { bg: "var(--rose-bg)",  border: "rgba(201,125,125,.35)", color: "var(--status-refunded-fg)" },
-  amber: { bg: "var(--amber-bg)", border: "rgba(201,125,46,.3)",   color: "var(--status-pending-fg)" },
-} as const;
 
 export default function OperatorAppointmentsPage() {
   const { t } = useT();
@@ -159,9 +190,13 @@ export default function OperatorAppointmentsPage() {
   const meId = getStoredUser()?.userId ?? null;
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  // Server səhifələməsi + sıralaması (əsas randevu siyahısı)
   const [page, setPage] = useState(0);
+  const [size, setSize] = useState(PAGE_SIZE);
   const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [sort, setSort] = useState<AppointmentSortKey | null>(null);
+  const [dir, setDir] = useState<SortDir>("desc");
   const [tab, setTab] = useState<Tab>(() => {
     const fromUrl = searchParams.get("tab");
     return fromUrl && fromUrl in TAB_META ? (fromUrl as Tab) : "PENDING";
@@ -222,55 +257,70 @@ export default function OperatorAppointmentsPage() {
 
   useEffect(load, []);
 
-  // ─── Arxiv tabları (Mübahisəli/Tamamlanmış/Ləğv olunmuş) — server səhifələməsi.
-  // Bu statuslar illərlə hüdudsuz böyüyür; aktiv triyaj tam siyahıdan işləməyə davam edir.
-  // null = hələ yüklənir (skeleton). Xüsusi filtrlər (Gecikmiş/Mənim və s.) legacy yoldadır.
-  const [archiveItems, setArchiveItems] = useState<AppointmentDetail[] | null>(null);
-  const [archiveError, setArchiveError] = useState(false);
-  const [archiveNonce, setArchiveNonce] = useState(0);
+  // ─── Əsas siyahı — SERVER səhifələməsi + sıralaması ─────────────────────────
+  // Randevu siyahısının hər tabı serverdə ifadə olunur (TAB_STATUS_PARAM), ona
+  // görə əsas görünüş artıq tam siyahıdan deyil, səhifə-səhifə gəlir.
+  // `items` (tam yükləmə) yalnız sayğaclar, Paketlər tabı və server sorğusu ilə
+  // ifadə olunmayan kəsişən filtrlər üçün qalır.
+  // null = hələ yüklənir (skeleton).
+  const [pagedItems, setPagedItems] = useState<AppointmentDetail[] | null>(null);
+  const [pagedError, setPagedError] = useState(false);
+  const [pagedNonce, setPagedNonce] = useState(0);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
     const tmr = setTimeout(() => setDebouncedSearch(search.trim()), 300);
     return () => clearTimeout(tmr);
   }, [search]);
 
-  const archiveMode = view === "appointments"
-    && (SERVER_STATUS_TABS as readonly string[]).includes(tab)
+  // Xüsusi (kəsişən) filtrlər server sorğusuna çevrilmir — onlar aktiv olanda
+  // siyahı yenə də yığılmış `items` üzərindən client-side süzülür.
+  const serverMode = view === "appointments"
     && !allOnly && !overdueOnly && !mineOnly && !rescheduleOnly && !cancelOnly;
 
+  // Tab / filtr / axtarış / sıralama / səhifə ölçüsü dəyişəndə həmişə 0-a qayıt.
   useEffect(() => {
-    if (!archiveMode) return;
+    setPage(0);
+  }, [view, tab, allOnly, overdueOnly, mineOnly, rescheduleOnly, cancelOnly, debouncedSearch, sort, dir, size]);
+
+  useEffect(() => {
+    if (!serverMode) return;
     let cancelled = false;
-    setArchiveItems(null);
-    setArchiveError(false);
-    operatorApi.listAppointmentsPaged({ status: tab, q: debouncedSearch || undefined, page: 0, size: PAGE_SIZE })
+    setPagedItems(null);
+    setPagedError(false);
+    operatorApi.listAppointmentsPaged({
+      status: TAB_STATUS_PARAM[tab],
+      q: debouncedSearch || undefined,
+      sort: sort ?? undefined,
+      dir: sort ? dir : undefined,
+      page, size,
+    })
       .then(res => {
         if (cancelled) return;
-        setArchiveItems(res.content);
+        setPagedItems(res.content);
         setTotalElements(res.totalElements);
-        setPage(0);
+        setTotalPages(res.totalPages);
       })
-      .catch(() => { if (!cancelled) { setArchiveItems([]); setArchiveError(true); } });
+      .catch(() => { if (!cancelled) { setPagedItems([]); setPagedError(true); } });
     return () => { cancelled = true; };
-  }, [archiveMode, tab, debouncedSearch, archiveNonce]);
+  }, [serverMode, tab, debouncedSearch, sort, dir, page, size, pagedNonce]);
 
-  const loadMoreArchive = () => {
-    setLoadingMore(true);
-    operatorApi.listAppointmentsPaged({ status: tab, q: debouncedSearch || undefined, page: page + 1, size: PAGE_SIZE })
-      .then(res => {
-        setArchiveItems(prev => [...(prev ?? []), ...res.content]);
-        setTotalElements(res.totalElements);
-        setPage(res.page);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingMore(false));
-  };
+  /** Başlıq kliki: eyni sütun → istiqaməti çevir, yeni sütun → desc-dən başla. */
+  const toggleSort = useCallback((key: string) => {
+    const k = key as AppointmentSortKey;
+    setSort(prev => {
+      if (prev === k) { setDir(d => (d === "asc" ? "desc" : "asc")); return prev; }
+      setDir("desc");
+      return k;
+    });
+  }, []);
 
   // Live refresh on any appointment-related notification (new, assigned, etc.)
   useEffect(() => {
     return subscribeNotifications((n) => {
       if (typeof n.type !== "string") return;
-      if (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_")) { load(); loadPsyProposals(); }
+      if (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_")) {
+        load(); loadPsyProposals(); setPagedNonce(x => x + 1);
+      }
       if (n.type.startsWith("REFERRAL_")) operatorApi.pendingReferrals().then(setReferrals).catch(() => {});
     });
   }, [loadPsyProposals]);
@@ -282,7 +332,7 @@ export default function OperatorAppointmentsPage() {
         ? { ...a, claimedByUserId: ev.claimedByUserId ?? null, claimedByName: ev.claimedByName ?? null, claimedAt: ev.claimedAt ?? null }
         : a;
       setItems(prev => prev.map(patch));
-      setArchiveItems(prev => prev ? prev.map(patch) : prev);
+      setPagedItems(prev => prev ? prev.map(patch) : prev);
     });
   }, []);
 
@@ -423,8 +473,8 @@ export default function OperatorAppointmentsPage() {
         ...a, claimedByUserId: c.claimedByUserId ?? null, claimedByName: c.claimedByName ?? null, claimedAt: c.claimedAt ?? null,
       } : a;
       setItems(prev => prev.map(patch));
-      setArchiveItems(prev => prev ? prev.map(patch) : prev);
-    }).catch(() => {});
+      setPagedItems(prev => prev ? prev.map(patch) : prev);
+    }).catch(() => toast("Müraciəti götürmək alınmadı. Yenidən cəhd edin.", "error"));
   }, []);
 
   // OP-1: sətirə klik → detal səhifəsi. Aktiv filtr konteksti URL parametrləri ilə daşınır.
@@ -443,12 +493,40 @@ export default function OperatorAppointmentsPage() {
   const pickStatus = (tk: Tab) => { setAllOnly(false); setOverdueOnly(false); setMineOnly(false); setRescheduleOnly(false); setCancelOnly(false); setTab(tk); };
   const statusActive = (tk: Tab) => !allOnly && !overdueOnly && !mineOnly && !rescheduleOnly && !cancelOnly && tab === tk;
 
+  // Eyni siyahının iki görünüşü: geniş ekranda cədvəl, dar ekranda kart (CSS swap).
+  const renderAppointments = (list: AppointmentDetail[]) => (
+    <ResponsiveList
+      table={
+        <AppointmentTable
+          rows={list}
+          meId={meId}
+          psyProposalApptIds={psyProposalApptIds}
+          isOverdue={isOverdue}
+          sort={sort}
+          dir={dir}
+          onSort={toggleSort}
+          onTake={takeOwnership}
+          onOpen={openDetail}
+        />
+      }
+      cards={
+        <div style={GRID}>
+          {list.map(a => (
+            <AppointmentCard key={a.id} a={a} meId={meId} hasPsyProposal={psyProposalApptIds.has(a.id)}
+              onTake={() => takeOwnership(a.id)} onOpen={() => openDetail(a)} />
+          ))}
+        </div>
+      }
+    />
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <style>{CSS}</style>
 
       {onBehalfOpen && (
-        <OnBehalfBookingModal onClose={() => setOnBehalfOpen(false)} onDone={() => { setOnBehalfOpen(false); load(); }} />
+        <OnBehalfBookingModal onClose={() => setOnBehalfOpen(false)}
+          onDone={() => { setOnBehalfOpen(false); load(); setPagedNonce(n => n + 1); }} />
       )}
 
       {/* HEADER */}
@@ -462,7 +540,7 @@ export default function OperatorAppointmentsPage() {
                 <Svg w={15} d={<path d="M12 5v14M5 12h14" />} /> Pasiyent adına randevu
               </button>
             )}
-            <button type="button" onClick={load} className="fx-btn fx-btn--ghost">
+            <button type="button" onClick={() => { load(); setPagedNonce(n => n + 1); }} className="fx-btn fx-btn--ghost">
               <Svg w={15} d={<><path d="M23 4v6h-6" /><path d="M1 20v-6h6" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10" /><path d="M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></>} /> Yenilə
             </button>
           </>
@@ -539,15 +617,39 @@ export default function OperatorAppointmentsPage() {
         referrals.length === 0 ? (
           <EmptyCard text="Təsdiq gözləyən yönləndirmə yoxdur." />
         ) : (
-          <div style={GRID}>
-            {referrals.map(r => (
-              <ReferralCard key={r.id} r={r} onOpen={() => router.push(`/operator/referrals/${r.id}`)} />
-            ))}
-          </div>
+          <ResponsiveList
+            table={<ReferralTable rows={referrals} onOpen={r => router.push(`/operator/referrals/${r.id}`)} />}
+            cards={
+              <div style={GRID}>
+                {referrals.map(r => (
+                  <ReferralCard key={r.id} r={r} onOpen={() => router.push(`/operator/referrals/${r.id}`)} />
+                ))}
+              </div>
+            }
+          />
+        )
+      ) : serverMode ? (
+        // Əsas siyahı — server səhifələməsi (tab filtri + axtarış + sıralama serverdə)
+        pagedError ? (
+          <ErrorState
+            title="Randevular yüklənmədi"
+            sub="Bağlantı və ya server problemi ola bilər. Yenidən cəhd edin."
+            onRetry={() => setPagedNonce(n => n + 1)}
+          />
+        ) : pagedItems == null ? (
+          <ResponsiveList table={<SkeletonTable />} cards={<SkeletonCards />} />
+        ) : pagedItems.length === 0 ? (
+          <EmptyCard />
+        ) : (
+          <>
+            {renderAppointments(pagedItems)}
+            <Pager page={page} size={size} totalElements={totalElements} totalPages={totalPages}
+              onPage={setPage} onSize={setSize} />
+          </>
         )
       ) : loading ? (
-        <SkeletonCards />
-      ) : error && !archiveMode ? (
+        <ResponsiveList table={<SkeletonTable />} cards={<SkeletonCards />} />
+      ) : error ? (
         <ErrorState
           title="Randevular yüklənmədi"
           sub="Bağlantı və ya server problemi ola bilər. Yenidən cəhd edin."
@@ -557,62 +659,30 @@ export default function OperatorAppointmentsPage() {
         packageGroups.length === 0 ? (
           <EmptyCard text="Paket tapılmadı" sub="Filtri dəyişin və ya pasiyent adına yeni paket satın." />
         ) : (
-          <div style={PKG_GRID}>
-            {packageGroups.map(sessions => (
-              <PackageCard
-                key={`pkg-${sessions[0].patientPackageId}`}
-                sessions={sessions}
-                onOpen={() => router.push(`/operator/appointments/package/${sessions[0].patientPackageId}`)}
+          <ResponsiveList
+            table={
+              <PackageTable
+                groups={packageGroups}
+                onOpen={g => router.push(`/operator/appointments/package/${g[0].patientPackageId}`)}
+                onOpenSession={openDetail}
               />
-            ))}
-          </div>
-        )
-      ) : archiveMode ? (
-        archiveError ? (
-          <ErrorState
-            title="Siyahı yüklənmədi"
-            sub="Bağlantı və ya server problemi ola bilər. Yenidən cəhd edin."
-            onRetry={() => setArchiveNonce(n => n + 1)}
+            }
+            cards={
+              <div style={PKG_GRID}>
+                {packageGroups.map(sessions => (
+                  <PackageCard
+                    key={`pkg-${sessions[0].patientPackageId}`}
+                    sessions={sessions}
+                    onOpen={() => router.push(`/operator/appointments/package/${sessions[0].patientPackageId}`)}
+                  />
+                ))}
+              </div>
+            }
           />
-        ) : archiveItems == null ? (
-          <SkeletonCards />
-        ) : (() => {
-          // Paket seansları öz tabında yaşayır — arxivdə də yalnız tək seanslar.
-          const singles = archiveItems.filter(a => a.patientPackageId == null);
-          const hasMore = archiveItems.length < totalElements;
-          return (
-            <>
-              {singles.length === 0 ? (
-                <EmptyCard />
-              ) : (
-                <div style={GRID}>
-                  {singles.map(a => (
-                    <AppointmentCard key={a.id} a={a} meId={meId} hasPsyProposal={psyProposalApptIds.has(a.id)}
-                      onTake={() => takeOwnership(a.id)} onOpen={() => openDetail(a)} />
-                  ))}
-                </div>
-              )}
-              {hasMore && (
-                <div style={{ textAlign: "center", marginTop: 18 }}>
-                  <button type="button" onClick={loadMoreArchive} disabled={loadingMore} className="fx-btn fx-btn--ghost"
-                    style={{ cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
-                    {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - archiveItems.length)})`}
-                  </button>
-                </div>
-              )}
-            </>
-          );
-        })()
+        )
       ) : filtered.length === 0 ? (
         <EmptyCard />
-      ) : (
-        <div style={GRID}>
-          {filtered.map(a => (
-            <AppointmentCard key={a.id} a={a} meId={meId} hasPsyProposal={psyProposalApptIds.has(a.id)}
-              onTake={() => takeOwnership(a.id)} onOpen={() => openDetail(a)} />
-          ))}
-        </div>
-      )}
+      ) : renderAppointments(sortRows(filtered, sort, dir))}
     </div>
   );
 }
@@ -666,11 +736,612 @@ function FilterMoreMenu({ options }: { options: { key: string; label: string; co
   );
 }
 
-// ─── Müraciət kartı ───────────────────────────────────────────────────────────
+// ─── Cədvəl görünüşü ─────────────────────────────────────────────────────────
+// Geniş ekranda siyahılar `fx-table` cədvəlidir (operator/customers,
+// operator/psychologists, operator/session-requests ilə eyni konvensiya:
+// fx-card qabığı → overflowX konteyneri → fx-table, sətir klik = detal).
+// Dar ekranda eyni məlumat mövcud kart görünüşünə keçir — CSS media sorğusu ilə,
+// beləliklə heç bir davranış/hook dublikat olmur.
 
-const GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(340px, 100%), 1fr))", gap: 16 };
+function ResponsiveList({ table, cards }: { table: ReactNode; cards: ReactNode }) {
+  return (
+    <>
+      <div className="or-wide">{table}</div>
+      <div className="or-narrow">{cards}</div>
+    </>
+  );
+}
+
+/** Cədvəl qabığı — qonşu operator səhifələri ilə eyni struktur. */
+function TableCard({ children }: { children: ReactNode }) {
+  return (
+    <div className="fx-card" style={{ overflow: "hidden" }}>
+      <div style={{ overflowX: "auto" }}>
+        <table className="fx-table">{children}</table>
+      </div>
+    </div>
+  );
+}
+
+/** Sıralanan cədvəl başlığı — klik istiqaməti çevirir, aktiv istiqamət inline
+ *  SVG ox (caret) ilə göstərilir. Həm server, həm client sıralamasında eyni. */
+function SortTh({ label, sortKey, sort, dir, onSort, style }: {
+  label: string; sortKey: string; sort: string | null; dir: SortDir;
+  onSort: (key: string) => void; style?: React.CSSProperties;
+}) {
+  const active = sort === sortKey;
+  return (
+    <th style={style} aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}>
+      <button type="button" className="or-th" onClick={() => onSort(sortKey)}
+        title={`${label} — sıralamanı dəyiş`}>
+        {label}
+        <Svg w={11} sw={2.6} style={{ opacity: active ? 1 : 0.3, flex: "none" }}
+          d={active && dir === "asc" ? <path d="M18 15l-6-6-6 6" /> : <path d="M6 9l6 6 6-6" />} />
+      </button>
+    </th>
+  );
+}
+
+/** Səhifələmə zolağı — operator/session-requests səhifəsindəki konvensiyanın
+ *  eynisi (Göstərilir · Əvvəlki/nömrələr/Sonrakı · Səhifə başı). */
+function Pager({ page, size, totalElements, totalPages, onPage, onSize }: {
+  page: number; size: number; totalElements: number; totalPages: number;
+  onPage: (p: number) => void; onSize: (s: number) => void;
+}) {
+  if (totalElements === 0) return null;
+  return (
+    <div className="fx-card" style={{ marginTop: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", flexWrap: "wrap", gap: 10 }}>
+        <span className="fx-muted fx-num" style={{ fontSize: 12 }}>
+          Göstərilir: {page * size + 1}–{Math.min((page + 1) * size, totalElements)} / {totalElements}
+        </span>
+
+        {totalPages > 1 && (
+          <div style={{ display: "flex", gap: 4 }}>
+            <button type="button" className="fx-btn fx-btn--ghost fx-btn--sm" disabled={page === 0} onClick={() => onPage(page - 1)}>
+              Əvvəlki
+            </button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let p = i;
+              if (totalPages > 5 && page > 2) {
+                p = page - 2 + i;
+                if (p >= totalPages) p = totalPages - (5 - i);
+              }
+              if (p < 0 || p >= totalPages) return null;
+              return (
+                <button key={p} type="button"
+                  className={`fx-btn fx-btn--sm${page === p ? " fx-btn--primary" : " fx-btn--ghost"}`}
+                  onClick={() => onPage(p)}>
+                  {p + 1}
+                </button>
+              );
+            })}
+            <button type="button" className="fx-btn fx-btn--ghost fx-btn--sm" disabled={page >= totalPages - 1} onClick={() => onPage(page + 1)}>
+              Sonrakı
+            </button>
+          </div>
+        )}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="fx-muted" style={{ fontSize: 12 }}>Səhifə başı:</span>
+          <select value={size} onChange={e => onSize(Number(e.target.value))} aria-label="Səhifə ölçüsü" className="fx-select fx-select--inline">
+            {PAGE_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Diqqət nişanı — sətrin əvvəlində, kartdakı banner ikonunun eynisi. */
+function AttnMark({ tone, title }: { tone: "red" | "amber"; title: string }) {
+  return (
+    <span title={title} aria-label={title} style={{ display: "inline-flex", color: tone === "red" ? "var(--rose)" : "var(--amber)" }}>
+      <Svg w={15} d={<><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></>} />
+    </span>
+  );
+}
+
+/** Sətir daxili əlaqə düymələri — kartdakı ContactChips-in yığcam variantı. */
+function RowContact({ phone, email }: { phone?: string | null; email?: string | null }) {
+  const p = normalizePhone(phone);
+  if (!p && !email) return null;
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+  return (
+    <>
+      {p && <a href={`tel:${p}`} onClick={stop} title={`Zəng et: ${phone}`} className="fx-btn fx-btn--ghost fx-btn--sm"><IconPhone /></a>}
+      {p && <a href={whatsappLink(p)} target="_blank" rel="noopener noreferrer" onClick={stop} title={`WhatsApp: ${phone}`} className="fx-btn fx-btn--ghost fx-btn--sm"><IconWhatsApp /></a>}
+      {email && <a href={`mailto:${email}`} onClick={stop} title={email} className="fx-btn fx-btn--ghost fx-btn--sm"><IconMail /></a>}
+    </>
+  );
+}
+
+// ─── Randevular cədvəli ───────────────────────────────────────────────────────
+
+function AppointmentTable({ rows, meId, psyProposalApptIds, isOverdue, sort, dir, onSort, onTake, onOpen }: {
+  rows: AppointmentDetail[];
+  meId: number | null;
+  psyProposalApptIds: Set<number>;
+  isOverdue: (a: AppointmentDetail) => boolean;
+  sort: AppointmentSortKey | null;
+  dir: SortDir;
+  onSort: (key: string) => void;
+  onTake: (id: number) => void;
+  onOpen: (a: AppointmentDetail) => void;
+}) {
+  return (
+    <TableCard>
+      <thead>
+        <tr>
+          <th style={{ width: 34 }} />
+          <SortTh label="Pasiyent" sortKey="patientName" sort={sort} dir={dir} onSort={onSort} />
+          <SortTh label="Tarix / saat" sortKey="startAt" sort={sort} dir={dir} onSort={onSort} />
+          <SortTh label="Psixoloq" sortKey="psychologistName" sort={sort} dir={dir} onSort={onSort} />
+          <SortTh label="Status" sortKey="status" sort={sort} dir={dir} onSort={onSort} />
+          <th>Ödəniş</th>
+          <SortTh label="Gözləmə / diqqət" sortKey="createdAt" sort={sort} dir={dir} onSort={onSort} />
+          <th style={{ width: 210 }} />
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(a => (
+          <AppointmentRow
+            key={a.id}
+            a={a}
+            meId={meId}
+            hasPsyProposal={psyProposalApptIds.has(a.id)}
+            overdue={isOverdue(a)}
+            onTake={() => onTake(a.id)}
+            onOpen={() => onOpen(a)}
+          />
+        ))}
+      </tbody>
+    </TableCard>
+  );
+}
+
+function AppointmentRow({ a, meId, overdue, hasPsyProposal, onTake, onOpen }: {
+  a: AppointmentDetail; meId: number | null; overdue: boolean; hasPsyProposal: boolean;
+  onTake: () => void; onOpen: () => void;
+}) {
+  const { t } = useT();
+  const alert = buildAlert(a, hasPsyProposal);
+  const claimMine = a.claimedByUserId != null && a.claimedByUserId === meId;
+  const claimOther = a.claimedByUserId != null && !claimMine;
+  const showClaim = claimMine || (claimOther && !!a.claimedByName);
+  const claimLabel = claimMine ? t("staff.opClaimMine") : (a.claimedByName ? t("staff.opClaimWorking", { name: a.claimedByName }) : "");
+  const hasSeries = a.seriesId != null && a.seriesIndex != null && a.seriesTotal != null;
+  const canClaim = a.claimedByUserId == null && isPoolEligible(a.status);
+  const when = a.startAt ?? a.requestedStartAt ?? null;
+  // Diqqət tonu: xəbərdarlıq varsa onun tonu, yoxsa SLA gecikməsi.
+  const tone: "red" | "amber" | null = alert ? alert.tone : overdue ? "red" : null;
+  const attnText = alert?.text ?? (overdue ? "SLA gecikməsi — hələ cavablandırılmayıb" : "");
+
+  return (
+    <tr onClick={onOpen} style={{ cursor: "pointer" }} className={tone ? `or-tr--attn or-tr--attn-${tone}` : undefined}>
+      <td className="or-td-attn">{tone && <AttnMark tone={tone} title={attnText} />}</td>
+      <td>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span className={`fx-avatar fx-avatar--${avatarTone(a.id)}`}>{initialsOf(a.patientName)}</span>
+          <div style={{ minWidth: 0 }}>
+            <div className="fx-row__title">{a.patientName ?? "—"}</div>
+            <div className="fx-muted fx-num" style={{ fontSize: 12 }}>#FNS-{String(a.id).padStart(4, "0")}</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div className="fx-num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>{when ? fmtDateTime(when) : "—"}</div>
+        {!a.startAt && a.requestedStartAt && <div className="fx-muted" style={{ fontSize: 11.5 }}>istənilən vaxt</div>}
+        {a.sessionKind === "INTRO" && <div className="fx-muted" style={{ fontSize: 11.5 }}>Tanışlıq · pulsuz</div>}
+      </td>
+      <td>
+        {a.psychologistName ? (
+          <span style={{ fontSize: 12.5 }}>{a.psychologistName}</span>
+        ) : a.requestedPsychologistName ? (
+          <>
+            <div style={{ fontSize: 12.5, fontStyle: a.origin === "DIRECT" ? undefined : "italic" }}>{a.requestedPsychologistName}</div>
+            <div className="fx-muted" style={{ fontSize: 11.5 }}>{a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən"}</div>
+          </>
+        ) : (
+          <span className="fx-muted" style={{ fontSize: 12.5, fontStyle: "italic" }}>Təyin olunmayıb</span>
+        )}
+      </td>
+      <td>
+        {/* Sətirdəki YEGANƏ status siqnalı: nöqtə + mətn (dolu pill deyil).
+            Sahiblik/seriya məlumatı susqun mətn sətirləri kimi qalır. */}
+        <StatusDot status={a.status} />
+        {showClaim && <div className="fx-muted" style={{ fontSize: 11.5, marginTop: 4 }}>{claimLabel}</div>}
+        {hasSeries && (
+          <div className="fx-muted fx-num" style={{ fontSize: 11.5 }}>
+            {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal ?? 0 })}
+          </div>
+        )}
+      </td>
+      <td>
+        {a.patientPackageId != null ? (
+          <span className="fx-muted" style={{ fontSize: 12.5 }}>Paket</span>
+        ) : a.paymentStatus === "PAID" ? (
+          <>
+            {!!a.paymentAmount && <div className="fx-num" style={{ fontSize: 12.5 }}>{a.paymentAmount} ₼</div>}
+            <div className="fx-muted" style={{ fontSize: 11.5 }}>Ödənilib</div>
+          </>
+        ) : a.paymentStatus === "PENDING" ? (
+          <span className="fx-muted" style={{ fontSize: 12.5 }}>Gözləyir</span>
+        ) : (
+          <span className="fx-muted">—</span>
+        )}
+      </td>
+      <td>
+        <div className="fx-muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{timeAgo(a.createdAt) || fmtDateTime(a.createdAt)}</div>
+        {attnText && (
+          <div className="or-alert-txt" style={{ color: tone === "red" ? "var(--status-refunded-fg)" : "var(--status-pending-fg)" }}>{attnText}</div>
+        )}
+        {a.lastContactAt && (
+          <div className="fx-muted" style={{ fontSize: 11.5 }}>
+            Son izləmə: {timeAgo(a.lastContactAt)}
+            {a.lastContactOutcome && OUTCOME_LABEL[a.lastContactOutcome]
+              ? <> · <span style={{ color: FOLLOW_COLOR[OUTCOME_LABEL[a.lastContactOutcome].tone], fontWeight: 600 }}>{OUTCOME_LABEL[a.lastContactOutcome].label}</span></>
+              : null}
+          </div>
+        )}
+      </td>
+      <td onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <RowContact phone={a.patientPhone} email={a.patientEmail} />
+          {canClaim && (
+            <button type="button" onClick={onTake} className="fx-btn fx-btn--primary fx-btn--sm">{t("staff.opTake")}</button>
+          )}
+          <button type="button" onClick={onOpen} title={t("staff.opOpenTicket")} className="fx-btn fx-btn--ghost fx-btn--sm">
+            <Svg w={14} sw={2.4} d={<path d="M9 18l6-6-6-6" />} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ─── Yönləndirmələr cədvəli ───────────────────────────────────────────────────
+
+// Status siqnalı burada da nöqtə + mətndir; rənglər mövcud status dəyişənləridir.
+const REFERRAL_STATUS_META: Record<string, { label: string; color: string }> = {
+  PENDING_OPERATOR: { label: "Operator təsdiqi", color: "var(--status-pending-fg)" },
+  PENDING_REVIEW:   { label: "Psixoloq baxışı",  color: "var(--brand)" },
+  ACCEPTED:         { label: "Qəbul edilib",     color: "var(--status-paid-fg)" },
+  DECLINED:         { label: "İmtina",           color: "var(--status-refunded-fg)" },
+  CANCELLED:        { label: "Ləğv edilib",      color: "var(--status-cancelled-fg)" },
+};
+
+/** Yönləndirmə mənbəyi (operatorApi.pendingReferrals) səhifələnmir — server
+ *  səhifələməsi yoxdur, ona görə burada YALNIZ client-side sıralama var
+ *  (uydurma server səhifələməsi qurulmur). */
+const REFERRAL_SORT: Record<string, (r: Referral) => string | number> = {
+  patientName: r => (r.patientName ?? "").toLowerCase(),
+  createdAt:   r => new Date(r.createdAt ?? 0).getTime(),
+  status:      r => (REFERRAL_STATUS_META[r.status]?.label ?? r.status).toLowerCase(),
+};
+
+function ReferralTable({ rows, onOpen }: { rows: Referral[]; onOpen: (r: Referral) => void }) {
+  const [sort, setSort] = useState<string | null>(null);
+  const [dir, setDir] = useState<SortDir>("desc");
+  const onSort = (key: string) => {
+    if (key === sort) setDir(d => (d === "asc" ? "desc" : "asc"));
+    else { setSort(key); setDir("desc"); }
+  };
+  const sorted = useMemo(() => {
+    const get = sort ? REFERRAL_SORT[sort] : null;
+    if (!get) return rows;
+    const mul = dir === "asc" ? 1 : -1;
+    return [...rows].sort((x, y) => {
+      const a = get(x), b = get(y);
+      return (a < b ? -1 : a > b ? 1 : 0) * mul;
+    });
+  }, [rows, sort, dir]);
+
+  return (
+    <TableCard>
+      <thead>
+        <tr>
+          <SortTh label="Pasiyent" sortKey="patientName" sort={sort} dir={dir} onSort={onSort} />
+          <th>Yönləndirmə</th>
+          <th>Növ</th>
+          <th>Səbəb</th>
+          <SortTh label="Tarix" sortKey="createdAt" sort={sort} dir={dir} onSort={onSort} />
+          <SortTh label="Status" sortKey="status" sort={sort} dir={dir} onSort={onSort} />
+          <th style={{ width: 130 }} />
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map(r => {
+          const st = REFERRAL_STATUS_META[r.status] ?? { label: r.status, color: "var(--oxford-60)" };
+          return (
+            <tr key={r.id} onClick={() => onOpen(r)} style={{ cursor: "pointer" }}>
+              <td>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span className={`fx-avatar fx-avatar--${avatarTone(r.patientId)}`}>{initialsOf(r.patientName)}</span>
+                  <span className="fx-row__title">{r.patientName ?? "—"}</span>
+                </div>
+              </td>
+              <td>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 7, flexWrap: "wrap", fontSize: 12.5 }}>
+                  <span>{r.fromPsychologistName}</span>
+                  <Svg w={13} sw={2.4} stroke="var(--oxford-60)" d={<path d="M5 12h14M13 6l6 6-6 6" />} />
+                  <span>{r.toPsychologistName}</span>
+                </span>
+              </td>
+              <td><span className="fx-muted" style={{ fontSize: 12.5 }}>{REFERRAL_SUBJECT_META[r.subjectType].label}</span></td>
+              <td>
+                <div style={{ fontSize: 12.5, color: "var(--oxford-80)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 260 }} title={r.reason}>
+                  {r.reason}
+                </div>
+              </td>
+              <td><span className="fx-muted fx-num" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{timeAgo(r.createdAt) || fmtDateTime(r.createdAt)}</span></td>
+              <td><DotLabel color={st.color} label={st.label} /></td>
+              <td onClick={e => e.stopPropagation()} style={{ textAlign: "right" }}>
+                <button type="button" onClick={() => onOpen(r)} className="fx-btn fx-btn--ghost fx-btn--sm">
+                  Ətraflı bax
+                  <Svg w={13} sw={2.2} d={<path d="M9 18l6-6-6-6" />} />
+                </button>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </TableCard>
+  );
+}
+
+// ─── Paketlər cədvəli — açılan sətir paketin seanslarını göstərir ─────────────
+
+/** Paketlər tam siyahıdan (items) qruplaşdırılır — server səhifələməsi yoxdur,
+ *  ona görə sıralama da client-side qalır (uydurma server paging qurulmur). */
+const PACKAGE_SORT: Record<string, (g: AppointmentDetail[]) => string | number> = {
+  packageName:      g => (g[0].packageName ?? "").toLowerCase(),
+  patientName:      g => (g[0].patientName ?? "").toLowerCase(),
+  psychologistName: g => (g[0].psychologistName ?? "").toLowerCase(),
+  packageStatus:    g => (g[0].packageStatus ?? "ACTIVE").toLowerCase(),
+};
+
+function PackageTable({ groups, onOpen, onOpenSession }: {
+  groups: AppointmentDetail[][];
+  onOpen: (g: AppointmentDetail[]) => void;
+  onOpenSession: (a: AppointmentDetail) => void;
+}) {
+  const [sort, setSort] = useState<string | null>(null);
+  const [dir, setDir] = useState<SortDir>("desc");
+  const onSort = (key: string) => {
+    if (key === sort) setDir(d => (d === "asc" ? "desc" : "asc"));
+    else { setSort(key); setDir("desc"); }
+  };
+  const sorted = useMemo(() => {
+    const get = sort ? PACKAGE_SORT[sort] : null;
+    if (!get) return groups;
+    const mul = dir === "asc" ? 1 : -1;
+    return [...groups].sort((x, y) => {
+      const a = get(x), b = get(y);
+      return (a < b ? -1 : a > b ? 1 : 0) * mul;
+    });
+  }, [groups, sort, dir]);
+
+  return (
+    <TableCard>
+      <thead>
+        <tr>
+          <th style={{ width: 34 }} />
+          <th style={{ width: 40 }} />
+          <SortTh label="Paket" sortKey="packageName" sort={sort} dir={dir} onSort={onSort} />
+          <SortTh label="Pasiyent" sortKey="patientName" sort={sort} dir={dir} onSort={onSort} />
+          <SortTh label="Psixoloq" sortKey="psychologistName" sort={sort} dir={dir} onSort={onSort} />
+          <th>İrəliləyiş</th>
+          <th>Növbəti seans</th>
+          <SortTh label="Status" sortKey="packageStatus" sort={sort} dir={dir} onSort={onSort} />
+          <th style={{ width: 150 }} />
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map(g => (
+          <PackageRow key={`pkg-${g[0].patientPackageId}`} sessions={g} onOpen={() => onOpen(g)} onOpenSession={onOpenSession} />
+        ))}
+      </tbody>
+    </TableCard>
+  );
+}
+
+function PackageRow({ sessions, onOpen, onOpenSession }: {
+  sessions: AppointmentDetail[]; onOpen: () => void; onOpenSession: (a: AppointmentDetail) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [now] = useState(() => Date.now());
+  const first = sessions[0];
+  const total = first.packageTotal ?? sessions.length;
+  const scheduledList = sessions
+    .filter(s => s.startAt && s.status !== "CANCELLED")
+    .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
+  const scheduled = scheduledList.length;
+  const empty = Math.max(0, total - scheduled);
+  const statusKey = first.packageStatus ?? "ACTIVE";
+  const st = PKG_STATUS[statusKey] ?? PKG_STATUS.ACTIVE;
+  const needsAttention = statusKey === "ACTIVE" && empty > 0;
+  const upcoming = scheduledList.find(s => new Date(s.startAt!).getTime() >= now);
+  const nextS = upcoming ?? (scheduledList.length ? scheduledList[scheduledList.length - 1] : null);
+  const nextLabel = upcoming ? "Növbəti" : "Son seans";
+  const attnText = needsAttention ? `${empty} boş seans — təyin edilməli` : "";
+  const panelId = `pkg-sessions-${first.patientPackageId}`;
+
+  return (
+    <>
+      <tr onClick={onOpen} style={{ cursor: "pointer" }} className={needsAttention ? "or-tr--attn or-tr--attn-amber" : undefined}>
+        <td className="or-td-attn">{needsAttention && <AttnMark tone="amber" title={attnText} />}</td>
+        <td onClick={e => e.stopPropagation()}>
+          <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-controls={panelId}
+            title={open ? "Seansları gizlət" : "Seansları göstər"} className="fx-btn fx-btn--ghost fx-btn--sm">
+            <Svg w={13} sw={2.4} style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform .12s" }} d={<path d="M9 18l6-6-6-6" />} />
+          </button>
+        </td>
+        <td>
+          <div className="fx-row__title">{first.packageName ?? "Paket"}</div>
+          <div className="fx-muted fx-num" style={{ fontSize: 11.5 }}>#{first.patientPackageId}</div>
+        </td>
+        <td><span style={{ fontSize: 12.5 }}>{first.patientName ?? "—"}</span></td>
+        <td>{first.psychologistName ? <span style={{ fontSize: 12.5 }}>{first.psychologistName}</span> : <span className="fx-muted">—</span>}</td>
+        <td>
+          <span className="fx-num" style={{ fontSize: 13, fontWeight: 700, color: "var(--lilac)" }}>{scheduled}/{total}</span>
+          {attnText && <div className="or-alert-txt" style={{ color: "var(--status-pending-fg)" }}>{attnText}</div>}
+        </td>
+        <td>
+          {nextS ? (
+            <>
+              <div className="fx-num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>{fmtDateTime(nextS.startAt)}</div>
+              <div className="fx-muted" style={{ fontSize: 11.5 }}>{nextLabel}</div>
+            </>
+          ) : <span className="fx-muted">—</span>}
+        </td>
+        <td><DotLabel color={st.color} label={st.label} /></td>
+        <td onClick={e => e.stopPropagation()} style={{ textAlign: "right" }}>
+          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+            <RowContact phone={first.patientPhone} email={first.patientEmail} />
+            <button type="button" onClick={onOpen} title="Seansları aç" className="fx-btn fx-btn--ghost fx-btn--sm">
+              <Svg w={14} sw={2.4} d={<path d="M9 18l6-6-6-6" />} />
+            </button>
+          </div>
+        </td>
+      </tr>
+      {open && (
+        <tr className="or-subrow">
+          <td colSpan={9} id={panelId}>
+            <table className="fx-table or-subtable">
+              <thead>
+                <tr>
+                  <th>Seans</th>
+                  <th>Tarix / saat</th>
+                  <th>Psixoloq</th>
+                  <th>Status</th>
+                  <th style={{ width: 60 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {sessions.map((s, i) => (
+                  <tr key={s.id} onClick={() => onOpenSession(s)} style={{ cursor: "pointer" }}>
+                    <td className="fx-num">#{i + 1} · FNS-{String(s.id).padStart(4, "0")}</td>
+                    <td className="fx-num" style={{ whiteSpace: "nowrap" }}>{s.startAt ? fmtDateTime(s.startAt) : <span className="fx-muted">Təyin edilməyib</span>}</td>
+                    <td>{s.psychologistName ?? <span className="fx-muted">—</span>}</td>
+                    <td><StatusDot status={s.status} /></td>
+                    <td onClick={e => e.stopPropagation()} style={{ textAlign: "right" }}>
+                      <button type="button" onClick={() => onOpenSession(s)} title="Seansı aç" className="fx-btn fx-btn--ghost fx-btn--sm">
+                        <Svg w={13} sw={2.4} d={<path d="M9 18l6-6-6-6" />} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {empty > 0 && (
+                  <tr>
+                    <td colSpan={5} className="fx-muted" style={{ fontStyle: "italic" }}>{empty} boş seans — hələ təyin edilməyib</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+// ─── Ortaq kart primitivləri ─────────────────────────────────────────────────
+// Üç kart növü (müraciət / yönləndirmə / paket) eyni ritmi paylaşır:
+//   BAŞLIQ (avatar + ad + kimlik/vaxt + status)  →  SİQNAL (xəbərdarlıq)
+//   →  FAKTLAR ("Etiket: dəyər" sətirləri)       →  ALT ZOLAQ (əlaqə | əməliyyat)
+// Beləliklə operator gözü hər kartda eyni yerdə eyni məlumatı tapır.
+
+const GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(320px, 100%), 1fr))", gap: 14, alignItems: "stretch" };
 // Paket kartları öz tabında, öz ölçü standartı ilə — tək seans kartlarına görə dartılmır
-const PKG_GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(360px, 100%), 1fr))", gap: 16 };
+const PKG_GRID: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(340px, 100%), 1fr))", gap: 14, alignItems: "stretch" };
+
+/** Klikə/klaviaturaya cavab verən kart qabığı — üç kartda da eyni davranış.
+ *  `attention` diqqət tələb edən kartlara fx-card--attention amber zolağını verir. */
+function CardShell({ onOpen, attention, children }: { onOpen: () => void; attention?: boolean; children: ReactNode }) {
+  return (
+    <div className={`fx-card or-card${attention ? " fx-card--attention" : ""}`} role="button" tabIndex={0}
+      onClick={onOpen} onKeyDown={e => { if (e.key === "Enter") onOpen(); }}>
+      <div className="or-card__body">{children}</div>
+    </div>
+  );
+}
+
+/** Kart başlığı: avatar + başlıq + yardımçı sətir + sağda status. */
+function CardHead({ avatar, title, meta, aside }: { avatar: ReactNode; title: ReactNode; meta?: ReactNode; aside?: ReactNode }) {
+  return (
+    <div className="or-head">
+      {avatar}
+      <div className="or-head__main">
+        <div className="or-title">{title}</div>
+        {meta && <div className="or-meta">{meta}</div>}
+      </div>
+      {aside && <div className="or-head__aside">{aside}</div>}
+    </div>
+  );
+}
+
+/** "Etiket: dəyər" sətri (ikon + mətn) — nöqtə ilə yığılmış meta yığınının əvəzi. */
+function Fact({ icon, label, value, color, italic }: {
+  icon: ReactNode; label?: string; value: ReactNode; color?: string; italic?: boolean;
+}) {
+  return (
+    <div className="or-fact">
+      <span className="or-fact__ico">{icon}</span>
+      <span className="or-fact__txt" style={{ color, fontStyle: italic ? "italic" : undefined }}>
+        {label && <span className="or-fact__k">{label}: </span>}{value}
+      </span>
+    </div>
+  );
+}
+
+/** Kart daxili xəbərdarlıq — dizayn sistemi banneri (fx-banner), yığcam ölçüdə. */
+function CardBanner({ tone, text }: { tone: "warn" | "error" | "success"; text: ReactNode }) {
+  return (
+    <div className={`fx-banner fx-banner--${tone} or-banner`}>
+      {tone === "success"
+        ? <Svg w={14} sw={2.4} d={<path d="M20 6 9 17l-5-5" />} />
+        : <Svg w={14} d={<><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></>} />}
+      <span>{text}</span>
+    </div>
+  );
+}
+
+/** Əlaqə çipləri — kart açılışını tetikləmədən zəng/WhatsApp/e-poçt. */
+function ContactChips({ phone, email }: { phone?: string | null; email?: string | null }) {
+  const p = normalizePhone(phone);
+  if (!p && !email) return null;
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+  return (
+    <div className="or-contact" onClick={stop}>
+      {p && <a href={`tel:${p}`} onClick={stop} title={`Zəng et: ${phone}`} className="fx-chip"><IconPhone /> Zəng</a>}
+      {p && <a href={whatsappLink(p)} target="_blank" rel="noopener noreferrer" onClick={stop} title={`WhatsApp: ${phone}`} className="fx-chip"><IconWhatsApp /> WhatsApp</a>}
+      {email && <a href={`mailto:${email}`} onClick={stop} title={email} className="fx-chip"><IconMail /> Email</a>}
+    </div>
+  );
+}
+
+/** Alt zolaq: solda əlaqə, sağda əməliyyatlar — dar ekranda alt-alta düşür. */
+function CardFoot({ left, right }: { left?: ReactNode; right?: ReactNode }) {
+  return (
+    <div className="or-foot">
+      {left}
+      <div className="or-foot__actions">{right}</div>
+    </div>
+  );
+}
+
+function initialsOf(name?: string | null): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+}
+/** Avatar rəngi ID-dən deterministik seçilir — eyni kart hər yükləmədə eyni rəngdə. */
+function avatarTone(seed: number): 1 | 2 | 3 | 4 {
+  return ((Math.abs(seed) % 4) + 1) as 1 | 2 | 3 | 4;
+}
+
+// ─── Müraciət kartı ───────────────────────────────────────────────────────────
 
 function AppointmentCard({
   a, meId, onTake, onOpen, hasPsyProposal = false,
@@ -679,7 +1350,6 @@ function AppointmentCard({
 }) {
   const { t } = useT();
   const status = a.status;
-  const meta = statusMeta(status);
   const phone = normalizePhone(a.patientPhone);
   const hasContact = !!(phone || a.patientEmail);
   const claimMine = a.claimedByUserId != null && a.claimedByUserId === meId;
@@ -691,161 +1361,164 @@ function AppointmentCard({
   const alert = buildAlert(a, hasPsyProposal);
   const canClaim = a.claimedByUserId == null && isPoolEligible(a.status) && !!onTake;
 
-  // Təyinat sətri
-  let assignText: string, assignColor: string, assignItalic: boolean;
+  // Təyinat sətri — "Etiket: dəyər" formasına bölünür (etiket + dəyər + vaxt)
+  let assignLabel: string, assignValue: string, assignColor: string, assignItalic: boolean;
   if (a.psychologistName) {
-    assignText = `Təyin olundu: ${a.psychologistName} · ${fmtDateTime(a.startAt)}`;
+    assignLabel = "Təyin olundu";
+    assignValue = `${a.psychologistName} · ${fmtDateTime(a.startAt)}`;
     assignColor = "var(--oxford)"; assignItalic = false;
   } else if (a.requestedPsychologistName) {
-    assignText = `${a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən"}: ${a.requestedPsychologistName}${a.requestedStartAt ? ` · ${fmtDateTime(a.requestedStartAt)}` : ""}`;
+    assignLabel = a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən";
+    assignValue = `${a.requestedPsychologistName}${a.requestedStartAt ? ` · ${fmtDateTime(a.requestedStartAt)}` : ""}`;
     assignColor = a.origin === "DIRECT" ? "#15803D" : "var(--oxford-60)"; assignItalic = a.origin !== "DIRECT";
   } else {
-    assignText = "Psixoloq seçilməyib — operator təyin edəcək";
+    assignLabel = "";
+    assignValue = "Psixoloq seçilməyib — operator təyin edəcək";
     assignColor = "var(--oxford-60)"; assignItalic = true;
   }
 
+  // İkinci dərəcəli məlumat yalnız varsa ayrıca sətir tutur (boş yer yaratmır).
+  // Cədvəl sətri ilə eyni qayda: rəngli çip yox, susqun mətn.
+  const subMeta = showClaim || hasSeries || a.sessionKind === "INTRO";
+
   return (
-    <div className="fx-card or-card" role="button" tabIndex={0} onClick={onOpen}
-      onKeyDown={e => { if (e.key === "Enter") onOpen(); }}
-      style={{ padding: 17, display: "flex", flexDirection: "column", cursor: "pointer" }}>
+    <CardShell onOpen={onOpen} attention={!!alert}>
+      {/* 1 — BAŞLIQ: kim / nə vaxt / hansı statusda */}
+      <CardHead
+        avatar={<span className={`fx-avatar fx-avatar--sm fx-avatar--${avatarTone(a.id)}`}>{initialsOf(a.patientName)}</span>}
+        title={a.patientName ?? "—"}
+        meta={<>
+          <span className="fx-num">#FNS-{String(a.id).padStart(4, "0")}</span>
+          <span className="fx-sep">·</span>
+          <span>{timeAgo(a.createdAt) || `${fmtDateTime(a.createdAt)} yaradılıb`}</span>
+        </>}
+        aside={<StatusDot status={status} />}
+      />
 
-      {/* top chips */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 11 }}>
-        <span className="fx-num" style={{ fontSize: 12.5, fontWeight: 700, color: "var(--oxford-60)" }}>#FNS-{String(a.id).padStart(4, "0")}</span>
-        <span className={`fx-pill ${statusPillClass(status)}`}>{meta.label}</span>
-        {showClaim && (
-          <span className={`fx-pill ${claimMine ? "fx-pill--info" : "fx-pill--neutral"}`}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: claimMine ? "var(--brand)" : "var(--oxford-60)" }} />{claimLabel}
-          </span>
-        )}
-        {hasSeries && (
-          <span className="fx-pill fx-pill--info fx-num">
-            {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal ?? 0 })}
-          </span>
-        )}
-        {a.sessionKind === "INTRO" && (
-          <span className="fx-pill" style={{ background: "var(--status-paid-bg)", color: "var(--status-paid-fg)" }}>Tanışlıq · Pulsuz</span>
-        )}
-      </div>
-
-      {/* patient + time */}
-      <div style={{ fontSize: 15.5, fontWeight: 700, color: "var(--oxford)" }}>{a.patientName ?? "—"}</div>
-      <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginTop: 2, marginBottom: 11 }}>
-        {timeAgo(a.createdAt) || `${fmtDateTime(a.createdAt)} yaradılıb`}
-      </div>
-
-      {/* contact */}
-      {hasContact && (
-        <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 11 }} onClick={e => e.stopPropagation()}>
-          {phone && <>
-            <a href={`tel:${phone}`} title={`Zəng et: ${a.patientPhone}`} className="fx-chip"><IconPhone /> Zəng</a>
-            <a href={whatsappLink(phone)} target="_blank" rel="noopener noreferrer" title={`WhatsApp: ${a.patientPhone}`} className="fx-chip"><IconWhatsApp /> WhatsApp</a>
-          </>}
-          {a.patientEmail && <a href={`mailto:${a.patientEmail}`} title={a.patientEmail} className="fx-chip"><IconMail /> Email</a>}
-        </div>
-      )}
-
-      {/* topic */}
-      {a.note && (
-        <div style={{ background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 10, padding: "9px 12px", marginBottom: 11 }}>
-          <div className="fx-label" style={{ marginBottom: 3 }}>Mövzu</div>
-          <div style={{ fontSize: 13, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, lineHeight: 1.45 }}>«{a.note}»</div>
-        </div>
-      )}
-
-      {/* assign */}
-      <div style={{ fontSize: 12.5, fontWeight: 600, color: assignColor, fontStyle: assignItalic ? "italic" : "normal", marginBottom: 9, display: "flex", alignItems: "flex-start", gap: 7 }}>
-        <Svg w={14} style={{ flex: "none", marginTop: 1 }} d={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>} />
-        <span>{assignText}</span>
-      </div>
-
-      {/* operator note */}
-      {a.operatorNote && (
-        <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 9 }}>Operator qeydi: {a.operatorNote}</div>
-      )}
-
-      {/* follow-up */}
-      <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 11 }}>
-        {a.lastContactAt ? <>
-          <span>Son izləmə: {timeAgo(a.lastContactAt)}{a.lastContactChannel ? ` · ${CHANNEL_LABEL[a.lastContactChannel] ?? a.lastContactChannel}` : ""}</span>
-          {lastOutcome && (
-            <span className="fx-pill" style={{ background: FOLLOW_TONE[lastOutcome.tone].bg, color: FOLLOW_TONE[lastOutcome.tone].color }}>{lastOutcome.label}</span>
+      {subMeta && (
+        <div className="or-submeta">
+          {showClaim && <span>{claimLabel}</span>}
+          {hasSeries && (
+            <span className="fx-num">
+              {t("series.badge", { index: (a.seriesIndex ?? 0) + 1, total: a.seriesTotal ?? 0 })}
+            </span>
           )}
-        </> : <span style={{ color: "var(--oxford-60)" }}>İzləmə qeydi yoxdur</span>}
-      </div>
-
-      {/* status alert */}
-      {alert && (
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: ALERT_STYLE[alert.tone].bg, border: `1px solid ${ALERT_STYLE[alert.tone].border}`, borderRadius: 10, padding: "10px 12px", marginBottom: 11 }}>
-          <Svg w={14} stroke={ALERT_STYLE[alert.tone].color} style={{ flex: "none", marginTop: 1 }} d={<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></>} />
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: ALERT_STYLE[alert.tone].color, lineHeight: 1.45 }}>{alert.text}</span>
+          {a.sessionKind === "INTRO" && <span>Tanışlıq · Pulsuz</span>}
         </div>
       )}
 
-      {/* actions */}
-      <div style={{ display: "flex", gap: 9, marginTop: "auto", paddingTop: 4 }}>
-        {canClaim && (
-          <button type="button" onClick={e => { e.stopPropagation(); onTake?.(); }} className="fx-btn fx-btn--primary" style={{ flex: 1 }}>
-            <Svg w={15} d={<><path d="M5 12h14M12 5l7 7-7 7" /></>} /> {t("staff.opTake")}
-          </button>
+      {/* 2 — SİQNAL: nəyə görə bu kart növbədə birincidir (ən üstdə, gözdən qaçmır) */}
+      {alert && <CardBanner tone={alert.tone === "red" ? "error" : "warn"} text={alert.text} />}
+
+      {/* 3 — FAKTLAR: hamısı eyni "ikon + Etiket: dəyər" ritmində */}
+      <div className="or-facts">
+        <Fact
+          icon={<Svg w={14} d={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>} />}
+          label={assignLabel || undefined} value={assignValue} color={assignColor} italic={assignItalic}
+        />
+        {a.operatorNote && (
+          <Fact
+            icon={<Svg w={14} d={<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M8 13h8M8 17h5" /></>} />}
+            label="Operator qeydi" value={a.operatorNote} color="var(--oxford-60)"
+          />
         )}
-        <button type="button" onClick={e => { e.stopPropagation(); onOpen(); }} className={`fx-btn ${canClaim ? "fx-btn--ghost" : "fx-btn--primary"}`} style={{ flex: 1 }}>
-          <Svg w={15} d={<><path d="M15 3h6v6M10 14L21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></>} /> {t("staff.opOpenTicket")}
-        </button>
+        <Fact
+          icon={<Svg w={14} d={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} />}
+          label="Son izləmə"
+          color="var(--oxford-60)"
+          value={a.lastContactAt ? <>
+            {timeAgo(a.lastContactAt)}
+            {a.lastContactChannel ? ` · ${CHANNEL_LABEL[a.lastContactChannel] ?? a.lastContactChannel}` : ""}
+            {lastOutcome && <> · <span style={{ color: FOLLOW_COLOR[lastOutcome.tone], fontWeight: 600 }}>{lastOutcome.label}</span></>}
+          </> : "yoxdur"}
+        />
       </div>
-    </div>
+
+      {/* Pasiyentin öz sözləri — sitat kimi qalır, faktlardan sonra */}
+      {a.note && (
+        <div className="or-quote">
+          <div className="fx-label">Mövzu</div>
+          <div className="or-quote__txt">«{a.note}»</div>
+        </div>
+      )}
+
+      {/* 4 — ALT ZOLAQ: solda əlaqə, sağda əməliyyat */}
+      <CardFoot
+        left={hasContact ? <ContactChips phone={a.patientPhone} email={a.patientEmail} /> : undefined}
+        right={<>
+          {canClaim && (
+            <button type="button" onClick={e => { e.stopPropagation(); onTake?.(); }} className="fx-btn fx-btn--primary fx-btn--sm">
+              <Svg w={14} d={<><path d="M5 12h14M12 5l7 7-7 7" /></>} /> {t("staff.opTake")}
+            </button>
+          )}
+          <button type="button" onClick={e => { e.stopPropagation(); onOpen(); }} className={`fx-btn fx-btn--sm ${canClaim ? "fx-btn--ghost" : "fx-btn--primary"}`}>
+            <Svg w={14} d={<><path d="M15 3h6v6M10 14L21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></>} /> {t("staff.opOpenTicket")}
+          </button>
+        </>}
+      />
+    </CardShell>
   );
 }
 
 // ─── Yönləndirmə kartı — psixoloqdan psixoloqa keçid təsdiqi gözləyir ─────────
 
-const REFERRAL_SUBJECT_META: Record<"APPOINTMENT" | "PACKAGE", { label: string; color: string; bg: string }> = {
-  APPOINTMENT: { label: "Randevu", color: "var(--brand-600)", bg: "var(--brand-50)" },
-  PACKAGE:     { label: "Paket",   color: "var(--lilac)",     bg: "var(--lilac-bg)" },
+// Yalnız etiket qalır — "Növ" dekorativ çip deyil, susqun mətndir.
+const REFERRAL_SUBJECT_META: Record<"APPOINTMENT" | "PACKAGE", { label: string }> = {
+  APPOINTMENT: { label: "Randevu" },
+  PACKAGE:     { label: "Paket" },
 };
 
 function ReferralCard({ r, onOpen }: { r: Referral; onOpen: () => void }) {
   const subj = REFERRAL_SUBJECT_META[r.subjectType];
   return (
-    <div className="fx-card or-card" role="button" tabIndex={0} onClick={onOpen} onKeyDown={e => { if (e.key === "Enter") onOpen(); }}
-      style={{ padding: 17, display: "flex", flexDirection: "column", cursor: "pointer" }}>
+    <CardShell onOpen={onOpen}>
+      {/* Kart onsuz da "Yönləndirmələr" tabındadır — təkrar "Yönləndirmə" nişanı yoxdur */}
+      <CardHead
+        avatar={
+          <span className="fx-avatar fx-avatar--sm fx-avatar--3">
+            <Svg w={15} sw={2.2} d={<><path d="M17 3l4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><path d="M7 21l-4-4 4-4" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></>} />
+          </span>
+        }
+        title={<span className="or-title__flow">
+          <span>{r.fromPsychologistName}</span>
+          <Svg w={13} sw={2.4} stroke="var(--oxford-60)" d={<path d="M5 12h14M13 6l6 6-6 6" />} />
+          <span>{r.toPsychologistName}</span>
+        </span>}
+        meta={<span>{timeAgo(r.createdAt) || fmtDateTime(r.createdAt)}</span>}
+        aside={<span className="fx-muted" style={{ fontSize: 12, fontWeight: 600 }}>{subj.label}</span>}
+      />
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 11 }}>
-        <span className="fx-pill" style={{ background: "var(--lilac-bg)", color: "var(--lilac)" }}>
-          <Svg w={11} sw={2.4} d={<><path d="M17 3l4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><path d="M7 21l-4-4 4-4" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></>} />
-          Yönləndirmə
-        </span>
-        <span className="fx-pill" style={{ background: subj.bg, color: subj.color }}>{subj.label}</span>
+      <div className="or-facts">
+        {r.patientName && (
+          <Fact
+            icon={<Svg w={14} d={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>} />}
+            label="Pasiyent" value={r.patientName}
+          />
+        )}
+        <Fact
+          icon={<Svg w={14} d={<><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></>} />}
+          label="Səbəb" value={r.reason} color="var(--oxford-60)"
+        />
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
-        <span>{r.fromPsychologistName}</span>
-        <Svg w={13} sw={2.4} stroke="var(--oxford-60)" d={<path d="M5 12h14M13 6l6 6-6 6" />} />
-        <span>{r.toPsychologistName}</span>
-      </div>
-      <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginTop: 2, marginBottom: 11 }}>
-        {r.patientName ? `Pasiyent: ${r.patientName} · ` : ""}{timeAgo(r.createdAt) || fmtDateTime(r.createdAt)}
-      </div>
-
-      <div style={{ fontSize: 12.5, color: "var(--oxford-60)", background: "var(--surface-muted)", border: "1px solid var(--hairline)", borderRadius: 10, padding: "9px 12px", marginBottom: 15, lineHeight: 1.5 }}>
-        <b style={{ color: "var(--oxford)" }}>Səbəb: </b>{r.reason}
-      </div>
-
-      <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontSize: 12.5, fontWeight: 600, color: "var(--lilac)" }}>
-        Ətraflı bax
-        <Svg w={14} sw={2.2} d={<path d="M9 18l6-6-6-6" />} />
-      </div>
-    </div>
+      <CardFoot right={
+        <button type="button" onClick={e => { e.stopPropagation(); onOpen(); }} className="fx-btn fx-btn--ghost fx-btn--sm">
+          Ətraflı bax
+          <Svg w={13} sw={2.2} d={<path d="M9 18l6-6-6-6" />} />
+        </button>
+      } />
+    </CardShell>
   );
 }
 
 // ─── Paket kartı — siyahıda adi kart; klik → paketin öz səhifəsi ─────────────
 
-const PKG_STATUS: Record<string, { label: string; bg: string; color: string }> = {
-  ACTIVE:    { label: "Aktiv",       bg: "var(--status-paid-bg)",      color: "var(--status-paid-fg)" },
-  EXHAUSTED: { label: "Tamamlanıb",  bg: "var(--status-cancelled-bg)", color: "var(--status-cancelled-fg)" },
-  EXPIRED:   { label: "Vaxtı keçib", bg: "var(--status-pending-bg)",   color: "var(--status-pending-fg)" },
-  CANCELLED: { label: "Ləğv",        bg: "var(--status-refunded-bg)",  color: "var(--status-refunded-fg)" },
+// Fon (bg) artıq lazım deyil — status nöqtə + mətn kimi göstərilir.
+const PKG_STATUS: Record<string, { label: string; color: string }> = {
+  ACTIVE:    { label: "Aktiv",       color: "var(--status-paid-fg)" },
+  EXHAUSTED: { label: "Tamamlanıb",  color: "var(--status-cancelled-fg)" },
+  EXPIRED:   { label: "Vaxtı keçib", color: "var(--status-pending-fg)" },
+  CANCELLED: { label: "Ləğv",        color: "var(--status-refunded-fg)" },
 };
 
 function PackageCard({ sessions, onOpen }: { sessions: AppointmentDetail[]; onOpen: () => void }) {
@@ -871,30 +1544,26 @@ function PackageCard({ sessions, onOpen }: { sessions: AppointmentDetail[]; onOp
   const nextS = upcoming ?? (scheduledList.length ? scheduledList[scheduledList.length - 1] : null);
   const nextLabel = upcoming ? "Növbəti" : "Son seans";
 
-  const phone = normalizePhone(first.patientPhone);
-  const stop = (e: React.MouseEvent) => e.stopPropagation();
-
   return (
-    <div className="fx-card or-card" role="button" tabIndex={0} onClick={onOpen} onKeyDown={e => { if (e.key === "Enter") onOpen(); }}
-      style={{ padding: 16, boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 11, cursor: "pointer" }}>
+    <CardShell onOpen={onOpen} attention={needsAttention}>
+      {/* Kart onsuz da Paketlər tabındadır — "Paket" nişanına ehtiyac yoxdur */}
+      <CardHead
+        avatar={
+          <span className="fx-avatar fx-avatar--sm fx-avatar--3">
+            <Svg w={16} d={<><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></>} />
+          </span>
+        }
+        title={first.packageName ?? "Paket"}
+        meta={<>
+          <span>{first.patientName ?? "—"}</span>
+          {first.psychologistName && <><span className="fx-sep">·</span><span>{first.psychologistName}</span></>}
+        </>}
+        aside={<DotLabel color={st.color} label={st.label} />}
+      />
 
-      {/* Başlıq: ikon + ad + status (kart onsuz da Paketlər tabındadır — "Paket" nişanına ehtiyac yoxdur) */}
-      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-        <span style={{ width: 38, height: 38, borderRadius: 10, background: "var(--lilac-bg)", color: "var(--lilac)", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-          <Svg w={18} d={<><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1.5" /></>} />
-        </span>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{first.packageName ?? "Paket"}</div>
-          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {first.patientName ?? "—"}{first.psychologistName ? ` · ${first.psychologistName}` : ""}
-          </div>
-        </div>
-        <span className="fx-pill" style={{ background: st.bg, color: st.color, flex: "none" }}>{st.label}</span>
-      </div>
-
-      {/* Nöqtə-zolağı + say — bir sətirdə */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, flex: 1 }}>
+      {/* Nöqtə-zolağı + say — paketin bir baxışda irəliləyişi */}
+      <div className="or-dots">
+        <div className="or-dots__strip">
           {dots.map(dot => (
             <span key={dot.key} title={dot.kind === "empty" ? "Boş — təyin edilməli" : dot.kind === "completed" ? "Tamamlanıb" : "Təyin olunub"}
               style={{
@@ -905,67 +1574,85 @@ function PackageCard({ sessions, onOpen }: { sessions: AppointmentDetail[]; onOp
               }} />
           ))}
         </div>
-        <span className="fx-num" style={{ fontSize: 13, fontWeight: 700, color: "var(--lilac)", flex: "none" }}>{scheduled}/{total}</span>
+        <span className="fx-num or-dots__count">{scheduled}/{total}</span>
       </div>
 
-      {/* Vəziyyət sətri: boş varsa amber xəbərdarlıq, yoxsa sage təsdiq */}
-      {needsAttention ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 7, background: "var(--amber-bg)", border: "1px solid rgba(201,125,46,.3)", borderRadius: 8, padding: "7px 10px" }}>
-          <Svg w={13} sw={2.2} stroke="var(--amber)" d={<><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><path d="M12 9v4M12 17h.01" /></>} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--status-pending-fg)" }}>{empty} boş seans — təyin edilməli</span>
-        </div>
-      ) : (
-        <div style={{ display: "flex", alignItems: "center", gap: 7, background: "var(--sage-bg)", border: "1px solid rgba(74,155,127,.35)", borderRadius: 8, padding: "7px 10px" }}>
-          <Svg w={13} sw={2.4} stroke="var(--sage)" d={<path d="M20 6 9 17l-5-5" />} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--sage)" }}>Bütün seanslar təyin olunub</span>
-        </div>
-      )}
+      {/* Vəziyyət siqnalı — müraciət kartındakı bannerlə eyni komponent */}
+      {needsAttention
+        ? <CardBanner tone="warn" text={`${empty} boş seans — təyin edilməli`} />
+        : <CardBanner tone="success" text="Bütün seanslar təyin olunub" />}
 
-      {/* Növbəti / son seans — yığcam bir sətir */}
       {nextS && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--oxford)", minWidth: 0 }}>
-          <Svg w={14} sw={2} stroke="var(--brand)" style={{ flex: "none" }} d={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />
-          <span style={{ fontWeight: 600, color: "var(--oxford-60)", flex: "none" }}>{nextLabel}:</span>
-          <span style={{ fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {fmtDateTime(nextS.startAt)}{nextS.psychologistName ? ` · ${nextS.psychologistName}` : ""}
-          </span>
+        <div className="or-facts">
+          <Fact
+            icon={<Svg w={14} sw={2} stroke="var(--brand)" d={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />}
+            label={nextLabel}
+            value={`${fmtDateTime(nextS.startAt)}${nextS.psychologistName ? ` · ${nextS.psychologistName}` : ""}`}
+          />
         </div>
       )}
 
-      {/* Alt sətir: əlaqə solda, keçid sağda */}
-      <div style={{ marginTop: "auto", paddingTop: 11, borderTop: "1px solid var(--hairline)", display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-        <span style={{ display: "flex", gap: 7, flexWrap: "wrap" }} onClick={stop}>
-          {phone && <a href={`tel:${phone}`} onClick={stop} title={`Zəng et: ${first.patientPhone}`} className="fx-chip"><IconPhone /> Zəng</a>}
-          {phone && <a href={whatsappLink(phone)} target="_blank" rel="noopener noreferrer" onClick={stop} title={`WhatsApp: ${first.patientPhone}`} className="fx-chip"><IconWhatsApp /> WhatsApp</a>}
-          {first.patientEmail && <a href={`mailto:${first.patientEmail}`} onClick={stop} title={first.patientEmail} className="fx-chip"><IconMail /> Email</a>}
-        </span>
-        <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 700, color: "var(--lilac)", whiteSpace: "nowrap" }}>
-          Seansları aç
-          <Svg w={13} sw={2.4} d={<path d="M9 18l6-6-6-6" />} />
-        </span>
-      </div>
-    </div>
+      <CardFoot
+        left={<ContactChips phone={first.patientPhone} email={first.patientEmail} />}
+        right={
+          <button type="button" onClick={e => { e.stopPropagation(); onOpen(); }} className="fx-btn fx-btn--ghost fx-btn--sm">
+            Seansları aç
+            <Svg w={13} sw={2.4} d={<path d="M9 18l6-6-6-6" />} />
+          </button>
+        }
+      />
+    </CardShell>
   );
 }
 
 // ─── Skeleton + boş ───────────────────────────────────────────────────────────
 
+/** Skeleton həqiqi kartın ritmini təkrarlayır (avatar → başlıq → faktlar → alt zolaq),
+ *  ona görə yüklənmə bitəndə layout sıçramır. */
 function SkeletonCards() {
   return (
-    <div style={GRID}>
+    <div style={GRID} aria-busy="true">
       {[0, 1, 2, 3, 4].map(i => (
-        <div key={i} className="fx-card" style={{ padding: 17 }}>
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <div className="fx-skeleton" style={{ width: 70, height: 18, borderRadius: 999 }} />
-            <div className="fx-skeleton" style={{ width: 60, height: 18, borderRadius: 999 }} />
+        <div key={i} className="fx-card">
+          <div className="or-card__body">
+            <div className="or-head">
+              <div className="fx-skeleton fx-skeleton--circle" style={{ width: 30, height: 30 }} />
+              <div className="or-head__main">
+                <div className="fx-skeleton" style={{ width: "60%", height: 14, borderRadius: 6, marginBottom: 6 }} />
+                <div className="fx-skeleton" style={{ width: "42%", height: 10, borderRadius: 6 }} />
+              </div>
+              <div className="fx-skeleton" style={{ width: 62, height: 18, borderRadius: 999 }} />
+            </div>
+            <div className="or-facts">
+              <div className="fx-skeleton" style={{ width: "88%", height: 12, borderRadius: 6 }} />
+              <div className="fx-skeleton" style={{ width: "66%", height: 12, borderRadius: 6 }} />
+            </div>
+            <div className="or-foot">
+              <div className="fx-skeleton" style={{ width: 78, height: 28, borderRadius: 999 }} />
+              <div className="or-foot__actions">
+                <div className="fx-skeleton" style={{ width: 96, height: 30, borderRadius: 9 }} />
+              </div>
+            </div>
           </div>
-          <div className="fx-skeleton" style={{ width: "55%", height: 15, borderRadius: 6, marginBottom: 8 }} />
-          <div className="fx-skeleton" style={{ width: "40%", height: 11, borderRadius: 6, marginBottom: 14 }} />
-          <div className="fx-skeleton" style={{ width: "100%", height: 38, borderRadius: 9, marginBottom: 12 }} />
-          <div style={{ display: "flex", gap: 9 }}>
-            <div className="fx-skeleton" style={{ flex: 1, height: 38, borderRadius: 9 }} />
-            <div className="fx-skeleton" style={{ flex: 1, height: 38, borderRadius: 9 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Cədvəl skeletonu — operator/customers səhifəsindəki sətir skeletonu ilə eyni ritm. */
+function SkeletonTable() {
+  return (
+    <div className="fx-card" style={{ overflow: "hidden" }} aria-busy="true">
+      {[0, 1, 2, 3, 4].map(i => (
+        <div key={i} className="fx-row" style={{ borderTop: "none", borderBottom: "1px solid var(--hairline)", cursor: "default" }}>
+          <div className="fx-skeleton fx-skeleton--circle" style={{ width: 34, height: 34 }} />
+          <div style={{ flex: 1 }}>
+            <div className="fx-skeleton" style={{ height: 12, width: "34%" }} />
+            <div className="fx-skeleton" style={{ height: 9, width: "20%", marginTop: 8 }} />
           </div>
+          <div className="fx-skeleton" style={{ width: 84, height: 18, borderRadius: 999 }} />
+          <div className="fx-skeleton" style={{ width: 110, height: 30, borderRadius: 9, marginLeft: 12 }} />
         </div>
       ))}
     </div>
@@ -1001,8 +1688,73 @@ function IconMail() {
 
 // ─── Stil ────────────────────────────────────────────────────────────────────
 
-// Yalnız kartın hover qalxması — qalan hər şey fx-* siniflərindən gəlir.
+// Yalnız kart daxilindəki yerləşim (boşluq/sıra/kəsilmə) — rəng, kölgə, şrift və
+// bütün vizual dil fx-* siniflərindən və mövcud CSS dəyişənlərindən gəlir.
 const CSS = `
-.or-card{transition:box-shadow .15s,border-color .15s}
+.or-card{transition:box-shadow .15s,border-color .15s;cursor:pointer;overflow:hidden;display:flex;flex-direction:column}
 .or-card:hover{box-shadow:var(--shadow-md)}
+.or-card__body{padding:15px 16px;display:flex;flex-direction:column;gap:11px;flex:1;min-width:0}
+
+/* Başlıq */
+.or-head{display:flex;align-items:flex-start;gap:11px}
+.or-head__main{min-width:0;flex:1}
+.or-head__aside{flex:none;display:flex;align-items:center;gap:6px}
+.or-title{font-size:14.5px;font-weight:700;color:var(--oxford);line-height:1.3;overflow-wrap:anywhere}
+.or-title__flow{display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap}
+.or-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;font-size:12px;font-weight:600;color:var(--oxford-60)}
+.or-meta .fx-sep{color:var(--brand-200)}
+/* İkinci dərəcəli meta (sahiblik / seriya / tanışlıq) — çip yox, susqun mətn */
+.or-submeta{display:flex;align-items:center;gap:4px 10px;flex-wrap:wrap;font-size:11.5px;font-weight:600;color:var(--oxford-60)}
+
+/* Status siqnalı — kiçik nöqtə + adi mətn (dolu pill əvəzi) */
+.or-status{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--oxford);white-space:nowrap}
+.or-status__dot{width:7px;height:7px;border-radius:50%;flex:none}
+
+/* Sıralanan cədvəl başlığı — th-ın öz tipoqrafiyasını miras alır */
+.or-th{display:inline-flex;align-items:center;gap:5px;background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer}
+.or-th:hover{color:var(--oxford)}
+
+/* Fakt sətirləri */
+.or-facts{display:flex;flex-direction:column;gap:7px}
+.or-fact{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;line-height:1.45;min-width:0}
+.or-fact__ico{flex:none;margin-top:1px;color:var(--oxford-60);display:inline-flex}
+.or-fact__txt{min-width:0;overflow-wrap:anywhere;color:var(--oxford)}
+.or-fact__k{color:var(--oxford-60);font-weight:600}
+
+/* Sitat (pasiyentin öz sözləri) */
+.or-quote{background:var(--brand-50);border:1px solid var(--brand-100);border-radius:10px;padding:8px 11px}
+.or-quote__txt{margin-top:3px;font-size:12.5px;line-height:1.45;font-style:italic;color:var(--oxford);overflow-wrap:anywhere}
+
+/* Kart daxili banner — fx-banner-in yığcam variantı */
+.or-banner{padding:9px 11px;border-radius:10px;font-size:12.5px;line-height:1.45;align-items:flex-start}
+
+/* Paket nöqtə-zolağı */
+.or-dots{display:flex;align-items:center;gap:10px}
+.or-dots__strip{display:flex;flex-wrap:wrap;gap:5px;flex:1}
+.or-dots__count{font-size:13px;font-weight:700;color:var(--lilac);flex:none}
+
+/* Görünüş dəyişimi — geniş ekran: cədvəl, dar ekran: kart (yalnız yerləşim) */
+.or-wide{display:block}
+.or-narrow{display:none}
+@media (max-width:1024px){.or-wide{display:none}.or-narrow{display:block}}
+
+/* Diqqət tələb edən cədvəl sətri — kartdakı fx-card--attention-in sətir qarşılığı */
+.or-td-attn{width:34px;padding-right:0!important;text-align:center}
+.or-tr--attn td{background:var(--status-pending-bg)}
+.or-tr--attn-red td{background:var(--status-refunded-bg)}
+.or-tr--attn td:first-child{box-shadow:inset 3px 0 0 var(--amber)}
+.or-tr--attn-red td:first-child{box-shadow:inset 3px 0 0 var(--rose)}
+.or-alert-txt{font-size:11.5px;font-weight:600;line-height:1.35;max-width:280px;margin-top:3px;white-space:normal}
+
+/* Paketin açılan seans siyahısı */
+.or-subrow>td{background:var(--surface-muted);padding:0!important}
+.or-subtable{font-size:12.5px}
+.or-subtable th{padding:8px 16px;background:transparent}
+.or-subtable td{padding:9px 16px}
+.or-subtable tbody tr:last-child td{border-bottom:none}
+
+/* Alt zolaq */
+.or-contact{display:flex;gap:6px;flex-wrap:wrap}
+.or-foot{margin-top:auto;padding-top:11px;border-top:1px solid var(--hairline);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.or-foot__actions{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 `;

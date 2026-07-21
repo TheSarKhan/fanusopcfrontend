@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { meApi, submitSessionRequest } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
+import { azNowTime, azTodayIso, pastPreferredError } from "@/lib/datetime";
 
 /**
  * "Fanus təyin etsin" — login olmuş pasiyent hansı psixoloqu seçəcəyini bilmirsə,
@@ -46,6 +47,8 @@ export default function FanusAssignWizard({
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [crisisDetected, setCrisisDetected] = useState(false);
+  /** Hesabdan gələn və dəyişdirilə bilməyən sahələr. */
+  const [locked, setLocked] = useState({ name: false, phone: false, email: false });
 
   const set = (k: keyof typeof INITIAL) => (v: string) =>
     setForm(f => ({ ...f, [k]: v }));
@@ -54,11 +57,19 @@ export default function FanusAssignWizard({
   useEffect(() => {
     if (!open) return;
     setStep(0); setForm(INITIAL); setError(""); setSuccess(false); setCrisisDetected(false);
+    setLocked({ name: false, phone: false, email: false });
     let cancelled = false;
     meApi.get().then(me => {
       if (cancelled) return;
       const full = [me.firstName, me.lastName].filter(Boolean).join(" ").trim();
       setForm(f => ({ ...f, name: full, email: me.email ?? "", phone: me.phone ?? "" }));
+      // Yalnız hesabda DOLU olan sahə kilidlənir — profildə telefon yoxdursa
+      // istifadəçi onu yaza bilsin, yoxsa forma keçilməz olur.
+      setLocked({
+        name: !!full,
+        phone: !!(me.phone && me.phone.trim()),
+        email: !!(me.email && me.email.trim()),
+      });
     }).catch(() => { /* profil gəlmədisə istifadəçi əl ilə doldurar */ });
     return () => { cancelled = true; };
   }, [open]);
@@ -81,6 +92,11 @@ export default function FanusAssignWizard({
     if (step === 1) {
       if (!form.reason.trim()) return "Müraciətin səbəbini yazın";
       if (!form.budget) return "Büdcə aralığını seçin";
+    }
+    if (step === 2) {
+      // Keçmiş tarix/saat üçün müraciət qəbul edilmir.
+      const past = pastPreferredError(form.preferredDate, form.preferredTime);
+      if (past) return past;
     }
     return "";
   };
@@ -211,14 +227,31 @@ export default function FanusAssignWizard({
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {step === 0 && (
                 <>
-                  <Field label="Ad Soyad *">
-                    <input style={inputStyle} value={form.name} onChange={e => set("name")(e.target.value)} />
+                  {/* Kimlik sahələri hesabdan gəlir və MÖHÜRLÜDÜR. Əvvəl redaktə
+                      oluna bilirdi: başqa e-poçt yazıldıqda müraciət qonaq kimi
+                      düşür və operator çevirəndə dublikat pasiyent yaranırdı.
+                      Server də eyni qaydanı tətbiq edir (yalnız UI-a güvənmirik). */}
+                  <div style={{
+                    background: "#F2F6FD", border: "1px solid #D8E2EF", borderRadius: 10,
+                    padding: "10px 12px", fontSize: 12.5, color: "#52718F", lineHeight: 1.55,
+                  }}>
+                    Bu məlumatlar hesabınızdan götürülür. Dəyişmək üçün profil səhifənizi yeniləyin.
+                  </div>
+                  <Field label={locked.name ? "Ad Soyad" : "Ad Soyad *"}>
+                    <input style={locked.name ? lockedStyle : inputStyle} value={form.name}
+                           readOnly={locked.name}
+                           onChange={e => set("name")(e.target.value)} />
                   </Field>
-                  <Field label="Əlaqə nömrəsi *">
-                    <input style={inputStyle} value={form.phone} onChange={e => set("phone")(e.target.value)} placeholder="+994 XX XXX XX XX" />
+                  <Field label={locked.phone ? "Əlaqə nömrəsi" : "Əlaqə nömrəsi *"}>
+                    <input style={locked.phone ? lockedStyle : inputStyle} value={form.phone}
+                           readOnly={locked.phone}
+                           onChange={e => set("phone")(e.target.value)}
+                           placeholder="+994 XX XXX XX XX" />
                   </Field>
-                  <Field label="E-poçt *">
-                    <input style={inputStyle} type="email" value={form.email} onChange={e => set("email")(e.target.value)} />
+                  <Field label={locked.email ? "E-poçt" : "E-poçt *"}>
+                    <input style={locked.email ? lockedStyle : inputStyle} type="email" value={form.email}
+                           readOnly={locked.email}
+                           onChange={e => set("email")(e.target.value)} />
                   </Field>
                   <Field label="Yaş (opsional)">
                     <input style={inputStyle} type="number" min={0} value={form.age} onChange={e => set("age")(e.target.value)} />
@@ -253,6 +286,7 @@ export default function FanusAssignWizard({
                       onChange={set("preferredDate")}
                       placeholder="gg.aa.iiii"
                       theme="light"
+                      min={azTodayIso()}
                     />
                   </Field>
                   <Field label="Saat (opsional)">
@@ -261,6 +295,7 @@ export default function FanusAssignWizard({
                       onChange={set("preferredTime")}
                       theme="light"
                       size="sm"
+                      min={form.preferredDate === azTodayIso() ? azNowTime() : undefined}
                     />
                   </Field>
                   <Field label="Əlavə qeydlər (opsional)">
@@ -320,4 +355,12 @@ const inputStyle: React.CSSProperties = {
   padding: "10px 12px", borderRadius: 10,
   border: "1.5px solid #D8E2EF", background: "#fff",
   fontSize: 14, color: "#0B1A35", fontFamily: "inherit",
+};
+
+/** Hesabdan gələn, dəyişdirilə bilməyən sahə. */
+const lockedStyle: React.CSSProperties = {
+  ...inputStyle,
+  background: "#F7F9FC",
+  color: "#52718F",
+  cursor: "not-allowed",
 };

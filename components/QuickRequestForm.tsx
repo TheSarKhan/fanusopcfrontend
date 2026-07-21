@@ -4,6 +4,7 @@ import { useState } from "react";
 import { submitSessionRequest } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
+import { azNowTime, azTodayIso, pastPreferredError } from "@/lib/datetime";
 
 /**
  * Psixoloqsuz sürətli müraciət forması (Sayt BRD §8.2) — həm Əlaqə səhifəsində
@@ -58,6 +59,9 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError("Düzgün e-poçt ünvanı daxil edin"); return; }
     if (!form.budget)        { setError("Büdcə seçin"); return; }
     if (!form.reason.trim()) { setError("Müraciətin səbəbini yazın"); return; }
+    // Keçmiş tarix/saat üçün müraciət qəbul edilmir.
+    const past = pastPreferredError(form.preferredDate, form.preferredTime);
+    if (past) { setError(past); return; }
     // Üstünlük verilən tarix/saat sadəcə istəyi göstərir (real bron deyil, operator
     // zəngləşib uyğun vaxtı təyin edəcək) — vaxt məhdudiyyəti yoxdur.
     setError("");
@@ -76,14 +80,16 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
       });
       setCrisisDetected(!!res?.crisisDetected);
       setSuccess(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Brauzerin fetch() TypeError-u ("Failed to fetch" və s.) şəbəkə/CORS
       // səviyyəsində baş verir və backend-dən gələn oxunaqlı mesajdan fərqli
       // olaraq istifadəçi üçün mənasızdır — əvəzinə izah edici mesaj göstəririk.
       setError(
         err instanceof TypeError
           ? "Serverlə əlaqə qurula bilmədi. İnternet bağlantınızı yoxlayıb yenidən cəhd edin."
-          : (err?.message || "Müraciət göndərilmədi. Yenidən cəhd edin.")
+          : (err instanceof Error && err.message
+              ? err.message
+              : "Müraciət göndərilmədi. Yenidən cəhd edin.")
       );
     } finally {
       setSending(false);
@@ -234,6 +240,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
             onChange={val => setForm(prev => ({ ...prev, preferredDate: val }))}
             placeholder="gg.aa.iiii"
             theme="light"
+            min={azTodayIso()}
           />
         </div>
         <div>
@@ -243,6 +250,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
             onChange={val => setForm(prev => ({ ...prev, preferredTime: val }))}
             theme="light"
             size="sm"
+            min={form.preferredDate === azTodayIso() ? azNowTime() : undefined}
           />
         </div>
       </div>

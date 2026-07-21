@@ -1475,6 +1475,11 @@ export const adminApi = {
     return data.url;
   },
 
+  /** Sidebar nişanələri — bütün modulların "gözləyən iş" sayı bir sorğuda.
+   *  Açarlar /admin/<açar> route-u ilə eynidir (məs. "approvals", "messages"). */
+  getSidebarCounts: () =>
+    authedRequest<Record<string, number>>("GET", "/admin/sidebar-counts"),
+
   // Contact messages
   getContactMessages: (status?: ContactMessage["status"]) => {
     const qs = status ? `?status=${status}` : "";
@@ -1892,6 +1897,15 @@ export interface Paged<T> {
   page: number;
   size: number;
 }
+
+/** Sıralama istiqaməti — bütün səhifələnmiş siyahılar üçün ortaq. */
+export type SortDir = "asc" | "desc";
+
+/** Operator randevu siyahısının sıralana bilən sahələri. Server tərəfdəki ağ
+ *  siyahının (AppointmentService.OPERATOR_SORT_FIELDS) eynisidir — buradan
+ *  kənar açar serverdə susdurulur və susmaya görə sıralamaya qayıdır. */
+export type AppointmentSortKey =
+  | "createdAt" | "startAt" | "status" | "patientName" | "psychologistName";
 
 /** Səhifələmə + filtr parametrlərindən query string qur (boşlar atılır). */
 function pagedQuery(params: Record<string, string | number | undefined | null>): string {
@@ -3308,7 +3322,16 @@ export type AnalyticsPeriod = "daily" | "weekly" | "monthly" | "yearly";
 export const operatorApi = {
   listAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/operator/appointments"),
   /** Səhifələnmiş triyaj siyahısı — status (tək) + q (pasiyent/psixoloq adı). */
-  listAppointmentsPaged: (opts: { page?: number; size?: number; status?: string; q?: string } = {}) =>
+  /** Səhifələnmiş operator siyahısı.
+   *  status: boş = hamısı · "INBOX" = birləşmiş "Yeni müraciətlər" ·
+   *          vergüllə ayrılmış status dəsti (tab) = yalnız tək seanslar.
+   *  sort:   server ağ siyahısı — createdAt | startAt | status | patientName |
+   *          psychologistName (naməlum açar serverdə susdurulur).
+   *  dir:    asc | desc (susmaya görə desc = createdAt DESC). */
+  listAppointmentsPaged: (opts: {
+    page?: number; size?: number; status?: string; q?: string;
+    sort?: AppointmentSortKey; dir?: SortDir;
+  } = {}) =>
     authedRequest<Paged<AppointmentDetail>>("GET", `/operator/appointments/paged${pagedQuery(opts)}`),
   /** Pool — sahibsiz yeni müraciətlər (tam siyahı əvəzinə məqsədli sorğu). */
   listPoolAppointments: () =>
@@ -3582,13 +3605,27 @@ export const operatorApi = {
       `/operator/search?q=${encodeURIComponent(q)}&limit=${limit}`
     ),
 
-  /** On-behalf booking: create (or reuse) a patient by email, then book directly. */
+  /** "Yeni pasiyent" formasında dublikat yoxlaması — email/telefon artıq varmı. */
+  lookupPatient: (params: { email?: string; phone?: string }) => {
+    const qs = new URLSearchParams();
+    if (params.email) qs.set("email", params.email);
+    if (params.phone) qs.set("phone", params.phone);
+    return authedRequest<PatientLookupResult>("GET", `/operator/patients/lookup?${qs.toString()}`);
+  },
+  /** On-behalf booking: create (or reuse) a patient by email, then book directly.
+   *  `created=false` → email artıq mövcud idi, həmin hesab istifadə olundu. */
   createPatient: (data: { firstName?: string; lastName?: string; phone?: string; email: string }) =>
-    authedRequest<{ patientId: number }>("POST", "/operator/patients", data),
+    authedRequest<{ patientId: number; created: boolean }>("POST", "/operator/patients", data),
+  /** Psixoloqun cari fərdi seans qiyməti (on-behalf bronda ilkin dəyər). */
+  psychologistPricing: (psychologistId: number) =>
+    authedRequest<{ individualPrice: number | null; currency: string }>(
+      "GET", `/operator/psychologists/${psychologistId}/pricing`),
   createOnBehalf: (data: {
     patientId: number; psychologistId: number; startAt: string; endAt: string; note?: string;
     patientPackageId?: number | null; patientChoseDirectly?: boolean;
     sessionKind?: "STANDARD" | "INTRO" | null;
+    /** Paketsiz tək seans üçün qiymət override-i (null → psixoloqun qiyməti). */
+    sessionPrice?: number | null;
   }) =>
     authedRequest<AppointmentDetail>("POST", "/operator/appointments/on-behalf", data),
 
@@ -3733,6 +3770,20 @@ export async function submitSessionRequest(data: {
   return res.json();
 }
 
+/** Operator "yeni pasiyent" formasında email/telefon uyğunluğu.
+ *  `blocking` — email başqa rola (psixoloq/operator/admin) aiddir. */
+export interface PatientLookupResult {
+  found: boolean;
+  patientId: number | null;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  role: string | null;
+  matchedBy: "EMAIL" | "PHONE" | null;
+  blocking: boolean;
+  /** blocking=true olduqda səbəb (silinib / bloklanıb / başqa rol). */
+  blockReason: string | null;
+}
 export interface OperatorSearchHit {
   type: "PATIENT" | "PSYCHOLOGIST" | "APPOINTMENT";
   id: number;

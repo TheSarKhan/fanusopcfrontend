@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -116,6 +115,9 @@ export default function BookPsychologistPage() {
   const [submitting, setSubmitting] = useState(false);
   const [appointmentsUrl, setAppointmentsUrl] = useState("/patient/appointments");
   const [packagesUrl, setPackagesUrl] = useState("/patient/packages");
+  // "Psixoloqlara qayıt" — qonaq üçün public siyahı, panel daxilində isə panelin
+  // öz siyahısı. Public /psychologists pasiyent subdomeynində mövcud deyil (500).
+  const [psychologistsUrl, setPsychologistsUrl] = useState("/psychologists");
 
   // Modul A — tək seans vs paket seçimi
   const [mode, setMode] = useState<"SINGLE" | "PACKAGE">("SINGLE");
@@ -153,6 +155,9 @@ export default function BookPsychologistPage() {
   useEffect(() => {
     setAppointmentsUrl(`${buildPanelUrl("PATIENT")}/appointments`);
     setPackagesUrl(`${buildPanelUrl("PATIENT")}/packages`);
+    if (window.location.pathname.startsWith("/patient/")) {
+      setPsychologistsUrl(`${buildPanelUrl("PATIENT")}/psychologists`);
+    }
   }, []);
 
   useEffect(() => {
@@ -674,7 +679,7 @@ export default function BookPsychologistPage() {
 
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
               <a href={appointmentsUrl} className="bkx-btn-primary bkx-hover" style={{ background: "var(--brand)", color: "#fff", borderRadius: 10, padding: "11px 18px", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>{t("book.successCta")}</a>
-              <Link href="/psychologists" className="bkx-hover" style={{ background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 18px", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>{t("book.backToList")}</Link>
+              <a href={psychologistsUrl} className="bkx-hover" style={{ background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 18px", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>{t("book.backToList")}</a>
             </div>
           </div>
         </div>

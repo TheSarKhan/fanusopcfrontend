@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { operatorApi, type AvailableSlot, type PackageDto, type Psychologist, type SessionRequest } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
 import { azFormatDate, azFormatDateTime, azFormatTime, isoToAzLocal } from "@/lib/datetime";
+import DatePicker from "@/components/DatePicker";
 import { toast as uiToast } from "@/components/Toast";
 import ErrorState from "@/components/ErrorState";
 import { Skeleton } from "@/components/Skeleton";
@@ -44,6 +45,31 @@ function SectionLabel({ children, first = false }: { children: React.ReactNode; 
     <div className="fx-section-label"
       style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginTop: first ? 0 : 20, paddingTop: first ? 0 : 20, borderTop: first ? "none" : "1px solid var(--hairline)", marginBottom: 12 }}>
       {children}
+    </div>
+  );
+}
+
+/**
+ * Mərhələ göstəricisi — hansı addımda olduğu və neçəsinin qaldığı görünür.
+ * Rozet/kapsul işlətmir: zolaq + mətn, tamamlanan addıma klikləməklə geri
+ * qayıtmaq olar (irəli getmək yalnız «Növbəti» ilə, çünki yoxlama var).
+ */
+function StepBar({ steps, current, onGo }: { steps: string[]; current: number; onGo: (i: number) => void }) {
+  return (
+    <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
+      {steps.map((label, i) => {
+        const reached = i <= current;
+        return (
+          <button key={label} type="button" onClick={() => { if (i < current) onGo(i); }}
+            disabled={i >= current}
+            style={{ flex: 1, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", cursor: i < current ? "pointer" : "default" }}>
+            <div style={{ height: 4, borderRadius: 999, background: reached ? "var(--brand)" : "var(--hairline)" }} />
+            <div style={{ marginTop: 6, fontSize: 11.5, fontWeight: 600, color: reached ? "var(--brand)" : "var(--oxford-60)" }}>
+              {label}
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -99,6 +125,17 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   // axınları ilə eyni nümunə): psixoloq seçiləndə yaxın 3 həftənin boş vaxtları göstərilir.
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  /** Əl ilə tarix/saat sahəsi — boş saat olmayanda operatorun yeganə yolu. */
+  const [manualTimeOpen, setManualTimeOpen] = useState(false);
+  /**
+   * Randevu yaratma mərhələsi: 0 = psixoloq və seans, 1 = vaxt, 2 = təsdiq.
+   * Əvvəl hər şey bir uzun sütunda idi — operator hansı addımda olduğunu
+   * bilmirdi və aşağıdakı sahələr üçün yuxarıdakı seçim şərt olduğu halda
+   * hamısı eyni anda açıq görünürdü.
+   */
+  const [convertStep, setConvertStep] = useState(0);
+  /** Paket satışı mərhələsi: 0 = psixoloq, 1 = paket, 2 = təsdiq. */
+  const [pkgStep, setPkgStep] = useState(0);
 
   // Paket sat
   const [pkgMode, setPkgMode] = useState<"catalog" | "custom">("catalog");
@@ -165,7 +202,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   }, [slots]);
 
   if (loading) return (
-    <div style={{ maxWidth: 1000 }}>
+    <div>
       <Skeleton width={220} height={24} />
       <div className="fx-card fx-card__pad" style={{ marginTop: 24 }}>
         {Array.from({ length: 5 }).map((_, i) => (
@@ -179,7 +216,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
     </div>
   );
   if (error) return (
-    <div style={{ maxWidth: 1000 }}>
+    <div>
       <ErrorState
         title="Müraciət yüklənmədi"
         sub="Bağlantı problemi ola bilər. Yenidən cəhd edin və ya siyahıya qayıdın."
@@ -301,7 +338,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   );
 
   return (
-    <div style={{ maxWidth: 1000 }}>
+    <div>
       <button type="button" className="fx-btn fx-btn--quiet fx-btn--sm" style={{ marginBottom: 12 }}
         onClick={() => router.push("/operator/session-requests")}>
         <IconChevronLeft className="fx-icon--sm" />
@@ -343,7 +380,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
         </div>
 
         {/* Gövdə: sol məlumat sütunu + sağ əməliyyat sütunu (yalnız canAct-də) */}
-        <div style={{ display: "grid", gridTemplateColumns: canAct ? "1.6fr 1fr" : "1fr", alignItems: "start" }}>
+        <div className="sr-body" style={{ display: "grid", gridTemplateColumns: canAct ? "minmax(0,1.15fr) minmax(360px,1fr)" : "1fr", alignItems: "start" }}>
           <div style={{ padding: "20px 24px" }}>
             {/* Müraciət login olmuş pasiyentdən gəlibsə operator bunu dərhal görsün —
                 ad/e-poçta görə təxmin etməsin (çevirmə lazım deyil, hesab onsuz da var). */}
@@ -433,12 +470,12 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                   <div className="fx-segmented" style={{ width: "100%", marginBottom: 18 }}>
                     <button type="button" style={{ flex: 1, padding: "9px 14px", fontSize: 13 }}
                       className={actionMode === "APPOINTMENT" ? "fx-seg--active" : ""}
-                      onClick={() => setActionMode("APPOINTMENT")}>
+                      onClick={() => { setActionMode("APPOINTMENT"); setConvertStep(0); setConvertError(""); }}>
                       Randevu yarat
                     </button>
                     <button type="button" style={{ flex: 1, padding: "9px 14px", fontSize: 13 }}
                       className={actionMode === "PACKAGE" ? "fx-seg--active" : ""}
-                      onClick={() => setActionMode("PACKAGE")}>
+                      onClick={() => { setActionMode("PACKAGE"); setPkgStep(0); setPkgError(""); }}>
                       Paket sat
                     </button>
                   </div>
@@ -449,7 +486,10 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                         <div className="fx-error-text" style={{ marginBottom: 12 }}><IconAlert className="fx-icon--sm" />{convertError}</div>
                       )}
 
-                      <SectionLabel first><span className="fx-num">1</span><span>Psixoloq və seans</span></SectionLabel>
+                      <StepBar steps={["Psixoloq", "Vaxt", "Təsdiq"]} current={convertStep} onGo={setConvertStep} />
+
+                      {convertStep === 0 && (
+                      <>
                       {psySelect}
 
                       <div className="fx-field" style={{ marginTop: 12 }}>
@@ -503,16 +543,29 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                         </div>
                       )}
 
-                      <SectionLabel><span className="fx-num">2</span><span>Tarix və qeydlər</span></SectionLabel>
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
+                        <button type="button" className="fx-btn fx-btn--primary"
+                          onClick={() => { if (!psyId) { setConvertError("Psixoloq seçin"); return; } setConvertError(""); setConvertStep(1); }}>
+                          Növbəti
+                        </button>
+                      </div>
+                      </>
+                      )}
+
+                      {convertStep === 1 && (
+                      <>
                       <div className="fx-field">
-                        <label className="fx-label">Seans tarixi/saatı * — boş saatlardan seçin</label>
+                        <label className="fx-label">Seans tarixi/saatı * — boş saatlardan seçin və ya əl ilə yazın</label>
                         {!psyId ? (
                           <div className="fx-muted" style={{ fontSize: 12.5 }}>Əvvəlcə psixoloq seçin.</div>
                         ) : slotsLoading ? (
                           <div className="fx-muted" style={{ fontSize: 12.5 }}>Boş saatlar yüklənir…</div>
                         ) : slots.length === 0 ? (
+                          /* Boş saat yoxdursa əvvəl yalnız xəbərdarlıq çıxırdı və operator
+                             vaxtı ümumiyyətlə daxil edə bilmirdi — müraciət ilişib qalırdı.
+                             İndi əl ilə giriş bu halda dərhal açıqdır. */
                           <div style={{ fontSize: 12.5, color: "var(--status-pending-fg)", background: "var(--status-pending-bg)", border: "1px solid rgba(201,125,46,.3)", borderRadius: 10, padding: "10px 12px" }}>
-                            Yaxın 3 həftədə bu psixoloqun boş saatı yoxdur — psixoloqun iş qrafikinə yeni boş vaxt əlavə olunmalıdır.
+                            Yaxın 3 həftədə bu psixoloqun boş saatı yoxdur. Psixoloqla razılaşdırıb vaxtı aşağıda əl ilə yaza bilərsiniz.
                           </div>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 220, overflowY: "auto", paddingRight: 2 }}>
@@ -535,25 +588,87 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                             ))}
                           </div>
                         )}
+                        {/* Əl ilə giriş həmişə əlçatandır: psixoloqun qrafiki boş
+                            saat göstərməsə də operator razılaşdırılmış vaxtı yaza
+                            bilməlidir (backend bu yolda qrafik yoxlaması etmir). */}
+                        {psyId && !slotsLoading && (
+                          slots.length === 0 || manualTimeOpen ? (
+                            <div style={{ marginTop: 10 }}>
+                              <div className="fx-label" style={{ marginBottom: 5 }}>Əl ilə daxil et</div>
+                              <DatePicker withTime theme="light" size="sm" value={startAt} onChange={setStartAt} style={{ maxWidth: 260 }} />
+                            </div>
+                          ) : (
+                            <button type="button" onClick={() => setManualTimeOpen(true)}
+                              style={{ marginTop: 10, background: "none", border: "none", padding: 0, color: "var(--brand)", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                              Əl ilə tarix və saat daxil et
+                            </button>
+                          )
+                        )}
                         {startAt && <div style={{ fontSize: 12, color: "#065F46", fontWeight: 600, marginTop: 8 }}>Seçilmiş vaxt: {azFormatDate(startAt)}, saat {azFormatTime(startAt)}</div>}
                       </div>
-                      <div className="fx-field" style={{ marginTop: 12 }}>
+
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 18 }}>
+                        <button type="button" className="fx-btn fx-btn--ghost" onClick={() => { setConvertError(""); setConvertStep(0); }}>Geri</button>
+                        <button type="button" className="fx-btn fx-btn--primary"
+                          onClick={() => { if (!startAt) { setConvertError("Vaxt seçin və ya əl ilə yazın"); return; } setConvertError(""); setConvertStep(2); }}>
+                          Növbəti
+                        </button>
+                      </div>
+                      </>
+                      )}
+
+                      {convertStep === 2 && (
+                      <>
+                      {/* Təsdiq: seçilənlərin xülasəsi + yalnız bu addıma aid sahələr. */}
+                      <div style={{ background: "var(--surface-muted)", border: "1px solid var(--hairline)", borderRadius: 10, padding: 12, marginBottom: 14, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}>
+                          <span className="fx-muted">Psixoloq</span>
+                          <span style={{ fontWeight: 600, color: "var(--oxford)" }}>{selectedPsy?.name ?? "—"}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}>
+                          <span className="fx-muted">Vaxt</span>
+                          <span style={{ fontWeight: 600, color: "var(--oxford)" }}>
+                            {startAt ? `${azFormatDate(startAt)}, ${azFormatTime(startAt)}` : "—"}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}>
+                          <span className="fx-muted">Seans növü</span>
+                          <span style={{ fontWeight: 600, color: "var(--oxford)" }}>
+                            {convertSessionKind === "INTRO" ? "Tanışlıq (15 dəq, pulsuz)" : "Tək seans"}
+                          </span>
+                        </div>
+                        {convertSessionKind !== "INTRO" && (
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}>
+                            <span className="fx-muted">Məbləğ</span>
+                            <span style={{ fontWeight: 600, color: "var(--oxford)" }}>
+                              {convertPrice.trim() !== "" ? `${convertPrice} ${psyCurrency}`
+                                : selectedPsy?.individualPrice != null ? `${selectedPsy.individualPrice} ${psyCurrency}` : "Təyin olunmayıb"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="fx-field">
                         <label className="fx-label">Qeyd (opsional)</label>
                         <textarea className="fx-textarea" value={note} onChange={e => setNote(e.target.value)} rows={2}
                           placeholder="Daxili qeyd (istifadəçiyə göstərilmir)" />
                       </div>
 
-                      <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid var(--hairline)" }}>
+                      <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--hairline)" }}>
                         <DirectChoiceCheckbox checked={convertPatientChoseDirectly} onChange={setConvertPatientChoseDirectly} />
                       </div>
 
-                      <button type="button" disabled={converting} onClick={convertToAppointment}
-                        className="fx-btn fx-btn--primary" style={{ width: "100%", marginTop: 18 }}>
-                        {converting ? "Göndərilir..." : "Randevu yarat"}
-                      </button>
-                      <p className="fx-muted" style={{ margin: "8px 0 0", fontSize: 11, textAlign: "center" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 18 }}>
+                        <button type="button" className="fx-btn fx-btn--ghost" onClick={() => { setConvertError(""); setConvertStep(1); }}>Geri</button>
+                        <button type="button" disabled={converting} onClick={convertToAppointment} className="fx-btn fx-btn--primary">
+                          {converting ? "Göndərilir..." : "Randevu yarat"}
+                        </button>
+                      </div>
+                      <p className="fx-muted" style={{ margin: "8px 0 0", fontSize: 11, textAlign: "right" }}>
                         Yeni hesab yaransa pasiyentə şifrə təyini üçün email göndəriləcək.
                       </p>
+                      </>
+                      )}
                     </>
                   ) : (
                     <>
@@ -561,10 +676,22 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                         <div className="fx-error-text" style={{ marginBottom: 12 }}><IconAlert className="fx-icon--sm" />{pkgError}</div>
                       )}
 
-                      <SectionLabel first><span className="fx-num">1</span><span>Psixoloq</span></SectionLabel>
-                      {psySelect}
+                      <StepBar steps={["Psixoloq", "Paket", "Təsdiq"]} current={pkgStep} onGo={setPkgStep} />
 
-                      <SectionLabel><span className="fx-num">2</span><span>Paket</span></SectionLabel>
+                      {pkgStep === 0 && (
+                      <>
+                      {psySelect}
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
+                        <button type="button" className="fx-btn fx-btn--primary"
+                          onClick={() => { if (!psyId) { setPkgError("Psixoloq seçin"); return; } setPkgError(""); setPkgStep(1); }}>
+                          Növbəti
+                        </button>
+                      </div>
+                      </>
+                      )}
+
+                      {pkgStep === 1 && (
+                      <>
                       <div className="fx-segmented" style={{ width: "100%", marginBottom: 12 }}>
                         <button type="button" style={{ flex: 1 }} className={pkgMode === "catalog" ? "fx-seg--active" : ""} onClick={() => setPkgMode("catalog")}>
                           Kataloqdan
@@ -591,14 +718,75 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                         </div>
                       )}
 
-                      <div style={{ marginTop: 18, paddingTop: 18, borderTop: "1px solid var(--hairline)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 18 }}>
+                        <button type="button" className="fx-btn fx-btn--ghost" onClick={() => { setPkgError(""); setPkgStep(0); }}>Geri</button>
+                        <button type="button" className="fx-btn fx-btn--primary"
+                          onClick={() => {
+                            // Növbətiyə keçid yoxlaması sellPackage-dəki ilə eynidir —
+                            // operator son addıma yanlış məlumatla çatmasın.
+                            if (pkgMode === "catalog" && !catalogId) { setPkgError("Kataloqdan paket seçin"); return; }
+                            if (pkgMode === "custom") {
+                              const s = Number(pkgSessions), p = Number(pkgPrice);
+                              if (!Number.isFinite(s) || s < 1) { setPkgError("Seans sayı düzgün deyil"); return; }
+                              if (!Number.isFinite(p) || p < 0) { setPkgError("Qiymət düzgün deyil"); return; }
+                            }
+                            setPkgError(""); setPkgStep(2);
+                          }}>
+                          Növbəti
+                        </button>
+                      </div>
+                      </>
+                      )}
+
+                      {pkgStep === 2 && (
+                      <>
+                      <div style={{ background: "var(--surface-muted)", border: "1px solid var(--hairline)", borderRadius: 10, padding: 12, marginBottom: 14, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}>
+                          <span className="fx-muted">Psixoloq</span>
+                          <span style={{ fontWeight: 600, color: "var(--oxford)" }}>{selectedPsy?.name ?? "—"}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}>
+                          <span className="fx-muted">Paket</span>
+                          <span style={{ fontWeight: 600, color: "var(--oxford)" }}>
+                            {pkgMode === "catalog"
+                              ? (catalog.find(p => p.id === catalogId)?.name ?? "—")
+                              : (pkgName.trim() || "Xüsusi paket")}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}>
+                          <span className="fx-muted">Seans sayı</span>
+                          <span style={{ fontWeight: 600, color: "var(--oxford)" }}>
+                            {pkgMode === "catalog"
+                              ? (catalog.find(p => p.id === catalogId)?.sessionCount ?? "—")
+                              : (pkgSessions || "—")}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}>
+                          <span className="fx-muted">Məbləğ</span>
+                          <span style={{ fontWeight: 600, color: "var(--oxford)" }}>
+                            {pkgMode === "catalog"
+                              ? (catalog.find(p => p.id === catalogId) ? `${catalog.find(p => p.id === catalogId)!.packagePrice} AZN` : "—")
+                              : (pkgPrice !== "" ? `${pkgPrice} AZN` : "—")}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ paddingTop: 4 }}>
                         <DirectChoiceCheckbox checked={pkgPatientChoseDirectly} onChange={setPkgPatientChoseDirectly} />
                       </div>
 
-                      <button type="button" disabled={sellingPkg} onClick={sellPackage}
-                        className="fx-btn" style={{ width: "100%", marginTop: 18, background: "var(--lilac)", borderColor: "var(--lilac)", color: "#fff" }}>
-                        {sellingPkg ? "Göndərilir..." : "Paketi sat"}
-                      </button>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 18 }}>
+                        <button type="button" className="fx-btn fx-btn--ghost" onClick={() => { setPkgError(""); setPkgStep(1); }}>Geri</button>
+                        <button type="button" disabled={sellingPkg} onClick={sellPackage}
+                          className="fx-btn" style={{ background: "var(--lilac)", borderColor: "var(--lilac)", color: "#fff" }}>
+                          {sellingPkg ? "Göndərilir..." : "Paketi sat"}
+                        </button>
+                      </div>
+                      <p className="fx-muted" style={{ margin: "8px 0 0", fontSize: 11, textAlign: "right" }}>
+                        Paket ödəniş təsdiqlənənə qədər pasiyentin panelində görünmür.
+                      </p>
+                      </>
+                      )}
                     </>
                   )}
                 </>

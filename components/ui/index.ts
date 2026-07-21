@@ -47,6 +47,13 @@ export {
 export { Tabs, Segmented, ToggleChip } from "./Tabs";
 export type { TabItem } from "./Tabs";
 
+/**
+ * Cədvəl: səhifələr YALNIZ <DataTable> işlədir — əl ilə <table> yazmaq qadağandır.
+ * Aşağıdakı primitivlər DataTable-ın öz daxili tikinti bloklarıdır.
+ */
+export { DataTable } from "./DataTable";
+export type { Column, DataTableProps, SortState, SortDir } from "./DataTable";
+
 export { TableWrap, Table, Th, Td, Pagination, TableSkeleton } from "./Table";
 
 export { Modal, Drawer, DrawerSection, Menu, MenuItem, MenuDivider } from "./Overlay";

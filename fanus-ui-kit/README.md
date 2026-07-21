@@ -68,7 +68,25 @@ Tək font: **Poppins** (fallback: system-ui). Serif başlıq yoxdur.
 
 ## Layout
 
-- Sol sidebar `--sidebar-w: 260px`. Məzmun sahəsi `.fx-page` → `32px 40px 64px`.
+### Səhifə kökü (ƏN ÇOX SƏHV EDİLƏN YER)
+
+Panel səhifəsinin kök elementi **`<div className="panel-page">`** olmalıdır.
+
+```tsx
+// DOĞRU
+return <div className="panel-page">…</div>;
+
+// SƏHV — ekranın iki yanında ölü boşluq yaradır
+return <div className="fx-page" style={{ maxWidth: 1100 }}>…</div>;
+```
+
+Səbəb: doldurmanı `.ps-content` (PanelShell) verir, eni isə `.panel-page`
+tənzimləyir (1400px, geniş ekranlarda 1560/1720). Kökə inline `maxWidth`
+yazsanız `.ps-content > div[style*="max-width"]` qaydası onu mərkəzləyir və
+hər iki tərəfdə boşluq qalır. `.fx-page` isə **yalnız PanelShell-siz müstəqil
+səhifələr** üçündür — panelin içində ikiqat doldurma verir.
+
+- Sol sidebar `--sidebar-w: 260px`. Müstəqil səhifədə `.fx-page` → `32px 40px 64px`.
 - Səhifə fonu `--bg: #F7F9FC`, kartlar `#FFFFFF`, sərhədlər `--hairline: #E9EEF5`.
 - İki sütun: `<div className="fx-2col">` → `2fr 1fr`, 1024px altında tək sütun.
 - **Panellər tam eni doldurur** — sağda boş dəhliz qalmır. Sabit `max-width` verməyin;

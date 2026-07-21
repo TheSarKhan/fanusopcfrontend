@@ -361,14 +361,14 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
 
   if (loading) {
     return (
-      <div className="fx-page" style={{ minHeight: "auto", padding: 0 }}>
+      <div className="panel-page">
         <Cust360Skeleton />
       </div>
     );
   }
   if (error || !profile || !derived) {
     return (
-      <div className="fx-page" style={{ minHeight: "auto", padding: 0 }}>
+      <div className="panel-page">
         <div className="fx-card fx-card--error" style={{ padding: "20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center" }}>
           <Icon name="alert" className="fx-icon fx-icon--xl" style={{ color: "var(--rose)" }} />
           <div style={{ fontSize: 13, fontWeight: 700 }}>Profil yüklənmədi</div>
@@ -390,7 +390,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
   const months = monthsSince(h.registeredAt);
 
   return (
-    <div className="fx-page" style={{ minHeight: "auto", padding: 0 }}>
+    <div className="panel-page">
       <style>{CUST_CSS}</style>
 
       {sellOpen && (

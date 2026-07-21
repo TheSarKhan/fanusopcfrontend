@@ -1846,6 +1846,64 @@ export interface PatientPackageItem {
   origin?: string | null;
 }
 
+/** Kataloqda qarşılığı olmayan, operator tərəfindən qurulmuş paket satışı. */
+export interface CustomPackageSale {
+  id: number;
+  packageName: string;
+  patientId: number | null;
+  patientName: string;
+  total: number;
+  /** Hələ planlaşdırılmamış seans. */
+  remaining: number;
+  /** Faktiki keçirilmiş seans. */
+  completed: number;
+  status: string;
+  pricePaid: number | null;
+  currency: string;
+  purchasedAt: string;
+}
+
+/** Psixoloqun bir ödənişi — platformanın tutduğu pay ilə birlikdə. */
+export interface PsychologistEarningRow {
+  paymentId: number;
+  patientName: string | null;
+  kind: "SESSION" | "PACKAGE";
+  packageName: string | null;
+  amount: number;
+  refundedAmount: number;
+  commissionPercent: number | null;
+  commissionAmount: number;
+  /** amount − refunded − komissiya */
+  net: number;
+  status: string;
+  origin: string | null;
+  currency: string;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface PsychologistEarnings {
+  grossTotal: number;
+  commissionTotal: number;
+  netTotal: number;
+  paidOut: number;
+  balance: number;
+  currentCommissionPercent: number | null;
+  directCommissionPercent: number | null;
+  rows: PsychologistEarningRow[];
+}
+
+/** Bir psixoloqun komissiya vəziyyəti (operator/admin görür). */
+export interface PsychologistCommission {
+  /** Psixoloqun öz faizi; null = qlobal faiz tətbiq olunur. */
+  overridePercent: number | null;
+  globalPercent: number | null;
+  /** Faktiki tətbiq olunan faiz (override ?? global). */
+  effectivePercent: number | null;
+  /** Pasiyent psixoloqu ÖZÜ seçdikdə (DIRECT) tətbiq olunan faiz — psixoloq üzrə fərdiləşmir. */
+  directPercent: number | null;
+}
+
 // Modul A — manual ödəniş qeydi (operator paneli)
 export interface PaymentItem {
   id: number;
@@ -2369,6 +2427,10 @@ export const psychologistApi = {
     authedRequest<{ individualPrice: number | null; currency: string }>("PUT", "/psychologist/me/pricing", { individualPrice }),
   myPackages: () => authedRequest<PackageDto[]>("GET", "/psychologist/me/packages"),
   myPackageStats: () => authedRequest<PackageStats[]>("GET", "/psychologist/me/packages/stats"),
+  /** Kataloqda olmayan, operator tərəfindən xüsusi satılmış paketlər. */
+  myCustomPackageSales: () => authedRequest<CustomPackageSale[]>("GET", "/psychologist/me/packages/custom-sales"),
+  /** Öz qazancı: ödənişlər, platformanın tutduğu pay və xalis məbləğ. */
+  myEarnings: () => authedRequest<PsychologistEarnings>("GET", "/psychologist/me/earnings"),
   createMyPackage: (data: PackageReq) => authedRequest<PackageDto>("POST", "/psychologist/me/packages", data),
   updateMyPackage: (id: number, data: PackageReq) => authedRequest<PackageDto>("PUT", `/psychologist/me/packages/${id}`, data),
   deleteMyPackage: (id: number) => authedRequest<void>("DELETE", `/psychologist/me/packages/${id}`),
@@ -3578,6 +3640,12 @@ export const operatorApi = {
     authedRequest<PsychologistVacation[]>("GET", `/operator/psychologists/${id}/vacations`),
   setPsychologistPricing: (id: number, individualPrice: number) =>
     authedRequest<{ individualPrice: number | null; currency: string }>("PUT", `/operator/psychologists/${id}/pricing`, { individualPrice }),
+  /** Platformanın psixoloqdan tutduğu komissiya faizi. */
+  psychologistCommission: (id: number) =>
+    authedRequest<PsychologistCommission>("GET", `/operator/psychologists/${id}/commission`),
+  /** percent=null → psixoloqun öz faizi silinir, qlobal faiz tətbiq olunur. */
+  setPsychologistCommission: (id: number, percent: number | null) =>
+    authedRequest<PsychologistCommission>("PUT", `/operator/psychologists/${id}/commission`, { percent }),
   createPsychologistPackage: (id: number, data: PackageReq) =>
     authedRequest<PackageDto>("POST", `/operator/psychologists/${id}/packages`, data),
   updatePsychologistPackage: (id: number, packageId: number, data: PackageReq) =>

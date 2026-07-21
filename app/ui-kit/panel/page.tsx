@@ -17,6 +17,8 @@ import {
   CardBody,
   CardHead,
   Checkbox,
+  DataTable,
+  type Column,
   Drawer,
   DrawerSection,
   EmptyBlock,
@@ -28,7 +30,6 @@ import {
   MenuItem,
   Modal,
   PageHead,
-  Pagination,
   PaymentStatus,
   Progress,
   Radio,
@@ -42,14 +43,10 @@ import {
   Status,
   Stepper,
   Switch,
-  Table,
   TableSkeleton,
-  TableWrap,
   Tabs,
-  Td,
   TextButton,
   Textarea,
-  Th,
   ToggleChip,
   Trend,
 } from "@/components/ui";
@@ -132,30 +129,80 @@ const RANGE_ITEMS = [
   { key: "month", label: "Ay" },
 ] as const;
 
-const PAYMENTS = [
+type Payment = {
+  name: string;
+  meta: string;
+  status: string;
+  amount: string;
+  amountValue: number;
+  psych: string;
+  date: string;
+  commission: string;
+  net: string;
+};
+
+const PAYMENTS: Payment[] = [
   {
     name: "Leyla Nəbiyeva",
     meta: "Kart ilə ödənilib, 18.07.2026 — Dr. Rəşad Əliyev",
     status: "PAID",
-    amount: "120 AZN",
+    amount: "120 AZN", amountValue: 120,
+    psych: "Dr. Rəşad Əliyev", date: "18.07.2026",
+    commission: "24 AZN", net: "96 AZN",
   },
   {
     name: "Orxan Məmmədov",
     meta: "Köçürmə gözləyir, 17.07.2026 — 4 seanslıq paket",
     status: "PENDING",
-    amount: "440 AZN",
+    amount: "440 AZN", amountValue: 440,
+    psych: "Dr. Aygün Quliyeva", date: "17.07.2026",
+    commission: "88 AZN", net: "352 AZN",
   },
   {
     name: "Günel Həsənova",
     meta: "Nağd ödənilib, 17.07.2026 — Dr. Aygün Quliyeva",
     status: "PAID",
-    amount: "100 AZN",
+    amount: "100 AZN", amountValue: 100,
+    psych: "Dr. Aygün Quliyeva", date: "17.07.2026",
+    commission: "20 AZN", net: "80 AZN",
   },
   {
     name: "Kamran Səfərov",
     meta: "Seans ləğv edildiyi üçün geri qaytarılıb, 15.07.2026",
     status: "REFUNDED",
-    amount: "90 AZN",
+    amount: "90 AZN", amountValue: 90,
+    psych: "Dr. Rəşad Əliyev", date: "15.07.2026",
+    commission: "0 AZN", net: "0 AZN",
+  },
+];
+
+/**
+ * Sütun təsviri — səhifənin cədvəl üçün yazdığı YEGANƏ şeydir.
+ * `cell` istənilən komponenti qaytara bilər: avatar, <Status>, link, düymə.
+ */
+const PAYMENT_COLUMNS: Column<Payment>[] = [
+  {
+    key: "name",
+    header: "Pasiyent",
+    sortable: true,
+    sortValue: (p) => p.name,
+    cell: (p) => (
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <Avatar name={p.name} size="sm" />
+        <span style={{ fontWeight: 600 }}>{p.name}</span>
+      </div>
+    ),
+  },
+  { key: "psych", header: "Psixoloq", cell: (p) => p.psych, hideOnMobile: true },
+  { key: "date", header: "Tarix", sortable: true, sortValue: (p) => p.date, cell: (p) => p.date },
+  { key: "status", header: "Vəziyyət", cell: (p) => <PaymentStatus value={p.status} /> },
+  {
+    key: "amount",
+    header: "Məbləğ",
+    numeric: true,
+    sortable: true,
+    sortValue: (p) => p.amountValue,
+    cell: (p) => p.amount,
   },
 ];
 
@@ -288,37 +335,86 @@ export default function PanelUIKitPage() {
           ))}
         </Spec>
 
-        {/* ---------------- Cədvəl ---------------- */}
-        <Spec name="Cədvəl" rule="Başlıq xanaları cümlə formasında — UPPERCASE deyil. Rəqəm sütunları sağa yaslanır və tabular olur.">
-          <TableWrap>
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Pasiyent</Th>
-                  <Th>Psixoloq</Th>
-                  <Th>Tarix</Th>
-                  <Th>Vəziyyət</Th>
-                  <Th numeric>Məbləğ</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {PAYMENTS.map((p) => (
-                  <tr key={p.name}>
-                    <Td>{p.name}</Td>
-                    <Td>Dr. Rəşad Əliyev</Td>
-                    <Td>18.07.2026</Td>
-                    <Td>
-                      <PaymentStatus value={p.status} />
-                    </Td>
-                    <Td numeric>{p.amount}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </TableWrap>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-            <Pagination page={page} pageCount={9} onChange={setPage} />
+        {/* ---------------- DataTable ---------------- */}
+        <Spec
+          name="Cədvəl — DataTable"
+          rule="Platformadakı BÜTÜN cədvəllər budur. Səhifədə əl ilə <table> yazmaq qadağandır. Sıralama, səhifələmə, skeleton, boş və xəta vəziyyəti komponentin içindədir; səhifə yalnız sütunları təsvir edir."
+        >
+          <DataTable
+            rows={PAYMENTS}
+            columns={PAYMENT_COLUMNS}
+            rowKey={(p) => p.name}
+            onRowClick={() => setDrawer(true)}
+            defaultSort={{ key: "name", dir: "asc" }}
+            actions={(p) => (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => setDrawer(true)}>Bax</Button>
+                <Button variant="dangerGhost" size="sm" onClick={() => setModal(true)} disabled={p.status !== "PAID"}>
+                  İadə
+                </Button>
+              </>
+            )}
+            renderExpanded={(p) => (
+              <div className="fx-subtitle">
+                Komissiya bölgüsü: platforma payı {p.commission}, psixoloqun xalis payı {p.net}.
+              </div>
+            )}
+            pagination={{ page, pageCount: 9, onChange: setPage }}
+            totalLabel={`${PAYMENTS.length} əməliyyat göstərilir`}
+          />
+          <p className="fx-help" style={{ marginTop: 14 }}>
+            Başlığa klikləyin — sıralama işləyir. Soldakı oxla sətir açılır. Əməliyyat düymələri sətir klikini tetikləmir.
+          </p>
+        </Spec>
+
+        {/* ---------------- DataTable vəziyyətləri ---------------- */}
+        <Spec name="Cədvəlin vəziyyətləri" rule="Üçü də komponentin içindədir — səhifədə ayrıca yazılmır.">
+          <div className="fx-stack">
+            <div>
+              <p className="fx-label" style={{ marginBottom: 8 }}>Yüklənir</p>
+              <DataTable rows={[]} columns={PAYMENT_COLUMNS} rowKey={(p) => p.name} loading skeletonRows={3} />
+            </div>
+            <div>
+              <p className="fx-label" style={{ marginBottom: 8 }}>Boş</p>
+              <DataTable
+                rows={[]}
+                columns={PAYMENT_COLUMNS}
+                rowKey={(p) => p.name}
+                empty={{
+                  title: "Bu filtrdə ödəniş yoxdur",
+                  body: "Seçilmiş tarix aralığında gözləyən ödəniş qeydə alınmayıb. Tarix aralığını genişləndirin.",
+                  actions: <Button variant="ghost" size="sm">Filtri sıfırla</Button>,
+                }}
+              />
+            </div>
+            <div>
+              <p className="fx-label" style={{ marginBottom: 8 }}>Xəta</p>
+              <DataTable
+                rows={[]}
+                columns={PAYMENT_COLUMNS}
+                rowKey={(p) => p.name}
+                error="Bank cavab vermədi."
+                onRetry={() => undefined}
+              />
+            </div>
           </div>
+        </Spec>
+
+        {/* ---------------- Dar ekran ---------------- */}
+        <Spec
+          name="Cədvəl dar ekranda"
+          rule='Standart davranış üfüqi sürüşdürməkdir. mobile="cards" verildikdə 860px-dən dar ekranda sətirlər karta çevrilir və sütun başlığı etiketə keçir.'
+        >
+          <DataTable
+            rows={PAYMENTS.slice(0, 2)}
+            columns={PAYMENT_COLUMNS}
+            rowKey={(p) => p.name}
+            mobile="cards"
+            actions={() => <Button variant="ghost" size="sm">Bax</Button>}
+          />
+          <p className="fx-help" style={{ marginTop: 12 }}>
+            Pəncərəni daraldın — bu cədvəl kartlara çevrilir, yuxarıdakı isə sürüşür.
+          </p>
         </Spec>
 
         {/* ---------------- Formalar ---------------- */}

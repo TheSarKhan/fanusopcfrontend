@@ -214,7 +214,7 @@ export default function OperatorCustomersPage() {
       ));
 
   return (
-    <div className="fx-page" style={{ minHeight: "auto", padding: 0 }}>
+    <div className="panel-page">
       {/* Başlıq */}
       <PageHeader
         title="Müştərilər"
@@ -285,8 +285,6 @@ export default function OperatorCustomersPage() {
                   <th>Əlaqə</th>
                   <th onClick={() => setSort("activity")} style={{ cursor: "pointer" }}>Son fəaliyyət {sort === "activity" && "↓"}</th>
                   <th>Psixoloq</th>
-                  <th>Paket</th>
-                  <th>Diqqət</th>
                   <th style={{ width: 150 }} />
                 </tr>
               </thead>
@@ -338,14 +336,6 @@ function CustomerRow({ r, onOpen, onCall, onWa }: { r: RecentCustomer; onOpen: (
       </td>
       <td><span className="fx-pill fx-num" style={{ background: tone.bg, color: tone.fg }}>{r.lastLabel}</span></td>
       <td>{r.psych ? <span className="fx-pill fx-pill--neutral">{r.psych}</span> : <span className="fx-muted">—</span>}</td>
-      <td>{r.pkg ? <span className="fx-pill" style={{ background: "var(--lilac-bg)", color: "#5F4FA0" }}>{r.pkg}</span> : <span className="fx-muted">—</span>}</td>
-      <td>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {r.hasUpcoming && <span className="fx-pill" style={{ background: "var(--sage-bg)", color: "#2E6B54" }}>Yaxın seans</span>}
-          {r.flag && <span className="fx-pill fx-pill--refunded">{r.flag}</span>}
-          {!r.hasUpcoming && !r.flag && <span className="fx-muted">—</span>}
-        </div>
-      </td>
       <td onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", gap: 6 }}>
           {r.phone && <button type="button" onClick={onCall} title="Zəng" className="fx-btn fx-btn--ghost fx-btn--sm"><Icon name="phone" className="fx-icon fx-icon--sm" /></button>}

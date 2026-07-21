@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { useParams } from "next/navigation";
-import { operatorApi, type OperatorPsychologistStat, type PackageDto, type PackageReq, type PriceChangeLogItem, type PsychologistNote, type PsychologistVacation } from "@/lib/api";
+import { operatorApi, type OperatorPsychologistStat, type PackageDto, type PackageReq, type PriceChangeLogItem, type PsychologistCommission, type PsychologistNote, type PsychologistVacation } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -37,6 +37,12 @@ export default function OperatorPsychologistDetailPage() {
   const [priceInput, setPriceInput] = useState("");
   const [savingPrice, setSavingPrice] = useState(false);
   const [priceError, setPriceError] = useState<string | null>(null);
+  // Platforma payı (komissiya) — operator da tənzimləyə bilir.
+  const [commission, setCommission] = useState<PsychologistCommission | null>(null);
+  const [commEditing, setCommEditing] = useState(false);
+  const [commInput, setCommInput] = useState("");
+  const [savingComm, setSavingComm] = useState(false);
+  const [commError, setCommError] = useState<string | null>(null);
   const [pkgForm, setPkgForm] = useState<{ id: number | null; name: string; sessionCount: string; packagePrice: string; active: boolean } | null>(null);
   const [savingPkg, setSavingPkg] = useState(false);
   const [pkgError, setPkgError] = useState<string | null>(null);
@@ -50,7 +56,10 @@ export default function OperatorPsychologistDetailPage() {
       operatorApi.psychologistVacations(id).catch(() => []),
       operatorApi.psychologistNotes(id).catch(() => []),
       operatorApi.psychologistPriceHistory(id).catch(() => []),
-    ]).then(([s, pkgs, vac, n, hist]) => { setStat(s); setPackages(pkgs); setVacations(vac); setNotes(n); setPriceHistory(hist); })
+      operatorApi.psychologistCommission(id).catch(() => null),
+    ]).then(([s, pkgs, vac, n, hist, comm]) => {
+      setStat(s); setPackages(pkgs); setVacations(vac); setNotes(n); setPriceHistory(hist); setCommission(comm);
+    })
       .catch(() => setError(true)).finally(() => setLoading(false));
   }, [id]);
 
@@ -77,6 +86,28 @@ export default function OperatorPsychologistDetailPage() {
       operatorApi.psychologistPriceHistory(id).then(setPriceHistory).catch(() => {});
     } catch (e) { setPriceError((e as Error).message); }
     finally { setSavingPrice(false); }
+  };
+
+  /** Boş sahə → override silinir (qlobal faiz tətbiq olunur). */
+  const saveCommission = async () => {
+    const raw = commInput.trim();
+    let percent: number | null = null;
+    if (raw !== "") {
+      const val = Number(raw);
+      if (!Number.isFinite(val) || val < 0 || val > 100) {
+        setCommError("Faiz 0-100 aralığında olmalıdır"); return;
+      }
+      percent = val;
+    }
+    setCommError(null); setSavingComm(true);
+    try {
+      const c = await operatorApi.setPsychologistCommission(id, percent);
+      setCommission(c);
+      // Hero-dakı «Xüsusi komissiya» göstəricisi eyni mənbədən oxunur.
+      setStat(prev => prev ? { ...prev, commissionPercent: c.overridePercent } : prev);
+      setCommEditing(false);
+    } catch (e) { setCommError((e as Error).message); }
+    finally { setSavingComm(false); }
   };
 
   const savePkg = async () => {
@@ -245,6 +276,44 @@ export default function OperatorPsychologistDetailPage() {
                 )}
                 {priceError && <div style={{ fontSize: 11.5, color: "#991B1B", fontWeight: 600, marginTop: 6 }}>{priceError}</div>}
               </div>
+
+              {/* Platforma payı — psixoloqun ödənişindən tutulan faiz. Pasiyentin
+                  ödədiyi məbləğə TOXUNMUR, yalnız psixoloqun payoutunu dəyişir. */}
+              {commission && (
+                <div style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 12, padding: "12px 16px", flex: "none", minWidth: 210 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--oxford-60)", marginBottom: 6 }}>Platforma payı</div>
+                  {commEditing ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <input value={commInput} onChange={e => setCommInput(e.target.value)} type="number" min={0} max={100} step="0.5" autoFocus
+                        placeholder={commission.globalPercent != null ? String(commission.globalPercent) : "məs. 40"}
+                        style={{ width: 84, border: "1px solid #D6E2F7", borderRadius: 8, padding: "6px 8px", fontSize: 13, fontFamily: "inherit" }} />
+                      <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>%</span>
+                      <button type="button" onClick={saveCommission} disabled={savingComm} style={miniActionBtn}>{savingComm ? "…" : "Saxla"}</button>
+                      <button type="button" onClick={() => { setCommEditing(false); setCommError(null); }} style={miniGhostBtn}>Ləğv</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span className="ps-num" style={{ fontSize: 18, fontWeight: 800, color: "var(--oxford)" }}>
+                        {commission.effectivePercent != null ? `${commission.effectivePercent}%` : "—"}
+                      </span>
+                      <button type="button" onClick={() => { setCommInput(commission.overridePercent != null ? String(commission.overridePercent) : ""); setCommEditing(true); }} style={miniGhostBtn}>Dəyiş</button>
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: "#9DB0CC", fontWeight: 600, marginTop: 6, lineHeight: 1.5 }}>
+                    {commission.effectivePercent == null
+                      ? "Faiz təyin olunmayıb — komissiya hesablanmır"
+                      : commission.overridePercent != null
+                        ? `Bu psixoloq üçün fərdi faiz. Qlobal faiz ${commission.globalPercent ?? "—"}%`
+                        : "Qlobal faiz tətbiq olunur"}
+                  </div>
+                  {commEditing && (
+                    <div style={{ fontSize: 11, color: "#9DB0CC", fontWeight: 600, marginTop: 4, lineHeight: 1.5 }}>
+                      Boş saxlasanız fərdi faiz silinir və qlobal faiz tətbiq olunur.
+                    </div>
+                  )}
+                  {commError && <div style={{ fontSize: 11.5, color: "#991B1B", fontWeight: 600, marginTop: 6 }}>{commError}</div>}
+                </div>
+              )}
             </div>
 
             {packages.length === 0 && !pkgForm ? (

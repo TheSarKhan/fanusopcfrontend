@@ -29,8 +29,13 @@
 .fx-body a:hover { color: var(--brand-600); text-decoration: underline; }
 .fx-num { font-variant-numeric: tabular-nums; }
 
-/* Səhifə konteyner (sidebar-dan sonrakı məzmun sahəsi) */
+/* Səhifə konteyner — YALNIZ müstəqil (PanelShell-siz) səhifələr üçün.
+   Panel səhifəsinin kökü `.panel-page`-dir; doldurmanı `.ps-content` verir. */
 .fx-page { min-height: 100vh; padding: var(--page-pad-y) var(--page-pad-x) 64px; }
+
+/* Təhlükəsizlik: kimsə səhvən .fx-page-i panelin içində işlədərsə,
+   ikiqat doldurma və dar sütun yaranmasın. */
+.ps-content .fx-page { min-height: 0; padding: 0; max-width: none; }
 
 /* ---------- Tipoqrafiya ---------- */
 .fx-h1 { margin: 0; font-weight: 700; letter-spacing: -.015em; line-height: 1.25; font-size: var(--text-h1); color: var(--oxford); }
@@ -375,6 +380,85 @@
   display: grid; padding: 10px 18px;
   font-size: var(--text-caption); font-weight: 600; color: var(--oxford-60);
   border-bottom: 1px solid var(--hairline);
+}
+
+/* ---------- DataTable (vahid cədvəl) ---------- */
+/* Platformadakı BÜTÜN cədvəllər <DataTable> komponentindən gəlir.
+   Əl ilə <table> yazmaq QADAĞANDIR. */
+.fx-dt-wrap { overflow-x: auto; }
+.fx-dt { width: 100%; border-collapse: collapse; font-size: var(--text-body); }
+.fx-dt th {
+  text-align: left; padding: 10px 16px; white-space: nowrap;
+  font-size: var(--text-caption); font-weight: 600; color: var(--oxford-60);
+  border-bottom: 1px solid var(--hairline);
+}
+.fx-dt td { padding: 12px 16px; border-bottom: 1px solid var(--hairline); vertical-align: middle; }
+.fx-dt tbody tr { transition: background .12s ease; }
+.fx-dt tbody tr.fx-dt__row--link { cursor: pointer; }
+.fx-dt tbody tr.fx-dt__row--link:hover { background: var(--surface-muted); }
+.fx-dt tbody tr:last-child > td { border-bottom: 0; }
+.fx-dt__num { text-align: right; font-variant-numeric: tabular-nums; }
+.fx-dt__cell--right { text-align: right; }
+
+/* Sıralanan başlıq */
+.fx-dt__sort {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: none; border: none; padding: 0; margin: 0; cursor: pointer;
+  font: inherit; color: inherit; white-space: nowrap;
+}
+.fx-dt__sort:hover { color: var(--oxford-80); }
+.fx-dt th[aria-sort]:not([aria-sort="none"]) .fx-dt__sort { color: var(--brand); }
+.fx-dt__caret { width: 12px; height: 12px; opacity: .45; flex: none; }
+.fx-dt th[aria-sort]:not([aria-sort="none"]) .fx-dt__caret { opacity: 1; }
+
+/* Sətir əməliyyatları — sonuncu sütun, sağa yaslanır */
+.fx-dt__actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.fx-dt__actions-cell { width: 1%; white-space: nowrap; }
+
+/* Açılan detal sətri */
+.fx-dt__expanded > td { background: var(--surface-muted); padding: 14px 16px; }
+.fx-dt__expander {
+  width: 26px; height: 26px; border-radius: 7px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid var(--hairline); color: var(--oxford-60); cursor: pointer;
+}
+.fx-dt__expander:hover { background: var(--brand-50); color: var(--brand); }
+.fx-dt__expander svg { transition: transform .15s ease; }
+.fx-dt__expander[aria-expanded="true"] svg { transform: rotate(90deg); }
+
+/* Alt sətir: nəticə sayı + səhifələmə */
+.fx-dt__foot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--hairline);
+}
+.fx-dt__count { font-size: var(--text-caption); color: var(--oxford-60); font-variant-numeric: tabular-nums; }
+
+/* Dar ekranda kart görünüşü (mobile="cards") — sütun başlığı etiketə çevrilir.
+   Standart davranış sürüşdürməkdir; kart yalnız açıq şəkildə istənəndə. */
+@media (max-width: 860px) {
+  .fx-dt--cards { display: block; }
+  .fx-dt--cards thead { display: none; }
+  .fx-dt--cards tbody, .fx-dt--cards tr, .fx-dt--cards td { display: block; width: auto; }
+  .fx-dt--cards tbody tr {
+    border: 1px solid var(--hairline); border-radius: var(--radius-card);
+    padding: 4px 14px; margin-bottom: 10px;
+  }
+  .fx-dt--cards tbody tr:last-child { margin-bottom: 0; }
+  .fx-dt--cards td {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 8px 0; border-bottom: 1px solid var(--hairline);
+    text-align: left !important;
+  }
+  .fx-dt--cards tr > td:last-child { border-bottom: 0; }
+  .fx-dt--cards td::before {
+    content: attr(data-label); flex: none; min-width: 96px;
+    font-size: var(--text-caption); font-weight: 600; color: var(--oxford-60);
+  }
+  .fx-dt--cards td:empty { display: none; }
+  .fx-dt--cards td[data-label=""]::before { display: none; }
+  .fx-dt--cards .fx-dt__hide-mobile { display: none; }
+  .fx-dt--cards .fx-dt__actions { justify-content: flex-start; }
+  .fx-dt--cards .fx-dt__actions-cell { width: auto; }
 }
 
 /* Səhifələmə */

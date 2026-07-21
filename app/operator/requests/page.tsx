@@ -7,6 +7,7 @@ import EmptyState from "@/components/EmptyState";
 import ErrorState from "@/components/ErrorState";
 import { Skeleton } from "@/components/Skeleton";
 import PageHeader from "@/components/PageHeader";
+import DatePicker from "@/components/DatePicker";
 import { azFormatDateTime } from "@/lib/datetime";
 
 /**
@@ -162,7 +163,10 @@ export default function OperatorRequestsPage() {
   };
 
   return (
-    <div className="fx-page" style={{ maxWidth: 1100 }}>
+    // LAYOUT QAYDASI: panel səhifəsinin kökü .panel-page-dir. Doldurmanı
+    // .ps-content verir, eni isə .panel-page tənzimləyir — burada inline
+    // `maxWidth` YAZMAYIN, əks halda ekranın iki yanında ölü boşluq qalır.
+    <div className="panel-page">
       <PageHeader
         title="Rəy silmə tələbləri"
         subtitle="Psixoloqlardan gələn Rəy Silmə Tələbləri. Təsdiq etdikdə rəy ictimai profildən qaldırılır."
@@ -172,17 +176,17 @@ export default function OperatorRequestsPage() {
       <div className="fx-card fx-card__pad" style={{ marginBottom: 24, display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
         <div>
           <div className="fx-card-title" style={{ marginBottom: 8 }}>Fəaliyyət hesabatım</div>
+          {/* Native <input type="date"> mm/dd/yyyy göstərirdi — platforma
+              standartı gg.aa.iiii-dir, ona görə vahid DatePicker işlədilir. */}
           <div className="fx-flex">
-            <label className="fx-field" style={{ gap: 4 }}>
+            <div className="fx-field" style={{ gap: 4 }}>
               <span className="fx-label">Başlanğıc</span>
-              <input type="date" className="fx-input" value={reportFrom} onChange={e => setReportFrom(e.target.value)}
-                style={{ width: "auto" }} />
-            </label>
-            <label className="fx-field" style={{ gap: 4 }}>
+              <DatePicker value={reportFrom} onChange={setReportFrom} theme="light" size="sm" ariaLabel="Hesabatın başlanğıc tarixi" />
+            </div>
+            <div className="fx-field" style={{ gap: 4 }}>
               <span className="fx-label">Son</span>
-              <input type="date" className="fx-input" value={reportTo} onChange={e => setReportTo(e.target.value)}
-                style={{ width: "auto" }} />
-            </label>
+              <DatePicker value={reportTo} onChange={setReportTo} theme="light" size="sm" ariaLabel="Hesabatın son tarixi" />
+            </div>
           </div>
         </div>
         <div className="fx-flex">

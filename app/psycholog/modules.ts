@@ -19,6 +19,7 @@ export type PsychologModuleKey =
   | "calendar"
   | "appointments"
   | "packages"
+  | "payments"
   | "clients"
   | "homework"
   | "tests"
@@ -35,6 +36,7 @@ export const PSYCHOLOG_MODULES: Record<PsychologModuleKey, boolean> = {
   calendar:     true,
   appointments: true,
   packages:     true,
+  payments:     true,
   clients:      true,
   homework:     true,
   tests:        true,

@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   psychologistApi,
+  type CustomPackageSale,
   type PackageDto,
   type PackageStats,
   type PackageReq,
   type Psychologist,
 } from "@/lib/api";
+import { DataTable, SectionTitle, Status, type Column } from "@/components/ui";
+import { azFormatDate } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
 import PageHeader from "@/components/PageHeader";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -24,6 +27,8 @@ export default function PsychologPackagesPage() {
   const [newOpen, setNewOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  /** Kataloqda qarşılığı olmayan satışlar — ayrıca siyahıda göstərilir. */
+  const [customSales, setCustomSales] = useState<CustomPackageSale[]>([]);
   const [indivPrice, setIndivPrice] = useState<number | null>(null);
   const [priceEditing, setPriceEditing] = useState(false);
   const [priceBusy, setPriceBusy] = useState(false);
@@ -40,7 +45,9 @@ export default function PsychologPackagesPage() {
       psychologistApi.myPackageStats(),
       psychologistApi.myPricing(),
       psychologistApi.me(),
-    ]).then(([c, s, p, m]) => {
+      psychologistApi.myCustomPackageSales(),
+    ]).then(([c, s, p, m, cs]) => {
+      if (cs.status === "fulfilled") setCustomSales(cs.value);
       if (c.status === "fulfilled") setCatalog(c.value);
       if (s.status === "fulfilled") {
         const map: Record<number, PackageStats> = {};
@@ -91,6 +98,46 @@ export default function PsychologPackagesPage() {
   };
   const toggleActive = (p: PackageDto) =>
     update(p.id, { name: p.name, sessionCount: p.sessionCount, packagePrice: p.packagePrice, active: !p.active });
+
+  // Xüsusi satış cədvəli — paket kartları ilə eyni məlumatı, sətir formasında.
+  const customColumns: Column<CustomPackageSale>[] = [
+    { key: "patient", header: "Müştəri", cell: r => r.patientName },
+    { key: "name", header: "Paket", cell: r => r.packageName },
+    {
+      key: "progress",
+      header: "Gedişat",
+      cell: r => (
+        <span>
+          {r.completed}/{r.total} keçirilib
+          {r.remaining > 0 ? <Status tone="muted">{r.remaining} planlaşdırılmayıb</Status> : null}
+        </span>
+      ),
+    },
+    {
+      key: "price",
+      header: "Məbləğ",
+      numeric: true,
+      cell: r => (r.pricePaid != null ? formatAzn(r.pricePaid) : "—"),
+    },
+    {
+      key: "status",
+      header: "Vəziyyət",
+      cell: r => (
+        <Status tone={r.status === "PENDING_PAYMENT" ? "wait" : r.status === "CANCELLED" ? "risk" : "neutral"}>
+          {r.status === "PENDING_PAYMENT" ? "Ödəniş gözlənilir"
+            : r.status === "ACTIVE" ? "Davam edir"
+            : r.status === "EXHAUSTED" ? "Tamamlanıb"
+            : r.status === "CANCELLED" ? "Ləğv edilib" : r.status}
+        </Status>
+      ),
+    },
+    {
+      key: "purchasedAt",
+      header: "Satılıb",
+      cell: r => azFormatDate(r.purchasedAt),
+      hideOnMobile: true,
+    },
+  ];
 
   return (
     <div className="panel-page">
@@ -192,6 +239,21 @@ export default function PsychologPackagesPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Kataloqda olmayan (operatorun xüsusi qurduğu) satışlar. Yuxarıdakı
+          kartlar kataloq paketlərinə görə qruplaşır, ona görə belə satış orada
+          heç vaxt görünmür — psixoloq özünə satılmış paketdən xəbərsiz qalırdı. */}
+      {customSales.length > 0 && (
+        <>
+          <SectionTitle>Xüsusi satılmış paketlər</SectionTitle>
+          <DataTable
+            rows={customSales}
+            columns={customColumns}
+            rowKey={r => r.id}
+            empty={{ title: "Xüsusi satış yoxdur" }}
+          />
+        </>
       )}
     </div>
   );

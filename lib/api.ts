@@ -3435,6 +3435,19 @@ export interface PackagePoolItem {
   purchasedAt: string;
 }
 
+/** "Paketlər" tabı — server səhifəsindən gələn paket kartı (paketin bütün seansları ilə). */
+export interface OperatorPackageCard extends PackagePoolItem {
+  sessions: AppointmentDetail[];
+}
+
+/** "Paketlər" tabı status çip sayğacları (server səhifələməsində cəmi kimi işlənir). */
+export interface PackageCounts {
+  all: number;
+  pendingPayment: number;
+  active: number;
+  exhausted: number;
+}
+
 export const operatorApi = {
   listAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/operator/appointments"),
   /** Səhifələnmiş triyaj siyahısı — status (tək) + q (pasiyent/psixoloq adı). */
@@ -3464,6 +3477,16 @@ export const operatorApi = {
   /** Tək paket (id ilə) — idarəetmə səhifəsi seansı olmayan paketi də yükləsin. */
   getPackage: (id: number) =>
     authedRequest<PackagePoolItem>("GET", `/operator/packages/${id}`),
+  /** Operatorun öz paketləri — server səhifələməsi ("Paketlər" tabı).
+   *  status: boş/ALL | PENDING_PAYMENT | ACTIVE | EXHAUSTED · sort: packageName | packageStatus. */
+  listPackagesPaged: (opts: {
+    page?: number; size?: number; status?: string; q?: string;
+    sort?: string; dir?: SortDir;
+  } = {}) =>
+    authedRequest<Paged<OperatorPackageCard>>("GET", `/operator/packages/paged${pagedQuery(opts)}`),
+  /** "Paketlər" tabı status sayğacları (çiplər). */
+  packagesSummary: () =>
+    authedRequest<PackageCounts>("GET", "/operator/packages/summary"),
   /** Müştərilər səhifəsi — son aktiv N pasiyentin randevuları. */
   listRecentCustomerAppointments: (patients = 30) =>
     authedRequest<AppointmentDetail[]>("GET", `/operator/appointments/recent-customers?patients=${patients}`),

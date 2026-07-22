@@ -24,6 +24,7 @@ import {
   type AppointmentDetail,
   type AppointmentSortKey,
   type PackagePoolItem,
+  type PackageCounts,
   type Referral,
   type RescheduleProposal,
   type SortDir,
@@ -341,14 +342,21 @@ export default function OperatorAppointmentsPage() {
 
   useEffect(load, []);
 
-  // Operatorun öz üzərində olan, hələ SEANSI OLMAYAN paketlər (məs. pooldan yeni
-  // götürülmüş SCHEDULE_LATER). Randevudan törəyən "Paketlər" siyahısı bunları
-  // qaçırır (randevusu yoxdur), ona görə ayrıca çəkilib Paketlər tabında göstərilir.
-  const [myPkgs, setMyPkgs] = useState<PackagePoolItem[]>([]);
-  const loadMyPkgs = useCallback(() => {
-    operatorApi.listMyPackages().then(setMyPkgs).catch(() => {});
+  // ─── "Paketlər" tabı — SERVER səhifələməsi (operatorun ÖZ paketləri) ────────
+  // Əvvəllər bütün randevular + öz paketlər client-də birləşib brauzerdə bölünürdü.
+  // İndi hər səhifə serverdən gəlir (operator-scoped: yalnız sahibi olduğun paketlər),
+  // hər kart paketin bütün seansları ilə. null = hələ yüklənir (skeleton).
+  const [pkgPaged, setPkgPaged] = useState<AppointmentDetail[][] | null>(null);
+  const [pkgError, setPkgError] = useState(false);
+  const [pkgTotalElements, setPkgTotalElements] = useState(0);
+  const [pkgTotalPages, setPkgTotalPages] = useState(0);
+  const [pkgCounts, setPkgCounts] = useState<PackageCounts>(
+    { all: 0, pendingPayment: 0, active: 0, exhausted: 0 });
+  const [pkgNonce, setPkgNonce] = useState(0);
+  const loadPkgCounts = useCallback(() => {
+    operatorApi.packagesSummary().then(setPkgCounts).catch(() => {});
   }, []);
-  useEffect(() => { loadMyPkgs(); }, [loadMyPkgs]);
+  useEffect(() => { loadPkgCounts(); }, [loadPkgCounts]);
 
   // ─── Əsas siyahı — SERVER səhifələməsi + sıralaması ─────────────────────────
   // Randevu siyahısının hər tabı serverdə ifadə olunur (TAB_STATUS_PARAM), ona
@@ -363,6 +371,7 @@ export default function OperatorAppointmentsPage() {
   const [refPage, setRefPage] = useState(1);
   const [refSort, setRefSort] = useState<SortState | null>(null);
   const [pkgPage, setPkgPage] = useState(1);
+  const [pkgSize, setPkgSize] = useState(PAGE_SIZE);
   const [pkgSort, setPkgSort] = useState<SortState | null>(null);
   const [pagedNonce, setPagedNonce] = useState(0);
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -421,12 +430,12 @@ export default function OperatorAppointmentsPage() {
     return subscribeNotifications((n) => {
       if (typeof n.type !== "string") return;
       if (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_")) {
-        load(); loadPsyProposals(); loadMyPkgs(); setPagedNonce(x => x + 1);
+        load(); loadPsyProposals(); loadPkgCounts(); setPagedNonce(x => x + 1); setPkgNonce(x => x + 1);
       }
-      if (n.type.startsWith("PACKAGE_")) loadMyPkgs();
+      if (n.type.startsWith("PACKAGE_")) { loadPkgCounts(); setPkgNonce(x => x + 1); }
       if (n.type.startsWith("REFERRAL_")) loadReferrals();
     });
-  }, [loadPsyProposals, loadReferrals, loadMyPkgs]);
+  }, [loadPsyProposals, loadReferrals, loadPkgCounts]);
 
   // OP-2: claim hadisələri çipləri canlı yeniləyir (səhifə reload-suz)
   useEffect(() => {
@@ -504,64 +513,46 @@ export default function OperatorAppointmentsPage() {
   const [pkgStatusF, setPkgStatusF] = useState<"ALL" | "PENDING_PAYMENT" | "ACTIVE" | "EXHAUSTED">("ALL");
   const [pkgSearch, setPkgSearch] = useState("");
 
-  const allPackageGroups = useMemo(() => {
-    const groups = new Map<number, AppointmentDetail[]>();
-    for (const a of items) {
-      if (a.patientPackageId == null) continue;
-      if (!groups.has(a.patientPackageId)) groups.set(a.patientPackageId, []);
-      groups.get(a.patientPackageId)!.push(a);
-    }
-    for (const list of groups.values()) {
-      list.sort((x, y) => new Date(x.startAt ?? x.createdAt).getTime() - new Date(y.startAt ?? y.createdAt).getTime());
-    }
-    // Randevusu OLMAYAN sahibli paketlər eyni cədvələ sintetik (vaxtsız) sətirlə daxil
-    // olur ki, planlanmış və planlanmamış paketlər BİR cədvəldə birlikdə görünsün.
-    for (const p of myPkgs) {
-      if (!groups.has(p.id)) groups.set(p.id, [pkgItemToSyntheticRow(p)]);
-    }
-    return Array.from(groups.values());
-  }, [items, myPkgs]);
+  // pkgSearch → debounce (server sorğusu hər hərfdə getməsin).
+  const [debouncedPkgSearch, setDebouncedPkgSearch] = useState("");
+  useEffect(() => {
+    const tmr = setTimeout(() => setDebouncedPkgSearch(pkgSearch.trim()), 300);
+    return () => clearTimeout(tmr);
+  }, [pkgSearch]);
 
-  const pkgCounts = useMemo(() => {
-    const c = { ALL: allPackageGroups.length, PENDING_PAYMENT: 0, ACTIVE: 0, EXHAUSTED: 0 };
-    for (const g of allPackageGroups) {
-      const st = g[0].packageStatus ?? "ACTIVE";
-      if (st === "PENDING_PAYMENT") c.PENDING_PAYMENT++;
-      else if (st === "ACTIVE") c.ACTIVE++;
-      else if (st === "EXHAUSTED") c.EXHAUSTED++;
-    }
-    return c;
-  }, [allPackageGroups]);
+  // Filtr / axtarış / sıralama / səhifə ölçüsü dəyişəndə birinci səhifəyə qayıt.
+  useEffect(() => { setPkgPage(1); }, [pkgStatusF, debouncedPkgSearch, pkgSort, pkgSize]);
 
-  const packageGroups = useMemo(() => {
-    const q = pkgSearch.trim().toLowerCase();
-    return allPackageGroups.filter(g => {
-      const f = g[0];
-      if (pkgStatusF !== "ALL" && (f.packageStatus ?? "ACTIVE") !== pkgStatusF) return false;
-      if (!q) return true;
-      const hay = `${f.packageName ?? ""} ${f.patientName ?? ""} ${f.psychologistName ?? ""}`.toLowerCase();
-      return hay.includes(q);
-    });
-  }, [allPackageGroups, pkgStatusF, pkgSearch]);
+  // Server səhifəsi — yalnız Paketlər tabı aktiv olanda çəkilir. Hər kart paketin
+  // BÜTÜN seansları ilə gəlir; seansı yoxdursa sintetik (vaxtsız) sətrə çevrilir ki,
+  // planlanmış və planlanmamış paketlər BİR cədvəldə birlikdə görünsün.
+  useEffect(() => {
+    if (view !== "packages") return;
+    let cancelled = false;
+    setPkgPaged(null);
+    setPkgError(false);
+    operatorApi.listPackagesPaged({
+      status: pkgStatusF === "ALL" ? undefined : pkgStatusF,
+      q: debouncedPkgSearch || undefined,
+      sort: pkgSort?.key,
+      dir: pkgSort?.dir,
+      page: pkgPage - 1,   // Pagination 1-dən, backend 0-dan başlayır
+      size: pkgSize,
+    })
+      .then(res => {
+        if (cancelled) return;
+        setPkgPaged(res.content.map(c => (c.sessions.length ? c.sessions : [pkgItemToSyntheticRow(c)])));
+        setPkgTotalElements(res.totalElements);
+        setPkgTotalPages(res.totalPages);
+      })
+      .catch(() => { if (!cancelled) { setPkgPaged([]); setPkgError(true); } });
+    return () => { cancelled = true; };
+  }, [view, pkgStatusF, debouncedPkgSearch, pkgSort, pkgPage, pkgSize, pkgNonce]);
 
-  // Paketlər serverdə səhifələnmir — sıralama və səhifələmə client-side qalır.
-  const sortedPackages = useMemo(() => {
-    const get = pkgSort ? PACKAGE_SORT[pkgSort.key] : null;
-    if (!get || !pkgSort) return packageGroups;
-    const mul = pkgSort.dir === "asc" ? 1 : -1;
-    return [...packageGroups].sort((x, y) => {
-      const a = get(x), b = get(y);
-      return (a < b ? -1 : a > b ? 1 : 0) * mul;
-    });
-  }, [packageGroups, pkgSort]);
-  const pkgPageCount = Math.max(1, Math.ceil(sortedPackages.length / CLIENT_PAGE_SIZE));
+  const pkgRows = pkgPaged ?? [];
+  const pkgPageCount = Math.max(1, pkgTotalPages);
   // Siyahı kiçiləndə (canlı yenilənmə) cari səhifə diapazondan çıxa bilər — sıxılır.
   const pkgPageSafe = Math.min(pkgPage, pkgPageCount);
-  const pkgRows = useMemo(
-    () => sortedPackages.slice((pkgPageSafe - 1) * CLIENT_PAGE_SIZE, pkgPageSafe * CLIENT_PAGE_SIZE),
-    [sortedPackages, pkgPageSafe]);
-  // Filtr / axtarış / sıralama dəyişəndə birinci səhifəyə qayıt.
-  useEffect(() => { setPkgPage(1); }, [pkgStatusF, pkgSearch, pkgSort]);
 
   // Yönləndirmə mənbəyi də serverdə səhifələnmir — eyni client məntiqi.
   const sortedReferrals = useMemo(() => {
@@ -828,13 +819,11 @@ export default function OperatorAppointmentsPage() {
     {
       key: "patientName",
       header: "Pasiyent",
-      sortable: true,
       cell: g => <span style={{ fontSize: 12.5 }}>{g[0].patientName ?? "—"}</span>,
     },
     {
       key: "psychologistName",
       header: "Psixoloq",
-      sortable: true,
       cell: g => g[0].psychologistName
         ? <span style={{ fontSize: 12.5 }}>{g[0].psychologistName}</span>
         : <span className="fx-muted">—</span>,
@@ -953,7 +942,7 @@ export default function OperatorAppointmentsPage() {
       <div className="fx-tabs" style={{ borderBottom: "1px solid var(--hairline)", marginBottom: 18, overflowX: "auto" }}>
         {([
           { key: "appointments" as const, label: "Randevular", count: singleItems.length },
-          { key: "packages" as const, label: "Paketlər", count: allPackageGroups.length },
+          { key: "packages" as const, label: "Paketlər", count: pkgCounts.all },
           { key: "referrals" as const, label: "Yönləndirmələr", count: refCount },
         ]).map(tb => {
           const active = view === tb.key;
@@ -1021,13 +1010,13 @@ export default function OperatorAppointmentsPage() {
       {/* PAKETLƏR — status çipləri + axtarış */}
       {view === "packages" && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-          <Chip label="Hamısı" count={pkgCounts.ALL} active={pkgStatusF === "ALL"}
+          <Chip label="Hamısı" count={pkgCounts.all} active={pkgStatusF === "ALL"}
             onClick={() => setPkgStatusF("ALL")} />
-          <Chip label="Ödəniş gözlənilir" count={pkgCounts.PENDING_PAYMENT} active={pkgStatusF === "PENDING_PAYMENT"}
+          <Chip label="Ödəniş gözlənilir" count={pkgCounts.pendingPayment} active={pkgStatusF === "PENDING_PAYMENT"}
             onClick={() => setPkgStatusF("PENDING_PAYMENT")} />
-          <Chip label="Aktiv" count={pkgCounts.ACTIVE} active={pkgStatusF === "ACTIVE"}
+          <Chip label="Aktiv" count={pkgCounts.active} active={pkgStatusF === "ACTIVE"}
             onClick={() => setPkgStatusF("ACTIVE")} />
-          <Chip label="Tamamlanıb" count={pkgCounts.EXHAUSTED} active={pkgStatusF === "EXHAUSTED"}
+          <Chip label="Tamamlanıb" count={pkgCounts.exhausted} active={pkgStatusF === "EXHAUSTED"}
             onClick={() => setPkgStatusF("EXHAUSTED")} />
           <div className="fx-search" style={{ flex: "1 1 220px", minWidth: 200, marginLeft: 4 }}>
             <Svg w={15} d={<><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>} />
@@ -1123,11 +1112,14 @@ export default function OperatorAppointmentsPage() {
           onRetry={load}
         />
       ) : view === "packages" ? (
-        sortedPackages.length === 0 ? (
+        pkgError || pkgPaged == null || pkgPaged.length === 0 ? (
           <DataTable
             rows={[] as AppointmentDetail[][]}
             columns={pkgColumns}
             rowKey={g => g[0].patientPackageId ?? g[0].id}
+            loading={pkgPaged == null && !pkgError}
+            error={pkgError ? "Paketlər yüklənmədi. Bağlantı və ya server problemi ola bilər." : null}
+            onRetry={() => setPkgNonce(n => n + 1)}
             empty={{ title: "Paket tapılmadı", body: "Filtri dəyişin və ya pasiyent adına yeni paket satın." }}
           />
         ) : (
@@ -1150,8 +1142,15 @@ export default function OperatorAppointmentsPage() {
                 sort={pkgSort}
                 onSortChange={setPkgSort}
                 renderExpanded={g => <PackageSessions sessions={g} now={now} onOpenSession={openDetail} />}
-                pagination={{ page: pkgPageSafe, pageCount: pkgPageCount, onChange: setPkgPage }}
-                totalLabel={`Cəmi ${sortedPackages.length} paket`}
+                pagination={{
+                  page: pkgPageSafe,
+                  pageCount: pkgPageCount,
+                  onChange: setPkgPage,
+                  pageSize: pkgSize,
+                  onPageSizeChange: setPkgSize,
+                  pageSizeOptions: PAGE_SIZES,
+                }}
+                totalLabel={`Cəmi ${pkgTotalElements} paket`}
                 minWidth={1080}
               />
             }
@@ -1168,7 +1167,7 @@ export default function OperatorAppointmentsPage() {
                   ))}
                 </div>
                 <CardsPager page={pkgPageSafe} pageCount={pkgPageCount} onChange={setPkgPage}
-                  totalLabel={`Cəmi ${sortedPackages.length} paket`} />
+                  totalLabel={`Cəmi ${pkgTotalElements} paket`} />
               </>
             }
           />
@@ -1530,15 +1529,6 @@ const REFERRAL_COLUMNS: Column<Referral>[] = [
 ];
 
 // ─── Paketlər cədvəli — açılan sətir paketin seanslarını göstərir ─────────────
-
-/** Paketlər tam siyahıdan (items) qruplaşdırılır — server səhifələməsi yoxdur,
- *  ona görə sıralama da client-side qalır (uydurma server paging qurulmur). */
-const PACKAGE_SORT: Record<string, (g: AppointmentDetail[]) => string | number> = {
-  packageName:      g => (g[0].packageName ?? "").toLowerCase(),
-  patientName:      g => (g[0].patientName ?? "").toLowerCase(),
-  psychologistName: g => (g[0].psychologistName ?? "").toLowerCase(),
-  packageStatus:    g => (g[0].packageStatus ?? "ACTIVE").toLowerCase(),
-};
 
 /** Paketin açılan sətrindəki seans siyahısı — DataTable-ın `renderExpanded`-i.
  *  Bu iç-cədvəl bir paketin seansları ilə məhduddur (paket ölçüsü qədər sətir),

@@ -380,6 +380,23 @@ export default function BookPsychologistPage() {
     setCustomTimeOpen(false);
   };
 
+  // Paket alışında əllə (sərbəst) vaxt əlavə et — grid slot-larla qarışıq, 1..N-ə qədər.
+  // Backend requireAvailable=false ilə qəbul edir (operator təsdiqləyir). customTime
+  // (tək seansın "Fərqli saat"ı) əvəzinə birbaşa basketə ok-item kimi əlavə olunur.
+  const addPackageManualTime = () => {
+    if (!customTimeDraft) { setCustomTimeError("Tarix/saat seçin"); return; }
+    const picked = new Date(customTimeDraft);
+    if (Number.isNaN(picked.getTime())) { setCustomTimeError("Etibarsız vaxt"); return; }
+    if (picked <= new Date()) { setCustomTimeError("Keçmiş vaxt seçilə bilməz"); return; }
+    if (selectedPackage && okItems.length >= selectedPackage.sessionCount) {
+      setCustomTimeError(t("pkg.needN", { n: selectedPackage.sessionCount })); return;
+    }
+    if (basket.some(b => b.startAt === customTimeDraft)) { setCustomTimeError("Bu vaxt artıq seçilib"); return; }
+    setError(null); setCustomTimeError(null);
+    setBasket(prev => sortBasket([...prev, { kind: "ok", startAt: customTimeDraft }]));
+    setCustomTimeDraft("");
+  };
+
   // Seans növü seçimi — həm "istəyirsiniz?" banneri, həm TypeCard-lar bunları çağırır
   // (banner cavablandıqdan sonra TypeCard-lar fikri dəyişmək üçün mexanizm kimi qalır).
   const chooseStandardSingle = () => {
@@ -739,6 +756,76 @@ export default function BookPsychologistPage() {
       : preferredStartAt ? `${dayLabelFull(preferredStartAt)}, saat ${fmtTime(preferredStartAt)}`
       : "Vaxt (istəyə bağlı)";
 
+  // Paket əllə-vaxt bölməsi və seçilmiş vaxtlar səbəti — psixoloqun boş vaxtı OLMASA da
+  // (no-slots) göstərilməlidir, ona görə grid budağından çıxarılıb funksiyaya alınıb və
+  // həm grid, həm də no-slots halında render olunur (əks halda paketdə "davam et" bloklanırdı).
+  const renderPkgManualAdd = () => {
+    if (!(mode === "PACKAGE" && !chooseLater && !extendCtx)) return null;
+    const atMax = !!selectedPackage && okItems.length >= selectedPackage.sessionCount;
+    return (
+      <div style={{ marginTop: 14, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: 14 }}>
+        <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 8 }}>
+          Əllə vaxt əlavə et — istədiyiniz tarix/saatı yazın (operator təsdiqləyəcək).
+          {selectedPackage ? ` ${t("pkg.selectedOfN", { m: okItems.length, n: selectedPackage.sessionCount })}` : ""}
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <DatePicker value={customTimeDraft} onChange={setCustomTimeDraft} withTime theme="light" size="sm"
+            min={azNowLocal()} placeholder="gg.aa.iiii ss:dd" style={{ width: 240, flex: "0 0 auto" }} />
+          <button type="button" onClick={addPackageManualTime} disabled={atMax}
+            style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: atMax ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: atMax ? 0.5 : 1 }}>
+            Əlavə et
+          </button>
+        </div>
+        {customTimeError && <div style={{ color: "#991B1B", fontSize: 12, fontWeight: 600, marginTop: 8 }}>{customTimeError}</div>}
+      </div>
+    );
+  };
+
+  const renderBasket = () => {
+    if (basket.length === 0) return null;
+    return (
+      <div style={{ marginTop: 18, borderTop: "1px solid #F0F4FA", paddingTop: 16 }}>
+        <div style={{ display: "flex", gap: 8, fontSize: 12, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 10 }}>
+          <span>{t("book.basketTitle")}</span>
+          <span>{basket.length}</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {basket.map(item => (
+            <div key={item.startAt}
+              style={{ border: `1px solid ${item.kind === "conflict" ? "#FECACA" : "#EDF1F8"}`, background: item.kind === "conflict" ? "#FEF2F2" : "#F8FAFD", borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 140, display: "flex", alignItems: "baseline", gap: 8 }}>
+                  <strong style={{ fontSize: 13.5, color: "var(--oxford)" }}>{dayLabelFull(item.startAt)}</strong>
+                  <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>saat {fmtTime(item.startAt)}</span>
+                  {item.kind === "conflict" && <span style={{ fontSize: 11.5, fontWeight: 700, color: "#991B1B" }}>{t("book.basketConflictRow")}</span>}
+                </div>
+                <button type="button" onClick={() => removeRow(item.startAt)} aria-label={t("book.basketRemove")} title={t("book.basketRemove")}
+                  style={{ width: 30, height: 30, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", border: "1px solid #E1E9F5", borderRadius: 8, color: "#991B1B", cursor: "pointer" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                </button>
+              </div>
+              {item.kind === "conflict" && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                  {item.alternatives.length === 0
+                    ? <em style={{ fontSize: 12, color: "var(--oxford-60)" }}>{t("book.basketAltNone")}</em>
+                    : item.alternatives.map(alt => (
+                      <button key={alt} type="button" onClick={() => replaceConflict(item.startAt, alt)} title={t("book.basketConflictHint")}
+                        style={{ background: "#fff", border: "1px solid #D6E2F7", borderRadius: 8, padding: "5px 10px", fontSize: 12, fontWeight: 600, color: "var(--brand-700)", cursor: "pointer" }}>
+                        {dayLabelFull(alt)}, saat {fmtTime(alt)}
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        {conflictItems.length > 0 && (
+          <p style={{ fontSize: 12, color: "#991B1B", margin: "10px 0 0", fontWeight: 500 }}>{t("book.basketConflictHint")}</p>
+        )}
+      </div>
+    );
+  };
+
   /* ── BOOKING FLOW ───────────────────────────────────────────────────────── */
   return (
     <main style={{ background: "#F0F4FA", minHeight: "100vh", width: "100%", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--oxford)" }}>
@@ -1020,49 +1107,18 @@ export default function BookPsychologistPage() {
                         </div>
                       )}
 
-                      {/* selected-times basket */}
-                      {basket.length > 0 && (
-                        <div style={{ marginTop: 18, borderTop: "1px solid #F0F4FA", paddingTop: 16 }}>
-                          <div style={{ display: "flex", gap: 8, fontSize: 12, fontWeight: 700, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 10 }}>
-                            <span>{t("book.basketTitle")}</span>
-                            <span>{basket.length}</span>
-                          </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {basket.map(item => (
-                              <div key={item.startAt}
-                                style={{ border: `1px solid ${item.kind === "conflict" ? "#FECACA" : "#EDF1F8"}`, background: item.kind === "conflict" ? "#FEF2F2" : "#F8FAFD", borderRadius: 10, padding: "10px 12px" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                                  <div style={{ flex: 1, minWidth: 140, display: "flex", alignItems: "baseline", gap: 8 }}>
-                                    <strong style={{ fontSize: 13.5, color: "var(--oxford)" }}>{dayLabelFull(item.startAt)}</strong>
-                                    <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>saat {fmtTime(item.startAt)}</span>
-                                    {item.kind === "conflict" && <span style={{ fontSize: 11.5, fontWeight: 700, color: "#991B1B" }}>{t("book.basketConflictRow")}</span>}
-                                  </div>
-                                  <button type="button" onClick={() => removeRow(item.startAt)} aria-label={t("book.basketRemove")} title={t("book.basketRemove")}
-                                    style={{ width: 30, height: 30, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", border: "1px solid #E1E9F5", borderRadius: 8, color: "#991B1B", cursor: "pointer" }}>
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                                  </button>
-                                </div>
+                      {renderPkgManualAdd()}
+                      {renderBasket()}
+                    </>
+                  )}
 
-                                {item.kind === "conflict" && (
-                                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                                    {item.alternatives.length === 0
-                                      ? <em style={{ fontSize: 12, color: "var(--oxford-60)" }}>{t("book.basketAltNone")}</em>
-                                      : item.alternatives.map(alt => (
-                                        <button key={alt} type="button" onClick={() => replaceConflict(item.startAt, alt)} title={t("book.basketConflictHint")}
-                                          style={{ background: "#fff", border: "1px solid #D6E2F7", borderRadius: 8, padding: "5px 10px", fontSize: 12, fontWeight: 600, color: "var(--brand-700)", cursor: "pointer" }}>
-                                          {dayLabelFull(alt)}, saat {fmtTime(alt)}
-                                        </button>
-                                      ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                          {conflictItems.length > 0 && (
-                            <p style={{ fontSize: 12, color: "#991B1B", margin: "10px 0 0", fontWeight: 500 }}>{t("book.basketConflictHint")}</p>
-                          )}
-                        </div>
-                      )}
+                  {/* No-slots halında (psixoloqun boş vaxtı yoxdur) paket üçün əllə-vaxt +
+                      seçilmiş vaxtlar — grid budağı işə düşmədiyi üçün burada ayrıca render.
+                      Beləcə pasiyent vaxt əlavə edib "Davam et"ə keçə bilir (Bug: davam olmurdu). */}
+                  {showPicker && !slotsLoading && grouped.length === 0 && pkgNeedsSlots && (
+                    <>
+                      {renderPkgManualAdd()}
+                      {renderBasket()}
                     </>
                   )}
 

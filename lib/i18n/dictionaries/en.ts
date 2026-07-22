@@ -836,6 +836,7 @@ export const en: typeof az = {
     exhausted: "Used up",
     expired: "Expired",
     cancelled: "Cancelled",
+    pendingPayment: "Payment pending",
     purchasedAt: "Purchased on",
     noPackages: "You have no packages yet",
     pricePaid: "Payment",

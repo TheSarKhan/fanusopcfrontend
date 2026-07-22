@@ -23,6 +23,7 @@ import {
   reasonLabel,
   type AppointmentDetail,
   type AppointmentSortKey,
+  type PackagePoolItem,
   type Referral,
   type RescheduleProposal,
   type SortDir,
@@ -223,6 +224,32 @@ function packageInfo(sessions: AppointmentDetail[], now: number) {
   return { first, total, scheduledList, completed, unscheduled, st, needsAttention, nextS, nextLabel, attnText };
 }
 
+/** Randevusu (seansı) OLMAYAN sahibli paketi paketlər cədvəlində göstərmək üçün
+ *  sintetik "vaxtsız" sətir. startAt=null olduğu üçün packageInfo onu seans kimi
+ *  saymır (yalnız paketin denormal sahələri oxunur) — beləcə "planlanmış" və
+ *  "planlanmamış" paketlər BİR cədvəldə birlikdə görünür. id mənfidir ki, real
+ *  randevularla toqquşmasın. */
+function pkgItemToSyntheticRow(p: PackagePoolItem): AppointmentDetail {
+  return {
+    id: -p.id,
+    patientPackageId: p.id,
+    patientId: p.patientId,
+    patientName: p.patientName,
+    patientPhone: p.patientPhone,
+    patientEmail: p.patientEmail,
+    psychologistName: p.psychologistName,
+    packageName: p.packageName,
+    packageStatus: p.status,
+    packageTotal: p.totalSessions,
+    packageRemaining: p.remainingSessions,
+    packageCompleted: 0,
+    startAt: null,
+    createdAt: p.purchasedAt,
+    status: "PENDING",
+    bookingType: "PACKAGE",
+  } as unknown as AppointmentDetail;
+}
+
 /** Səhifədə göstərilən sətir sayı — serverdə səhifələnməyən (client) siyahılar üçün. */
 const CLIENT_PAGE_SIZE = 20;
 
@@ -314,6 +341,15 @@ export default function OperatorAppointmentsPage() {
 
   useEffect(load, []);
 
+  // Operatorun öz üzərində olan, hələ SEANSI OLMAYAN paketlər (məs. pooldan yeni
+  // götürülmüş SCHEDULE_LATER). Randevudan törəyən "Paketlər" siyahısı bunları
+  // qaçırır (randevusu yoxdur), ona görə ayrıca çəkilib Paketlər tabında göstərilir.
+  const [myPkgs, setMyPkgs] = useState<PackagePoolItem[]>([]);
+  const loadMyPkgs = useCallback(() => {
+    operatorApi.listMyPackages().then(setMyPkgs).catch(() => {});
+  }, []);
+  useEffect(() => { loadMyPkgs(); }, [loadMyPkgs]);
+
   // ─── Əsas siyahı — SERVER səhifələməsi + sıralaması ─────────────────────────
   // Randevu siyahısının hər tabı serverdə ifadə olunur (TAB_STATUS_PARAM), ona
   // görə əsas görünüş artıq tam siyahıdan deyil, səhifə-səhifə gəlir.
@@ -385,11 +421,12 @@ export default function OperatorAppointmentsPage() {
     return subscribeNotifications((n) => {
       if (typeof n.type !== "string") return;
       if (n.type.startsWith("APPOINTMENT_") || n.type.startsWith("RESCHEDULE_")) {
-        load(); loadPsyProposals(); setPagedNonce(x => x + 1);
+        load(); loadPsyProposals(); loadMyPkgs(); setPagedNonce(x => x + 1);
       }
+      if (n.type.startsWith("PACKAGE_")) loadMyPkgs();
       if (n.type.startsWith("REFERRAL_")) loadReferrals();
     });
-  }, [loadPsyProposals, loadReferrals]);
+  }, [loadPsyProposals, loadReferrals, loadMyPkgs]);
 
   // OP-2: claim hadisələri çipləri canlı yeniləyir (səhifə reload-suz)
   useEffect(() => {
@@ -434,6 +471,11 @@ export default function OperatorAppointmentsPage() {
     const isPendingTriageSignal = (a: AppointmentDetail) =>
       tab === "PENDING" && !mineOnly && !allOnly && !triage && (isCancelReq(a) || isRescheduleReq(a));
     return items.filter(a => {
+      // Bug 1: təsdiqlənməmiş + SAHİBSİZ (pool) randevu YALNIZ "Randevu hovuzu"nda
+      // (/operator/pool) görünür. Operator hovuzdan götürüb (claim) və ya təsdiqləyənə
+      // qədər "Randevular" siyahısına düşmür — əks halda eyni sətir eyni anda həm
+      // hovuzda, həm də randevularda görünürdü.
+      if (a.claimedByUserId == null && isPoolEligible(a.status)) return false;
       if (!triage && a.patientPackageId != null && !isPendingTriageSignal(a)) return false;
       if (mineOnly && a.claimedByUserId !== meId) return false;
       if (rescheduleOnly) {
@@ -472,8 +514,13 @@ export default function OperatorAppointmentsPage() {
     for (const list of groups.values()) {
       list.sort((x, y) => new Date(x.startAt ?? x.createdAt).getTime() - new Date(y.startAt ?? y.createdAt).getTime());
     }
+    // Randevusu OLMAYAN sahibli paketlər eyni cədvələ sintetik (vaxtsız) sətirlə daxil
+    // olur ki, planlanmış və planlanmamış paketlər BİR cədvəldə birlikdə görünsün.
+    for (const p of myPkgs) {
+      if (!groups.has(p.id)) groups.set(p.id, [pkgItemToSyntheticRow(p)]);
+    }
     return Array.from(groups.values());
-  }, [items]);
+  }, [items, myPkgs]);
 
   const pkgCounts = useMemo(() => {
     const c = { ALL: allPackageGroups.length, PENDING_PAYMENT: 0, ACTIVE: 0, EXHAUSTED: 0 };
@@ -545,8 +592,12 @@ export default function OperatorAppointmentsPage() {
   const rescheduleCount = useMemo(() => items.filter(isRescheduleReq).length, [items, psyProposalApptIds]);
   const cancelReqCount = useMemo(() => items.filter(isCancelReq).length, [items]);
 
-  // Randevular tabının sayğacları yalnız tək seansları sayır (paketlər öz tabında)
-  const singleItems = useMemo(() => items.filter(a => a.patientPackageId == null), [items]);
+  // Randevular tabının sayğacları yalnız tək seansları sayır (paketlər öz tabında).
+  // Sahibsiz pool sətirləri sayılmır — onlar "Randevu hovuzu"na aiddir (filtered ilə eyni qayda).
+  const singleItems = useMemo(
+    () => items.filter(a => a.patientPackageId == null
+      && !(a.claimedByUserId == null && isPoolEligible(a.status))),
+    [items]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { PENDING: 0, CONFIRMED: 0, DISPUTED: 0, COMPLETED: 0, CANCELLED: 0 };
@@ -592,12 +643,18 @@ export default function OperatorAppointmentsPage() {
   // OP-1: sətirə klik → detal səhifəsi. Aktiv filtr konteksti URL parametrləri ilə daşınır.
   const openDetail = useCallback((a: AppointmentDetail) => {
     const params = new URLSearchParams();
-    if (!overdueOnly && !mineOnly && !allOnly && !rescheduleOnly && !cancelOnly) params.set("queue", tab);
-    if (search.trim()) params.set("q", search.trim());
-    if (overdueOnly) params.set("filter", "overdue");
+    // Paketlər tabından (və ya paket seansı) açılan seansdan geri Paketlər tabına
+    // qayıtsın — Randevular alt-tabına yox.
+    if (view === "packages" || a.patientPackageId != null) {
+      params.set("view", "packages");
+    } else {
+      if (!overdueOnly && !mineOnly && !allOnly && !rescheduleOnly && !cancelOnly) params.set("queue", tab);
+      if (search.trim()) params.set("q", search.trim());
+      if (overdueOnly) params.set("filter", "overdue");
+    }
     const qs = params.toString();
     router.push(`/operator/appointments/${a.id}${qs ? `?${qs}` : ""}`);
-  }, [filtered, overdueOnly, mineOnly, allOnly, tab, search, router]);
+  }, [view, overdueOnly, mineOnly, allOnly, rescheduleOnly, cancelOnly, tab, search, router]);
 
   const [onBehalfOpen, setOnBehalfOpen] = useState(false);
 
@@ -1490,13 +1547,15 @@ function PackageSessions({ sessions, now, onOpenSession }: {
   sessions: AppointmentDetail[]; now: number; onOpenSession: (a: AppointmentDetail) => void;
 }) {
   const { unscheduled } = packageInfo(sessions, now);
+  // Sintetik "vaxtsız" sətir (randevusu olmayan paket, id<0) həqiqi seans deyil — cədvəldən çıxarılır.
+  const realSessions = sessions.filter(s => s.id >= 0);
   const columns: Column<AppointmentDetail>[] = [
     {
       key: "seq",
       header: "Seans",
       cell: s => (
         <div className="fx-num" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <span>#{sessions.indexOf(s) + 1}</span>
+          <span>#{realSessions.indexOf(s) + 1}</span>
           <span>FNS-{String(s.id).padStart(4, "0")}</span>
         </div>
       ),
@@ -1523,7 +1582,7 @@ function PackageSessions({ sessions, now, onOpenSession }: {
   return (
     <div style={{ display: "grid", gap: 10 }}>
       <DataTable
-        rows={sessions}
+        rows={realSessions}
         columns={columns}
         rowKey={s => s.id}
         onRowClick={onOpenSession}

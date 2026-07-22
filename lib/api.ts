@@ -3181,6 +3181,8 @@ export interface SlotAllowance {
   maxSlots: number;            // neçə slot seçilə bilər (paket yoxdursa 1)
   packageName: string | null;  // paket adı (varsa)
   remainingSessions: number | null;
+  packagePrice: number | null; // paketin ümumi ödənilmiş məbləği (paket seansında)
+  currency: string | null;
 }
 
 export interface PsychologistSuggestion {
@@ -3414,6 +3416,25 @@ export interface PsychologistRankItem {
 }
 export type AnalyticsPeriod = "daily" | "weekly" | "monthly" | "yearly";
 
+/** Operator "Randevu hovuzu" paket kartı — sahibsiz PENDING_PAYMENT paket. */
+export interface PackagePoolItem {
+  id: number;
+  patientId: number | null;
+  patientName: string | null;
+  patientPhone: string | null;
+  patientEmail: string | null;
+  psychologistId: number | null;
+  psychologistName: string | null;
+  packageName: string | null;
+  totalSessions: number;
+  remainingSessions: number;
+  status: string;
+  schedulingMode: string | null;
+  pricePaid: number | null;
+  currency: string | null;
+  purchasedAt: string;
+}
+
 export const operatorApi = {
   listAppointments: () => authedRequest<AppointmentDetail[]>("GET", "/operator/appointments"),
   /** Səhifələnmiş triyaj siyahısı — status (tək) + q (pasiyent/psixoloq adı). */
@@ -3431,6 +3452,18 @@ export const operatorApi = {
   /** Pool — sahibsiz yeni müraciətlər (tam siyahı əvəzinə məqsədli sorğu). */
   listPoolAppointments: () =>
     authedRequest<AppointmentDetail[]>("GET", "/operator/appointments/pool"),
+  /** Paket hovuzu — sahibsiz (götürülməmiş) PENDING_PAYMENT paketlər. */
+  listPoolPackages: () =>
+    authedRequest<PackagePoolItem[]>("GET", "/operator/packages/pool"),
+  /** Paketi hovuzdan götür — paket və ödənişi operatorun üzərinə keçirir. */
+  claimPackage: (id: number) =>
+    authedRequest<void>("POST", `/operator/packages/${id}/claim`),
+  /** Operatorun öz üzərində olan paketlər (seansı planlanmamış olanlar da). */
+  listMyPackages: () =>
+    authedRequest<PackagePoolItem[]>("GET", "/operator/packages/mine"),
+  /** Tək paket (id ilə) — idarəetmə səhifəsi seansı olmayan paketi də yükləsin. */
+  getPackage: (id: number) =>
+    authedRequest<PackagePoolItem>("GET", `/operator/packages/${id}`),
   /** Müştərilər səhifəsi — son aktiv N pasiyentin randevuları. */
   listRecentCustomerAppointments: (patients = 30) =>
     authedRequest<AppointmentDetail[]>("GET", `/operator/appointments/recent-customers?patients=${patients}`),

@@ -216,9 +216,12 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
 
   const qs = searchParams.toString();
   const backToList = useCallback(() => {
-    // Paket səhifəsindən gəlibsə (?pkg=), həmin paketin daxili səhifəsinə qayıt.
-    const pkg = searchParams.get("pkg");
-    if (pkg) { router.push(`/operator/appointments/package/${pkg}`); return; }
+    // Paket kontekstindən (paket seansı ?pkg= və ya Paketlər tabı ?view=packages)
+    // açılıbsa → birbaşa PAKETLƏR tabına qayıt (Randevular alt-tabına və ya seansa yox).
+    if (searchParams.get("pkg") || searchParams.get("view") === "packages") {
+      router.push("/operator/appointments?view=packages");
+      return;
+    }
     const listQs = new URLSearchParams(qs);
     listQs.delete("queue");
     const tab = searchParams.get("queue");
@@ -1693,8 +1696,19 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
               )}
             </SummaryCell>
 
-            <SummaryCell label="Seans məbləği">
-              {amount != null ? (
+            <SummaryCell label={allowance?.packageName ? "Paket məbləği" : "Seans məbləği"}>
+              {allowance?.packageName ? (
+                /* Paket seansı — tək seansın "standart qiyməti" yanıldıcıdır; paketin
+                   ÜMUMİ ödənilmiş məbləği göstərilir (ödəniş paketlə birlikdə alınıb). */
+                <>
+                  <span className="fx-num" style={{ display: "block", fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
+                    {allowance.packagePrice != null ? `${allowance.packagePrice} ₼` : "—"}
+                  </span>
+                  <span className="fx-muted" style={{ display: "block", fontSize: 12, marginTop: 3 }}>
+                    Paketin ümumi məbləği
+                  </span>
+                </>
+              ) : amount != null ? (
                 <>
                   <span className="fx-num" style={{ display: "block", fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{amount} ₼</span>
                   <span className="fx-muted" style={{ display: "block", fontSize: 12, marginTop: 3 }}>
@@ -1702,9 +1716,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                   </span>
                 </>
               ) : (
-                <span className="fx-muted" style={{ fontSize: 13 }}>
-                  {allowance?.packageName ? "Paket seansı" : "Təyin edilməyib"}
-                </span>
+                <span className="fx-muted" style={{ fontSize: 13 }}>Təyin edilməyib</span>
               )}
             </SummaryCell>
 

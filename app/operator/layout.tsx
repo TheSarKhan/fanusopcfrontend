@@ -50,13 +50,18 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
   const loadPoolCount = useCallback(() => {
     Promise.all([
       operatorApi.listPoolAppointments().catch(() => []),
+      operatorApi.listPoolPackages().catch(() => []),
       operatorApi.listPendingPayments("PENDING").catch(() => []),
-    ]).then(([appts, payments]) => {
-      // Pool endpoint-i onsuz da sahibsiz+uyğun statusları qaytarır; filtr
-      // müdafiə xarakterlidir (endpoint semantikası dəyişsə say şişməsin).
-      const a = appts.filter(x => x.claimedByUserId == null && isPoolEligible(x.status)).length;
-      const p = payments.filter(x => x.claimedByOperatorId == null).length;
-      setPoolCount(a + p);
+    ]).then(([appts, pkgs, payments]) => {
+      // Pool "kartları" sayı: standalone seans müraciətləri + appointment-dən törəyən
+      // paket qrupları + randevusu olmayan (SCHEDULE_LATER) sahibsiz paketlər.
+      // Ödəniş POOL DEYİL — operator yalnız öz üzərindəki ödənişi görür.
+      const poolAppts = appts.filter(x => x.claimedByUserId == null && isPoolEligible(x.status));
+      const standalone = poolAppts.filter(x => x.patientPackageId == null).length;
+      const apptPkgIds = new Set(poolAppts.filter(x => x.patientPackageId != null).map(x => x.patientPackageId));
+      const pendingPkgs = pkgs.filter(p => !apptPkgIds.has(p.id)).length;
+      setPoolCount(standalone + apptPkgIds.size + pendingPkgs);
+      // "Ödənişlər" badge — operatorun ÖZ gözləyən ödənişləri (sahibliyində olanlar).
       setPaymentsCount(payments.length);
     }).catch(() => {});
   }, []);
@@ -90,7 +95,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const offN = subscribeNotifications((n) => {
       const ty = typeof n.type === "string" ? n.type : "";
-      if (ty.startsWith("APPOINTMENT_") || ty.startsWith("PAYMENT_")) { loadPoolCount(); loadMeetingLinksCount(); }
+      if (ty.startsWith("APPOINTMENT_") || ty.startsWith("PAYMENT_") || ty.startsWith("PACKAGE_")) { loadPoolCount(); loadMeetingLinksCount(); }
       if (ty === "SESSION_REQUEST_NEW") loadSessionReqCount();
       if (ty === "SESSION_FEEDBACK") loadFeedbackCount();
     });
@@ -105,7 +110,10 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
   const allNav: ModuleNavItem[] = [
     { key: "dashboard",        href: "/operator",                    label: t("nav.dashboard"),       icon: "home" },
     { key: "pool",             href: "/operator/pool",               label: "Randevu hovuzu",         icon: "inbox", badge: poolCount },
-    { key: "appointments",     href: "/operator/appointments",       label: t("nav.appointments"),    icon: "calendar", badge: poolCount },
+    // "Randevular" pool sayğacını GÖSTƏRMİR — sahibsiz yeni müraciətlər yalnız
+    // "Randevu hovuzu"na aiddir (Bug 1). Pasiyent paket seansı planlayanda seans
+    // hovuza düşür və "Randevu hovuzu" badge-i artır (Bug 4/6).
+    { key: "appointments",     href: "/operator/appointments",       label: t("nav.appointments"),    icon: "calendar" },
     { key: "meetingLinks",  href: "/operator/meeting-links", label: "Görüş linkləri",        icon: "video", badge: meetingLinksCount },
     { key: "payments",      href: "/operator/payments",     label: t("pkg.paymentsTitle"),   icon: "clipboard", badge: paymentsCount },
     { key: "analytics",     href: "/operator/analytics",    label: t("nav.analytics"),       icon: "chart" },

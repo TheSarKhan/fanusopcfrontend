@@ -272,10 +272,9 @@ export default function TimePicker({
   }, [open]);
 
   /* — Seçim köməkçiləri —
-     Popup seçim tamamlananda ÖZÜ bağlanır. Qayda: hər iki hissə (saat + dəqiqə)
-     məlum olan kimi bağlanır — yəni popup açılanda dəyər artıq var idisə bir klik,
-     boşdursa hər iki sütundan birər klik kifayətdir. Əks halda istifadəçi seçimi
-     edib qalırdı və paneli əl ilə bağlamalı olurdu. */
+     Popup seçim tamamlananda ÖZÜ bağlanır. Qayda (istifadəçi qərarı): panel
+     yalnız DƏQİQƏ seçiləndə bağlanır. Saat seçimi paneli AÇIQ saxlayır ki,
+     istifadəçi dəqiqəni də seçə bilsin — saat kliki tək başına bağlamır. */
   const pickedRef = useRef({ h: false, m: false });
   const hadValueRef = useRef(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -308,7 +307,7 @@ export default function TimePicker({
     onChange(toValue(next));
     setText(toValue(next));
     pickedRef.current.h = true;
-    if (hadValueRef.current || pickedRef.current.m) finishPick();
+    // Saat seçimi paneli AÇIQ saxlayır — bağlanma yalnız dəqiqə seçiləndə.
   };
   const pickMinute = (mm: number) => {
     if (minuteDisabled(mm)) return;
@@ -316,7 +315,8 @@ export default function TimePicker({
     onChange(toValue(next));
     setText(toValue(next));
     pickedRef.current.m = true;
-    if (hadValueRef.current || pickedRef.current.h) finishPick();
+    // Dəqiqə seçimi seçimi tamamlayır → panel bağlanır (saat əvvəlki/default qalır).
+    finishPick();
   };
 
   const clear = () => { onChange(""); setText(""); };

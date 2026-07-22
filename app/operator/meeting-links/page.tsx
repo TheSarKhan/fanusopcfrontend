@@ -182,7 +182,6 @@ function MeetingLinkCard({ a, onSent, onUpdated, mode = "pending" }: {
   const saveAndSend = async () => {
     const link = value.trim();
     if (!link) { toast("Görüş linki yazın", "error"); return; }
-    if (!link.startsWith("https://")) { toast("Link https:// ilə başlamalıdır", "error"); return; }
     setBusy(true);
     try {
       await operatorApi.setMeetingLink(a.id, link);
@@ -199,7 +198,6 @@ function MeetingLinkCard({ a, onSent, onUpdated, mode = "pending" }: {
   const saveOnly = async () => {
     const link = value.trim();
     if (!link) { toast("Görüş linki yazın", "error"); return; }
-    if (!link.startsWith("https://")) { toast("Link https:// ilə başlamalıdır", "error"); return; }
     setBusy(true);
     try {
       const updated = await operatorApi.setMeetingLink(a.id, link);
@@ -220,6 +218,11 @@ function MeetingLinkCard({ a, onSent, onUpdated, mode = "pending" }: {
         <span className="fx-num" style={{ fontSize: "var(--text-micro)", fontWeight: 600, color: "var(--oxford-60)" }}>
           #FNS-{String(a.id).padStart(4, "0")}
         </span>
+        {a.patientPackageId != null && (
+          <span className="fx-pill" style={{ background: "var(--lilac-bg)", color: "var(--lilac)" }}>
+            Paket seansı
+          </span>
+        )}
         {hasLink && (
           <span className="fx-pill fx-pill--pending">
             <IconClock /> Link var, göndərilməyib
@@ -234,7 +237,7 @@ function MeetingLinkCard({ a, onSent, onUpdated, mode = "pending" }: {
             {a.patientName ?? "—"}
           </div>
           {/* Ad və tarix ayrı span-larda — ayırıcı işarə yox, flex boşluğu ayırır. */}
-          <div className="fx-row__meta" style={{ gap: 10, flexWrap: "wrap" }}>
+          <div className="fx-row__meta" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
             {a.psychologistName && <span style={{ fontWeight: 600, color: "var(--oxford-80)" }}>{a.psychologistName}</span>}
             <span className="fx-num">{a.startAt ? azFormatDateTime(a.startAt) : "—"}</span>
           </div>
@@ -272,9 +275,7 @@ function MeetingLinkCard({ a, onSent, onUpdated, mode = "pending" }: {
               placeholder="https://…"
               onClick={e => e.stopPropagation()}
             />
-            {/* İki ayrı sətir — ayırıcı işarəyə ehtiyac yoxdur. */}
             <span className="fx-help">Zoom, Google Meet və ya Jitsi linki</span>
-            <span className="fx-help">https:// ilə başlamalıdır</span>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -282,7 +283,7 @@ function MeetingLinkCard({ a, onSent, onUpdated, mode = "pending" }: {
               <IconSend /> {mode === "sent" ? "Yenilə və yenidən göndər" : "Əlavə et və göndər"}
             </button>
             <button type="button" onClick={saveOnly} disabled={busy} className="fx-btn fx-btn--ghost" style={{ width: "100%", ...busyStyle }}>
-              {mode === "sent" ? "Yalnız dəyişikliyi saxla" : "Yalnız saxla"}
+              {mode === "sent" ? "Yalnız dəyişikliyi saxla" : "Yadda saxla"}
             </button>
           </div>
         </>

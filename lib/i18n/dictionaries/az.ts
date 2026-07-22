@@ -866,6 +866,7 @@ export const az = {
     exhausted: "Bitmiş",
     expired: "Vaxtı keçmiş",
     cancelled: "Ləğv edilmiş",
+    pendingPayment: "Ödəniş gözlənilir",
     purchasedAt: "Alınma tarixi",
     noPackages: "Hələ paketiniz yoxdur",
     pricePaid: "Ödəniş",

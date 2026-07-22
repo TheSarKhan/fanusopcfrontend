@@ -15,6 +15,7 @@ import PageHeader from "@/components/PageHeader";
 import {
   operatorApi,
   type AppointmentDetail,
+  type PackagePoolItem,
 } from "@/lib/api";
 import { subscribeNotifications, subscribeOperatorClaims } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -74,6 +75,9 @@ export default function OperatorPoolPage() {
   const router = useRouter();
 
   const [appts, setAppts] = useState<AppointmentDetail[]>([]);
+  // Randevusu olmayan (SCHEDULE_LATER) sahibsiz paketlər — pasiyent paket alıb, hələ
+  // heç bir seans planlanmayıb, ona görə appointment pool-unda görünmür. Ayrıca çəkilir.
+  const [pkgs, setPkgs] = useState<PackagePoolItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -81,8 +85,11 @@ export default function OperatorPoolPage() {
   const load = useCallback(() => {
     setLoading(true);
     setError(false);
-    operatorApi.listPoolAppointments()
-      .then(setAppts)
+    Promise.all([
+      operatorApi.listPoolAppointments(),
+      operatorApi.listPoolPackages().catch(() => [] as PackagePoolItem[]),
+    ])
+      .then(([a, p]) => { setAppts(a); setPkgs(p); })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
@@ -93,7 +100,7 @@ export default function OperatorPoolPage() {
   useEffect(() => {
     return subscribeNotifications((n) => {
       const ty = typeof n.type === "string" ? n.type : "";
-      if (ty.startsWith("APPOINTMENT_")) load();
+      if (ty.startsWith("APPOINTMENT_") || ty.startsWith("PACKAGE_")) load();
     });
   }, [load]);
 
@@ -134,7 +141,14 @@ export default function OperatorPoolPage() {
     return { poolPackages: Array.from(groups.values()), poolStandaloneAppts: standalone };
   }, [poolAppts]);
 
-  const total = poolAppts.length;
+  // Appointment-dən törəyən paket qruplarında OLMAYAN sahibsiz paketlər (SCHEDULE_LATER —
+  // seansı yoxdur). SCHEDULE_NOW paketi onsuz da öz seansları ilə yuxarıda görünür → dublikatı süz.
+  const pendingPkgs = useMemo(() => {
+    const apptPkgIds = new Set(poolPackages.map(g => g[0].patientPackageId));
+    return pkgs.filter(p => !apptPkgIds.has(p.id));
+  }, [pkgs, poolPackages]);
+
+  const total = poolAppts.length + pendingPkgs.length;
 
   const takeAppt = useCallback((a: AppointmentDetail) => {
     setBusyId(`a${a.id}`);
@@ -158,6 +172,19 @@ export default function OperatorPoolPage() {
       .then(() => {
         const ids = new Set(sessions.map(a => a.id));
         setAppts(prev => prev.filter(x => !ids.has(x.id)));
+        uiToast(t("staff.opPoolTaken"), "success");
+      })
+      .catch((e) => uiToast((e as Error).message, "error"))
+      .finally(() => setBusyId(null));
+  }, [t]);
+
+  // Sahibsiz (SCHEDULE_LATER) paketi götür: backend paketi operatora bağlayır
+  // (ownerOperatorId) → paket pooldan çıxır və ödənişi operatorun "Ödənişlər"ində görünür.
+  const takePendingPackage = useCallback((p: PackagePoolItem) => {
+    setBusyId(`ppkg${p.id}`);
+    operatorApi.claimPackage(p.id)
+      .then(() => {
+        setPkgs(prev => prev.filter(x => x.id !== p.id));
         uiToast(t("staff.opPoolTaken"), "success");
       })
       .catch((e) => uiToast((e as Error).message, "error"))
@@ -198,6 +225,15 @@ export default function OperatorPoolPage() {
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(340px, 100%), 1fr))", gap: 16 }}>
+          {pendingPkgs.map(p => (
+            <PoolPendingPackageCard
+              key={`ppkg-${p.id}`}
+              p={p}
+              busy={busyId === `ppkg${p.id}`}
+              onTake={() => takePendingPackage(p)}
+              onOpen={() => { if (p.patientId != null) router.push(`/operator/customers/${p.patientId}`); }}
+            />
+          ))}
           {poolPackages.map(sessions => (
             <PoolPackageCard
               key={sessions[0].patientPackageId}
@@ -406,6 +442,85 @@ function PoolPackageCard({
           )}
           {first.patientEmail && (
             <ContactBtn href={`mailto:${first.patientEmail}`} label="Email"><IconMail /></ContactBtn>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 9, marginTop: "auto" }}>
+        <button type="button" onClick={e => { e.stopPropagation(); onTake(); }} disabled={busy}
+          className="fx-btn fx-btn--primary" style={{ flex: 1 }}>
+          <IconCheck />
+          {t("staff.opTake")}
+        </button>
+        <button type="button" onClick={e => { e.stopPropagation(); onOpen(); }}
+          className="fx-btn fx-btn--ghost" style={{ flex: "none" }}>
+          Müştəri profili
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Randevusu olmayan (SCHEDULE_LATER) SAHİBSİZ paket — pasiyent alıb, ödəniş hələ
+ *  təsdiqlənməyib. Operator "Götür"ür → paket ona keçir, ödənişi onun "Ödənişlər"ində
+ *  görünür (ayrıca ödəniş pool-u yoxdur). Progress yoxdur (heç bir seans planlanmayıb). */
+function PoolPendingPackageCard({
+  p, busy, onTake, onOpen,
+}: {
+  p: PackagePoolItem;
+  busy: boolean;
+  onTake: () => void;
+  onOpen: () => void;
+}) {
+  const { t } = useT();
+  const phone = normalizePhone(p.patientPhone);
+
+  return (
+    <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={e => { if (e.key === "Enter") onOpen(); }}
+      className="fx-card"
+      style={{ padding: 18, display: "flex", flexDirection: "column", cursor: "pointer" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="fx-pill" style={{ background: "var(--lilac-bg)", color: "var(--lilac)" }}>Paket müraciəti</span>
+          <span className="fx-num" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford-60)", letterSpacing: ".02em" }}>#PKG-{String(p.id).padStart(4, "0")}</span>
+        </div>
+        <span className="fx-pill fx-pill--pending">Ödəniş gözlənilir</span>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 13 }}>
+        <span style={{ width: 42, height: 42, borderRadius: 12, background: "var(--lilac-bg)", color: "var(--lilac)", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+          <IconPackage />
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{p.packageName ?? "Paket"}</div>
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>{timeAgo(p.purchasedAt) || `${fmtDt(p.purchasedAt)} alınıb`}</div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", background: "var(--surface-muted)", border: "1px solid var(--hairline)", borderRadius: 10, padding: "11px 13px", marginBottom: 13, fontSize: 12.5, fontWeight: 600, color: "var(--oxford)" }}>
+        <span className="fx-num">{p.totalSessions}</span> seanslıq paket
+        {p.psychologistName && <span style={{ color: "var(--oxford-60)" }}>· {p.psychologistName}</span>}
+        {p.pricePaid != null && <span className="fx-num" style={{ marginLeft: "auto", color: "var(--brand-700)" }}>{p.pricePaid} {p.currency ?? "AZN"}</span>}
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 13 }}>
+        <span className={`fx-avatar fx-avatar--${avatarVariant(p.patientId ?? p.id)}`}>{initialsOf(p.patientName)}</span>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{p.patientName ?? "—"}</div>
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>Pasiyent</div>
+        </div>
+      </div>
+
+      {(phone || p.patientEmail) && (
+        <div style={{ display: "flex", gap: 7, marginBottom: 15, flexWrap: "wrap" }}>
+          {phone && (
+            <>
+              <ContactBtn href={`tel:${phone}`} label="Zəng"><IconPhone /></ContactBtn>
+              <ContactBtn href={whatsappLink(phone)} target="_blank" label="WhatsApp" variant="warn-ghost"><IconChat /></ContactBtn>
+            </>
+          )}
+          {p.patientEmail && (
+            <ContactBtn href={`mailto:${p.patientEmail}`} label="Email"><IconMail /></ContactBtn>
           )}
         </div>
       )}

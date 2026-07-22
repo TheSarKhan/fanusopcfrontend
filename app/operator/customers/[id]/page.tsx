@@ -946,6 +946,12 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
       .then(setSlots).catch(() => setSlots([])).finally(() => setSlotsLoading(false));
   }, [mode, psyId]);
 
+  // Boş saat yoxdursa əl ilə daxiletməni AVTOMATİK aç (tək seans satışında da) — sahə
+  // toggle arxasında gizli qalmasın.
+  useEffect(() => {
+    if (mode === "single" && psyId != null && !slotsLoading && slots.length === 0) setManualOpen(true);
+  }, [mode, psyId, slotsLoading, slots.length]);
+
   useEffect(() => { setSingleStart(""); setSingleEnd(""); }, [psyId]);
 
   const groupedSlots = useMemo(() => {
@@ -1246,6 +1252,12 @@ function SchedulePackageSessionModal({ patientId, pkg, onClose, onDone }: {
     operatorApi.availability(psyId, dateOnly(today), dateOnly(to))
       .then(setSlots).catch(() => setSlots([])).finally(() => setSlotsLoading(false));
   }, [psyId]);
+
+  // Boş saat yoxdursa əl ilə daxiletməni AVTOMATİK aç — mesaj "aşağıdan əl ilə daxil
+  // edin" deyir, amma sahə toggle arxasında gizli qalırdı.
+  useEffect(() => {
+    if (!slotsLoading && slots.length === 0) setManualOpen(true);
+  }, [slotsLoading, slots.length]);
 
   useEffect(() => {
     operatorApi.listPsychologists()

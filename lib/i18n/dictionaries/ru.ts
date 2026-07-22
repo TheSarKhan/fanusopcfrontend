@@ -839,6 +839,7 @@ export const ru: typeof az = {
     exhausted: "Использован",
     expired: "Истёк",
     cancelled: "Отменён",
+    pendingPayment: "Ожидает оплаты",
     purchasedAt: "Дата покупки",
     noPackages: "У вас пока нет пакетов",
     pricePaid: "Оплата",

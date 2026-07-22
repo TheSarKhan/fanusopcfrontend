@@ -9,7 +9,7 @@
 
 import { use, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { operatorApi, type AppointmentDetail, type AvailableSlot, type Psychologist } from "@/lib/api";
+import { operatorApi, type AppointmentDetail, type AvailableSlot, type PackagePoolItem, type Psychologist } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import { toast } from "@/components/Toast";
 import { statusMeta } from "@/lib/appointmentStatus";
@@ -49,14 +49,20 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
   const router = useRouter();
 
   const [items, setItems] = useState<AppointmentDetail[]>([]);
+  // Paketin özü (id ilə) — seansı OLMAYAN paketdə də başlıq/planlama işləsin deyə
+  // (əvvəl hər şey randevulardan törəyirdi və randevusuz paket "tapılmadı" deyirdi).
+  const [pkg, setPkg] = useState<PackagePoolItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
-    operatorApi.listAppointments()
-      .then(all => setItems(all.filter(a => a.patientPackageId === packageId)))
-      .catch(() => setItems([]))
+    Promise.all([
+      operatorApi.listAppointments().then(all => all.filter(a => a.patientPackageId === packageId)),
+      operatorApi.getPackage(packageId).catch(() => null),
+    ])
+      .then(([appts, p]) => { setItems(appts); setPkg(p); })
+      .catch(() => { setItems([]); setPkg(null); })
       .finally(() => setLoading(false));
   }, [packageId]);
 
@@ -66,7 +72,7 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
     () => [...items].sort((x, y) => new Date(x.startAt ?? x.createdAt).getTime() - new Date(y.startAt ?? y.createdAt).getTime()),
     [items]);
 
-  const backToList = () => router.push("/operator/appointments");
+  const backToList = () => router.push("/operator/appointments?view=packages");
 
   if (loading) {
     return (
@@ -89,37 +95,42 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
       </div>
     );
   }
-  if (sessions.length === 0) {
+  if (sessions.length === 0 && !pkg) {
     return (
       <div style={{ padding: "40px 0" }}>
         <div className="fx-card--empty" style={{ maxWidth: 420, margin: "0 auto" }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>Paket tapılmadı</div>
-          <button onClick={backToList} className="fx-btn fx-btn--ghost fx-btn--sm">Randevulara qayıt</button>
+          <button onClick={backToList} className="fx-btn fx-btn--ghost fx-btn--sm">Paketlərə qayıt</button>
         </div>
       </div>
     );
   }
 
-  const first = sessions[0];
-  const total = first.packageTotal ?? sessions.length;
-  // packageRemaining = hələ PLANLAŞDIRILMAMIŞ (rezervasiya balansı) seans sayı,
-  // "keçirilməmiş seans" DEYİL. Ona görə dəyişən adı da "unscheduled"dir.
-  const unscheduled = Math.max(0, first.packageRemaining ?? 0);
+  // Başlıq mənbəyi: təyin edilmiş seans varsa ondan, yoxsa (randevusuz paket) paketin özündən.
+  const first = sessions[0] ?? null;
+  const packageName = first?.packageName ?? pkg?.packageName ?? "Paket";
+  const patientName = first?.patientName ?? pkg?.patientName ?? "—";
+  const psychologistName = first?.psychologistName ?? pkg?.psychologistName ?? null;
+  const packageStatus = first?.packageStatus ?? pkg?.status ?? "ACTIVE";
+  const patientId = (first?.patientId ?? pkg?.patientId ?? null) as number | null;
+  const psychologistId = (first?.psychologistId ?? pkg?.psychologistId ?? null) as number | null;
+  const total = first?.packageTotal ?? pkg?.totalSessions ?? sessions.length;
+  // packageRemaining = hələ PLANLAŞDIRILMAMIŞ (rezervasiya balansı) seans sayı.
+  const unscheduled = Math.max(0, first?.packageRemaining ?? pkg?.remainingSessions ?? 0);
   // packageCompleted = faktiki KEÇİRİLMİŞ (COMPLETED) seans sayı.
-  const completed = first.packageCompleted ?? 0;
+  const completed = first?.packageCompleted ?? 0;
   const scheduledCount = sessions.filter(s => s.startAt).length;
   const emptyCount = Math.max(0, total - scheduledCount);
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-  const st = PKG_STATUS[first.packageStatus ?? "ACTIVE"] ?? PKG_STATUS.ACTIVE;
-  const active = first.packageStatus == null || first.packageStatus === "ACTIVE";
-  // Balans "+" xanaları: mövcud seans sətirlərini ikiqat saymamaq üçün ümumi
-  // seans sayından mövcud sətirləri çıxırıq (balansla məhdudlaşdırılmış).
+  const st = PKG_STATUS[packageStatus] ?? PKG_STATUS.ACTIVE;
+  const active = packageStatus === "ACTIVE";
+  // Balans "+" xanaları: mövcud seans sətirlərini ikiqat saymamaq üçün.
   const balanceTiles = active ? Math.max(0, Math.min(unscheduled, total - sessions.length)) : 0;
 
   return (
     <div>
       <button onClick={backToList} className="fx-btn fx-btn--quiet fx-btn--sm" style={{ padding: 0, marginBottom: 16 }}>
-        <Svg w={15} d={<path d="M15 18l-6-6 6-6" />} /> Randevular
+        <Svg w={15} d={<path d="M15 18l-6-6 6-6" />} /> Paketlər
       </button>
 
       {/* Paket başlığı */}
@@ -130,13 +141,13 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
           </span>
           <div style={{ flex: 1, minWidth: 160 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
-              <span className="fx-h3">{first.packageName ?? "Paket"}</span>
+              <span className="fx-h3">{packageName}</span>
               <span className="fx-pill" style={{ background: st.bg, color: st.color }}>{st.label}</span>
             </div>
             {/* Pasiyent və psixoloq ayrı span-larda — ayırıcı işarə yox. */}
             <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 10 }}>
-              <span>{first.patientName ?? "—"}</span>
-              {first.psychologistName && <span>{first.psychologistName}</span>}
+              <span>{patientName}</span>
+              {psychologistName && <span>{psychologistName}</span>}
             </div>
           </div>
           <div style={{ textAlign: "right", flex: "none" }}>
@@ -167,9 +178,14 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
         ))}
       </div>
 
-      {scheduleOpen && (
+      {scheduleOpen && patientId != null && (
         <AddPackageSessionModal
-          sessions={sessions}
+          patientId={patientId}
+          packageId={packageId}
+          psychologistId={psychologistId}
+          packageName={packageName}
+          remaining={unscheduled}
+          psychologistName={psychologistName}
           onClose={() => setScheduleOpen(false)}
           onDone={() => { setScheduleOpen(false); load(); }}
         />
@@ -274,18 +290,14 @@ function dateOnlyLocal(d: Date): string {
 }
 
 /** Paket balansından 1 seans sərf edərək yeni CONFIRMED randevu yaradır. */
-function AddPackageSessionModal({ sessions, onClose, onDone }: {
-  sessions: AppointmentDetail[]; onClose: () => void; onDone: () => void;
+function AddPackageSessionModal({ patientId, packageId, psychologistId, packageName, remaining, psychologistName, onClose, onDone }: {
+  patientId: number; packageId: number; psychologistId: number | null;
+  packageName: string; remaining: number; psychologistName: string | null;
+  onClose: () => void; onDone: () => void;
 }) {
-  const first = sessions[0];
-  const patientId = first.patientId as number;
-  const packageId = first.patientPackageId as number;
-  // Paketin psixoloqu: təyin olunmuş istənilən seans onu daşıyır. Heç bir seans
-  // təyin olunmayıbsa (yeni paket) operator siyahıdan seçəcək.
-  const pkgPsyId = (first.psychologistId ?? sessions.find(s => s.psychologistId != null)?.psychologistId ?? null) as number | null;
   // Psixoloq: paketin öz psixoloqu varsa default odur; yoxdursa (pasiyent
   // seçməyibsə) operator siyahıdan seçir.
-  const [psyId, setPsyId] = useState<number | null>(pkgPsyId);
+  const [psyId, setPsyId] = useState<number | null>(psychologistId);
   const [psychologists, setPsychologists] = useState<Psychologist[]>([]);
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(true);
@@ -316,6 +328,12 @@ function AddPackageSessionModal({ sessions, onClose, onDone }: {
     }
     return Array.from(map.entries());
   }, [slots]);
+
+  // Psixoloqun boş saatı yoxdursa əl ilə daxiletməni AVTOMATİK aç — mesaj onsuz da
+  // "aşağıdan əl ilə daxil edin" deyir, amma sahə toggle arxasında gizli qalırdı.
+  useEffect(() => {
+    if (psyId != null && !slotsLoading && slots.length === 0) setManualOpen(true);
+  }, [psyId, slotsLoading, slots.length]);
 
   // Psixoloqun öz seans müddəti — əl ilə daxiletmədə bitmə vaxtını təxmin etmək üçün.
   // Sabit 50 dəq hardcode edilsəydi, 60 dəq işləyən psixoloqlar üçün operator
@@ -348,9 +366,9 @@ function AddPackageSessionModal({ sessions, onClose, onDone }: {
         <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--hairline)" }}>
           <h3 className="fx-h3">Paket seansı əlavə et</h3>
           <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 3, display: "flex", flexWrap: "wrap", gap: 10 }}>
-            <span>{first.packageName}</span>
-            <span>{Math.max(0, first.packageRemaining ?? 0)} seans planlaşdırılmayıb</span>
-            {first.psychologistName && <span>{first.psychologistName}</span>}
+            <span>{packageName}</span>
+            <span>{Math.max(0, remaining)} seans planlaşdırılmayıb</span>
+            {psychologistName && <span>{psychologistName}</span>}
           </div>
         </div>
         <div style={{ padding: "18px 22px", overflowY: "auto" }}>
@@ -358,7 +376,7 @@ function AddPackageSessionModal({ sessions, onClose, onDone }: {
           <div style={{ marginBottom: 16 }}>
             <span className="fx-label" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 7 }}>
               <span>Psixoloq</span>
-              {pkgPsyId == null && <span style={{ color: "var(--amber)" }}>pasiyent seçməyib</span>}
+              {psychologistId == null && <span style={{ color: "var(--amber)" }}>pasiyent seçməyib</span>}
             </span>
             <select value={psyId ?? ""} onChange={e => selectPsy(e.target.value ? Number(e.target.value) : null)}
               className="fx-select" style={{ fontWeight: 600, cursor: "pointer" }}>

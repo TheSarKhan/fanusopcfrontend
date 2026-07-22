@@ -13,6 +13,7 @@ import type { MessageKey } from "@/lib/i18n/messages";
 
 /** Maps backend status → pkg.* label key. */
 const STATUS_LABEL: Record<string, MessageKey> = {
+  PENDING_PAYMENT: "pkg.pendingPayment",
   ACTIVE: "pkg.active",
   EXHAUSTED: "pkg.exhausted",
   EXPIRED: "pkg.expired",
@@ -20,6 +21,7 @@ const STATUS_LABEL: Record<string, MessageKey> = {
 };
 
 const STATUS_TONE: Record<string, { color: string; bg: string }> = {
+  PENDING_PAYMENT: { color: "#92400E", bg: "#FEF3C7" },
   ACTIVE:    { color: "#065F46", bg: "#D1FAE5" },
   EXHAUSTED: { color: "#374151", bg: "#F3F4F6" },
   EXPIRED:   { color: "#92400E", bg: "#FEF3C7" },
@@ -194,6 +196,14 @@ function PackageCard({ pkg, sessions, onScheduled }:
           <div style={{ width: `${usedPct}%`, height: "100%", background: "var(--brand)", borderRadius: 999 }} />
         </div>
       </div>
+
+      {/* Ödəniş gözlənilir — pasiyent paketi görür, amma operator ödənişi təsdiqləyənə
+          qədər seans planlaya bilmir (canSchedule=false). Səbəbi açıq göstərilir. */}
+      {pkg.status === "PENDING_PAYMENT" && (
+        <div style={{ marginBottom: 12, background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 11px", fontSize: 12, color: "#92400E", lineHeight: 1.5 }}>
+          Ödəniş operator tərəfindən təsdiqləndikdən sonra seansları planlaya biləcəksiniz.
+        </div>
+      )}
 
       {/* 3) Əsas məzmun — seanslar. Düymə başlığın sağındadır, forma gizlidir. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>

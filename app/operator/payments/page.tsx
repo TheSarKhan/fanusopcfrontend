@@ -645,7 +645,7 @@ function PayRow({ p, selected, onToggle, onOpen, onPay, onCancel, onRefund }: {
       <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 210 }}>
         <span className="fx-row__title"><DeletedMark p={p} />{p.patientName}</span>
         {/* Meta dəyərləri ayrı span-larda — ayırıcı işarə yox, flex boşluğu ayırır. */}
-        <div className="fx-row__meta" style={{ gap: 10, flexWrap: "wrap" }}>
+        <div className="fx-row__meta" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <MethodIcon method={p.method} />
           <span>{p.method}</span>
           <span className="fx-num">{fmtDay(p.createdAt)}</span>

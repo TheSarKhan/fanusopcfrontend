@@ -261,7 +261,8 @@ export default function TimePicker({
       setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setOpen(false); inputRef.current?.blur(); }
+      // Escape və Enter paneli bağlayır (avtomatik bağlanma yoxdur — istifadəçi özü qapatır).
+      if (e.key === "Escape" || e.key === "Enter") { setOpen(false); inputRef.current?.blur(); }
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -272,32 +273,9 @@ export default function TimePicker({
   }, [open]);
 
   /* — Seçim köməkçiləri —
-     Popup seçim tamamlananda ÖZÜ bağlanır. Qayda (istifadəçi qərarı): panel
-     yalnız DƏQİQƏ seçiləndə bağlanır. Saat seçimi paneli AÇIQ saxlayır ki,
-     istifadəçi dəqiqəni də seçə bilsin — saat kliki tək başına bağlamır. */
-  const pickedRef = useRef({ h: false, m: false });
-  const hadValueRef = useRef(false);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (open) {
-      pickedRef.current = { h: false, m: false };
-      hadValueRef.current = parseValue(value) != null;
-    }
-    return () => { if (closeTimer.current) clearTimeout(closeTimer.current); };
-    // `value` qəsdən asılılıqda deyil — yalnız açılış anındakı vəziyyət lazımdır.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  /** Seçim göz önündə qalsın deyə qısa gecikmə ilə bağla. */
-  const finishPick = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => {
-      setOpen(false);
-      inputRef.current?.blur();
-    }, 160);
-  };
-
+     Qayda (istifadəçi qərarı 2026-07): NƏ saat, NƏ dəqiqə seçimi paneli avtomatik
+     bağlamır. Panel yalnız KƏNARA klik, Escape və ya Enter ilə bağlanır — belə
+     istifadəçi saatı və dəqiqəni istədiyi qədər sərbəst dəyişə bilir. */
   const pickHour = (hh: number) => {
     if (hourDisabled(hh)) return;
     // Hədd saatına keçəndə dəqiqə də hədddən aşağı qalmasın.
@@ -306,17 +284,12 @@ export default function TimePicker({
     const next = { hh, mm };
     onChange(toValue(next));
     setText(toValue(next));
-    pickedRef.current.h = true;
-    // Saat seçimi paneli AÇIQ saxlayır — bağlanma yalnız dəqiqə seçiləndə.
   };
   const pickMinute = (mm: number) => {
     if (minuteDisabled(mm)) return;
     const next = { hh: selected?.hh ?? minP?.hh ?? 0, mm };
     onChange(toValue(next));
     setText(toValue(next));
-    pickedRef.current.m = true;
-    // Dəqiqə seçimi seçimi tamamlayır → panel bağlanır (saat əvvəlki/default qalır).
-    finishPick();
   };
 
   const clear = () => { onChange(""); setText(""); };

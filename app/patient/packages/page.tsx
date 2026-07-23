@@ -272,9 +272,13 @@ function PackageCard({ pkg, sessions, onScheduled }:
         </div>
       )}
 
-      {/* 5) Meta — ikinci dərəcəli, tək sətir. */}
+      {/* 5) Meta — ikinci dərəcəli, tək sətir. Ödəniş hələ təsdiqlənməyibsə
+          "ödənilib" yazmaq yanlışdır — status PENDING_PAYMENT olanda məbləğ
+          gözlənilən ödənişdir, edilmiş deyil. */}
       <p style={{ margin: "12px 0 0", fontSize: 12, color: "var(--oxford-60)" }}>
-        {formatAzn(pkg.pricePaid)} ödənilib, {azFormatDate(pkg.purchasedAt)} tarixində alınıb
+        {pkg.status === "PENDING_PAYMENT"
+          ? `${formatAzn(pkg.pricePaid)} ödəniləcək, ${azFormatDate(pkg.purchasedAt)} tarixində alınıb`
+          : `${formatAzn(pkg.pricePaid)} ödənilib, ${azFormatDate(pkg.purchasedAt)} tarixində alınıb`}
       </p>
     </div>
   );

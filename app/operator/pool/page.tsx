@@ -387,6 +387,8 @@ function PoolPackageCard({
   const unscheduled = Math.max(0, first.packageRemaining ?? 0);
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
   const st = PKG_STATUS[first.packageStatus ?? "ACTIVE"] ?? PKG_STATUS.ACTIVE;
+  // Pasiyentin vaxt seçdiyi seanslar — yaranış sırası ilə (qrup onsuz da sıralanıb).
+  const scheduledTimes = sessions.filter(s => s.requestedStartAt || s.startAt);
 
   return (
     <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={e => { if (e.key === "Enter") onOpen(); }}
@@ -423,6 +425,23 @@ function PoolPackageCard({
           </div>
         )}
       </div>
+
+      {/* Pasiyentin planlaşdırdığı seans vaxtları — hər seans ayrıca sətirdə.
+          Kart paketi bütöv götürür, amma operator hansı vaxtların seçildiyini
+          görməlidir (əvvəl yalnız aqreqat proqres vardı, ayrı vaxtlar görünmürdü). */}
+      {scheduledTimes.length > 0 && (
+        <div style={{ marginBottom: 13 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Planlaşdırılmış seanslar</div>
+          <div style={{ display: "grid", gap: 5 }}>
+            {scheduledTimes.map(s => (
+              <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontSize: 12.5 }}>
+                <span className="fx-num" style={{ fontWeight: 600, color: "var(--oxford)" }}>{fmtDt(s.requestedStartAt ?? s.startAt)}</span>
+                <span style={{ color: "var(--oxford-60)", fontWeight: 500 }}>{statusMeta(s.status).label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 13 }}>
         <span className={`fx-avatar fx-avatar--${avatarVariant(first.patientId ?? first.id)}`}>{initialsOf(first.patientName)}</span>

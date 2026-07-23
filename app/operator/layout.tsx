@@ -100,10 +100,22 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
       if (ty === "SESSION_FEEDBACK") loadFeedbackCount();
     });
     const offC = subscribeOperatorClaims(() => loadPoolCount());
-    const id = setInterval(() => {
+    const refreshAll = () => {
       loadPoolCount(); loadSessionReqCount(); loadFeedbackCount(); loadMeetingLinksCount();
-    }, 60_000);
-    return () => { offN(); offC(); clearInterval(id); };
+    };
+    // Canlı push (websocket) həmişə çatmaya bilər — badge-in "yalnız F5-dən sonra"
+    // yenilənməsini aradan qaldırmaq üçün polling qısaldıldı və operator tab-a
+    // qayıdanda (fokus/görünürlük) dərhal yenilənir.
+    const id = setInterval(refreshAll, 25_000);
+    const onFocus = () => refreshAll();
+    const onVisible = () => { if (document.visibilityState === "visible") refreshAll(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      offN(); offC(); clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [loadPoolCount, loadSessionReqCount, loadFeedbackCount, loadMeetingLinksCount]);
 
   // Bütün modullar. Kilidlilər (./modules.ts) sidebar-dan çıxarılır.

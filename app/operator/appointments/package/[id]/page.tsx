@@ -69,7 +69,11 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
   useEffect(() => { load(); }, [load]);
 
   const sessions = useMemo(
-    () => [...items].sort((x, y) => new Date(x.startAt ?? x.createdAt).getTime() - new Date(y.startAt ?? y.createdAt).getTime()),
+    // Ləğv/rədd edilmiş seans paketdə görünməməlidir — balans onsuz da geri qayıdır,
+    // ona görə həmin kart yalnız qarışıqlıq yaradırdı.
+    () => [...items]
+      .filter(a => a.status !== "CANCELLED" && a.status !== "REJECTED")
+      .sort((x, y) => new Date(x.startAt ?? x.createdAt).getTime() - new Date(y.startAt ?? y.createdAt).getTime()),
     [items]);
 
   const backToList = () => router.push("/operator/appointments?view=packages");

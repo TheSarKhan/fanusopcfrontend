@@ -387,8 +387,9 @@ function PoolPackageCard({
   const unscheduled = Math.max(0, first.packageRemaining ?? 0);
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
   const st = PKG_STATUS[first.packageStatus ?? "ACTIVE"] ?? PKG_STATUS.ACTIVE;
-  // Pasiyentin vaxt seçdiyi seanslar — yaranış sırası ilə (qrup onsuz da sıralanıb).
-  const scheduledTimes = sessions.filter(s => s.requestedStartAt || s.startAt);
+  // Pasiyentin vaxt seçdiyi seanslar — ləğv/rədd olunanlar xaric.
+  const scheduledTimes = sessions.filter(s =>
+    (s.requestedStartAt || s.startAt) && s.status !== "CANCELLED" && s.status !== "REJECTED");
 
   return (
     <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={e => { if (e.key === "Enter") onOpen(); }}

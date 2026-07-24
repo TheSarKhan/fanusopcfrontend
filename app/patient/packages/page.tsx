@@ -49,6 +49,9 @@ export default function PatientPackagesPage() {
         const map: Record<number, AppointmentDetail[]> = {};
         for (const a of list) {
           if (a.patientPackageId == null) continue;
+          // Ləğv/rədd edilmiş seans paketdə görünməsin — balans geri qayıdıb,
+          // seans siyahısında qalması pasiyenti çaşdırırdı.
+          if (a.status === "CANCELLED" || a.status === "REJECTED") continue;
           (map[a.patientPackageId] ??= []).push(a);
         }
         for (const k of Object.keys(map)) {

@@ -264,10 +264,12 @@ export default function TimePicker({
       // Escape və Enter paneli bağlayır (avtomatik bağlanma yoxdur — istifadəçi özü qapatır).
       if (e.key === "Escape" || e.key === "Enter") { setOpen(false); inputRef.current?.blur(); }
     };
-    document.addEventListener("mousedown", onDown);
+    // CAPTURE fazası — modal/portal içindəki hər hansı ata element mousedown-u
+    // stopPropagation etsə belə kənara klik yenə tutulur (əks halda popup açıq qalırdı).
+    document.addEventListener("mousedown", onDown, true);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("mousedown", onDown, true);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);

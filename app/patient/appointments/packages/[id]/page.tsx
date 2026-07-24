@@ -278,13 +278,27 @@ function SessionRow({ a, ordinal, now }: { a: AppointmentDetail; ordinal: number
     && new Date(a.startAt).getTime() > now.getTime()
     && (a.status === "ASSIGNED" || a.status === "CONFIRMED");
   const isDone = a.status === "COMPLETED";
+  // Pasiyent vaxt təklifi göndərib, hələ operator təsdiqləməyib: startAt yoxdur,
+  // yalnız təklif edilən vaxt (requestedStartAt) var. Bunu açıq bildirmək lazımdır
+  // ki, pasiyent "seans təsdiqləndi" sanmasın.
+  const isProposal = (a.status === "PENDING" || a.status === "NEW") && !a.startAt;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: "12px 15px", opacity: isDone ? .8 : 1 }}>
       <span style={{ fontSize: 13, fontWeight: 700, color: isDone ? "var(--oxford-60)" : "var(--oxford)", minWidth: 74 }}>{azOrdinal(ordinal)} seans</span>
-      <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>
-        {when ? `${azFormatDate(when)}, ${azFormatTime(when)}` : "Operator vaxtı təyin edəcək"}
-      </span>
-      <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>{st.label}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>
+          {when
+            ? `${azFormatDate(when)}, ${azFormatTime(when)}${isProposal ? " (təklif edilib)" : ""}`
+            : "Operator vaxtı təyin edəcək"}
+        </span>
+        {isProposal && (
+          <span style={{ fontSize: 11.5, fontWeight: 600, color: "#92400E", display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+            Vaxt təklifiniz göndərilib, operator təsdiqi gözlənilir
+          </span>
+        )}
+      </div>
+      <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>{isProposal ? "Təsdiq gözlənilir" : st.label}</span>
       <span style={{ flex: 1 }} />
       {isUpcoming && (
         <div style={{ display: "flex", gap: 7 }}>

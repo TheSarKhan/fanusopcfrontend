@@ -219,14 +219,33 @@ function PackageCard({ pkg, sessions, onScheduled }:
         </p>
       ) : (
         <div>
-          {sessions.map(sess => (
-            <div key={sess.id} className="pnl-row">
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)", fontVariantNumeric: "tabular-nums" }}>
-                {sess.startAt ? azFormatDateTime(sess.startAt) : "Vaxt təyin edilməyib"}
-              </span>
-              <SessionStatus status={sess.status} />
-            </div>
-          ))}
+          {sessions.map(sess => {
+            // Pasiyent vaxt təklifi göndərib, operator hələ təsdiqləməyib.
+            const isProposal = (sess.status === "PENDING" || sess.status === "NEW") && !sess.startAt;
+            const when = sess.startAt ?? sess.requestedStartAt;
+            return (
+              <div key={sess.id} className="pnl-row">
+                <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)", fontVariantNumeric: "tabular-nums" }}>
+                    {when
+                      ? `${azFormatDateTime(when)}${isProposal ? " (təklif edilib)" : ""}`
+                      : "Vaxt təyin edilməyib"}
+                  </span>
+                  {isProposal && (
+                    <span style={{ fontSize: 11.5, fontWeight: 600, color: "#92400E" }}>
+                      Vaxt təklifiniz göndərilib, operator təsdiqi gözlənilir
+                    </span>
+                  )}
+                </span>
+                {isProposal
+                  ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}>
+                      <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "#D97706" }} />
+                      <span style={{ fontSize: 12.5, color: "var(--oxford-60)", whiteSpace: "nowrap" }}>Təsdiq gözlənilir</span>
+                    </span>
+                  : <SessionStatus status={sess.status} />}
+              </div>
+            );
+          })}
         </div>
       )}
 

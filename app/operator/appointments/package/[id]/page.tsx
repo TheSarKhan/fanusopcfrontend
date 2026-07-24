@@ -166,11 +166,7 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
               <span className="fx-h3">{packageName}</span>
               <span className="fx-pill" style={{ background: st.bg, color: st.color }}>{st.label}</span>
             </div>
-            {/* Pasiyent və psixoloq ayrı span-larda — ayırıcı işarə yox. */}
-            <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 10 }}>
-              <span>{patientName}</span>
-              {psychologistName && <span>{psychologistName}</span>}
-            </div>
+            <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>{total} seanslıq paket</div>
           </div>
           <div style={{ textAlign: "right", flex: "none" }}>
             {/* Əsas rəqəm = KEÇİRİLMİŞ seans / alınmış seans. Planlaşdırma vəziyyəti
@@ -187,6 +183,22 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
         </div>
         <div className="fx-progress" style={{ marginTop: 14 }}>
           <div className="fx-progress__fill" style={{ width: `${pct}%`, background: "var(--lilac)" }} />
+        </div>
+
+        {/* Kim kimdir — pasiyent və psixoloq açıq etiketlə, avatar + rol. */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))", gap: 12, marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--hairline)" }}>
+          <IdentityCell
+            role="Pasiyent"
+            name={patientName}
+            tone="brand"
+            onClick={patientId != null ? () => router.push(`/operator/customers/${patientId}`) : undefined}
+          />
+          <IdentityCell
+            role="Psixoloq"
+            name={psychologistName ?? "Hələ təyin edilməyib"}
+            tone="lilac"
+            muted={!psychologistName}
+          />
         </div>
       </div>
 
@@ -245,6 +257,37 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
           onDone={() => { setScheduleOpen(false); load(); }}
         />
       )}
+    </div>
+  );
+}
+
+/** Adın baş hərfləri — avatar üçün. */
+function initialsOf(name?: string | null): string {
+  if (!name) return "—";
+  return name.trim().split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "—";
+}
+
+/** Kimlik xanası — rol etiketi + avatar + ad. Pasiyent xanası klikləndikdə
+ *  müştəri profilinə keçir; psixoloq təyin edilməyibsə solğun göstərilir. */
+function IdentityCell({ role, name, tone, muted, onClick }: {
+  role: string; name: string; tone: "brand" | "lilac"; muted?: boolean; onClick?: () => void;
+}) {
+  const bg = tone === "brand" ? "var(--brand-700)" : "var(--lilac)";
+  const clickable = !!onClick;
+  return (
+    <div
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={clickable ? e => { if (e.key === "Enter") onClick!(); } : undefined}
+      style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--surface-muted)", border: "1px solid var(--hairline)", borderRadius: 12, padding: "11px 13px", cursor: clickable ? "pointer" : "default", minWidth: 0 }}>
+      <span style={{ width: 38, height: 38, borderRadius: "50%", background: muted ? "var(--oxford-10)" : bg, color: muted ? "var(--oxford-60)" : "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flex: "none" }}>
+        {muted ? "—" : initialsOf(name)}
+      </span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 2 }}>{role}</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: muted ? "var(--oxford-60)" : "var(--oxford)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+      </div>
     </div>
   );
 }

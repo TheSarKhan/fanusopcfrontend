@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 import { use, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   patientApi,
   type AppointmentDetail,
@@ -17,7 +18,6 @@ import {
 import { azFormatDate, azFormatTime, azOrdinal, azLocalToISO } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
 import DatePicker from "@/components/DatePicker";
-import TimePicker from "@/components/TimePicker";
 import AddToCalendarMenu from "@/components/AddToCalendarMenu";
 import JoinSessionButton from "@/components/JoinSessionButton";
 import { toast } from "@/components/Toast";
@@ -33,10 +33,13 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
   const [planning, setPlanning] = useState(false);
   const [busy, setBusy] = useState(false);
   const [now] = useState(() => new Date());
-  // Əl ilə daxiletmə — psixoloqun boş saat siyahısında olmayan vaxt üçün.
+  // Əl ilə daxiletmə — tarix + saat birlikdə (withTime DatePicker).
   const [manualOpen, setManualOpen] = useState(false);
-  const [manualDate, setManualDate] = useState("");
-  const [manualTime, setManualTime] = useState("");
+  const [manualDateTime, setManualDateTime] = useState("");
+  // Modal portal-la body-yə render olunur (transform-lu ata `position:fixed`-i
+  // pozmasın deyə); SSR-də portal olmadığı üçün mount yoxlanır.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const load = () => {
     setLoading(true);
@@ -72,12 +75,11 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
   // Əl ilə seçilmiş vaxt — slot ilə eyni axın: operatora gedir, təsdiqdən sonra
   // randevuya çevrilir. Backend iş qrafikini/dolu vaxtı yoxlayır (uyğun deyilsə xəta).
   const scheduleManual = async () => {
-    if (!manualDate) { toast("Tarix seçin", "error"); return; }
-    if (!manualTime) { toast("Saat seçin", "error"); return; }
+    if (!manualDateTime) { toast("Tarix və saat seçin", "error"); return; }
     setBusy(true);
     try {
-      await patientApi.schedulePackageSession(packageId, { startAt: azLocalToISO(`${manualDate}T${manualTime}`) });
-      setPlanning(false); setManualOpen(false); setManualDate(""); setManualTime(""); setBusy(false);
+      await patientApi.schedulePackageSession(packageId, { startAt: azLocalToISO(manualDateTime) });
+      setPlanning(false); setManualOpen(false); setManualDateTime(""); setBusy(false);
       load();
     } catch (e) { toast((e as Error).message, "error"); setBusy(false); }
   };
@@ -209,10 +211,10 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
         </button>
       )}
 
-      {/* ── Planlama popup-u ── */}
-      {canSchedule && planning && (
+      {/* ── Planlama popup-u — body-yə portal (transform-lu ata position:fixed-i pozmasın) ── */}
+      {canSchedule && planning && mounted && createPortal(
         <div onClick={() => setPlanning(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(8,47,109,.45)", backdropFilter: "blur(4px)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "paFade .18s ease" }}>
+          style={{ position: "fixed", inset: 0, background: "rgba(8,47,109,.45)", backdropFilter: "blur(4px)", zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "paFade .18s ease" }}>
           <div onClick={e => e.stopPropagation()}
             style={{ background: "#fff", borderRadius: 16, width: "min(520px, 100%)", maxHeight: "88vh", overflow: "auto", boxShadow: "0 24px 70px rgba(8,47,109,.28)" }}>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "20px 22px 16px", borderBottom: "1px solid #F0F4FA" }}>
@@ -245,9 +247,9 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
               </button>
               {manualOpen && (
                 <div style={{ marginTop: 10, background: "var(--brand-50)", border: "1px solid #D6E2F7", borderRadius: 10, padding: 12 }}>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <DatePicker value={manualDate} onChange={v => setManualDate(v)} placeholder="gg.aa.iiii" theme="light" size="sm" style={{ flex: "1 1 160px" }} />
-                    <TimePicker value={manualTime} onChange={v => setManualTime(v)} theme="light" size="sm" style={{ flex: "0 1 120px" }} />
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
+                    {/* Tarix + saat BİRLİKDƏ — tək withTime DatePicker. */}
+                    <DatePicker withTime value={manualDateTime} onChange={v => setManualDateTime(v)} placeholder="gg.aa.iiii ss:dd" theme="light" size="sm" style={{ flex: "1 1 200px" }} />
                     <button type="button" onClick={scheduleManual} disabled={busy}
                       style={{ flex: "none", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 16px", fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>
                       {busy ? "Göndərilir…" : "Göndər"}
@@ -260,7 +262,8 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

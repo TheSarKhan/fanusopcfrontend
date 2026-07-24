@@ -14,8 +14,10 @@ import {
   type AvailableSlot,
   type PatientPackageItem,
 } from "@/lib/api";
-import { azFormatDate, azFormatTime, azOrdinal } from "@/lib/datetime";
+import { azFormatDate, azFormatTime, azOrdinal, azLocalToISO } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
+import DatePicker from "@/components/DatePicker";
+import TimePicker from "@/components/TimePicker";
 import AddToCalendarMenu from "@/components/AddToCalendarMenu";
 import JoinSessionButton from "@/components/JoinSessionButton";
 import { toast } from "@/components/Toast";
@@ -31,6 +33,10 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
   const [planning, setPlanning] = useState(false);
   const [busy, setBusy] = useState(false);
   const [now] = useState(() => new Date());
+  // Əl ilə daxiletmə — psixoloqun boş saat siyahısında olmayan vaxt üçün.
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualDate, setManualDate] = useState("");
+  const [manualTime, setManualTime] = useState("");
 
   const load = () => {
     setLoading(true);
@@ -63,6 +69,19 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
     } catch (e) { toast((e as Error).message, "error"); setBusy(false); }
   };
 
+  // Əl ilə seçilmiş vaxt — slot ilə eyni axın: operatora gedir, təsdiqdən sonra
+  // randevuya çevrilir. Backend iş qrafikini/dolu vaxtı yoxlayır (uyğun deyilsə xəta).
+  const scheduleManual = async () => {
+    if (!manualDate) { toast("Tarix seçin", "error"); return; }
+    if (!manualTime) { toast("Saat seçin", "error"); return; }
+    setBusy(true);
+    try {
+      await patientApi.schedulePackageSession(packageId, { startAt: azLocalToISO(`${manualDate}T${manualTime}`) });
+      setPlanning(false); setManualOpen(false); setManualDate(""); setManualTime(""); setBusy(false);
+      load();
+    } catch (e) { toast((e as Error).message, "error"); setBusy(false); }
+  };
+
   const backLink = (
     <Link href="/patient/appointments?tab=paketler" style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none", marginBottom: 10 }}>
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
@@ -72,7 +91,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
 
   if (loading) {
     return (
-      <div className="psy-appt-page" style={{ maxWidth: 760, margin: "0 auto" }}>
+      <div className="psy-appt-page" style={{ width: "100%" }}>
         {backLink}
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>Yüklənir…</div>
       </div>
@@ -81,7 +100,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
 
   if (!pkg) {
     return (
-      <div className="psy-appt-page" style={{ maxWidth: 760, margin: "0 auto" }}>
+      <div className="psy-appt-page" style={{ width: "100%" }}>
         {backLink}
         <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: 40, textAlign: "center", fontSize: 14, color: "var(--oxford-60)", fontWeight: 600 }}>
           Paket tapılmadı
@@ -96,7 +115,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
   const canSchedule = pkg.status === "ACTIVE" && pkg.remaining > 0;
 
   return (
-    <div className="psy-appt-page" style={{ maxWidth: 760, margin: "0 auto" }}>
+    <div className="psy-appt-page" style={{ width: "100%" }}>
       <style>{PA_STYLE}</style>
       {backLink}
 
@@ -196,6 +215,28 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
               <div style={{ fontSize: 12, color: "var(--oxford-60)", marginBottom: 12 }}>Seçdiyiniz vaxt operatora gedəcək, təsdiqdən sonra randevuya çevriləcək.</div>
               <SlotPicker psychologistId={pkg.psychologistId} busy={busy} onPick={scheduleSlot}
                 confirmNote="Seçdiyiniz vaxt operatora göndəriləcək, təsdiqdən sonra randevuya çevriləcək." />
+
+              {/* Əl ilə daxiletmə — boş saat siyahısında olmayan vaxt üçün. Slot ilə
+                  eyni: operatora gedir, yalnız təsdiqdən sonra randevu olur. */}
+              <button type="button" onClick={() => setManualOpen(o => !o)}
+                style={{ marginTop: 12, background: "none", border: "none", color: "var(--brand-700)", fontSize: 12.5, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+                {manualOpen ? "Əl ilə daxiletməni gizlət" : "Və ya vaxtı əl ilə daxil et"}
+              </button>
+              {manualOpen && (
+                <div style={{ marginTop: 10, background: "#fff", border: "1px solid #D6E2F7", borderRadius: 10, padding: 12 }}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <DatePicker value={manualDate} onChange={v => setManualDate(v)} placeholder="gg.aa.iiii" theme="light" size="sm" style={{ flex: "1 1 160px" }} />
+                    <TimePicker value={manualTime} onChange={v => setManualTime(v)} theme="light" size="sm" style={{ flex: "0 1 120px" }} />
+                    <button type="button" onClick={scheduleManual} disabled={busy}
+                      style={{ flex: "none", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 16px", fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>
+                      {busy ? "Göndərilir…" : "Göndər"}
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--oxford-60)", marginTop: 8, lineHeight: 1.5 }}>
+                    Seçdiyiniz vaxt operatora göndəriləcək, təsdiqdən sonra randevuya çevriləcək.
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

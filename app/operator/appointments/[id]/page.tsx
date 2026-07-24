@@ -216,9 +216,16 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
 
   const qs = searchParams.toString();
   const backToList = useCallback(() => {
-    // Paket kontekstindən (paket seansı ?pkg= və ya Paketlər tabı ?view=packages)
-    // açılıbsa → birbaşa PAKETLƏR tabına qayıt (Randevular alt-tabına və ya seansa yox).
-    if (searchParams.get("pkg") || searchParams.get("view") === "packages") {
+    // Konkret paket seansından açılıbsa (?pkg=ID) → həmin PAKETİN DETAL səhifəsinə
+    // qayıt (Paketlər tabına yox) — operator seansı təyin edib eyni paketin qalan
+    // seanslarına davam etsin, siyahıya geri atılmasın.
+    const pkgId = searchParams.get("pkg");
+    if (pkgId) {
+      router.push(`/operator/appointments/package/${pkgId}`);
+      return;
+    }
+    // Paketlər tabından açılıbsa (?view=packages) → tabaya qayıt.
+    if (searchParams.get("view") === "packages") {
       router.push("/operator/appointments?view=packages");
       return;
     }

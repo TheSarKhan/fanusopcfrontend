@@ -9,7 +9,7 @@
 
 import { use, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { operatorApi, type AppointmentDetail, type AvailableSlot, type PackagePoolItem, type Psychologist } from "@/lib/api";
+import { operatorApi, type AppointmentDetail, type AvailableSlot, type PackagePoolItem, type PaymentItem, type Psychologist } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import { toast } from "@/components/Toast";
 import { statusMeta } from "@/lib/appointmentStatus";
@@ -54,17 +54,35 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
   const [pkg, setPkg] = useState<PackagePoolItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  // Paketin gözləyən ödənişi — PENDING_PAYMENT olanda burada təsdiqlənə bilsin
+  // (əvvəl yalnız "Ödənişlər" səhifəsindən mümkün idi).
+  const [pkgPayment, setPkgPayment] = useState<PaymentItem | null>(null);
+  const [payMethod, setPayMethod] = useState("Nağd");
+  const [confirming, setConfirming] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([
       operatorApi.listAppointments().then(all => all.filter(a => a.patientPackageId === packageId)),
       operatorApi.getPackage(packageId).catch(() => null),
+      operatorApi.listPendingPayments("PENDING").catch(() => [] as PaymentItem[]),
     ])
-      .then(([appts, p]) => { setItems(appts); setPkg(p); })
-      .catch(() => { setItems([]); setPkg(null); })
+      .then(([appts, p, pays]) => {
+        setItems(appts); setPkg(p);
+        setPkgPayment(pays.find(x => x.patientPackageId === packageId) ?? null);
+      })
+      .catch(() => { setItems([]); setPkg(null); setPkgPayment(null); })
       .finally(() => setLoading(false));
   }, [packageId]);
+
+  const confirmPayment = useCallback(() => {
+    if (!pkgPayment) return;
+    setConfirming(true);
+    operatorApi.markPaymentPaid(pkgPayment.id, payMethod)
+      .then(() => { toast("Ödəniş təsdiqləndi — paket aktivləşdi", "success"); load(); })
+      .catch(e => toast((e as Error).message, "error"))
+      .finally(() => setConfirming(false));
+  }, [pkgPayment, payMethod, load]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -171,6 +189,39 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
           <div className="fx-progress__fill" style={{ width: `${pct}%`, background: "var(--lilac)" }} />
         </div>
       </div>
+
+      {/* Ödəniş təsdiqi — paket PENDING_PAYMENT olduqda. Təsdiq paketi aktivləşdirir
+          (pasiyent seans planlaya bilir) və ödənişi təsdiqləyən operatora bağlayır. */}
+      {packageStatus === "PENDING_PAYMENT" && pkgPayment && (
+        <div className="fx-card" style={{ padding: 18, marginBottom: 20, borderColor: "var(--amber)", background: "var(--amber-bg)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+              <span style={{ width: 40, height: 40, borderRadius: 11, background: "var(--surface)", color: "var(--amber)", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                <Svg w={20} d={<><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></>} />
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 800, color: "var(--oxford)" }}>Ödəniş gözlənilir</div>
+                <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
+                  Məbləğ: {pkgPayment.amount} {pkgPayment.currency ?? "AZN"}. Təsdiqdən sonra paket aktivləşir.
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <select value={payMethod} onChange={e => setPayMethod(e.target.value)}
+                className="fx-select" style={{ fontWeight: 600, cursor: "pointer", minWidth: 120 }}>
+                <option value="Nağd">Nağd</option>
+                <option value="Kart">Kart</option>
+                <option value="Köçürmə">Köçürmə</option>
+              </select>
+              <button type="button" onClick={confirmPayment} disabled={confirming}
+                className="fx-btn fx-btn--primary" style={{ flex: "none", cursor: confirming ? "wait" : "pointer", opacity: confirming ? 0.7 : 1 }}>
+                <Svg w={16} sw={2.2} d={<path d="M20 6L9 17l-5-5" />} />
+                {confirming ? "Təsdiqlənir…" : "Ödənişi təsdiqlə"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Seanslar — dolu kartlar + boş "+" xanalar */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(230px, 100%), 1fr))", gap: 14 }}>

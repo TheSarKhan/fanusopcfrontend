@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { patientApi, type PatientPackageItem, type AppointmentDetail } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
-import TimePicker from "@/components/TimePicker";
 import PageHeader from "@/components/PageHeader";
 import { toast } from "@/components/Toast";
 import { azLocalToISO, azFormatDate, azFormatDateTime } from "@/lib/datetime";
@@ -133,11 +132,8 @@ export default function PatientPackagesPage() {
 function PackageCard({ pkg, sessions, onScheduled }:
   { pkg: PatientPackageItem; sessions: AppointmentDetail[]; onScheduled: () => void }) {
   const { t } = useT();
-  // Tarix və saat AYRI sahələrdir. Əvvəl tək `withTime` DatePicker vardı: saat
-  // sətri təqvimin altında qaldığı üçün gözə dəymirdi və seçilməyəndə cari
-  // vaxt (məs. 15:28) möhürlənirdi. İndi saat açıq şəkildə seçilir.
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  // Tarix + saat BİRLİKDƏ — tək `withTime` DatePicker (ayrı sahələr istənmir).
+  const [dateTime, setDateTime] = useState("");
   const [saving, setSaving] = useState(false);
   const [scheduled, setScheduled] = useState(false);
   // Planlaşdırma forması daimi açıq idi — kartı ağırlaşdırırdı. İndi istəyə görə açılır.
@@ -148,13 +144,12 @@ function PackageCard({ pkg, sessions, onScheduled }:
   const canSchedule = pkg.status === "ACTIVE" && pkg.remaining > 0;
 
   const submit = async () => {
-    if (!date) { toast("Tarix seçin", "error"); return; }
-    if (!time) { toast("Saat seçin", "error"); return; }
+    if (!dateTime) { toast("Tarix və saat seçin", "error"); return; }
     setSaving(true);
     try {
-      await patientApi.schedulePackageSession(pkg.id, { startAt: azLocalToISO(`${date}T${time}`) });
+      await patientApi.schedulePackageSession(pkg.id, { startAt: azLocalToISO(dateTime) });
       setScheduled(true);
-      setDate(""); setTime("");
+      setDateTime("");
       onScheduled();
     } catch (e) {
       toast((e as Error).message, "error");
@@ -243,26 +238,21 @@ function PackageCard({ pkg, sessions, onScheduled }:
               {t("pkg.scheduleLaterHint")}
             </p>
           )}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
+            {/* Tarix + saat BİRLİKDƏ — tək withTime DatePicker. */}
             <DatePicker
-              value={date}
-              onChange={v => { setDate(v); setScheduled(false); }}
-              placeholder="gg.aa.iiii"
+              withTime
+              value={dateTime}
+              onChange={v => { setDateTime(v); setScheduled(false); }}
+              placeholder="gg.aa.iiii ss:dd"
               theme="light"
               size="sm"
-              style={{ flex: "1 1 170px" }}
-            />
-            <TimePicker
-              value={time}
-              onChange={v => { setTime(v); setScheduled(false); }}
-              theme="light"
-              size="sm"
-              style={{ flex: "0 1 120px" }}
+              style={{ flex: "1 1 220px" }}
             />
             <button type="button" onClick={submit} disabled={saving} className="pnl-btn" style={{ flex: "none" }}>
               {saving ? "Göndərilir…" : "Təsdiqlə"}
             </button>
-            <button type="button" onClick={() => { setFormOpen(false); setDate(""); setTime(""); }}
+            <button type="button" onClick={() => { setFormOpen(false); setDateTime(""); }}
               className="pnl-btn pnl-btn--ghost" style={{ flex: "none" }}>
               Ləğv
             </button>

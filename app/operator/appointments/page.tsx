@@ -289,11 +289,15 @@ export default function OperatorAppointmentsPage() {
   // Qeyd: Pool artıq ayrıca səhifədir (/operator/pool), siyahıda filtr deyil.
   const [slaHours, setSlaHours] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
+  // Yönləndirmələr müvəqqəti gizlədilib (2026-07-24) — sonra üstündə işlənəcək.
+  // Bayrağı true edəndə tab + deep-link + məzmun geri qayıdır (kod silinməyib).
+  const REFERRALS_ENABLED = false;
   // Əsas görünüş tabları: Randevular | Paketlər | Yönləndirmələr (alt-xəttli).
   // Bildiriş deep-link-i (?view=referrals / ?view=packages) birbaşa açır.
   const [view, setView] = useState<"appointments" | "packages" | "referrals">(() => {
     const v = searchParams.get("view");
-    return v === "referrals" || v === "packages" ? v : "appointments";
+    if (v === "referrals") return REFERRALS_ENABLED ? "referrals" : "appointments";
+    return v === "packages" ? "packages" : "appointments";
   });
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [refLoading, setRefLoading] = useState(true);
@@ -943,7 +947,8 @@ export default function OperatorAppointmentsPage() {
         {([
           { key: "appointments" as const, label: "Randevular", count: singleItems.length },
           { key: "packages" as const, label: "Paketlər", count: pkgCounts.all },
-          { key: "referrals" as const, label: "Yönləndirmələr", count: refCount },
+          // Yönləndirmələr müvəqqəti gizlədilib (REFERRALS_ENABLED).
+          ...(REFERRALS_ENABLED ? [{ key: "referrals" as const, label: "Yönləndirmələr", count: refCount }] : []),
         ]).map(tb => {
           const active = view === tb.key;
           return (

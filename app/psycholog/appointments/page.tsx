@@ -66,9 +66,12 @@ export default function PsychologistAppointmentsPage() {
   const [cancelFor, setCancelFor] = useState<AppointmentDetail | null>(null);
   const [rescheduleProposeFor, setRescheduleProposeFor] = useState<AppointmentDetail | null>(null);
   const [outcomeFor, setOutcomeFor] = useState<AppointmentDetail | null>(null);
+  // Yönləndirmələr müvəqqəti gizlədilib (2026-07-24) — sonra üstündə işlənəcək.
+  // Bayrağı true edəndə tab + deep-link geri qayıdır (kod silinməyib).
+  const REFERRALS_ENABLED = false;
   // Tab: bildiriş deep-link-i (?view=referrals) Yönləndirmələr tabını açır.
   const [tab, setTab] = useState<TabKey>(() =>
-    searchParams.get("view") === "referrals" ? "referrals"
+    (REFERRALS_ENABLED && searchParams.get("view") === "referrals") ? "referrals"
       : searchParams.get("tab") === "paketler" ? "packages" : "sessions");
   const [referralPending, setReferralPending] = useState(0);
   // GAP-03: incoming patient-initiated reschedule requests awaiting my decision
@@ -250,7 +253,8 @@ export default function PsychologistAppointmentsPage() {
             {([
               ["sessions", "Seanslar", agendaList.length + patientRequests.length, false],
               ["packages", "Paketlər", packagesTotal, false],
-              ["referrals", "Yönləndirmələr", referralPending, referralPending > 0],
+              // Yönləndirmələr müvəqqəti gizlədilib (REFERRALS_ENABLED).
+              ...(REFERRALS_ENABLED ? [["referrals", "Yönləndirmələr", referralPending, referralPending > 0]] : []),
             ] as [TabKey, string, number, boolean][]).map(([key, label, count, warn]) => {
               const active = tab === key;
               return (

@@ -196,34 +196,55 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
         </div>
       </section>
 
-      {/* ── Yeni seans tələbi ── */}
+      {/* ── Yeni seans tələbi — düymə; panel popup-da açılır ── */}
       {canSchedule && (
-        <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 20 }}>
-          <button
-            type="button"
-            onClick={() => setPlanning(p => !p)}
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: planning ? "#fff" : "var(--brand)", color: planning ? "var(--oxford-60)" : "#fff", border: planning ? "1px solid #D6E2F7" : "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" />
-            </svg>
-            {planning ? "Planlaşdırmanı bağla" : "Seans planla"}
-          </button>
+        <button
+          type="button"
+          onClick={() => setPlanning(true)}
+          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: 13, fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", boxShadow: "0 4px 14px rgba(16,81,183,.24)" }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" />
+          </svg>
+          Seans planla
+        </button>
+      )}
 
-          {planning && (
-            <div style={{ marginTop: 14, background: "var(--brand-50)", border: "1px solid #D6E2F7", borderRadius: 12, padding: 16, animation: "paFade .25s ease" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--brand-700)", marginBottom: 4 }}>Psixoloqun açıq vaxtından seçin</div>
-              <div style={{ fontSize: 12, color: "var(--oxford-60)", marginBottom: 12 }}>Seçdiyiniz vaxt operatora gedəcək, təsdiqdən sonra randevuya çevriləcək.</div>
+      {/* ── Planlama popup-u ── */}
+      {canSchedule && planning && (
+        <div onClick={() => setPlanning(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(8,47,109,.45)", backdropFilter: "blur(4px)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "paFade .18s ease" }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: 16, width: "min(520px, 100%)", maxHeight: "88vh", overflow: "auto", boxShadow: "0 24px 70px rgba(8,47,109,.28)" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "20px 22px 16px", borderBottom: "1px solid #F0F4FA" }}>
+              <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--brand-100)", color: "var(--brand-700)", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" />
+                </svg>
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>Seans planla</div>
+                <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 2, lineHeight: 1.45 }}>
+                  Seçdiyiniz vaxt operatora gedəcək, təsdiqdən sonra randevuya çevriləcək.
+                </div>
+              </div>
+              <button type="button" onClick={() => setPlanning(false)} aria-label="Bağla"
+                style={{ width: 34, height: 34, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F2F6FD", border: "none", borderRadius: 9, color: "var(--oxford-60)", cursor: "pointer" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div style={{ padding: "18px 22px 22px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--brand-700)", marginBottom: 10 }}>Psixoloqun açıq vaxtından seçin</div>
               <SlotPicker psychologistId={pkg.psychologistId} busy={busy} onPick={scheduleSlot}
                 confirmNote="Seçdiyiniz vaxt operatora göndəriləcək, təsdiqdən sonra randevuya çevriləcək." />
 
-              {/* Əl ilə daxiletmə — boş saat siyahısında olmayan vaxt üçün. Slot ilə
-                  eyni: operatora gedir, yalnız təsdiqdən sonra randevu olur. */}
+              {/* Əl ilə daxiletmə — boş saat siyahısında olmayan vaxt üçün. */}
               <button type="button" onClick={() => setManualOpen(o => !o)}
-                style={{ marginTop: 12, background: "none", border: "none", color: "var(--brand-700)", fontSize: 12.5, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+                style={{ marginTop: 14, background: "none", border: "none", color: "var(--brand-700)", fontSize: 12.5, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
                 {manualOpen ? "Əl ilə daxiletməni gizlət" : "Və ya vaxtı əl ilə daxil et"}
               </button>
               {manualOpen && (
-                <div style={{ marginTop: 10, background: "#fff", border: "1px solid #D6E2F7", borderRadius: 10, padding: 12 }}>
+                <div style={{ marginTop: 10, background: "var(--brand-50)", border: "1px solid #D6E2F7", borderRadius: 10, padding: 12 }}>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <DatePicker value={manualDate} onChange={v => setManualDate(v)} placeholder="gg.aa.iiii" theme="light" size="sm" style={{ flex: "1 1 160px" }} />
                     <TimePicker value={manualTime} onChange={v => setManualTime(v)} theme="light" size="sm" style={{ flex: "0 1 120px" }} />
@@ -238,7 +259,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
                 </div>
               )}
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>

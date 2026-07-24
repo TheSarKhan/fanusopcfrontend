@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { patientApi, type PatientPackageItem, type AppointmentDetail } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
@@ -93,7 +94,18 @@ export default function PatientPackagesPage() {
 
   return (
     <div className="psy-appt-page">
-      <PageHeader title={t("pkg.myPackages")} subtitle="Aldığınız paketləri və qalan seansları buradan izləyin" />
+      <PageHeader
+        title={t("pkg.myPackages")}
+        subtitle="Aldığınız paketləri və qalan seansları buradan izləyin"
+        actions={
+          // Paket psixoloqa bağlıdır — yeni paket almaq üçün psixoloq seçiminə aparır.
+          <Link href="/patient/psychologists"
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", borderRadius: 10, padding: "11px 17px", fontSize: 14, fontWeight: 600, textDecoration: "none", boxShadow: "0 4px 14px rgba(16,81,183,.24)" }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+            Yeni paket əlavə et
+          </Link>
+        }
+      />
 
       {loading ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>
@@ -101,11 +113,16 @@ export default function PatientPackagesPage() {
         </div>
       ) : items.length === 0 ? (
         <div style={{
-          background: "#fff", borderRadius: 12, padding: 28,
+          background: "#fff", borderRadius: 12, padding: "32px 28px",
           textAlign: "center", color: "var(--oxford-60)", fontSize: 13,
           border: "1px dashed var(--brand-100)",
         }}>
-          {t("pkg.noPackages")}
+          <div style={{ marginBottom: 16 }}>{t("pkg.noPackages")}</div>
+          <Link href="/patient/psychologists"
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", borderRadius: 10, padding: "11px 18px", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+            Yeni paket əlavə et
+          </Link>
         </div>
       ) : (
         <>

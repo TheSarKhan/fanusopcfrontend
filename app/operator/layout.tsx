@@ -66,6 +66,21 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
   }, []);
 
+  // "Randevular" badge — operatorun MÜDAXİLƏSİNİ gözləyən seanslar: ləğv tələbi
+  // və vaxt dəyişikliyi təklifi. Bunlar hovuz statusları deyil (POOL_STATUSES),
+  // ona görə əvvəl heç bir yerdə bildirilmirdi.
+  const [apptActionCount, setApptActionCount] = useState(0);
+  const loadApptActionCount = useCallback(() => {
+    Promise.all([
+      operatorApi.listAppointments().catch(() => []),
+      operatorApi.pendingPsychologistProposals().catch(() => []),
+    ]).then(([appts, proposals]) => {
+      const cancelReq = appts.filter(a => a.status === "CANCEL_REQUESTED").length;
+      setApptActionCount(cancelReq + proposals.length);
+    }).catch(() => {});
+  }, []);
+  useEffect(() => { loadApptActionCount(); }, [loadApptActionCount]);
+
   useEffect(() => { loadPoolCount(); }, [loadPoolCount]);
 
   // Nav-dakı "Görüş linkləri" sayğacı — yaxınlaşan, hələ link göndərilməmiş seanslar
@@ -95,13 +110,16 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const offN = subscribeNotifications((n) => {
       const ty = typeof n.type === "string" ? n.type : "";
-      if (ty.startsWith("APPOINTMENT_") || ty.startsWith("PAYMENT_") || ty.startsWith("PACKAGE_")) { loadPoolCount(); loadMeetingLinksCount(); }
+      if (ty.startsWith("APPOINTMENT_") || ty.startsWith("PAYMENT_") || ty.startsWith("PACKAGE_")) {
+        loadPoolCount(); loadMeetingLinksCount(); loadApptActionCount();
+      }
       if (ty === "SESSION_REQUEST_NEW") loadSessionReqCount();
       if (ty === "SESSION_FEEDBACK") loadFeedbackCount();
     });
     const offC = subscribeOperatorClaims(() => loadPoolCount());
     const refreshAll = () => {
       loadPoolCount(); loadSessionReqCount(); loadFeedbackCount(); loadMeetingLinksCount();
+      loadApptActionCount();
     };
     // Canlı push (websocket) həmişə çatmaya bilər — badge-in "yalnız F5-dən sonra"
     // yenilənməsini aradan qaldırmaq üçün polling qısaldıldı və operator tab-a
@@ -116,7 +134,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [loadPoolCount, loadSessionReqCount, loadFeedbackCount, loadMeetingLinksCount]);
+  }, [loadPoolCount, loadSessionReqCount, loadFeedbackCount, loadMeetingLinksCount, loadApptActionCount]);
 
   // Bütün modullar. Kilidlilər (./modules.ts) sidebar-dan çıxarılır.
   const allNav: ModuleNavItem[] = [
@@ -125,7 +143,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
     // "Randevular" pool sayğacını GÖSTƏRMİR — sahibsiz yeni müraciətlər yalnız
     // "Randevu hovuzu"na aiddir (Bug 1). Pasiyent paket seansı planlayanda seans
     // hovuza düşür və "Randevu hovuzu" badge-i artır (Bug 4/6).
-    { key: "appointments",     href: "/operator/appointments",       label: t("nav.appointments"),    icon: "calendar" },
+    { key: "appointments",     href: "/operator/appointments",       label: t("nav.appointments"),    icon: "calendar", badge: apptActionCount, badgeTone: "warn" },
     { key: "meetingLinks",  href: "/operator/meeting-links", label: "Görüş linkləri",        icon: "video", badge: meetingLinksCount },
     { key: "payments",      href: "/operator/payments",     label: t("pkg.paymentsTitle"),   icon: "package", badge: paymentsCount },
     { key: "analytics",     href: "/operator/analytics",    label: t("nav.analytics"),       icon: "chart" },

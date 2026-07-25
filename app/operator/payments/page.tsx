@@ -69,10 +69,14 @@ function fmtDay(iso?: string | null) {
   return azFormatDateTime(iso);
 }
 function ageHours(iso: string) { return (Date.now() - new Date(iso).getTime()) / 3_600_000; }
+/** Gözləmə müddəti. Əvvəl 1 saatdan az olan HƏR ŞEY "indicə" idi — 5 dəqiqə də,
+ *  55 dəqiqə də eyni görünürdü. İndi dəqiqə dəqiqliyi var (qısaltma işlədilmir). */
 function ageLabel(h: number) {
-  if (h < 1) return "indicə";
-  if (h < 24) return `${Math.round(h)} saat gözləyir`;
-  return `${Math.round(h / 24)} gün gözləyir`;
+  const min = Math.round(h * 60);
+  if (min < 1) return "indicə";
+  if (min < 60) return `${min} dəqiqədir gözləyir`;
+  if (h < 24) return `${Math.round(h)} saatdır gözləyir`;
+  return `${Math.round(h / 24)} gündür gözləyir`;
 }
 const netOf = (p: PaymentItem) => p.amount - (p.refundedAmount ?? 0);
 // Real komissiya varsa onu göstər; yoxdursa (hələ hesablanmayıb) default dərəcə ilə təxmin et.

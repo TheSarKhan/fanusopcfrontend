@@ -12,13 +12,13 @@ function fmtDate(d: string) {
   return `${String(dt.getDate()).padStart(2, "0")}.${String(dt.getMonth() + 1).padStart(2, "0")}.${dt.getFullYear()}`;
 }
 
-/** Məqalə yayımdan sonra redaktə olunubmu? Yalnız fərq 1 dəqiqədən böyükdürsə
- *  "yeniləndi" sayılır — yaradılış anındakı eyni timestamp-i saymamaq üçün. */
+/** Məqalə yaradılandan sonra redaktə olunubmu?
+ *  Müqayisə `createdAt` ilədir — `publishedDate` yalnız TARİXDİR (saatsız), onunla
+ *  müqayisə eyni gün yaradılan məqalədə həmişə "yeniləndi" verirdi (yanlış müsbət).
+ *  1 dəqiqəlik pəncərə: yaradılış anındakı eyni timestamp-i saymamaq üçün. */
 function isEdited(p: BlogPost): boolean {
-  if (!p.updatedAt) return false;
-  const base = p.publishedDate || p.createdAt;
-  if (!base) return false;
-  return new Date(p.updatedAt).getTime() - new Date(base).getTime() > 60_000;
+  if (!p.updatedAt || !p.createdAt) return false;
+  return new Date(p.updatedAt).getTime() - new Date(p.createdAt).getTime() > 60_000;
 }
 
 function timeAgo(d: string): string {

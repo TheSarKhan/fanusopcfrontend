@@ -416,9 +416,10 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
           );
         })}
 
-        {/* Sticky göndərmə paneli — z-index və tam fon olmadan sual kartlarının
-            üstünə "yapışıq" görünürdü. İndi öz təbəqəsində, kölgə ilə ayrılır. */}
-        <div style={{ ...card, position: "sticky", bottom: 16, marginTop: 24, zIndex: 20, boxShadow: "0 -6px 24px rgba(8,47,109,.12)" }}>
+        {/* Göndərmə paneli STICKY DEYİL — əvvəl `position: sticky` idi və ekranın
+            altına yapışıb sual kartlarının üstünü örtürdü. İndi sualların
+            ardınca, normal axında gəlir. */}
+        <div style={{ ...card, marginTop: 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <span style={{ fontSize: 14, color: MUTED }}>
               {answeredCount} / {questions.length} cavablandı

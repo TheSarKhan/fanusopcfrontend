@@ -7,7 +7,7 @@
 
 import { use, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { operatorApi, type CustomerProfile, type CustomerNote, type Psychologist, type PackageDto, type AvailableSlot, type IntroEligibility } from "@/lib/api";
+import { operatorApi, isPendingApproval, type CustomerProfile, type CustomerNote, type Psychologist, type PackageDto, type AvailableSlot, type IntroEligibility } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { isoToAzLocal, azFormatDate, azFormatTime, azLocalToISO } from "@/lib/datetime";
 import { toast } from "@/components/Toast";
@@ -200,8 +200,15 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
     }
     setBlocking(true);
     try {
-      if (h.blocked) { await operatorApi.unblockUser(h.userId); toast("Blok açıldı", "success"); }
-      else { await operatorApi.blockUser(h.userId, ""); toast("İstifadəçi bloklandı", "success"); }
+      if (h.blocked) {
+        const res = await operatorApi.unblockUser(h.userId);
+        if (isPendingApproval(res)) { toast("Blok açma tələbi Admin təsdiqinə göndərildi", "info"); return; }
+        toast("Blok açıldı", "success");
+      } else {
+        const res = await operatorApi.blockUser(h.userId, "");
+        if (isPendingApproval(res)) { toast("Bloklama tələbi Admin təsdiqinə göndərildi", "info"); return; }
+        toast("İstifadəçi bloklandı", "success");
+      }
       setReloadKey(k => k + 1);
     } catch (e) {
       toast((e as Error).message, "error");

@@ -14,6 +14,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   ApiError,
   operatorApi,
+  isPendingApproval,
   isSlotConflict,
   isScheduleMismatch,
   CANCEL_REASONS,
@@ -424,8 +425,9 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     guardAction(async () => {
       setPaying(true);
       try {
-        await operatorApi.markPaymentPaid(a.paymentId!);
-        globalToast("Ödəniş təsdiqləndi — indi görüş linki əlavə edilə bilər", "success");
+        const res = await operatorApi.markPaymentPaid(a.paymentId!);
+        if (isPendingApproval(res)) globalToast("Ödəniş təsdiqi Admin-ə göndərildi — təsdiqdən sonra icra olunacaq", "info");
+        else globalToast("Ödəniş təsdiqləndi — indi görüş linki əlavə edilə bilər", "success");
         load(true);
       } catch (e) { globalToast((e as Error).message, "error"); }
       finally { setPaying(false); }

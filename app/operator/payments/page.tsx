@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as XLSX from "xlsx";
-import { operatorApi, type PaymentItem, type PaymentSummary } from "@/lib/api";
+import { operatorApi, isPendingApproval, type PaymentItem, type PaymentSummary } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { getStoredUser } from "@/lib/auth";
 import { toast as uiToast } from "@/components/Toast";
@@ -248,12 +248,20 @@ export default function OperatorPaymentsPage() {
       confirmLabel: "Təsdiqlə",
     });
     if (!ok) return;
-    let done = 0;
+    let done = 0, pending = 0;
     for (const p of targets) {
-      try { await operatorApi.markPaymentPaid(p.id); patch(p.id, { status: "PAID", paidAt: new Date().toISOString() }); done++; } catch { /* davam et */ }
+      try {
+        const res = await operatorApi.markPaymentPaid(p.id);
+        if (isPendingApproval(res)) { pending++; continue; }
+        patch(p.id, { status: "PAID", paidAt: new Date().toISOString() }); done++;
+      } catch { /* davam et */ }
     }
     setSelected({});
-    uiToast(`${done} ödəniş təsdiqləndi${done < targets.length ? `, ${targets.length - done} alınmadı` : ""}`, done > 0 ? "success" : "error");
+    if (pending > 0 && done === 0) {
+      uiToast(`${pending} ödəniş Admin təsdiqinə göndərildi${pending < targets.length ? `, ${targets.length - pending} alınmadı` : ""}`, "info");
+    } else {
+      uiToast(`${done} ödəniş təsdiqləndi${pending > 0 ? `, ${pending} Admin təsdiqinə göndərildi` : ""}${done + pending < targets.length ? `, ${targets.length - done - pending} alınmadı` : ""}`, done > 0 ? "success" : "error");
+    }
   };
 
   const onCancelled = (p: PaymentItem) => { setCancelFor(null); patch(p.id, p); uiToast(`${p.patientName} — ödəniş ləğv edildi`, "success"); };
@@ -911,7 +919,11 @@ function CancelModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
   const submit = async () => {
     if (!ready || busy) return;
     setBusy(true);
-    try { onDone(await operatorApi.cancelPayment(payment.id, reason.trim())); }
+    try {
+      const res = await operatorApi.cancelPayment(payment.id, reason.trim());
+      if (isPendingApproval(res)) { uiToast("Ləğv tələbi Admin təsdiqinə göndərildi — təsdiqdən sonra icra olunacaq", "info"); onClose(); return; }
+      onDone(res);
+    }
     catch (e) { uiToast((e as Error).message, "error"); setBusy(false); }
   };
 
@@ -945,6 +957,7 @@ function MarkPaidModal({ payment, onClose, onDone }: { payment: PaymentItem; onC
     setBusy(true);
     try {
       const updated = await operatorApi.markPaymentPaid(payment.id, method);
+      if (isPendingApproval(updated)) { uiToast("Təsdiq tələbi Admin-ə göndərildi — təsdiqdən sonra ödəniş icra olunacaq", "info"); onClose(); return; }
       onDone(updated, method);
     } catch (e) { uiToast((e as Error).message, "error"); setBusy(false); }
   };

@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { useParams } from "next/navigation";
-import { operatorApi, type OperatorPsychologistStat, type PackageDto, type PackageReq, type PriceChangeLogItem, type PsychologistCommission, type PsychologistNote, type PsychologistVacation } from "@/lib/api";
+import { operatorApi, isPendingApproval, type OperatorPsychologistStat, type PackageDto, type PackageReq, type PriceChangeLogItem, type PsychologistCommission, type PsychologistNote, type PsychologistVacation } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
+import { toast } from "@/components/Toast";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
@@ -81,6 +82,7 @@ export default function OperatorPsychologistDetailPage() {
     setPriceError(null); setSavingPrice(true);
     try {
       const r = await operatorApi.setPsychologistPricing(id, val);
+      if (isPendingApproval(r)) { toast("Qiymət dəyişikliyi Admin təsdiqinə göndərildi", "info"); setPriceEditing(false); return; }
       setStat(prev => prev ? { ...prev, individualPrice: r.individualPrice, currency: r.currency } : prev);
       setPriceEditing(false);
       operatorApi.psychologistPriceHistory(id).then(setPriceHistory).catch(() => {});
@@ -102,6 +104,7 @@ export default function OperatorPsychologistDetailPage() {
     setCommError(null); setSavingComm(true);
     try {
       const c = await operatorApi.setPsychologistCommission(id, percent);
+      if (isPendingApproval(c)) { toast("Komissiya dəyişikliyi Admin təsdiqinə göndərildi", "info"); setCommEditing(false); return; }
       setCommission(c);
       // Hero-dakı «Xüsusi komissiya» göstəricisi eyni mənbədən oxunur.
       setStat(prev => prev ? { ...prev, commissionPercent: c.overridePercent } : prev);

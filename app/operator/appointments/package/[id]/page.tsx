@@ -9,7 +9,7 @@
 
 import { use, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { operatorApi, type AppointmentDetail, type AvailableSlot, type PackagePoolItem, type PaymentItem, type Psychologist } from "@/lib/api";
+import { operatorApi, isPendingApproval, type AppointmentDetail, type AvailableSlot, type PackagePoolItem, type PaymentItem, type Psychologist } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import { toast } from "@/components/Toast";
 import { statusMeta } from "@/lib/appointmentStatus";
@@ -82,7 +82,11 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
     if (!pkgPayment) return;
     setConfirming(true);
     operatorApi.markPaymentPaid(pkgPayment.id, payMethod)
-      .then(() => { toast("Ödəniş təsdiqləndi — paket aktivləşdi", "success"); load(); })
+      .then((res) => {
+        if (isPendingApproval(res)) toast("Ödəniş təsdiqi Admin-ə göndərildi — təsdiqdən sonra paket aktivləşəcək", "info");
+        else toast("Ödəniş təsdiqləndi — paket aktivləşdi", "success");
+        load();
+      })
       .catch(e => toast((e as Error).message, "error"))
       .finally(() => setConfirming(false));
   }, [pkgPayment, payMethod, load]);

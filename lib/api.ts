@@ -1825,7 +1825,19 @@ export const adminApi = {
   rejectPoolReleaseRequest: (id: number, note?: string) =>
     authedRequest<PoolReleaseRequestItem>("POST", `/admin/pool-release-requests/${id}/reject`, { note }),
   approvalsPendingCounts: () =>
-    authedRequest<{ refundRequests: number; poolReleaseRequests: number }>("GET", "/admin/approvals/pending-counts"),
+    authedRequest<{ approvalRequests: number; refundRequests: number; poolReleaseRequests: number }>("GET", "/admin/approvals/pending-counts"),
+
+  /** Vahid Təsdiqlər siyahısı — bütün mənbələr bir formada. status boşdursa hamısı. */
+  listAllApprovals: (status?: string) =>
+    authedRequest<PendingApprovalRow[]>("GET", `/admin/approvals/all${status ? `?status=${status}` : ""}`),
+  /** kind-ə görə approve/reject — uyğun endpoint-ə yönləndirir. */
+  decideApproval: (kind: ApprovalKind, id: number, approve: boolean, note?: string) => {
+    const seg = approve ? "approve" : "reject";
+    const base = kind === "REFUND" ? "refund-requests"
+      : kind === "POOL_RELEASE" ? "pool-release-requests"
+      : "approval-requests";
+    return authedRequest<unknown>("POST", `/admin/${base}/${id}/${seg}`, { note });
+  },
 
   // ─── Maliyyə və Komissiya (Admin BRD §12) ────────────────────────────────
   getCommission: () => authedRequest<{ globalPercent: number | null }>("GET", "/admin/finance/commission"),
@@ -1905,6 +1917,35 @@ export interface PoolReleaseRequestItem {
   decisionNote: string | null;
   decidedAt: string | null;
   createdAt: string;
+}
+
+export type ApprovalKind = "APPROVAL" | "REFUND" | "POOL_RELEASE";
+export type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+/** Vahid Təsdiqlər siyahısının sətri — bütün mənbələr (ümumi gate + iadə + hovuz-buraxma) eyni formada. */
+export interface PendingApprovalRow {
+  kind: ApprovalKind;
+  id: number;
+  actionType: string;
+  title: string;
+  subtitle: string | null;
+  requestedByName: string | null;
+  status: ApprovalStatus;
+  decisionNote: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+}
+
+/** Operator gate-lənən əməliyyat edəndə 202 ilə qayıdan cavab (icra olunmayıb, təsdiq gözləyir). */
+export interface PendingApprovalResponse {
+  pendingApproval: true;
+  approvalId: number;
+  message: string;
+}
+
+/** Operator əməliyyatının cavabının təsdiq gözləyən (202) olub-olmadığını yoxlayır. */
+export function isPendingApproval(x: unknown): x is PendingApprovalResponse {
+  return !!x && typeof x === "object" && (x as { pendingApproval?: unknown }).pendingApproval === true;
 }
 
 export interface PayoutBalance {
@@ -3716,12 +3757,13 @@ export const operatorApi = {
   listPaymentsPaged: (opts: { page?: number; size?: number; status?: string; mine?: boolean } = {}) =>
     authedRequest<Paged<PaymentItem>>("GET",
       `/operator/payments/paged${pagedQuery({ page: opts.page, size: opts.size, status: opts.status, mine: opts.mine ? "true" : undefined })}`),
+  /** Operator → Admin təsdiqinə göndərilir (202 PendingApprovalResponse); Admin → dərhal icra. */
   markPaymentPaid: (id: number, method?: string) =>
-    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/mark-paid`, method ? { method } : undefined),
+    authedRequest<PaymentItem | PendingApprovalResponse>("POST", `/operator/payments/${id}/mark-paid`, method ? { method } : undefined),
   paymentsSummary: () =>
     authedRequest<PaymentSummary>("GET", "/operator/payments/summary"),
   cancelPayment: (id: number, reason: string) =>
-    authedRequest<PaymentItem>("POST", `/operator/payments/${id}/cancel`, { reason }),
+    authedRequest<PaymentItem | PendingApprovalResponse>("POST", `/operator/payments/${id}/cancel`, { reason }),
   /** İadə tələbi yaradır — icra Admin təsdiqindən sonra (OP-BR-07). */
   refundPayment: (id: number, amount: number, reason: string) =>
     authedRequest<RefundRequestItem>("POST", `/operator/payments/${id}/refund`, { amount, reason }),
@@ -3889,13 +3931,13 @@ export const operatorApi = {
   psychologistVacations: (id: number) =>
     authedRequest<PsychologistVacation[]>("GET", `/operator/psychologists/${id}/vacations`),
   setPsychologistPricing: (id: number, individualPrice: number) =>
-    authedRequest<{ individualPrice: number | null; currency: string }>("PUT", `/operator/psychologists/${id}/pricing`, { individualPrice }),
+    authedRequest<{ individualPrice: number | null; currency: string } | PendingApprovalResponse>("PUT", `/operator/psychologists/${id}/pricing`, { individualPrice }),
   /** Platformanın psixoloqdan tutduğu komissiya faizi. */
   psychologistCommission: (id: number) =>
     authedRequest<PsychologistCommission>("GET", `/operator/psychologists/${id}/commission`),
-  /** percent=null → psixoloqun öz faizi silinir, qlobal faiz tətbiq olunur. */
+  /** percent=null → psixoloqun öz faizi silinir, qlobal faiz tətbiq olunur. Operator → Admin təsdiqi. */
   setPsychologistCommission: (id: number, percent: number | null) =>
-    authedRequest<PsychologistCommission>("PUT", `/operator/psychologists/${id}/commission`, { percent }),
+    authedRequest<PsychologistCommission | PendingApprovalResponse>("PUT", `/operator/psychologists/${id}/commission`, { percent }),
   createPsychologistPackage: (id: number, data: PackageReq) =>
     authedRequest<PackageDto>("POST", `/operator/psychologists/${id}/packages`, data),
   updatePsychologistPackage: (id: number, packageId: number, data: PackageReq) =>
@@ -3918,10 +3960,11 @@ export const operatorApi = {
     authedRequest<ContactLog[]>("GET", `/operator/appointments/${appointmentId}/contact-logs`),
   addContactLog: (appointmentId: number, data: { channel: string; outcome: string; note?: string }) =>
     authedRequest<ContactLog>("POST", `/operator/appointments/${appointmentId}/contact-logs`, data),
+  /** Operator → Admin təsdiqinə göndərilir (202 PendingApprovalResponse); Admin → dərhal bloklayır. */
   blockUser: (userId: number, reason?: string) =>
-    authedRequest<void>("POST", `/operator/users/${userId}/block`, { reason }),
+    authedRequest<void | PendingApprovalResponse>("POST", `/operator/users/${userId}/block`, { reason }),
   unblockUser: (userId: number) =>
-    authedRequest<void>("POST", `/operator/users/${userId}/unblock`),
+    authedRequest<void | PendingApprovalResponse>("POST", `/operator/users/${userId}/unblock`),
   stats: () => authedRequest<OperatorStats>("GET", "/operator/stats"),
   crisisCheckIns: () => authedRequest<OperatorCrisisCheckIn[]>("GET", "/operator/crisis/check-ins"),
   /** GAP-07: mark a high-risk check-in as seen (idempotent). */

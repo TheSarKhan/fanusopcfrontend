@@ -259,8 +259,8 @@
 .fx-search svg { color: var(--oxford-60); }
 
 /* Switch */
-.fx-switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
-.fx-switch input { opacity: 0; width: 0; height: 0; }
+.fx-switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; cursor: pointer; }
+.fx-switch input { opacity: 0; width: 0; height: 0; margin: 0; position: absolute; }
 .fx-switch__track {
   position: absolute; inset: 0; border-radius: 999px;
   background: var(--brand-200); transition: background .18s ease; cursor: pointer;
@@ -271,6 +271,8 @@
 }
 .fx-switch input:checked + .fx-switch__track { background: var(--brand); }
 .fx-switch input:checked + .fx-switch__track::before { transform: translateX(18px); }
+.fx-switch input:focus-visible + .fx-switch__track { outline: 2px solid var(--brand-300); outline-offset: 2px; }
+.fx-switch input:disabled + .fx-switch__track { cursor: default; opacity: .55; }
 
 /* Fayl yükləmə */
 .fx-dropzone {

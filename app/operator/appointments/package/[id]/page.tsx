@@ -8,7 +8,7 @@
  */
 
 import { use, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { operatorApi, type AppointmentDetail, type AvailableSlot, type PackagePoolItem, type PaymentItem, type Psychologist } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import { toast } from "@/components/Toast";
@@ -45,6 +45,9 @@ function statusPillClass(status?: string | null): string {
 
 export default function OperatorPackageDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: idStr } = use(params);
+  // Panel prefiksi cari yoldan (eyni səhifə /operator və /admin-də işləyir).
+  const panelRoot = usePathname().startsWith("/admin") ? "/admin" : "/operator";
+  const listBase = `${panelRoot}/appointments`;
   const packageId = Number(idStr);
   const router = useRouter();
 
@@ -94,7 +97,7 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
       .sort((x, y) => new Date(x.startAt ?? x.createdAt).getTime() - new Date(y.startAt ?? y.createdAt).getTime()),
     [items]);
 
-  const backToList = () => router.push("/operator/appointments?view=packages");
+  const backToList = () => router.push(`${listBase}?view=packages`);
 
   if (loading) {
     return (
@@ -191,7 +194,7 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
             role="Pasiyent"
             name={patientName}
             tone="brand"
-            onClick={patientId != null ? () => router.push(`/operator/customers/${patientId}`) : undefined}
+            onClick={patientId != null ? () => router.push(`${panelRoot}/customers/${patientId}`) : undefined}
           />
           <IdentityCell
             role="Psixoloq"
@@ -238,7 +241,7 @@ export default function OperatorPackageDetailPage({ params }: { params: Promise<
       {/* Seanslar — dolu kartlar + boş "+" xanalar */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(230px, 100%), 1fr))", gap: 14 }}>
         {sessions.map(a => (
-          <SessionCard key={a.id} a={a} onOpen={() => router.push(`/operator/appointments/${a.id}?pkg=${packageId}`)} />
+          <SessionCard key={a.id} a={a} onOpen={() => router.push(`${listBase}/${a.id}?pkg=${packageId}`)} />
         ))}
         {Array.from({ length: balanceTiles }).map((_, i) => (
           <AddSlotCard key={`slot-${i}`} onClick={() => setScheduleOpen(true)} />

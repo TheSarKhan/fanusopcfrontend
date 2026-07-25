@@ -1110,6 +1110,11 @@ export interface AdminAppointmentRow {
   patientFlag: string | null; // HIGH_NO_SHOW | HIGH_LATE_CANCEL | HIGH_REJECT
 }
 
+/** Admin "Randevular" KPI sətri — status qrupları üzrə sayğaclar. */
+export interface AdminApptSummary {
+  total: number; pending: number; confirmed: number; disputed: number; completed: number; cancelled: number;
+}
+
 /** B4-2.1: 409 zamanı tutan randevunun zənginləşdirilmiş görünüşü (yalnız admin). */
 export interface ConflictInfo {
   appointmentId: number;
@@ -1616,6 +1621,22 @@ export const adminApi = {
   // ─── MODUL 2: randevu idarəetməsi (tam əməliyyat dəsti) ──────────────────
   getAppointmentsDetailed: () =>
     authedRequest<AdminAppointmentRow[]>("GET", "/admin/appointments/detailed"),
+  /** Səhifələnmiş admin siyahısı — status (boş/"all" = hamısı; əks halda vergüllə
+   *  ayrılmış status dəsti) + q (pasiyent/psixoloq adı) + sort. */
+  getAppointmentsPaged: (opts: {
+    page?: number; size?: number; status?: string; q?: string;
+    sort?: AppointmentSortKey; dir?: SortDir; single?: boolean;
+  } = {}) => {
+    const { single, ...rest } = opts;
+    return authedRequest<Paged<AdminAppointmentRow>>(
+      "GET", `/admin/appointments/paged${pagedQuery({ ...rest, single: single ? "true" : undefined })}`);
+  },
+  /** "Paketlər" tabı — bütün paketlər (səhifələnən, kart seansları ilə). */
+  getAdminPackagesPaged: (opts: { page?: number; size?: number; status?: string; q?: string; sort?: string; dir?: SortDir } = {}) =>
+    authedRequest<Paged<OperatorPackageCard>>("GET", `/admin/appointments/packages/paged${pagedQuery(opts)}`),
+  /** KPI sətri — status qrupları üzrə sayğaclar. */
+  getAppointmentsSummary: () =>
+    authedRequest<AdminApptSummary>("GET", "/admin/appointments/summary"),
   getAppointmentDetail: (id: number) =>
     authedRequest<AppointmentDetail>("GET", `/admin/appointments/${id}`),
   getAppointmentHistory: (id: number) =>
@@ -1639,6 +1660,24 @@ export const adminApi = {
     authedRequest<AppointmentDetail>("POST", `/admin/appointments/${id}/resolve-dispute`, { decision, note, blameSide }),
   bulkCancelAppointments: (appointmentIds: number[], reasonCode: string, note?: string) =>
     authedRequest<BulkCancelResult>("POST", "/admin/appointments/bulk-cancel", { appointmentIds, reasonCode, note }),
+  // ─── Faza 2: slot-təyin / no-show / sahiblik override ─────────────────────
+  /** No-show (yeni admin endpoint, audit-loglu). */
+  markNoShow: (id: number, blameSide: "PATIENT" | "PSYCHOLOGIST", note?: string) =>
+    authedRequest<AppointmentDetail>("POST", `/admin/appointments/${id}/no-show`, { blameSide, note }),
+  /** Psixoloqun boş slotları (təyin/dəyiş üçün) — admin-icazəli oxu endpoint-i. */
+  getPsychologistAvailability: (psychologistId: number, from?: string, to?: string) => {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const qs = params.toString();
+    return authedRequest<AvailableSlot[]>("GET", `/operator/psychologists/${psychologistId}/availability${qs ? "?" + qs : ""}`);
+  },
+  /** Reassign dropdown-u üçün operator siyahısı (admin-only endpoint). */
+  getOperatorOptions: () =>
+    authedRequest<{ id: number; name: string }[]>("GET", "/operator/operators"),
+  /** Sahibliyi başqa operatora keçir (admin-only endpoint, qeyd-şərtsiz force claim). */
+  reassignAppointment: (id: number, operatorId: number) =>
+    authedRequest<ClaimState>("POST", `/operator/appointments/${id}/reassign`, { operatorId }),
   getBookingSeries: (seriesId: number) =>
     authedRequest<BookingSeries>("GET", `/admin/appointments/booking-series/${seriesId}`),
   approveSeriesCancelRequest: (seriesId: number, note?: string) =>

@@ -149,16 +149,21 @@ export function Switch({
   className,
   ...rest
 }: InputHTMLAttributes<HTMLInputElement> & { label?: ReactNode }) {
-  const control = (
-    <span className={["fx-switch", className].filter(Boolean).join(" ")}>
+  const cls = ["fx-switch", className].filter(Boolean).join(" ");
+  const inner = (
+    <>
       <input type="checkbox" {...rest} />
       <span className="fx-switch__track" />
-    </span>
+    </>
   );
-  if (!label) return control;
+  // Input 0×0 və şəffafdır, track isə onunla "for" ilə bağlı deyil — buna görə
+  // etiketsiz variantda sarğının özü <label> olmalıdır, yoxsa klik inputa çatmır
+  // və onChange heç vaxt işləmir. Etiketli variantda label-in içində label
+  // olmasın deyə sarğı <span> qalır (xarici fx-choice label-i kliki ötürür).
+  if (!label) return <label className={cls}>{inner}</label>;
   return (
     <label className="fx-choice">
-      {control}
+      <span className={cls}>{inner}</span>
       {label}
     </label>
   );

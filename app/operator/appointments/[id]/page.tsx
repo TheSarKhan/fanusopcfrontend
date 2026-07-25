@@ -10,7 +10,7 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   ApiError,
   operatorApi,
@@ -214,19 +214,21 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     return () => clearInterval(iv);
   }, []);
 
+  // Panel prefiksi cari yoldan gəlir — eyni səhifə həm /operator, həm də /admin
+  // subdomeninində işləyir (proxy /admin-i saxlayır, /operator-a /admin qoşur).
+  const panelRoot = usePathname().startsWith("/admin") ? "/admin" : "/operator";
+  const listBase = `${panelRoot}/appointments`;
   const qs = searchParams.toString();
   const backToList = useCallback(() => {
-    // Konkret paket seansından açılıbsa (?pkg=ID) → həmin PAKETİN DETAL səhifəsinə
-    // qayıt (Paketlər tabına yox) — operator seansı təyin edib eyni paketin qalan
-    // seanslarına davam etsin, siyahıya geri atılmasın.
+    // Konkret paket seansından açılıbsa (?pkg=ID) → həmin PAKETİN DETAL səhifəsinə qayıt.
     const pkgId = searchParams.get("pkg");
     if (pkgId) {
-      router.push(`/operator/appointments/package/${pkgId}`);
+      router.push(`${listBase}/package/${pkgId}`);
       return;
     }
     // Paketlər tabından açılıbsa (?view=packages) → tabaya qayıt.
     if (searchParams.get("view") === "packages") {
-      router.push("/operator/appointments?view=packages");
+      router.push(`${listBase}?view=packages`);
       return;
     }
     const listQs = new URLSearchParams(qs);
@@ -234,8 +236,8 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     const tab = searchParams.get("queue");
     if (tab) listQs.set("tab", tab);
     const s = listQs.toString();
-    router.push(`/operator/appointments${s ? `?${s}` : ""}`);
-  }, [router, qs, searchParams]);
+    router.push(`${listBase}${s ? `?${s}` : ""}`);
+  }, [router, qs, searchParams, listBase]);
 
   // ── Toast ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -335,7 +337,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
         </svg>
         <h1 className="fx-h3" style={{ margin: 0 }}>{t("staff.opDetNotFound")}</h1>
         <p className="fx-muted" style={{ fontSize: 13, margin: 0 }}>{t("staff.opDetNotFoundSub")}</p>
-        <Link href="/operator/appointments" className="fx-btn fx-btn--primary" style={{ marginTop: 8, textDecoration: "none" }}>
+        <Link href={listBase} className="fx-btn fx-btn--primary" style={{ marginTop: 8, textDecoration: "none" }}>
           {t("staff.opDetBackToList")}
         </Link>
       </div>
@@ -376,7 +378,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
           sub="Bağlantı və ya server problemi ola bilər. Yenidən cəhd edin və ya siyahıya qayıdın."
           onRetry={() => load()}
           action={
-            <Link href="/operator/appointments" className="fx-btn fx-btn--ghost" style={{ textDecoration: "none" }}>
+            <Link href={listBase} className="fx-btn fx-btn--ghost" style={{ textDecoration: "none" }}>
               Siyahıya qayıt
             </Link>
           }
@@ -466,7 +468,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     else if (action === "link") setLinkModalOpen(true);
     else if (action === "paySet") setPaymentModalOpen(true);
     else if (action === "payMark") markPaid();
-    else if (action === "payView") router.push("/operator/payments");
+    else if (action === "payView") router.push(`${panelRoot}/payments`);
     else if (action === "dispute") setOtherAction("dispute");
     else if (action === "cancelreq") setOtherAction("cancelreq");
   };
@@ -857,6 +859,7 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
 }) {
   const a = full.appointment;
   const h = full.patientHistory;
+  const listBase = usePathname().startsWith("/admin") ? "/admin/appointments" : "/operator/appointments";
   const suffix = qs ? `?${qs}` : "";
 
   const [seriesStart, setSeriesStart] = useState("");
@@ -960,7 +963,7 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
               const statusColor = r.status === "COMPLETED" ? "var(--sage)"
                 : (r.status === "CANCELLED" || r.status === "REJECTED") ? "var(--rose)" : "var(--oxford-60)";
               return (
-                <Link key={r.id} href={`/operator/appointments/${r.id}${suffix}`}
+                <Link key={r.id} href={`${listBase}/${r.id}${suffix}`}
                   style={{ display: "block", padding: "8px 0", borderBottom: i === arr.length - 1 ? "none" : "1px solid var(--hairline)", textDecoration: "none" }}>
                   <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {r.psychologistName ?? (r.sessionKind === "INTRO" ? "Tanışlıq görüşü" : "Seans")}
@@ -990,7 +993,7 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
           </div>
           <div style={{ display: "grid", gap: 4 }}>
             {full.seriesSiblings.map(s => (
-              <Link key={s.id} href={`/operator/appointments/${s.id}${suffix}`}
+              <Link key={s.id} href={`${listBase}/${s.id}${suffix}`}
                 className={s.id === a.id ? "op-det-sibling op-det-sibling--current" : "op-det-sibling"}>
                 <span className="fx-num" style={{ display: "inline-flex", gap: 8 }}>
                   <span>#{s.id}</span>

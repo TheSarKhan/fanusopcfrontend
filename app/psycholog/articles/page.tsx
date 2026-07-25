@@ -12,6 +12,15 @@ function fmtDate(d: string) {
   return `${String(dt.getDate()).padStart(2, "0")}.${String(dt.getMonth() + 1).padStart(2, "0")}.${dt.getFullYear()}`;
 }
 
+/** Məqalə yayımdan sonra redaktə olunubmu? Yalnız fərq 1 dəqiqədən böyükdürsə
+ *  "yeniləndi" sayılır — yaradılış anındakı eyni timestamp-i saymamaq üçün. */
+function isEdited(p: BlogPost): boolean {
+  if (!p.updatedAt) return false;
+  const base = p.publishedDate || p.createdAt;
+  if (!base) return false;
+  return new Date(p.updatedAt).getTime() - new Date(base).getTime() > 60_000;
+}
+
 function timeAgo(d: string): string {
   const ms = Date.now() - new Date(d).getTime();
   const min = Math.round(ms / 60000);
@@ -379,6 +388,9 @@ function HeroArticle({ p, onEdit, onView, onToggle, onDelete, isToggling }: {
         <div>
           <div style={{ display: "flex", gap: 12, fontSize: 11.5, color: "rgba(255,255,255,0.85)", marginBottom: 12, flexWrap: "wrap" }}>
             <span>{p.publishedDate ? fmtDate(p.publishedDate) : (p.createdAt ? timeAgo(p.createdAt) : "—")}</span>
+            {/* Son yenilənmə — yalnız yayımdan sonra REDAKTƏ olunubsa göstərilir
+                (əvvəl yalnız yayım tarixi vardı, redaktə izi görünmürdü). */}
+            {isEdited(p) && <span>Yeniləndi: {fmtDate(p.updatedAt!)}</span>}
             <span>{readTime} dəq oxunma</span>
             <span style={{
               padding: "1px 8px", borderRadius: 999,

@@ -3937,6 +3937,8 @@ export const operatorApi = {
     psychologistId: number; startAt: string; endAt?: string | null; note?: string | null;
     patientChoseDirectly?: boolean; sessionKind?: "STANDARD" | "INTRO" | null;
     sessionPrice?: number | null;
+    /** true → iş qrafikindən kənar vaxta icazə (operator xəbərdarlığı təsdiqləyib). */
+    allowOutsideSchedule?: boolean;
   }) => authedRequest<SessionRequest>("POST", `/operator/session-requests/${id}/convert-to-appointment`, data),
   convertSessionRequestToPackage: (id: number, data: {
     sessionPackageId?: number | null; psychologistId?: number | null; packageName?: string | null;

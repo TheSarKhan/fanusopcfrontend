@@ -219,6 +219,38 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
               />
             </div>
           </div>
+
+          {/* Ətraflı nəticə — sual-sual verilən cavab və qazanılan bal. Backend
+              bu detalı onsuz da qaytarırdı (result.answers), sadəcə göstərilmirdi. */}
+          {result.answers && result.answers.length > 0 && (
+            <div style={{ marginTop: 26 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: INK, marginBottom: 10 }}>
+                Ətraflı nəticə
+              </div>
+              <div style={{ display: "grid", gap: 8 }}>
+                {[...result.answers]
+                  .sort((a, b) => a.displayOrder - b.displayOrder)
+                  .map((ans, i) => (
+                    <div key={ans.questionId}
+                      style={{ border: `1px solid ${BORDER}`, borderRadius: 12, padding: "12px 14px" }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: INK, marginBottom: 5 }}>
+                        {i + 1}. {ans.questionText}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 13, color: MUTED }}>{ans.selectedLabel}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: BRAND_DARK, whiteSpace: "nowrap" }}>
+                          {ans.pointsAwarded} bal
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${BORDER}`, fontSize: 13, fontWeight: 700, color: INK }}>
+                <span>Ümumi</span>
+                <span>{result.totalScore} / {result.maxScore} bal</span>
+              </div>
+            </div>
+          )}
         </div>
       </Shell>
     );
@@ -384,7 +416,9 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
           );
         })}
 
-        <div style={{ ...card, position: "sticky", bottom: 16, marginTop: 16 }}>
+        {/* Sticky göndərmə paneli — z-index və tam fon olmadan sual kartlarının
+            üstünə "yapışıq" görünürdü. İndi öz təbəqəsində, kölgə ilə ayrılır. */}
+        <div style={{ ...card, position: "sticky", bottom: 16, marginTop: 24, zIndex: 20, boxShadow: "0 -6px 24px rgba(8,47,109,.12)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <span style={{ fontSize: 14, color: MUTED }}>
               {answeredCount} / {questions.length} cavablandı

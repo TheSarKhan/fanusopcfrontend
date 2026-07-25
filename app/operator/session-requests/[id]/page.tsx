@@ -7,6 +7,7 @@ import { getStoredUser } from "@/lib/auth";
 import { azFormatDate, azFormatDateTime, azFormatTime, isoToAzLocal } from "@/lib/datetime";
 import DatePicker from "@/components/DatePicker";
 import { toast as uiToast } from "@/components/Toast";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import ErrorState from "@/components/ErrorState";
 import { Skeleton } from "@/components/Skeleton";
 import { IconAlert, IconCheck, IconChevronLeft } from "../icons";
@@ -287,13 +288,35 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
     }
     setConvertError("");
     setConverting(true);
-    try {
-      const updated = await operatorApi.convertSessionRequestToAppointment(req.id, {
+    const send = async (allowOutsideSchedule: boolean) =>
+      operatorApi.convertSessionRequestToAppointment(req.id, {
         psychologistId: Number(psyId), startAt, note: note.trim() || undefined,
         patientChoseDirectly: convertPatientChoseDirectly,
         sessionKind: convertSessionKind === "INTRO" ? "INTRO" : undefined,
         sessionPrice: priceNum,
+        allowOutsideSchedule,
       });
+    try {
+      let updated;
+      try {
+        updated = await send(false);
+      } catch (err) {
+        // 422 = vaxt psixoloqun iş qrafikinə uyğun deyil. Bloklamırıq: operator
+        // təsdiqləyərsə eyni vaxtla, override bayrağı ilə yenidən göndəririk.
+        const status = (err as { status?: number })?.status;
+        const msg = err instanceof Error ? err.message : "";
+        if (status === 422 || msg.includes("iş qrafikinə uyğun deyil")) {
+          const ok = await confirmDialog({
+            title: "Vaxt iş qrafikinə uyğun deyil",
+            message: "Seçilmiş vaxt psixoloqun iş qrafikindən kənardır. Yenə də təyin edilsin?",
+            confirmLabel: "Yenə də təyin et",
+          });
+          if (!ok) { setConverting(false); return; }
+          updated = await send(true);
+        } else {
+          throw err;
+        }
+      }
       setReq(updated);
       uiToast("Randevu yaradıldı", "success");
     } catch (e) {

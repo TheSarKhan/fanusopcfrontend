@@ -223,7 +223,12 @@ function MeetingLinkCard({ a, onSent, onUpdated, mode = "pending" }: {
             Paket seansı
           </span>
         )}
-        {hasLink && (
+        {/* "sent" siyahısında link ARTIQ göndərilib — orada "göndərilməyib"
+            yazmaq yanlış idi. Yalnız gözləyən siyahıda xəbərdarlıq göstərilir. */}
+        {hasLink && mode === "sent" && (
+          <span className="fx-pill fx-pill--paid">Göndərilib</span>
+        )}
+        {hasLink && mode !== "sent" && (
           <span className="fx-pill fx-pill--pending">
             <IconClock /> Link var, göndərilməyib
           </span>

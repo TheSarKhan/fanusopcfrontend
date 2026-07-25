@@ -30,8 +30,9 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 const STEPS = ["Başlıq", "Məqalə", "Etiketlər", "Önizləmə"] as const;
 
-const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;       // matches backend max-file-size
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;      // backend: spring.servlet.multipart.max-file-size
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/ogg", "video/quicktime"];
 
 // Aşağı naviqasiya "İrəli / Geri" — düymə deyil, ox+mətn kimi görünən sətir.
 const navLinkStyle: CSSProperties = {
@@ -49,7 +50,24 @@ function validateImage(file: File): string | null {
   }
   if (file.size > MAX_UPLOAD_BYTES) {
     const mb = (file.size / (1024 * 1024)).toFixed(1);
-    return `Şəkil çox böyükdür (${mb} MB). Maksimum 30 MB.`;
+    return `Şəkil çox böyükdür (${mb} MB). Maksimum 100 MB.`;
+  }
+  return null;
+}
+
+/** Redaktor içi yükləmə — həm şəkil, həm VİDEO. Əvvəl burada da `validateImage`
+ *  işlədilirdi, ona görə video faylı "yalnız şəkil qəbul olunur" ilə rədd olunurdu
+ *  və video yükləmə funksiyası praktiki olaraq işləmirdi. */
+function validateMedia(file: File): string | null {
+  if (!file) return "Fayl seçilmədi";
+  const isImage = file.type.startsWith("image/") || ALLOWED_IMAGE_TYPES.includes(file.type);
+  const isVideo = file.type.startsWith("video/") || ALLOWED_VIDEO_TYPES.includes(file.type);
+  if (!isImage && !isVideo) {
+    return "Yalnız şəkil (JPG, PNG, WEBP, GIF) və ya video (MP4, WEBM) faylları qəbul olunur";
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    const mb = (file.size / (1024 * 1024)).toFixed(1);
+    return `Fayl çox böyükdür (${mb} MB). Maksimum 100 MB.`;
   }
   return null;
 }
@@ -349,7 +367,8 @@ export default function ArticleEditorPage({
   };
 
   const handleEditorUpload = async (file: File): Promise<string> => {
-    const validationError = validateImage(file);
+    // Redaktor həm şəkil, həm video yükləyir — media validasiyası (şəkil-yalnız DEYİL).
+    const validationError = validateMedia(file);
     if (validationError) {
       // Throw — the rich-text editor expects either a URL or an exception.
       throw new Error(validationError);
@@ -358,7 +377,7 @@ export default function ArticleEditorPage({
       return await api.uploadFile(file);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Naməlum xəta";
-      throw new Error(`Şəkil yüklənə bilmədi: ${msg}`);
+      throw new Error(`Fayl yüklənə bilmədi: ${msg}`);
     }
   };
 
@@ -490,6 +509,26 @@ export default function ArticleEditorPage({
                 style={{ width: "100%", border: "none", outline: "none", resize: "none", fontSize: "2rem", fontWeight: 800, color: "#0F1C2E", lineHeight: 1.3, background: "transparent", marginBottom: 20, fontFamily: "inherit", overflow: "hidden" }}
                 onInput={e => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }}
               />
+
+              {/* Qısa təsvir — kartda başlığın altında görünən mətn. Sahə formda
+                  saxlanılırdı, amma heç bir input yox idi: bir dəfə yazılan mətni
+                  (və ya avtomatik doldurulanı) sonradan düzəltmək mümkün deyildi. */}
+              <div style={{ marginBottom: 24 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
+                  Qısa təsvir
+                </p>
+                <textarea
+                  value={form.excerpt}
+                  onChange={e => setField("excerpt", e.target.value)}
+                  placeholder="Məqalənin qısa təsviri — siyahıda başlığın altında görünür"
+                  rows={2}
+                  maxLength={300}
+                  style={{ width: "100%", border: "1px solid #E4EDF6", borderRadius: 10, outline: "none", resize: "vertical", padding: "10px 12px", fontSize: 14, lineHeight: 1.5, color: "#2B3C5A", background: "#fff", fontFamily: "inherit" }}
+                />
+                <div style={{ fontSize: 11, color: "#8AAABF", marginTop: 5 }}>
+                  {form.excerpt.length}/300
+                </div>
+              </div>
 
               {categories.length > 0 && (
                 <div>

@@ -79,14 +79,26 @@ export default function VerifyPage() {
                 <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-[#1A2535] mb-2">Xəta baş verdi</h2>
+            {/* Link BİR DƏFƏLİKDİR: təsdiqdən sonra server token-i silir, ona görə
+                ikinci klik "etibarsız" qaytarır. Bu, adətən xəta yox, artıq
+                təsdiqlənmiş hesab deməkdir — istifadəçini yenidən qeydiyyata
+                göndərmək yanlış idi, əsas addım "Daxil ol"dur. */}
+            <h2 className="text-xl font-bold text-[#1A2535] mb-2">Bu link artıq istifadə olunub</h2>
             <p className="text-[#52718F] text-sm leading-relaxed mb-6">
-              {message || "Təsdiq linki etibarsızdır və ya müddəti bitib."}
+              Təsdiq linki yalnız bir dəfə işləyir. Hesabınız təsdiqlənibsə birbaşa daxil ola
+              bilərsiniz. Link müddəti bitibsə yenidən qeydiyyatdan keçin.
             </p>
             <Link
-              href="/register"
+              href="/login"
               className="block py-3 rounded-xl text-sm font-bold"
               style={{ background: "var(--brand)", color: "#fff" }}
+            >
+              Daxil ol
+            </Link>
+            <Link
+              href="/register"
+              className="block py-3 mt-2 rounded-xl text-sm font-bold"
+              style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7" }}
             >
               Yenidən qeydiyyat
             </Link>

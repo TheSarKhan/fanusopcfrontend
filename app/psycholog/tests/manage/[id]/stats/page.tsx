@@ -326,6 +326,9 @@ export default function PsyTestStatsPage() {
               </div>
             </div>
 
+            {/* Cədvəl/boş vəziyyət mətni birbaşa çərçivəyə dayanırdı — kart
+                başlığı ilə eyni yan boşluq verilir. */}
+            <div style={{ padding: "4px 18px 14px" }}>
             <DataTable
               rows={rows}
               columns={columns}
@@ -368,6 +371,7 @@ export default function PsyTestStatsPage() {
               }}
               totalLabel={`${total ? page * size + 1 : 0}–${Math.min(total, (page + 1) * size)} / ${total}`}
             />
+            </div>
           </div>
         </div>
       )}

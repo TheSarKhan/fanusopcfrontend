@@ -10367,13 +10367,38 @@ a.contact-chip:hover {
   .contact-grid { grid-template-columns: 1fr; gap: 2rem; }
 }
 
+/* ── Məqalə redaktoru (TipTap) — BÜTÜN panellər üçün ────────────────────────
+   Əvvəl bu qaydalar yalnız `app/admin/admin.css`-də idi, ona görə psixoloq
+   panelindəki redaktorda başlıq/altbaşlıq adi mətn kimi görünür və siyahılarda
+   nöqtə/rəqəm çıxmırdı (admin.css orada yüklənmir). */
+.ProseMirror { outline: none; }
+.ProseMirror h1 { font-size: 1.75rem; font-weight: 700; margin: 1rem 0 0.5rem; color: #0F1C2E; }
+.ProseMirror h2 { font-size: 1.4rem;  font-weight: 700; margin: 0.9rem 0 0.4rem; color: #0F1C2E; }
+.ProseMirror h3 { font-size: 1.15rem; font-weight: 600; margin: 0.8rem 0 0.3rem; color: #0F1C2E; }
+.ProseMirror p  { margin: 0.4rem 0; }
+.ProseMirror ul, .ProseMirror ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+.ProseMirror ul { list-style: disc outside; }
+.ProseMirror ol { list-style: decimal outside; }
+.ProseMirror li { margin: 0.2rem 0; display: list-item; }
+.ProseMirror blockquote { border-left: 3px solid #1051B7; padding-left: 1rem; margin: 0.75rem 0; color: #52718F; font-style: italic; }
+.ProseMirror a { color: #1051B7; text-decoration: underline; }
+.ProseMirror img, .ProseMirror iframe { max-width: 100%; border-radius: 8px; margin: 0.5rem 0; }
+.ProseMirror hr { border: none; border-top: 1px solid #E4EDF6; margin: 1rem 0; }
+/* Ölçü seçimi inline `style="font-size:…"` kimi yazılır — başlıq/paraqraf
+   qaydaları onu üstələməsin deyə span öz ölçüsünü saxlayır. */
+.ProseMirror span[style*="font-size"] { line-height: 1.5; }
+
 /* Article detail page content */
 .article-content h1 { font-size: 1.75rem; font-weight: 700; margin: 1.5rem 0 0.75rem; color: #0F1C2E; }
 .article-content h2 { font-size: 1.4rem; font-weight: 700; margin: 1.4rem 0 0.6rem; color: #0F1C2E; }
 .article-content h3 { font-size: 1.15rem; font-weight: 600; margin: 1.2rem 0 0.5rem; color: #0F1C2E; }
 .article-content p { margin: 0.75rem 0; }
+/* list-style AÇIQ verilir — qlobal reset `list-style: none` qoyduğu üçün
+   məqalədəki siyahılarda nöqtə/rəqəm görünmürdü. */
 .article-content ul, .article-content ol { padding-left: 1.5rem; margin: 0.75rem 0; }
-.article-content li { margin: 0.3rem 0; }
+.article-content ul { list-style: disc outside; }
+.article-content ol { list-style: decimal outside; }
+.article-content li { margin: 0.3rem 0; display: list-item; }
 .article-content blockquote { border-left: 4px solid #002147; padding: 0.5rem 1rem; margin: 1rem 0; background: #F0F6FF; border-radius: 0 8px 8px 0; color: #52718F; font-style: italic; }
 .article-content a { color: #002147; text-decoration: underline; }
 .article-content img { max-width: 100%; border-radius: 10px; margin: 1rem 0; }

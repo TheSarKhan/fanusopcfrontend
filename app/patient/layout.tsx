@@ -61,13 +61,29 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     patientApi.crisisStatus().then(s => setRisk(s.riskLevel)).catch(() => {});
   }, []);
 
+  // "Tapşırıqlar" sidebar sayğacı — hələ tamamlanmamış tapşırıqlar (əvvəl
+  // pasiyent panelində heç bir badge yox idi, yeni tapşırıq bildirilmirdi).
+  const [homeworkCount, setHomeworkCount] = useState(0);
+  useEffect(() => {
+    const load = () => {
+      patientApi.homework()
+        .then(list => setHomeworkCount(list.filter(h => h.status !== "COMPLETED").length))
+        .catch(() => {});
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
+  }, []);
+
   // Bütün modullar. Kilidlilər (./modules.ts) sidebar-dan çıxarılır.
   const allNav: ModuleNavItem[] = [
     { key: "dashboard",     href: "/patient",               label: t("nav.dashboard"),     icon: "home" },
     { key: "psychologists", href: "/patient/psychologists", label: t("nav.psychologists"), icon: "users" },
     { key: "appointments",  href: "/patient/appointments",  label: t("nav.appointments"),  icon: "calendar" },
     { key: "packages",      href: "/patient/packages",      label: t("pkg.myPackages"),    icon: "package" },
-    { key: "homework",      href: "/patient/homework",      label: t("nav.homework"),      icon: "check" },
+    { key: "homework",      href: "/patient/homework",      label: t("nav.homework"),      icon: "check", badge: homeworkCount },
     { key: "favorites",     href: "/patient/favorites",     label: t("nav.favorites"),     icon: "heart" },
     { key: "tests",         href: "/patient/tests",         label: "Testlər",              icon: "clipboard" },
     { key: "profile",       href: "/patient/profile",       label: t("nav.profile"),       icon: "user" },

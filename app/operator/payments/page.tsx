@@ -10,6 +10,7 @@ import { toast as uiToast } from "@/components/Toast";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import ErrorState from "@/components/ErrorState";
 import PageHeader from "@/components/PageHeader";
+import { azFormatDateTime } from "@/lib/datetime";
 
 // ─── Sabitlər ─────────────────────────────────────────────────────────────────
 const PLATFORM_RATE = 0.20; // platforma komissiyası (default — sonra site_config-dən oxunacaq)
@@ -61,11 +62,11 @@ const avatarClassOf = (id: number) => `fx-avatar--${(Math.abs(id) % 4) + 1}`;
 const initialsOf = (name?: string | null) => (name ?? "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("");
 const fmtNum = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 
-function pad2(n: number) { return String(n).padStart(2, "0"); }
+/** Platforma standartı: gg.aa.iiii, ss:dd. Əvvəl əl ilə ay adı düzülürdü
+ *  ("22 iyul, 14:05") — bu, panelin qalanı ilə uyğunsuz idi. */
 function fmtDay(iso?: string | null) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  return `${d.getDate()} ${MONTHS_AZ[d.getMonth()]}, ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return azFormatDateTime(iso);
 }
 function ageHours(iso: string) { return (Date.now() - new Date(iso).getTime()) / 3_600_000; }
 function ageLabel(h: number) {
@@ -764,7 +765,9 @@ function Drawer({ p, onClose, onCall, onWhatsapp, onViewLinked }: { p: PaymentIt
           </div>
           <div className="fx-num" style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 13 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--oxford-60)" }}>Ümumi məbləğ</span><b>{fmtNum(p.amount)} AZN</b></div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--oxford-60)" }}><span style={{ width: 8, height: 8, borderRadius: 2.5, background: "var(--brand)" }} />Platforma payı</span><span style={{ fontWeight: 600 }}>{fmtNum(comm)} AZN</span></div>
+            {/* Tətbiq olunan faiz açıq göstərilir — əks halda məbləğ izahsız qalır
+                (qlobal faiz vs psixoloqun fərdi override-i vs DIRECT 0%). */}
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--oxford-60)" }}><span style={{ width: 8, height: 8, borderRadius: 2.5, background: "var(--brand)" }} />Platforma payı{p.amount ? ` (${Math.round((comm / p.amount) * 100)}%)` : ""}</span><span style={{ fontWeight: 600 }}>{fmtNum(comm)} AZN</span></div>
             <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--oxford-60)" }}><span style={{ width: 8, height: 8, borderRadius: 2.5, background: "var(--brand-100)" }} />Psixoloq payı{p.psychologistName ? ` — ${p.psychologistName}` : ""}</span><b style={{ color: "var(--sage)" }}>{fmtNum(p.amount - comm)} AZN</b></div>
           </div>
         </div>

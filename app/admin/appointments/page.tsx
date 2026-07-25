@@ -10,19 +10,23 @@ import {
   adminApi,
   reasonsForRole,
   type AdminAppointmentRow,
+  type AppointmentDetail,
   type AdminApptSummary,
+  type PsychologistWorkload,
+  type TrendPoint,
   type OperatorPackageCard,
   type AppointmentSortKey,
   type SortDir,
   type Paged,
 } from "@/lib/api";
-import { azFormatDateTime } from "@/lib/datetime";
+import { azFormatDateTime, azFormatDate, azFormatTime } from "@/lib/datetime";
 import { statusMeta } from "@/lib/appointmentStatus";
 import PanelIcon from "@/components/PanelIcon";
 import OnBehalfBookingModal from "@/components/OnBehalfBookingModal";
 import { toast } from "@/components/Toast";
 import {
   PageHead,
+  SectionTitle,
   Card,
   CardPad,
   DataTable,
@@ -59,10 +63,12 @@ const PKG_LABEL: Record<string, string> = {
   PENDING_PAYMENT: "Ödəniş gözlənilir", ACTIVE: "Aktiv", EXHAUSTED: "Tamamlanıb", CANCELLED: "Ləğv", EXPIRED: "Vaxtı bitib",
 };
 
-type View = "sessions" | "packages";
+type View = "sessions" | "packages" | "calendar" | "analytics";
 const VIEWS: TabItem<View>[] = [
   { key: "sessions", label: "Seanslar" },
   { key: "packages", label: "Paketlər" },
+  { key: "calendar", label: "Təqvim" },
+  { key: "analytics", label: "Analitika" },
 ];
 
 const APPT_STATUS_FILTERS: { v: string; label: string; status?: string }[] = [
@@ -123,7 +129,11 @@ export default function AdminAppointmentsPage() {
           səhifəsini re-export edir; səhifə panel prefiksini cari yoldan seçir. */}
       {view === "sessions"
         ? <SessionsTab onOpen={(id) => router.push(`/admin/appointments/${id}`)} />
-        : <PackagesTab onOpen={(id) => router.push(`/admin/appointments/package/${id}`)} />}
+        : view === "packages"
+        ? <PackagesTab onOpen={(id) => router.push(`/admin/appointments/package/${id}`)} />
+        : view === "calendar"
+        ? <CalendarTab onOpen={(id) => router.push(`/admin/appointments/${id}`)} />
+        : <AnalyticsView summary={summary} />}
 
       {onBehalfOpen && <OnBehalfBookingModal onClose={() => setOnBehalfOpen(false)} onDone={() => setOnBehalfOpen(false)} />}
     </div>
@@ -269,6 +279,215 @@ function BulkCancelModal({ ids, onClose, onDone }: { ids: number[]; onClose: () 
         <Field label="Qeyd (istəyə bağlı)"><Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} /></Field>
       </div>
     </Modal>
+  );
+}
+
+// ── Təqvim (həftəlik görünüş) ────────────────────────────────────────────────
+const WEEKDAYS = ["Baz", "B.e", "Ç.a", "Çər", "C.a", "Cüm", "Şən"]; // getDay(): 0=Bazar
+function mondayOf(d: Date): Date {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const wd = x.getDay();
+  x.setDate(x.getDate() + (wd === 0 ? -6 : 1 - wd));
+  return x;
+}
+function addDays(d: Date, n: number): Date { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+function ymd(d: Date): string { const p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+function sameDay(a: Date, b: Date): boolean { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+
+function CalendarTab({ onOpen }: { onOpen: (id: number) => void }) {
+  const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()));
+  const [appts, setAppts] = useState<AppointmentDetail[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = useCallback(() => {
+    setLoading(true);
+    adminApi.getCalendar(`${ymd(weekStart)}T00:00:00`, `${ymd(addDays(weekStart, 7))}T00:00:00`)
+      .then(setAppts).catch(() => setAppts([])).finally(() => setLoading(false));
+  }, [weekStart]);
+  useEffect(() => { load(); }, [load]);
+
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const today = new Date();
+
+  return (
+    <Card><CardPad>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+        <SectionTitle>{azFormatDate(ymd(weekStart))} — {azFormatDate(ymd(addDays(weekStart, 6)))}</SectionTitle>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button variant="ghost" size="sm" onClick={() => setWeekStart(addDays(weekStart, -7))}>Əvvəlki</Button>
+          <Button variant="ghost" size="sm" onClick={() => setWeekStart(mondayOf(new Date()))}>Bu həftə</Button>
+          <Button variant="ghost" size="sm" onClick={() => setWeekStart(addDays(weekStart, 7))}>Növbəti</Button>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(120px, 1fr))", gap: 8, overflowX: "auto" }}>
+        {days.map((d) => {
+          const list = appts
+            .filter((a) => a.startAt && sameDay(new Date(a.startAt), d))
+            .sort((x, y) => new Date(x.startAt!).getTime() - new Date(y.startAt!).getTime());
+          const isToday = sameDay(d, today);
+          return (
+            <div key={ymd(d)} style={{ border: "1px solid var(--hairline)", borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--hairline)", fontWeight: 700, fontSize: 12.5, background: isToday ? "var(--brand)" : "transparent", color: isToday ? "#fff" : undefined }}>
+                {WEEKDAYS[d.getDay()]} {d.getDate()}.{String(d.getMonth() + 1).padStart(2, "0")}
+              </div>
+              <div style={{ padding: 6, display: "flex", flexDirection: "column", gap: 6, minHeight: 70 }}>
+                {list.length === 0
+                  ? <div className="fx-subtitle" style={{ fontSize: 11, padding: 4 }}>—</div>
+                  : list.map((a) => (
+                    <button key={a.id} type="button" onClick={() => onOpen(a.id)}
+                      style={{ textAlign: "left", border: "1px solid var(--hairline)", borderRadius: 8, padding: "7px 9px", cursor: "pointer", background: "transparent", width: "100%" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
+                        <span className="fx-num" style={{ fontSize: 11.5, fontWeight: 700 }}>{a.startAt ? azFormatTime(a.startAt) : ""}</span>
+                        <Status tone={apptTone(a.status)}>{statusMeta(a.status).label}</Status>
+                      </div>
+                      <div style={{ fontSize: 11.5, overflowWrap: "anywhere", lineHeight: 1.3 }}>
+                        <span className="fx-subtitle">Pasiyent: </span>{a.patientName ?? "—"}
+                      </div>
+                      <div style={{ fontSize: 11.5, overflowWrap: "anywhere", lineHeight: 1.3, marginTop: 1 }}>
+                        <span className="fx-subtitle">Psixoloq: </span>{a.psychologistName ?? "—"}
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {loading && <div className="fx-subtitle" style={{ marginTop: 10 }}>Yüklənir…</div>}
+    </CardPad></Card>
+  );
+}
+
+// ── Analitika: trend + status paylanması + psixoloq yükü ─────────────────────
+// Status rəngləri semantik (state) — hər zolaq etiket + say + faizlə göstərilir
+// (rəng tək başına identifikasiya daşımır), trend isə tək-rəngli magnitud.
+const STATUS_CHART: { key: keyof AdminApptSummary; label: string; color: string }[] = [
+  { key: "pending", label: "Yeni / gözləyən", color: "#D97706" },
+  { key: "confirmed", label: "Təsdiqlənmiş", color: "#059669" },
+  { key: "disputed", label: "Mübahisəli", color: "#DC2626" },
+  { key: "completed", label: "Tamamlanmış", color: "#64748B" },
+  { key: "cancelled", label: "Ləğv olunmuş", color: "#E11D48" },
+];
+
+function AnalyticsView({ summary }: { summary: AdminApptSummary | null }) {
+  const [trend, setTrend] = useState<TrendPoint[]>([]);
+  useEffect(() => { adminApi.getAppointmentsTrend(30).then(setTrend).catch(() => {}); }, []);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: 16 }}>
+        <Card><CardPad>
+          <SectionTitle>Randevu trendi (30 gün)</SectionTitle>
+          <TrendBars data={trend} />
+        </CardPad></Card>
+        <Card><CardPad>
+          <SectionTitle>Status paylanması</SectionTitle>
+          <StatusBreakdown s={summary} />
+        </CardPad></Card>
+      </div>
+      <WorkloadTab />
+    </div>
+  );
+}
+
+function TrendBars({ data }: { data: TrendPoint[] }) {
+  if (data.length === 0) return <div className="fx-subtitle" style={{ padding: "24px 0" }}>Məlumat yoxdur</div>;
+  const max = Math.max(1, ...data.map((d) => d.count));
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 150 }}>
+        {data.map((d) => (
+          <div key={d.date} title={`${azFormatDate(d.date)}: ${d.count} randevu`}
+            style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-end", height: "100%" }}>
+            <div style={{ width: "100%", height: `${(d.count / max) * 100}%`, minHeight: d.count > 0 ? 3 : 0, background: "var(--brand)", borderRadius: "3px 3px 0 0" }} />
+          </div>
+        ))}
+      </div>
+      <div className="fx-subtitle" style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+        <span>{azFormatDate(data[0].date)}</span>
+        <span>{azFormatDate(data[data.length - 1].date)}</span>
+      </div>
+    </div>
+  );
+}
+
+function StatusBreakdown({ s }: { s: AdminApptSummary | null }) {
+  if (!s) return <div className="fx-subtitle" style={{ padding: "24px 0" }}>Yüklənir…</div>;
+  const total = Math.max(1, s.total);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
+      {STATUS_CHART.map((row) => {
+        const v = s[row.key];
+        const pct = Math.round((v / total) * 100);
+        return (
+          <div key={row.key}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 12.5, marginBottom: 4 }}>
+              <span>{row.label}</span>
+              <span className="fx-num"><strong>{v}</strong> <span className="fx-subtitle">{pct}%</span></span>
+            </div>
+            <div style={{ height: 8, borderRadius: 4, background: "var(--hairline)", overflow: "hidden" }}>
+              <div style={{ width: `${pct}%`, height: "100%", background: row.color }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Analitika: psixoloq yükü ─────────────────────────────────────────────────
+function WorkloadTab() {
+  const [rows, setRows] = useState<PsychologistWorkload[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(() => {
+    setLoading(true); setError(null);
+    adminApi.getPsychologistWorkload().then(setRows).catch((e) => setError((e as Error).message || "Yüklənmədi")).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const maxUpcoming = Math.max(1, ...rows.map((r) => r.upcoming));
+  const columns: Column<PsychologistWorkload>[] = [
+    {
+      key: "name", header: "Psixoloq", sortable: true, sortValue: (r) => r.name.toLowerCase(),
+      cell: (r) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <Avatar name={r.name} size="sm" />
+          <span className="fx-row__title">{r.name}</span>
+        </div>
+      ),
+    },
+    { key: "total", header: "Ümumi", numeric: true, sortable: true, sortValue: (r) => r.total, cell: (r) => r.total },
+    {
+      key: "upcoming", header: "Gələcək yük", numeric: true, sortable: true, sortValue: (r) => r.upcoming,
+      cell: (r) => (
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+          <span className="fx-num">{r.upcoming}</span>
+          <div style={{ width: 56, height: 6, borderRadius: 3, background: "var(--hairline)", overflow: "hidden" }}>
+            <div style={{ width: `${(r.upcoming / maxUpcoming) * 100}%`, height: "100%", background: "var(--brand)" }} />
+          </div>
+        </div>
+      ),
+    },
+    { key: "completed", header: "Tamamlanmış", numeric: true, sortable: true, sortValue: (r) => r.completed, cell: (r) => r.completed },
+  ];
+
+  return (
+    <Card>
+      <CardPad>
+        <SectionTitle>Psixoloq yükü</SectionTitle>
+        <DataTable
+          rows={rows}
+          columns={columns}
+          rowKey={(r) => r.psychologistId}
+          loading={loading}
+          error={error}
+          onRetry={load}
+          defaultSort={{ key: "upcoming", dir: "desc" }}
+          empty={{ title: "Psixoloq tapılmadı", body: "Aktiv psixoloq yoxdur." }}
+          totalLabel={rows.length > 0 ? `${rows.length} psixoloq` : undefined}
+          minWidth={640}
+        />
+      </CardPad>
+    </Card>
   );
 }
 

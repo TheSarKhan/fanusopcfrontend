@@ -1115,6 +1115,14 @@ export interface AdminApptSummary {
   total: number; pending: number; confirmed: number; disputed: number; completed: number; cancelled: number;
 }
 
+/** Admin — psixoloq yükü (per-psixoloq randevu sayları). */
+export interface PsychologistWorkload {
+  psychologistId: number; name: string; total: number; upcoming: number; completed: number;
+}
+
+/** Admin trend nöqtəsi — gün (yyyy-mm-dd) + randevu sayı. */
+export interface TrendPoint { date: string; count: number; }
+
 /** B4-2.1: 409 zamanı tutan randevunun zənginləşdirilmiş görünüşü (yalnız admin). */
 export interface ConflictInfo {
   appointmentId: number;
@@ -1637,6 +1645,15 @@ export const adminApi = {
   /** KPI sətri — status qrupları üzrə sayğaclar. */
   getAppointmentsSummary: () =>
     authedRequest<AdminApptSummary>("GET", "/admin/appointments/summary"),
+  /** Psixoloq yükü — aktiv psixoloqlar üzrə randevu sayları. */
+  getPsychologistWorkload: () =>
+    authedRequest<PsychologistWorkload[]>("GET", "/admin/appointments/psychologist-workload"),
+  /** Trend — son N günün gündəlik randevu sayı. */
+  getAppointmentsTrend: (days = 30) =>
+    authedRequest<TrendPoint[]>("GET", `/admin/appointments/trend?days=${days}`),
+  /** Təqvim — startAt [from, to) aralığındakı planlanmış randevular (ISO datetime). */
+  getCalendar: (from: string, to: string) =>
+    authedRequest<AppointmentDetail[]>("GET", `/admin/appointments/calendar?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   getAppointmentDetail: (id: number) =>
     authedRequest<AppointmentDetail>("GET", `/admin/appointments/${id}`),
   getAppointmentHistory: (id: number) =>

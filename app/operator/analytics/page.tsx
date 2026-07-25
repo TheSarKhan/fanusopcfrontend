@@ -32,7 +32,7 @@ const PERIODS: { value: AnalyticsPeriod; label: string }[] = [
   { value: "monthly", label: "Aylıq" }, { value: "yearly", label: "İllik" },
 ];
 const REASON_LABEL: Record<string, { text: string; bg: string; fg: string }> = {
-  HIGH_NO_SHOW:     { text: "Yüksək no-show",   bg: "#FEE2E2", fg: "#991B1B" },
+  HIGH_NO_SHOW:     { text: "Yüksək gəlmədi",   bg: "#FEE2E2", fg: "#991B1B" },
   HIGH_LATE_CANCEL: { text: "Yüksək geç ləğv",  bg: "#FEF3C7", fg: "#92400E" },
   HIGH_REJECT:      { text: "Çox rədd alıb",    bg: "#FEF3C7", fg: "#92400E" },
   MANUAL:           { text: "Manual işarələnib",bg: "#FEF3C7", fg: "#92400E" },
@@ -441,7 +441,7 @@ function FlagPatient({ p }: { p: PatientFlagged }) {
         </div>
         {/* Hər fakt öz span-ında — ayırıcı işarə yox, flex boşluğu ayırır. */}
         <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 2, display: "flex", flexWrap: "wrap", gap: 10 }}>
-          {([p.noShowCount > 0 && `${p.noShowCount} no-show`, p.lateCancelCount > 0 && `${p.lateCancelCount} geç ləğv`, p.rejectCount > 0 && `${p.rejectCount} rədd`, p.lastIncidentAt && `son: ${fmtAgo(p.lastIncidentAt)}`].filter(Boolean) as string[])
+          {([p.noShowCount > 0 && `${p.noShowCount} gəlmədi`, p.lateCancelCount > 0 && `${p.lateCancelCount} geç ləğv`, p.rejectCount > 0 && `${p.rejectCount} rədd`, p.lastIncidentAt && `son: ${fmtAgo(p.lastIncidentAt)}`].filter(Boolean) as string[])
             .map((s, si) => <span key={si}>{s}</span>)}
         </div>
       </div>

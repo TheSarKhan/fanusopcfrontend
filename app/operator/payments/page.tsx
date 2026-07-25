@@ -18,6 +18,14 @@ const PAGE_LIMIT = 300; // modul bir baxışda hesablanır (KPI/qrafik/payout) �
 const MONTHS_AZ = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avqust", "sentyabr", "oktyabr", "noyabr", "dekabr"];
 // Backend PaymentService.PAYMENT_METHODS ilə eyni dəyərlər — "Ödəniş üsulu bölgüsü" qrafiki bunlardan hesablanır.
 const PAYMENT_METHOD_OPTIONS = ["Nağd", "Kart", "Köçürmə"] as const;
+const REAL_METHODS = new Set<string>(PAYMENT_METHOD_OPTIONS);
+
+/** Ödəniş üsulu etiketi. Backend default "MANUAL"-dır (hələ ödənilməyib, üsul
+ *  seçilməyib) — onu xam göstərmək əvəzinə "—" veririk. Nağd/Kart/Köçürmə isə
+ *  olduğu kimi qalır. */
+function methodLabel(method?: string | null): string {
+  return method && REAL_METHODS.has(method) ? method : "—";
+}
 
 type Status = "PENDING" | "PAID" | "PARTIALLY_REFUNDED" | "REFUNDED" | "CANCELLED";
 type BucketKey = "pending" | "paid" | "refunded" | "cancelled";
@@ -263,7 +271,7 @@ export default function OperatorPaymentsPage() {
       Məbləğ: p.amount,
       Valyuta: p.currency,
       Status: PILL_LABEL[p.status as Status] ?? p.status,
-      Üsul: p.method,
+      Üsul: methodLabel(p.method),
       Komissiya: p.commissionAmount ?? "",
       "Geri qaytarılan": p.refundedAmount ?? "",
       Tarix: fmtDay(p.paidAt ?? p.createdAt),
@@ -647,7 +655,7 @@ function PayRow({ p, selected, onToggle, onOpen, onPay, onCancel, onRefund }: {
         {/* Meta dəyərləri ayrı span-larda — ayırıcı işarə yox, flex boşluğu ayırır. */}
         <div className="fx-row__meta" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <MethodIcon method={p.method} />
-          <span>{p.method}</span>
+          <span>{methodLabel(p.method)}</span>
           <span className="fx-num">{fmtDay(p.createdAt)}</span>
           <span>{linkLabel(p)}</span>
         </div>
@@ -679,7 +687,9 @@ function PayRow({ p, selected, onToggle, onOpen, onPay, onCancel, onRefund }: {
 function MethodIcon({ method }: { method: string }) {
   if (method === "Nağd") return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></svg>;
   if (method === "Köçürmə") return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3l4 4-4 4" /><path d="M21 7H9" /><path d="M7 21l-4-4 4-4" /><path d="M3 17h12" /></svg>;
-  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>;
+  if (method === "Kart") return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>;
+  // MANUAL / naməlum — yanlış "kart" ikonu göstərmə.
+  return null;
 }
 
 // ─── Detal drawer ─────────────────────────────────────────────────────────────
@@ -714,7 +724,7 @@ function Drawer({ p, onClose, onCall, onWhatsapp, onViewLinked }: { p: PaymentIt
         </div>
 
         <div className="fx-drawer__section" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", fontSize: 13 }}>
-          <Meta label="Üsul" value={p.method} />
+          <Meta label="Üsul" value={methodLabel(p.method)} />
           <Meta label="Yaradılıb" value={fmtDay(p.createdAt)} />
           <Meta label="Operator" value={p.claimedByName ?? "—"} />
           <Meta label="Bağlı" value={linkLabel(p)} onClick={p.patientId != null ? onViewLinked : undefined} />

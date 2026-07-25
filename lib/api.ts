@@ -1262,6 +1262,30 @@ export interface OperatorOverview {
   assigned30: number;
   avgResponseMinutes: number | null;
   slaViolations30: number;
+  customersCreated: number;
+  packagesSold: number;
+  sessionRequestsConverted: number;
+}
+export interface OperatorKpi {
+  total: number;
+  active: number;
+  inactive: number;
+  assignedToday: number;
+  assignedWeek: number;
+  assigned30: number;
+  avgResponseMinutes: number | null;
+  slaViolations30: number;
+  customersCreated: number;
+  packagesSold: number;
+  sessionRequestsConverted: number;
+}
+export interface PagedOperators {
+  content: OperatorOverview[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+  kpi: OperatorKpi;
 }
 
 // ─── Modul E: material kitabxanası ───────────────────────────────────────────
@@ -1325,6 +1349,55 @@ export const submitPublicTest = (token: string, data: { answers: SubmitAnswer[];
     return body as TestResult;
   });
 
+// Admin psixoloqlar cədvəli — yüngül sətir DTO + paginated cavab.
+export interface AdminPsychologistRow {
+  id: number;
+  userId: number | null;
+  name: string;
+  title: string;
+  photoUrl?: string | null;
+  specializations: string[];
+  psychologistType?: "FANUS" | "NORMAL" | null;
+  rating: string;
+  ratingCount: number;
+  active: boolean;
+  suspended: boolean;
+  suspendReason?: string | null;
+  individualPrice?: number | null;
+  currency?: string | null;
+  displayOrder: number;
+  email?: string | null;
+  phone?: string | null;
+  createdAt: string;
+  planId?: number | null;
+  planName?: string | null;
+}
+// Psixoloq planı — modul aç/bağla şablonu.
+export interface PsychologistPlan {
+  id: number;
+  name: string;
+  enabledModules: string[];
+  tikColor: string;
+  active: boolean;
+  displayOrder: number;
+  assignedCount: number;
+}
+export interface PsychologistPlanReq {
+  name: string;
+  enabledModules: string[];
+  tikColor?: string;
+  active?: boolean;
+  displayOrder?: number;
+}
+export interface PagedPsychologistsResponse {
+  content: AdminPsychologistRow[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+  counts: Record<string, number>;  // total, active, suspended, FANUS, NORMAL
+}
+
 export const adminApi = {
   getDashboard: () => authedRequest<Record<string, number>>("GET", "/admin/dashboard"),
 
@@ -1350,6 +1423,18 @@ export const adminApi = {
 
   // Psychologists
   getPsychologists: () => authedRequest<Psychologist[]>("GET", "/admin/psychologists"),
+  getPsychologistsPaged: (opts?: { q?: string; type?: string; status?: string; page?: number; size?: number; sort?: string; dir?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.q) params.set("q", opts.q);
+    if (opts?.type) params.set("type", opts.type);
+    if (opts?.status) params.set("status", opts.status);
+    if (opts?.page !== undefined) params.set("page", String(opts.page));
+    if (opts?.size !== undefined) params.set("size", String(opts.size));
+    if (opts?.sort) params.set("sort", opts.sort);
+    if (opts?.dir) params.set("dir", opts.dir);
+    const qs = params.toString();
+    return authedRequest<PagedPsychologistsResponse>("GET", `/admin/psychologists/paged${qs ? "?" + qs : ""}`);
+  },
   createPsychologist: (data: Omit<Psychologist, "id">) =>
     authedRequest<Psychologist>("POST", "/admin/psychologists", data).then(p => { revalidatePsychologistsCache(); return p; }),
   updatePsychologist: (id: number, data: Omit<Psychologist, "id">) =>
@@ -1366,6 +1451,13 @@ export const adminApi = {
   createPsyPackage: (psyId: number, data: PackageReq) => authedRequest<PackageDto>("POST", `/admin/psychologists/${psyId}/packages`, data),
   updatePsyPackage: (psyId: number, id: number, data: PackageReq) => authedRequest<PackageDto>("PUT", `/admin/psychologists/${psyId}/packages/${id}`, data),
   deletePsyPackage: (psyId: number, id: number) => authedRequest<void>("DELETE", `/admin/psychologists/${psyId}/packages/${id}`),
+
+  // Psixoloq planları (modul aç/bağla şablonları)
+  getPsychologistPlans: () => authedRequest<PsychologistPlan[]>("GET", "/admin/psychologist-plans"),
+  createPsychologistPlan: (data: PsychologistPlanReq) => authedRequest<PsychologistPlan>("POST", "/admin/psychologist-plans", data),
+  updatePsychologistPlan: (id: number, data: PsychologistPlanReq) => authedRequest<PsychologistPlan>("PUT", `/admin/psychologist-plans/${id}`, data),
+  deletePsychologistPlan: (id: number) => authedRequest<void>("DELETE", `/admin/psychologist-plans/${id}`),
+  assignPsychologistPlan: (psyId: number, planId: number | null) => authedRequest<void>("PUT", `/admin/psychologists/${psyId}/plan`, { planId }),
   getPsyPriceHistory: (psyId: number) => authedRequest<PriceChangeLogItem[]>("GET", `/admin/psychologists/${psyId}/price-history`),
 
   // Stats
@@ -1439,10 +1531,17 @@ export const adminApi = {
     authedRequest<PsychologistApplication>("PUT", `/admin/applications/${id}/reject`, { adminNote }),
 
   // Users
-  getUsers: (opts?: { role?: string; q?: string; page?: number; size?: number; sort?: string; dir?: string }) => {
+  getUsers: (opts?: {
+    role?: string; q?: string; page?: number; size?: number; sort?: string; dir?: string;
+    status?: "active" | "inactive"; verified?: boolean; createdFrom?: string; createdTo?: string;
+  }) => {
     const params = new URLSearchParams();
     if (opts?.role) params.set("role", opts.role);
     if (opts?.q) params.set("q", opts.q);
+    if (opts?.status) params.set("status", opts.status);
+    if (opts?.verified !== undefined) params.set("verified", String(opts.verified));
+    if (opts?.createdFrom) params.set("createdFrom", opts.createdFrom);
+    if (opts?.createdTo) params.set("createdTo", opts.createdTo);
     if (opts?.page !== undefined) params.set("page", String(opts.page));
     if (opts?.size !== undefined) params.set("size", String(opts.size));
     if (opts?.sort) params.set("sort", opts.sort);
@@ -1592,6 +1691,17 @@ export const adminApi = {
   // ─── MODUL 3D: operator idarəetməsi ──────────────────────────────────────
   getOperatorsOverview: () =>
     authedRequest<OperatorOverview[]>("GET", "/admin/operators-overview"),
+  getOperatorsPaged: (opts?: { q?: string; status?: "active" | "inactive"; page?: number; size?: number; sort?: string; dir?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.q) params.set("q", opts.q);
+    if (opts?.status) params.set("status", opts.status);
+    if (opts?.page !== undefined) params.set("page", String(opts.page));
+    if (opts?.size !== undefined) params.set("size", String(opts.size));
+    if (opts?.sort) params.set("sort", opts.sort);
+    if (opts?.dir) params.set("dir", opts.dir);
+    const qs = params.toString();
+    return authedRequest<PagedOperators>("GET", `/admin/operators/paged${qs ? "?" + qs : ""}`);
+  },
 
   // ─── MODUL 3E: dəstək alətləri (impersonation YOXDUR — PO qərarı) ────────
   sendPasswordReset: (userId: number) =>
@@ -2429,6 +2539,8 @@ export interface PsychResourceReq {
 // ─── Psychologist API ─────────────────────────────────────────────────────────
 export const psychologistApi = {
   me: () => authedRequest<Psychologist>("GET", "/psychologist/me"),
+  /** Panelin dinamik modul gating-i — təyin olunan plana görə açıq modul açarları. */
+  getMyModules: () => authedRequest<string[]>("GET", "/psychologist/me/modules"),
   updateSessionMinutes: (minutes: number) =>
     authedRequest<Psychologist>("PUT", "/psychologist/me/session-minutes", { minutes }),
   // Modul D — profil statistikası mənbəyi (FANUS_PLATFORM seçimi +10% görünürlük)

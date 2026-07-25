@@ -71,7 +71,7 @@ export const en: typeof az = {
     pageSub: "Find the right psychologist and book directly",
     searchPh: "Search by name, specialization or topic…",
     empty: "No psychologists match your search.",
-    book: "Book",
+    book: "Book / Package",
     viewProfile: "Profile",
     fav: "Add to favorites",
     unfav: "Remove from favorites",

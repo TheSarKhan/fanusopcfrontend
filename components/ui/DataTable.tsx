@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "./Button";
 import { Banner, EmptyBlock } from "./Feedback";
 import { Pagination } from "./Table";
@@ -95,7 +95,26 @@ export type DataTableProps<T> = {
   minWidth?: number;
   /** Yüklənmə skeletində göstəriləcək sətir sayı. */
   skeletonRows?: number;
+
+  /**
+   * Sətir seçimi (opt-in). Verilsə, başda checkbox sütunu görünür; başlıqdakı
+   * checkbox CARI SƏHİFƏDƏKİ sətirlərin hamısını seçir/götürür. Seçim açarları
+   * `rowKey` ilə eynidir. Səhifələmə serverdədirsə seçim yalnız cari səhifəyə aiddir.
+   */
+  selection?: {
+    selectedKeys: Set<string | number>;
+    onChange: (next: Set<string | number>) => void;
+  };
 };
+
+/** Başlıqdakı "hamısını seç" — qismən seçimdə indeterminate. */
+function SelectAllCheckbox({
+  checked, indeterminate, onChange, "aria-label": ariaLabel,
+}: { checked: boolean; indeterminate: boolean; onChange: () => void; "aria-label": string }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (ref.current) ref.current.indeterminate = indeterminate && !checked; }, [indeterminate, checked]);
+  return <input ref={ref} type="checkbox" className="fx-checkbox" checked={checked} onChange={onChange} aria-label={ariaLabel} />;
+}
 
 function Caret({ dir }: { dir: SortDir | null }) {
   return (
@@ -140,6 +159,7 @@ export function DataTable<T>({
   mobile = "scroll",
   minWidth,
   skeletonRows = 5,
+  selection,
 }: DataTableProps<T>) {
   // Sıralama serverdədirsə (onSortChange verilib) daxili vəziyyət işlədilmir.
   const controlled = typeof onSortChange === "function";
@@ -175,7 +195,25 @@ export function DataTable<T>({
     });
   }, [rows, columns, activeSort, controlled]);
 
-  const colSpan = columns.length + (actions ? 1 : 0) + (renderExpanded ? 1 : 0);
+  const colSpan = columns.length + (actions ? 1 : 0) + (renderExpanded ? 1 : 0) + (selection ? 1 : 0);
+
+  // Seçim: başlıqdakı checkbox yalnız cari (sıralanmış) səhifəyə aiddir.
+  const pageKeys = selection ? sorted.map(rowKey) : [];
+  const allSelected = !!selection && pageKeys.length > 0 && pageKeys.every(k => selection.selectedKeys.has(k));
+  const someSelected = !!selection && pageKeys.some(k => selection.selectedKeys.has(k));
+  const toggleAll = () => {
+    if (!selection) return;
+    const next = new Set(selection.selectedKeys);
+    if (allSelected) pageKeys.forEach(k => next.delete(k));
+    else pageKeys.forEach(k => next.add(k));
+    selection.onChange(next);
+  };
+  const toggleOne = (k: string | number) => {
+    if (!selection) return;
+    const next = new Set(selection.selectedKeys);
+    if (next.has(k)) next.delete(k); else next.add(k);
+    selection.onChange(next);
+  };
 
   // ── Xəta: səhifə yüklənmədiyi üçün toast deyil, yerində qutu ──
   if (error) {
@@ -232,6 +270,11 @@ export function DataTable<T>({
         >
           <thead>
             <tr>
+              {selection && (
+                <th style={{ width: 40, textAlign: "center" }}>
+                  <SelectAllCheckbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} aria-label="Hamısını seç" />
+                </th>
+              )}
               {renderExpanded && <th style={{ width: 40 }} aria-label="Detalları aç" />}
               {columns.map(col => {
                 const isSorted = activeSort?.key === col.key;
@@ -267,6 +310,17 @@ export function DataTable<T>({
                     className={onRowClick ? "fx-dt__row--link" : undefined}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                   >
+                    {selection && (
+                      <td style={{ width: 40, textAlign: "center" }} data-label="" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          className="fx-checkbox"
+                          checked={selection.selectedKeys.has(key)}
+                          onChange={() => toggleOne(key)}
+                          aria-label="Sətri seç"
+                        />
+                      </td>
+                    )}
                     {renderExpanded && (
                       <td data-label="">
                         <button

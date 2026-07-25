@@ -157,7 +157,7 @@ function sortRows<T>(rows: T[], columns: Column<T>[], sort: SortState): T[] {
 }
 
 const FLAG_META: Record<string, { label: string; tone: string }> = {
-  HIGH_NO_SHOW:     { label: "Yüksək no-show",      tone: "danger" },
+  HIGH_NO_SHOW:     { label: "Yüksək gəlmədi",      tone: "danger" },
   HIGH_LATE_CANCEL: { label: "Yüksək geç ləğv",      tone: "warn" },
   HIGH_REJECT:      { label: "Çox rədd alıb",        tone: "warn" },
   MANUAL:           { label: "Manual işarə",         tone: "warn" },
@@ -534,7 +534,7 @@ export default function PatientDetailPage() {
                 </div>
                 {/* Rozet çipləri yerinə vəziyyət mətni — diqqət tələb edən hallar rənglənir. */}
                 <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                  {client.noShowCount > 0 && <Status tone="wait">{client.noShowCount} no-show</Status>}
+                  {client.noShowCount > 0 && <Status tone="wait">{client.noShowCount} gəlmədi</Status>}
                   {client.lateCancelCount > 0 && <Status tone="wait">{client.lateCancelCount} geç ləğv</Status>}
                   {flag && <Status tone={flag.tone === "danger" ? "risk" : "wait"}>{flag.label}</Status>}
                 </div>
@@ -663,7 +663,7 @@ export default function PatientDetailPage() {
             <OverviewKpi label="Ümumi seans" tint="sage"
               icon={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>}
               value={String(client.totalSessions)}
-              sub={client.noShowCount > 0 ? `${client.noShowCount} no-show` : "tam iştirak"} />
+              sub={client.noShowCount > 0 ? `${client.noShowCount} gəlmədi` : "tam iştirak"} />
             <OverviewKpi label="Son seans" tint="neutral"
               icon={<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>}
               value={client.lastAppointmentAt ? agoLabel(client.lastAppointmentAt) : "—"}
@@ -1113,7 +1113,7 @@ function sessionSummary(a: AppointmentDetail): string {
 /** Seansın nişanları — rəngli rozet yox, sadə vəziyyət mətnləri. */
 function sessionMarks(a: AppointmentDetail): { label: string; tone: StatusTone }[] {
   const marks: { label: string; tone: StatusTone }[] = [];
-  if (a.cancelReasonCode && a.cancelReasonCode.includes("NO_SHOW")) marks.push({ label: "No-show", tone: "risk" });
+  if (a.cancelReasonCode && a.cancelReasonCode.includes("NO_SHOW")) marks.push({ label: "Gəlmədi", tone: "risk" });
   if (a.lateCancel) marks.push({ label: "Geç ləğv", tone: "wait" });
   if (a.status === "COMPLETED" && a.patientConfirmedAt && a.psychologistConfirmedAt && !a.autoConfirmedAt) {
     marks.push({ label: "Qarşılıqlı təsdiq", tone: "positive" });
@@ -1360,7 +1360,7 @@ function SessionBadges({ a }: { a: AppointmentDetail }) {
   const noShow = !!a.cancelReasonCode && a.cancelReasonCode.includes("NO_SHOW");
   return (
     <>
-      {noShow && <span style={miniPill("#FEE2E2", "#991B1B")}>No-show</span>}
+      {noShow && <span style={miniPill("#FEE2E2", "#991B1B")}>Gəlmədi</span>}
       {a.lateCancel && <span style={miniPill("#FEF3C7", "#92400E")}>Geç ləğv</span>}
       {done && a.patientConfirmedAt && a.psychologistConfirmedAt && !a.autoConfirmedAt && (
         <span style={miniPill("#D1FAE5", "#065F46")}>Qarşılıqlı təsdiq</span>

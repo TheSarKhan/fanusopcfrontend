@@ -66,7 +66,7 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     { key: "dashboard",     href: "/patient",               label: t("nav.dashboard"),     icon: "home" },
     { key: "psychologists", href: "/patient/psychologists", label: t("nav.psychologists"), icon: "users" },
     { key: "appointments",  href: "/patient/appointments",  label: t("nav.appointments"),  icon: "calendar" },
-    { key: "packages",      href: "/patient/packages",      label: t("pkg.myPackages"),    icon: "badge" },
+    { key: "packages",      href: "/patient/packages",      label: t("pkg.myPackages"),    icon: "package" },
     { key: "homework",      href: "/patient/homework",      label: t("nav.homework"),      icon: "check" },
     { key: "favorites",     href: "/patient/favorites",     label: t("nav.favorites"),     icon: "heart" },
     { key: "tests",         href: "/patient/tests",         label: "Testlər",              icon: "clipboard" },

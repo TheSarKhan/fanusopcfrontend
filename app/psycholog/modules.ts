@@ -73,9 +73,18 @@ export function isPsychologModuleEnabled(key: PsychologModuleKey): boolean {
 /** Verilən pathname kilidli bir modula aiddirsə `true` qaytarır.
  *  Dashboard, profil, bildirişlər kimi modul olmayan route-lar həmişə açıqdır. */
 export function isPsychologPathLocked(pathname: string): boolean {
+  return isPsychologPathLockedWith(pathname, (key) => PSYCHOLOG_MODULES[key]);
+}
+
+/** Dinamik variant — açıq/bağlı qərarını verilən `isEnabled` predikatı ilə verir
+ *  (backend-dən gələn plan modulları). Statik `PSYCHOLOG_MODULES` fallback-dır. */
+export function isPsychologPathLockedWith(
+  pathname: string,
+  isEnabled: (key: PsychologModuleKey) => boolean,
+): boolean {
   for (const key of Object.keys(MODULE_PATHS) as PsychologModuleKey[]) {
-    if (key === "dashboard") continue;     // dashboard heç vaxt kilidlənmir
-    if (PSYCHOLOG_MODULES[key]) continue;  // açıq modul
+    if (key === "dashboard") continue;   // dashboard heç vaxt kilidlənmir
+    if (isEnabled(key)) continue;        // açıq modul
     if (MODULE_PATHS[key].some((p) => pathMatches(pathname, p))) return true;
   }
   return false;

@@ -401,7 +401,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const paymentAmountUnset = a.paymentStatus === "PENDING" && (a.paymentAmount == null || a.paymentAmount <= 0);
   const needsPayment = !["PENDING", "NEW", "IN_REVIEW", "REJECTED", "CANCELLED"].includes(a.status)
     && !a.patientPackageId && a.patientId != null && (!a.paymentStatus || paymentAmountUnset);
-  // Option B: sessions auto-complete; operator retroactively marks a no-show.
+  // Option B: sessions auto-complete; operator retroactively marks a gəlmədi.
   const canMarkNoShow = a.status === "COMPLETED" || a.status === "AWAITING_CONFIRMATION";
   const phone = normalizePhone(a.patientPhone);
   const isAssigned = a.status === "ASSIGNED" || a.status === "CONFIRMED";
@@ -745,7 +745,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
           badge={OTHER_ACTION_META[otherAction].badge} onClose={() => setOtherAction(null)}>
           {otherAction === "dispute" && <ResolveDisputeBlock appointment={a} guardAction={guardAction} onDone={(u) => { setOtherAction(null); onActionDone(u, "Mübahisə həll olundu"); }} />}
           {otherAction === "cancelreq" && <CancelRequestBlock appointment={a} guardAction={guardAction} onDone={(u, ap) => { setOtherAction(null); onActionDone(u, ap ? "Ləğv təsdiqləndi" : "Tələb rədd edildi"); }} />}
-          {otherAction === "noshow" && <NoShowBlock appointment={a} guardAction={guardAction} onDone={(u) => { setOtherAction(null); onActionDone(u, "No-show işarələndi"); }} />}
+          {otherAction === "noshow" && <NoShowBlock appointment={a} guardAction={guardAction} onDone={(u) => { setOtherAction(null); onActionDone(u, "Gəlmədi işarələndi"); }} />}
           {otherAction === "cancel" && <CancelBlock appointment={a} guardAction={guardAction} onClose={() => setOtherAction(null)} onDone={(u) => { setOtherAction(null); onActionDone(u, "Ləğv edildi"); }} />}
         </ModalShell>
       )}
@@ -1158,7 +1158,7 @@ function activityDotClass(item: OperatorActivityItem): string {
   if (item.kind === "CREATED") return "fx-tl-dot--muted";
   if (/təklif|proposed/.test(raw)) return "fx-tl-dot--amber";
   if (/təsdiq|confirm|qəbul|accepted/.test(raw)) return "fx-tl-dot--sage";
-  if (/ləğv|cancel|rədd|reject|no-show|gəlmə/.test(raw)) return "fx-tl-dot--rose";
+  if (/ləğv|cancel|rədd|reject|gəlmədi|gəlmə/.test(raw)) return "fx-tl-dot--rose";
   if (/təyin|assign|vaxt|link|ödəniş|məbləğ/.test(raw)) return "fx-tl-dot--brand";
   return "fx-tl-dot--muted";
 }
@@ -1171,7 +1171,7 @@ const OTHER_ACTION_META: Record<OtherActionKey, {
 }> = {
   dispute:   { label: "Mübahisəni həll et", btnClass: "fx-btn--warn-ghost",   title: "Mübahisəni həll et", sub: "Seans baş tutdumu? Nəticəni qeyd edin.", badge: { label: "Mübahisəli", pillClass: "fx-pill--pending" } },
   cancelreq: { label: "Ləğv tələbi",        btnClass: "fx-btn--warn-ghost",   title: "Ləğv tələbi",        sub: "Pasiyentin ləğv tələbini emal edin.",    badge: { label: "Gözlənilir", pillClass: "fx-pill--pending" } },
-  noshow:    { label: "No-show",            btnClass: "fx-btn--ghost",        title: "No-show işarələ",    sub: "Seansa kim gəlmədi?",                    badge: { label: "No-show",    pillClass: "fx-pill--cancelled" } },
+  noshow:    { label: "Gəlmədi",            btnClass: "fx-btn--ghost",        title: "Gəlmədi işarələ",    sub: "Seansa kim gəlmədi?",                    badge: { label: "Gəlmədi",    pillClass: "fx-pill--cancelled" } },
   cancel:    { label: "Seansı ləğv et",     btnClass: "fx-btn--danger-ghost", title: "Seansı ləğv et",     sub: "Bu seansı bağlayın.",                    badge: { label: "Ləğv",       pillClass: "fx-pill--refunded" } },
 };
 
@@ -2163,7 +2163,7 @@ function ResolveDisputeBlock({ appointment, guardAction, onDone }: {
 
       {decision === "CANCEL" && (
         <div className="fx-field" style={{ marginBottom: 12 }}>
-          <span className="fx-label">Kim «no-show» sayğacına işlənsin?</span>
+          <span className="fx-label">Kim «gəlmədi» sayğacına işlənsin?</span>
           <div className="fx-segmented" style={{ display: "flex", width: "100%" }}>
             {([
               { v: "NONE", label: "Heç kim" },
@@ -2176,7 +2176,7 @@ function ResolveDisputeBlock({ appointment, guardAction, onDone }: {
               </button>
             ))}
           </div>
-          <span className="fx-help">«Heç kim» = texniki səbəb; digərləri seçilən tərəfin no-show sayğacını artırır.</span>
+          <span className="fx-help">«Heç kim» = texniki səbəb; digərləri seçilən tərəfin gəlmədi sayğacını artırır.</span>
         </div>
       )}
 
@@ -2196,7 +2196,7 @@ function ResolveDisputeBlock({ appointment, guardAction, onDone }: {
   );
 }
 
-/* ─── No-show işarələmə bloku (Option B) — modal formu ──────────────────────── */
+/* ─── Gəlmədi işarələmə bloku (Option B) — modal formu ──────────────────────── */
 
 function NoShowBlock({ appointment, guardAction, onDone }: {
   appointment: AppointmentDetail;
@@ -2219,8 +2219,8 @@ function NoShowBlock({ appointment, guardAction, onDone }: {
   return (
     <>
       <p className="fx-modal__text" style={{ margin: "0 0 12px" }}>
-        Seans avtomatik tamamlandı, amma əslində baş tutmayıbsa, buradan no-show kimi işarələyin —
-        seçilən tərəfin no-show sayğacı artacaq.
+        Seans avtomatik tamamlandı, amma əslində baş tutmayıbsa, buradan gəlmədi kimi işarələyin —
+        seçilən tərəfin gəlmədi sayğacı artacaq.
       </p>
       <div className="fx-field" style={{ marginBottom: 12 }}>
         <span className="fx-label">Kim gəlmədi?</span>
@@ -2243,7 +2243,7 @@ function NoShowBlock({ appointment, guardAction, onDone }: {
       <div className="fx-modal__actions" style={{ marginTop: 0 }}>
         <button onClick={() => guardAction(doSubmit)} disabled={saving}
           className="fx-btn fx-btn--danger" style={{ cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
-          {saving ? "Göndərilir…" : "No-show işarələ"}
+          {saving ? "Göndərilir…" : "Gəlmədi işarələ"}
         </button>
       </div>
     </>

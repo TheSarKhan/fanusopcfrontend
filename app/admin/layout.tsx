@@ -63,22 +63,31 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   /** 0 → nişanə göstərilmir (PanelShell undefined-ı gizlədir). */
   const badge = (key: string) => (counts[key] && counts[key] > 0 ? counts[key] : undefined);
 
+  // Naviqasiya məntiqi domenlərə görə qruplaşdırılıb (PanelShell düz siyahı göstərir,
+  // ona görə qruplar bitişik sıralanır). Hər modulun öz fərqli, mənalı ikonu var:
+  //  İnsanlar → Əməliyyatlar → Maliyyə → Məzmun → Ünsiyyət → Sistem.
   const nav: PanelNavItem[] = [
+    // İnsanlar
     { href: "/admin/users",             label: t("nav.users"),         icon: "users" },
     { href: "/admin/psychologists",     label: t("nav.psychologists"), icon: "user",      badge: badge("psychologists") },
+    { href: "/admin/operators",         label: "Operatorlar",          icon: "headset" },
+    // Əməliyyatlar
     { href: "/admin/appointments",      label: "Randevular",           icon: "calendar",  badge: badge("appointments") },
-    { href: "/admin/payments",          label: "Ödənişlər",            icon: "package",   badge: badge("payments") },
-    { href: "/admin/operators",         label: "Operatorlar",          icon: "users" },
     { href: "/admin/approvals",         label: "Təsdiqlər",            icon: "shield",    badge: badge("approvals"), badgeTone: "warn" },
-    { href: "/admin/finance",           label: "Maliyyə",              icon: "package",   badge: badge("finance") },
-    { href: "/admin/deletion-requests", label: "Silinmə istəkləri",    icon: "clipboard", badge: badge("deletion-requests"), badgeTone: "warn" },
-    { href: "/admin/blog",              label: t("nav.blog"),          icon: "content" },
-    { href: "/admin/materials",         label: "Materiallar",          icon: "content" },
+    { href: "/admin/deletion-requests", label: "Silinmə istəkləri",    icon: "flag",      badge: badge("deletion-requests"), badgeTone: "warn" },
+    // Maliyyə
+    { href: "/admin/payments",          label: "Ödənişlər",            icon: "package",   badge: badge("payments") },
+    { href: "/admin/finance",           label: "Maliyyə",              icon: "chart",     badge: badge("finance") },
+    // Məzmun
+    { href: "/admin/blog",              label: t("nav.blog"),          icon: "edit" },
+    { href: "/admin/materials",         label: "Materiallar",          icon: "book" },
+    { href: "/admin/resources",         label: "Resurslar",            icon: "journal",   badge: badge("resources") },
     { href: "/admin/tests",             label: "Testlər",              icon: "clipboard", badge: badge("tests") },
-    { href: "/admin/resources",         label: "Resurslar",            icon: "content",   badge: badge("resources") },
+    // Ünsiyyət
     { href: "/admin/messages",          label: t("nav.messages"),      icon: "message",   badge: badge("messages") },
-    { href: "/admin/reviews",           label: t("nav.reviews"),       icon: "megaphone", badge: badge("reviews") },
-    { href: "/admin/audit-logs",        label: t("nav.audit"),         icon: "clipboard" },
+    { href: "/admin/reviews",           label: t("nav.reviews"),       icon: "star",      badge: badge("reviews") },
+    // Sistem
+    { href: "/admin/audit-logs",        label: t("nav.audit"),         icon: "clock" },
   ];
 
   return (

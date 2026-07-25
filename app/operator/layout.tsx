@@ -127,7 +127,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
     // hovuza düşür və "Randevu hovuzu" badge-i artır (Bug 4/6).
     { key: "appointments",     href: "/operator/appointments",       label: t("nav.appointments"),    icon: "calendar" },
     { key: "meetingLinks",  href: "/operator/meeting-links", label: "Görüş linkləri",        icon: "video", badge: meetingLinksCount },
-    { key: "payments",      href: "/operator/payments",     label: t("pkg.paymentsTitle"),   icon: "clipboard", badge: paymentsCount },
+    { key: "payments",      href: "/operator/payments",     label: t("pkg.paymentsTitle"),   icon: "package", badge: paymentsCount },
     { key: "analytics",     href: "/operator/analytics",    label: t("nav.analytics"),       icon: "chart" },
     { key: "customers",     href: "/operator/customers",     label: "Müştərilər",            icon: "users" },
     { key: "psychologists", href: "/operator/psychologists", label: "Psixoloqlar", icon: "user" },

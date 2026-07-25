@@ -82,7 +82,7 @@ const STATUS_LABEL: Record<string, string> = {
 function statusLabel(s: string): string { return STATUS_LABEL[s] ?? s; }
 
 const FLAG_LABEL: Record<string, string> = {
-  HIGH_NO_SHOW: "Yüksək no-show", HIGH_LATE_CANCEL: "Yüksək gec ləğv", HIGH_REJECT: "Yüksək rədd",
+  HIGH_NO_SHOW: "Yüksək gəlmədi", HIGH_LATE_CANCEL: "Yüksək gec ləğv", HIGH_REJECT: "Yüksək rədd",
 };
 const ACTIVITY_LABEL: Record<string, string> = {
   AUDIT: "Audit", SUPPORT: "Dəstək", APPOINTMENT: "Randevu", TEST: "Test",
@@ -349,7 +349,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
       ? `${h.rejectedCount} təyinatı rədd edib. Sistem avtomatik nişan qoyub.`
       : "";
     const careTip = h.autoFlag === "HIGH_NO_SHOW"
-      ? `Tövsiyə: ${h.noShowCount} no-show — növbəti seansdan bir gün əvvəl təsdiq zəngi edin.`
+      ? `Tövsiyə: ${h.noShowCount} gəlmədi — növbəti seansdan bir gün əvvəl təsdiq zəngi edin.`
       : h.autoFlag === "HIGH_LATE_CANCEL"
       ? `Tövsiyə: ${h.lateCancelCount} gec ləğv — seans xatırlatmasını daha erkən göndərin.`
       : h.autoFlag === "HIGH_REJECT"
@@ -735,7 +735,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
               </div>
             )}
             <div style={{ padding: "16px 22px", display: "flex", flexDirection: "column", gap: 9, fontSize: 13 }}>
-              <CareRow label="Gəlmədi (no-show)" value={h.noShowCount} warn={h.noShowCount >= 2} />
+              <CareRow label="Gəlmədi (gəlmədi)" value={h.noShowCount} warn={h.noShowCount >= 2} />
               <CareRow label="Gec ləğv" value={h.lateCancelCount} warn={h.lateCancelCount >= 3} />
               <CareRow label="Rədd edilmiş" value={h.rejectedCount} />
               <CareRow label="Ləğv edilmiş" value={h.cancelledCount} />
@@ -926,8 +926,9 @@ function SellPackageModal({ patientId, initialMode = "catalog", onClose, onDone 
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  // Pasient bu psixoloqu özü seçib müraciət edibsə komissiyasız/azaldılmış faiz tətbiq olunur.
-  const [patientChoseDirectly, setPatientChoseDirectly] = useState(false);
+  // Operator birbaşa satışında DEFAULT: pasiyent psixoloqu özü seçib (komissiyasız).
+  // Operator yalnız Fanus təyin etdiyi halda işarəni götürür (o zaman platforma faizi).
+  const [patientChoseDirectly, setPatientChoseDirectly] = useState(true);
 
   useEffect(() => { operatorApi.listPsychologists().then(setPsys).catch(() => {}); }, []);
 

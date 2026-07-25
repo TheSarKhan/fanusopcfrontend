@@ -3,7 +3,7 @@
 // Modul H — operator "Müştərilər" direktoriyası (Fanus UI Kit).
 //  • Axtarış: operatorApi.search → pasiyent hitləri (ad / telefon / email).
 //  • Default: randevulardan törədilən "Son müştərilər" — zəngin sətir
-//    (Son fəaliyyət, paket, psixoloq, no-show nişanı), seqment tabları + sıralama.
+//    (Son fəaliyyət, paket, psixoloq, gəlmədi nişanı), seqment tabları + sıralama.
 //  • "Yeni müştəri": operatorApi.createPatient → yeni pasiyentin 360° profilinə keçid.
 //  • Cədvəl <DataTable>-dır; sıralama və səhifələmə tam siyahı üzərində
 //    aparılır (API sadə massiv qaytarır — client-side səhifələmə).
@@ -111,7 +111,7 @@ function deriveRecent(appts: AppointmentDetail[]): CustomerRow[] {
       id: e.id, name, phone: e.phone || null, email: e.email || null, contact: null,
       lastAt: e.lastAt, lastLabel: ls.label, lastTone: ls.tone,
       pkg: e.pkg, psych: e.psych,
-      flag: e.noShow >= 2 ? "No-show riski" : null,
+      flag: e.noShow >= 2 ? "Gəlmədi riski" : null,
       hasUpcoming: e.upcoming,
     });
   }
@@ -307,7 +307,7 @@ export default function OperatorCustomersPage() {
       <div className="fx-card fx-card--lg fx-kpi-row" style={{ gridTemplateColumns: "repeat(4,1fr)", marginBottom: 16 }}>
         <Kpi label="Son müştərilər" value={stats.total} meta="son fəaliyyətə görə" />
         <Kpi label="Yaxın seansı olan" value={stats.near} meta="qarşıdan gələn" color="var(--sage)" />
-        <Kpi label="Diqqət tələb edən" value={stats.attention} meta="no-show nişanlı" color="var(--amber)" />
+        <Kpi label="Diqqət tələb edən" value={stats.attention} meta="gəlmədi nişanlı" color="var(--amber)" />
         <Kpi label="Paketli" value={stats.packaged} meta="aktiv paketli müştəri" />
       </div>
 

@@ -1,3 +1,3 @@
-"use client";
-import NotificationsPage from "@/components/NotificationsPage";
-export default function Page() { return <NotificationsPage />; }
+export default function Page() {
+  return null;
+}

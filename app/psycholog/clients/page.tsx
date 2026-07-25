@@ -30,7 +30,7 @@ const PAGE_SIZE = 30;
 
 /** Avto-işarələr. Rəng yalnız məna daşıyanda — rozet yoxdur, mətndir. */
 const FLAG_META: Record<string, { label: string; tone: StatusTone }> = {
-  HIGH_NO_SHOW:     { label: "Yüksək no-show",  tone: "risk" },
+  HIGH_NO_SHOW:     { label: "Yüksək gəlmədi",  tone: "risk" },
   HIGH_LATE_CANCEL: { label: "Yüksək geç ləğv", tone: "wait" },
   HIGH_REJECT:      { label: "Çox rədd alıb",   tone: "wait" },
   MANUAL:           { label: "Manual işarə",    tone: "wait" },
@@ -72,7 +72,7 @@ function csvEscape(v: string | number | null | undefined): string {
 function exportClientsCsv(clients: ClientSummary[], tagsByPatient: Record<number, PatientTag[]>) {
   const headers = [
     "Ad", "Email", "Telefon",
-    "Cəmi seans", "Tamamlanmış seans", "No-show",
+    "Cəmi seans", "Tamamlanmış seans", "Gəlmədi",
     "Son seans tarixi", "Son seans (gün öncə)",
     "Qeyd sayı", "Avto-flag", "Etiketlər",
   ];
@@ -450,7 +450,7 @@ function ClientListRow({ c, tags }: { c: ClientSummary; tags: PatientTag[] }) {
             <div>
               {c.totalSessions} seans, {c.completedSessions} tamamlanıb
               {c.noteCount > 0 ? `, ${c.noteCount} qeyd` : ""}
-              {c.noShowCount > 0 ? `, ${c.noShowCount} no-show` : ""}
+              {c.noShowCount > 0 ? `, ${c.noShowCount} gəlmədi` : ""}
             </div>
             <TagLine tags={tags} max={3} />
           </>
@@ -497,7 +497,7 @@ function ClientGridCard({ c, tags }: { c: ClientSummary; tags: PatientTag[] }) {
 
           <div className="fx-row__meta" style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 3 }}>
             <TagLine tags={tags} max={4} />
-            {c.noShowCount > 0 ? <span>{c.noShowCount} no-show</span> : null}
+            {c.noShowCount > 0 ? <span>{c.noShowCount} gəlmədi</span> : null}
             {flag ? (
               <Status tone={flag.tone}>{flag.label}</Status>
             ) : (

@@ -1,992 +1,1200 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+// Admin · Psixoloqlar modulu — 3 tab: Müraciətlər / Psixoloqlar / Planlar.
+//  FAZA 1: Müraciətlər tabı — server pagination + filtr, review Modal, fayl
+//  preview/download, təsdiq/rədd. Digər iki tab sonrakı fazalarda qurulur.
+
+import { useCallback, useEffect, useState } from "react";
 import {
   adminApi,
+  type PsychologistApplication,
+  type AdminPsychologistRow,
+  type PagedPsychologistsResponse,
   type Psychologist,
-  type UserRecord,
   type PackageDto,
   type PackageReq,
-  type PriceChangeLogItem,
+  type PsychologistPlan,
+  type PsychologistPlanReq,
 } from "@/lib/api";
-import { formatAzn } from "@/lib/money";
-import { azFormatDate } from "@/lib/datetime";
-import { IconSearch, IconPlus, IconDownload, IconChevron } from "../_components/icons";
-import { useT } from "@/lib/i18n/LocaleProvider";
+import { toast } from "@/components/Toast";
+import { azFormatDate, azFormatDateTime } from "@/lib/datetime";
+import PanelIcon from "@/components/PanelIcon";
+import {
+  PageHead,
+  SectionTitle,
+  Tabs,
+  Stats,
+  Stat,
+  Card,
+  CardPad,
+  DataTable,
+  Status,
+  Avatar,
+  Button,
+  ButtonLink,
+  IconButton,
+  Drawer,
+  DrawerSection,
+  Modal,
+  Banner,
+  Field,
+  FieldRow,
+  Input,
+  Textarea,
+  Switch,
+  Select,
+  SearchInput,
+  Segmented,
+  EmptyBlock,
+  type Column,
+  type StatusTone,
+  type TabItem,
+} from "@/components/ui";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ── Tiplər / sabitlər ────────────────────────────────────────────
+type MainTab = "applications" | "psychologists" | "plans";
+type AppFilter = "all" | "PENDING" | "APPROVED" | "REJECTED";
 
-const AV_COLORS = ["#6366F1", "#10B981", "#F59E0B", "#3A74D6", "#082F6D", "#5d6b85"];
+const APP_FILTERS: { key: AppFilter; label: string }[] = [
+  { key: "PENDING", label: "Gözləmədə" },
+  { key: "APPROVED", label: "Təsdiqlənmiş" },
+  { key: "REJECTED", label: "Rədd edilmiş" },
+  { key: "all", label: "Hamısı" },
+];
 
-function initials(name: string) {
-  return name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-}
-function avatarColor(name: string) {
-  const hash = Array.from(name).reduce((s, c) => s + c.charCodeAt(0), 0);
-  return AV_COLORS[hash % AV_COLORS.length];
-}
-function parseRating(r: string): number {
-  const n = parseFloat(r);
-  return isNaN(n) ? 0 : n;
-}
-
-// ─── Sub-components ────────────────────────────────────────────────────────────
-
-function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
-  return (
-    <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E4EDF6", padding: "16px 20px" }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 800, color: accent ?? "#1A2535", lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "#8AAABF", marginTop: 4 }}>{sub}</div>}
-    </div>
-  );
-}
-
-function RatingStars({ value }: { value: string }) {
-  const n = parseRating(value);
-  if (!n) return <span style={{ fontSize: 12, color: "#C0D2E6" }}>—</span>;
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-      <span style={{ fontSize: 13, color: "#F59E0B" }}>★</span>
-      <span style={{ fontSize: 13, fontWeight: 700, color: "#1A2535" }}>{value}</span>
-    </div>
-  );
-}
-
-function ActiveToggle({ active, onChange }: { active: boolean; onChange: () => void }) {
-  return (
-    <button
-      onClick={onChange}
-      title={active ? "Passiv et" : "Aktiv et"}
-      style={{
-        width: 36, height: 20, borderRadius: 10, border: "none", cursor: "pointer", position: "relative",
-        background: active ? "#1051B7" : "#D1D5DB", transition: "background 0.2s", flexShrink: 0,
-      }}
-    >
-      <span style={{
-        position: "absolute", top: 2, left: active ? 18 : 2,
-        width: 16, height: 16, borderRadius: "50%", background: "#fff",
-        transition: "left 0.2s",
-      }} />
-    </button>
-  );
-}
-
-function ProfileModal({ p, onClose, onEdit }: { p: Psychologist; onClose: () => void; onEdit: () => void }) {
-  const color = avatarColor(p.name);
-  const fmt = (v?: string | null) => v || "—";
-
-  return (
-    <div className="admin-shell-modal" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal" style={{ maxWidth: 620, padding: 0, overflow: "hidden" }}>
-        {/* Cover */}
-        <div style={{ height: 88, background: p.bgColor || "#F2F6FD", position: "relative" }}>
-          <button onClick={onClose} style={{ position: "absolute", top: 12, right: 12, width: 30, height: 30, borderRadius: 8, border: "none", background: "rgba(0,0,0,0.12)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>✕</button>
-        </div>
-
-        {/* Avatar + name row */}
-        <div style={{ padding: "0 28px 20px", marginTop: -36 }}>
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 14 }}>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 14 }}>
-              {p.photoUrl
-                ? <img src={p.photoUrl} alt={p.name} style={{ width: 72, height: 72, borderRadius: 14, border: "3px solid #fff", objectFit: "cover", background: "#fff" }} />
-                : <div style={{ width: 72, height: 72, borderRadius: 14, border: "3px solid #fff", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, color: "#fff" }}>{initials(p.name)}</div>}
-              <div style={{ paddingBottom: 4 }}>
-                <div style={{ fontWeight: 800, fontSize: 17, color: "#1A2535" }}>{p.name}</div>
-                <div style={{ fontSize: 13, color: "#52718F", marginTop: 2 }}>{p.title}</div>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8, paddingBottom: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: p.active ? "#DCFCE7" : "#F1F5F9", color: p.active ? "#166534" : "#6B7280" }}>
-                {p.active ? "Aktiv" : "Passiv"}
-              </span>
-            </div>
-          </div>
-
-          {/* Stats row */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
-            {[
-              { label: "Təcrübə", value: fmt(p.experience) },
-              { label: "Sessiya", value: fmt(p.sessionsCount) },
-              { label: "Reytinq", value: p.rating ? `★ ${p.rating}` : "—" },
-            ].map(s => (
-              <div key={s.label} style={{ background: "#F8FAFC", borderRadius: 10, padding: "10px 14px", border: "1px solid #E4EDF6" }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{s.label}</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#1A2535" }}>{s.value}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Contact */}
-          {(p.phone || p.email) && (
-            <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-              {p.phone && <a href={`tel:${p.phone}`} style={{ fontSize: 12, color: "#1051B7", fontWeight: 600, textDecoration: "none", background: "#EEF5FF", padding: "5px 12px", borderRadius: 20 }}>{p.phone}</a>}
-              {p.email && <a href={`mailto:${p.email}`} style={{ fontSize: 12, color: "#1051B7", fontWeight: 600, textDecoration: "none", background: "#EEF5FF", padding: "5px 12px", borderRadius: 20 }}>{p.email}</a>}
-            </div>
-          )}
-
-          {/* Specializations */}
-          {p.specializations.length > 0 && (
-            <Section label="İxtisaslar">
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                {p.specializations.map(s => <span className="pill ox" key={s}>{s}</span>)}
-              </div>
-            </Section>
-          )}
-
-          {/* Languages + Session types */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-            {p.languages && (
-              <Section label="Dillər">
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                  {p.languages.split(",").map(s => <span className="pill ox" key={s} style={{ fontSize: 11 }}>{s.trim()}</span>)}
-                </div>
-              </Section>
-            )}
-            {p.sessionTypes && (
-              <Section label="Sessiya növləri">
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                  {p.sessionTypes.split(",").map(s => <span className="pill ox" key={s} style={{ fontSize: 11 }}>{s.trim()}</span>)}
-                </div>
-              </Section>
-            )}
-          </div>
-
-          {/* Education */}
-          {(p.university || p.degree) && (
-            <Section label="Təhsil">
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {p.degree && <span className="pill muted">{p.degree}</span>}
-                {p.university && <span className="pill muted">{p.university}</span>}
-                {p.graduationYear && <span className="pill muted">{p.graduationYear}</span>}
-              </div>
-            </Section>
-          )}
-
-          {/* Bio */}
-          {p.bio && (
-            <Section label="Bio">
-              <p style={{ fontSize: 13, color: "#374151", lineHeight: 1.7, margin: 0 }}>{p.bio}</p>
-            </Section>
-          )}
-        </div>
-
-        <div style={{ padding: "16px 28px", borderTop: "1px solid #E4EDF6", display: "flex", gap: 10, justifyContent: "flex-end", background: "#F8FAFC" }}>
-          <button className="btn" onClick={onClose}>Bağla</button>
-          <button className="btn primary" onClick={() => { onClose(); onEdit(); }}>Redaktə et</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>{label}</div>
-      {children}
-    </div>
-  );
-}
-
-// ─── Default form values ───────────────────────────────────────────────────────
-
-const EMPTY: Omit<Psychologist, "id"> = {
-  name: "", title: "", specializations: [], experience: "",
-  sessionsCount: "", rating: "", photoUrl: "",
-  bio: "", phone: "", email: "", languages: "", sessionTypes: "",
-  university: "", degree: "", graduationYear: "",
-  accentColor: "#3A74D6", bgColor: "#F2F6FD", displayOrder: 0, active: true,
+const APP_STATUS_META: Record<string, { label: string; tone: StatusTone }> = {
+  PENDING: { label: "Gözləmədə", tone: "wait" },
+  APPROVED: { label: "Təsdiqlənib", tone: "positive" },
+  REJECTED: { label: "Rədd edilib", tone: "risk" },
 };
 
-// ─── Main Page ─────────────────────────────────────────────────────────────────
+const APP_PAGE_SIZE = 20;
+const APP_PAGE_SIZE_OPTIONS = [10, 20, 50];
 
+// ── Köməkçilər ──────────────────────────────────────────────────
+function fmtDate(s?: string | null) { return s ? azFormatDate(s) : "—"; }
+function fmtDateTime(s?: string | null) { return s ? azFormatDateTime(s) : "—"; }
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [v, setV] = useState<T>(value);
+  useEffect(() => { const id = setTimeout(() => setV(value), delay); return () => clearTimeout(id); }, [value, delay]);
+  return v;
+}
+
+/** Fayl tipini URL uzantısından təxmin et. */
+function fileKind(url: string): "image" | "pdf" | "other" {
+  const u = url.split("?")[0].toLowerCase();
+  if (/\.(png|jpe?g|webp|gif|bmp|svg)$/.test(u)) return "image";
+  if (/\.pdf$/.test(u)) return "pdf";
+  return "other";
+}
+
+// ── Səhifə ──────────────────────────────────────────────────────
 export default function PsychologistsPage() {
-  const { t } = useT();
-  const [items, setItems] = useState<Psychologist[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
-  const [modal, setModal] = useState<{ item: Omit<Psychologist, "id">; id?: number; psyType?: "FANUS" | "NORMAL" } | null>(null);
-  const [specsInput, setSpecsInput] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [fromUserOpen, setFromUserOpen] = useState(false);
-  const [fromUserList, setFromUserList] = useState<UserRecord[]>([]);
-  const [fromUserSearch, setFromUserSearch] = useState("");
-  const [fromUserLoading, setFromUserLoading] = useState(false);
-  const [fromUserAdding, setFromUserAdding] = useState<number | null>(null);
-  const [dropOpen, setDropOpen] = useState(false);
-  const dropRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const [mainTab, setMainTab] = useState<MainTab>("psychologists");
 
-  const load = () => {
-    setLoading(true);
-    adminApi.getPsychologists().then(setItems).catch(() => {}).finally(() => setLoading(false));
-  };
-  useEffect(() => { load(); }, []);
+  // Müraciət siyahısı (server pagination)
+  const [apps, setApps] = useState<PsychologistApplication[]>([]);
+  const [appsLoading, setAppsLoading] = useState(true);
+  const [appsError, setAppsError] = useState<string | null>(null);
+  const [appFilter, setAppFilter] = useState<AppFilter>("PENDING");
+  const [appSearch, setAppSearch] = useState("");
+  const debouncedAppSearch = useDebounce(appSearch, 300);
+  const [appPage, setAppPage] = useState(0);
+  const [appSize, setAppSize] = useState(APP_PAGE_SIZE);
+  const [appTotalElements, setAppTotalElements] = useState(0);
+  const [appTotalPages, setAppTotalPages] = useState(0);
 
-  useEffect(() => {
-    if (!dropOpen) return;
-    const h = (e: MouseEvent) => { if (dropRef.current && !dropRef.current.contains(e.target as Node)) setDropOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [dropOpen]);
+  // KPI sayğacları (filtrdən asılı olmayan)
+  const [counts, setCounts] = useState<{ pending: number; approved: number; rejected: number }>({ pending: 0, approved: 0, rejected: 0 });
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
-  const stats = useMemo(() => {
-    const active = items.filter(p => p.active).length;
-    const ratings = items.map(p => parseRating(p.rating)).filter(Boolean);
-    const avgRating = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : "—";
-    return { total: items.length, active, inactive: items.length - active, avgRating };
-  }, [items]);
+  const [detailApp, setDetailApp] = useState<PsychologistApplication | null>(null);
+  const [rejectModal, setRejectModal] = useState<{ id: number; firstName: string } | null>(null);
+  const [confirmApprove, setConfirmApprove] = useState<PsychologistApplication | null>(null);
+  const [rejectNote, setRejectNote] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+  const [preview, setPreview] = useState<{ url: string; label: string } | null>(null);
 
-  // ── Filtered ───────────────────────────────────────────────────────────────
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return items
-      .filter(p => {
-        if (filter === "active" && !p.active) return false;
-        if (filter === "inactive" && p.active) return false;
-        if (q && !`${p.name} ${p.title} ${p.specializations.join(" ")} ${p.email ?? ""}`.toLowerCase().includes(q)) return false;
-        return true;
-      })
-      .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
-  }, [items, search, filter]);
+  const loadApplications = useCallback(() => {
+    setAppsLoading(true);
+    setAppsError(null);
+    adminApi.getApplicationsPaged({
+      page: appPage, size: appSize,
+      status: appFilter === "all" ? undefined : appFilter,
+      q: debouncedAppSearch || undefined,
+    }).then((res) => {
+      setApps(res.content);
+      setAppTotalElements(res.totalElements);
+      setAppTotalPages(res.totalPages);
+      if (res.totalPages > 0 && appPage >= res.totalPages) setAppPage(0);
+    }).catch((e) => setAppsError((e as Error).message || "Müraciətlər yüklənmədi"))
+      .finally(() => setAppsLoading(false));
+  }, [appPage, appSize, appFilter, debouncedAppSearch]);
 
-  // ── Actions ────────────────────────────────────────────────────────────────
-  const toggleActive = async (p: Psychologist) => {
+  const loadCounts = useCallback(() => {
+    Promise.all([
+      adminApi.getApplicationsPaged({ page: 0, size: 1, status: "PENDING" }),
+      adminApi.getApplicationsPaged({ page: 0, size: 1, status: "APPROVED" }),
+      adminApi.getApplicationsPaged({ page: 0, size: 1, status: "REJECTED" }),
+    ]).then(([p, a, r]) => setCounts({ pending: p.totalElements, approved: a.totalElements, rejected: r.totalElements }))
+      .catch(() => { /* KPI kritik deyil */ });
+  }, []);
+
+  useEffect(() => { loadCounts(); }, [loadCounts]);
+  useEffect(() => { if (mainTab === "applications") loadApplications(); }, [mainTab, loadApplications]);
+  useEffect(() => { setAppPage(0); }, [appFilter, debouncedAppSearch, appSize]);
+
+  const approve = async (id: number) => {
+    setActionLoading(true);
     try {
-      await adminApi.updatePsychologist(p.id, { ...p, active: !p.active });
-      setItems(prev => prev.map(x => x.id === p.id ? { ...x, active: !x.active } : x));
-    } catch { /* silent */ }
+      await adminApi.approveApplication(id);
+      loadApplications(); loadCounts();
+      setDetailApp(null); setConfirmApprove(null);
+      toast("Müraciət təsdiqləndi", "success");
+    } catch (e) { toast((e as Error).message, "error"); }
+    finally { setActionLoading(false); }
   };
 
-  const openCreate = () => { setSpecsInput(""); setModal({ item: { ...EMPTY } }); };
-  const openEdit = (p: Psychologist) => {
-    setSpecsInput(Array.isArray(p.specializations) ? p.specializations.join(", ") : "");
-    setModal({
-      item: {
-        name: p.name ?? "", title: p.title ?? "",
-        specializations: p.specializations ?? [],
-        experience: p.experience ?? "", sessionsCount: p.sessionsCount ?? "",
-        rating: p.rating ?? "", photoUrl: p.photoUrl ?? "",
-        bio: p.bio ?? "", phone: p.phone ?? "", email: p.email ?? "",
-        languages: p.languages ?? "", sessionTypes: p.sessionTypes ?? "",
-        university: p.university ?? "",
-        degree: p.degree ?? "", graduationYear: p.graduationYear ?? "",
-        accentColor: p.accentColor ?? "#3A74D6", bgColor: p.bgColor ?? "#F2F6FD",
-        displayOrder: p.displayOrder ?? 0, active: p.active ?? true,
-      },
-      id: p.id,
-      psyType: p.psychologistType ?? "NORMAL",
-    });
-  };
-
-  const save = async () => {
-    if (!modal) return;
-    setSaving(true);
+  const openReject = (id: number, firstName: string) => { setRejectNote(""); setRejectModal({ id, firstName }); };
+  const confirmReject = async () => {
+    if (!rejectModal) return;
+    setActionLoading(true);
     try {
-      const data = { ...modal.item, specializations: specsInput.split(",").map(s => s.trim()).filter(Boolean) };
-      if (modal.id) await adminApi.updatePsychologist(modal.id, data);
-      else await adminApi.createPsychologist(data);
-      setModal(null);
-      load();
-    } catch (e) { alert((e as Error).message); }
-    finally { setSaving(false); }
+      await adminApi.rejectApplication(rejectModal.id, rejectNote || undefined);
+      loadApplications(); loadCounts();
+      setRejectModal(null); setDetailApp(null);
+      toast("Müraciət rədd edildi", "success");
+    } catch (e) { toast((e as Error).message, "error"); }
+    finally { setActionLoading(false); }
   };
 
-  const remove = async (id: number) => {
-    if (!confirm("Silmək istədiyinizə əminsiniz?")) return;
-    try { await adminApi.deletePsychologist(id); load(); }
-    catch (e) { alert((e as Error).message); }
-  };
-
-  const updateOrder = async (p: Psychologist, newOrder: number) => {
-    try {
-      await adminApi.updatePsychologist(p.id, { ...p, displayOrder: newOrder });
-      load();
-    } catch { /* silent */ }
-  };
-
-  const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !modal) return;
-    setUploading(true);
-    try {
-      const url = await adminApi.uploadFile(file);
-      setModal(m => m ? { ...m, item: { ...m.item, photoUrl: url } } : m);
-    } catch { alert("Yükləmə uğursuz oldu"); }
-    finally { setUploading(false); }
-  };
-
-  const openFromUser = () => {
-    setDropOpen(false);
-    setFromUserSearch("");
-    setFromUserOpen(true);
-    setFromUserLoading(true);
-    adminApi.getUsers({ role: "PSYCHOLOGIST" })
-      .then(res => setFromUserList(res.content.filter(u => !u.inPsychologistList)))
-      .catch(() => {})
-      .finally(() => setFromUserLoading(false));
-  };
-
-  const addFromUser = async (u: UserRecord) => {
-    setFromUserAdding(u.id);
-    try {
-      await adminApi.addToPsychologists(u.id);
-      setFromUserList(prev => prev.filter(x => x.id !== u.id));
-      load();
-      try {
-        const profile = await adminApi.getUserPsychologistProfile(u.id);
-        setFromUserOpen(false);
-        openEdit(profile);
-      } catch { setFromUserOpen(false); }
-    } catch (e) { alert((e as Error).message); }
-    finally { setFromUserAdding(null); }
-  };
-
-  // ─────────────────────────────────────────────────────────────────────────
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-      {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#1A2535", margin: 0 }}>{t("staff.adminPsyTitle")}</h1>
-          <p style={{ fontSize: 13, color: "#8AAABF", marginTop: 3, marginBottom: 0 }}>{t("staff.adminPsySub")}</p>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-            <IconDownload size={14} /> CSV ixrac
-          </button>
-          <div ref={dropRef} style={{ position: "relative" }}>
-            <button
-              onClick={() => setDropOpen(o => !o)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", border: "none", cursor: "pointer" }}
-            >
-              <IconPlus size={14} style={{ stroke: "#fff" } as React.CSSProperties} />
-              Psixoloq əlavə et
-              <span style={{ opacity: 0.7, fontSize: 10 }}>▾</span>
-            </button>
-            {dropOpen && (
-              <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 220, background: "#fff", border: "1px solid #E4EDF6", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,.12)", zIndex: 50, overflow: "hidden" }}>
-                <button onClick={() => { setDropOpen(false); openCreate(); }} style={{ width: "100%", padding: "11px 16px", textAlign: "left", border: "none", background: "none", fontSize: 13, fontWeight: 600, color: "#1A2535", cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}>
-                  <IconPlus size={13} /> Yeni psixoloq
-                </button>
-                <div style={{ height: 1, background: "#E4EDF6" }} />
-                <button onClick={openFromUser} style={{ width: "100%", padding: "11px 16px", textAlign: "left", border: "none", background: "none", fontSize: 13, fontWeight: 600, color: "#1A2535", cursor: "pointer" }}>
-                  Mövcud istifadəçidən seç
-                </button>
-              </div>
-            )}
+  const appColumns: Column<PsychologistApplication>[] = [
+    {
+      key: "applicant", header: "Müraciətçi",
+      cell: (a) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <Avatar name={`${a.firstName} ${a.lastName}`} src={a.photoUrl} size="sm" />
+          <div style={{ minWidth: 0 }}>
+            <div className="fx-row__title">{a.firstName} {a.lastName}</div>
+            <div className="fx-subtitle">{a.email}</div>
           </div>
         </div>
+      ),
+    },
+    {
+      key: "education", header: "Universitet / dərəcə", hideOnMobile: true,
+      cell: (a) => (
+        <div style={{ minWidth: 0 }}>
+          <div>{a.university || "—"}</div>
+          <div className="fx-subtitle">{[a.degree, a.graduationYear].filter(Boolean).join(", ") || "—"}</div>
+        </div>
+      ),
+    },
+    { key: "experience", header: "Təcrübə", hideOnMobile: true, cell: (a) => `${a.experienceYears ?? "—"} il` },
+    { key: "createdAt", header: "Tarix", cell: (a) => fmtDate(a.createdAt) },
+    { key: "status", header: "Status", cell: (a) => <AppStatus status={a.status} /> },
+  ];
+
+  if (!mounted) return null;
+
+  const mainTabs: TabItem<MainTab>[] = [
+    { key: "psychologists", label: "Psixoloqlar" },
+    { key: "applications", label: "Müraciətlər", count: counts.pending || undefined },
+    { key: "plans", label: "Planlar" },
+  ];
+
+  return (
+    <div className="page" suppressHydrationWarning>
+      <PageHead title="Psixoloqlar" sub="Müraciətlər, psixoloq profilləri və planların idarəsi." />
+
+      <div style={{ marginBottom: 16 }}>
+        <Tabs items={mainTabs} value={mainTab} onChange={setMainTab} />
       </div>
 
-      {/* ── Stats ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(140px, 100%), 1fr))", gap: 10 }}>
-        <StatCard label="Ümumi" value={stats.total} sub="psixoloq" />
-        <StatCard label="Aktiv" value={stats.active} sub="hal-hazırda aktiv" accent="#166534" />
-        <StatCard label="Passiv" value={stats.inactive} sub="deaktiv edilmiş" accent="#6B7280" />
-        <StatCard label="Ort. Reytinq" value={stats.avgRating} sub="bütün psixoloqlar" accent="#D97706" />
-      </div>
+      {/* ── Müraciətlər ── */}
+      {mainTab === "applications" && (
+        <>
+          <Stats style={{ marginBottom: 16 }}>
+            <Stat value={counts.pending} label="Gözləmədə" />
+            <Stat value={counts.approved} label="Təsdiqlənmiş" />
+            <Stat value={counts.rejected} label="Rədd edilmiş" />
+            <Stat value={counts.pending + counts.approved + counts.rejected} label="Ümumi müraciət" />
+          </Stats>
 
-      {/* ── Filter bar ── */}
-      <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #E4EDF6", padding: "12px 16px", display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ position: "relative", flex: "1 1 200px" }}>
-          <IconSearch size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#8AAABF" } as React.CSSProperties} />
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Ad, ixtisas, email..."
-            style={{ width: "100%", paddingLeft: 32, paddingRight: 12, paddingTop: 7, paddingBottom: 7, borderRadius: 8, border: "1.5px solid #E4EDF6", fontSize: 13, color: "#1A2535", outline: "none", boxSizing: "border-box" }}
+          <Card>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", flexWrap: "wrap", borderBottom: "1px solid var(--hairline)" }}>
+              <div style={{ flex: 1, minWidth: 220, maxWidth: 360 }}>
+                <SearchInput value={appSearch} onChange={(e) => setAppSearch(e.target.value)} placeholder="Ad və ya email üzrə axtar" aria-label="Axtar" autoComplete="off" />
+              </div>
+              <Segmented items={APP_FILTERS} value={appFilter} onChange={setAppFilter} />
+            </div>
+            <CardPad>
+              <DataTable
+                rows={apps}
+                columns={appColumns}
+                rowKey={(a) => a.id}
+                loading={appsLoading}
+                error={appsError}
+                onRetry={loadApplications}
+                onRowClick={(a) => setDetailApp(a)}
+                empty={{
+                  title: "Müraciət tapılmadı",
+                  body: "Seçilmiş statusa və axtarışa uyğun psixoloq müraciəti yoxdur.",
+                  actions: <Button variant="ghost" size="sm" onClick={() => { setAppSearch(""); setAppFilter("all"); }}>Filtrləri təmizlə</Button>,
+                }}
+                actions={(a) => (
+                  <IconButton aria-label="Müraciəti aç" onClick={() => setDetailApp(a)}>
+                    <PanelIcon name="eye" size={16} />
+                  </IconButton>
+                )}
+                pagination={{
+                  page: appPage + 1,
+                  pageCount: Math.max(1, appTotalPages),
+                  onChange: (p) => setAppPage(p - 1),
+                  pageSize: appSize,
+                  onPageSizeChange: (s) => { setAppSize(s); setAppPage(0); },
+                  pageSizeOptions: APP_PAGE_SIZE_OPTIONS,
+                }}
+                totalLabel={appTotalElements > 0
+                  ? `Göstərilir: ${appPage * appSize + 1}–${Math.min((appPage + 1) * appSize, appTotalElements)} / ${appTotalElements}`
+                  : undefined}
+              />
+            </CardPad>
+          </Card>
+        </>
+      )}
+
+      {/* ── Psixoloqlar ── */}
+      {mainTab === "psychologists" && <PsychologistsTab onPreview={setPreview} />}
+
+      {/* ── Planlar ── */}
+      {mainTab === "plans" && <PlansTab />}
+
+      {/* ── Müraciət review modalı ── */}
+      <Modal
+        open={!!detailApp}
+        onClose={() => setDetailApp(null)}
+        wide
+        title={detailApp ? `Müraciət — ${detailApp.firstName} ${detailApp.lastName}` : ""}
+        actions={detailApp && detailApp.status === "PENDING" ? (
+          <>
+            <Button variant="dangerGhost" disabled={actionLoading} onClick={() => openReject(detailApp.id, detailApp.firstName)}>Rədd et</Button>
+            <Button variant="primary" disabled={actionLoading} onClick={() => setConfirmApprove(detailApp)}>Təsdiqlə</Button>
+          </>
+        ) : (
+          <Button variant="ghost" onClick={() => setDetailApp(null)}>Bağla</Button>
+        )}
+      >
+        {detailApp && <ApplicationReview app={detailApp} onPreview={setPreview} />}
+      </Modal>
+
+      {/* ── Fayl preview ── */}
+      <FilePreviewModal file={preview} onClose={() => setPreview(null)} />
+
+      {/* ── Təsdiq modalı ── */}
+      <Modal
+        open={!!confirmApprove}
+        onClose={() => setConfirmApprove(null)}
+        title="Müraciəti təsdiqlə"
+        text={confirmApprove ? `${confirmApprove.firstName} ${confirmApprove.lastName} psixoloq kimi qeydə alınacaq.` : ""}
+        icon={<PanelIcon name="check" size={20} />}
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmApprove(null)}>Ləğv et</Button>
+            <Button variant="primary" disabled={actionLoading} onClick={() => confirmApprove && approve(confirmApprove.id)}>
+              {actionLoading ? "Təsdiqlənir…" : "Təsdiqlə"}
+            </Button>
+          </>
+        }
+      />
+
+      {/* ── Rədd modalı ── */}
+      <Modal
+        open={!!rejectModal}
+        onClose={() => setRejectModal(null)}
+        title="Müraciəti rədd et"
+        text={rejectModal ? `${rejectModal.firstName} adlı müraciətçiyə rədd bildirişi göndəriləcək.` : ""}
+        icon={<PanelIcon name="x" size={20} />}
+        iconTone="rose"
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setRejectModal(null)}>Ləğv et</Button>
+            <Button variant="danger" disabled={actionLoading} onClick={confirmReject}>
+              {actionLoading ? "Göndərilir…" : "Rədd et"}
+            </Button>
+          </>
+        }
+      >
+        <Field label="Rədd səbəbi" help="İxtiyari — müraciətçiyə göndərilir.">
+          <Textarea rows={4} placeholder="Sənədlər natamam, ixtisas uyğun gəlmir…" value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} />
+        </Field>
+      </Modal>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Psixoloqlar tabı
+// ════════════════════════════════════════════════════════════════
+type PsyTypeFilter = "all" | "FANUS" | "NORMAL";
+type PsyStatusFilter = "all" | "active" | "inactive" | "suspended";
+type PsyDrawerTab = "overview" | "files" | "pricing" | "plan" | "actions";
+
+// Plan ilə idarə olunan modullar (backend ALLOWED_MODULES ilə eyni).
+const PLAN_MODULES: { key: string; label: string }[] = [
+  { key: "packages", label: "Paketlər & Qiymətlər" },
+  { key: "tests", label: "Testlər" },
+  { key: "homework", label: "Tapşırıqlar" },
+  { key: "articles", label: "Məqalələr" },
+  { key: "community", label: "İcma" },
+  { key: "resources", label: "Resurslar" },
+  { key: "reviews", label: "Rəylər" },
+];
+const PLAN_MODULE_LABELS: Record<string, string> = Object.fromEntries(PLAN_MODULES.map((m) => [m.key, m.label]));
+
+const PSY_TYPE_FILTERS: { key: PsyTypeFilter; label: string }[] = [
+  { key: "all", label: "Hamısı" }, { key: "FANUS", label: "Fanus" }, { key: "NORMAL", label: "Adi" },
+];
+const PSY_STATUS_FILTERS: { key: PsyStatusFilter; label: string }[] = [
+  { key: "all", label: "Hamısı" }, { key: "active", label: "Aktiv" },
+  { key: "inactive", label: "Deaktiv" }, { key: "suspended", label: "Dayandırılmış" },
+];
+const PSY_PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+function PsychologistsTab({ onPreview }: { onPreview: (f: { url: string; label: string }) => void }) {
+  const [data, setData] = useState<PagedPsychologistsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const dq = useDebounce(q, 300);
+  const [type, setType] = useState<PsyTypeFilter>("all");
+  const [status, setStatus] = useState<PsyStatusFilter>("all");
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(20);
+  const [sort, setSort] = useState("displayOrder");
+  const [dir, setDir] = useState<"asc" | "desc">("asc");
+  const [sel, setSel] = useState<AdminPsychologistRow | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true); setError(null);
+    adminApi.getPsychologistsPaged({
+      q: dq || undefined, type: type === "all" ? undefined : type,
+      status: status === "all" ? undefined : status, page, size, sort, dir,
+    }).then((res) => { setData(res); if (res.totalPages > 0 && page >= res.totalPages) setPage(0); })
+      .catch((e) => setError((e as Error).message || "Psixoloqlar yüklənmədi"))
+      .finally(() => setLoading(false));
+  }, [dq, type, status, page, size, sort, dir]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setPage(0); }, [dq, type, status]);
+
+  const rc = data?.counts ?? {};
+  const columns: Column<AdminPsychologistRow>[] = [
+    {
+      key: "name", header: "Psixoloq", sortable: true,
+      cell: (p) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <Avatar name={p.name} src={p.photoUrl} size="sm" />
+          <div style={{ minWidth: 0 }}>
+            <div className="fx-row__title">{p.name}</div>
+            <div className="fx-subtitle">{p.title}</div>
+          </div>
+        </div>
+      ),
+    },
+    { key: "psychologistType", header: "Tip", cell: (p) => <Status tone={p.psychologistType === "FANUS" ? "positive" : "muted"}>{p.psychologistType === "FANUS" ? "Fanus" : "Adi"}</Status> },
+    { key: "specializations", header: "İxtisas", hideOnMobile: true, cell: (p) => p.specializations.slice(0, 2).join(", ") || <span className="fx-muted">—</span> },
+    { key: "ratingCount", header: "Reytinq", sortable: true, hideOnMobile: true, cell: (p) => `${p.rating} (${p.ratingCount})` },
+    { key: "status", header: "Status", cell: (p) => p.suspended ? <Status tone="risk">Dayandırılıb</Status> : <Status tone={p.active ? "positive" : "muted"}>{p.active ? "Aktiv" : "Deaktiv"}</Status> },
+    { key: "plan", header: "Plan", hideOnMobile: true, cell: (p) => p.planName ? <Status tone="neutral">{p.planName}</Status> : <span className="fx-muted">—</span> },
+    { key: "individualPrice", header: "Qiymət", hideOnMobile: true, cell: (p) => p.individualPrice != null ? `${p.individualPrice} ${p.currency ?? "AZN"}` : <span className="fx-muted">—</span> },
+  ];
+
+  return (
+    <>
+      <Stats style={{ marginBottom: 16 }}>
+        <Stat value={rc.total ?? "—"} label="Ümumi" />
+        <Stat value={rc.active ?? "—"} label="Aktiv" />
+        <Stat value={rc.suspended ?? "—"} label="Dayandırılmış" />
+        <Stat value={rc.FANUS ?? "—"} label="Fanus" />
+        <Stat value={rc.NORMAL ?? "—"} label="Adi" />
+      </Stats>
+
+      <Card>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", flexWrap: "wrap", borderBottom: "1px solid var(--hairline)" }}>
+          <div style={{ flex: 1, minWidth: 220, maxWidth: 340 }}>
+            <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ad və ya email üzrə axtar" aria-label="Axtar" autoComplete="off" />
+          </div>
+          <Segmented items={PSY_TYPE_FILTERS} value={type} onChange={setType} />
+          <Segmented items={PSY_STATUS_FILTERS} value={status} onChange={setStatus} />
+        </div>
+        <CardPad>
+          <DataTable
+            rows={data?.content ?? []}
+            columns={columns}
+            rowKey={(p) => p.id}
+            loading={loading}
+            error={error}
+            onRetry={load}
+            onRowClick={(p) => setSel(p)}
+            empty={{ title: "Psixoloq tapılmadı", body: "Seçilmiş filtrlərə uyğun psixoloq yoxdur." }}
+            sort={{ key: sort, dir }}
+            onSortChange={(s) => { setSort(s.key); setDir(s.dir); setPage(0); }}
+            actions={(p) => <IconButton aria-label="Kartı aç" onClick={() => setSel(p)}><PanelIcon name="chevron" size={16} /></IconButton>}
+            pagination={{
+              page: page + 1, pageCount: Math.max(1, data?.totalPages ?? 1),
+              onChange: (pp) => setPage(pp - 1), pageSize: size,
+              onPageSizeChange: (s) => { setSize(s); setPage(0); }, pageSizeOptions: PSY_PAGE_SIZE_OPTIONS,
+            }}
+            totalLabel={data && data.totalElements > 0
+              ? `Göstərilir: ${data.page * data.size + 1}–${Math.min((data.page + 1) * data.size, data.totalElements)} / ${data.totalElements}`
+              : undefined}
           />
-        </div>
-        <div style={{ display: "flex", border: "1.5px solid #E4EDF6", borderRadius: 8, overflow: "hidden" }}>
-          {(["all", "active", "inactive"] as const).map((f, i) => (
-            <button key={f} onClick={() => setFilter(f)} style={{
-              padding: "7px 14px", border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer",
-              background: filter === f ? "#1A2535" : "#fff",
-              color: filter === f ? "#fff" : "#52718F",
-              borderLeft: i > 0 ? "1.5px solid #E4EDF6" : "none",
-            }}>
-              {f === "all" ? `Hamısı (${stats.total})` : f === "active" ? `Aktiv (${stats.active})` : `Passiv (${stats.inactive})`}
-            </button>
-          ))}
-        </div>
-      </div>
+        </CardPad>
+      </Card>
 
-      {/* ── Table ── */}
-      {loading ? (
-        <div style={{ textAlign: "center", color: "#8AAABF", padding: "80px 0", background: "#fff", borderRadius: 16, border: "1px solid #E4EDF6" }}>Yüklənir...</div>
-      ) : filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "80px 0", background: "#fff", borderRadius: 16, border: "1px solid #E4EDF6", color: "#8AAABF" }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 10 }}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <p style={{ fontSize: 15, fontWeight: 700, color: "#1A2535", margin: "0 0 6px" }}>Psixoloq tapılmadı</p>
-          <p style={{ fontSize: 13, margin: 0 }}>Axtarış parametrlərini dəyişin</p>
-        </div>
-      ) : (
-        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E4EDF6", overflow: "hidden" }}>
-          <div style={{ overflowX: "auto" }}>
-
-          {/* Head */}
-          <div style={{ display: "grid", gridTemplateColumns: "46px minmax(170px,1fr) 170px 130px 64px 80px 100px 280px", minWidth: 1040, alignItems: "center", padding: "10px 16px", borderBottom: "1.5px solid #E4EDF6", background: "#F8FAFC" }}>
-            {["Sıra", "Psixoloq", "İxtisas", "Vəzifə", "Sessiya", "Reytinq", "Status", ""].map((h, i) => (
-              <div key={i} style={{ fontSize: 11, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: i >= 4 && i <= 5 ? "center" : "left" }}>{h}</div>
-            ))}
-          </div>
-
-          {/* Rows */}
-          {filtered.map((p, idx) => (
-            <div
-              key={p.id}
-              style={{
-                display: "grid", gridTemplateColumns: "46px minmax(170px,1fr) 170px 130px 64px 80px 100px 280px",
-                minWidth: 1040, alignItems: "center", padding: "11px 16px",
-                borderBottom: idx < filtered.length - 1 ? "1px solid #F1F5F9" : "none",
-                transition: "background 0.1s",
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = "#FAFBFF")}
-              onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
-            >
-              {/* Order */}
-              <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <button onClick={() => updateOrder(p, (p.displayOrder ?? 0) - 1)} style={{ width: 18, height: 18, border: "none", background: "none", cursor: "pointer", color: "#C0D2E6", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 4, padding: 0 }}>
-                  <IconChevron size={10} style={{ transform: "rotate(-90deg)" }} />
-                </button>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#52718F", minWidth: 14, textAlign: "center" }}>{p.displayOrder}</span>
-                <button onClick={() => updateOrder(p, (p.displayOrder ?? 0) + 1)} style={{ width: 18, height: 18, border: "none", background: "none", cursor: "pointer", color: "#C0D2E6", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 4, padding: 0 }}>
-                  <IconChevron size={10} style={{ transform: "rotate(90deg)" }} />
-                </button>
-              </div>
-
-              {/* Avatar + name */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                {p.photoUrl
-                  ? <img src={p.photoUrl} alt={p.name} style={{ width: 38, height: 38, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
-                  : <div style={{ width: 38, height: 38, borderRadius: 10, background: avatarColor(p.name), color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{initials(p.name)}</div>}
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "#1A2535", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                  {p.email && <div style={{ fontSize: 11, color: "#8AAABF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.email}</div>}
-                </div>
-              </div>
-
-              {/* Specializations */}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                {p.specializations.slice(0, 2).map(s => <span key={s} className="pill ox" style={{ fontSize: 10, padding: "2px 7px" }}>{s}</span>)}
-                {p.specializations.length > 2 && <span className="pill muted" style={{ fontSize: 10, padding: "2px 7px" }}>+{p.specializations.length - 2}</span>}
-              </div>
-
-              {/* Title */}
-              <div style={{ fontSize: 12, color: "#52718F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title || "—"}</div>
-
-              {/* Sessions */}
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1A2535", textAlign: "center" }}>{p.sessionsCount || "—"}</div>
-
-              {/* Rating */}
-              <div style={{ textAlign: "center" }}><RatingStars value={p.rating} /></div>
-
-              {/* Active toggle */}
-              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <ActiveToggle active={p.active} onChange={() => toggleActive(p)} />
-                <span style={{ fontSize: 11, fontWeight: 600, color: p.active ? "#166534" : "#6B7280" }}>
-                  {p.active ? "Aktiv" : "Passiv"}
-                </span>
-              </div>
-
-              {/* Actions */}
-              <div style={{ display: "flex", gap: 5, justifyContent: "flex-end" }}>
-                <a href={`/psychologists/${p.id}`} target="_blank" rel="noreferrer" style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#F8FAFC", color: "#52718F", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                  Profil
-                </a>
-                <a href={`/admin/psychologists/${p.id}/availability`} style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#FFF7E6", color: "#92400E", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none" }}>
-                  Vaxtlar
-                </a>
-                <button onClick={() => openEdit(p)} style={{ padding: "5px 12px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#EEF5FF", color: "#1051B7", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Redaktə</button>
-                <button onClick={() => remove(p.id)} style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #E4EDF6", background: "#FFF1F1", color: "#DC2626", fontSize: 12, cursor: "pointer" }}>✕</button>
-              </div>
-            </div>
-          ))}
-          </div>{/* end overflowX:auto */}
-
-          <div style={{ padding: "10px 16px", borderTop: "1.5px solid #F1F5F9", background: "#F8FAFC" }}>
-            <span style={{ fontSize: 12, color: "#8AAABF" }}>{filtered.length} / {items.length} psixoloq göstərilir</span>
-          </div>
-        </div>
-      )}
-
-      {/* ── Edit/Create modal ── */}
-      {modal && (
-        <div className="admin-shell-modal" onClick={e => { if (e.target === e.currentTarget) setModal(null); }}>
-          <div className="modal" style={{ maxWidth: 620 }}>
-            <div className="modal-head">
-              <div className="modal-title">{modal.id ? "Psixoloqu redaktə et" : "Yeni psixoloq əlavə et"}</div>
-              <button className="btn ghost icon-only sm" onClick={() => setModal(null)}>✕</button>
-            </div>
-            <div className="modal-body" style={{ maxHeight: "65vh", overflowY: "auto" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <FormField label="Ad Soyad">
-                  <input className="input" placeholder="Leyla Hüseynova" value={modal.item.name}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, name: e.target.value } })} />
-                </FormField>
-                <FormField label="Vəzifə / titul">
-                  <input className="input" placeholder="Klinik Psixoloq" value={modal.item.title}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, title: e.target.value } })} />
-                </FormField>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 14 }}>
-                <FormField label="Təcrübə">
-                  <input className="input" placeholder="8 il" value={modal.item.experience}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, experience: e.target.value } })} />
-                </FormField>
-                <FormField label="Sessiya sayı">
-                  <input className="input" placeholder="400+" value={modal.item.sessionsCount}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, sessionsCount: e.target.value } })} />
-                </FormField>
-                <FormField label="Reytinq">
-                  <input className="input" placeholder="4.9" value={modal.item.rating}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, rating: e.target.value } })} />
-                </FormField>
-              </div>
-              <div style={{ marginTop: 14 }}>
-                <FormField label="İxtisaslar (vergüllə ayırın)">
-                  <input className="input" placeholder="Anksiyete, depressiya, münasibətlər" value={specsInput}
-                    onChange={e => setSpecsInput(e.target.value)} />
-                </FormField>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
-                <FormField label="Telefon">
-                  <input className="input" placeholder="+994 50 000 00 00" value={modal.item.phone ?? ""}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, phone: e.target.value } })} />
-                </FormField>
-                <FormField label="Email">
-                  <input className="input" placeholder="psixoloq@fanus.az" value={modal.item.email ?? ""}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, email: e.target.value } })} />
-                </FormField>
-              </div>
-              <div style={{ marginTop: 14 }}>
-                <FormField label="Bio">
-                  <textarea className="input" rows={3} style={{ resize: "vertical", width: "100%", boxSizing: "border-box" }}
-                    placeholder="Psixoloq haqqında qısa məlumat..." value={modal.item.bio ?? ""}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, bio: e.target.value } })} />
-                </FormField>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
-                <FormField label="Dillər (vergüllə)">
-                  <input className="input" placeholder="Azərbaycan, Rus, İngilis" value={modal.item.languages ?? ""}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, languages: e.target.value } })} />
-                </FormField>
-                <FormField label="Sessiya növləri (vergüllə)">
-                  <input className="input" placeholder="Fərdi, Cütlük, Uşaq" value={modal.item.sessionTypes ?? ""}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, sessionTypes: e.target.value } })} />
-                </FormField>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 14, marginTop: 14 }}>
-                <FormField label="Sıra nömrəsi">
-                  <input type="number" className="input" value={modal.item.displayOrder}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, displayOrder: Number(e.target.value) } })} />
-                </FormField>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 14 }}>
-                <FormField label="Universitet">
-                  <input className="input" placeholder="BDU" value={modal.item.university ?? ""}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, university: e.target.value } })} />
-                </FormField>
-                <FormField label="Dərəcə">
-                  <input className="input" placeholder="Magistr" value={modal.item.degree ?? ""}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, degree: e.target.value } })} />
-                </FormField>
-                <FormField label="Məzun ili">
-                  <input className="input" placeholder="2018" value={modal.item.graduationYear ?? ""}
-                    onChange={e => setModal(m => m && { ...m, item: { ...m.item, graduationYear: e.target.value } })} />
-                </FormField>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
-                <FormField label="Accent rəngi">
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <input type="color" value={modal.item.accentColor} onChange={e => setModal(m => m && { ...m, item: { ...m.item, accentColor: e.target.value } })} style={{ width: 36, height: 36, border: "none", borderRadius: 6, cursor: "pointer", padding: 2 }} />
-                    <input className="input" value={modal.item.accentColor} onChange={e => setModal(m => m && { ...m, item: { ...m.item, accentColor: e.target.value } })} style={{ fontFamily: "monospace", flex: 1 }} />
-                  </div>
-                </FormField>
-                <FormField label="Arxa plan rəngi">
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <input type="color" value={modal.item.bgColor} onChange={e => setModal(m => m && { ...m, item: { ...m.item, bgColor: e.target.value } })} style={{ width: 36, height: 36, border: "none", borderRadius: 6, cursor: "pointer", padding: 2 }} />
-                    <input className="input" value={modal.item.bgColor} onChange={e => setModal(m => m && { ...m, item: { ...m.item, bgColor: e.target.value } })} style={{ fontFamily: "monospace", flex: 1 }} />
-                  </div>
-                </FormField>
-              </div>
-              <div style={{ marginTop: 14 }}>
-                <FormField label="Profil şəkli">
-                  <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                    {modal.item.photoUrl && <img src={modal.item.photoUrl} alt="" style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover" }} />}
-                    <div>
-                      <input type="file" accept="image/*" onChange={upload} style={{ fontSize: 12 }} />
-                      {uploading && <div style={{ fontSize: 11, color: "#8AAABF", marginTop: 4 }}>Yüklənir…</div>}
-                    </div>
-                  </div>
-                </FormField>
-              </div>
-              <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#1A2535" }}>Aktiv</span>
-                <ActiveToggle active={modal.item.active} onChange={() => setModal(m => m && { ...m, item: { ...m.item, active: !m.item.active } })} />
-                <span style={{ fontSize: 12, color: modal.item.active ? "#166534" : "#6B7280" }}>{modal.item.active ? "Aktiv" : "Passiv"}</span>
-              </div>
-
-              {modal.id != null && (
-                <FanusPricingSection
-                  psyId={modal.id}
-                  initialType={modal.psyType ?? "NORMAL"}
-                />
-              )}
-            </div>
-            <div className="modal-foot">
-              <button className="btn" onClick={() => setModal(null)}>Ləğv et</button>
-              <button className="btn primary" onClick={save} disabled={saving}>{saving ? "Saxlanır…" : "Saxla"}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── From-user modal ── */}
-      {fromUserOpen && (
-        <div className="admin-shell-modal" onClick={e => { if (e.target === e.currentTarget) setFromUserOpen(false); }}>
-          <div className="modal" style={{ maxWidth: 480 }}>
-            <div className="modal-head">
-              <div className="modal-title">Mövcud istifadəçidən psixoloq seç</div>
-              <button className="btn ghost icon-only sm" onClick={() => setFromUserOpen(false)}>✕</button>
-            </div>
-            <div className="modal-body">
-              <input className="input" placeholder="Ad, email axtar..." value={fromUserSearch}
-                onChange={e => setFromUserSearch(e.target.value)} style={{ marginBottom: 12, width: "100%", boxSizing: "border-box" }} />
-              {fromUserLoading ? (
-                <div style={{ textAlign: "center", padding: 24, color: "#8AAABF", fontSize: 13 }}>Yüklənir…</div>
-              ) : fromUserList.length === 0 ? (
-                <div style={{ textAlign: "center", padding: 24, color: "#8AAABF", fontSize: 13 }}>Əlavə edilməmiş psixoloq yoxdur</div>
-              ) : (
-                <div style={{ maxHeight: 320, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
-                  {fromUserList
-                    .filter(u => {
-                      const q = fromUserSearch.trim().toLowerCase();
-                      return !q || `${u.email} ${u.firstName ?? ""} ${u.lastName ?? ""}`.toLowerCase().includes(q);
-                    })
-                    .map(u => {
-                      const name = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email;
-                      const avBg = AV_COLORS[Array.from(u.email).reduce((s, c) => s + c.charCodeAt(0), 0) % AV_COLORS.length];
-                      return (
-                        <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 8, border: "1px solid #E4EDF6" }}>
-                          <div style={{ width: 36, height: 36, borderRadius: 8, background: avBg, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
-                            {name[0]?.toUpperCase() ?? "?"}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
-                            <div style={{ fontSize: 11, color: "#8AAABF" }}>{u.email}</div>
-                          </div>
-                          <button className="btn sm primary" disabled={fromUserAdding === u.id} onClick={() => addFromUser(u)}>
-                            {fromUserAdding === u.id ? "…" : "Əlavə et"}
-                          </button>
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-            <div className="modal-foot">
-              <button className="btn" onClick={() => setFromUserOpen(false)}>Bağla</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <Drawer open={!!sel} onClose={() => setSel(null)} title={sel?.name ?? ""}>
+        {sel && <PsychologistDrawer key={sel.id} row={sel} onPreview={onPreview} onChanged={load} />}
+      </Drawer>
+    </>
   );
 }
 
-function FormField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div style={{ fontSize: 11.5, fontWeight: 600, color: "#52718F", marginBottom: 5 }}>{label}</div>
-      {children}
-    </div>
-  );
-}
-
-// ─── Modul C — Fanus tip + qiymət/paket idarəsi (admin) ─────────────────────────
-
-type PkgDraft = { name: string; sessionCount: string; packagePrice: string; active: boolean };
-const EMPTY_PKG: PkgDraft = { name: "", sessionCount: "", packagePrice: "", active: true };
-
-function pkgDraftFrom(p: PackageDto): PkgDraft {
-  return { name: p.name, sessionCount: String(p.sessionCount), packagePrice: String(p.packagePrice), active: p.active };
-}
-function pkgReqFrom(d: PkgDraft): PackageReq {
-  return {
-    name: d.name.trim(),
-    sessionCount: Number(d.sessionCount),
-    packagePrice: Number(d.packagePrice),
-    active: d.active,
-  };
-}
-
-function FanusPricingSection({ psyId, initialType }: { psyId: number; initialType: "FANUS" | "NORMAL" }) {
-  const { t } = useT();
-  const [psyType, setPsyType] = useState<"FANUS" | "NORMAL">(initialType);
-  const [typeSaving, setTypeSaving] = useState(false);
-
-  const [individualPrice, setIndividualPrice] = useState("");
-  const [priceSaving, setPriceSaving] = useState(false);
-  const [priceSaved, setPriceSaved] = useState(false);
-
-  const [packages, setPackages] = useState<PackageDto[]>([]);
-  const [history, setHistory] = useState<PriceChangeLogItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [adding, setAdding] = useState(false);
-  const [newPkg, setNewPkg] = useState<PkgDraft>({ ...EMPTY_PKG });
-  const [editId, setEditId] = useState<number | null>(null);
-  const [editPkg, setEditPkg] = useState<PkgDraft>({ ...EMPTY_PKG });
-  const [busyPkg, setBusyPkg] = useState(false);
+function PsychologistDrawer({ row, onPreview, onChanged }: {
+  row: AdminPsychologistRow;
+  onPreview: (f: { url: string; label: string }) => void;
+  onChanged: () => void;
+}) {
+  const [tab, setTab] = useState<PsyDrawerTab>("overview");
+  const [profile, setProfile] = useState<Psychologist | null>(null);
+  const [app, setApp] = useState<PsychologistApplication | null>(null);
+  const [loadingP, setLoadingP] = useState(true);
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    Promise.all([
-      adminApi.getPsyPackages(psyId).catch(() => [] as PackageDto[]),
-      adminApi.getPsyPriceHistory(psyId).catch(() => [] as PriceChangeLogItem[]),
-    ])
-      .then(([pkgs, hist]) => {
+    setLoadingP(true);
+    if (row.userId != null) {
+      Promise.allSettled([
+        adminApi.getUserPsychologistProfile(row.userId),
+        adminApi.getUserApplication(row.userId),
+      ]).then(([p, a]) => {
         if (!alive) return;
-        setPackages(pkgs);
-        setHistory(hist);
-      })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
-  }, [psyId]);
-
-  const reloadHistory = () => {
-    adminApi.getPsyPriceHistory(psyId).then(setHistory).catch(() => {});
-  };
-
-  const changeType = async (next: "FANUS" | "NORMAL") => {
-    const prev = psyType;
-    setPsyType(next);
-    setTypeSaving(true);
-    try {
-      await adminApi.setPsyType(psyId, next);
-    } catch (e) {
-      setPsyType(prev);
-      alert((e as Error).message);
-    } finally {
-      setTypeSaving(false);
+        if (p.status === "fulfilled") setProfile(p.value);
+        if (a.status === "fulfilled") setApp(a.value);
+      }).finally(() => { if (alive) setLoadingP(false); });
+    } else {
+      setLoadingP(false);
     }
-  };
-
-  const savePrice = async () => {
-    const val = Number(individualPrice);
-    if (!individualPrice.trim() || Number.isNaN(val)) return;
-    setPriceSaving(true);
-    setPriceSaved(false);
-    try {
-      await adminApi.setPsyPricing(psyId, val);
-      setPriceSaved(true);
-      reloadHistory();
-    } catch (e) { alert((e as Error).message); }
-    finally { setPriceSaving(false); }
-  };
-
-  const addPackage = async () => {
-    if (!newPkg.name.trim() || !newPkg.sessionCount.trim() || !newPkg.packagePrice.trim()) return;
-    setBusyPkg(true);
-    try {
-      const created = await adminApi.createPsyPackage(psyId, pkgReqFrom(newPkg));
-      setPackages(prev => [...prev, created]);
-      setNewPkg({ ...EMPTY_PKG });
-      setAdding(false);
-      reloadHistory();
-    } catch (e) { alert((e as Error).message); }
-    finally { setBusyPkg(false); }
-  };
-
-  const startEdit = (p: PackageDto) => { setEditId(p.id); setEditPkg(pkgDraftFrom(p)); };
-
-  const saveEdit = async () => {
-    if (editId == null) return;
-    if (!editPkg.name.trim() || !editPkg.sessionCount.trim() || !editPkg.packagePrice.trim()) return;
-    setBusyPkg(true);
-    try {
-      const updated = await adminApi.updatePsyPackage(psyId, editId, pkgReqFrom(editPkg));
-      setPackages(prev => prev.map(x => x.id === editId ? updated : x));
-      setEditId(null);
-      reloadHistory();
-    } catch (e) { alert((e as Error).message); }
-    finally { setBusyPkg(false); }
-  };
-
-  const deletePackage = async (id: number) => {
-    if (!confirm(t("pricing.deleteConfirm"))) return;
-    setBusyPkg(true);
-    try {
-      await adminApi.deletePsyPackage(psyId, id);
-      setPackages(prev => prev.filter(x => x.id !== id));
-    } catch (e) { alert((e as Error).message); }
-    finally { setBusyPkg(false); }
-  };
-
-  const labelStyle: React.CSSProperties = { fontSize: 11.5, fontWeight: 600, color: "#52718F", marginBottom: 5 };
+    return () => { alive = false; };
+  }, [row.userId]);
 
   return (
-    <div style={{ marginTop: 20, paddingTop: 18, borderTop: "1.5px solid #E4EDF6" }}>
-      <div style={{ fontSize: 13, fontWeight: 800, color: "#1A2535", marginBottom: 14 }}>{t("pricing.sectionTitle")}</div>
-
-      {/* Psixoloq tipi */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={labelStyle}>{t("pricing.fanusType")}</div>
-        <select
-          className="select"
-          value={psyType}
-          disabled={typeSaving}
-          onChange={e => changeType(e.target.value as "FANUS" | "NORMAL")}
-          style={{ width: "100%", boxSizing: "border-box" }}
-        >
-          <option value="FANUS">{t("pricing.fanus")}</option>
-          <option value="NORMAL">{t("pricing.normal")}</option>
-        </select>
-      </div>
-
-      {/* Tək seans qiyməti */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={labelStyle}>{t("pricing.individualPrice")}</div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            className="input"
-            type="number"
-            min={0}
-            placeholder="120"
-            value={individualPrice}
-            onChange={e => { setIndividualPrice(e.target.value); setPriceSaved(false); }}
-            style={{ flex: 1, boxSizing: "border-box" }}
-          />
-          <button className="btn primary sm" onClick={savePrice} disabled={priceSaving || !individualPrice.trim()}>
-            {priceSaving ? "…" : t("pricing.save")}
-          </button>
-          {priceSaved && <span style={{ fontSize: 12, fontWeight: 600, color: "#166534" }}>{t("pricing.saved")}</span>}
+    <>
+      <DrawerSection>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Avatar name={row.name} src={row.photoUrl} size="lg" />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Status tone={row.psychologistType === "FANUS" ? "positive" : "muted"}>{row.psychologistType === "FANUS" ? "Fanus" : "Adi"}</Status>
+              {row.suspended ? <Status tone="risk">Dayandırılıb</Status> : <Status tone={row.active ? "positive" : "muted"}>{row.active ? "Aktiv" : "Deaktiv"}</Status>}
+            </div>
+            <div className="fx-subtitle" style={{ marginTop: 4 }}>{row.title}</div>
+            {row.email && <div className="fx-subtitle">{row.email}</div>}
+          </div>
         </div>
+      </DrawerSection>
+
+      <div style={{ padding: "0 24px" }}>
+        <Tabs
+          items={[
+            { key: "overview", label: "Baxış" },
+            { key: "files", label: "Fayllar" },
+            { key: "pricing", label: "Tip & Qiymət" },
+            { key: "plan", label: "Plan" },
+            { key: "actions", label: "Əməliyyatlar" },
+          ]}
+          value={tab}
+          onChange={(k) => setTab(k as PsyDrawerTab)}
+        />
       </div>
 
-      {/* Paketlər */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: "#52718F", textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("pricing.packages")}</div>
-          {!adding && (
-            <button className="btn sm" onClick={() => { setNewPkg({ ...EMPTY_PKG }); setAdding(true); }} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <IconPlus size={12} /> {t("pricing.addPackage")}
-            </button>
+      {tab === "overview" && <PsyOverview row={row} profile={profile} loading={loadingP} />}
+      {tab === "files" && <PsyFiles app={app} loading={loadingP} hasUser={row.userId != null} onPreview={onPreview} />}
+      {tab === "pricing" && <PsyPricing row={row} onChanged={onChanged} />}
+      {tab === "plan" && <PsyPlanTab row={row} onChanged={onChanged} />}
+      {tab === "actions" && <PsyActions row={row} onChanged={onChanged} />}
+    </>
+  );
+}
+
+function PsyOverview({ row, profile, loading }: { row: AdminPsychologistRow; profile: Psychologist | null; loading: boolean }) {
+  return (
+    <DrawerSection>
+      {loading && <div className="fx-subtitle" style={{ textAlign: "center", padding: 12 }}>Profil yüklənir…</div>}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <InfoRow label="Ad" value={row.name} />
+        <InfoRow label="Vəzifə" value={row.title || "—"} />
+        <InfoRow label="Email" value={row.email || "—"} />
+        <InfoRow label="Telefon" value={row.phone || "—"} />
+        <InfoRow label="İxtisaslaşma" value={row.specializations.join(", ") || "—"} />
+        <InfoRow label="Reytinq" value={`${row.rating} (${row.ratingCount})`} />
+        {profile && (
+          <>
+            <InfoRow label="Təcrübə" value={profile.experience || "—"} />
+            <InfoRow label="Dillər" value={profile.languages || "—"} />
+            <InfoRow label="Seans növləri" value={profile.sessionTypes || "—"} />
+            <InfoRow label="Universitet" value={profile.university || "—"} />
+            <InfoRow label="Dərəcə" value={[profile.degree, profile.graduationYear].filter(Boolean).join(", ") || "—"} />
+            <InfoRow label="Sıra" value={String(profile.displayOrder)} />
+          </>
+        )}
+      </div>
+      {profile?.bio && (
+        <div style={{ marginTop: 14 }}>
+          <div className="fx-label">Bio</div>
+          <p style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.6 }}>{profile.bio}</p>
+        </div>
+      )}
+    </DrawerSection>
+  );
+}
+
+function PsyFiles({ app, loading, hasUser, onPreview }: {
+  app: PsychologistApplication | null; loading: boolean; hasUser: boolean;
+  onPreview: (f: { url: string; label: string }) => void;
+}) {
+  if (loading) return <DrawerSection><div className="fx-subtitle" style={{ textAlign: "center", padding: 12 }}>Yüklənir…</div></DrawerSection>;
+  if (!hasUser) return <DrawerSection><EmptyBlock title="Fayl yoxdur" body="Bu psixoloq istifadəçi hesabına bağlı deyil — sənəd tapılmadı." /></DrawerSection>;
+  if (!app) return <DrawerSection><EmptyBlock title="Müraciət tapılmadı" body="Bu psixoloq üçün qeydiyyat müraciəti (fayllar) tapılmadı." /></DrawerSection>;
+  const certs = app.certificateFileUrls?.split(",").map((s) => s.trim()).filter(Boolean) ?? [];
+  if (!app.diplomaFileUrl && certs.length === 0) return <DrawerSection><div className="fx-subtitle">Sənəd yüklənməyib.</div></DrawerSection>;
+  return (
+    <DrawerSection>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {app.diplomaFileUrl && <FileCard url={app.diplomaFileUrl} label="Diplom faylı" onPreview={onPreview} />}
+        {certs.map((url, i) => <FileCard key={i} url={url} label={`Sertifikat skanı ${i + 1}`} onPreview={onPreview} />)}
+      </div>
+    </DrawerSection>
+  );
+}
+
+function PsyPricing({ row, onChanged }: { row: AdminPsychologistRow; onChanged: () => void }) {
+  const [type, setType] = useState<"FANUS" | "NORMAL">(row.psychologistType ?? "NORMAL");
+  const [price, setPrice] = useState(row.individualPrice != null ? String(row.individualPrice) : "");
+  const [packages, setPackages] = useState<PackageDto[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [editingPkg, setEditingPkg] = useState<PackageDto | "new" | null>(null);
+  const [delPkg, setDelPkg] = useState<PackageDto | null>(null);
+  const [delBusy, setDelBusy] = useState(false);
+
+  const reloadPackages = useCallback(() => {
+    adminApi.getPsyPackages(row.id).then(setPackages).catch(() => setPackages([]));
+  }, [row.id]);
+  useEffect(() => { reloadPackages(); }, [reloadPackages]);
+
+  const saveType = async (t: "FANUS" | "NORMAL") => {
+    setBusy("type");
+    try { await adminApi.setPsyType(row.id, t); setType(t); toast("Tip yeniləndi", "success"); onChanged(); }
+    catch (e) { toast((e as Error).message, "error"); }
+    finally { setBusy(null); }
+  };
+  const savePrice = async () => {
+    const n = Number(price);
+    if (!Number.isFinite(n) || n < 0) { toast("Düzgün qiymət daxil edin", "error"); return; }
+    setBusy("price");
+    try { await adminApi.setPsyPricing(row.id, n); toast("Qiymət yeniləndi", "success"); onChanged(); }
+    catch (e) { toast((e as Error).message, "error"); }
+    finally { setBusy(null); }
+  };
+  const doDeletePkg = async () => {
+    if (!delPkg) return;
+    setDelBusy(true);
+    try { await adminApi.deletePsyPackage(row.id, delPkg.id); toast("Paket silindi", "success"); setDelPkg(null); reloadPackages(); }
+    catch (e) { toast((e as Error).message, "error"); }
+    finally { setDelBusy(false); }
+  };
+
+  return (
+    <DrawerSection>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <Field label="Psixoloq tipi" help="Fanus → qiyməti yalnız admin təyin edir, paketlər paneli bağlanır.">
+          <Segmented items={[{ key: "NORMAL", label: "Adi" }, { key: "FANUS", label: "Fanus" }] as const} value={type} onChange={(t) => saveType(t)} />
+        </Field>
+        <Field label={`Fərdi seans qiyməti (${row.currency ?? "AZN"})`}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" />
+            <Button variant="primary" disabled={busy === "price"} onClick={savePrice}>{busy === "price" ? "…" : "Saxla"}</Button>
+          </div>
+        </Field>
+        {type === "FANUS" && (
+          <Banner tone="info" title="Fanus psixoloqu">
+            Paketlər & Qiymətlər modulu bu psixoloqun panelində bağlıdır — qiymət/faiz admin tərəfindən idarə olunur.
+          </Banner>
+        )}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
+            <span className="fx-label" style={{ marginBottom: 0 }}>Paketlər</span>
+            <Button variant="ghost" size="sm" icon={<PanelIcon name="plus" size={14} />} onClick={() => setEditingPkg("new")}>Yeni paket</Button>
+          </div>
+          {packages === null ? (
+            <div className="fx-subtitle">Yüklənir…</div>
+          ) : packages.length === 0 ? (
+            <div className="fx-subtitle">Hələ paket yoxdur — «Yeni paket» ilə əlavə edin.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {packages.map((pk) => (
+                <div key={pk.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--hairline)" }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 600 }}>{pk.name}{!pk.active && <span className="fx-muted"> (deaktiv)</span>}</div>
+                    <div className="fx-subtitle">{pk.sessionCount} seans</div>
+                  </div>
+                  <span className="fx-row__amount">{pk.packagePrice} {pk.currency ?? "AZN"}</span>
+                  <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                    <IconButton aria-label="Paketi redaktə et" onClick={() => setEditingPkg(pk)}><PanelIcon name="edit" size={15} /></IconButton>
+                    <IconButton aria-label="Paketi sil" onClick={() => setDelPkg(pk)}><PanelIcon name="x" size={15} /></IconButton>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
-
-        {loading ? (
-          <div style={{ fontSize: 12, color: "#8AAABF", padding: "8px 0" }}>Yüklənir…</div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {packages.map(p => (
-              editId === p.id ? (
-                <div key={p.id} style={{ border: "1px solid #E4EDF6", borderRadius: 10, padding: 10, background: "#F8FAFC", display: "grid", gridTemplateColumns: "1.4fr 0.7fr 0.9fr", gap: 8 }}>
-                  <input className="input" placeholder={t("pricing.packageName")} value={editPkg.name}
-                    onChange={e => setEditPkg(d => ({ ...d, name: e.target.value }))} style={{ boxSizing: "border-box" }} />
-                  <input className="input" type="number" min={1} placeholder={t("pricing.sessionCount")} value={editPkg.sessionCount}
-                    onChange={e => setEditPkg(d => ({ ...d, sessionCount: e.target.value }))} style={{ boxSizing: "border-box" }} />
-                  <input className="input" type="number" min={0} placeholder={t("pricing.packagePrice")} value={editPkg.packagePrice}
-                    onChange={e => setEditPkg(d => ({ ...d, packagePrice: e.target.value }))} style={{ boxSizing: "border-box" }} />
-                  <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#52718F", cursor: "pointer" }}>
-                      <input type="checkbox" checked={editPkg.active} onChange={e => setEditPkg(d => ({ ...d, active: e.target.checked }))} />
-                      {t("pricing.active")}
-                    </label>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button className="btn sm" onClick={() => setEditId(null)} disabled={busyPkg}>Ləğv et</button>
-                      <button className="btn primary sm" onClick={saveEdit} disabled={busyPkg}>{t("pricing.save")}</button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid #E4EDF6", borderRadius: 10, padding: "9px 12px" }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1A2535", display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
-                      {!p.active && <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "#F1F5F9", color: "#6B7280" }}>Passiv</span>}
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 11.5, color: "#8AAABF", marginTop: 2 }}>
-                      <span>{p.sessionCount} ×</span>
-                      <span>{formatAzn(p.perSessionPrice)}{t("pricing.perSession")}</span>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#1A2535", whiteSpace: "nowrap" }}>{formatAzn(p.packagePrice)}</div>
-                  <div style={{ display: "flex", gap: 5 }}>
-                    <button className="btn sm" onClick={() => startEdit(p)} disabled={busyPkg}>{t("pricing.edit")}</button>
-                    <button className="btn sm danger" onClick={() => deletePackage(p.id)} disabled={busyPkg}>{t("pricing.delete")}</button>
-                  </div>
-                </div>
-              )
-            ))}
-
-            {adding && (
-              <div style={{ border: "1px dashed #C0D2E6", borderRadius: 10, padding: 10, background: "#FAFBFF", display: "grid", gridTemplateColumns: "1.4fr 0.7fr 0.9fr", gap: 8 }}>
-                <input className="input" placeholder={t("pricing.packageName")} value={newPkg.name}
-                  onChange={e => setNewPkg(d => ({ ...d, name: e.target.value }))} style={{ boxSizing: "border-box" }} />
-                <input className="input" type="number" min={1} placeholder={t("pricing.sessionCount")} value={newPkg.sessionCount}
-                  onChange={e => setNewPkg(d => ({ ...d, sessionCount: e.target.value }))} style={{ boxSizing: "border-box" }} />
-                <input className="input" type="number" min={0} placeholder={t("pricing.packagePrice")} value={newPkg.packagePrice}
-                  onChange={e => setNewPkg(d => ({ ...d, packagePrice: e.target.value }))} style={{ boxSizing: "border-box" }} />
-                <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#52718F", cursor: "pointer" }}>
-                    <input type="checkbox" checked={newPkg.active} onChange={e => setNewPkg(d => ({ ...d, active: e.target.checked }))} />
-                    {t("pricing.active")}
-                  </label>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button className="btn sm" onClick={() => { setAdding(false); setNewPkg({ ...EMPTY_PKG }); }} disabled={busyPkg}>Ləğv et</button>
-                    <button className="btn primary sm" onClick={addPackage} disabled={busyPkg}>{t("pricing.addPackage")}</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {!loading && packages.length === 0 && !adding && (
-              <div style={{ fontSize: 12, color: "#8AAABF", padding: "4px 0" }}>{t("pricing.noPrice")}</div>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* Qiymət tarixçəsi */}
-      <div>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: "#52718F", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>{t("pricing.priceHistory")}</div>
-        {loading ? (
-          <div style={{ fontSize: 12, color: "#8AAABF" }}>Yüklənir…</div>
-        ) : history.length === 0 ? (
-          <div style={{ fontSize: 12, color: "#8AAABF" }}>{t("pricing.historyEmpty")}</div>
-        ) : (
-          <div style={{ border: "1px solid #E4EDF6", borderRadius: 10, overflow: "hidden" }}>
-            {history.map((h, i) => (
-              <div key={h.id} style={{
-                display: "grid", gridTemplateColumns: "1fr 1.2fr 0.9fr 1fr", gap: 8, alignItems: "center",
-                padding: "8px 12px", fontSize: 12,
-                borderTop: i > 0 ? "1px solid #F1F5F9" : "none",
-              }}>
-                <span style={{ fontWeight: 600, color: "#1A2535" }}>
-                  {h.target === "INDIVIDUAL" ? t("pricing.targetIndividual") : t("pricing.targetPackage")}
-                </span>
-                <span style={{ color: "#52718F" }}>
-                  {formatAzn(h.oldPrice) || "—"} → <strong style={{ color: "#1A2535" }}>{formatAzn(h.newPrice)}</strong>
-                </span>
-                <span style={{ color: "#8AAABF" }}>
-                  {h.changedByRole === "ADMIN" ? t("pricing.roleAdmin") : t("pricing.rolePsychologist")}
-                </span>
-                <span style={{ color: "#8AAABF", textAlign: "right" }}>
-                  {azFormatDate(h.createdAt)}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+      {editingPkg && (
+        <PackageEditor
+          psyId={row.id}
+          pkg={editingPkg === "new" ? null : editingPkg}
+          onClose={() => setEditingPkg(null)}
+          onSaved={() => { setEditingPkg(null); reloadPackages(); }}
+        />
+      )}
+
+      <Modal
+        open={!!delPkg}
+        onClose={() => setDelPkg(null)}
+        title="Paketi sil"
+        text={delPkg ? `«${delPkg.name}» paketi silinəcək.` : ""}
+        icon={<PanelIcon name="x" size={20} />}
+        iconTone="rose"
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setDelPkg(null)}>Ləğv</Button>
+            <Button variant="danger" disabled={delBusy} onClick={doDeletePkg}>{delBusy ? "Silinir…" : "Sil"}</Button>
+          </>
+        }
+      />
+    </DrawerSection>
+  );
+}
+
+function PackageEditor({ psyId, pkg, onClose, onSaved }: { psyId: number; pkg: PackageDto | null; onClose: () => void; onSaved: () => void }) {
+  const [name, setName] = useState(pkg?.name ?? "");
+  const [sessionCount, setSessionCount] = useState(pkg ? String(pkg.sessionCount) : "");
+  const [packagePrice, setPackagePrice] = useState(pkg ? String(pkg.packagePrice) : "");
+  const [active, setActive] = useState(pkg?.active ?? true);
+  const [busy, setBusy] = useState(false);
+
+  const sc = Number(sessionCount);
+  const pp = Number(packagePrice);
+  const perSession = sc > 0 && Number.isFinite(pp) ? pp / sc : null;
+
+  const save = async () => {
+    if (!name.trim()) { toast("Ad məcburidir", "error"); return; }
+    if (!Number.isInteger(sc) || sc <= 0) { toast("Seans sayı düzgün deyil", "error"); return; }
+    if (!Number.isFinite(pp) || pp < 0) { toast("Qiymət düzgün deyil", "error"); return; }
+    setBusy(true);
+    try {
+      const data: PackageReq = { name: name.trim(), sessionCount: sc, packagePrice: pp, active };
+      if (pkg) await adminApi.updatePsyPackage(psyId, pkg.id, data);
+      else await adminApi.createPsyPackage(psyId, data);
+      toast("Paket saxlanıldı", "success");
+      onSaved();
+    } catch (e) { toast((e as Error).message, "error"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={pkg ? "Paketi redaktə et" : "Yeni paket"}
+      icon={<PanelIcon name="package" size={20} />}
+      actions={
+        <>
+          <Button variant="ghost" onClick={onClose}>Ləğv</Button>
+          <Button variant="primary" disabled={busy} onClick={save}>{busy ? "Saxlanır…" : "Saxla"}</Button>
+        </>
+      }
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <Field label="Paket adı" required><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Məs: 5 seanslıq paket" autoFocus /></Field>
+        <FieldRow>
+          <Field label="Seans sayı" required><Input type="number" value={sessionCount} onChange={(e) => setSessionCount(e.target.value)} placeholder="5" /></Field>
+          <Field label="Paket qiyməti (AZN)" required><Input type="number" value={packagePrice} onChange={(e) => setPackagePrice(e.target.value)} placeholder="0" /></Field>
+        </FieldRow>
+        {perSession != null && <div className="fx-subtitle">Seans başına təxminən {perSession.toFixed(2)} AZN</div>}
+        <Switch label="Paket aktivdir" checked={active} onChange={(e) => setActive(e.target.checked)} />
       </div>
+    </Modal>
+  );
+}
+
+function PsyActions({ row, onChanged }: { row: AdminPsychologistRow; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [suspendModal, setSuspendModal] = useState(false);
+  const [reason, setReason] = useState("");
+
+  const doSuspend = async () => {
+    if (!reason.trim()) { toast("Səbəb məcburidir", "error"); return; }
+    setBusy(true);
+    try { await adminApi.suspendPsychologist(row.id, reason.trim()); toast("Psixoloq dayandırıldı", "success"); setSuspendModal(false); onChanged(); }
+    catch (e) { toast((e as Error).message, "error"); }
+    finally { setBusy(false); }
+  };
+  const doUnsuspend = async () => {
+    setBusy(true);
+    try { await adminApi.unsuspendPsychologist(row.id); toast("Dayandırma götürüldü", "success"); onChanged(); }
+    catch (e) { toast((e as Error).message, "error"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <DrawerSection>
+      {row.suspended ? (
+        <>
+          <Banner tone="warn" title="Dayandırılıb">{row.suspendReason || "Səbəb qeyd edilməyib."}</Banner>
+          <div style={{ marginTop: 12 }}>
+            <Button variant="primary" disabled={busy} onClick={doUnsuspend}>Dayandırmanı götür</Button>
+          </div>
+        </>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>Psixoloqu dayandır</div>
+            <div className="fx-subtitle">Yeni təyinatlar dayandırılır; psixoloqa bildiriş gedir.</div>
+          </div>
+          <Button variant="dangerGhost" size="sm" onClick={() => { setReason(""); setSuspendModal(true); }}>Dayandır</Button>
+        </div>
+      )}
+
+      <Modal
+        open={suspendModal}
+        onClose={() => setSuspendModal(false)}
+        title="Psixoloqu dayandır"
+        text={`${row.name} müvəqqəti dayandırılacaq.`}
+        icon={<PanelIcon name="x" size={20} />}
+        iconTone="amber"
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setSuspendModal(false)}>Ləğv et</Button>
+            <Button variant="danger" disabled={busy} onClick={doSuspend}>{busy ? "…" : "Dayandır"}</Button>
+          </>
+        }
+      >
+        <Field label="Səbəb" help="Məcburidir — psixoloqa göndərilir.">
+          <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Sənəd yeniləmə tələbi, şikayət araşdırması…" />
+        </Field>
+      </Modal>
+    </DrawerSection>
+  );
+}
+
+// Drawer · psixoloqa plan təyini.
+function PsyPlanTab({ row, onChanged }: { row: AdminPsychologistRow; onChanged: () => void }) {
+  const [plans, setPlans] = useState<PsychologistPlan[] | null>(null);
+  const [planId, setPlanId] = useState<number | null>(row.planId ?? null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { adminApi.getPsychologistPlans().then(setPlans).catch(() => setPlans([])); }, []);
+
+  const current = plans?.find((p) => p.id === planId) ?? null;
+  const dirty = planId !== (row.planId ?? null);
+
+  const save = async () => {
+    setBusy(true);
+    try { await adminApi.assignPsychologistPlan(row.id, planId); toast("Plan təyin olundu", "success"); onChanged(); }
+    catch (e) { toast((e as Error).message, "error"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <DrawerSection>
+      <Field label="Təyin olunan plan" help="Plan psixoloqun panelində hansı modulların açıq olacağını təyin edir.">
+        <Select value={planId ?? ""} onChange={(e) => setPlanId(e.target.value ? Number(e.target.value) : null)}>
+          <option value="">Plan yoxdur (default)</option>
+          {plans?.map((p) => <option key={p.id} value={p.id}>{p.name}{p.active ? "" : " (deaktiv)"}</option>)}
+        </Select>
+      </Field>
+
+      {current && (
+        <div style={{ marginTop: 12 }}>
+          <div className="fx-label">Bu planla açıq modullar</div>
+          {current.enabledModules.length === 0 ? (
+            <div className="fx-subtitle">Modul yoxdur.</div>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {current.enabledModules.map((m) => <Status key={m} tone="neutral">{PLAN_MODULE_LABELS[m] ?? m}</Status>)}
+            </div>
+          )}
+          {row.psychologistType === "FANUS" && current.enabledModules.includes("packages") && (
+            <div style={{ marginTop: 10 }}>
+              <Banner tone="info" title="Fanus qeydi">Bu psixoloq Fanus olduğu üçün «Paketlər» modulu plana baxmayaraq panelində bağlı qalır.</Banner>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ marginTop: 16 }}>
+        <Button variant="primary" disabled={busy || !dirty} onClick={save}>{busy ? "Təyin olunur…" : "Planı təyin et"}</Button>
+      </div>
+    </DrawerSection>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Planlar tabı
+// ════════════════════════════════════════════════════════════════
+function PlansTab() {
+  const [plans, setPlans] = useState<PsychologistPlan[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<PsychologistPlan | "new" | null>(null);
+
+  const load = useCallback(() => {
+    setError(null);
+    adminApi.getPsychologistPlans().then(setPlans).catch((e) => { setPlans([]); setError((e as Error).message || "Planlar yüklənmədi"); });
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  return (
+    <>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
+        <div className="fx-subtitle">Modul aç/bağla şablonları — psixoloqa təyin edilir.</div>
+        <Button variant="primary" icon={<PanelIcon name="plus" size={16} />} onClick={() => setEditing("new")}>Yeni plan</Button>
+      </div>
+
+      {error && <div style={{ marginBottom: 12 }}><Banner tone="error" title="Yüklənmədi">{error}</Banner></div>}
+
+      {plans === null ? (
+        <Card><CardPad><div className="fx-subtitle" style={{ textAlign: "center", padding: 20 }}>Yüklənir…</div></CardPad></Card>
+      ) : plans.length === 0 ? (
+        <Card><CardPad><EmptyBlock title="Plan yoxdur" body="İlk psixoloq planını yaradın — hansı modulların açıq olacağını seçin." actions={<Button variant="primary" size="sm" onClick={() => setEditing("new")}>Yeni plan</Button>} /></CardPad></Card>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+          {plans.map((pl) => (
+            <Card key={pl.id}>
+              <div style={{ padding: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <span style={{ width: 14, height: 14, borderRadius: 4, background: pl.tikColor, flexShrink: 0 }} />
+                  <div style={{ fontWeight: 700, flex: 1, minWidth: 0 }}>{pl.name}</div>
+                  {!pl.active && <Status tone="muted">Deaktiv</Status>}
+                </div>
+                <div className="fx-subtitle" style={{ marginBottom: 10 }}>{pl.assignedCount} psixoloq təyin olunub</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
+                  {PLAN_MODULES.map((m) => {
+                    const on = pl.enabledModules.includes(m.key);
+                    return (
+                      <div key={m.key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: on ? "var(--oxford)" : "var(--oxford-40)" }}>
+                        {on ? <PanelIcon name="check" size={15} color={pl.tikColor} /> : <span aria-hidden style={{ width: 15, textAlign: "center" }}>—</span>}
+                        {m.label}
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button variant="ghost" size="sm" block onClick={() => setEditing(pl)}>Redaktə et</Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {editing && <PlanEditor plan={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
+    </>
+  );
+}
+
+function PlanEditor({ plan, onClose, onSaved }: { plan: PsychologistPlan | null; onClose: () => void; onSaved: () => void }) {
+  const [name, setName] = useState(plan?.name ?? "");
+  const [modules, setModules] = useState<string[]>(plan?.enabledModules ?? []);
+  const [tikColor, setTikColor] = useState(plan?.tikColor ?? "#3A74D6");
+  const [active, setActive] = useState(plan?.active ?? true);
+  const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+
+  const toggle = (k: string) => setModules((prev) => prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]);
+
+  const save = async () => {
+    if (!name.trim()) { toast("Ad məcburidir", "error"); return; }
+    setBusy(true);
+    try {
+      const data: PsychologistPlanReq = { name: name.trim(), enabledModules: modules, tikColor, active };
+      if (plan) await adminApi.updatePsychologistPlan(plan.id, data);
+      else await adminApi.createPsychologistPlan(data);
+      toast("Plan saxlanıldı", "success");
+      onSaved();
+    } catch (e) { toast((e as Error).message, "error"); }
+    finally { setBusy(false); }
+  };
+
+  const del = async () => {
+    if (!plan) return;
+    setDeleting(true);
+    try { await adminApi.deletePsychologistPlan(plan.id); toast("Plan silindi", "success"); onSaved(); }
+    catch (e) { toast((e as Error).message, "error"); }
+    finally { setDeleting(false); }
+  };
+
+  return (
+    <>
+      <Modal
+        open
+        onClose={onClose}
+        title={plan ? "Planı redaktə et" : "Yeni plan"}
+        actions={
+          <>
+            {plan && <Button variant="dangerGhost" onClick={() => setConfirmDel(true)} style={{ marginRight: "auto" }}>Sil</Button>}
+            <Button variant="ghost" onClick={onClose}>Ləğv</Button>
+            <Button variant="primary" disabled={busy} onClick={save}>{busy ? "Saxlanır…" : "Saxla"}</Button>
+          </>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <Field label="Plan adı"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Məs: Tam giriş" autoFocus /></Field>
+          <Field label="Tik rəngi" help="Seçilmiş modulların yanındakı işarənin rəngi.">
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <input type="color" value={tikColor} onChange={(e) => setTikColor(e.target.value)} style={{ width: 44, height: 32, border: "1px solid var(--hairline)", borderRadius: 6, background: "none", cursor: "pointer" }} aria-label="Tik rəngi" />
+              <span className="fx-subtitle">{tikColor}</span>
+            </div>
+          </Field>
+          <div>
+            <div className="fx-label">Açıq modullar</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {PLAN_MODULES.map((m) => {
+                const on = modules.includes(m.key);
+                return (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => toggle(m.key)}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: on ? "var(--surface-muted)" : "transparent", border: "1px solid var(--hairline)", borderRadius: 8, cursor: "pointer", textAlign: "left", font: "inherit" }}
+                  >
+                    <span style={{ width: 20, height: 20, borderRadius: 5, border: `2px solid ${on ? tikColor : "var(--hairline)"}`, background: on ? tikColor : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {on && <PanelIcon name="check" size={13} color="#fff" />}
+                    </span>
+                    <span style={{ fontWeight: on ? 600 : 500 }}>{m.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <Switch label="Plan aktivdir" checked={active} onChange={(e) => setActive(e.target.checked)} />
+        </div>
+      </Modal>
+
+      <Modal
+        open={confirmDel}
+        onClose={() => setConfirmDel(false)}
+        title="Planı sil"
+        text="Bu plana təyin olunmuş psixoloqların planı boşalacaq (default davranışa qayıdır)."
+        icon={<PanelIcon name="x" size={20} />}
+        iconTone="rose"
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmDel(false)}>Ləğv</Button>
+            <Button variant="danger" disabled={deleting} onClick={del}>{deleting ? "Silinir…" : "Sil"}</Button>
+          </>
+        }
+      />
+    </>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Müraciət review
+// ════════════════════════════════════════════════════════════════
+function ApplicationReview({ app, onPreview }: { app: PsychologistApplication; onPreview: (f: { url: string; label: string }) => void }) {
+  const certs = app.certificateFileUrls?.split(",").map((s) => s.trim()).filter(Boolean) ?? [];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <Avatar name={`${app.firstName} ${app.lastName}`} src={app.photoUrl} size="lg" />
+        <div style={{ minWidth: 0 }}>
+          <AppStatus status={app.status} />
+          {app.title && <div className="fx-subtitle" style={{ marginTop: 4 }}>{app.title}</div>}
+        </div>
+      </div>
+
+      <ReviewSection title="Şəxsi məlumatlar">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <InfoRow label="Tam ad" value={`${app.firstName} ${app.lastName}`} />
+          <InfoRow label="Email" value={app.email} />
+          <InfoRow label="Telefon" value={app.phone ?? "—"} />
+          <InfoRow label="Doğum tarixi" value={app.birthDate ? fmtDate(app.birthDate) : "—"} />
+          <InfoRow label="Cinsiyyət" value={app.gender === "FEMALE" ? "Qadın" : app.gender === "MALE" ? "Kişi" : app.gender === "OTHER" ? "Digər" : "—"} />
+          <InfoRow label="FIN / ID" value={app.finId ?? "—"} />
+          <InfoRow label="Müraciət tarixi" value={fmtDate(app.createdAt)} />
+        </div>
+      </ReviewSection>
+
+      <ReviewSection title="Təhsil">
+        <EducationList json={app.educationsJson} fallback={app.university ? { institution: app.university, degree: app.degree ?? "", graduationYear: app.graduationYear ?? "" } : null} />
+      </ReviewSection>
+
+      <ReviewSection title="Peşəkar məlumatlar">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <InfoRow label="İxtisas / vəzifə" value={app.title ?? "—"} />
+          <InfoRow label="Təcrübə" value={app.experienceYears ?? "—"} />
+          <InfoRow label="Dillər" value={app.languages?.split(",").map((s) => s.trim()).filter(Boolean).join(", ") || "—"} />
+          <InfoRow label="İxtisaslaşma" value={app.specializations?.split(",").map((s) => s.trim()).filter(Boolean).join(", ") || "—"} />
+          <InfoRow label="Seans növləri" value={app.sessionTypes?.split(",").map((s) => s.trim()).filter(Boolean).join(", ") || "—"} />
+        </div>
+      </ReviewSection>
+
+      {app.bio && <ReviewSection title="Bio"><p style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.6 }}>{app.bio}</p></ReviewSection>}
+      {app.motivation && <ReviewSection title="Motivasiya / yanaşma"><p style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.6 }}>{app.motivation}</p></ReviewSection>}
+
+      <ReviewSection title="Sertifikat və seminarlar">
+        <CertificateList json={app.certificatesJson} legacyCerts={app.certifications} />
+      </ReviewSection>
+
+      <ReviewSection title="Sənədlər və fayllar">
+        {app.diplomaFileUrl || certs.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {app.diplomaFileUrl && <FileCard url={app.diplomaFileUrl} label="Diplom faylı" onPreview={onPreview} />}
+            {certs.map((url, i) => <FileCard key={i} url={url} label={`Sertifikat skanı ${i + 1}`} onPreview={onPreview} />)}
+          </div>
+        ) : <div className="fx-subtitle">Sənəd yüklənməyib.</div>}
+      </ReviewSection>
+
+      <ReviewSection title="Razılıqlar">
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <ConsentLine ok={app.consentEthics} label="Etik kodeks" />
+          <ConsentLine ok={app.consentGdpr} label="GDPR / şəxsi məlumat" />
+          <ConsentLine ok={app.consentTerms} label="İstifadə şərtləri" />
+        </div>
+      </ReviewSection>
+
+      {app.adminNote && <ReviewSection title="Admin qeydi"><p style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.6 }}>{app.adminNote}</p></ReviewSection>}
+    </div>
+  );
+}
+
+// Fayl kartı — önizləmə + yüklə.
+function FileCard({ url, label, onPreview }: { url: string; label: string; onPreview: (f: { url: string; label: string }) => void }) {
+  const kind = fileKind(url);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 10, border: "1px solid var(--hairline)", borderRadius: 10 }}>
+      <div style={{ color: "var(--oxford-60)", flexShrink: 0 }}><PanelIcon name={kind === "image" ? "eye" : "file"} size={18} /></div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{label}</div>
+        <div className="fx-subtitle">{kind === "image" ? "Şəkil" : kind === "pdf" ? "PDF sənəd" : "Fayl"}</div>
+      </div>
+      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+        <Button variant="ghost" size="sm" onClick={() => onPreview({ url, label })} icon={<PanelIcon name="eye" size={14} />}>Bax</Button>
+        <ButtonLink href={url} target="_blank" rel="noreferrer" variant="ghost" size="sm" icon={<PanelIcon name="download" size={14} />}>Yüklə</ButtonLink>
+      </div>
+    </div>
+  );
+}
+
+function FilePreviewModal({ file, onClose }: { file: { url: string; label: string } | null; onClose: () => void }) {
+  if (!file) return null;
+  const kind = fileKind(file.url);
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      wide
+      title={file.label}
+      actions={
+        <>
+          <Button variant="ghost" onClick={onClose}>Bağla</Button>
+          <ButtonLink href={file.url} target="_blank" rel="noreferrer" variant="primary" icon={<PanelIcon name="download" size={16} />}>Yüklə</ButtonLink>
+        </>
+      }
+    >
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        {kind === "image" && <img src={file.url} alt={file.label} style={{ maxWidth: "100%", maxHeight: "60vh", borderRadius: 8 }} />}
+        {kind === "pdf" && <iframe src={file.url} title={file.label} style={{ width: "100%", height: "60vh", border: "1px solid var(--hairline)", borderRadius: 8 }} />}
+        {kind === "other" && <div className="fx-subtitle" style={{ padding: 24 }}>Bu fayl tipi önizlənə bilmir — «Yüklə» ilə açın.</div>}
+      </div>
+    </Modal>
+  );
+}
+
+// ── Alt komponentlər ────────────────────────────────────────────
+function ReviewSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ borderTop: "1px solid var(--hairline)", paddingTop: 14 }}>
+      <SectionTitle>{title}</SectionTitle>
+      {children}
+    </div>
+  );
+}
+
+function AppStatus({ status }: { status: string }) {
+  const meta = APP_STATUS_META[status];
+  if (!meta) return <Status tone="muted">{status}</Status>;
+  return <Status tone={meta.tone}>{meta.label}</Status>;
+}
+
+function ConsentLine({ ok, label }: { ok?: boolean; label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      {ok ? <PanelIcon name="check" size={16} /> : <span aria-hidden style={{ width: 16, textAlign: "center" }}>—</span>}
+      <span className={ok ? undefined : "fx-muted"}>{label}</span>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div className="fx-label">{label}</div>
+      <div style={{ overflowWrap: "anywhere" }}>{value}</div>
+    </div>
+  );
+}
+
+function EducationList({ json, fallback }: {
+  json?: string;
+  fallback?: { institution: string; degree: string; graduationYear: string } | null;
+}) {
+  let rows: { institution: string; degree?: string; graduationYear?: string }[] = [];
+  if (json) { try { rows = JSON.parse(json); } catch { /* ignore */ } }
+  if (rows.length === 0 && fallback?.institution) rows = [fallback];
+  if (rows.length === 0) return <div className="fx-subtitle">Təhsil qeyd edilməyib.</div>;
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {rows.map((r, i) => (
+        <div key={i} style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{r.institution}</div>
+          <div className="fx-subtitle">{[r.degree, r.graduationYear].filter(Boolean).join(", ") || "—"}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CertificateList({ json, legacyCerts }: { json?: string; legacyCerts?: string }) {
+  let rows: { title: string; issuer?: string; year?: string; type?: string }[] = [];
+  if (json) { try { rows = JSON.parse(json); } catch { /* ignore */ } }
+  if (rows.length === 0 && legacyCerts) {
+    rows = legacyCerts.split(",").map((s) => s.trim()).filter(Boolean).map((title) => ({ title, type: "CERTIFICATE" }));
+  }
+  if (rows.length === 0) return <div className="fx-subtitle">Sertifikat / seminar yoxdur.</div>;
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {rows.map((r, i) => (
+        <div key={i} style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+            <span style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{r.title}</span>
+            <span className="fx-subtitle" style={{ flexShrink: 0 }}>{r.type === "SEMINAR" ? "Seminar" : "Sertifikat"}</span>
+          </div>
+          {(r.issuer || r.year) && <div className="fx-subtitle">{[r.issuer, r.year].filter(Boolean).join(", ")}</div>}
+        </div>
+      ))}
     </div>
   );
 }

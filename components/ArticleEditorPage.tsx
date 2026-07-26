@@ -111,7 +111,7 @@ function buildPayload(data: FormState): Omit<BlogPost, "id"> {
     content: data.content,
     excerpt: data.excerpt,
     coverImageUrl: data.coverImageUrl || undefined,
-    category: data.category.trim() || "Qaralama",
+    category: data.category.trim(),
     categoryColor: data.categoryColor,
     categoryBg: data.categoryBg,
     emoji: data.emoji,
@@ -530,12 +530,23 @@ export default function ArticleEditorPage({
                 </div>
               </div>
 
-              {categories.length > 0 && (
-                <div>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 10px" }}>
-                    Kateqoriya
-                  </p>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {/* Kateqoriya — hər zaman görünür. Öncədən təyin olunmuş kateqoriyalar
+                  yoxdursa belə müəllif sərbəst mətnlə kateqoriya yaza bilər (əvvəllər bu
+                  bölmə categories boş olanda tamamilə gizlənirdi və kateqoriya boş qalırdı). */}
+              <div style={{ marginBottom: 24 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
+                  Kateqoriya
+                </p>
+                <input
+                  type="text"
+                  value={form.category}
+                  onChange={e => setField("category", e.target.value)}
+                  placeholder="Məs. Narahatlıq, Münasibətlər, Özünəqayğı"
+                  maxLength={60}
+                  style={{ width: "100%", border: "1px solid #E4EDF6", borderRadius: 10, outline: "none", padding: "10px 12px", fontSize: 14, lineHeight: 1.5, color: "#2B3C5A", background: "#fff", fontFamily: "inherit" }}
+                />
+                {categories.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
                     {categories.map(cat => {
                       const selected = form.category === cat.name;
                       return (
@@ -561,8 +572,11 @@ export default function ArticleEditorPage({
                       );
                     })}
                   </div>
+                )}
+                <div style={{ fontSize: 11, color: "#8AAABF", marginTop: 6 }}>
+                  Boş buraxsanız məqalədə kateqoriya nişanı göstərilməyəcək.
                 </div>
-              )}
+              </div>
             </>
           )}
 

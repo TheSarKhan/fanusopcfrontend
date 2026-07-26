@@ -7,6 +7,7 @@ import Breadcrumb from "@/components/Breadcrumb";
 import type { BlogPost } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDate } from "@/lib/datetime";
+import { displayCategory } from "@/lib/blog";
 
 type Cat = "all" | "anxiety" | "relations" | "selfcare" | "sleep" | "youth" | "mindful";
 type Illu = "sun" | "people" | "flame" | "moon" | "waves" | "compass";
@@ -71,9 +72,10 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
     if (!posts || posts.length === 0) return FALLBACK;
     return posts.map((p) => {
       const cat = deriveCat(p.category, p.title);
+      const displayTag = displayCategory(p.category);
       return {
         slug: p.slug,
-        tag: p.category,
+        tag: displayTag,
         cat,
         title: p.title,
         excerpt: p.excerpt,
@@ -250,7 +252,7 @@ function ArtList({
                   ) : (
                     <ArtCover type={a.illu} color="#1051B7" />
                   )}
-                  <span className="ap-card__tag">{a.tag}</span>
+                  {a.tag ? <span className="ap-card__tag">{a.tag}</span> : null}
                 </div>
                 <div className="ap-card__body">
                   <div className="ap-card__date">

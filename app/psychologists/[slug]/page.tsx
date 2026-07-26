@@ -10,6 +10,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import BookingCta from "./BookingCta";
 import Breadcrumb from "@/components/Breadcrumb";
+import { displayCategory } from "@/lib/blog";
 
 function getInitials(name: string) {
   return name.split(" ").filter((w) => w.length > 1).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -308,7 +309,9 @@ export default async function PsychologistProfilePage(
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={post.coverImageUrl} alt={post.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         )}
-                        <span style={{ position: "absolute", top: 10, left: 10, background: "rgba(255,255,255,.92)", color: "var(--brand-700)", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>{post.category}</span>
+                        {displayCategory(post.category) ? (
+                          <span style={{ position: "absolute", top: 10, left: 10, background: "rgba(255,255,255,.92)", color: "var(--brand-700)", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>{displayCategory(post.category)}</span>
+                        ) : null}
                       </div>
                       <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
                         <h3 style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: "var(--oxford)", lineHeight: 1.35 }}>{post.title}</h3>

@@ -5,6 +5,7 @@ import ReadingProgressBar from "@/app/blog/components/ReadingProgressBar";
 import ShareBar from "@/app/blog/components/ShareBar";
 import RelatedPosts from "@/app/blog/components/RelatedPosts";
 import Breadcrumb from "@/components/Breadcrumb";
+import { displayCategory } from "@/lib/blog";
 
 function formatDate(dateStr?: string | null) {
   if (!dateStr) return "";
@@ -71,9 +72,11 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
               <Breadcrumb bare items={[{ label: "Bloq", href: "/blog" }, { label: post.title }]} />
             </div>
             <div className="art-meta">
-              <span className="art-cat" style={{ background: post.categoryBg, color: post.categoryColor }}>
-                {post.category}
-              </span>
+              {displayCategory(post.category) ? (
+                <span className="art-cat" style={{ background: post.categoryBg, color: post.categoryColor }}>
+                  {displayCategory(post.category)}
+                </span>
+              ) : null}
               <span className="art-meta__dot" aria-hidden />
               <span className="art-meta__read">{post.readTimeMinutes} dəq oxu</span>
             </div>

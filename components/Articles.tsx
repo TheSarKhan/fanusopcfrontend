@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { BlogPost } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDate } from "@/lib/datetime";
+import { displayCategory } from "@/lib/blog";
 
 const COLORS = ["#5089E0", "#1051B7", "#0B3F90", "#2A6BD0"];
 
@@ -12,7 +13,7 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
   const data = (posts && posts.length > 0)
     ? posts.slice(0, 4).map((p, i) => ({
         slug: p.slug,
-        tag: p.category,
+        tag: displayCategory(p.category),
         title: p.title,
         date: azFormatDate(p.publishedDate),
         read: t("articles.minutes", { n: p.readTimeMinutes }),
@@ -45,7 +46,7 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
                 ) : (
                   <CoverArt color={a.bg} variant={i % 4} />
                 )}
-                <span className="fanus-art-card__tag" style={{ background: a.bg, color: a.fg }}>{a.tag}</span>
+                {a.tag ? <span className="fanus-art-card__tag" style={{ background: a.bg, color: a.fg }}>{a.tag}</span> : null}
               </div>
               <div className="fanus-art-card__body">
                 <div className="fanus-art-card__date">

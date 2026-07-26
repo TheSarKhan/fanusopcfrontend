@@ -9,6 +9,7 @@ import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
 import { ToastHost } from "@/components/Toast";
 import { ConfirmHost } from "@/components/ConfirmDialog";
 import GlobalLoadingOverlay from "@/components/GlobalLoadingOverlay";
+import ChunkErrorReloader from "@/components/ChunkErrorReloader";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -60,6 +61,7 @@ export default async function RootLayout({
           <ToastHost />
           <ConfirmHost />
           <GlobalLoadingOverlay />
+          <ChunkErrorReloader />
         </LocaleProvider>
       </body>
     </html>

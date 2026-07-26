@@ -904,7 +904,7 @@ function RefundModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
       </ModalField>
       <div className="fx-banner fx-banner--info">
         <Ic d={["M12 16v-4", "M12 8h.01"]} sw={2} w={14} />
-        <span>Bütün iadələr (tam və qismi) Admin təsdiqindən keçir — tələb təsdiqlənəndə icra olunacaq.{payment.patientPackageId != null && " Paket ödənişidirsə icra zamanı qalan seanslar bağlanacaq."}</span>
+        <span>Bütün iadələr (tam və qismi) Admin təsdiqindən keçir — tələb təsdiqlənəndə yalnız pul geri qaytarılır.{payment.patientPackageId != null && " Paket avtomatik ləğv OLUNMUR — lazım olsa paketi ayrıca ləğv edin."}</span>
       </div>
       <ModalFooter onClose={onClose} onSubmit={submit} disabled={!ready || busy} label={busy ? "Göndərilir…" : `${formatAzn(amtOk ? amt : 0)} üçün tələb göndər`} />
     </ModalShell>
@@ -938,9 +938,9 @@ function CancelModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
         <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)} placeholder="Ləğv səbəbi…" className="fx-textarea" autoFocus />
       </ModalField>
       {payment.patientPackageId != null && (
-        <div className="fx-banner fx-banner--warn">
-          <Ic d={["M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z", "M12 9v4", "M12 17h.01"]} sw={2} w={14} />
-          <span>Paket ödənişidir — paket də ləğv olunacaq (qalan seanslar bağlanır).</span>
+        <div className="fx-banner fx-banner--info">
+          <Ic d={["M12 16v-4", "M12 8h.01"]} sw={2} w={14} />
+          <span>Yalnız ödəniş ləğv olunur — paket avtomatik bağlanmır. Lazım olsa paketi ayrıca ləğv edin.</span>
         </div>
       )}
       <ModalFooter onClose={onClose} onSubmit={submit} disabled={!ready || busy} label={busy ? "Göndərilir…" : "Ödənişi ləğv et"} />

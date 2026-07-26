@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { buildPanelUrl, getStoredUser } from "@/lib/auth";
-import { tryGetMe } from "@/lib/api";
+import { buildPanelUrl, getStoredUser, clearUser } from "@/lib/auth";
+import { verifyMe } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "./LanguageSwitcher";
 
@@ -48,11 +48,14 @@ export default function Navbar() {
     const cached = getStoredUser();
     if (cached?.role) setPanelUrl(buildPanelUrl(cached.role));
 
-    // …then verify the cookie is still valid; clear if not.
+    // …then STRICTLY verify the session. verifyMe (unlike tryGetMe) never falls
+    // back to the cached identity — so an expired session reliably resolves to
+    // null and "Hesabım" disappears in favour of Daxil ol / Qeydiyyat. We also
+    // wipe the stale cache so the next load doesn't even optimistically show it.
     let cancelled = false;
-    tryGetMe().then(me => {
+    verifyMe().then(me => {
       if (cancelled) return;
-      if (!me) { setPanelUrl(null); return; }
+      if (!me) { setPanelUrl(null); clearUser(); return; }
       setPanelUrl(buildPanelUrl(me.role));
     });
     return () => { cancelled = true; };

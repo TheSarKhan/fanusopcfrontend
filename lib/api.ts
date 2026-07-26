@@ -2506,6 +2506,39 @@ export async function tryGetMe(): Promise<MeProfile | null> {
   return first;
 }
 
+/**
+ * Ciddi sessiya yoxlaması — UI real auth-ı əks etdirməli olduqda (məs. publik navbar).
+ * {@link tryGetMe}-dən fərqi: keçici xəta/şəbəkə blipi zamanı köhnə cache geri
+ * QAYTARILMIR — yalnız təsdiqlənmiş 200 /me (lazım olsa bir refresh-dən sonra) login
+ * sayılır. Sessiya bitibsə mütləq null → çağıran tərəf "Hesabım"ı gizlədə bilər.
+ */
+export async function verifyMe(): Promise<MeProfile | null> {
+  const attempt = async (): Promise<MeProfile | "unauthorized" | "error"> => {
+    try {
+      const res = await fetch(`${BASE}/me`, {
+        method: "GET",
+        credentials: "include",
+        headers: localeHeaders(),
+      });
+      if (res.status === 401) return "unauthorized";
+      if (!res.ok) return "error";
+      return await res.json() as MeProfile;
+    } catch {
+      return "error";
+    }
+  };
+
+  const first = await attempt();
+  if (first === "unauthorized") {
+    const outcome = await tryRefresh();
+    if (outcome !== "ok") return null;            // auth_failure və ya şəbəkə → login sayılmır
+    const second = await attempt();
+    return (second === "unauthorized" || second === "error") ? null : second;
+  }
+  if (first === "error") return null;
+  return first;
+}
+
 function getStoredUserAsMeProfile(): MeProfile | null {
   if (typeof window === "undefined") return null;
   try {

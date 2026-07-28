@@ -15,6 +15,25 @@ function formatDate(dateStr?: string | null) {
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+/** ISO sətrindən yalnız gün hissəsi (YYYY-MM-DD) — müqayisə saat qurşağından asılı olmasın. */
+function isoDay(s?: string | null): string | null {
+  if (!s) return null;
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(s);
+  return m ? m[1] : null;
+}
+
+/**
+ * Yenilənmə tarixi YALNIZ dərcdən sonrakı bir gündə redaktə olunubsa qaytarılır.
+ * Əks halda hər məqalədə dərc tarixi ilə eyni sətir təkrarlanardı (yazılış anındakı
+ * redaktələr də "yenilənib" kimi görünərdi).
+ */
+function updatedLabel(publishedDate?: string | null, updatedAt?: string | null): string | null {
+  const pub = isoDay(publishedDate);
+  const upd = isoDay(updatedAt);
+  if (!pub || !upd || upd <= pub) return null;
+  return formatDate(updatedAt);
+}
+
 function AttachmentIcon({ type }: { type: string }) {
   if (type === "IMAGE") {
     return (
@@ -55,6 +74,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const post = await getBlogPostBySlug(slug).catch(() => null);
   if (!post) notFound();
 
+  const updated = updatedLabel(post.publishedDate, post.updatedAt);
+
   const allPosts = await getBlogPosts().catch(() => []);
   const related = allPosts
     .filter(p => p.slug !== slug && p.category === post.category && p.active)
@@ -89,6 +110,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
               <div>
                 <div className="art-author__name">{post.authorName ?? "Fanus Redaksiyası"}</div>
                 <div className="art-author__role">{formatDate(post.publishedDate)}</div>
+                {updated && <div className="art-author__role">Yenilənib: {updated}</div>}
               </div>
             </div>
           </div>

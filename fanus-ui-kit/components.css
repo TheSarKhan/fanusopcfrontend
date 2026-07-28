@@ -398,6 +398,14 @@
 .fx-dt tbody tr { transition: background .12s ease; }
 .fx-dt tbody tr.fx-dt__row--link { cursor: pointer; }
 .fx-dt tbody tr.fx-dt__row--link:hover { background: var(--surface-muted); }
+
+/* Sətir tonu (DataTable `rowTone`) — rozet/pill DEYİL: diqqət tələb edən sətir
+   çox sakit fon + sol kənar zolağı ilə seçilir, sönük sətir isə azaldılmış
+   tündlüklə. Sətir-səviyyəli siqnal əvvəl panel CSS-ində idi, kitə köçürülüb. */
+.fx-dt tbody tr.fx-dt__row--attn > td:first-child { box-shadow: inset 3px 0 0 var(--amber, #C97D2E); }
+.fx-dt tbody tr.fx-dt__row--attn { background: var(--amber-bg, #FDF6EE); }
+.fx-dt tbody tr.fx-dt__row--attn:hover { background: var(--amber-bg, #FBEFE2); }
+.fx-dt tbody tr.fx-dt__row--muted > td { color: var(--oxford-60); }
 .fx-dt tbody tr:last-child > td { border-bottom: 0; }
 .fx-dt__num { text-align: right; font-variant-numeric: tabular-nums; }
 .fx-dt__cell--right { text-align: right; }

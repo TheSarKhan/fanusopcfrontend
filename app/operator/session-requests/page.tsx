@@ -240,6 +240,9 @@ export default function SessionRequestsPage() {
           </div>
         </div>
 
+        {/* Cədvəl/boş vəziyyət mətni kartın alt kənarına yapışırdı — yan və alt
+            boşluq başlıq zolağı ilə eyniləşdirilir. */}
+        <div style={{ padding: "4px 20px 18px" }}>
         <DataTable
           rows={filtered}
           columns={columns}
@@ -293,6 +296,7 @@ export default function SessionRequestsPage() {
               : `Göstərilir: ${page * size + 1}–${Math.min((page + 1) * size, totalElements)} / ${totalElements}`
           }
         />
+        </div>
       </Card>
     </div>
   );

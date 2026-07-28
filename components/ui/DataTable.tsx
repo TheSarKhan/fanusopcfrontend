@@ -60,6 +60,12 @@ export type DataTableProps<T> = {
 
   /** Sətrə klik — detal səhifəsi və ya drawer. */
   onRowClick?: (row: T) => void;
+  /**
+   * Sətrin vurğu tonu — diqqət tələb edən və ya sönük sətirləri fərqləndirir.
+   * Rəngli rozet DEYİL: yalnız çox sakit fon + sol kənar zolağı (attn) və ya
+   * azaldılmış tündlük (muted). null → adi sətir.
+   */
+  rowTone?: (row: T) => "attn" | "muted" | null | undefined;
   /** Sonuncu sütundakı əməliyyat düymələri. Klik sətrə ötürülmür. */
   actions?: (row: T) => ReactNode;
   actionsHeader?: ReactNode;
@@ -147,6 +153,7 @@ export function DataTable<T>({
   onRetry,
   empty,
   onRowClick,
+  rowTone,
   actions,
   actionsHeader,
   sort,
@@ -307,7 +314,11 @@ export function DataTable<T>({
               return (
                 <Fragment key={key}>
                   <tr
-                    className={onRowClick ? "fx-dt__row--link" : undefined}
+                    className={[
+                      onRowClick ? "fx-dt__row--link" : "",
+                      rowTone?.(row) === "attn" ? "fx-dt__row--attn" : "",
+                      rowTone?.(row) === "muted" ? "fx-dt__row--muted" : "",
+                    ].filter(Boolean).join(" ") || undefined}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                   >
                     {selection && (

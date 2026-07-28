@@ -888,6 +888,9 @@ export default function OperatorAppointmentsPage() {
           columns={apptColumns}
           rowKey={a => a.id}
           onRowClick={openDetail}
+          // Diqqət tələb edən sətir fonla da seçilir — ikon tək başına gözə
+          // dəymirdi (DataTable-a keçiddə itən siqnal, kitin rowTone-u ilə bərpa).
+          rowTone={a => rowAttention(a, psyProposalApptIds.has(a.id), isOverdue(a)) ? "attn" : null}
           actions={apptActions}
           sort={sort ? { key: sort, dir } : null}
           onSortChange={next => toggleSort(next.key)}
@@ -1135,6 +1138,8 @@ export default function OperatorAppointmentsPage() {
                 columns={pkgColumns}
                 rowKey={g => g[0].patientPackageId ?? g[0].id}
                 onRowClick={openPackage}
+                // Planlaşdırılmamış seansı olan paket sətri fonla seçilir.
+                rowTone={g => packageInfo(g, now).needsAttention ? "attn" : null}
                 actions={g => (
                   <>
                     <RowContact phone={g[0].patientPhone} email={g[0].patientEmail} />

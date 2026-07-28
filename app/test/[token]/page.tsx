@@ -191,6 +191,16 @@ export default function PublicTestPage({ params }: { params: Promise<{ token: st
                 Nəticə
               </div>
               <div style={{ fontSize: 20, fontWeight: 700, color: BRAND_DARK }}>{result.scaleLabel}</div>
+              {/* Psixoloqun bu zolaq üçün yazdığı izah — nəticənin nə demək olduğu
+                  aydın olmasa, tək başına "Yüngül" iştirakçıya heç nə demir. */}
+              {result.scaleDescription && (
+                <div style={{
+                  fontSize: 14, color: INK, lineHeight: 1.65, marginTop: 10,
+                  textAlign: "left", whiteSpace: "pre-wrap",
+                }}>
+                  {result.scaleDescription}
+                </div>
+              )}
             </div>
           )}
 

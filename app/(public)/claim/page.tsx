@@ -9,12 +9,15 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { requestClaimOtp, verifyClaimOtp } from "@/lib/api";
+import { requestClaimOtp, verifyClaimOtp, ClaimAlreadyActiveError } from "@/lib/api";
 
 export default function ClaimPage() {
   const params = useSearchParams();
-  const [step, setStep] = useState<"email" | "code" | "done">("email");
+  const [step, setStep] = useState<"email" | "code" | "done" | "alreadyActive">("email");
   const [email, setEmail] = useState(params.get("email") ?? "");
+  // Emaildəki linkin birdəfəlik tokeni — aktivləşmədən sonra silinir, ona görə
+  // təkrar klikdə OTP axını başlamır, "artıq aktivdir" ekranı göstərilir.
+  const claimToken = params.get("token");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -30,10 +33,13 @@ export default function ClaimPage() {
     if (!email.trim()) { setErr("Email daxil edin"); return; }
     setBusy(true);
     try {
-      const r = await requestClaimOtp(email.trim());
+      const r = await requestClaimOtp(email.trim(), claimToken);
       setInfo(r.message ?? "Kod göndərildi.");
       setStep("code");
-    } catch (e) { setErr((e as Error).message); }
+    } catch (e) {
+      if (e instanceof ClaimAlreadyActiveError) { setStep("alreadyActive"); return; }
+      setErr((e as Error).message);
+    }
     finally { setBusy(false); }
   };
 
@@ -105,6 +111,22 @@ export default function ClaimPage() {
             <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Telefon (ops.)" style={inp} />
             <button onClick={activate} disabled={busy} style={btn}>{busy ? "Aktivləşdirilir…" : "Aktivləşdir"}</button>
             <button onClick={sendCode} disabled={busy} style={{ background: "none", border: "none", color: "var(--brand-700)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Kodu yenidən göndər</button>
+          </div>
+        )}
+
+        {step === "alreadyActive" && (
+          <div style={{ textAlign: "center" }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-[#1A2535]" style={{ marginBottom: 6 }}>Hesabınız artıq aktivdir</h3>
+            <p className="text-[#52718F] text-sm" style={{ marginBottom: 18 }}>
+              Bu aktivləşdirmə linki bir dəfə istifadə olunub. Parolunuzla daxil ola bilərsiniz.
+            </p>
+            <Link href="/login" className="block py-3 rounded-xl text-sm font-bold text-white" style={{ background: "var(--brand)" }}>Daxil ol</Link>
+            <Link href="/forgot-password" className="text-[#52718F] text-sm" style={{ display: "block", marginTop: 12 }}>Parolu unutmusunuz?</Link>
           </div>
         )}
 

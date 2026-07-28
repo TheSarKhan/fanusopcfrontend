@@ -969,15 +969,25 @@ export const verifyEmail = (token: string) =>
     });
 
 // Hesab sahiblənmə (operator-yaradılan pasiyent) — nömrəli OTP
-export const requestClaimOtp = (email: string) =>
+/** `token` emaildəki birdəfəlik aktivləşdirmə linkindən gəlir (V122). Token
+ *  verilib də etibarsızdırsa hesab artıq aktivdir → `ALREADY_ACTIVE` atılır ki,
+ *  səhifə OTP addımına keçmək əvəzinə girişə yönləndirsin. */
+export class ClaimAlreadyActiveError extends Error {}
+
+export const requestClaimOtp = (email: string, token?: string | null) =>
   trackedFetch(`${BASE}/auth/claim/request-otp`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json", ...localeHeaders() },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, token: token || undefined }),
   }).then(async r => {
     const body = await r.json();
-    if (!r.ok) throw new Error(body.error ?? "Kod göndərilmədi");
+    if (!r.ok) {
+      if (body.status === "ALREADY_ACTIVE") {
+        throw new ClaimAlreadyActiveError(body.error ?? "Bu hesab artıq aktivləşdirilib.");
+      }
+      throw new Error(body.error ?? "Kod göndərilmədi");
+    }
     return body;
   });
 
@@ -1336,7 +1346,7 @@ export interface TakeQuestion { id: number; text: string; imageUrl?: string | nu
 export interface TakeTest { testId: number; assignmentId?: number | null; title: string; description?: string | null; instructions?: string | null; questions: TakeQuestion[]; note?: string | null }
 export type SubmitAnswer = { questionId: number; selectedOptionId: number }
 export interface AnswerResult { questionId: number; questionText: string; selectedOptionId: number; selectedLabel: string; pointsAwarded: number; displayOrder: number }
-export interface TestResult { resultId: number; assignmentId: number; totalScore: number; maxScore: number; percentage: number; scaleId?: number | null; scaleLabel?: string | null; respondentName?: string | null; submittedAt: string; answers: AnswerResult[] }
+export interface TestResult { resultId: number; assignmentId: number; totalScore: number; maxScore: number; percentage: number; scaleId?: number | null; scaleLabel?: string | null; /** Psixoloqun bu nəticə zolağı üçün yazdığı izah. */ scaleDescription?: string | null; respondentName?: string | null; submittedAt: string; answers: AnswerResult[] }
 export interface TestAssignment { id: number; testId: number; testTitle: string; patientId?: number | null; patientName?: string | null; status: string; publicToken?: string | null; assignedAt: string; completedAt?: string | null; hasResult: boolean; submissionCount: number; note?: string | null }
 export interface TestResultRow { resultId: number; assignmentId: number; respondentName?: string | null; publicLink: boolean; totalScore: number; maxScore: number; percentage: number; scaleLabel?: string | null; submittedAt: string }
 export interface StatsLabelCount { label: string; count: number }

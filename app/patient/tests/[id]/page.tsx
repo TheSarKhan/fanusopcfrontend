@@ -302,6 +302,16 @@ function ResultView({ result, title }: { result: TestResult; title?: string }) {
                 {result.scaleLabel}
               </div>
             )}
+            {/* Psixoloqun bu zolaq üçün yazdığı izah — nəticənin adı tək başına
+                pasiyentə nə demək olduğunu izah etmir. */}
+            {result.scaleDescription && (
+              <div style={{
+                fontSize: 13.5, color: "var(--oxford)", lineHeight: 1.65,
+                marginTop: 10, whiteSpace: "pre-wrap",
+              }}>
+                {result.scaleDescription}
+              </div>
+            )}
             {result.submittedAt && (
               <div style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 8 }}>
                 Tamamlandı: {fmtDate(result.submittedAt)}

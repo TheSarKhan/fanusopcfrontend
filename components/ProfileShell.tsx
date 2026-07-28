@@ -638,6 +638,8 @@ function PrivacyCard({
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteErr, setDeleteErr] = useState<string | null>(null);
+  // Opsional səbəb — admin istəyi nəzərdən keçirəndə görür (V123).
+  const [reason, setReason] = useState("");
 
   const [cancelling, setCancelling] = useState(false);
   const [cancelErr, setCancelErr] = useState<string | null>(null);
@@ -660,9 +662,13 @@ function PrivacyCard({
     }
     setDeleting(true);
     try {
-      await meApi.deleteAccount({ currentPassword: pwd, confirmation: confirmText });
+      await meApi.deleteAccount({
+        currentPassword: pwd,
+        confirmation: confirmText,
+        reason: reason.trim() || undefined,
+      });
       setDeleteOpen(false);
-      setPwd(""); setConfirmText("");
+      setPwd(""); setConfirmText(""); setReason("");
       onStatusChanged();
     } catch (e) {
       setDeleteErr((e as Error).message);
@@ -748,6 +754,17 @@ function PrivacyCard({
           <label>
             <span>Təsdiq üçün <strong>SİL</strong> və ya email yazın</span>
             <input type="text" value={confirmText} onChange={e => setConfirmText(e.target.value)} placeholder="SİL" />
+          </label>
+          <label>
+            <span>Səbəb (opsional)</span>
+            <textarea
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              maxLength={500}
+              rows={3}
+              placeholder="Nə üçün hesabınızı silmək istəyirsiniz?"
+              style={{ resize: "vertical" }}
+            />
           </label>
           {deleteErr && <div className="uprof-error-inline">{deleteErr}</div>}
           <div className="uprof-actions">

@@ -1245,17 +1245,6 @@ export interface PatientCard {
   emergencyContactRelation?: string | null;
   residentialAddress?: string | null;
 }
-export interface DeletionRequest {
-  userId: number;
-  email: string;
-  firstName: string | null;
-  lastName: string | null;
-  role: string;
-  blocked: boolean;
-  requestedAt: string;
-  /** İstək neçə gündür admin qərarını gözləyir (purge sayğacı deyil). */
-  daysWaiting: number;
-}
 export interface PsyPerformance {
   monthSessionsCompleted: number;
   monthSessionsTotal: number;
@@ -1743,13 +1732,9 @@ export const adminApi = {
   getClinicalData: (userId: number) =>
     authedRequest<ClinicalData>("GET", `/admin/users/${userId}/clinical-data`),
 
-  // ─── MODUL 3B: silinmə istəkləri (GDPR) ──────────────────────────────────
-  getDeletionRequests: () =>
-    authedRequest<DeletionRequest[]>("GET", "/admin/deletion-requests"),
-  approveDeletionRequest: (userId: number) =>
-    authedRequest<void>("POST", `/admin/deletion-requests/${userId}/approve`),
-  rejectDeletionRequest: (userId: number, reason?: string) =>
-    authedRequest<void>("POST", `/admin/deletion-requests/${userId}/reject`, { reason }),
+  // ─── Hesab silinməsi ─────────────────────────────────────────────────────
+  // Təsdiq/rədd üçün ayrıca köməkçi YOXDUR: silinmə istəkləri Təsdiqlər
+  // inbox-undan idarə olunur (bax decideApproval, kind=ACCOUNT_DELETE).
   /** Silinmiş hesabı bərpa et — data heç vaxt silinmədiyi üçün bərpa tamdır
    *  (istifadəçi köhnə şifrəsi ilə daxil olur). */
   restoreUser: (userId: number) =>
@@ -1850,19 +1835,27 @@ export const adminApi = {
   rejectPoolReleaseRequest: (id: number, note?: string) =>
     authedRequest<PoolReleaseRequestItem>("POST", `/admin/pool-release-requests/${id}/reject`, { note }),
   approvalsPendingCounts: () =>
-    authedRequest<{ approvalRequests: number; refundRequests: number; poolReleaseRequests: number }>("GET", "/admin/approvals/pending-counts"),
+    authedRequest<{ approvalRequests: number; refundRequests: number; poolReleaseRequests: number; accountDeletions: number }>("GET", "/admin/approvals/pending-counts"),
 
   /** Vahid Təsdiqlər siyahısı — bütün mənbələr bir formada. status boşdursa hamısı. */
   listAllApprovals: (status?: string) =>
     authedRequest<PendingApprovalRow[]>("GET", `/admin/approvals/all${status ? `?status=${status}` : ""}`),
-  /** kind-ə görə approve/reject — uyğun endpoint-ə yönləndirir. */
+  /** kind-ə görə approve/reject — uyğun endpoint-ə yönləndirir.
+   *  ACCOUNT_DELETE-də `id` istifadəçi id-sidir və rədd səbəbi `reason` adlanır
+   *  (digər mənbələrdə `note`) — pasiyentə bildiriş mətni kimi gedir. */
   decideApproval: (kind: ApprovalKind, id: number, approve: boolean, note?: string) => {
     const seg = approve ? "approve" : "reject";
+    if (kind === "ACCOUNT_DELETE") {
+      return authedRequest<unknown>("POST", `/admin/deletion-requests/${id}/${seg}`, { reason: note });
+    }
     const base = kind === "REFUND" ? "refund-requests"
       : kind === "POOL_RELEASE" ? "pool-release-requests"
       : "approval-requests";
     return authedRequest<unknown>("POST", `/admin/${base}/${id}/${seg}`, { note });
   },
+  /** Silinmə təsdiqindən əvvəl təsir önizləməsi (açıq seans/paket/ödəniş). */
+  getDeletionImpact: (userId: number) =>
+    authedRequest<DeletionImpact>("GET", `/admin/deletion-requests/${userId}/impact`),
 
   // ─── Maliyyə və Komissiya (Admin BRD §12) ────────────────────────────────
   getCommission: () => authedRequest<{ globalPercent: number | null }>("GET", "/admin/finance/commission"),
@@ -1944,7 +1937,31 @@ export interface PoolReleaseRequestItem {
   createdAt: string;
 }
 
-export type ApprovalKind = "APPROVAL" | "REFUND" | "POOL_RELEASE";
+export type ApprovalKind = "APPROVAL" | "REFUND" | "POOL_RELEASE" | "ACCOUNT_DELETE";
+
+/**
+ * Silinmə təsdiqinin təsiri. Silinmə açıq işləri LƏĞV ETMİR, ona görə admin
+ * təsdiqdən əvvəl nəyin açıq qalacağını görür. `blocksApproval` yalnız
+ * operator/psixoloqda qalxır — onların işi sahibsiz qalmasın deyə.
+ */
+export interface DeletionImpact {
+  userId: number;
+  role: string;
+  fullName: string | null;
+  email: string | null;
+  requestedAt: string | null;
+  reason: string | null;
+  upcomingAppointments: number;
+  activePackages: number;
+  unpaidPayments: number;
+  unpaidAmount: number | null;
+  openSessionRequests: number;
+  ownedOpenAppointments: number;
+  ownedOpenRequests: number;
+  ownedPackages: number;
+  blocksApproval: boolean;
+  blockReason: string | null;
+}
 export type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 /** Vahid Təsdiqlər siyahısının sətri — bütün mənbələr (ümumi gate + iadə + hovuz-buraxma) eyni formada. */
@@ -2603,7 +2620,8 @@ export const meApi = {
 
   // GDPR
   accountStatus: () => authedRequest<AccountStatus>("GET", "/me/account-status"),
-  deleteAccount: (data: { currentPassword: string; confirmation: string }) =>
+  /** `reason` opsionaldır (V123) — admin istəyi Təsdiqlər siyahısında görəndə oxuyur. */
+  deleteAccount: (data: { currentPassword: string; confirmation: string; reason?: string }) =>
     authedRequest<AccountStatus>("POST", "/me/delete-account", data),
   /** Gözləyən silinmə istəyini geri götür — admin hələ qərar verməyibsə istənilən
    *  vaxt mümkündür. Idempotent: gözləyən istək yoxdursa zərərsizdir. */

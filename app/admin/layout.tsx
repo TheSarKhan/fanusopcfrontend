@@ -74,7 +74,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     // Əməliyyatlar
     { href: "/admin/appointments",      label: "Randevular",           icon: "calendar",  badge: badge("appointments") },
     { href: "/admin/approvals",         label: "Təsdiqlər",            icon: "shield",    badge: badge("approvals"), badgeTone: "warn" },
-    { href: "/admin/deletion-requests", label: "Silinmə istəkləri",    icon: "flag",      badge: badge("deletion-requests"), badgeTone: "warn" },
+    // "Silinmə istəkləri" ayrıca sətir DEYİL: qərar gözləyən hər şey Təsdiqlər
+    // inbox-undadır (kind=ACCOUNT_DELETE), sayğac da ora əlavə olunub.
     // Maliyyə
     { href: "/admin/payments",          label: "Ödənişlər",            icon: "package",   badge: badge("payments") },
     { href: "/admin/finance",           label: "Maliyyə",              icon: "chart",     badge: badge("finance") },

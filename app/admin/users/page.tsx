@@ -54,7 +54,7 @@ import {
 
 // ── Tiplər / sabitlər ────────────────────────────────────────────
 type RoleFilter = "all" | "PATIENT" | "PSYCHOLOGIST" | "OPERATOR" | "ADMIN";
-type StatusFilter = "all" | "active" | "inactive";
+type StatusFilter = "all" | "active" | "inactive" | "deleted";
 type VerifiedFilter = "all" | "yes" | "no";
 type EditTab = "overview" | "edit" | "log" | "actions";
 type LogScope = "on" | "by";
@@ -70,6 +70,7 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: "all", label: "Hamısı" },
   { key: "active", label: "Aktiv" },
   { key: "inactive", label: "Deaktiv" },
+  { key: "deleted", label: "Silinib" },
 ];
 const VERIFIED_FILTERS: { key: VerifiedFilter; label: string }[] = [
   { key: "all", label: "Hamısı" },
@@ -202,7 +203,7 @@ export default function UsersPage() {
       Email: u.email,
       Rol: roleLabel(u.role),
       Telefon: u.phone ?? "",
-      Status: u.active ? "Aktiv" : "Deaktiv",
+      Status: u.deletedAt ? "Silinib" : u.active ? "Aktiv" : "Deaktiv",
       "Email təsdiq": u.emailVerified ? "Bəli" : "Xeyr",
       "Son giriş": u.lastLogin ? azFormatDateTime(u.lastLogin) : "",
       Qeydiyyat: azFormatDateTime(u.createdAt),
@@ -261,11 +262,17 @@ export default function UsersPage() {
     { key: "phone", header: "Telefon", hideOnMobile: true, cell: (u) => u.phone || <span className="fx-muted">—</span> },
     {
       key: "active", header: "Status",
+      // Silinmiş hesabda aktiv/deaktiv açarı mənasızdır — giriş onsuz da bağlıdır,
+      // bərpa yalnız detal panelindəki "Hesabı bərpa et" ilə olur.
       cell: (u) => (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }} onClick={(e) => e.stopPropagation()}>
-          <Switch checked={u.active} onChange={() => toggleActive(u)} aria-label={u.active ? "Deaktiv et" : "Aktivləşdir"} />
-          <Status tone={u.active ? "positive" : "muted"}>{u.active ? "Aktiv" : "Deaktiv"}</Status>
-        </span>
+        u.deletedAt ? (
+          <Status tone="risk">Silinib</Status>
+        ) : (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }} onClick={(e) => e.stopPropagation()}>
+            <Switch checked={u.active} onChange={() => toggleActive(u)} aria-label={u.active ? "Deaktiv et" : "Aktivləşdir"} />
+            <Status tone={u.active ? "positive" : "muted"}>{u.active ? "Aktiv" : "Deaktiv"}</Status>
+          </span>
+        )
       ),
     },
     { key: "emailVerified", header: "Email", hideOnMobile: true, cell: (u) => <Status tone={u.emailVerified ? "positive" : "wait"}>{u.emailVerified ? "Təsdiqli" : "Gözləyir"}</Status> },
@@ -448,7 +455,10 @@ function UserDrawer({
           <div style={{ minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <Status tone="muted">{roleLabel(user.role)}</Status>
-              <Status tone={user.active ? "positive" : "muted"}>{user.active ? "Aktiv" : "Deaktiv"}</Status>
+              {user.deletedAt
+                ? <Status tone="risk">Silinib</Status>
+                : <Status tone={user.active ? "positive" : "muted"}>{user.active ? "Aktiv" : "Deaktiv"}</Status>}
+              {!user.deletedAt && user.deletionRequestedAt && <Status tone="wait">Silinmə istəyi</Status>}
               <Status tone={user.emailVerified ? "positive" : "wait"}>{user.emailVerified ? "Email təsdiqli" : "Email gözləyir"}</Status>
             </div>
             <div className="fx-subtitle" style={{ marginTop: 4 }}>{user.email}</div>
@@ -496,10 +506,14 @@ function OverviewTab({ user }: { user: UserRecord }) {
           <InfoRow label="Email" value={user.email} />
           <InfoRow label="Telefon" value={user.phone || "—"} />
           <InfoRow label="Rol" value={roleLabel(user.role)} />
-          <InfoRow label="Status" value={user.active ? "Aktiv" : "Deaktiv"} />
+          <InfoRow label="Status" value={user.deletedAt ? "Silinib" : user.active ? "Aktiv" : "Deaktiv"} />
           <InfoRow label="Email təsdiqi" value={user.emailVerified ? "Təsdiqlənib" : "Gözləyir"} />
           <InfoRow label="Son giriş" value={fmtDateTime(user.lastLogin)} />
           <InfoRow label="Qeydiyyat" value={fmtDateTime(user.createdAt)} />
+          {user.deletedAt && <InfoRow label="Silinmə tarixi" value={fmtDateTime(user.deletedAt)} />}
+          {!user.deletedAt && user.deletionRequestedAt && (
+            <InfoRow label="Silinmə istəyi" value={fmtDateTime(user.deletionRequestedAt)} />
+          )}
           {user.role === "PSYCHOLOGIST" && (
             <InfoRow label="Saytda görünür" value={user.inPsychologistList ? "Bəli" : "Xeyr"} />
           )}
@@ -743,7 +757,7 @@ function ActionsTab({
   onDeleted: () => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<null | "reset" | "verify" | "terminate" | "delete">(null);
+  const [confirm, setConfirm] = useState<null | "reset" | "verify" | "terminate" | "delete" | "restore">(null);
   const [emailModal, setEmailModal] = useState(false);
   const [newEmail, setNewEmail] = useState("");
 
@@ -790,11 +804,23 @@ function ActionsTab({
           }
         />
         <div style={{ borderTop: "1px solid var(--hairline)", paddingTop: 12, marginTop: 4 }}>
-          <ActionRow
-            title="Hesabı birdəfəlik sil"
-            desc="Bu əməliyyat geri qaytarıla bilməz."
-            button={<Button variant="dangerGhost" size="sm" disabled={busy === "delete"} onClick={() => setConfirm("delete")}>Sil</Button>}
-          />
+          {user.deletedAt ? (
+            <ActionRow
+              title="Hesabı bərpa et"
+              desc="Hesab silinib. Data toxunulmadığı üçün bərpa tamdır — istifadəçi köhnə şifrəsi ilə daxil olur."
+              button={
+                <Button variant="ghost" size="sm" disabled={busy === "restore"} onClick={() => setConfirm("restore")}>
+                  Bərpa et
+                </Button>
+              }
+            />
+          ) : (
+            <ActionRow
+              title="Hesabı sil"
+              desc="Giriş bağlanır, məlumatlar isə saxlanılır. Sonradan bərpa edilə bilər."
+              button={<Button variant="dangerGhost" size="sm" disabled={busy === "delete"} onClick={() => setConfirm("delete")}>Sil</Button>}
+            />
+          )}
         </div>
       </div>
 
@@ -848,14 +874,30 @@ function ActionsTab({
         open={confirm === "delete"}
         onClose={() => setConfirm(null)}
         title="Hesabı sil"
-        text={`«${user.email}» hesabı birdəfəlik silinəcək. Bu əməliyyat geri qaytarıla bilməz.`}
+        text={`«${user.email}» hesabına giriş bağlanacaq. Randevu, ödəniş və profil məlumatları silinmir — hesab sonradan bərpa edilə bilər.`}
         icon={<PanelIcon name="x" size={20} />}
         iconTone="rose"
         actions={
           <>
             <Button variant="ghost" onClick={() => setConfirm(null)}>Ləğv et</Button>
-            <Button variant="danger" disabled={busy === "delete"} onClick={async () => { if (await run("delete", () => adminApi.deleteUser(user.id), "İstifadəçi silindi")) { setConfirm(null); onDeleted(); } }}>
-              {busy === "delete" ? "Silinir…" : "Birdəfəlik sil"}
+            <Button variant="danger" disabled={busy === "delete"} onClick={async () => { if (await run("delete", () => adminApi.deleteUser(user.id), "Hesab silindi")) { setConfirm(null); onDeleted(); } }}>
+              {busy === "delete" ? "Silinir…" : "Sil"}
+            </Button>
+          </>
+        }
+      />
+      <Modal
+        open={confirm === "restore"}
+        onClose={() => setConfirm(null)}
+        title="Hesabı bərpa et"
+        text={`«${user.email}» hesabı yenidən aktiv olacaq və istifadəçi köhnə şifrəsi ilə daxil ola biləcək.`}
+        icon={<PanelIcon name="shield" size={20} />}
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setConfirm(null)}>Ləğv et</Button>
+            {/* Bərpadan sonra drawer bağlanmır — admin nəticəni yerindəcə görsün. */}
+            <Button variant="primary" disabled={busy === "restore"} onClick={async () => { if (await run("restore", () => adminApi.restoreUser(user.id), "Hesab bərpa olundu")) { setConfirm(null); onAfterMutation(user.id); } }}>
+              {busy === "restore" ? "Bərpa edilir…" : "Bərpa et"}
             </Button>
           </>
         }

@@ -691,6 +691,11 @@ export interface UserRecord {
   firstName?: string; lastName?: string; phone?: string;
   emailVerified: boolean; inPsychologistList: boolean; active: boolean;
   lastLogin?: string; createdAt: string;
+  /** Dolu isə hesab silinib (giriş bağlı, data saxlanılır) — `active` isə
+   *  adminin ayrıca deaktivasiyasıdır, ikisi fərqli statuslardır. */
+  deletedAt?: string | null;
+  /** Dolu isə istifadəçi silinmə istəyib, admin qərarı gözlənilir. */
+  deletionRequestedAt?: string | null;
 }
 
 export interface PsychologistApplication {
@@ -1218,6 +1223,8 @@ export interface PatientCard {
   riskLevel: string | null;
   tags: AdminTag[];
   deletionRequestedAt: string | null;
+  /** Dolu isə hesab silinib: giriş bağlıdır, data isə olduğu kimi qalır. */
+  deletedAt: string | null;
   appointments: AppointmentDetail[];
   series: BookingSeries[];
   notifications: AdminNotificationEntry[];
@@ -1236,7 +1243,8 @@ export interface DeletionRequest {
   role: string;
   blocked: boolean;
   requestedAt: string;
-  daysLeft: number;
+  /** İstək neçə gündür admin qərarını gözləyir (purge sayğacı deyil). */
+  daysWaiting: number;
 }
 export interface PsyPerformance {
   monthSessionsCompleted: number;
@@ -1546,7 +1554,10 @@ export const adminApi = {
   // Users
   getUsers: (opts?: {
     role?: string; q?: string; page?: number; size?: number; sort?: string; dir?: string;
-    status?: "active" | "inactive"; verified?: boolean; createdFrom?: string; createdTo?: string;
+    /** "deleted" ayrıca statusdur — silinmiş hesab `active` bayrağını saxlayır,
+     *  ona görə aktiv/deaktiv filtrləri onu göstərmir. */
+    status?: "active" | "inactive" | "deleted";
+    verified?: boolean; createdFrom?: string; createdTo?: string;
   }) => {
     const params = new URLSearchParams();
     if (opts?.role) params.set("role", opts.role);
@@ -1729,6 +1740,10 @@ export const adminApi = {
     authedRequest<void>("POST", `/admin/deletion-requests/${userId}/approve`),
   rejectDeletionRequest: (userId: number, reason?: string) =>
     authedRequest<void>("POST", `/admin/deletion-requests/${userId}/reject`, { reason }),
+  /** Silinmiş hesabı bərpa et — data heç vaxt silinmədiyi üçün bərpa tamdır
+   *  (istifadəçi köhnə şifrəsi ilə daxil olur). */
+  restoreUser: (userId: number) =>
+    authedRequest<void>("POST", `/admin/users/${userId}/restore`),
 
   // ─── MODUL 3C: psixoloq kartı ────────────────────────────────────────────
   getPsychologistCard: (psyId: number) =>
@@ -2580,9 +2595,8 @@ export const meApi = {
   accountStatus: () => authedRequest<AccountStatus>("GET", "/me/account-status"),
   deleteAccount: (data: { currentPassword: string; confirmation: string }) =>
     authedRequest<AccountStatus>("POST", "/me/delete-account", data),
-  /** Cancel a pending self-service deletion within the 30-day grace window.
-   *  Restores the account to fully-active. Idempotent: harmless to call when
-   *  no deletion is pending. */
+  /** Gözləyən silinmə istəyini geri götür — admin hələ qərar verməyibsə istənilən
+   *  vaxt mümkündür. Idempotent: gözləyən istək yoxdursa zərərsizdir. */
   cancelDeletionRequest: () =>
     authedRequest<AccountStatus>("DELETE", "/me/deletion-request"),
   /** Triggers a browser download of the GDPR data export ZIP. */
@@ -2599,10 +2613,12 @@ export const meApi = {
   },
 };
 
+/** Hesabın üç vəziyyəti. Avtomatik silinmə (purge) YOXDUR — istəyə admin baxır,
+ *  təsdiqlənərsə `deletedAt` dolur və giriş bağlanır (data isə saxlanılır). */
 export interface AccountStatus {
   active: boolean;
   deletionRequestedAt: string | null;
-  daysUntilPurge: number;
+  deletedAt: string | null;
 }
 
 // ─── Peer follow (psixoloqlar arası izləmə) ───────────────────────────────────

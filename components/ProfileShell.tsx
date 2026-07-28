@@ -156,10 +156,9 @@ export default function ProfileShell({ extras, sideExtras, title = "Profil", sub
 function DeletionBanner({ status, onCancelled }: { status: AccountStatus; onCancelled: () => void }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const purgeDate = status.deletionRequestedAt
-    ? new Date(new Date(status.deletionRequestedAt).getTime() + 30 * 24 * 60 * 60 * 1000)
-    : null;
-  const purgeLabel = purgeDate ? fmtDate(purgeDate.toISOString()) : "—";
+  // Avtomatik silinmə tarixi YOXDUR — qərarı admin verir. Ona görə "neçə gün
+  // qalıb" sayğacı əvəzinə istəyin göndərildiyi tarix göstərilir.
+  const requestedLabel = status.deletionRequestedAt ? fmtDate(status.deletionRequestedAt) : "—";
 
   const onCancel = async () => {
     if (!confirm("Hesab silmə tələbini ləğv etmək istəyirsiniz?")) return;
@@ -193,10 +192,11 @@ function DeletionBanner({ status, onCancelled }: { status: AccountStatus; onCanc
       }}
     >
       <div style={{ flex: "1 1 320px" }}>
-        <strong>Hesabınız {purgeLabel} tarixində silinəcək</strong>
+        <strong>Hesab silinmə tələbiniz baxılır</strong>
         <div style={{ fontSize: 13, marginTop: 4 }}>
-          Silmə tələbi qüvvədədir ({status.daysUntilPurge} gün qalır). Bu müddət ərzində
-          tələbi ləğv etsəniz, hesabınız tam aktiv olacaq.
+          Tələb {requestedLabel} tarixində göndərilib. Qərar verilənə qədər hesabınız
+          işləkdir, yalnız yeni seans və paket ala bilməzsiniz. Tələbi istənilən an
+          ləğv edə bilərsiniz.
         </div>
         {err && <div style={{ color: "#b00020", fontSize: 13, marginTop: 6 }}>{err}</div>}
       </div>
@@ -706,11 +706,13 @@ function PrivacyCard({
           <strong>Hesabımı sil</strong>
           {status?.deletionRequestedAt ? (
             <small>
-              Silmə tələbi qüvvədədir — {status.daysUntilPurge} gün qalır.
-              İstənilən anda ləğv edə bilərsiniz.
+              Tələbiniz baxılır — qərar verilənə qədər istənilən an ləğv edə bilərsiniz.
             </small>
           ) : (
-            <small>30 gün gözləmə müddətindən sonra bütün data tamamilə silinəcək.</small>
+            <small>
+              Tələb göndərilir və dəstək komandası tərəfindən baxılır. Təsdiqlənsə
+              hesabınıza giriş bağlanır; seans tarixçəniz sənədləşmə üçün saxlanılır.
+            </small>
           )}
         </div>
         {status?.deletionRequestedAt ? (
@@ -734,9 +736,10 @@ function PrivacyCard({
       {deleteOpen && !status?.deletionRequestedAt && (
         <div className="uprof-priv-confirm">
           <p>
-            <strong>Diqqət:</strong> bu əməliyyat geri qaytarıla bilməz.
-            Hesabınız 30 gün gözləmə müddətindən sonra tamamilə silinəcək.
-            Bu müddət ərzində sistemə girə bilməyəcəksiniz, gələcək randevular avtomatik ləğv olunur.
+            <strong>Diqqət:</strong> tələbiniz dəstək komandasına gedir. Qərar verilənə
+            qədər hesabınız işləkdir, yalnız yeni seans və paket ala bilməzsiniz.
+            Təsdiqlənsə hesabınıza giriş bağlanır; seans və ödəniş tarixçəniz sənədləşmə
+            tələbləri üçün saxlanılır.
           </p>
           <label>
             <span>Cari şifrə</span>

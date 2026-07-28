@@ -243,59 +243,59 @@ export default function SessionRequestsPage() {
         {/* Cədvəl/boş vəziyyət mətni kartın alt kənarına yapışırdı — yan və alt
             boşluq başlıq zolağı ilə eyniləşdirilir. */}
         <div style={{ padding: "4px 20px 18px" }}>
-        <DataTable
-          rows={filtered}
-          columns={columns}
-          rowKey={req => req.id}
-          loading={loading}
-          error={error}
-          onRetry={() => setReloadNonce(n => n + 1)}
-          onRowClick={req => router.push(`/operator/session-requests/${req.id}`)}
-          empty={{
-            title: searching
-              ? "Axtarışa uyğun müraciət yoxdur"
-              : tab === "POOL" ? "Hovuz boşdur" : "Bu kateqoriyada müraciət yoxdur",
-            body: searching
-              ? "Başqa ad, telefon və ya açar söz yoxlayın."
-              : tab === "POOL"
-                ? "Saytdan yeni seans müraciəti gəldikdə burada görünəcək."
-                : "Müraciət götürdükcə və ya çevirdikcə bu siyahı dolacaq.",
-          }}
-          actions={req => (
-            tab === "POOL" ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={<IconCheck className="fx-icon fx-icon--sm" />}
-                disabled={busyId === req.id}
-                onClick={() => take(req.id)}
-              >
-                Götür
-              </Button>
-            ) : (
-              <IconButton
-                aria-label="Müraciət detalını aç"
-                onClick={() => router.push(`/operator/session-requests/${req.id}`)}
-              >
-                <IconChevronRight className="fx-icon fx-icon--sm" />
-              </IconButton>
-            )
-          )}
-          // Axtarış aktivdirsə siyahı yalnız cari səhifədən süzülür — səhifələmə gizlədilir.
-          pagination={searching ? undefined : {
-            page: page + 1,
-            pageCount: Math.max(1, totalPages),
-            onChange: p => setPage(p - 1),
-            pageSize: size,
-            onPageSizeChange: setSize,
-            pageSizeOptions: PAGE_SIZE_OPTIONS,
-          }}
-          totalLabel={
-            searching
-              ? `${filtered.length} nəticə göstərilir`
-              : `Göstərilir: ${page * size + 1}–${Math.min((page + 1) * size, totalElements)} / ${totalElements}`
-          }
-        />
+          <DataTable
+            rows={filtered}
+            columns={columns}
+            rowKey={req => req.id}
+            loading={loading}
+            error={error}
+            onRetry={() => setReloadNonce(n => n + 1)}
+            onRowClick={req => router.push(`/operator/session-requests/${req.id}`)}
+            empty={{
+              title: searching
+                ? "Axtarışa uyğun müraciət yoxdur"
+                : tab === "POOL" ? "Hovuz boşdur" : "Bu kateqoriyada müraciət yoxdur",
+              body: searching
+                ? "Başqa ad, telefon və ya açar söz yoxlayın."
+                : tab === "POOL"
+                  ? "Saytdan yeni seans müraciəti gəldikdə burada görünəcək."
+                  : "Müraciət götürdükcə və ya çevirdikcə bu siyahı dolacaq.",
+            }}
+            actions={req => (
+              tab === "POOL" ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<IconCheck className="fx-icon fx-icon--sm" />}
+                  disabled={busyId === req.id}
+                  onClick={() => take(req.id)}
+                >
+                  Götür
+                </Button>
+              ) : (
+                <IconButton
+                  aria-label="Müraciət detalını aç"
+                  onClick={() => router.push(`/operator/session-requests/${req.id}`)}
+                >
+                  <IconChevronRight className="fx-icon fx-icon--sm" />
+                </IconButton>
+              )
+            )}
+            // Axtarış aktivdirsə siyahı yalnız cari səhifədən süzülür — səhifələmə gizlədilir.
+            pagination={searching ? undefined : {
+              page: page + 1,
+              pageCount: Math.max(1, totalPages),
+              onChange: p => setPage(p - 1),
+              pageSize: size,
+              onPageSizeChange: setSize,
+              pageSizeOptions: PAGE_SIZE_OPTIONS,
+            }}
+            totalLabel={
+              searching
+                ? `${filtered.length} nəticə göstərilir`
+                : `Göstərilir: ${page * size + 1}–${Math.min((page + 1) * size, totalElements)} / ${totalElements}`
+            }
+          />
         </div>
       </Card>
     </div>

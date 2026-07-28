@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { meApi, patientApi } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
-import TimePicker from "@/components/TimePicker";
-import { azFormatDate, azNowTime, azTodayIso, pastPreferredError } from "@/lib/datetime";
+import { azFormatDate, azTodayIso, pastPreferredError } from "@/lib/datetime";
 
 /**
  * "Fanus təyin etsin" — login olmuş pasiyent hansı psixoloqu seçəcəyini bilmirsə,
@@ -60,6 +59,17 @@ export default function FanusAssignWizard({
 
   const set = (k: keyof typeof INITIAL) => (v: string) =>
     setForm(f => ({ ...f, [k]: v }));
+
+  // Vaxt tərcihi tək `withTime` seçici ilə idarə olunur, amma aşağıdakı məntiq
+  // (keçmiş vaxt yoxlaması, requestedStartAt, operator qeydi) tarix və saatı ayrı
+  // görməli olduğu üçün burada birləşdirilib/parçalanır.
+  const preferredAt = form.preferredDate
+    ? `${form.preferredDate}T${form.preferredTime || "00:00"}`
+    : "";
+  const setPreferredAt = (v: string) => {
+    const [d, t] = v.split("T");
+    setForm(f => ({ ...f, preferredDate: d ?? "", preferredTime: (t ?? "").slice(0, 5) }));
+  };
 
   // Açılanda sıfırla + profildən ad/telefon/e-poçt gətir (yenidən yazmasın).
   useEffect(() => {
@@ -362,22 +372,18 @@ export default function FanusAssignWizard({
 
               {step === 2 && (
                 <>
-                  <Field label="Üstünlük verilən tarix (opsional)">
+                  {/* Tarix və saat AYRI sahələr idi (DatePicker + TimePicker) — indi
+                      randevu istəyindəki kimi tək `withTime` seçici: təqvimin altında
+                      saat/dəqiqə sətri və "Hazır" düyməsi var, seçim orada bitir. */}
+                  <Field label="Üstünlük verilən vaxt (opsional)">
                     <DatePicker
-                      value={form.preferredDate}
-                      onChange={set("preferredDate")}
-                      placeholder="gg.aa.iiii"
+                      withTime
+                      value={preferredAt}
+                      onChange={setPreferredAt}
+                      placeholder="gg.aa.iiii ss:dd"
                       theme="light"
+                      clearable
                       min={azTodayIso()}
-                    />
-                  </Field>
-                  <Field label="Saat (opsional)">
-                    <TimePicker
-                      value={form.preferredTime}
-                      onChange={set("preferredTime")}
-                      theme="light"
-                      size="sm"
-                      min={form.preferredDate === azTodayIso() ? azNowTime() : undefined}
                     />
                   </Field>
                   <Field label="Əlavə qeydlər (opsional)">

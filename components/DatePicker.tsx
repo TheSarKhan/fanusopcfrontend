@@ -189,7 +189,9 @@ export default function DatePicker({
   const [mounted, setMounted] = useState(false);
   const [text, setText] = useState(() => formatDisplay(value, withTime));
   const [focused, setFocused] = useState(false);
-  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [pos, setPos] = useState<
+    { top: number; left: number; width: number; maxHeight: number } | null
+  >(null);
 
   const selected = useMemo(() => parseValue(value), [value]);
   const minP = useMemo(() => (min ? parseValue(min) : null), [min]);
@@ -228,11 +230,33 @@ export default function DatePicker({
     const vw = window.innerWidth, vh = window.innerHeight;
     const width = clamp(r.width, Math.min(290, vw - 16), Math.min(330, vw - 16));
     const estH = withTime ? 414 : 348;
-    let left = r.left;
-    let top = r.bottom + 6;
-    if (top + estH > vh - 8 && r.top - estH - 6 > 8) top = r.top - estH - 6;
-    left = clamp(left, 8, Math.max(8, vw - width - 8));
-    setPos({ top, left, width });
+    const GAP = 6, EDGE = 8;
+
+    // Sahə səhifənin altındadırsa panel nə aşağı, nə də yuxarı tam sığmaya bilər.
+    // Əvvəl belə halda panel aşağıda qalıb viewport-dan kəsilirdi — saat sətri
+    // görünmür və seçilə bilmirdi. İndi: sığan tərəf seçilir, heç biri sığmırsa
+    // daha geniş tərəf götürülür və panel `maxHeight` ilə öz içində sürüşür.
+    const spaceBelow = vh - r.bottom - GAP - EDGE;
+    const spaceAbove = r.top - GAP - EDGE;
+
+    let top: number;
+    let maxHeight: number;
+    if (estH <= spaceBelow) {
+      top = r.bottom + GAP;
+      maxHeight = spaceBelow;
+    } else if (estH <= spaceAbove) {
+      top = r.top - GAP - estH;
+      maxHeight = spaceAbove;
+    } else if (spaceAbove > spaceBelow) {
+      top = EDGE;                 // yuxarı tərəfi tam doldur
+      maxHeight = spaceAbove;
+    } else {
+      top = r.bottom + GAP;
+      maxHeight = spaceBelow;
+    }
+
+    const left = clamp(r.left, EDGE, Math.max(EDGE, vw - width - EDGE));
+    setPos({ top, left, width, maxHeight: Math.max(180, maxHeight) });
   }, [withTime]);
 
   useEffect(() => {
@@ -411,83 +435,89 @@ export default function DatePicker({
           aria-label="Tarix seçici"
           style={{
             position: "fixed", top: pos.top, left: pos.left, width: pos.width,
+            maxHeight: pos.maxHeight,
             zIndex: popupZIndex,
             background: pal.panelBg,
             border: `1px solid ${pal.panelBorder}`,
             borderRadius: 14,
             boxShadow: pal.shadow,
-            padding: 14,
             boxSizing: "border-box",
+            // Saat sətri həmişə görünsün: yalnız təqvim gövdəsi sürüşür.
+            display: "flex", flexDirection: "column", overflow: "hidden",
             animation: "fanus-dp-pop .14s ease-out",
           }}
         >
-          {/* Başlıq: ay naviqasiyası */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <button type="button" title="Əvvəlki ay"
-              onClick={() => stepMonth(-1)} style={navBtn(pal)}>
-              <IconChevronLeft />
-            </button>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: pal.text, letterSpacing: 0.2 }}>
-              {AZ_MONTHS[view.mo - 1]} {view.y}
+          <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 14 }}>
+            {/* Başlıq: ay naviqasiyası */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <button type="button" title="Əvvəlki ay"
+                onClick={() => stepMonth(-1)} style={navBtn(pal)}>
+                <IconChevronLeft />
+              </button>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: pal.text, letterSpacing: 0.2 }}>
+                {AZ_MONTHS[view.mo - 1]} {view.y}
+              </div>
+              <button type="button" title="Növbəti ay"
+                onClick={() => stepMonth(1)} style={navBtn(pal)}>
+                <IconChevronRight />
+              </button>
             </div>
-            <button type="button" title="Növbəti ay"
-              onClick={() => stepMonth(1)} style={navBtn(pal)}>
-              <IconChevronRight />
-            </button>
+
+            {/* Həftə günləri */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
+              {AZ_WEEKDAYS.map((w, i) => (
+                <div key={w} style={{
+                  textAlign: "center", fontSize: 11, fontWeight: 600,
+                  color: i === 6 ? pal.accent : pal.textDim,
+                  padding: "4px 0",
+                }}>{w}</div>
+              ))}
+            </div>
+
+            {/* Günlər */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
+              {Array.from({ length: firstWeekdayMon(view.y, view.mo) }).map((_, i) => (
+                <div key={`b${i}`} />
+              ))}
+              {Array.from({ length: daysInMonth(view.y, view.mo) }).map((_, i) => {
+                const d = i + 1;
+                const isSel = !!selected && selected.y === view.y && selected.mo === view.mo && selected.d === d;
+                const isToday = isSameDayAsToday(view.y, view.mo, d);
+                const disabledDay = isDayDisabled(view.y, view.mo, d);
+                const weekendSun = (firstWeekdayMon(view.y, view.mo) + i) % 7 === 6;
+                return (
+                  <button key={d} type="button"
+                    disabled={disabledDay}
+                    onClick={() => pickDay(d)}
+                    className={dayClass}
+                    style={{
+                      aspectRatio: "1 / 1",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      border: "none", borderRadius: 9,
+                      background: isSel ? undefined : "transparent",
+                      backgroundImage: isSel ? pal.accentGrad : "none",
+                      color: disabledDay ? pal.textFaint
+                        : isSel ? pal.onAccent
+                        : weekendSun ? pal.accent : pal.text,
+                      opacity: disabledDay ? 0.35 : 1,
+                      fontSize: 13, fontWeight: isSel ? 700 : 500,
+                      cursor: disabledDay ? "not-allowed" : "pointer",
+                      boxShadow: isToday && !isSel ? `inset 0 0 0 1.5px ${pal.todayRing}` : "none",
+                      transition: "background .12s, color .12s",
+                    }}
+                  >{d}</button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Həftə günləri */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
-            {AZ_WEEKDAYS.map((w, i) => (
-              <div key={w} style={{
-                textAlign: "center", fontSize: 11, fontWeight: 600,
-                color: i === 6 ? pal.accent : pal.textDim,
-                padding: "4px 0",
-              }}>{w}</div>
-            ))}
-          </div>
-
-          {/* Günlər */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
-            {Array.from({ length: firstWeekdayMon(view.y, view.mo) }).map((_, i) => (
-              <div key={`b${i}`} />
-            ))}
-            {Array.from({ length: daysInMonth(view.y, view.mo) }).map((_, i) => {
-              const d = i + 1;
-              const isSel = !!selected && selected.y === view.y && selected.mo === view.mo && selected.d === d;
-              const isToday = isSameDayAsToday(view.y, view.mo, d);
-              const disabledDay = isDayDisabled(view.y, view.mo, d);
-              const weekendSun = (firstWeekdayMon(view.y, view.mo) + i) % 7 === 6;
-              return (
-                <button key={d} type="button"
-                  disabled={disabledDay}
-                  onClick={() => pickDay(d)}
-                  className={dayClass}
-                  style={{
-                    aspectRatio: "1 / 1",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    border: "none", borderRadius: 9,
-                    background: isSel ? undefined : "transparent",
-                    backgroundImage: isSel ? pal.accentGrad : "none",
-                    color: disabledDay ? pal.textFaint
-                      : isSel ? pal.onAccent
-                      : weekendSun ? pal.accent : pal.text,
-                    opacity: disabledDay ? 0.35 : 1,
-                    fontSize: 13, fontWeight: isSel ? 700 : 500,
-                    cursor: disabledDay ? "not-allowed" : "pointer",
-                    boxShadow: isToday && !isSel ? `inset 0 0 0 1.5px ${pal.todayRing}` : "none",
-                    transition: "background .12s, color .12s",
-                  }}
-                >{d}</button>
-              );
-            })}
-          </div>
-
-          {/* Vaxt sətri + Hazır (yalnız withTime) */}
+          {/* Vaxt sətri + Hazır (yalnız withTime) — sürüşən gövdədən kənarda */}
           {withTime && (
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
-              marginTop: 12, paddingTop: 12,
+              flexShrink: 0,
+              padding: "12px 14px 14px",
+              background: pal.panelBg,
               borderTop: `1px solid ${pal.panelBorder}`,
             }}>
               <span style={{ color: pal.textDim, display: "inline-flex" }}><IconClock /></span>

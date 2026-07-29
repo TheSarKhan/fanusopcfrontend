@@ -486,7 +486,11 @@ function Section({ cols, children }: { cols: string; children: React.ReactNode }
  * hündürlüyü ilə (240–260px) uyğunlaşdırılıb ki, dolu və boş kart eyni ölçüdə
  * dursun.
  */
-export const BLOCK_MIN = 260;
+// DİQQƏT: `export` OLMAMALIDIR. Next.js səhifə faylından yalnız müəyyən adları
+// ixrac etməyə icazə verir (default, metadata, revalidate, dynamic …); ixtiyari
+// sabit ixrac etmək `next build`-i tip yoxlamasında sındırır:
+//   Type error: "BLOCK_MIN" is not a valid Page export field.
+const BLOCK_MIN = 260;
 
 /** Boş vəziyyət — mərkəzləşdirilmiş, tam blok hündürlüyündə. */
 function Empty({ loading, text, minHeight = BLOCK_MIN }: {

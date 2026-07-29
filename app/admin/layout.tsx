@@ -67,6 +67,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   // ona görə qruplar bitişik sıralanır). Hər modulun öz fərqli, mənalı ikonu var:
   //  İnsanlar → Əməliyyatlar → Maliyyə → Məzmun → Ünsiyyət → Sistem.
   const nav: PanelNavItem[] = [
+    // Ümumi mənzərə — həmişə birinci
+    { href: "/admin",                   label: "İdarə paneli",         icon: "home" },
     // İnsanlar
     { href: "/admin/users",             label: t("nav.users"),         icon: "users" },
     { href: "/admin/psychologists",     label: t("nav.psychologists"), icon: "user",      badge: badge("psychologists") },

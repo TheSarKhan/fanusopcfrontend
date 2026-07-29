@@ -67,6 +67,21 @@ async function get<T>(path: string, opts?: RequestInit): Promise<T> {
   return res.json();
 }
 
+/**
+ * Kontent baxışını qeyd edir (V125) — bloq məqaləsi və psixoloq profili.
+ * Fire-and-forget: cavab gözlənilmir, xəta udulur. Sayğac ikinci dərəcəli
+ * məlumatdır və ziyarətçinin səhifəsini heç bir halda pozmamalıdır.
+ */
+export function recordContentView(type: "BLOG_POST" | "PSYCHOLOGIST", id: number) {
+  if (typeof window === "undefined" || !id) return;
+  fetch(`${BASE}/views`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, id }),
+    keepalive: true,
+  }).catch(() => { /* sayğac kritik deyil */ });
+}
+
 /** Ping our own Next.js server to bust the ISR cache for blog content.
  *  Mutations happen via direct fetches to the Spring backend from the browser,
  *  so Next has no idea the underlying data changed — without this, the public
@@ -1029,6 +1044,7 @@ export const resetPassword = (token: string, newPassword: string) =>
 export interface StatBlock { value: number; secondary: number | null; deltaPercent: number | null; label: string; }
 export interface DailyFlow { date: string; confirmed: number; pending: number; cancelled: number; }
 export interface ActivityEntry { type: string; tone: string; title: string; meta: string; at: string | null; }
+/** `views` real sayğacdan gəlir (V125); `deltaPct` həmişə null — müqayisə bazası saxlanmır. */
 export interface TopArticle { rank: number; title: string; author: string; category: string; views: number; deltaPct: number | null; }
 export interface TopicSlice { label: string; percent: number; color: string; }
 export interface DashboardMetrics {
@@ -1047,18 +1063,15 @@ export interface DashboardMetrics {
 // ─── Reports types ────────────────────────────────────────────────────────────
 export interface HeadlineMetric { value: number; unit: string; deltaAbs: number; deltaUnit: string; label: string; }
 export interface FunnelStep { label: string; count: number; pctOfTotal: number; color: string; }
-export interface TrafficSource { label: string; percent: number; color: string; }
-export interface TopConvertingArticle { title: string; views: number; requests: number; conversionRate: number; }
 export interface PsychologistPerformance { initials: string; avatarColor: string; name: string; sessions: number; completionPct: number; rating: number; }
+/** trafficSources / hourlyHeatmap / topConverting SİLİNDİ — onlar ölçülmürdü,
+ *  backend-də sabit və ya təsadüfi doldurulurdu (bax ReportsService). */
 export interface ReportsData {
   conversion: HeadlineMetric;
   completion: HeadlineMetric;
   averageRating: HeadlineMetric;
   activeUsers: HeadlineMetric;
   funnel: FunnelStep[];
-  trafficSources: TrafficSource[];
-  hourlyHeatmap: number[][];
-  topConverting: TopConvertingArticle[];
   performance: PsychologistPerformance[];
 }
 
@@ -1857,21 +1870,79 @@ export const adminApi = {
   getDeletionImpact: (userId: number) =>
     authedRequest<DeletionImpact>("GET", `/admin/deletion-requests/${userId}/impact`),
 
+  // ─── Ödəniş reyestri (admin — qlobal, tam süzgəc dəsti) ──────────────────
+  // Operator səthindən (`operatorApi.listPaymentsPaged`) fərqi: sahiblik filtri
+  // yoxdur və əməliyyatlar təsdiq gate-inə düşmür, birbaşa icra olunur.
+  listPaymentsPaged: (opts: AdminPaymentQuery = {}) => {
+    const params = new URLSearchParams();
+    if (opts.status) params.set("status", opts.status);
+    if (opts.q) params.set("q", opts.q);
+    if (opts.from) params.set("from", opts.from);
+    if (opts.to) params.set("to", opts.to);
+    if (opts.method) params.set("method", opts.method);
+    if (opts.operatorId !== undefined) params.set("operatorId", String(opts.operatorId));
+    if (opts.psychologistId !== undefined) params.set("psychologistId", String(opts.psychologistId));
+    if (opts.minAmount !== undefined) params.set("minAmount", String(opts.minAmount));
+    if (opts.maxAmount !== undefined) params.set("maxAmount", String(opts.maxAmount));
+    if (opts.zeroCommission) params.set("zeroCommission", "true");
+    if (opts.page !== undefined) params.set("page", String(opts.page));
+    if (opts.size !== undefined) params.set("size", String(opts.size));
+    const qs = params.toString();
+    return authedRequest<Paged<PaymentItem>>("GET", `/admin/payments/paged${qs ? `?${qs}` : ""}`);
+  },
+  paymentsSummary: () => authedRequest<PaymentSummary>("GET", "/admin/payments/summary"),
+  paymentRefundSuggestion: (id: number) =>
+    authedRequest<RefundSuggestion>("GET", `/admin/payments/${id}/refund-suggestion`),
+  /** Randevu/paketə bağlı olmayan sərbəst ödəniş qeydi. */
+  createStandalonePayment: (data: {
+    patientId?: number; psychologistId?: number;
+    patientName?: string; patientPhone?: string;
+    amount: number; currency?: string; note?: string;
+  }) => authedRequest<PaymentItem>("POST", "/admin/payments", data),
+  markPaymentPaid: (id: number, method?: string) =>
+    authedRequest<PaymentItem>("POST", `/admin/payments/${id}/mark-paid`, method ? { method } : undefined),
+  cancelPayment: (id: number, reason: string) =>
+    authedRequest<PaymentItem>("POST", `/admin/payments/${id}/cancel`, { reason }),
+  refundPayment: (id: number, data: { amount?: number; reason: string; proRataRemaining?: boolean }) =>
+    authedRequest<PaymentItem>("POST", `/admin/payments/${id}/refund`, data),
+  /** Möhürlənmiş komissiyanın düzəlişi — səbəb məcburi, audit log-a yazılır. */
+  adjustPaymentCommission: (id: number, percent: number, reason: string) =>
+    authedRequest<PaymentItem>("PUT", `/admin/payments/${id}/commission`, { percent, reason }),
+
   // ─── Maliyyə və Komissiya (Admin BRD §12) ────────────────────────────────
   getCommission: () => authedRequest<{ globalPercent: number | null }>("GET", "/admin/finance/commission"),
-  setCommission: (percent: number) =>
-    authedRequest<{ globalPercent: number | null }>("PUT", "/admin/finance/commission", { percent }),
+  /** `reason` opsionaldır — dolubsa faiz tarixçəsinə yazılır. */
+  setCommission: (percent: number, reason?: string) =>
+    authedRequest<{ globalPercent: number | null }>("PUT", "/admin/finance/commission", { percent, reason }),
   /** Pasientin özü müraciət etdiyi (DIRECT) rezervasiyalar üçün faiz — default 0%. */
   getDirectCommission: () => authedRequest<{ globalPercent: number | null }>("GET", "/admin/finance/direct-commission"),
-  setDirectCommission: (percent: number) =>
-    authedRequest<{ globalPercent: number | null }>("PUT", "/admin/finance/direct-commission", { percent }),
-  setPsychologistCommission: (psychologistId: number, percent: number | null) =>
-    authedRequest<void>("PUT", `/admin/finance/psychologists/${psychologistId}/commission`, { percent }),
+  setDirectCommission: (percent: number, reason?: string) =>
+    authedRequest<{ globalPercent: number | null }>("PUT", "/admin/finance/direct-commission", { percent, reason }),
+  setPsychologistCommission: (psychologistId: number, percent: number | null, reason?: string) =>
+    authedRequest<void>("PUT", `/admin/finance/psychologists/${psychologistId}/commission`, { percent, reason }),
+  /** Faiz dəyişikliyi tarixçəsi — "bu ay komissiya niyə dəyişdi?" sualı üçün. */
+  commissionHistory: (opts: { psychologistId?: number; page?: number; size?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (opts.psychologistId !== undefined) q.set("psychologistId", String(opts.psychologistId));
+    if (opts.page !== undefined) q.set("page", String(opts.page));
+    if (opts.size !== undefined) q.set("size", String(opts.size));
+    const qs = q.toString();
+    return authedRequest<Paged<CommissionChange>>("GET", `/admin/finance/commission/history${qs ? `?${qs}` : ""}`);
+  },
+  /** Fərdi faizi olan psixoloqlar — qlobal faizi səssizcə üstələyirlər. */
+  commissionOverrides: () =>
+    authedRequest<PsychologistOverride[]>("GET", "/admin/finance/commission/overrides"),
   payoutBalances: () => authedRequest<PayoutBalance[]>("GET", "/admin/finance/payouts/balances"),
   listPayouts: (psychologistId?: number) =>
     authedRequest<PayoutItem[]>("GET", `/admin/finance/payouts${psychologistId ? `?psychologistId=${psychologistId}` : ""}`),
+  /** Ödəmə hazırlanır — GÖZLƏYİR statusunda yaranır, bank köçürməsi hələ edilməyib. */
   createPayout: (data: { psychologistId: number; amount: number; note?: string }) =>
     authedRequest<PayoutItem>("POST", "/admin/finance/payouts", data),
+  /** Köçürmə icra olundu — psixoloqa bildiriş bu anda gedir. */
+  markPayoutPaid: (id: number) =>
+    authedRequest<PayoutItem>("POST", `/admin/finance/payouts/${id}/mark-paid`),
+  cancelPayout: (id: number, reason?: string) =>
+    authedRequest<void>("POST", `/admin/finance/payouts/${id}/cancel`, { reason }),
   listSubscriptionPlans: () => authedRequest<SubscriptionPlanItem[]>("GET", "/admin/finance/plans"),
   createSubscriptionPlan: (data: { name: string; price: number; period: string; perks?: string; active?: boolean }) =>
     authedRequest<SubscriptionPlanItem>("POST", "/admin/finance/plans", data),
@@ -1995,7 +2066,33 @@ export interface PayoutBalance {
   psychologistName: string;
   earnedNet: number;
   paidOut: number;
+  /** Hazırlanmış, hələ bankda icra olunmamış məbləğ. Balansdan çıxılmır —
+   *  ayrıca göstərilir ki, eyni məbləğ ikinci dəfə hazırlanmasın. */
+  pendingPayout: number;
   balance: number;
+}
+
+/** Komissiya faizinin dəyişmə tarixçəsi (V124). */
+export interface CommissionChange {
+  id: number;
+  scope: "GLOBAL" | "DIRECT" | "PSYCHOLOGIST";
+  psychologistId: number | null;
+  psychologistName: string | null;
+  oldPercent: number | null;
+  /** null = override götürülüb, qlobal faizə qayıdılıb. */
+  newPercent: number | null;
+  changedByName: string | null;
+  actorRole: string | null;
+  reason: string | null;
+  createdAt: string;
+}
+
+/** Fərdi faizi olan psixoloq — qlobal faizi səssizcə üstələyir. */
+export interface PsychologistOverride {
+  psychologistId: number;
+  psychologistName: string;
+  overridePercent: number;
+  globalPercent: number | null;
 }
 
 export interface PayoutItem {
@@ -2195,11 +2292,46 @@ export interface PaymentItem {
   psychologistName?: string | null;
   patientPhone?: string | null;
   commissionAmount?: number | null;
+  /** Möhürlənmiş komissiya faizi — admin düzəliş dialoqunda cari dəyər. */
+  commissionPercent?: number | null;
   /** 'DIRECT' | 'PLATFORM_MATCHED' — komissiya fərqləndirməsi üçün mənbə. */
   origin?: string | null;
   /** Pasiyentin hesabı silinib/deaktivdir — ad snapshot-dan gəldiyi üçün siyahıda
    *  hələ görünür, ona görə adın yanında "(silinmiş)" göstərilməlidir. */
   patientAccountDeleted?: boolean;
+}
+
+/** Admin ödəniş reyestrinin süzgəcləri. Hamısı opsionaldır. */
+export interface AdminPaymentQuery {
+  /** Vergüllə ayrılmış status qrupu, məs. "PAID,PARTIALLY_REFUNDED". */
+  status?: string;
+  /** Müştəri adı və ya telefonu üzrə axtarış. */
+  q?: string;
+  /** ISO gün (YYYY-MM-DD) — filtr `ödənilmə, yoxdursa yaranma` tarixi üzrədir. */
+  from?: string;
+  to?: string;
+  method?: string;
+  operatorId?: number;
+  psychologistId?: number;
+  minAmount?: number;
+  maxAmount?: number;
+  /** true → yalnız komissiyası boş/sıfır olanlar. */
+  zeroCommission?: boolean;
+  page?: number;
+  size?: number;
+}
+
+/** Paket ödənişi üçün qalan seanslara görə pro-rata iadə təklifi. */
+export interface RefundSuggestion {
+  paymentId: number;
+  patientPackageId: number | null;
+  totalSessions: number;
+  remainingSessions: number;
+  pricePaid: number;
+  perSession: number;
+  suggestedAmount: number;
+  alreadyRefunded: number;
+  maxRefundable: number;
 }
 
 export interface PaymentSummary {

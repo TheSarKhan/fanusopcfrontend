@@ -408,6 +408,11 @@
 .fx-dt tbody tr.fx-dt__row--muted > td { color: var(--oxford-60); }
 .fx-dt tbody tr:last-child > td { border-bottom: 0; }
 .fx-dt__num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Başlıq da xana ilə eyni tərəfə yaslanmalıdır. `.fx-dt th` (0,0,1,1) tək
+   `.fx-dt__num`-dan (0,0,1,0) spesifikdir və onu üstələyirdi: rəqəm sütununda
+   başlıq solda, dəyər sağda qalırdı və geniş sütunda ikisi bir-birindən
+   qopurdu (dəyər qonşu sütuna aid kimi görünürdü). */
+.fx-dt th.fx-dt__num { text-align: right; }
 .fx-dt__cell--right { text-align: right; }
 
 /* Sıralanan başlıq */

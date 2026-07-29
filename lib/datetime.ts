@@ -80,31 +80,42 @@ export function azFormat(input: string | Date, opts: Intl.DateTimeFormatOptions 
  * `formatToParts` yalnız rəqəm dəyərlərini verir, sıralama bizim əlimizdədir.
  */
 function azNumericParts(input: string | Date): { d: string; mo: string; y: string; hh: string; mm: string } {
+  // Etibarsız dəyərdə formatToParts RangeError atır və bu, bütün səhifəni yıxır
+  // (React error boundary). Tarix göstərimi heç bir ekranda kritik deyil — ona
+  // görə boş hissələr qaytarılır və çağıran tərəf "—" göstərir.
+  const instant = toInstant(input);
+  if (!(instant instanceof Date) || Number.isNaN(instant.getTime())) {
+    return { d: "", mo: "", y: "", hh: "", mm: "" };
+  }
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Baku",
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit", hour12: false,
-  }).formatToParts(toInstant(input));
+  }).formatToParts(instant);
   const get = (t: string) => parts.find(p => p.type === t)?.value ?? "";
   // en-GB hour12:false gecəyarını bəzən "24" verir — 00-a normallaşdırırıq.
   const hh = get("hour") === "24" ? "00" : get("hour");
   return { d: get("day"), mo: get("month"), y: get("year"), hh, mm: get("minute") };
 }
 
-/** Tarix — həmişə gg.aa.iiii (məs. 13.07.2026), locale-dən asılı deyil. */
+/** Tarix — həmişə gg.aa.iiii (məs. 13.07.2026), locale-dən asılı deyil.
+ *  Etibarsız dəyərdə "—" qaytarır (səhifəni yıxmır). */
 export function azFormatDate(input: string | Date) {
   const p = azNumericParts(input);
+  if (!p.y) return "—";
   return `${p.d}.${p.mo}.${p.y}`;
 }
 
 export function azFormatTime(input: string | Date) {
   const p = azNumericParts(input);
+  if (!p.hh) return "—";
   return `${p.hh}:${p.mm}`;
 }
 
 /** Tarix + saat — gg.aa.iiii ss:dd (məs. 13.07.2026 12:00). */
 export function azFormatDateTime(input: string | Date) {
   const p = azNumericParts(input);
+  if (!p.y) return "—";
   return `${p.d}.${p.mo}.${p.y} ${p.hh}:${p.mm}`;
 }
 

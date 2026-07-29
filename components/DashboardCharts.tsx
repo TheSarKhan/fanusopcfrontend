@@ -87,7 +87,15 @@ export function FunnelChart({ data }: { data: FunnelStep[] }) {
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
         <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
         <YAxis type="category" dataKey="label" width={150} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-        <Tooltip formatter={(v: number, _n, p) => [`${v} (${p?.payload?.pctOfTotal ?? 0}%)`, "Say"]} />
+        {/* Parametrlərə ƏL İLƏ tip yazmaq olmaz — recharts-ın Formatter imzası
+            `ValueType | undefined` göndərir və `(v: number, …)` yazılışı
+            `next build`-i tip yoxlamasında sındırır. Tiplər imzadan çıxarılır. */}
+        <Tooltip
+          formatter={(value, _name, item) => {
+            const pct = (item?.payload as { pctOfTotal?: number } | undefined)?.pctOfTotal ?? 0;
+            return [`${value ?? 0} (${pct}%)`, "Say"];
+          }}
+        />
         <Bar dataKey="count" radius={[0, 4, 4, 0]}>
           {data.map((s, i) => <Cell key={i} fill={s.color} />)}
         </Bar>
@@ -106,7 +114,8 @@ export function TopicPieChart({ data }: { data: TopicSlice[] }) {
           innerRadius={52} outerRadius={86} paddingAngle={2}>
           {data.map((s, i) => <Cell key={i} fill={s.color} />)}
         </Pie>
-        <Tooltip formatter={(v: number) => `${v}%`} />
+        {/* Tip yazılmır — yuxarıdakı qeydə bax. */}
+        <Tooltip formatter={(value) => `${value ?? 0}%`} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
       </PieChart>
     </ResponsiveContainer>

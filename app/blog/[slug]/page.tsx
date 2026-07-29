@@ -5,6 +5,7 @@ import ReadingProgressBar from "@/app/blog/components/ReadingProgressBar";
 import ShareBar from "@/app/blog/components/ShareBar";
 import RelatedPosts from "@/app/blog/components/RelatedPosts";
 import Breadcrumb from "@/components/Breadcrumb";
+import ViewTracker from "@/components/ViewTracker";
 import { displayCategory } from "@/lib/blog";
 
 function formatDate(dateStr?: string | null) {
@@ -83,6 +84,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
   return (
     <>
+      {/* Baxış sayğacı (V125) — server komponenti POST edə bilmədiyi üçün
+          kiçik klient komponenti. Heç nə render etmir. */}
+      <ViewTracker type="BLOG_POST" id={post.id} />
       <ReadingProgressBar />
       <main className="art-detail">
 

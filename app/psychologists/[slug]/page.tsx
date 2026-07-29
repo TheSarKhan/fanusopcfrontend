@@ -10,6 +10,7 @@ import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import BookingCta from "./BookingCta";
 import Breadcrumb from "@/components/Breadcrumb";
+import ViewTracker from "@/components/ViewTracker";
 import { displayCategory } from "@/lib/blog";
 
 function getInitials(name: string) {
@@ -137,6 +138,8 @@ export default async function PsychologistProfilePage(
 
   return (
     <main style={{ background: "#F0F4FA", minHeight: "100vh", width: "100%", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--oxford)" }}>
+      {/* Baxış sayğacı (V125) — profil açılışını qeyd edir, heç nə render etmir. */}
+      <ViewTracker type="PSYCHOLOGIST" id={psychologist.id} />
       <style>{layoutCss}</style>
       <div className="ppx-app" style={{ width: "100%", padding: "24px 32px 56px", maxWidth: "min(1360px, 94vw)", margin: "0 auto" }}>
 

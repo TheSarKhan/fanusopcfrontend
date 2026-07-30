@@ -1333,15 +1333,9 @@ export interface PagedOperators {
   kpi: OperatorKpi;
 }
 
-// ─── Modul E: material kitabxanası ───────────────────────────────────────────
-export interface MaterialCategory { id: number; name: string; slug: string; color?: string | null; bg?: string | null; active: boolean; sortOrder: number }
-export interface Material { id: number; title: string; description?: string | null; categoryId: number; categoryName?: string | null; categorySlug?: string | null; active: boolean; sortOrder: number; versionCount: number; latestVersionId?: number | null; latestVersionNo?: number | null; latestFileUrl?: string | null; latestFileName?: string | null; latestFileType?: string | null; latestFileSize?: number | null; createdAt: string; updatedAt?: string | null }
-export interface MaterialVersion { id: number; versionNo: number; fileUrl: string; fileName: string; fileType: string; contentType?: string | null; fileSize?: number | null; uploadedById?: number | null; uploadedByName?: string | null; createdAt: string }
-export type MaterialCategoryReq = { name: string; slug: string; color?: string; bg?: string; active: boolean; sortOrder: number }
-export type MaterialReq = { title: string; description?: string; categoryId: number; active: boolean; sortOrder: number }
-
 // ─── Modul F: psixoloji testlər ──────────────────────────────────────────────
-export interface PsyTestSummary { id: number; title: string; published: boolean; status: string; questionCount: number; scaleCount: number; shareStatus: string; mine: boolean }
+export interface PsyTestSummary { id: number; title: string; published: boolean; status: string; questionCount: number; scaleCount: number; shareStatus: string; mine: boolean; authorName?: string | null; authorRole?: string | null }
+export interface TestStats { total: number; published: number; draft: number; byPsychologist: number; pendingShares: number }
 export interface PsyTestOption { id: number; label: string; points: number; imageUrl?: string | null; displayOrder: number }
 export interface PsyTestQuestion { id: number; text: string; imageUrl?: string | null; displayOrder: number; options: PsyTestOption[] }
 export interface PsyTestScale { id: number; label: string; minScore: number; maxScore: number; color?: string | null; description?: string | null; displayOrder: number }
@@ -1814,31 +1808,18 @@ export const adminApi = {
   terminateUserSessions: (userId: number) =>
     authedRequest<void>("POST", `/admin/users/${userId}/terminate-sessions`),
 
-  // ─── Modul E: material kitabxanası ───────────────────────────────────────
-  getMaterialCategories: () => authedRequest<MaterialCategory[]>("GET", "/admin/material-categories"),
-  createMaterialCategory: (data: MaterialCategoryReq) => authedRequest<MaterialCategory>("POST", "/admin/material-categories", data),
-  updateMaterialCategory: (id: number, data: MaterialCategoryReq) => authedRequest<MaterialCategory>("PUT", `/admin/material-categories/${id}`, data),
-  deleteMaterialCategory: (id: number) => authedRequest<void>("DELETE", `/admin/material-categories/${id}`),
-  getMaterials: () => authedRequest<Material[]>("GET", "/admin/materials"),
-  /** Səhifələnmiş — sıralama getMaterials ilə eynidir (sortOrder, sonra başlıq). */
-  getMaterialsPaged: (opts: { page?: number; size?: number } = {}) =>
-    authedRequest<Paged<Material>>("GET", `/admin/materials/paged${pagedQuery(opts)}`),
-  createMaterial: (data: MaterialReq) => authedRequest<Material>("POST", "/admin/materials", data),
-  updateMaterial: (id: number, data: MaterialReq) => authedRequest<Material>("PUT", `/admin/materials/${id}`, data),
-  deleteMaterial: (id: number) => authedRequest<void>("DELETE", `/admin/materials/${id}`),
-  setMaterialActive: (id: number, active: boolean) => authedRequest<Material>("PUT", `/admin/materials/${id}/active`, { active }),
-  uploadMaterialVersion: (id: number, file: File) => {
-    const form = new FormData();
-    form.append("file", file);
-    return authedMultipartRequest<MaterialVersion>("POST", `/admin/materials/${id}/versions`, form);
-  },
-  getMaterialVersions: (id: number) => authedRequest<MaterialVersion[]>("GET", `/admin/materials/${id}/versions`),
-
   // ─── Modul F: psixoloji testlər ──────────────────────────────────────────
   getPsychTests: () => authedRequest<PsyTestSummary[]>("GET", "/admin/psych-tests"),
-  /** Səhifələnmiş — sıralama getPsychTests ilə eynidir (createdAt DESC). */
-  getPsychTestsPaged: (opts: { page?: number; size?: number } = {}) =>
+  /** Səhifələnmiş — status/müəllif/axtarış filtri + sıralama. */
+  getPsychTestsPaged: (opts: { page?: number; size?: number; q?: string; status?: string; author?: string; sort?: string; dir?: string } = {}) =>
     authedRequest<Paged<PsyTestSummary>>("GET", `/admin/psych-tests/paged${pagedQuery(opts)}`),
+  getPsychTestsSummary: () => authedRequest<TestStats>("GET", "/admin/psych-tests/summary"),
+  /** Sürətli yayımla/gizlət (published qlobal bayrağı). */
+  setPsychTestPublished: (id: number, published: boolean) =>
+    authedRequest<PsyTestSummary>("PATCH", `/admin/psych-tests/${id}/published`, { published }),
+  /** Toplu əməliyyat: DELETE | PUBLISH | UNPUBLISH. */
+  bulkPsychTestAction: (ids: number[], action: "DELETE" | "PUBLISH" | "UNPUBLISH") =>
+    authedRequest<void>("POST", "/admin/psych-tests/bulk", { ids, action }),
   getPsychTest: (id: number) => authedRequest<PsyTest>("GET", `/admin/psych-tests/${id}`),
   createPsychTest: (data: PsyTestReq) => authedRequest<PsyTest>("POST", "/admin/psych-tests", data),
   updatePsychTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("PUT", `/admin/psych-tests/${id}`, data),
@@ -1855,6 +1836,17 @@ export const adminApi = {
   pendingResources: () => authedRequest<PsychResource[]>("GET", "/admin/resources/pending"),
   approveResource: (id: number, note?: string) => authedRequest<PsychResource>("POST", `/admin/resources/${id}/approve`, { note }),
   rejectResource: (id: number, note?: string) => authedRequest<PsychResource>("POST", `/admin/resources/${id}/reject`, { note }),
+  /** Səhifələnmiş — paylaşım statusu/müəllif/kateqoriya/axtarış filtri + sıralama. */
+  getResourcesPaged: (opts: { page?: number; size?: number; q?: string; shareStatus?: string; author?: string; category?: string; sort?: string; dir?: string } = {}) =>
+    authedRequest<Paged<PsychResource>>("GET", `/admin/resources/paged${pagedQuery(opts)}`),
+  getResourcesSummary: () => authedRequest<ResourceStats>("GET", "/admin/resources/summary"),
+  getResource: (id: number) => authedRequest<PsychResource>("GET", `/admin/resources/${id}`),
+  /** Admin platforma resursu yaradır — birbaşa APPROVED (bütün psixoloqlara görünür). */
+  createResource: (data: PsychResourceReq) => authedRequest<PsychResource>("POST", "/admin/resources", data),
+  updateResource: (id: number, data: PsychResourceReq) => authedRequest<PsychResource>("PUT", `/admin/resources/${id}`, data),
+  deleteResource: (id: number) => authedRequest<void>("DELETE", `/admin/resources/${id}`),
+  /** Görünürlük — gizli resurs psixoloq kitabxanasında görünmür. */
+  setResourceActive: (id: number, active: boolean) => authedRequest<PsychResource>("PATCH", `/admin/resources/${id}/active`, { active }),
 
   // ─── Təsdiqlər: İadə + Hovuz-Buraxma (Admin BRD §8, §9) ──────────────────
   listRefundRequests: (status?: string) =>
@@ -2854,6 +2846,15 @@ export interface PsychResource {
   adminNote?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  authorRole?: string | null;   // ADMIN=platforma resursu, PSYCHOLOGIST=psixoloq
+  active?: boolean;
+}
+export interface ResourceStats {
+  total: number;
+  shared: number;
+  pending: number;
+  byPlatform: number;
+  byPsychologist: number;
 }
 export interface PsychResourceReq {
   title: string;
@@ -3137,17 +3138,6 @@ export const psychologistApi = {
       "GET",
       `/psychologist/google/events?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`
     ),
-
-  // ─── Modul E: material kitabxanası (yalnız oxuma) ─────────────────────────
-  psyMaterialCategories: () => authedRequest<MaterialCategory[]>("GET", "/psychologist/material-categories"),
-  psyMaterials: (categoryId?: number, search?: string) => {
-    const p = new URLSearchParams();
-    if (categoryId != null) p.set("categoryId", String(categoryId));
-    if (search) p.set("search", search);
-    const qs = p.toString();
-    return authedRequest<Material[]>("GET", `/psychologist/materials${qs ? `?${qs}` : ""}`);
-  },
-  psyMaterialVersions: (id: number) => authedRequest<MaterialVersion[]>("GET", `/psychologist/materials/${id}/versions`),
 
   // ─── Modul F: psixoloji testlər ──────────────────────────────────────────
   assignableTests: () => authedRequest<PsyTestSummary[]>("GET", "/psychologist/psych-tests"),

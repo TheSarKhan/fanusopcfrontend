@@ -40,7 +40,7 @@ export const PSYCHOLOG_MODULES: Record<PsychologModuleKey, boolean> = {
   tests:        true,
   articles:     true,
   community:    true,
-  resources:    false, // hələ ki gizlədilib (2026-07-18)
+  resources:    true, // platforma resursları psixoloqlara açıqdır
   availability: true,
   reviews:      true,
 };
@@ -56,7 +56,7 @@ const MODULE_PATHS: Record<PsychologModuleKey, string[]> = {
   tests:        ["/psycholog/tests"],
   articles:     ["/psycholog/articles"],
   community:    ["/psycholog/community"],
-  resources:    ["/psycholog/resources", "/psycholog/materials"],
+  resources:    ["/psycholog/resources"],
   availability: ["/psycholog/availability"],
   reviews:      ["/psycholog/reviews"],
 };

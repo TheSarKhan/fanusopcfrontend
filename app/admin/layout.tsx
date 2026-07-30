@@ -83,7 +83,6 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     { href: "/admin/finance",           label: "Maliyyə",              icon: "chart",     badge: badge("finance") },
     // Məzmun
     { href: "/admin/blog",              label: t("nav.blog"),          icon: "edit" },
-    { href: "/admin/materials",         label: "Materiallar",          icon: "book" },
     { href: "/admin/resources",         label: "Resurslar",            icon: "journal",   badge: badge("resources") },
     { href: "/admin/tests",             label: "Testlər",              icon: "clipboard", badge: badge("tests") },
     // Ünsiyyət

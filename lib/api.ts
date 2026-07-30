@@ -538,6 +538,16 @@ export interface ContactMessage {
   updatedAt?: string | null;
   resolvedAt?: string | null;
   resolvedByUserId?: number | null;
+  replyText?: string | null;
+  repliedAt?: string | null;
+}
+
+export interface ContactMessageStats {
+  total: number;
+  newCount: number;
+  inReview: number;
+  resolved: number;
+  spam: number;
 }
 
 export interface AppointmentDetail {
@@ -1646,14 +1656,29 @@ export const adminApi = {
   },
   getNewContactMessageCount: () =>
     authedRequest<{ count: number }>("GET", "/admin/contact-messages/count-new"),
+  /** Səhifələnmiş — status/axtarış filtri + sıralama. */
+  getContactMessagesPaged: (opts: { page?: number; size?: number; q?: string; status?: string; sort?: string; dir?: string } = {}) =>
+    authedRequest<Paged<ContactMessage>>("GET", `/admin/contact-messages/paged${pagedQuery(opts)}`),
+  getContactMessagesSummary: () => authedRequest<ContactMessageStats>("GET", "/admin/contact-messages/summary"),
   updateContactMessageStatus: (id: number, status: ContactMessage["status"], adminNote?: string) =>
     authedRequest<ContactMessage>("PUT", `/admin/contact-messages/${id}/status`, { status, adminNote }),
+  /** Göndərənə e-poçtla cavab. */
+  replyContactMessage: (id: number, reply: string) =>
+    authedRequest<ContactMessage>("POST", `/admin/contact-messages/${id}/reply`, { reply }),
+  deleteContactMessage: (id: number) => authedRequest<void>("DELETE", `/admin/contact-messages/${id}`),
+  /** Toplu: RESOLVED | IN_REVIEW | SPAM | DELETE. */
+  bulkContactMessageAction: (ids: number[], action: "RESOLVED" | "IN_REVIEW" | "SPAM" | "DELETE") =>
+    authedRequest<void>("POST", "/admin/contact-messages/bulk", { ids, action }),
 
   // Reviews moderation
   getReviews: (status?: "PENDING" | "APPROVED" | "REJECTED") => {
     const qs = status ? `?status=${status}` : "";
     return authedRequest<AdminReview[]>("GET", `/admin/reviews${qs}`);
   },
+  /** Səhifələnmiş — status/reytinq/axtarış filtri + sıralama. */
+  getReviewsPaged: (opts: { page?: number; size?: number; q?: string; status?: string; rating?: number; sort?: string; dir?: string } = {}) =>
+    authedRequest<Paged<AdminReview>>("GET", `/admin/reviews/paged${pagedQuery(opts)}`),
+  getReviewsSummary: () => authedRequest<ReviewStats>("GET", "/admin/reviews/summary"),
   getPendingReviewCount: () =>
     authedRequest<{ count: number }>("GET", "/admin/reviews/pending-count"),
   approveReview: (id: number, moderationNote?: string) =>
@@ -2166,6 +2191,14 @@ export interface AdminReview {
   reply?: string | null;
   replyAt?: string | null;
   createdAt: string;
+}
+
+export interface ReviewStats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  avgRating: number;
 }
 
 // ─── Patient API ──────────────────────────────────────────────────────────────

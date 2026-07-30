@@ -124,13 +124,14 @@ function PsyCard({ p }: { p: CardItem }) {
             </span>
           </div>
           <p className="pp-card__title">{p.title}</p>
-          {filledStars > 0 && (
-            <div className="pp-card__rating">
-              <Stars value={filledStars} />
-              <strong>{p.rating}</strong>
-              {sessionLabel && <span className="pp-card__rating-sub">{sessionLabel}</span>}
-            </div>
-          )}
+          <div className="pp-card__rating">
+            {filledStars > 0 ? (
+              <><Stars value={filledStars} /><strong>{p.rating}</strong></>
+            ) : (
+              <strong style={{ color: "var(--oxford-60)", fontWeight: 700 }}>Yeni</strong>
+            )}
+            {sessionLabel && <span className="pp-card__rating-sub">{sessionLabel}</span>}
+          </div>
         </div>
       </Link>
 

@@ -169,10 +169,18 @@ export default async function PsychologistProfilePage(
                 </div>
                 <div style={{ fontSize: 15, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 16 }}>{psychologist.title}</div>
                 <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 18 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><StarIcon size={17} /><span style={{ fontSize: 18, fontWeight: 800 }}>{psychologist.rating}</span></span>
-                    <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>Reytinq</span>
-                  </div>
+                  {(() => {
+                    const hasRating = !!psychologist.rating && (psychologist.ratingCount ?? 0) > 0;
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                          <StarIcon size={17} />
+                          <span style={{ fontSize: 18, fontWeight: 800 }}>{hasRating ? psychologist.rating : "Yeni"}</span>
+                        </span>
+                        <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>{hasRating ? `Reytinq${psychologist.ratingCount ? ` (${psychologist.ratingCount})` : ""}` : "Hələ rəy yoxdur"}</span>
+                      </div>
+                    );
+                  })()}
                   {psychologist.displayedSessionCount != null && psychologist.displayedSessionCount > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                       <span style={{ fontSize: 18, fontWeight: 800 }}>{psychologist.displayedSessionCount}</span>

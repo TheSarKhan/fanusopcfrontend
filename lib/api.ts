@@ -833,6 +833,36 @@ export const repeatCheck = async (data: {
   return res.json();
 };
 
+/** Silinmiş hesab üçün bərpa (təsdiq) linki istəyi — cavab həmişə generikdir. */
+export const reactivateRequest = async (email: string): Promise<{ message: string }> => {
+  const res = await trackedFetch(`${BASE}/auth/reactivate-request`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...localeHeaders() },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error((e as { error?: string; message?: string }).error ?? (e as { message?: string }).message ?? `Xəta (${res.status})`);
+  }
+  return res.json();
+};
+
+/** Bərpa linkinin təsdiqi — token ilə hesabı geri qaytarır. */
+export const reactivateConfirm = async (token: string): Promise<{ message: string }> => {
+  const res = await trackedFetch(`${BASE}/auth/reactivate`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...localeHeaders() },
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error((e as { error?: string; message?: string }).error ?? (e as { message?: string }).message ?? `Xəta (${res.status})`);
+  }
+  return res.json();
+};
+
 export const submitContactMessage = async (data: ContactMessagePayload): Promise<ContactMessage> => {
   const res = await trackedFetch(`${BASE}/contact`, {
     method: "POST",

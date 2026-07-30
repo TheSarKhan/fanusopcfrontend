@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { login, clearSession, tryGetMe } from "@/lib/api";
+import { login, clearSession, tryGetMe, reactivateRequest } from "@/lib/api";
 import { buildPanelUrl } from "@/lib/auth";
 import { holdOverlay } from "@/lib/loadingOverlay";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -77,6 +77,18 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [reactivateInfo, setReactivateInfo] = useState("");
+
+  const handleReactivate = async () => {
+    if (!email.trim()) { setError("Bərpa linki üçün əvvəlcə e-poçtunuzu daxil edin."); return; }
+    setError(""); setReactivateInfo("");
+    try {
+      await reactivateRequest(email.trim());
+      setReactivateInfo("Əgər bu email üzrə silinmiş hesab varsa, bərpa linki göndərildi — e-poçtunuzu yoxlayın.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Bərpa linki göndərilmədi");
+    }
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -253,11 +265,25 @@ export default function LoginPage() {
               </button>
             </form>
 
+            {reactivateInfo && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#065F46", marginTop: 16 }}>
+                {reactivateInfo}
+              </div>
+            )}
+
             <p style={{ textAlign: "center", fontSize: 14, color: "var(--oxford-60)", marginTop: 28 }}>
               {t("auth.noAccount")}{" "}
               <Link href="/register" style={{ color: "var(--oxford)", fontWeight: 600, textDecoration: "none" }}>
                 {t("nav.register")}
               </Link>
+            </p>
+
+            <p style={{ textAlign: "center", fontSize: 12.5, color: "var(--oxford-60)", marginTop: 8 }}>
+              Hesabınız silinib?{" "}
+              <button type="button" onClick={handleReactivate}
+                style={{ background: "none", border: "none", color: "var(--oxford)", fontWeight: 600, cursor: "pointer", textDecoration: "underline", padding: 0, fontSize: 12.5, fontFamily: "inherit" }}>
+                Bərpa linki göndərin
+              </button>
             </p>
           </div>
         </div>

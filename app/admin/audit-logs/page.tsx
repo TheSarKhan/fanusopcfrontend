@@ -101,7 +101,6 @@ export default function AdminAuditLogsPage() {
       },
     },
     { key: "target", header: "Hədəf", hideOnMobile: true, cell: (r) => r.targetType ? <span className="fx-subtitle" style={{ whiteSpace: "nowrap" }}>{r.targetType}{r.targetId != null ? ` #${r.targetId}` : ""}</span> : <span className="fx-subtitle">—</span> },
-    { key: "summary", header: "Xülasə", hideOnMobile: true, cell: (r) => <div style={{ maxWidth: 420, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.summary || "—"}</div> },
     { key: "ip", header: "IP", hideOnMobile: true, cell: (r) => <span className="fx-num fx-subtitle" style={{ whiteSpace: "nowrap" }}>{r.ip || "—"}</span> },
   ];
 
@@ -144,7 +143,7 @@ export default function AdminAuditLogsPage() {
             onRetry={load}
             onRowClick={(r) => setDetail(r)}
             empty={{ title: "Qeyd tapılmadı", body: "Filtri dəyişin və ya tarix aralığını genişləndirin." }}
-            actions={(r) => <IconButton aria-label="Detal" onClick={() => setDetail(r)}><PanelIcon name="chevron" size={16} /></IconButton>}
+            actions={(r) => <IconButton aria-label="Xülasə / detal" title="Xülasə / detal" onClick={() => setDetail(r)}><PanelIcon name="eye" size={16} /></IconButton>}
             pagination={{
               page: page + 1, pageCount: Math.max(1, data?.totalPages ?? 1),
               onChange: (p) => setPage(p - 1), pageSize: size,

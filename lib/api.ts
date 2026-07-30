@@ -1453,7 +1453,7 @@ export const adminApi = {
   // Audit log
   getAuditLogs: (params: {
     action?: string; actorId?: number; targetType?: string; targetId?: number;
-    since?: string; page?: number; size?: number;
+    since?: string; until?: string; q?: string; page?: number; size?: number;
   } = {}) => {
     const q = new URLSearchParams();
     if (params.action)     q.set("action", params.action);
@@ -1461,11 +1461,15 @@ export const adminApi = {
     if (params.targetType) q.set("targetType", params.targetType);
     if (params.targetId)   q.set("targetId", String(params.targetId));
     if (params.since)      q.set("since", params.since);
+    if (params.until)      q.set("until", params.until);
+    if (params.q)          q.set("q", params.q);
     if (params.page  !== undefined) q.set("page", String(params.page));
     if (params.size  !== undefined) q.set("size", String(params.size));
     const qs = q.toString();
     return authedRequest<PagedAuditLogs>("GET", `/admin/audit-logs${qs ? `?${qs}` : ""}`);
   },
+  getAuditFacets: () =>
+    authedRequest<{ actions: string[]; targetTypes: string[] }>("GET", "/admin/audit-logs/facets"),
   getDashboardMetrics: () => authedRequest<DashboardMetrics>("GET", "/admin/dashboard/metrics"),
   getUsersSummary: () => authedRequest<Record<string, number>>("GET", "/admin/users/summary"),
   getReports: () => authedRequest<ReportsData>("GET", "/admin/reports"),

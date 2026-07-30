@@ -495,6 +495,18 @@ export interface BlogPost {
   draftCoverImageUrl?: string;
   draftExcerpt?: string;
   hasPendingDraft?: boolean;
+  // Admin siyahısı zənginləşdirmə: müəllif rolu (ADMIN/PSYCHOLOGIST) və cəmi baxış sayı
+  authorRole?: string;
+  viewCount?: number;
+}
+
+export interface BlogSummary {
+  total: number;
+  published: number;
+  draft: number;
+  byPsychologist: number;
+  pendingDrafts: number;
+  totalViews: number;
 }
 export interface Faq { id: number; question: string; answer: string; displayOrder: number; active: boolean; }
 export interface Testimonial { id: number; quote: string; authorName: string; authorRole: string; initials: string; gradient: string; rating: number; active: boolean; }
@@ -1513,9 +1525,19 @@ export const adminApi = {
 
   // Blog
   getBlogPosts: () => authedRequest<BlogPost[]>("GET", "/admin/blog-posts"),
-  /** Səhifələnmiş — q başlıq/xülasə/kateqoriya/müəllif üzrə axtarır (createdAt DESC). */
-  getBlogPostsPaged: (opts: { page?: number; size?: number; q?: string } = {}) =>
+  /** Səhifələnmiş — status/müəllif/axtarış filtri + sıralama (baxış sayına görə də). */
+  getBlogPostsPaged: (opts: { page?: number; size?: number; q?: string; status?: string; author?: string; sort?: string; dir?: string } = {}) =>
     authedRequest<Paged<BlogPost>>("GET", `/admin/blog-posts/paged${pagedQuery(opts)}`),
+  getBlogSummary: () => authedRequest<BlogSummary>("GET", "/admin/blog-posts/summary"),
+  /** Sürətli status dəyişimi (yayımla/gizlət). */
+  setBlogPostStatus: (id: number, status: "PUBLISHED" | "DRAFT") =>
+    authedRequest<BlogPost>("PATCH", `/admin/blog-posts/${id}/status`, { status }).then(p => { revalidateBlogCache(p.slug); return p; }),
+  /** Featured (önə çıxarılmış) bayrağı. */
+  setBlogPostFeatured: (id: number, featured: boolean) =>
+    authedRequest<BlogPost>("PATCH", `/admin/blog-posts/${id}/featured`, { featured }).then(p => { revalidateBlogCache(p.slug); return p; }),
+  /** Toplu əməliyyat: DELETE | PUBLISH | UNPUBLISH | FEATURE | UNFEATURE. */
+  bulkBlogAction: (ids: number[], action: "DELETE" | "PUBLISH" | "UNPUBLISH" | "FEATURE" | "UNFEATURE") =>
+    authedRequest<void>("POST", "/admin/blog-posts/bulk", { ids, action }).then(() => revalidateBlogCache()),
   getBlogPostById: (id: number) => authedRequest<BlogPost>("GET", `/admin/blog-posts/${id}`),
   createBlogPost: (data: Omit<BlogPost, "id">) =>
     authedRequest<BlogPost>("POST", "/admin/blog-posts", data).then(p => { revalidateBlogCache(p.slug); return p; }),

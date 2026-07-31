@@ -65,7 +65,7 @@ export default function PublicTakeTestPage({ params }: { params: Promise<{ id: s
     <>
       <Breadcrumb items={[{ label: "Testlər", href: "/tests" }, { label: test.title }]} />
       <div className="fanus-container" style={{ padding: "8px 0 72px", maxWidth: 760 }}>
-      <h1 style={{ fontFamily: "var(--serif)", fontSize: "clamp(24px, 3.4vw, 34px)", fontWeight: 600, color: "var(--oxford)", margin: "10px 0 8px" }}>{test.title}</h1>
+      <h1 style={{ fontFamily: "var(--font-poppins), system-ui, sans-serif", fontSize: "clamp(30px, 4vw, 52px)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.12, color: "var(--fanus-ink)", margin: "10px 0 12px" }}>{test.title}</h1>
       {test.description && <p style={{ fontSize: 15, color: "var(--oxford-60)", lineHeight: 1.6, margin: "0 0 8px" }}>{test.description}</p>}
       {test.instructions && (
         <div style={{ background: "#F1F6FE", border: "1px solid #DCE8FB", borderRadius: 12, padding: "12px 16px", fontSize: 13.5, color: "var(--oxford)", lineHeight: 1.55, margin: "0 0 24px" }}>

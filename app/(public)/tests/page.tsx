@@ -18,10 +18,12 @@ export default async function PublicTestsPage() {
       <Breadcrumb items={[{ label: "Testlər" }]} />
       <div className="fanus-container" style={{ padding: "16px 0 72px" }}>
       <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto 40px" }}>
-        <h1 style={{ fontFamily: "var(--serif)", fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 600, color: "var(--oxford)", margin: "0 0 12px" }}>
+        {/* Başlıq üslubu bloq/psixoloqlar hero-su ilə eynidir (poppins 800) — modullar
+            arasında fərq olmasın. */}
+        <h1 style={{ fontFamily: "var(--font-poppins), system-ui, sans-serif", fontSize: "clamp(32px, 4.6vw, 54px)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, color: "var(--fanus-ink)", margin: "0 0 16px" }}>
           Psixoloji testlər
         </h1>
-        <p style={{ fontSize: 16, color: "var(--oxford-60)", lineHeight: 1.6, margin: 0 }}>
+        <p style={{ fontSize: 17, color: "var(--fanus-ink-3)", lineHeight: 1.6, margin: "0 auto", maxWidth: 600 }}>
           Mütəxəssislərimizin hazırladığı testləri pulsuz doldurun. Nəticənizi görmək üçün
           qeydiyyatdan keçmək kifayətdir — nəticə hesabınızda saxlanılır.
         </p>

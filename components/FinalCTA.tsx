@@ -152,7 +152,7 @@ export default function FinalCTA() {
             <div className="cta-tk-with">
               <span className="cta-tk-avatar">L</span>
               <div>
-                <div className="cta-tk-name">Dr. Leyla Ə.</div>
+                <div className="cta-tk-name">Leyla Ə.</div>
                 <div className="cta-tk-role">Klinik psixoloq</div>
               </div>
             </div>

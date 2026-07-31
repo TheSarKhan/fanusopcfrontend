@@ -5,8 +5,8 @@ import type { HTMLAttributes, ReactNode } from "react";
  *
  * Struktur: [avatar/ikon] → ad + meta → status → məbləğ → əməliyyatlar.
  * Meta sətri TAM CÜMLƏdir, `·` ayırıcısı və rozet çipləri işlədilmir:
- *   doğru → "Kart ilə ödənilib, 18.07.2026 — Dr. Rəşad Əliyev"
- *   səhv  → "Kart · 18.07.2026 · Dr. Rəşad Əliyev"
+ *   doğru → "Kart ilə ödənilib, 18.07.2026 — Rəşad Əliyev"
+ *   səhv  → "Kart · 18.07.2026 · Rəşad Əliyev"
  */
 export function Row({
   lead,

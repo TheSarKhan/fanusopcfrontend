@@ -133,7 +133,9 @@ export default function PsychologDashboard() {
           Əvvəl burada gradient "hero" banner var idi — panelin içində marketinq
           səthi. Onun yerinə sakit başlıq: kim, hansı gün, iki əsas keçid. */}
       <PageHead
-        title={`${greet()}, Dr. ${user?.firstName ?? "Psixoloq"}`}
+        {/* "Dr." QƏSDƏN yoxdur: platformada mütəxəssislərə "Dr." deyə xitab etmirik —
+            bu titul yalnız elmi dərəcəsi (PhD) olanlara aiddir. Sadəcə ad işlədilir. */}
+        title={`${greet()}, ${user?.firstName ?? "Psixoloq"}`}
         sub={todayLabel()}
         actions={
           <>

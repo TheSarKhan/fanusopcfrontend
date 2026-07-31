@@ -144,10 +144,10 @@ type Payment = {
 const PAYMENTS: Payment[] = [
   {
     name: "Leyla Nəbiyeva",
-    meta: "Kart ilə ödənilib, 18.07.2026 — Dr. Rəşad Əliyev",
+    meta: "Kart ilə ödənilib, 18.07.2026 — Rəşad Əliyev",
     status: "PAID",
     amount: "120 AZN", amountValue: 120,
-    psych: "Dr. Rəşad Əliyev", date: "18.07.2026",
+    psych: "Rəşad Əliyev", date: "18.07.2026",
     commission: "24 AZN", net: "96 AZN",
   },
   {
@@ -155,15 +155,15 @@ const PAYMENTS: Payment[] = [
     meta: "Köçürmə gözləyir, 17.07.2026 — 4 seanslıq paket",
     status: "PENDING",
     amount: "440 AZN", amountValue: 440,
-    psych: "Dr. Aygün Quliyeva", date: "17.07.2026",
+    psych: "Aygün Quliyeva", date: "17.07.2026",
     commission: "88 AZN", net: "352 AZN",
   },
   {
     name: "Günel Həsənova",
-    meta: "Nağd ödənilib, 17.07.2026 — Dr. Aygün Quliyeva",
+    meta: "Nağd ödənilib, 17.07.2026 — Aygün Quliyeva",
     status: "PAID",
     amount: "100 AZN", amountValue: 100,
-    psych: "Dr. Aygün Quliyeva", date: "17.07.2026",
+    psych: "Aygün Quliyeva", date: "17.07.2026",
     commission: "20 AZN", net: "80 AZN",
   },
   {
@@ -171,7 +171,7 @@ const PAYMENTS: Payment[] = [
     meta: "Seans ləğv edildiyi üçün geri qaytarılıb, 15.07.2026",
     status: "REFUNDED",
     amount: "90 AZN", amountValue: 90,
-    psych: "Dr. Rəşad Əliyev", date: "15.07.2026",
+    psych: "Rəşad Əliyev", date: "15.07.2026",
     commission: "0 AZN", net: "0 AZN",
   },
 ];

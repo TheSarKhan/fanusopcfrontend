@@ -121,7 +121,7 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
       onLockedClick={(item) => setLockedLabel(item.label)}
     >
       <ModuleLock enabled={modules}>{children}</ModuleLock>
-      <WhatsAppButton />
+      <WhatsAppButton side="right" />
       {lockedLabel && <PlanLockModal label={lockedLabel} onClose={() => setLockedLabel(null)} />}
     </PanelShell>
   );

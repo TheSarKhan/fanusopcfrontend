@@ -102,7 +102,7 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     >
       <RiskBanner level={risk} />
       <ModuleLock>{children}</ModuleLock>
-      <WhatsAppButton />
+      <WhatsAppButton side="right" />
       <PendingTestClaim />
     </PanelShell>
   );

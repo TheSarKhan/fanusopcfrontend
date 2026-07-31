@@ -47,7 +47,7 @@ export default function WhyFanus() {
         }
         /* Fon QƏSDƏN yoxdur — ikonlar şəffafdır, bölmənin öz fonu üzərində durur. */
         .fanus-why-card__icon {
-          width: 56px; height: 56px; background: none; border: none;
+          width: 76px; height: 76px; background: none; border: none;
           display: inline-flex; align-items: center; justify-content: center;
           margin-bottom: 18px;
         }
@@ -78,7 +78,7 @@ const ACCENT = "#3B9EFF";
 
 function Icon({ name }: { name: string }) {
   const p = {
-    width: 44, height: 44, fill: "none", stroke: "var(--fanus-primary)",
+    width: 60, height: 60, fill: "none", stroke: "var(--fanus-primary)",
     strokeWidth: 1.6, viewBox: "0 0 48 48",
     strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
   };

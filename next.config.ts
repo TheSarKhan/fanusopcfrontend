@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // ATOMİK DEPLOY: build çıxışı ayrı qovluğa yönləndirilə bilsin deyə.
+  // Əvvəllər build birbaşa canlı `.next` üzərində gedirdi — build davam edərkən
+  // köhnə chunk faylları silinirdi və işləyən `next start` prosesi onları tapmırdı
+  // (ChunkLoadError → 500 → 502). İndi deploy `.next-build`-ə yığır, uğurlu
+  // bitəndə bir anda `.next` ilə əvəzləyir. Runtime-da dəyişən verilmir → `.next`.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   allowedDevOrigins: ["localhost", "*.localhost", "fanus.lvh.me", "*.lvh.me"],
   // Dev: compile olunmuş route-ları yaddaşda uzun saxla. Default-da səhifə qısa
   // müddət sonra atılır və modullar arasında gedib-gəldikdə HƏR DƏFƏ yenidən

@@ -48,6 +48,17 @@ function greet(): string {
   return "Axşamınız xeyir";
 }
 
+/**
+ * Xitab forması — "Ayan xanım" / "Rəşad bəy".
+ *
+ * Platformada mütəxəssislərə "Dr." deyə xitab ETMİRİK: bu titul yalnız elmi
+ * dərəcəsi (PhD) olanlara aiddir. Cinsiyyət boşdursa "bəy" işlədilir (V131 qərarı).
+ */
+function honorific(firstName: string, gender: string | null): string {
+  const g = (gender ?? "").toUpperCase();
+  return `${firstName} ${g === "FEMALE" ? "xanım" : "bəy"}`;
+}
+
 function formatTime(iso?: string | null) {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -84,6 +95,8 @@ export default function PsychologDashboard() {
   const [appointments, setAppointments] = useState<AppointmentDetail[]>([]);
   const [pricing, setPricing] = useState<{ individualPrice: number | null; currency: string } | null>(null);
   const [packages, setPackages] = useState<PackageDto[]>([]);
+  /** Xitab formu üçün cinsiyyət ("Ayan xanım" / "Rəşad bəy") — V131. */
+  const [gender, setGender] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [now] = useState(() => Date.now());
 
@@ -94,12 +107,14 @@ export default function PsychologDashboard() {
       psychologistApi.myAppointments(),
       psychologistApi.myPricing(),
       psychologistApi.myPackages(),
+      psychologistApi.me(),
     ]).then((results) => {
       if (!active) return;
       if (results[0].status === "fulfilled") setStats(results[0].value);
       if (results[1].status === "fulfilled") setAppointments(results[1].value);
       if (results[2].status === "fulfilled") setPricing(results[2].value);
       if (results[3].status === "fulfilled") setPackages(results[3].value);
+      if (results[4].status === "fulfilled") setGender(results[4].value.gender ?? null);
       setLoading(false);
     });
     return () => { active = false; };
@@ -133,9 +148,7 @@ export default function PsychologDashboard() {
           Əvvəl burada gradient "hero" banner var idi — panelin içində marketinq
           səthi. Onun yerinə sakit başlıq: kim, hansı gün, iki əsas keçid. */}
       <PageHead
-        {/* "Dr." QƏSDƏN yoxdur: platformada mütəxəssislərə "Dr." deyə xitab etmirik —
-            bu titul yalnız elmi dərəcəsi (PhD) olanlara aiddir. Sadəcə ad işlədilir. */}
-        title={`${greet()}, ${user?.firstName ?? "Psixoloq"}`}
+        title={`${greet()}, ${honorific(user?.firstName ?? "Psixoloq", gender)}`}
         sub={todayLabel()}
         actions={
           <>

@@ -381,6 +381,8 @@ export interface Psychologist {
   statsSource?: "FANUS_PLATFORM" | "PRIOR_EXPERIENCE";
   fanusSessionCount?: number;
   priorExperienceSessions?: number;
+  /** Panel salamlamasında bəy/xanım xitabı üçün (V131). */
+  gender?: "FEMALE" | "MALE" | "OTHER" | null;
   displayedSessionCount?: number;
 }
 

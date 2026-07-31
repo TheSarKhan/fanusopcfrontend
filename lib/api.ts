@@ -9,7 +9,7 @@ if (!API_URL.endsWith("/api")) API_URL += "/api";
 const BASE = API_URL;
 
 /** Read the user's chosen UI locale from the cookie set by LocaleProvider.
- *  Returns the BCP-47 tag the backend can match against (`az`, `ru`, `en`). */
+ *  Returns the BCP-47 tag the backend can match against (`az`, `ru`, `en`, `tr`). */
 function readLocaleCookie(): string {
   if (typeof document === "undefined") return "az";
   const m = document.cookie.match(/(?:^|;\s*)fanus-locale=([^;]+)/);
@@ -26,6 +26,7 @@ function connectionErrorMessage(): string {
   switch (readLocaleCookie()) {
     case "en": return "Could not reach the server. Check your internet connection and try again.";
     case "ru": return "Не удалось связаться с сервером. Проверьте подключение к интернету и попробуйте снова.";
+    case "tr": return "Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.";
     default:   return "Serverlə əlaqə qurulmadı. İnternet bağlantınızı yoxlayıb bir azdan yenidən cəhd edin.";
   }
 }
@@ -1414,6 +1415,44 @@ export const getApplicationStatus = (token: string) =>
     { next: { revalidate: 0 } },
   );
 
+// ─── Saytdakı publik test kataloqu (V130) ──────────────────────────────────
+// Ziyarətçi qeydiyyatsız doldura bilir; NƏTİCƏ QAYTARILMIR — yalnız claimToken.
+// Nəticə pasiyent kimi qeydiyyatdan/girişdən sonra claim ilə açılır.
+
+export interface PublicTestCard { id: number; title: string; description?: string | null; questionCount: number }
+export interface PublicSubmitResponse { claimToken: string; message: string }
+export interface PublicTestResult {
+  testId: number;
+  testTitle?: string | null;
+  totalScore: number;
+  maxScore: number;
+  percentage: number;
+  scaleLabel?: string | null;
+  scaleDescription?: string | null;
+  submittedAt: string;
+}
+
+export const getPublicTestCatalog = () =>
+  get<PublicTestCard[]>("/public/psych-tests/catalog", { next: { revalidate: 0 } });
+export const getPublicCatalogTest = (testId: number) =>
+  get<TakeTest>(`/public/psych-tests/catalog/${testId}`, { next: { revalidate: 0 } });
+export const submitPublicCatalogTest = (
+  testId: number,
+  data: { answers: SubmitAnswer[]; respondentName?: string },
+) =>
+  fetch(`${BASE}/public/psych-tests/catalog/${testId}/submit`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...localeHeaders() },
+    body: JSON.stringify(data),
+  }).then(async r => {
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error((e as { error?: string }).error ?? `Cavablar göndərilmədi (${r.status})`);
+    }
+    return r.json() as Promise<PublicSubmitResponse>;
+  });
+
 // Modul F — public (auth YOXDUR): token vasitəsilə test götürmə + cavab göndərmə
 export const getPublicTest = (token: string) => get<TakeTest>(`/public/psych-tests/${token}`);
 export const submitPublicTest = (token: string, data: { answers: SubmitAnswer[]; respondentName?: string }) =>
@@ -2597,6 +2636,11 @@ export const patientApi = {
     authedRequest<void>("DELETE", `/patient/reviews/${reviewId}`),
 
   // ─── Modul F: psixoloji testlər ──────────────────────────────────────────
+  /** Saytda anonim doldurulmuş testin nəticəsini hesaba bağla və göstər. */
+  claimPublicTestResult: (claimToken: string) =>
+    authedRequest<PublicTestResult>("POST", `/patient/psych-tests/public-results/${claimToken}/claim`),
+  myPublicTestResults: () =>
+    authedRequest<PublicTestResult[]>("GET", "/patient/psych-tests/public-results"),
   myTestAssignments: () => authedRequest<TestAssignment[]>("GET", "/patient/psych-tests/assignments"),
   takeTest: (assignmentId: number) => authedRequest<TakeTest>("GET", `/patient/psych-tests/assignments/${assignmentId}`),
   submitTest: (assignmentId: number, data: { answers: SubmitAnswer[]; respondentName?: string }) =>

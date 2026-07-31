@@ -173,7 +173,7 @@ const NOTE_TEMPLATES: { key: string; label: string; title: string; body: string 
   },
   {
     key: "progress",
-    label: "Progress note",
+    label: "Gedişat qeydi",
     title: "Seans qeydi",
     body:
       "Hal-hazırkı vəziyyət:\n\nBu seansda işlənən mövzu:\n\nİstifadə olunan texnika:\n\nMüştəri reaksiyası / inkişaf:\n\nEv tapşırığı:\n\nNövbəti seans üçün plan:",

@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import PanelAuthGuard from "@/components/PanelAuthGuard";
 import PanelShell, { type PanelNavItem } from "@/components/PanelShell";
+import WhatsAppButton from "@/components/WhatsAppButton";
+import PendingTestClaim from "@/components/PendingTestClaim";
 import { getStoredUser } from "@/lib/auth";
 import { patientApi, type PatientRiskLevel } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -100,6 +102,8 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     >
       <RiskBanner level={risk} />
       <ModuleLock>{children}</ModuleLock>
+      <WhatsAppButton />
+      <PendingTestClaim />
     </PanelShell>
   );
 }

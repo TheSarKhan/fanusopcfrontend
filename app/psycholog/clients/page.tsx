@@ -71,7 +71,7 @@ function csvEscape(v: string | number | null | undefined): string {
 
 function exportClientsCsv(clients: ClientSummary[], tagsByPatient: Record<number, PatientTag[]>) {
   const headers = [
-    "Ad", "Email", "Telefon",
+    "Ad", "E-poçt", "Telefon",
     "Cəmi seans", "Tamamlanmış seans", "Gəlmədi",
     "Son seans tarixi", "Son seans (gün öncə)",
     "Qeyd sayı", "Avto-flag", "Etiketlər",

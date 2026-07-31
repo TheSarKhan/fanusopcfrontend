@@ -205,7 +205,7 @@ export default function PsyTestStatsPage() {
       key: "source",
       header: "Mənbə",
       hideOnMobile: true,
-      cell: (r) => <Status tone="muted">{r.publicLink ? "Public link" : "Təyinat"}</Status>,
+      cell: (r) => <Status tone="muted">{r.publicLink ? "Publik link" : "Təyinat"}</Status>,
     },
     {
       key: "score",
@@ -236,7 +236,7 @@ export default function PsyTestStatsPage() {
     const lines = [["Ad", "Mənbə", "Bal", "Maksimal", "Faiz", "Nəticə", "Tarix"].join(",")];
     all.forEach((r) => lines.push([
       cell(r.respondentName?.trim() || "Anonim"),
-      r.publicLink ? "Public link" : "Təyinat",
+      r.publicLink ? "Publik link" : "Təyinat",
       r.totalScore, r.maxScore, Math.round(r.percentage),
       cell(r.scaleLabel ?? ""), cell(fmtDateTime(r.submittedAt)),
     ].join(",")));
@@ -424,7 +424,7 @@ function SharePopup({ link, busy, copied, onCopy, onAssign, onClose }: { link: {
         <div style={{ width: 52, height: 52, borderRadius: 999, background: "#D1FAE5", color: "#065F46", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
         </div>
-        <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: "0 0 6px" }}>Public link</h3>
+        <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: "0 0 6px" }}>Publik link</h3>
         <p style={{ fontSize: 13, color: "#52718F", lineHeight: 1.6, margin: "0 0 16px" }}>Bu link testin özünə aiddir — bir neçə pasiyent məlumatlarını yazaraq işləyə bilər.</p>
         <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 16 }}>
           <input readOnly value={busy ? "Yüklənir…" : link?.url ?? ""} onFocus={(e) => e.currentTarget.select()}

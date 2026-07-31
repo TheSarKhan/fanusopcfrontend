@@ -46,12 +46,24 @@ function FlagEN() {
   );
 }
 
+function FlagTR() {
+  return (
+    <svg width="20" height="14" viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
+      <rect width="30" height="20" fill="#E30A17" />
+      <circle cx="11.5" cy="10" r="4.2" fill="#fff" />
+      <circle cx="13" cy="10" r="3.35" fill="#E30A17" />
+      <polygon points="19.6,10 16.85,10.93 18.55,8.6 18.55,11.4 16.85,9.07" fill="#fff" />
+    </svg>
+  );
+}
+
 const FLAGS: Record<Locale, () => React.ReactElement> = {
   az: FlagAZ,
   ru: FlagRU,
   en: FlagEN,
+  tr: FlagTR,
 };
-const LABELS: Record<Locale, string> = { az: "AZ", ru: "RU", en: "EN" };
+const LABELS: Record<Locale, string> = { az: "AZ", ru: "RU", en: "EN", tr: "TR" };
 
 export default function LanguageSwitcher({
   variant = "default",
@@ -100,7 +112,7 @@ export default function LanguageSwitcher({
 
       {open && (
         <div className="lsw__menu" role="listbox">
-          {(["az", "ru", "en"] as Locale[]).map(l => {
+          {(["az", "ru", "en", "tr"] as Locale[]).map(l => {
             const F = FLAGS[l];
             return (
               <button

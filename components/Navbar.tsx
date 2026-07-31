@@ -25,6 +25,7 @@ export default function Navbar() {
   const navLinks = [
     { label: t("nav.services"),      href: "/xidmetler" },
     { label: t("nav.psychologists"), href: "/psychologists" },
+    { label: t("nav.tests"),         href: "/tests" },
     { label: t("nav.blog"),          href: "/blog" },
     { label: t("nav.contact"),       href: "/contact" },
   ];

@@ -20,6 +20,9 @@ export interface PanelNavItem {
   /** Extra route prefixes that also mark this item active (e.g. sibling
    *  routes grouped under one nav entry). Matched by exact path or prefix. */
   match?: string[];
+  /** Plan modulu bağlıdır — sətir qıfılla göstərilir və klik naviqasiya etmir,
+   *  `onLockedClick` çağırılır (məs. "planınızı dəyişin" modalı). */
+  locked?: boolean;
 }
 
 interface UserInfo {
@@ -43,6 +46,8 @@ interface PanelShellProps {
   topbarExtras?: React.ReactNode;
   /** Profile page path. Defaults to `${homeHref}/profile`. */
   profileHref?: string;
+  /** Kilidli (plana daxil olmayan) nav sətrinə klik — məs. "planınızı dəyişin" modalı. */
+  onLockedClick?: (item: PanelNavItem) => void;
 }
 
 export default function PanelShell({
@@ -54,6 +59,7 @@ export default function PanelShell({
   topbarAction,
   topbarExtras,
   profileHref,
+  onLockedClick,
 }: PanelShellProps) {
   const resolvedProfileHref = profileHref ?? `${homeHref.replace(/\/$/, "")}/profile`;
   const pathname = usePathname();
@@ -171,6 +177,25 @@ export default function PanelShell({
               (item.href !== homeHref && pathname.startsWith(item.href + "/")) ||
               (item.href !== homeHref && pathname === item.href) ||
               (item.match?.some((p) => pathname === p || pathname.startsWith(p + "/")) ?? false);
+            // Plana daxil olmayan modul: naviqasiya yoxdur — qıfıl + izah modalı.
+            if (item.locked) {
+              return (
+                <button
+                  key={item.href}
+                  type="button"
+                  className="ps-nav ps-nav--locked"
+                  onClick={() => { setMobileOpen(false); onLockedClick?.(item); }}
+                  title="Planınıza daxil deyil"
+                  style={{ background: "none", border: "none", width: "100%", textAlign: "left", cursor: "pointer", font: "inherit", opacity: 0.62 }}
+                >
+                  <PanelIcon name={item.icon} size={18} stroke={1.8} />
+                  <span>{item.label}</span>
+                  <span style={{ marginLeft: "auto", display: "inline-flex" }} aria-label="Kilidli">
+                    <PanelIcon name="lock" size={14} stroke={1.9} />
+                  </span>
+                </button>
+              );
+            }
             return (
               <Link
                 key={item.href}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { statusMeta } from "@/lib/appointmentStatus";
 import { useEffect, useMemo, useState } from "react";
 import {
   psychologistApi,
@@ -237,7 +238,8 @@ export default function PsychologDashboard() {
 
 function SessionStatus({ status }: { status: string }) {
   const s = STATUS_LABEL[status];
-  if (!s) return <Status tone="muted">{status}</Status>;
+  // Naməlum status ingiliscə çıxmasın — vahid mənbədən (lib/appointmentStatus) AZ adı götürülür.
+  if (!s) return <Status tone="muted">{statusMeta(status).label}</Status>;
   return <Status tone={s.tone}>{s.label}</Status>;
 }
 

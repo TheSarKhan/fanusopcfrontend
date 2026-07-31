@@ -41,6 +41,7 @@ export const ru: typeof az = {
     home: "Главная",
     psychologists: "Психологи",
     services: "Наши услуги",
+    tests: "Тесты",
     blog: "Статьи",
     about: "О нас",
     contact: "Контакты",

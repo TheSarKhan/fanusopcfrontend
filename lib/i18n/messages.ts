@@ -1,8 +1,9 @@
 import { az } from "./dictionaries/az";
 import { ru } from "./dictionaries/ru";
 import { en } from "./dictionaries/en";
+import { tr } from "./dictionaries/tr";
 
-export const SUPPORTED_LOCALES = ["az", "ru", "en"] as const;
+export const SUPPORTED_LOCALES = ["az", "ru", "en", "tr"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "az";
 
@@ -16,7 +17,7 @@ type NestedKeyOf<T extends object> = {
     : `${K}`;
 }[keyof T & (string | number)];
 
-const dictionaries: Record<Locale, unknown> = { az, ru, en };
+const dictionaries: Record<Locale, unknown> = { az, ru, en, tr };
 
 export function getDictionary(locale: Locale): unknown {
   return dictionaries[locale] ?? dictionaries[DEFAULT_LOCALE];

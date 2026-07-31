@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { statusMeta } from "@/lib/appointmentStatus";
 import { psychologistApi, type AppointmentDetail, type TimeSlot, type TimeSlotOverride, type Vacation } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
@@ -871,7 +872,7 @@ function AddVacationModal({ onClose, onCreated }: {
                     </div>
                     <div style={{ fontSize: 12, color: "var(--oxford-60)", display: "flex", flexWrap: "wrap", gap: 8 }}>
                       <span>{a.startAt ? azFormatDateTime(a.startAt) : "—"}</span>
-                      <span>{a.status}</span>
+                      <span>{statusMeta(a.status).label}</span>
                     </div>
                   </div>
                   {resolved ? (

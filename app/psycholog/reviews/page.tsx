@@ -8,7 +8,7 @@ import PageHeader from "@/components/PageHeader";
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   PENDING:  { label: "Moderasiyada", color: "#92400E", bg: "#FEF3C7" },
-  APPROVED: { label: "Public",       color: "#065F46", bg: "#D1FAE5" },
+  APPROVED: { label: "Yayımlanıb",       color: "#065F46", bg: "#D1FAE5" },
   REJECTED: { label: "Rədd",         color: "#991B1B", bg: "#FEE2E2" },
 };
 
@@ -134,7 +134,7 @@ export default function PsychologReviewsPage() {
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         {(["APPROVED", "PENDING", "ALL"] as const).map((f) => {
           const active = filter === f;
-          const label = f === "APPROVED" ? "Public" : f === "PENDING" ? "Moderasiyada" : "Hamısı";
+          const label = f === "APPROVED" ? "Yayımlanıb" : f === "PENDING" ? "Moderasiyada" : "Hamısı";
           return (
             <button key={f} onClick={() => setFilter(f)}
               style={{

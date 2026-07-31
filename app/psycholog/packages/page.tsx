@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { STATUS_PT } from "./shared";
 import { useEffect, useState } from "react";
 import {
   psychologistApi,
@@ -133,12 +134,11 @@ export default function PsychologPackagesPage() {
     {
       key: "status",
       header: "Vəziyyət",
+      // Vahid mənbə: STATUS_PT (packages/shared) — əvvəl əl ilə yazılmış zəncir
+      // EXPIRED-i əhatə etmirdi və "EXPIRED" ingiliscə görünürdü.
       cell: r => (
         <Status tone={r.status === "PENDING_PAYMENT" ? "wait" : r.status === "CANCELLED" ? "risk" : "neutral"}>
-          {r.status === "PENDING_PAYMENT" ? "Ödəniş gözlənilir"
-            : r.status === "ACTIVE" ? "Davam edir"
-            : r.status === "EXHAUSTED" ? "Tamamlanıb"
-            : r.status === "CANCELLED" ? "Ləğv edilib" : r.status}
+          {STATUS_PT[r.status]?.label ?? r.status}
         </Status>
       ),
     },

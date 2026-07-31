@@ -5,6 +5,7 @@ import { psychologistApi, type AppointmentDetail, type GoogleCalendarStatus, typ
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDateTime } from "@/lib/datetime";
+import { statusMeta } from "@/lib/appointmentStatus";
 import { toast } from "@/components/Toast";
 import PageHeader from "@/components/PageHeader";
 
@@ -74,14 +75,9 @@ const STATUS_COLOR: Record<string, { bg: string; fg: string; dashed?: boolean }>
 const DRAGGABLE_STATUSES = new Set(["ASSIGNED", "CONFIRMED"]);
 const DRAG_MIME = "application/x-fanus-appointment";
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: "Gözləmədə",
-  ASSIGNED: "Təyin edilib",
-  CONFIRMED: "Təsdiqlənib",
-  COMPLETED: "Tamamlanıb",
-  CANCELLED: "Ləğv olunub",
-  REJECTED: "Rədd edilib",
-};
+/** Status adı — vahid mənbə (lib/appointmentStatus). Əvvəl bu faylda yarımçıq
+ *  kopya vardı və naməlum status ingiliscə (məs. AWAITING_CONFIRMATION) çıxırdı. */
+const statusLabel = (s?: string | null) => statusMeta(s ?? "").label;
 
 interface PositionedEvent {
   item: AppointmentDetail;
@@ -744,7 +740,7 @@ export default function PsychologCalendarPage() {
                             draggable={draggable}
                             onDragStart={e => handleDragStart(a, e)}
                             onDragEnd={handleDragEnd}
-                            title={`${a.patientName ?? "—"}, ${fmtHM(ev.start)}–${fmtHM(ev.end)}, ${a.status}${hasConflict ? "\nGoogle Calendar ilə zaman üst-üstə düşür" : ""}${draggable ? "\nSürükləyib başqa vaxta burax" : ""}`}
+                            title={`${a.patientName ?? "—"}, ${fmtHM(ev.start)}–${fmtHM(ev.end)}, ${statusLabel(a.status)}${hasConflict ? "\nGoogle Calendar ilə zaman üst-üstə düşür" : ""}${draggable ? "\nSürükləyib başqa vaxta burax" : ""}`}
                             style={{
                               position: "absolute",
                               top,
@@ -795,7 +791,7 @@ export default function PsychologCalendarPage() {
                                   </div>
                                   {height >= 56 && (
                                     <div style={{ fontSize: 10, opacity: 0.75, marginTop: 2 }}>
-                                      {a.status}
+                                      {statusLabel(a.status)}
                                     </div>
                                   )}
                                 </>
@@ -1285,7 +1281,7 @@ function ConflictModal({
                     {a.patientName ?? "Pasiyent"}
                   </span>
                   <span style={{ background: colors.bg, color: colors.fg, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>
-                    {STATUS_LABEL[a.status] ?? a.status}
+                    {statusLabel(a.status)}
                   </span>
                 </div>
 

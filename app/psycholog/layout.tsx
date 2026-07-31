@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import PanelAuthGuard from "@/components/PanelAuthGuard";
+import PanelIcon from "@/components/PanelIcon";
 import PanelShell, { type PanelNavItem } from "@/components/PanelShell";
+import WhatsAppButton from "@/components/WhatsAppButton";
 import { getStoredUser } from "@/lib/auth";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { psychologistApi } from "@/lib/api";
@@ -15,20 +18,50 @@ import {
 
 type ModuleNavItem = PanelNavItem & { key: PsychologModuleKey };
 
-/** Kilidli modul route-una birbaşa URL ilə girişi tutub Dashboard-a yönləndirir.
+const WHATSAPP_SUPPORT = "https://wa.me/994502017164?text=" +
+  encodeURIComponent("Salam, panel modullarım üçün planımı dəyişmək istəyirəm.");
+
+/** Kilidli modul route-una birbaşa URL ilə girildikdə — yönləndirmə əvəzinə izah ekranı.
  *  `enabled` təyin olunan plandan gələn açıq modul dəstidir; null olduqda (hələ
- *  yüklənməyib və ya xəta) kilidləmə tətbiq olunmur — yanlış yönləndirmənin qarşısı. */
+ *  yüklənməyib və ya xəta) kilidləmə tətbiq olunmur — yanlış bloklamanın qarşısı. */
 function ModuleLock({ enabled, children }: { enabled: Set<string> | null; children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const locked = enabled !== null && isPsychologPathLockedWith(pathname, (k) => enabled.has(k));
+  if (!locked) return <>{children}</>;
+  return (
+    <div style={{ maxWidth: 520, margin: "48px auto", background: "#fff", border: "1px solid var(--brand-100, #E3ECF9)", borderRadius: 16, padding: 32, textAlign: "center" }}>
+      <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#F1F5FC", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+        <PanelIcon name="lock" size={22} stroke={1.9} />
+      </div>
+      <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--oxford)", margin: "0 0 8px" }}>Bu modul planınıza daxil deyil</h2>
+      <p style={{ fontSize: 14, color: "var(--oxford-60)", lineHeight: 1.6, margin: "0 0 20px" }}>
+        Bu imkanlardan istifadə etmək üçün ödəniş planınızı dəyişin. Dəstək komandamız uyğun planı seçməkdə kömək edəcək.
+      </p>
+      <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+        <a href={WHATSAPP_SUPPORT} target="_blank" rel="noopener noreferrer" className="fx-btn fx-btn--primary" style={{ textDecoration: "none" }}>Dəstəklə əlaqə</a>
+        <Link href="/psycholog" className="fx-btn fx-btn--ghost" style={{ textDecoration: "none" }}>Ana səhifəyə qayıt</Link>
+      </div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    if (locked) router.replace("/psycholog");
-  }, [locked, router]);
-
-  if (locked) return null;
-  return <>{children}</>;
+/** Kilidli nav sətrinə klikləyəndə çıxan izah modalı. */
+function PlanLockModal({ label, onClose }: { label: string; onClose: () => void }) {
+  return (
+    <div className="fx-overlay fx-overlay--center" onClick={onClose} style={{ zIndex: 9000, padding: 20 }}>
+      <div className="fx-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420, textAlign: "center" }}>
+        <div className="fx-modal__icon fx-modal__icon--brand"><PanelIcon name="lock" size={19} /></div>
+        <h3 className="fx-h3">{label} — planınıza daxil deyil</h3>
+        <div className="fx-modal__text">
+          Bu imkanlardan istifadə etmək üçün ödəniş planınızı dəyişin. Dəstək komandamız uyğun planı seçməkdə kömək edəcək.
+        </div>
+        <div className="fx-modal__actions">
+          <button type="button" onClick={onClose} className="fx-btn fx-btn--ghost">Bağla</button>
+          <a href={WHATSAPP_SUPPORT} target="_blank" rel="noopener noreferrer" className="fx-btn fx-btn--primary" style={{ textDecoration: "none" }}>Dəstəklə əlaqə</a>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function PsychologShell({ children }: { children: React.ReactNode }) {
@@ -69,11 +102,15 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
     { key: "reviews",      href: "/psycholog/reviews",      label: t("nav.reviews"),      icon: "star" },
   ];
 
-  // Profil modul deyil — kilid mexanizmindən kənardır və həmişə görünür.
+  // Kilidli modullar GİZLƏDİLMİR — qıfılla görünür ki, psixoloq nəyin mövcud
+  // olduğunu bilsin və plan dəyişikliyi üçün müraciət edə bilsin.
+  // Profil modul deyil — kilid mexanizmindən kənardır və həmişə açıqdır.
   const nav: PanelNavItem[] = [
-    ...allNav.filter((item) => isEnabled(item.key)),
-    { href: "/psycholog/profile", label: t("nav.profile"), icon: "user" },
+    ...allNav.map((item) => ({ ...item, locked: !isEnabled(item.key) })),
+    { href: "/psycholog/profile", label: t("nav.profile"), icon: "user" as const },
   ];
+
+  const [lockedLabel, setLockedLabel] = useState<string | null>(null);
 
   return (
     <PanelShell
@@ -81,8 +118,11 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
       homeHref="/psycholog"
       navItems={nav}
       user={{ name, initials, role: t("pricing.rolePsychologist") }}
+      onLockedClick={(item) => setLockedLabel(item.label)}
     >
       <ModuleLock enabled={modules}>{children}</ModuleLock>
+      <WhatsAppButton />
+      {lockedLabel && <PlanLockModal label={lockedLabel} onClose={() => setLockedLabel(null)} />}
     </PanelShell>
   );
 }

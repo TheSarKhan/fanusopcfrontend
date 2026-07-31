@@ -38,6 +38,7 @@ export const en: typeof az = {
     home: "Home",
     psychologists: "Psychologists",
     services: "Services",
+    tests: "Tests",
     blog: "Articles",
     about: "About",
     contact: "Contact",

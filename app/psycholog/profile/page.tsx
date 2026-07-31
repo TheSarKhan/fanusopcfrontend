@@ -29,7 +29,7 @@ export default function PsychologProfilePage() {
             <Link href={`/psychologists/${me.slug}`} target="_blank" className="uprof-side-link">
               <div className="uprof-side-link-icon"></div>
               <div className="uprof-side-link-text">
-                <strong>Public profilim</strong>
+                <strong>İctimai profilim</strong>
                 <small>Pasiyentlərə görünən səhifə</small>
               </div>
               <span className="uprof-side-link-arrow">›</span>
@@ -66,7 +66,7 @@ export default function PsychologProfilePage() {
           />
           <div className="uprof-card">
             <div className="uprof-card-head">
-              <h2>Public psixoloq profili</h2>
+              <h2>İctimai psixoloq profili</h2>
               <p>Pasiyentlərin gördüyü məlumatlar</p>
             </div>
             <div style={{ padding: 20, display: "grid", gap: 16 }}>

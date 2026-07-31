@@ -45,6 +45,7 @@ export const az = {
     home: "Ana səhifə",
     psychologists: "Psixoloqlar",
     services: "Xidmətlərimiz",
+    tests: "Testlər",
     blog: "Məqalələr",
     about: "Haqqımızda",
     contact: "Əlaqə",

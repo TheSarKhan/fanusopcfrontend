@@ -282,7 +282,7 @@ export function gcalHrefFor(a: AppointmentDetail): string | null {
       a.note ? `Qeyd: ${a.note}` : null,
       appUrl("/psycholog/appointments"),
     ].filter(Boolean).join("\n"),
-    location: "Online (Fanus)",
+    location: "Onlayn (Fanus)",
     start: new Date(a.startAt),
     end: new Date(a.endAt),
     url: appUrl("/psycholog/appointments"),

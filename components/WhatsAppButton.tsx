@@ -1,10 +1,14 @@
 "use client";
 
-/** Sağ alt küncdə daim görünən WhatsApp düyməsi (Sayt BRD SAYT-FR-23). */
+/** Daim görünən WhatsApp dəstək düyməsi (Sayt BRD SAYT-FR-23).
+ *  Publik saytda (SiteChrome) + pasiyent və psixoloq panellərində göstərilir —
+ *  istifadəçi harada çətinlik çəksə dərhal dəstək ala bilsin. */
+const WHATSAPP_NUMBER = "994502017164";
+
 export default function WhatsAppButton() {
   return (
     <a
-      href="https://wa.me/994121234567"
+      href={`https://wa.me/${WHATSAPP_NUMBER}`}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="WhatsApp ilə yazın"

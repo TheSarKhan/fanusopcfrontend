@@ -102,6 +102,10 @@ const layoutCss = `
   }
 `;
 
+// Reytinq/rəylər həmişə təzə görünsün — ISR/client-router-cache köhnə prefetch verib
+// "yalnız refresh-dən sonra görünür" problemini yaradırdı. Dinamik render bunu aradan qaldırır.
+export const dynamic = "force-dynamic";
+
 export default async function PsychologistProfilePage(
   { params }: { params: Promise<{ slug: string }> }
 ) {

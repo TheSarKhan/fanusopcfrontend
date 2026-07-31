@@ -529,7 +529,9 @@ function ActionModal({ row, kind, onClose, onDone }: {
   }[kind];
 
   const valid =
-    kind === "paid" ? true
+    // Ödəniş üsulu MƏCBURİDİR — kassa uzlaşdırması üçün pulun hansı yolla gəldiyi
+    // həmişə qeyd olunmalıdır (əvvəl "dəyişmə" ilə boş buraxıla bilirdi).
+    kind === "paid" ? method.trim().length > 0
     : kind === "cancel" ? reason.trim().length > 0
     : kind === "refund" ? reason.trim().length > 0 && (proRata || Number(amount) > 0)
     : reason.trim().length > 0 && percent !== "" && Number(percent) >= 0 && Number(percent) <= 100;
@@ -548,9 +550,9 @@ function ActionModal({ row, kind, onClose, onDone }: {
       </>}>
 
       {kind === "paid" && (
-        <Field label="Ödəniş üsulu" help="Kassa uzlaşdırması üçün — boş qoysanız dəyişmir.">
+        <Field label="Ödəniş üsulu (məcburi)" help="Pasiyent pulu necə ödəyib? Kassa uzlaşdırması və «Ödəniş üsulu bölgüsü» hesabatı üçün mütləq qeyd olunur.">
           <Select value={method} onChange={e => setMethod(e.target.value)}>
-            <option value="">Dəyişmə</option>
+            <option value="" disabled>Seçin…</option>
             <option value="Nağd">Nağd</option>
             <option value="Kart">Kart</option>
             <option value="Köçürmə">Köçürmə</option>

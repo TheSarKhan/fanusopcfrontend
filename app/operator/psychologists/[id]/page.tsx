@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { useParams } from "next/navigation";
-import { operatorApi, isPendingApproval, type OperatorPsychologistStat, type PackageDto, type PackageReq, type PriceChangeLogItem, type PsychologistCommission, type PsychologistNote, type PsychologistVacation } from "@/lib/api";
+import { operatorApi, getPsychologistReviews, isPendingApproval, type OperatorPsychologistStat, type PackageDto, type PackageReq, type PriceChangeLogItem, type PsychologistCommission, type PsychologistNote, type PsychologistVacation, type PublicReview, type SessionFeedback } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { toast } from "@/components/Toast";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -28,6 +28,8 @@ export default function OperatorPsychologistDetailPage() {
   const [priceHistory, setPriceHistory] = useState<PriceChangeLogItem[]>([]);
   const [vacations, setVacations] = useState<PsychologistVacation[]>([]);
   const [notes, setNotes] = useState<PsychologistNote[]>([]);
+  const [reviews, setReviews] = useState<PublicReview[]>([]);
+  const [feedback, setFeedback] = useState<SessionFeedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -58,8 +60,11 @@ export default function OperatorPsychologistDetailPage() {
       operatorApi.psychologistNotes(id).catch(() => []),
       operatorApi.psychologistPriceHistory(id).catch(() => []),
       operatorApi.psychologistCommission(id).catch(() => null),
-    ]).then(([s, pkgs, vac, n, hist, comm]) => {
+      getPsychologistReviews(id).catch(() => [] as PublicReview[]),
+      operatorApi.feedbackForPsychologist(id).catch(() => [] as SessionFeedback[]),
+    ]).then(([s, pkgs, vac, n, hist, comm, revs, fbs]) => {
       setStat(s); setPackages(pkgs); setVacations(vac); setNotes(n); setPriceHistory(hist); setCommission(comm);
+      setReviews(revs); setFeedback(fbs);
     })
       .catch(() => setError(true)).finally(() => setLoading(false));
   }, [id]);
@@ -420,6 +425,50 @@ export default function OperatorPsychologistDetailPage() {
             <button type="button" onClick={addNote} disabled={savingNote || !noteText.trim()} style={{ width: "100%", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 0", fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: savingNote ? "wait" : "pointer", opacity: savingNote || !noteText.trim() ? 0.6 : 1 }}>
               {savingNote ? "Saxlanılır…" : "Qeyd əlavə et"}
             </button>
+          </div>
+
+          {/* Dəyərləndirmə rəyləri (publik — reytinq buradan hesablanır) */}
+          <div style={{ ...CARD, padding: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, color: "var(--oxford)" }}>Dəyərləndirmə rəyləri</div>
+            <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 14 }}>Pasiyentlərin yazılı rəyləri — saytda görünür, reytinq buradan hesablanır.</div>
+            {reviews.length === 0 ? (
+              <div style={{ fontSize: 12.5, color: "#9DB0CC", fontWeight: 600, border: "1px dashed #E9EEF5", borderRadius: 10, padding: "14px 12px", textAlign: "center" }}>Hələ dəyərləndirmə rəyi yoxdur</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 320, overflowY: "auto" }}>
+                {reviews.map(r => (
+                  <div key={r.id} style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 6 }}>
+                      <span style={{ color: "#F5B301", fontWeight: 700 }}>{"★".repeat(Math.max(0, Math.min(5, r.rating)))}<span style={{ color: "#DDE5F0" }}>{"★".repeat(5 - Math.max(0, Math.min(5, r.rating)))}</span></span>
+                      <span style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600 }}>{r.authorDisplayName} · {fmtDate(r.createdAt)}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--oxford)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{r.comment}</div>
+                    {r.reply && <div style={{ marginTop: 6, paddingLeft: 10, borderLeft: "2px solid var(--brand)", fontSize: 12.5, color: "var(--oxford-60)", whiteSpace: "pre-wrap" }}><b>Psixoloqun cavabı:</b> {r.reply}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Seans rəyləri (məxfi — operator triage, reytinqə təsir etmir) */}
+          <div style={{ ...CARD, padding: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, color: "var(--oxford)" }}>Seans rəyləri</div>
+            <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 14 }}>Seansdan sonra 1-toxunuşluq məxfi qiymət — daxili nəzarət üçün, publik reytinqə təsir etmir.</div>
+            {feedback.length === 0 ? (
+              <div style={{ fontSize: 12.5, color: "#9DB0CC", fontWeight: 600, border: "1px dashed #E9EEF5", borderRadius: 10, padding: "14px 12px", textAlign: "center" }}>Hələ seans rəyi yoxdur</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 320, overflowY: "auto" }}>
+                {feedback.map(f => (
+                  <div key={f.id} style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 6 }}>
+                      <span style={{ color: "#F5B301", fontWeight: 700 }}>{"★".repeat(Math.max(0, Math.min(5, f.rating)))}<span style={{ color: "#DDE5F0" }}>{"★".repeat(5 - Math.max(0, Math.min(5, f.rating)))}</span></span>
+                      <span style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600 }}>{f.patientName} · {fmtDate(f.createdAt)}</span>
+                    </div>
+                    {f.comment ? <div style={{ fontSize: 13, color: "var(--oxford)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{f.comment}</div> : <div style={{ fontSize: 12.5, color: "#9DB0CC", fontStyle: "italic" }}>Şərh yazılmayıb</div>}
+                    {f.followUpNeeded && <div style={{ marginTop: 6, fontSize: 11.5, fontWeight: 700, color: "#B45309" }}>Follow-up: {f.followUpStatus}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Əlçatanlıq & Məzuniyyətlər */}

@@ -7,7 +7,6 @@ import { operatorApi, isPendingApproval, type PaymentItem, type PaymentSummary }
 import { formatAzn } from "@/lib/money";
 import { getStoredUser } from "@/lib/auth";
 import { toast as uiToast } from "@/components/Toast";
-import { confirmDialog } from "@/components/ConfirmDialog";
 import ErrorState from "@/components/ErrorState";
 import PageHeader from "@/components/PageHeader";
 import { azFormatDateTime } from "@/lib/datetime";
@@ -114,6 +113,7 @@ export default function OperatorPaymentsPage() {
   const [drawerId, setDrawerId] = useState<number | null>(null);
   const [refundFor, setRefundFor] = useState<PaymentItem | null>(null);
   const [cancelFor, setCancelFor] = useState<PaymentItem | null>(null);
+  const [bulkPayOpen, setBulkPayOpen] = useState(false);
   const [payFor, setPayFor] = useState<PaymentItem | null>(null);
 
   // Bütün statuslar bir dəfəyə — modul insight (KPI/qrafik/payout) tam datadan hesablanır.
@@ -239,21 +239,16 @@ export default function OperatorPaymentsPage() {
     setPayFor(null);
   };
 
-  const bulkPay = async () => {
+  /** Toplu təsdiq — ödəniş üsulu məcburidir (modal-dan gəlir), hamısına eyni tətbiq olunur. */
+  const bulkPay = async (method: string) => {
     const targets = items.filter(p => selected[p.id] && p.status === "PENDING");
     if (targets.length === 0) { uiToast("Seçilənlər arasında gözləyən ödəniş yoxdur", "info"); return; }
-    const ok = await confirmDialog({
-      title: "Toplu təsdiq",
-      message: `${targets.length} ödəniş «ödənildi» kimi işarələnəcək. Davam edilsin?`,
-      confirmLabel: "Təsdiqlə",
-    });
-    if (!ok) return;
     let done = 0, pending = 0;
     for (const p of targets) {
       try {
-        const res = await operatorApi.markPaymentPaid(p.id);
+        const res = await operatorApi.markPaymentPaid(p.id, method);
         if (isPendingApproval(res)) { pending++; continue; }
-        patch(p.id, { status: "PAID", paidAt: new Date().toISOString() }); done++;
+        patch(p.id, { status: "PAID", paidAt: new Date().toISOString(), method }); done++;
       } catch { /* davam et */ }
     }
     setSelected({});
@@ -581,7 +576,7 @@ export default function OperatorPaymentsPage() {
         <div className="fx-bulkbar">
           <span className="fx-num" style={{ fontSize: 13, fontWeight: 600 }}>{selectedIds.length} seçildi</span>
           <span className="fx-bulkbar__divider" />
-          <button type="button" onClick={bulkPay} className="fx-btn fx-btn--primary fx-btn--sm">Toplu ödənildi</button>
+          <button type="button" onClick={() => setBulkPayOpen(true)} className="fx-btn fx-btn--primary fx-btn--sm">Toplu ödənildi</button>
           <button type="button" onClick={() => { exportExcel(items.filter(p => selected[p.id])); setSelected({}); }} className="fx-btn fx-btn--dark-outline fx-btn--sm">
             <Ic d={["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"]} /> Export
           </button>
@@ -594,6 +589,13 @@ export default function OperatorPaymentsPage() {
       {/* Detal drawer */}
       {drawerItem && <Drawer p={drawerItem} onClose={() => setDrawerId(null)} onCall={() => callPatient(drawerItem)} onWhatsapp={() => remind(drawerItem)} onViewLinked={() => viewPatient(drawerItem)} />}
 
+      {bulkPayOpen && (
+        <BulkPayModal
+          count={items.filter(p => selected[p.id] && p.status === "PENDING").length}
+          onClose={() => setBulkPayOpen(false)}
+          onConfirm={(m) => { setBulkPayOpen(false); bulkPay(m); }}
+        />
+      )}
       {refundFor && <RefundModal payment={refundFor} onClose={() => setRefundFor(null)} onDone={onRefundRequested} />}
       {cancelFor && <CancelModal payment={cancelFor} onClose={() => setCancelFor(null)} onDone={onCancelled} />}
       {payFor && <MarkPaidModal payment={payFor} onClose={() => setPayFor(null)} onDone={onPaid} />}
@@ -971,6 +973,22 @@ function MarkPaidModal({ payment, onClose, onDone }: { payment: PaymentItem; onC
         </select>
       </ModalField>
       <ModalFooter onClose={onClose} onSubmit={submit} disabled={busy} label={busy ? "Göndərilir…" : "Ödənildi"} />
+    </ModalShell>
+  );
+}
+
+/** Toplu təsdiq — ödəniş üsulu məcburidir, seçilən hamısına eyni tətbiq olunur. */
+function BulkPayModal({ count, onClose, onConfirm }: { count: number; onClose: () => void; onConfirm: (method: string) => void }) {
+  const [method, setMethod] = useState<string>(PAYMENT_METHOD_OPTIONS[0]);
+  return (
+    <ModalShell icon="brand" iconD="M20 6L9 17l-5-5" title="Toplu təsdiq" onClose={onClose}>
+      <div className="fx-modal__text">{count} ödəniş «ödənildi» kimi işarələnəcək. Seçilmiş ödəniş üsulu hamısına tətbiq olunur.</div>
+      <ModalField label="Ödəniş üsulu">
+        <select value={method} onChange={e => setMethod(e.target.value)} className="fx-select" autoFocus>
+          {PAYMENT_METHOD_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </ModalField>
+      <ModalFooter onClose={onClose} onSubmit={() => onConfirm(method)} disabled={count === 0} label="Təsdiqlə" />
     </ModalShell>
   );
 }

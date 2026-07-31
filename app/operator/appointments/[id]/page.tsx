@@ -148,6 +148,8 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [payMethodOpen, setPayMethodOpen] = useState(false);
+  const [payMethod, setPayMethod] = useState("Nağd");
   const [otherAction, setOtherAction] = useState<OtherActionKey | null>(null);
   const focusAssign = useCallback(() => {
     assignCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -420,12 +422,19 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
   const needsAmount = a.patientId != null && !a.patientPackageId && (!a.paymentStatus || paymentAmountUnset);
   const paymentDue = isAssigned && !a.paymentConfirmed && !isFinal;
 
+  /** Ödəniş üsulu məcburidir — modal açılır, təsdiq oradan gəlir. */
   const markPaid = () => {
     if (!a.paymentId) return;
+    setPayMethodOpen(true);
+  };
+
+  const doMarkPaid = (method: string) => {
+    if (!a.paymentId) return;
+    setPayMethodOpen(false);
     guardAction(async () => {
       setPaying(true);
       try {
-        const res = await operatorApi.markPaymentPaid(a.paymentId!);
+        const res = await operatorApi.markPaymentPaid(a.paymentId!, method);
         if (isPendingApproval(res)) globalToast("Ödəniş təsdiqi Admin-ə göndərildi — təsdiqdən sonra icra olunacaq", "info");
         else globalToast("Ödəniş təsdiqləndi — indi görüş linki əlavə edilə bilər", "success");
         load(true);
@@ -751,6 +760,32 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
           {otherAction === "cancelreq" && <CancelRequestBlock appointment={a} guardAction={guardAction} onDone={(u, ap) => { setOtherAction(null); onActionDone(u, ap ? "Ləğv təsdiqləndi" : "Tələb rədd edildi"); }} />}
           {otherAction === "noshow" && <NoShowBlock appointment={a} guardAction={guardAction} onDone={(u) => { setOtherAction(null); onActionDone(u, "Gəlmədi işarələndi"); }} />}
           {otherAction === "cancel" && <CancelBlock appointment={a} guardAction={guardAction} onClose={() => setOtherAction(null)} onDone={(u) => { setOtherAction(null); onActionDone(u, "Ləğv edildi"); }} />}
+        </ModalShell>
+      )}
+
+      {/* ── Ödəniş üsulu (məcburi) ──────────────────────────────────────────── */}
+      {payMethodOpen && (
+        <ModalShell
+          title="Ödənişi təsdiqlə"
+          sub="Pasiyent pulu necə ödəyib? Kassa uzlaşdırması üçün mütləq qeyd olunur."
+          onClose={() => setPayMethodOpen(false)}
+          footer={
+            <div className="fx-modal__actions" style={{ marginTop: 0 }}>
+              <button onClick={() => setPayMethodOpen(false)} className="fx-btn fx-btn--ghost">İmtina</button>
+              <button onClick={() => doMarkPaid(payMethod)} disabled={paying} className="fx-btn fx-btn--primary">
+                {paying ? "Göndərilir…" : "Ödənildi"}
+              </button>
+            </div>
+          }
+        >
+          <label className="fx-field">
+            <span className="fx-label">Ödəniş üsulu</span>
+            <select className="fx-select" value={payMethod} onChange={e => setPayMethod(e.target.value)} autoFocus>
+              <option value="Nağd">Nağd</option>
+              <option value="Kart">Kart</option>
+              <option value="Köçürmə">Köçürmə</option>
+            </select>
+          </label>
         </ModalShell>
       )}
 

@@ -799,9 +799,9 @@ export interface ReviewSummary {
 }
 
 export const getPsychologistReviews = (id: number) =>
-  get<PublicReview[]>(`/psychologists/${id}/reviews`);
+  get<PublicReview[]>(`/psychologists/${id}/reviews`, { next: { revalidate: 0 } });
 export const getPsychologistReviewSummary = (id: number) =>
-  get<ReviewSummary>(`/psychologists/${id}/reviews/summary`);
+  get<ReviewSummary>(`/psychologists/${id}/reviews/summary`, { next: { revalidate: 0 } });
 
 export const bookAppointment = (data: {
   patientName: string; phone: string; psychologistName?: string; note?: string; preferredDate?: string;

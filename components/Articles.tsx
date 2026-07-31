@@ -17,15 +17,16 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
         title: p.title,
         date: azFormatDate(p.publishedDate),
         read: t("articles.minutes", { n: p.readTimeMinutes }),
+        views: p.viewCount ?? 0,
         bg: p.categoryBg || COLORS[i % COLORS.length],
         fg: p.categoryColor || "#fff",
         coverUrl: p.coverImageUrl,
       }))
     : [
-        { slug: "narahatliq", tag: "Narahatlıq",   title: "Səhər yuxudan narahat oyananda nə etməli", date: "12 May 2025", read: "6 dəq", bg: COLORS[0], fg: "#fff", coverUrl: undefined as string | undefined },
-        { slug: "munasibetler", tag: "Münasibətlər", title: "Sərhəd qoymaq eqoist olmaq deyil",        date: "8 May 2025",  read: "8 dəq", bg: COLORS[1], fg: "#fff", coverUrl: undefined },
-        { slug: "ozune-qayim", tag: "Özünəqayım",   title: "Tükənmişlik (burnout) — gizli əlamətlər",   date: "3 May 2025",  read: "7 dəq", bg: COLORS[2], fg: "#fff", coverUrl: undefined },
-        { slug: "yuxu", tag: "Yuxu",           title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", date: "28 Apr 2025", read: "5 dəq", bg: COLORS[3], fg: "#fff", coverUrl: undefined },
+        { slug: "narahatliq", tag: "Narahatlıq",   title: "Səhər yuxudan narahat oyananda nə etməli", date: "12 May 2025", read: "6 dəq", views: 0, bg: COLORS[0], fg: "#fff", coverUrl: undefined as string | undefined },
+        { slug: "munasibetler", tag: "Münasibətlər", title: "Sərhəd qoymaq eqoist olmaq deyil",        date: "8 May 2025",  read: "8 dəq", views: 0, bg: COLORS[1], fg: "#fff", coverUrl: undefined },
+        { slug: "ozune-qayim", tag: "Özünəqayım",   title: "Tükənmişlik (burnout) — gizli əlamətlər",   date: "3 May 2025",  read: "7 dəq", views: 0, bg: COLORS[2], fg: "#fff", coverUrl: undefined },
+        { slug: "yuxu", tag: "Yuxu",           title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", date: "28 Apr 2025", read: "5 dəq", views: 0, bg: COLORS[3], fg: "#fff", coverUrl: undefined },
       ];
 
   return (
@@ -53,6 +54,12 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
                   {a.date}
                   <span className="fanus-art-card__sep" />
                   {a.read}
+                  {a.views > 0 && (
+                    <>
+                      <span className="fanus-art-card__sep" />
+                      {a.views} baxış
+                    </>
+                  )}
                 </div>
                 <h3 className="fanus-art-card__title">{a.title}</h3>
               </div>

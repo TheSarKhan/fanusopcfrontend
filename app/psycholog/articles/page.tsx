@@ -392,6 +392,7 @@ function HeroArticle({ p, onEdit, onView, onToggle, onDelete, isToggling }: {
                 (əvvəl yalnız yayım tarixi vardı, redaktə izi görünmürdü). */}
             {isEdited(p) && <span>Yeniləndi: {fmtDate(p.updatedAt!)}</span>}
             <span>{readTime} dəq oxunma</span>
+            {p.viewCount != null && p.viewCount > 0 && <span>{p.viewCount} baxış</span>}
             <span style={{
               padding: "1px 8px", borderRadius: 999,
               background: published ? "rgba(16, 185, 129, 0.25)" : "rgba(251, 191, 36, 0.25)",
@@ -555,6 +556,7 @@ function GridCard({ p, onToggle, isToggling, onDelete, menuOpen, onMenuToggle }:
           <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
             <IconClock /> {readTime} dəq
           </span>
+          {p.viewCount != null && p.viewCount > 0 && <span>{p.viewCount} baxış</span>}
         </div>
       </a>
     </div>

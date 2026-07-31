@@ -104,6 +104,14 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
               ) : null}
               <span className="art-meta__dot" aria-hidden />
               <span className="art-meta__read">{post.readTimeMinutes} dəq oxu</span>
+              {/* Baxış sayı (V125 content_views) — ziyarətçi bu səhifəni açanda ViewTracker
+                  onu artırır; burada göstərilən rəqəm cari ziyarətdən əvvəlki saydır. */}
+              {post.viewCount != null && post.viewCount > 0 && (
+                <>
+                  <span className="art-meta__dot" aria-hidden />
+                  <span className="art-meta__read">{post.viewCount} baxış</span>
+                </>
+              )}
             </div>
             <h1 className="art-title">{post.title}</h1>
             {post.excerpt && <p className="art-lead">{post.excerpt}</p>}

@@ -51,6 +51,8 @@ interface Item {
   author: string;
   illu: Illu;
   coverUrl?: string;
+  /** Baxış sayı (V125) — yalnız API-dən gələn məqalələrdə olur. */
+  views?: number;
 }
 
 const FALLBACK: Item[] = [
@@ -86,6 +88,7 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
         author: p.authorName ?? "Fanus redaksiya",
         illu: ILLU_BY_CAT[cat],
         coverUrl: p.coverImageUrl,
+        views: p.viewCount ?? 0,
       };
     });
   }, [posts]);
@@ -259,6 +262,12 @@ function ArtList({
                     <span>{a.date}</span>
                     <span className="ap-card__sep" />
                     <span className="ap-card__read"><ClockIcon /> {a.read}</span>
+                    {a.views != null && a.views > 0 && (
+                      <>
+                        <span className="ap-card__sep" />
+                        <span className="ap-card__read">{a.views} baxış</span>
+                      </>
+                    )}
                   </div>
                   <h3 className="ap-card__title">{a.title}</h3>
                   <p className="ap-card__excerpt">{a.excerpt}</p>

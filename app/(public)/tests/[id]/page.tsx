@@ -6,6 +6,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import Breadcrumb from "@/components/Breadcrumb";
 import { useRouter } from "next/navigation";
 import { getPublicCatalogTest, submitPublicCatalogTest, type TakeTest } from "@/lib/api";
 
@@ -61,8 +62,9 @@ export default function PublicTakeTestPage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <div className="fanus-container" style={{ padding: "40px 0 72px", maxWidth: 760 }}>
-      <Link href="/tests" style={{ fontSize: 13, color: "var(--oxford-60)", textDecoration: "none" }}>← Testlər</Link>
+    <>
+      <Breadcrumb items={[{ label: "Testlər", href: "/tests" }, { label: test.title }]} />
+      <div className="fanus-container" style={{ padding: "8px 0 72px", maxWidth: 760 }}>
       <h1 style={{ fontFamily: "var(--serif)", fontSize: "clamp(24px, 3.4vw, 34px)", fontWeight: 600, color: "var(--oxford)", margin: "10px 0 8px" }}>{test.title}</h1>
       {test.description && <p style={{ fontSize: 15, color: "var(--oxford-60)", lineHeight: 1.6, margin: "0 0 8px" }}>{test.description}</p>}
       {test.instructions && (
@@ -118,6 +120,7 @@ export default function PublicTakeTestPage({ params }: { params: Promise<{ id: s
           Nəticənizi görmək üçün son addımda qeydiyyatdan keçmək lazımdır.
         </p>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

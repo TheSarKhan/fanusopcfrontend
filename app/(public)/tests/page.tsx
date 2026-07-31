@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Breadcrumb from "@/components/Breadcrumb";
 import type { Metadata } from "next";
 import { getPublicTestCatalog } from "@/lib/api";
 
@@ -13,7 +14,9 @@ export default async function PublicTestsPage() {
   const tests = await getPublicTestCatalog().catch(() => []);
 
   return (
-    <div className="fanus-container" style={{ padding: "48px 0 72px" }}>
+    <>
+      <Breadcrumb items={[{ label: "Testlər" }]} />
+      <div className="fanus-container" style={{ padding: "16px 0 72px" }}>
       <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto 40px" }}>
         <h1 style={{ fontFamily: "var(--serif)", fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 600, color: "var(--oxford)", margin: "0 0 12px" }}>
           Psixoloji testlər
@@ -50,6 +53,7 @@ export default async function PublicTestsPage() {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

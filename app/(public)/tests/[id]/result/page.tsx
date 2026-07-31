@@ -6,6 +6,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import Breadcrumb from "@/components/Breadcrumb";
 import { useSearchParams } from "next/navigation";
 import { patientApi, tryGetMe, type PublicTestResult } from "@/lib/api";
 
@@ -42,9 +43,12 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
   }, [token]);
 
   const wrap = (children: React.ReactNode) => (
-    <div className="fanus-container" style={{ padding: "48px 0 72px", maxWidth: 620 }}>
-      <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderRadius: 18, padding: 32 }}>{children}</div>
-    </div>
+    <>
+      <Breadcrumb items={[{ label: "Testlər", href: "/tests" }, { label: "Nəticə" }]} />
+      <div className="fanus-container" style={{ padding: "16px 0 72px", maxWidth: 620 }}>
+        <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderRadius: 18, padding: 32 }}>{children}</div>
+      </div>
+    </>
   );
 
   if (state === "checking") return wrap(<p style={{ textAlign: "center", color: "var(--oxford-60)", margin: 0 }}>Yoxlanılır…</p>);

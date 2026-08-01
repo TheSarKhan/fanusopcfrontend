@@ -105,6 +105,10 @@ const layoutCss = `
 // Reytinq/rəylər həmişə təzə görünsün — ISR/client-router-cache köhnə prefetch verib
 // "yalnız refresh-dən sonra görünür" problemini yaradırdı. Dinamik render bunu aradan qaldırır.
 export const dynamic = "force-dynamic";
+// force-dynamic təkbaşına KİFAYƏT ETMİR: reytinq mənbəyi olan getPsychologists()
+// fetch-i öz `revalidate: 30` dəyəri ilə data-keşdən gəlirdi, ona görə ilk açılışda
+// köhnə reytinq görünürdü. Bu route-da bütün fetch-lər keşi keçir.
+export const fetchCache = "force-no-store";
 
 export default async function PsychologistProfilePage(
   { params }: { params: Promise<{ slug: string }> }

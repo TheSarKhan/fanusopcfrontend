@@ -8,10 +8,13 @@
 
 export type Cat = "all" | "anxiety" | "trauma" | "family" | "depression" | "youth" | "addiction";
 
-export type MoodId = "anxious" | "sad" | "tired" | "angry" | "mixed" | "lonely";
+export type MoodId = "happy" | "anxious" | "sad" | "tired" | "angry" | "mixed" | "lonely";
 
 /** Which specialization category fits each mood. "all" = no filter. */
 export const MOOD_TO_CAT: Record<MoodId, Cat> = {
+  // Yaxşı hiss edən üçün süzgəc yoxdur — bütün psixoloqlar göstərilir (özünüinkişaf,
+  // mövcud vəziyyəti qorumaq üçün müraciət də normaldır).
+  happy:   "all",
   anxious: "anxiety",
   sad:     "depression",
   tired:   "depression",   // burnout lives under depression specialists

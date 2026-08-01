@@ -185,7 +185,7 @@ export default async function PsychologistProfilePage(
                           <StarIcon size={17} />
                           <span style={{ fontSize: 18, fontWeight: 800 }}>{hasRating ? psychologist.rating : "Yeni"}</span>
                         </span>
-                        <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>{hasRating ? `Reytinq${psychologist.ratingCount ? ` (${psychologist.ratingCount})` : ""}` : "Hələ rəy yoxdur"}</span>
+                        <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>{hasRating ? "Reytinq" : "Hələ rəy yoxdur"}</span>
                       </div>
                     );
                   })()}
@@ -199,7 +199,7 @@ export default async function PsychologistProfilePage(
                   )}
                   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                     <span style={{ fontSize: 18, fontWeight: 800 }}>{psychologist.experience}</span>
-                    <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>il təcrübə</span>
+                    <span style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600 }}>təcrübə</span>
                   </div>
                 </div>
                 {psychologist.specializations.length > 0 && (

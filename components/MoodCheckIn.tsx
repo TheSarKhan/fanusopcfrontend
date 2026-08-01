@@ -12,6 +12,8 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 export type Mood = { id: MoodId; label: string; color: string };
 
 export const MOOD_COLORS: Record<MoodId, string> = {
+  // Müsbət uc — mavi şkaladan qəsdən fərqlidir ki, "yaxşıyam" seçimi dərhal seçilsin.
+  happy:   "#16A34A",
   anxious: "#88AEEC",
   sad:     "#5089E0",
   tired:   "#2A6BD0",
@@ -23,6 +25,7 @@ export const MOOD_COLORS: Record<MoodId, string> = {
 export function MoodIcon({ id, size = 30 }: { id: MoodId; size?: number }) {
   const p = { width: size, height: size, viewBox: "0 0 32 32", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   switch (id) {
+    case "happy": return <svg {...p}><circle cx="16" cy="16" r="11" fill="currentColor" opacity=".18"/><circle cx="16" cy="16" r="11"/><path d="M11.5 19.5 Q16 24 20.5 19.5"/><path d="M12 13.2 h.01 M20 13.2 h.01" strokeWidth="2.4"/></svg>;
     case "anxious": return <svg {...p}><path d="M9 18 Q4 18 4 14 Q4 10 8 10 Q9 6 13 6 Q19 6 20 11 Q26 11 26 16 Q26 20 22 20 L9 20 Z" fill="currentColor" opacity=".18"/><path d="M9 18 Q4 18 4 14 Q4 10 8 10 Q9 6 13 6 Q19 6 20 11 Q26 11 26 16 Q26 20 22 20 L9 20 Z"/><path d="M11 24 L10 27 M16 24 L15 27 M21 24 L20 27"/></svg>;
     case "sad": return <svg {...p}><path d="M16 4 Q24 14 24 20 A8 8 0 0 1 8 20 Q8 14 16 4 Z" fill="currentColor" opacity=".18"/><path d="M16 4 Q24 14 24 20 A8 8 0 0 1 8 20 Q8 14 16 4 Z"/><path d="M12 19 Q12 23 15 24"/></svg>;
     case "tired": return <svg {...p}><path d="M22 19 A9 9 0 1 1 13 8 A7 7 0 0 0 22 19 Z" fill="currentColor" opacity=".18"/><path d="M22 19 A9 9 0 1 1 13 8 A7 7 0 0 0 22 19 Z"/><path d="M22 6 L26 6 L22 10 L26 10" strokeWidth="1.4"/></svg>;
@@ -182,6 +185,7 @@ export default function MoodCheckIn({ compact = false, trigger = false }: { comp
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const MOODS: Mood[] = [
+    { id: "happy",   label: t("mood.moodHappy"),   color: MOOD_COLORS.happy },
     { id: "anxious", label: t("mood.moodAnxious"), color: MOOD_COLORS.anxious },
     { id: "sad",     label: t("mood.moodSad"),     color: MOOD_COLORS.sad },
     { id: "tired",   label: t("mood.moodTired"),   color: MOOD_COLORS.tired },
@@ -354,7 +358,8 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
     return [...inCat, ...rest].slice(0, 3);
   }, [posts, cat]);
 
-  const MESSAGE_KEYS: Record<MoodId, "mood.msgAnxious" | "mood.msgSad" | "mood.msgTired" | "mood.msgAngry" | "mood.msgMixed" | "mood.msgLonely"> = {
+  const MESSAGE_KEYS: Record<MoodId, "mood.msgHappy" | "mood.msgAnxious" | "mood.msgSad" | "mood.msgTired" | "mood.msgAngry" | "mood.msgMixed" | "mood.msgLonely"> = {
+    happy:   "mood.msgHappy",
     anxious: "mood.msgAnxious",
     sad:     "mood.msgSad",
     tired:   "mood.msgTired",

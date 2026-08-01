@@ -143,7 +143,9 @@ export default function PanelShell({
         </button>
 
         <div className="ps-side__brand">
-          <Link href={homeHref} className="ps-side__brand-link" aria-label={`Fanus — ${brandLabel}`}>
+          {/* Loqo ƏSAS SAYTA aparır (panelin ana səhifəsinə yox) — istifadəçi brendə
+              klikləyəndə ictimai saytı gözləyir. Panel ana səhifəsi nav-dakı ilk sətirdir. */}
+          <a href={getMainSiteUrl()} className="ps-side__brand-link" aria-label={`Fanus — ${brandLabel}`}>
             <span className="ps-side__logo">
               {/* İkon + brand-rəngli yazı (şəkil deyil ki, rəng/ölçü CSS ilə dəqiq idarə
                   olunsun və şəkil-keş problemi olmasın). Collapsed rail-də yalnız ikon. */}
@@ -157,7 +159,7 @@ export default function PanelShell({
                 </span>
               </span>
             </span>
-          </Link>
+          </a>
           {/* Desktop: language + notifications sit right beside the logo. On mobile
               they live in the topbar instead (sidebar is off-canvas). */}
           {!isMobile && <div className="ps-side__controls">{controls}</div>}

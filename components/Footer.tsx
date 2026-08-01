@@ -62,7 +62,7 @@ export default function Footer() {
               <MailIcon /> salam@fanus.az
             </a>
             <div className="fanus-ftr__contact-row">
-              <PinIcon /> Bakı, Azərbaycan
+              <PinIcon /> {t("pub.location")}
             </div>
           </div>
 
@@ -88,7 +88,7 @@ export default function Footer() {
           <h4 className="fanus-ftr__col-title">{t("footer2.newsletter")}</h4>
           <p className="fanus-ftr__news-text">{t("footer2.newsletterText")}</p>
           <form className="fanus-ftr__form" onSubmit={(e) => { e.preventDefault(); alert(t("footer2.newsletterThanks")); }}>
-            <input type="email" placeholder="email@nümunə.az" required />
+            <input type="email" placeholder={t("pub.emailPlaceholder")} required />
             <button type="submit" aria-label={t("common.submit")}><SendIcon /></button>
           </form>
         </div>

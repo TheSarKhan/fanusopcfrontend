@@ -1,10 +1,8 @@
-﻿import type { BlogPost } from "@/lib/api";
+"use client";
 
-function formatDate(dateStr: string) {
-  const d = new Date(dateStr);
-  const months = ["Yan","Fev","Mart","Apr","May","İyun","İyul","Avq","Sen","Okt","Noy","Dek"];
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
-}
+import type { BlogPost } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import { formatDateShort } from "@/lib/i18n/dateNames";
 
 const GRADIENTS = [
   "var(--brand)",
@@ -22,11 +20,12 @@ function catGradient(cat: string) {
 }
 
 export default function RelatedPosts({ posts }: { posts: BlogPost[] }) {
+  const { t } = useT();
   if (!posts.length) return null;
   return (
     <section className="bl-related">
       <div className="container">
-        <h2 className="bl-related-title">Əlaqəli məqalələr</h2>
+        <h2 className="bl-related-title">{t("article.relatedTitle")}</h2>
         <div className="bl-related-grid">
           {posts.map(post => (
             <a key={post.id} href={`/blog/${post.slug}`} className="bl-card bl-card-link">
@@ -49,10 +48,10 @@ export default function RelatedPosts({ posts }: { posts: BlogPost[] }) {
                     {(post.authorName ?? "F").charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div className="bl-author-name">{post.authorName ?? "Fanus Redaksiyası"}</div>
+                    <div className="bl-author-name">{post.authorName ?? t("article.editorial")}</div>
                     <div className="bl-author-date" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      <span>{post.readTimeMinutes} dəq</span>
-                      <span>{formatDate(post.publishedDate)}</span>
+                      <span>{t("pub.readMinutes", { n: post.readTimeMinutes })}</span>
+                      <span>{formatDateShort(t, post.publishedDate)}</span>
                     </div>
                   </div>
                 </div>

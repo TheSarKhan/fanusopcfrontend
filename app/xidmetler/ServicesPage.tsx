@@ -3,11 +3,13 @@
 import Deco from "@/components/Deco";
 import Breadcrumb from "@/components/Breadcrumb";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 export default function ServicesPage() {
+  const { t } = useT();
   return (
     <div className="fanus-root">
-      <Breadcrumb items={[{ label: "Xidmətlər" }]} />
+      <Breadcrumb items={[{ label: t("pub.crumbServices") }]} />
       <ServicesHero />
       <ServicesPrograms />
     </div>
@@ -42,56 +44,18 @@ function ServicesHero() {
   );
 }
 
-const PROGRAMS = [
-  {
-    icon: "compass",
-    title: "Fərdi terapiya",
-    tag: "Tək-tək söhbət",
-    body: "Narahatlıq, depressiya, özünə güvən, həyat qərarları. Bir psixoloqla, sizə uyğun tempdə.",
-    bullets: ["50 dəqiqəlik seans", "İlk görüş pulsuz", "Həftəlik və ya 2 həftədə bir"],
-  },
-  {
-    icon: "people",
-    title: "Cütlük və ailə",
-    tag: "Birlikdə qoşulun",
-    body: "Anlaşılmama, etibar problemi, valideynlik. Hər iki tərəf eşidilir, mütəxəssis tərəf saxlamır.",
-    bullets: ["Cütlük və ya ailə birgə", "Münaqişə həlli", "Etibarın bərpası"],
-  },
-  {
-    icon: "chat",
-    title: "Qrup seansları",
-    tag: "Eyni mövzuda birlikdə",
-    body: "Eyni problemi yaşayanlarla 8-12 nəfərlik kiçik qrup. Psixoloq idarə edir.",
-    bullets: ["8-12 nəfərlik qrup", "Həftəlik 90 dəq", "Tematik mövzular"],
-  },
-  {
-    icon: "heart",
-    title: "Akut dəstək",
-    tag: "Çətin anlarda",
-    body: "Travma, kəskin stress, panik. Operator komandamız sizə uyğun psixoloqu qısa müddətdə tapır.",
-    bullets: ["Tezliklə cavab", "Kəskin sessiyalar", "Davamlı plan"],
-  },
-  {
-    icon: "smile",
-    title: "Yeniyetmələr və valideynlər",
-    tag: "13–18 yaş",
-    body: "13–18 yaş gənclər üçün ayrı yanaşma. Valideynlər üçün də ayrı dəstək.",
-    bullets: ["Yaşa uyğun yanaşma", "Valideyn iclasları", "Məktəb əlaqəsi"],
-  },
-  {
-    icon: "book",
-    title: "Təlimlər",
-    tag: "Maarifləndirici və elmi",
-    body: "Psixologiya mövzularında iki formatda təlim keçirilir — kimin qoşula biləcəyi və ödəniş forması təlimdən asılı olaraq dəyişir.",
-    bullets: [
-      "Maarifləndirici: hamı qoşula bilər",
-      "Elmi: yalnız psixoloq və psixologiya tələbələri üçün",
-      "Pulsuz və ödənişli təlimlər",
-    ],
-  },
+/** Kart mətnləri lüğətdən gəlir — burada yalnız ikon və açar prefiksi saxlanılır. */
+const PROGRAMS: { icon: string; key: "p1" | "p2" | "p3" | "p4" | "p5" | "p6" }[] = [
+  { icon: "compass", key: "p1" },
+  { icon: "people",  key: "p2" },
+  { icon: "chat",    key: "p3" },
+  { icon: "heart",   key: "p4" },
+  { icon: "smile",   key: "p5" },
+  { icon: "book",    key: "p6" },
 ];
 
 function ServicesPrograms() {
+  const { t } = useT();
   return (
     <section className="svc-prog" id="programs">
       <Deco type="mesh-blob" style={{ top: 60, right: "-5%", width: 400, opacity: .45 }} anim="drift" />
@@ -99,17 +63,17 @@ function ServicesPrograms() {
 
       <div className="fanus-container">
         <div className="svc-prog__grid">
-          {PROGRAMS.map((p, i) => (
-            <article key={i} className="svc-card">
+          {PROGRAMS.map((p) => (
+            <article key={p.key} className="svc-card">
               <div className="svc-card__icon"><PgmIcon name={p.icon} /></div>
-              <h3 className="svc-card__title">{p.title}</h3>
-              <div className="svc-card__tag">{p.tag}</div>
-              <p className="svc-card__body">{p.body}</p>
+              <h3 className="svc-card__title">{t(`svcPrograms.${p.key}Title` as MessageKey)}</h3>
+              <div className="svc-card__tag">{t(`svcPrograms.${p.key}Tag` as MessageKey)}</div>
+              <p className="svc-card__body">{t(`svcPrograms.${p.key}Body` as MessageKey)}</p>
               <ul className="svc-card__list">
-                {p.bullets.map((b, j) => (
+                {[1, 2, 3].map((j) => (
                   <li key={j}>
                     <span className="svc-card__check"><CheckIcon /></span>
-                    {b}
+                    {t(`svcPrograms.${p.key}B${j}` as MessageKey)}
                   </li>
                 ))}
               </ul>

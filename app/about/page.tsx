@@ -4,14 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { useScrollReveal } from "@/lib/useScrollReveal";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import Breadcrumb from "@/components/Breadcrumb";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 // Bütün dəyər kartları əsas brend rəngi (#1051B7) və tonlarında.
 const VALUES = [
   {
     color: "var(--brand)",
     bg: "var(--brand-50)",
-    title: "Məxfilik",
-    desc: "Hər söhbət şifrələnir, hər məlumat sizə aiddir. Etibar — fundamentdir.",
+    titleKey: "aboutPage.v1Title" as MessageKey,
+    descKey: "aboutPage.v1Desc" as MessageKey,
     icon: (
       <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <rect x="3" y="11" width="18" height="11" rx="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -22,8 +23,8 @@ const VALUES = [
   {
     color: "var(--brand)",
     bg: "var(--brand-50)",
-    title: "İnsan mərkəzlilik",
-    desc: "Standart deyil, sizin hekayəniz. Tempinizi, dilinizi, sınırlarınızı qoruyuruq.",
+    titleKey: "aboutPage.v2Title" as MessageKey,
+    descKey: "aboutPage.v2Desc" as MessageKey,
     icon: (
       <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
@@ -35,8 +36,8 @@ const VALUES = [
   {
     color: "var(--brand)",
     bg: "var(--brand-50)",
-    title: "Peşəkarlıq",
-    desc: "Sübutla əsaslanan metodlar, davamlı supervizor dəstəyi və beynəlxalq standartlar.",
+    titleKey: "aboutPage.v3Title" as MessageKey,
+    descKey: "aboutPage.v3Desc" as MessageKey,
     icon: (
       <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" strokeLinecap="round" strokeLinejoin="round" />
@@ -46,8 +47,8 @@ const VALUES = [
   {
     color: "var(--brand)",
     bg: "var(--brand-50)",
-    title: "Empati",
-    desc: "Mühakimə yox, yalnız anlayış. Bəzən ən mühüm söz — \"sizi eşidirəm\".",
+    titleKey: "aboutPage.v4Title" as MessageKey,
+    descKey: "aboutPage.v4Desc" as MessageKey,
     icon: (
       <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" strokeLinecap="round" strokeLinejoin="round" />
@@ -57,6 +58,7 @@ const VALUES = [
 ];
 
 function MissionSection() {
+  const { t } = useT();
   const { ref, visible } = useScrollReveal<HTMLElement>(0.1);
 
   return (
@@ -71,18 +73,9 @@ function MissionSection() {
           }}
         >
           <div>
-            <h2 style={{ color: "var(--brand)" }}>Hər insan <span className="fanus-serif-accent">sağlam,</span><br />xoşbəxt olmağa layiqdir</h2>
-            <p>
-              Fanus 2019-cu ildə Azərbaycanda psixoloji yardımı ən yüksək standartlarda
-              əlçatan etmək məqsədi ilə yaradıldı. "Fanus" — qaranlıqda yol göstərən işıq
-              deməkdir. Biz hər insanın öz daxili işığına qovuşmasına dəstək olmağı özümüzə
-              missiya bilmişik.
-            </p>
-            <p>
-              Terapiya yalnız "problem olanlar üçün" deyil — özünü daha yaxşı tanımaq,
-              emosional güc toplamaq və daha dolu bir həyat qurmaq istəyən hər kəs üçündür.
-              Heç bir tələsmə, heç bir mühakimə — sadəcə sizin tempinizdə.
-            </p>
+            <h2 style={{ color: "var(--brand)" }}>{t("aboutPage.missionTitle1")} <span className="fanus-serif-accent">{t("aboutPage.missionTitleAccent")}</span><br />{t("aboutPage.missionTitle2")}</h2>
+            <p>{t("aboutPage.missionP1")}</p>
+            <p>{t("aboutPage.missionP2")}</p>
           </div>
 
         </div>
@@ -92,6 +85,7 @@ function MissionSection() {
 }
 
 function ValuesSection() {
+  const { t } = useT();
   const { ref, visible } = useScrollReveal<HTMLElement>(0.1);
 
   return (
@@ -104,17 +98,17 @@ function ValuesSection() {
           transition: "opacity 0.6s ease, transform 0.6s ease",
         }}>
           <h2 style={{ fontFamily: "var(--font-poppins), system-ui, sans-serif", fontSize: "clamp(32px, 3.6vw, 48px)", fontWeight: 700, color: "var(--brand)", lineHeight: 1.15, letterSpacing: "-0.025em" }}>
-            Bizi fərqli edən <span className="fanus-serif-accent">dəyərlər</span>
+            {t("aboutPage.valuesTitle")} <span className="fanus-serif-accent">{t("aboutPage.valuesTitleAccent")}</span>
           </h2>
           <p style={{ fontSize: 17, color: "var(--oxford-60)", marginTop: 16, maxWidth: 520, margin: "16px auto 0" }}>
-            Hər seansın arxasında, hər söhbətdə, hər qərarda bunlar dayanır.
+            {t("aboutPage.valuesLead")}
           </p>
         </div>
 
         <div className="ap-values-grid">
           {VALUES.map((v, i) => (
             <div
-              key={v.title}
+              key={v.titleKey}
               className="ap-value-card"
               style={{
                 background: v.bg,
@@ -126,8 +120,8 @@ function ValuesSection() {
               <div className="ap-value-icon" style={{ color: v.color }}>
                 {v.icon}
               </div>
-              <h3>{v.title}</h3>
-              <p>{v.desc}</p>
+              <h3>{t(v.titleKey)}</h3>
+              <p>{t(v.descKey)}</p>
             </div>
           ))}
         </div>
@@ -140,7 +134,7 @@ export default function AboutPage() {
   const { t } = useT();
   return (
     <div className="fanus-root">
-      <Breadcrumb items={[{ label: "Haqqımızda" }]} />
+      <Breadcrumb items={[{ label: t("about.pageTitle") }]} />
       {/* Hero */}
       <section className="ap-hero abt-hero">
         <div className="ap-hero-blob ap-hero-blob-1" />
@@ -160,7 +154,7 @@ export default function AboutPage() {
               { }
               <img
                 src="/images/hero-haqqimizda.png"
-                alt="Fanus haqqında — psixoloji mərkəz"
+                alt={t("aboutPage.heroImgAlt")}
                 className="abt-hero-img"
                 draggable={false}
               />

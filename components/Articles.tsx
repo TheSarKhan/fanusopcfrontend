@@ -57,7 +57,7 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
                   {a.views > 0 && (
                     <>
                       <span className="fanus-art-card__sep" />
-                      {a.views} baxış
+                      {t("pub.viewsCount", { n: a.views })}
                     </>
                   )}
                 </div>

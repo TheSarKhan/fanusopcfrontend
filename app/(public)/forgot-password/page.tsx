@@ -71,7 +71,7 @@ export default function ForgotPasswordPage() {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="email@nümunə.az"
+                placeholder={t("pub.emailPlaceholder")}
                 required
                 className="w-full px-4 py-3 rounded-xl text-sm outline-none"
                 style={{ border: "1.5px solid #C0D2E6", background: "#FAFCFF" }}

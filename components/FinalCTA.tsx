@@ -5,15 +5,18 @@ import { useBooking } from "@/context/BookingContext";
 import { useScrollReveal } from "@/lib/useScrollReveal";
 import Link from "next/link";
 import { azFormatDate } from "@/lib/datetime";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
-const PROMPTS = [
-  "Bu gün özümə demək istədiyim bir söz...",
-  "Növbəti həftə özümə yumşaq olmaq istəyirəm.",
-  "Daha yaxşı yatmaq istəyirəm.",
-  "Sakitləşməyi öyrənmək istəyirəm.",
+const PROMPT_KEYS: MessageKey[] = [
+  "finalCta.prompt1",
+  "finalCta.prompt2",
+  "finalCta.prompt3",
+  "finalCta.prompt4",
 ];
 
 export default function FinalCTA() {
+  const { t } = useT();
   const { open } = useBooking();
   const { ref, visible } = useScrollReveal<HTMLElement>(0.1);
   const [note, setNote] = useState("");
@@ -22,8 +25,8 @@ export default function FinalCTA() {
 
   useEffect(() => {
     if (note) return;
-    const t = setInterval(() => setPhIdx(i => (i + 1) % PROMPTS.length), 3200);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setPhIdx(i => (i + 1) % PROMPT_KEYS.length), 3200);
+    return () => clearInterval(timer);
   }, [note]);
 
   const today = azFormatDate(new Date());
@@ -51,7 +54,7 @@ export default function FinalCTA() {
           }}
         >
           <span className="cta-rule" />
-          <span className="cta-eyebrow-word">Dəvət</span>
+          <span className="cta-eyebrow-word">{t("finalCta.eyebrow")}</span>
           <span className="cta-rule" />
         </div>
 
@@ -67,7 +70,7 @@ export default function FinalCTA() {
           {/* Postcard */}
           <div className={`cta-postcard${stamped ? " stamped" : ""}`}>
             <div className="cta-pc-header">
-              <span className="cta-pc-from">Kimdən: <em>özünüz</em></span>
+              <span className="cta-pc-from">{t("finalCta.from")} <em>{t("finalCta.fromSelf")}</em></span>
               <span className="cta-pc-date">{today}</span>
             </div>
 
@@ -77,7 +80,7 @@ export default function FinalCTA() {
 
             <textarea
               className="cta-pc-input"
-              placeholder={PROMPTS[phIdx]}
+              placeholder={t(PROMPT_KEYS[phIdx])}
               value={note}
               onChange={(e) => setNote(e.target.value.slice(0, 120))}
               maxLength={120}
@@ -90,14 +93,14 @@ export default function FinalCTA() {
                 <span className="cta-pc-seal-wax">
                   <span className="cta-pc-seal-letter">F</span>
                 </span>
-                <span>Möhürlə və saxla</span>
+                <span>{t("finalCta.seal")}</span>
               </button>
             </div>
 
             <div className={`cta-stamp${stamped ? " show" : ""}`} aria-hidden>
               <span className="cta-stamp-ring" />
               <span className="cta-stamp-text" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                <span>QƏBUL</span>
+                <span>{t("finalCta.stampAccepted")}</span>
                 <span>{today.toUpperCase()}</span>
               </span>
             </div>
@@ -106,19 +109,16 @@ export default function FinalCTA() {
           {/* Center */}
           <div className="cta-center">
             <h2 className="cta-head">
-              <span className="cta-h-line">Bir kağız.</span>
-              <span className="cta-h-line cta-h-italic">Bir cümlə.</span>
-              <span className="cta-h-line">Bir başlanğıc.</span>
+              <span className="cta-h-line">{t("finalCta.headLine1")}</span>
+              <span className="cta-h-line cta-h-italic">{t("finalCta.headLine2")}</span>
+              <span className="cta-h-line">{t("finalCta.headLine3")}</span>
             </h2>
 
-            <p className="cta-lede">
-              Özünüzə bir not yazın. Biz ona bir psixoloq, bir vaxt, bir məkan
-              əlavə edək — qalanını birlikdə yazaq.
-            </p>
+            <p className="cta-lede">{t("finalCta.lede")}</p>
 
             <div className="cta-actions">
               <button className="cta-cta-primary" onClick={() => open()}>
-                <span>İlk seansı təyin et</span>
+                <span>{t("finalCta.primaryCta")}</span>
                 <span className="cta-cta-arrow">
                   <svg width="16" height="16" fill="none" stroke="white" strokeWidth="2.2" viewBox="0 0 24 24">
                     <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
@@ -126,7 +126,7 @@ export default function FinalCTA() {
                 </span>
               </button>
               <Link href="/psychologists" className="cta-cta-link">
-                və ya — sadəcə baxım
+                {t("finalCta.browseLink")}
               </Link>
             </div>
           </div>
@@ -136,13 +136,13 @@ export default function FinalCTA() {
             <div className="cta-tk-perf cta-tk-perf-top" />
             <div className="cta-tk-row1">
               <span className="cta-tk-label" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <span>Seans</span>
-                <span>50 dəqiqə</span>
+                <span>{t("finalCta.ticketSession")}</span>
+                <span>{t("finalCta.ticketMinutes")}</span>
               </span>
               <span className="cta-tk-no">№ 0001</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", margin: "18px 0 14px" }}>
-              <span className="cta-tk-day">CÜMƏ</span>
+              <span className="cta-tk-day">{t("finalCta.ticketDay")}</span>
               <span className="cta-tk-hour">14:00</span>
               <span className="cta-tk-tz">GMT+4</span>
             </div>
@@ -153,12 +153,12 @@ export default function FinalCTA() {
               <span className="cta-tk-avatar">L</span>
               <div>
                 <div className="cta-tk-name">Leyla Ə.</div>
-                <div className="cta-tk-role">Klinik psixoloq</div>
+                <div className="cta-tk-role">{t("finalCta.ticketRole")}</div>
               </div>
             </div>
             <div className="cta-tk-row2">
-              <span>İlk görüş</span>
-              <strong>Pulsuz</strong>
+              <span>{t("finalCta.ticketFirst")}</span>
+              <strong>{t("finalCta.ticketFree")}</strong>
             </div>
             <div className="cta-tk-perf cta-tk-perf-bot" />
           </div>
@@ -176,21 +176,21 @@ export default function FinalCTA() {
             <svg width="13" height="13" fill="none" stroke="rgba(0,33,71,0.55)" strokeWidth="2" viewBox="0 0 24 24">
               <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            Söhbətlər sizinlə qalır
+            {t("finalCta.trust1")}
           </span>
           <span className="cta-trust-sep" />
           <span>
             <svg width="13" height="13" fill="none" stroke="rgba(0,33,71,0.55)" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
             </svg>
-            Pulsuz tanışlıq görüşü
+            {t("finalCta.trust2")}
           </span>
           <span className="cta-trust-sep" />
           <span>
             <svg width="13" height="13" fill="none" stroke="rgba(0,33,71,0.55)" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="10" /><path d="M12 8v4l3 3" strokeLinecap="round" />
             </svg>
-            İstədiyiniz mütəxəssisə keç
+            {t("finalCta.trust3")}
           </span>
         </div>
       </div>

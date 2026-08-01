@@ -60,7 +60,7 @@ export default function Hero() {
                 onClick={() => setModalOpen(true)}
                 className="fanus-btn fanus-btn-ghost fanus-btn-lg fanus-hero__ghost"
               >
-                Seans üçün müraciət et
+                {t("pub.heroApplyCta")}
               </button>
             </div>
 

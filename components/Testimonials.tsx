@@ -2,22 +2,23 @@
 
 import type { Testimonial } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
-const CARD_TITLES = [
-  "Təhlükəsiz mühit",
-  "Həyatım dəyişdi",
-  "Doğru seçim",
-  "Həmişə yanımda",
-  "Həqiqi dinləyici",
-  "Münasibətimiz gücləndi",
-  "Ailə körpüsü",
-  "Burnout-dan çıxış",
+const CARD_TITLE_KEYS: MessageKey[] = [
+  "testimonial.card1",
+  "testimonial.card2",
+  "testimonial.card3",
+  "testimonial.card4",
+  "testimonial.card5",
+  "testimonial.card6",
+  "testimonial.card7",
+  "testimonial.card8",
 ];
 
-const STATS = [
-  { num: "50+",   label: "Sertifikatlı psixoloq" },
-  { num: "4.9/5", label: "Ortalama reytinq",      star: true },
-  { num: "100%",  label: "Məxfilik" },
+const STATS: { num: string; labelKey: MessageKey; star?: boolean }[] = [
+  { num: "50+",   labelKey: "testimonial.statPsychologists" },
+  { num: "4.9/5", labelKey: "testimonial.statRating", star: true },
+  { num: "100%",  labelKey: "testimonial.statPrivacy" },
 ];
 
 const FALLBACK: Testimonial[] = [
@@ -53,6 +54,7 @@ function Card({ item, title }: { item: Testimonial; title: string }) {
 }
 
 function MarqueeRow({ items }: { items: Testimonial[] }) {
+  const { t } = useT();
   const doubled = [...items, ...items];
   return (
     <div className="tst-marq">
@@ -62,7 +64,7 @@ function MarqueeRow({ items }: { items: Testimonial[] }) {
         onMouseLeave={e => (e.currentTarget.style.animationPlayState = "running")}
       >
         {doubled.map((item, i) => (
-          <Card key={i} item={item} title={CARD_TITLES[i % CARD_TITLES.length]} />
+          <Card key={i} item={item} title={t(CARD_TITLE_KEYS[i % CARD_TITLE_KEYS.length])} />
         ))}
       </div>
     </div>
@@ -94,7 +96,7 @@ export default function Testimonials({ testimonials }: { testimonials?: Testimon
               )}
               {s.num}
             </span>
-            <span className="tst-trust__label">{s.label}</span>
+            <span className="tst-trust__label">{t(s.labelKey)}</span>
           </div>
         ))}
       </div>

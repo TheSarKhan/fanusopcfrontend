@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function ShareBar({ title }: { title: string }) {
+  const { t } = useT();
   const [copied, setCopied] = useState(false);
 
   const copy = () => {
@@ -25,7 +27,7 @@ export default function ShareBar({ title }: { title: string }) {
   return (
     <div className="bl-share-bar">
       <button className="bl-share-btn" onClick={copy}>
-        {copied ? "Kopyalandı!" : "Keçidi kopyala"}
+        {copied ? t("article.shareCopied") : t("article.shareCopy")}
       </button>
       <button className="bl-share-btn" onClick={() => share("twitter")}>
         Twitter

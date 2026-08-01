@@ -4,12 +4,14 @@ import { useState } from "react";
 import { submitContactMessage } from "@/lib/api";
 import { useScrollReveal } from "@/lib/useScrollReveal";
 import Breadcrumb from "@/components/Breadcrumb";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 const WHATSAPP_NUMBER = "994502017164";
 
-const CONTACT_ITEMS = [
+const CONTACT_ITEMS: { labelKey?: MessageKey; label?: string; value?: string; valueKey?: MessageKey; href?: string; external?: boolean; icon: React.ReactNode }[] = [
   {
-    label: "Email",
+    labelKey: "auth.email",
     value: "salam@fanus.az",
     href: "mailto:salam@fanus.az",
     icon: (
@@ -19,7 +21,7 @@ const CONTACT_ITEMS = [
     ),
   },
   {
-    label: "Telefon",
+    labelKey: "auth.phone",
     value: "+994 12 200 00 00",
     href: "tel:+994122000000",
     icon: (
@@ -40,8 +42,8 @@ const CONTACT_ITEMS = [
     ),
   },
   {
-    label: "İş saatları",
-    value: "B.e–Şənbə: 09:00–18:00",
+    labelKey: "contactPage.workHours",
+    valueKey: "contactPage.workHoursValue",
     href: undefined,
     icon: (
       <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
@@ -56,6 +58,7 @@ type FormState = { name: string; email: string; phone: string; subject: string; 
 const EMPTY: FormState = { name: "", email: "", phone: "", subject: "", message: "" };
 
 export default function ContactPage() {
+  const { t } = useT();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -81,13 +84,13 @@ export default function ContactPage() {
       message: form.message.trim(),
     };
 
-    if (!trimmed.name) { setError("Adınızı daxil edin"); return; }
+    if (!trimmed.name) { setError(t("contactPage.errName")); return; }
     if (!trimmed.message || trimmed.message.length < 10) {
-      setError("Mesaj ən azı 10 simvol olmalıdır");
+      setError(t("contactPage.errMessage"));
       return;
     }
     if (!trimmed.email && !trimmed.phone) {
-      setError("Email və ya telefon nömrəsi qeyd edin ki, sizinlə əlaqə saxlaya bilək");
+      setError(t("contactPage.errContact"));
       return;
     }
 
@@ -105,7 +108,7 @@ export default function ContactPage() {
       setSuccess(true);
       setForm(EMPTY);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Mesaj göndərilmədi. Yenidən cəhd edin.");
+      setError(err instanceof Error ? err.message : t("contactPage.errSubmit"));
     } finally {
       setSubmitting(false);
     }
@@ -115,7 +118,7 @@ export default function ContactPage() {
     <section ref={ref} className="contact-section" style={{ minHeight: "calc(100vh - 200px)" }}>
       <div className="container">
         <div style={{ marginBottom: 8 }}>
-          <Breadcrumb bare items={[{ label: "Əlaqə" }]} />
+          <Breadcrumb bare items={[{ label: t("nav.contact") }]} />
         </div>
 
         <div
@@ -126,10 +129,8 @@ export default function ContactPage() {
             transition: "opacity 0.6s ease, transform 0.6s ease",
           }}
         >
-          <h1 className="contact-title">Bizə yazın</h1>
-          <p className="contact-sub">
-            Sualınız, təklifiniz və ya əməkdaşlıq istəyiniz varsa formu doldurun — bir iş günü ərzində geri dönəcəyik.
-          </p>
+          <h1 className="contact-title">{t("contactPage.title")}</h1>
+          <p className="contact-sub">{t("contactPage.sub")}</p>
         </div>
 
         <div className="contact-grid">
@@ -154,16 +155,16 @@ export default function ContactPage() {
                 >
                   <div className="contact-chip-icon">{item.icon}</div>
                   <div>
-                    <p className="contact-chip-label">{item.label}</p>
-                    <p className="contact-chip-value">{item.value}</p>
+                    <p className="contact-chip-label">{item.labelKey ? t(item.labelKey) : item.label}</p>
+                    <p className="contact-chip-value">{item.valueKey ? t(item.valueKey) : item.value}</p>
                   </div>
                 </a>
               ) : (
                 <div key={i} className="contact-chip">
                   <div className="contact-chip-icon">{item.icon}</div>
                   <div>
-                    <p className="contact-chip-label">{item.label}</p>
-                    <p className="contact-chip-value">{item.value}</p>
+                    <p className="contact-chip-label">{item.labelKey ? t(item.labelKey) : item.label}</p>
+                    <p className="contact-chip-value">{item.valueKey ? t(item.valueKey) : item.value}</p>
                   </div>
                 </div>
               )
@@ -196,23 +197,23 @@ export default function ContactPage() {
                   </svg>
                 </div>
                 <h3 style={{ fontSize: "1.25rem", fontWeight: 800, color: "#0F1C2E", margin: "0 0 8px" }}>
-                  Mesajınız göndərildi
+                  {t("contactPage.successTitle")}
                 </h3>
                 {ticketCode && (
                   <div style={{
                     background: "#EEF5FF", border: "1px solid #C3D6F6", borderRadius: 12,
                     padding: "14px 18px", margin: "0 auto 16px", maxWidth: 280,
                   }}>
-                    <p style={{ fontSize: 12, color: "#52718F", margin: "0 0 4px" }}>Müraciət nömrəniz</p>
+                    <p style={{ fontSize: 12, color: "#52718F", margin: "0 0 4px" }}>{t("contactPage.ticketLabel")}</p>
                     <p style={{ fontSize: 22, fontWeight: 800, letterSpacing: 2, color: "#002147", margin: 0 }}>
                       {ticketCode}
                     </p>
                   </div>
                 )}
                 <p style={{ fontSize: 14, color: "#52718F", margin: "0 0 24px", lineHeight: 1.5 }}>
-                  Komandamız iş günü ərzində sizinlə əlaqə saxlayacaq.
-                  {ticketCode ? " Statusu soruşmaq üçün bu nömrəni qeyd edin." : ""}
-                  {sentEmail ? ` Təsdiq emaili ${sentEmail} ünvanına göndərildi.` : ""}
+                  {t("contactPage.successBody")}
+                  {ticketCode ? ` ${t("contactPage.successTicketHint")}` : ""}
+                  {sentEmail ? ` ${t("contactPage.successEmailHint", { email: sentEmail })}` : ""}
                 </p>
                 <button
                   onClick={() => { setSuccess(false); setTicketCode(null); setSentEmail(null); }}
@@ -222,24 +223,24 @@ export default function ContactPage() {
                     border: "none", cursor: "pointer",
                   }}
                 >
-                  Yeni mesaj yaz
+                  {t("contactPage.newMessage")}
                 </button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#0F1C2E", margin: "0 0 4px" }}>
-                  Mesaj göndərin
+                  {t("contactPage.formTitle")}
                 </h3>
                 <p style={{ fontSize: 13, color: "#8AAABF", margin: "0 0 8px" }}>
-                  Bütün məlumatlar konfidensial qalır
+                  {t("contactPage.formNote")}
                 </p>
 
-                <Field label="Ad və soyad" required>
+                <Field label={t("contactPage.fieldName")} required>
                   <input
                     type="text"
                     value={form.name}
                     onChange={e => setField("name", e.target.value)}
-                    placeholder="Adınız"
+                    placeholder={t("contactPage.namePh")}
                     maxLength={120}
                     required
                     style={inputStyle}
@@ -247,44 +248,44 @@ export default function ContactPage() {
                 </Field>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <Field label="Email">
+                  <Field label={t("auth.email")}>
                     <input
                       type="email"
                       value={form.email}
                       onChange={e => setField("email", e.target.value)}
-                      placeholder="email@nümunə.az"
+                      placeholder={t("pub.emailPlaceholder")}
                       maxLength={255}
                       style={inputStyle}
                     />
                   </Field>
-                  <Field label="Telefon">
+                  <Field label={t("auth.phone")}>
                     <input
                       type="tel"
                       value={form.phone}
                       onChange={e => setField("phone", e.target.value)}
-                      placeholder="+994 50 123 45 67"
+                      placeholder={t("contactPage.phonePh")}
                       maxLength={40}
                       style={inputStyle}
                     />
                   </Field>
                 </div>
 
-                <Field label="Mövzu">
+                <Field label={t("contactPage.fieldSubject")}>
                   <input
                     type="text"
                     value={form.subject}
                     onChange={e => setField("subject", e.target.value)}
-                    placeholder="Məs: Randevu haqqında sual"
+                    placeholder={t("contactPage.subjectPh")}
                     maxLength={200}
                     style={inputStyle}
                   />
                 </Field>
 
-                <Field label="Mesajınız" required>
+                <Field label={t("contactPage.fieldMessage")} required>
                   <textarea
                     value={form.message}
                     onChange={e => setField("message", e.target.value)}
-                    placeholder="Necə kömək edə bilərik? Mümkün qədər ətraflı yazın…"
+                    placeholder={t("contactPage.messagePh")}
                     rows={5}
                     minLength={10}
                     maxLength={5000}
@@ -315,17 +316,17 @@ export default function ContactPage() {
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                   }}
                 >
-                  {submitting ? "Göndərilir…" : "Mesaj göndər"}
+                  {submitting ? t("common.sending") : t("contactPage.submitCta")}
                 </button>
 
                 <p style={{ fontSize: 12, color: "#8AAABF", textAlign: "center", margin: "4px 0 0" }}>
-                  Yaxud{" "}
+                  {t("contactPage.orWord")}{" "}
                   <a
-                    href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Salam, sualım var.")}`}
+                    href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(t("contactPage.whatsappPrefill"))}`}
                     target="_blank" rel="noopener noreferrer"
                     style={{ color: "#25D366", fontWeight: 600, textDecoration: "none" }}
                   >
-                    WhatsApp ilə yazın
+                    {t("contactPage.whatsappCta")}
                   </a>
                 </p>
               </form>

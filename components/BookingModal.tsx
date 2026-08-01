@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useBooking } from "@/context/BookingContext";
 import { bookAppointment } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const WHATSAPP_NUMBER = "994502017164";
 
@@ -24,6 +25,7 @@ function WhatsAppIcon() {
 }
 
 export default function BookingModal() {
+  const { t } = useT();
   const { isOpen, psychologistName, mode, close } = useBooking();
   const [step, setStep] = useState<Step>("choice");
   const [form, setForm] = useState<FormState>({ name: "", contact: "", problem: "" });
@@ -54,8 +56,8 @@ export default function BookingModal() {
   const handleWhatsApp = () => {
     const msg = encodeURIComponent(
       psychologistName
-        ? `Salam, ${psychologistName} ilə seans almaq istəyirəm. Mənimlə əlaqə saxlaya bilərsiniz?`
-        : "Salam, seans almaq istəyirəm. Mənə uyğun psixoloq haqqında məlumat verə bilərsiniz?"
+        ? t("bmodal.waPsy", { name: psychologistName })
+        : t("bmodal.waGeneric")
     );
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`, "_blank");
     close();
@@ -63,9 +65,9 @@ export default function BookingModal() {
 
   const validate = () => {
     const e: Partial<FormState> = {};
-    if (!form.name.trim()) e.name = "Ad Soyad daxil edin";
-    if (!form.contact.trim()) e.contact = "Əlaqə məlumatı daxil edin";
-    if (!form.problem.trim()) e.problem = "Mesajınızı daxil edin";
+    if (!form.name.trim()) e.name = t("bmodal.errName");
+    if (!form.contact.trim()) e.contact = t("bmodal.errContact");
+    if (!form.problem.trim()) e.problem = t("bmodal.errMessage");
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -90,10 +92,10 @@ export default function BookingModal() {
   if (!isOpen) return null;
 
   const title = isContact
-    ? "Bizimlə əlaqə"
-    : step === "choice" ? "Randevu al"
-    : step === "form" ? "Müraciət formu"
-    : "Müraciət qəbul edildi";
+    ? t("bmodal.contactTitle")
+    : step === "choice" ? t("bmodal.bookTitle")
+    : step === "form" ? t("bmodal.formTitle")
+    : t("bmodal.doneTitle");
 
   return (
     <div
@@ -106,7 +108,7 @@ export default function BookingModal() {
         {/* ── Header ── */}
         <div className="bm-header">
           <Image src="/images/logos/logo-blue.png" alt="Fanus" width={80} height={26} style={{ objectFit: "contain" }} />
-          <button className="bm-close" onClick={close} aria-label="Bağla">
+          <button className="bm-close" onClick={close} aria-label={t("common.close")}>
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
@@ -127,7 +129,7 @@ export default function BookingModal() {
           {/* CHOICE */}
           {step === "choice" && (
             <div className="bm-choice">
-              <p className="bm-lead">Randevu almaq üçün üsul seçin. Qısa müddətdə sizinlə əlaqə saxlanılacaq.</p>
+              <p className="bm-lead">{t("bmodal.choiceLead")}</p>
 
               <button className="bm-option" onClick={() => setStep("form")}>
                 <div className="bm-option-icon bm-option-icon--blue">
@@ -136,8 +138,8 @@ export default function BookingModal() {
                   </svg>
                 </div>
                 <div className="bm-option-text">
-                  <span className="bm-option-title">Platforma üzərindən</span>
-                  <span className="bm-option-desc">Formu doldurun, operator uyğun psixoloq təyin edib geri dönəcək.</span>
+                  <span className="bm-option-title">{t("bmodal.optPlatformTitle")}</span>
+                  <span className="bm-option-desc">{t("bmodal.optPlatformDesc")}</span>
                 </div>
                 <svg className="bm-option-arrow" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12h14M12 5l7 7-7 7" />
@@ -149,8 +151,8 @@ export default function BookingModal() {
                   <WhatsAppIcon />
                 </div>
                 <div className="bm-option-text">
-                  <span className="bm-option-title">WhatsApp ilə müraciət</span>
-                  <span className="bm-option-desc">Hazır mesajla birbaşa WhatsApp-a keçin.</span>
+                  <span className="bm-option-title">{t("bmodal.optWhatsappTitle")}</span>
+                  <span className="bm-option-desc">{t("bmodal.optWhatsappDesc")}</span>
                 </div>
                 <svg className="bm-option-arrow bm-option-arrow--green" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12h14M12 5l7 7-7 7" />
@@ -161,7 +163,7 @@ export default function BookingModal() {
                 <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
                 </svg>
-                Məlumatlarınız tam məxfi saxlanılır
+                {t("bmodal.privacyNote")}
               </p>
             </div>
           )}
@@ -170,16 +172,14 @@ export default function BookingModal() {
           {step === "form" && (
             <form onSubmit={handleSubmit} className="bm-form">
               <p className="bm-lead">
-                {isContact
-                  ? "Sualınızı və ya müraciətinizi göndərin — tezliklə cavab alacaqsınız."
-                  : "Komandamız qısa müddətdə sizinlə əlaqə saxlayacaq."}
+                {isContact ? t("bmodal.contactLead") : t("bmodal.bookLead")}
               </p>
 
               <div className="bm-field">
-                <label className="bm-label">Ad Soyad <span>*</span></label>
+                <label className="bm-label">{t("bmodal.fieldName")} <span>*</span></label>
                 <input
                   className={`bm-input${errors.name ? " bm-input--err" : ""}`}
-                  placeholder="Məs: Aytən Hüseynova"
+                  placeholder={t("bmodal.namePh")}
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 />
@@ -187,10 +187,10 @@ export default function BookingModal() {
               </div>
 
               <div className="bm-field">
-                <label className="bm-label">Telefon və ya Email <span>*</span></label>
+                <label className="bm-label">{t("bmodal.fieldContact")} <span>*</span></label>
                 <input
                   className={`bm-input${errors.contact ? " bm-input--err" : ""}`}
-                  placeholder="Məs: +994 50 123 45 67"
+                  placeholder={t("bmodal.contactPh")}
                   value={form.contact}
                   onChange={e => setForm(f => ({ ...f, contact: e.target.value }))}
                 />
@@ -198,10 +198,10 @@ export default function BookingModal() {
               </div>
 
               <div className="bm-field">
-                <label className="bm-label">{isContact ? "Mesajınız" : "Qısa problem təsviri"} <span>*</span></label>
+                <label className="bm-label">{isContact ? t("bmodal.fieldMessage") : t("bmodal.fieldProblem")} <span>*</span></label>
                 <textarea
                   className={`bm-textarea${errors.problem ? " bm-input--err" : ""}`}
-                  placeholder={isContact ? "Sualınızı və ya müraciətinizi yazın..." : "Özünüzü necə hiss etdiyinizi qısaca izah edin..."}
+                  placeholder={isContact ? t("bmodal.messagePh") : t("bmodal.problemPh")}
                   rows={4}
                   value={form.problem}
                   onChange={e => setForm(f => ({ ...f, problem: e.target.value }))}
@@ -212,7 +212,7 @@ export default function BookingModal() {
               <div className="bm-form-actions">
                 {!isContact && (
                   <button type="button" className="bm-back" onClick={() => setStep("choice")}>
-                    ← Geri
+                    ← {t("common.back")}
                   </button>
                 )}
                 <button type="submit" disabled={loading} className="bm-submit">
@@ -223,7 +223,7 @@ export default function BookingModal() {
                     </svg>
                   ) : (
                     <>
-                      {isContact ? "Göndər" : "Müraciəti göndər"}
+                      {isContact ? t("bmodal.submitContact") : t("bmodal.submitBooking")}
                       <svg width="14" height="14" fill="none" stroke="white" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
@@ -243,14 +243,13 @@ export default function BookingModal() {
                 </svg>
               </div>
               <h3 className="bm-success-title">
-                {isContact ? "Mesajınız göndərildi!" : "Müraciətiniz qəbul edildi!"}
+                {isContact ? t("bmodal.successContactTitle") : t("bmodal.successBookingTitle")}
               </h3>
               <p className="bm-success-text">
-                Komandamız qısa müddətdə{" "}
-                <strong>{form.contact}</strong> vasitəsilə sizinlə əlaqə saxlayacaq.
+                {t("bmodal.successText", { contact: form.contact })}
               </p>
               <button className="bm-submit" style={{ width: "100%" }} onClick={close}>
-                Bağla
+                {t("common.close")}
               </button>
             </div>
           )}

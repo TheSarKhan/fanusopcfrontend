@@ -36,6 +36,7 @@ function getInitials(name: string) {
 }
 
 export default function PsychologistsPage({ psychologists }: { psychologists?: Psychologist[] }) {
+  const { t } = useT();
   const [modalOpen, setModalOpen] = useState(false);
 
   const items: Item[] = useMemo(() => {
@@ -52,7 +53,7 @@ export default function PsychologistsPage({ psychologists }: { psychologists?: P
 
   return (
     <div className="fanus-root">
-      <Breadcrumb items={[{ label: "Psixoloqlar" }]} />
+      <Breadcrumb items={[{ label: t("nav.psychologists") }]} />
       <PsycHero onApply={() => setModalOpen(true)} />
       <PsycList items={items} />
       <SessionRequestModal open={modalOpen} onClose={() => setModalOpen(false)} />
@@ -69,10 +70,10 @@ function PsycHero({ onApply }: { onApply: () => void }) {
         <p className="pp-hero__lead">{t("psyList.lead")}</p>
         <div className="pp-hero__cta">
           <button type="button" className="fanus-btn fanus-btn-primary fanus-btn-lg" onClick={onApply}>
-            Bizə müraciət et
+            {t("pub.applyCta")}
           </button>
           <a href="#list" className="fanus-btn fanus-btn-ghost fanus-btn-lg">
-            Psixoloqlarımıza bax
+            {t("pub.browseAll")}
           </a>
         </div>
       </div>
@@ -101,6 +102,7 @@ function PsycHero({ onApply }: { onApply: () => void }) {
 }
 
 function PsycList({ items }: { items: Item[] }) {
+  const { t } = useT();
   return (
     <section className="pp-list" id="list">
       <Deco type="mesh-blob" style={{ top: 60, right: "-5%", width: 400, opacity: .35 }} anim="drift" />
@@ -108,7 +110,7 @@ function PsycList({ items }: { items: Item[] }) {
 
       <div className="fanus-container">
         <div className="pp-list__head">
-          <span className="pp-list__count"><strong>{items.length}</strong> mütəxəssis</span>
+          <span className="pp-list__count">{t("pub.specialistCount", { n: items.length })}</span>
         </div>
 
         <div className="pp-grid">
@@ -139,7 +141,7 @@ function PsyCard({ p }: { p: Item }) {
   return (
     <article className="pp-card">
       <div className="pp-card__head">
-        <Link href={`/psychologists/${p.slug ?? p.id}`} className="pp-card__photo" aria-label={`${p.name} profili`}>
+        <Link href={`/psychologists/${p.slug ?? p.id}`} className="pp-card__photo" aria-label={t("pub.profileAria", { name: p.name })}>
           {p.photoUrl ? (
             <img src={p.photoUrl} alt={p.name} />
           ) : (

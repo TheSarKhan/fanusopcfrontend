@@ -8,6 +8,7 @@ import PhotoCropper from "@/components/PhotoCropper";
 import DatePicker from "@/components/DatePicker";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 /* ─── Eye toggle ─── */
 function EyeIcon({ open }: { open: boolean }) {
@@ -24,16 +25,17 @@ function EyeIcon({ open }: { open: boolean }) {
   );
 }
 
-const PANEL = {
+/** Panel mətnləri lüğətdən gəlir — burada yalnız açar adları saxlanılır. */
+const PANEL: Record<"patient" | "psychologist", { titleKey: MessageKey; subKey: MessageKey; trustKeys: MessageKey[] }> = {
   patient: {
-    title: "Özünüzə qayıt",
-    sub: "Bir addım — və mütəxəssis dəstəyi sizin üçün hazır.",
-    trust: ["Pulsuz ilk görüş", "100% məxfi", "Peşəkar dəstək"],
+    titleKey: "regPage.panelPatientTitle",
+    subKey: "regPage.panelPatientSub",
+    trustKeys: ["regPage.panelPatientTrust1", "regPage.panelPatientTrust2", "regPage.panelPatientTrust3"],
   },
   psychologist: {
-    title: "Platformamıza qoşulun",
-    sub: "Azərbaycanda psixoloji yardımı əlçatan etmək missiyasında bizimlə olun.",
-    trust: ["Geniş müştəri bazası", "Çevik iş qrafiki", "Peşəkar dəstək komandası"],
+    titleKey: "regPage.panelPsyTitle",
+    subKey: "regPage.panelPsySub",
+    trustKeys: ["regPage.panelPsyTrust1", "regPage.panelPsyTrust2", "regPage.panelPsyTrust3"],
   },
 };
 
@@ -52,7 +54,8 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-function StepIndicator({ steps, current }: { steps: string[]; current: number }) {
+function StepIndicator({ steps, current }: { steps: MessageKey[]; current: number }) {
+  const { t } = useT();
   return (
     <div style={{ marginBottom: 28 }}>
       <div className="auth-steps">
@@ -69,14 +72,15 @@ function StepIndicator({ steps, current }: { steps: string[]; current: number })
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
         {steps.map((s, i) => (
-          <span key={i} style={{ fontSize: 11, color: i <= current ? "var(--oxford)" : "var(--oxford-60)", fontWeight: i === current ? 600 : 400 }}>{s}</span>
+          <span key={i} style={{ fontSize: 11, color: i <= current ? "var(--oxford)" : "var(--oxford-60)", fontWeight: i === current ? 600 : 400 }}>{t(s)}</span>
         ))}
       </div>
     </div>
   );
 }
 
-function ChipToggle({ options, selected, onChange, allowCustom = false, customPlaceholder = "Başqa..." }: { options: string[]; selected: string[]; onChange: (v: string[]) => void; allowCustom?: boolean; customPlaceholder?: string }) {
+function ChipToggle({ options, selected, onChange, allowCustom = false, customPlaceholder }: { options: string[]; selected: string[]; onChange: (v: string[]) => void; allowCustom?: boolean; customPlaceholder?: string }) {
+  const { t } = useT();
   const [custom, setCustom] = useState("");
 
   const toggle = (o: string) =>
@@ -117,12 +121,12 @@ function ChipToggle({ options, selected, onChange, allowCustom = false, customPl
             value={custom}
             onChange={e => setCustom(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
-            placeholder={customPlaceholder}
+            placeholder={customPlaceholder ?? t("regPage.otherPh")}
             maxLength={40}
           />
           <button type="button" className="btn btn-ghost" onClick={addCustom}
             style={{ height: 48, borderRadius: 10, paddingLeft: 18, paddingRight: 18, whiteSpace: "nowrap" }}>
-            Əlavə et
+            {t("regPage.addChip")}
           </button>
         </div>
       )}
@@ -145,14 +149,14 @@ function PatientForm({ onBack }: { onBack: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.password.length < 8 || !/[A-Z]/.test(form.password) || !/[a-z]/.test(form.password) || !/[0-9]/.test(form.password))
-      return setError("Şifrə ən az 8 simvol, böyük hərf, kiçik hərf və rəqəm ehtiva etməlidir.");
-    if (form.password !== form.confirmPassword) return setError("Şifrələr uyğun deyil");
+      return setError(t("auth.passwordWeak"));
+    if (form.password !== form.confirmPassword) return setError(t("regPage.passwordsMismatch"));
     setLoading(true); setError("");
     try {
       await registerPatient({ email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName, phone: form.phone || undefined, emergencyContactName: form.emergencyContactName || undefined, emergencyContactPhone: form.emergencyContactPhone || undefined, emergencyContactRelation: form.emergencyContactRelation || undefined, residentialAddress: form.residentialAddress || undefined });
       setSuccess(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Qeydiyyat uğursuz oldu");
+      setError(err instanceof Error ? err.message : t("regPage.registerFailed"));
     } finally { setLoading(false); }
   };
 
@@ -163,22 +167,22 @@ function PatientForm({ onBack }: { onBack: () => void }) {
           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
         </svg>
       </div>
-      <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, color: "var(--oxford)", marginBottom: 10 }}>Email göndərildi!</h2>
+      <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, color: "var(--oxford)", marginBottom: 10 }}>{t("regPage.emailSentTitle")}</h2>
       <p style={{ fontSize: 14, color: "var(--oxford-60)", marginBottom: 28 }}>
-        <strong style={{ color: "var(--oxford)" }}>{form.email}</strong> ünvanına təsdiq linki göndərildi.
+        {t("regPage.emailSentBody", { email: form.email })}
       </p>
-      <Link href="/login" className="btn btn-primary" style={{ borderRadius: 10, display: "block", textAlign: "center", height: 50, lineHeight: "50px" }}>Daxil ol</Link>
+      <Link href="/login" className="btn btn-primary" style={{ borderRadius: 10, display: "block", textAlign: "center", height: 50, lineHeight: "50px" }}>{t("auth.loginCta")}</Link>
     </div>
   );
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Field label="Ad"><input className="auth-input" value={form.firstName} onChange={set("firstName")} required /></Field>
-        <Field label="Soyad"><input className="auth-input" value={form.lastName} onChange={set("lastName")} required /></Field>
+        <Field label={t("auth.firstName")}><input className="auth-input" value={form.firstName} onChange={set("firstName")} required /></Field>
+        <Field label={t("auth.lastName")}><input className="auth-input" value={form.lastName} onChange={set("lastName")} required /></Field>
       </div>
-      <Field label="Email"><input type="email" className="auth-input" value={form.email} onChange={set("email")} required /></Field>
-      <Field label="Telefon (opsional)"><input type="tel" className="auth-input" value={form.phone} onChange={set("phone")} /></Field>
+      <Field label={t("auth.email")}><input type="email" className="auth-input" value={form.email} onChange={set("email")} required /></Field>
+      <Field label={t("regPage.phoneOptional")}><input type="tel" className="auth-input" value={form.phone} onChange={set("phone")} /></Field>
 
       <div style={{ background: "#F9FAFB", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
         <div>
@@ -199,13 +203,13 @@ function PatientForm({ onBack }: { onBack: () => void }) {
         </Field>
       </div>
 
-      <Field label="Şifrə">
+      <Field label={t("auth.password")}>
         <div className="auth-input-wrap">
           <input type={showPass ? "text" : "password"} className="auth-input" value={form.password} onChange={set("password")} required />
           <button type="button" className="auth-eye" onClick={() => setShowPass(v => !v)}><EyeIcon open={showPass} /></button>
         </div>
       </Field>
-      <Field label="Şifrəni təsdiqlə">
+      <Field label={t("regPage.confirmPassword")}>
         <div className="auth-input-wrap">
           <input type={showConfirm ? "text" : "password"} className="auth-input" value={form.confirmPassword} onChange={set("confirmPassword")} required />
           <button type="button" className="auth-eye" onClick={() => setShowConfirm(v => !v)}><EyeIcon open={showConfirm} /></button>
@@ -213,9 +217,9 @@ function PatientForm({ onBack }: { onBack: () => void }) {
       </Field>
       {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>{error}</div>}
       <div style={{ display: "flex", gap: 10 }}>
-        <button type="button" onClick={onBack} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← Geri</button>
+        <button type="button" onClick={onBack} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← {t("regPage.backStep")}</button>
         <button type="submit" disabled={loading} className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 10, flex: 1 }}>
-          {loading ? "Qeydiyyat..." : "Qeydiyyatdan keç"}
+          {loading ? t("regPage.registering") : t("auth.registerCta")}
         </button>
       </div>
     </form>
@@ -223,7 +227,7 @@ function PatientForm({ onBack }: { onBack: () => void }) {
 }
 
 /* ─── Psychologist form (4 steps) ─── */
-const PSY_STEPS = ["Şəxsi", "Təhsil", "Peşəkar", "Sertifikat"];
+const PSY_STEP_KEYS: MessageKey[] = ["regPage.stepPersonal", "regPage.stepEducation", "regPage.stepProfessional", "regPage.stepCertificate"];
 const EXP_YEARS = ["1 ildən az", "1-3 il", "3-5 il", "5-10 il", "10+ il"];
 const YEARS = Array.from({ length: 60 }, (_, i) => String(new Date().getFullYear() - i));
 /** Bir təhsili bitirmək üçün minimal ağlabatan yaş — doğum ili ilə bitirmə ilinin
@@ -298,41 +302,41 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
     setCertificates(prev => prev.map((row, idx) => idx === i ? { ...row, [k]: v } : row));
 
   const validateStep0 = () => {
-    if (!personal.firstName || !personal.lastName) return "Ad və soyad tələb olunur";
-    if (!personal.email) return "Email tələb olunur";
-    if (!personal.phone) return "Telefon tələb olunur";
+    if (!personal.firstName || !personal.lastName) return t("regPage.errNameRequired");
+    if (!personal.email) return t("regPage.errEmailRequired");
+    if (!personal.phone) return t("regPage.errPhoneRequired");
     if (!personal.password || personal.password.length < 8 || !/[A-Z]/.test(personal.password) || !/[a-z]/.test(personal.password) || !/[0-9]/.test(personal.password))
-      return "Şifrə ən az 8 simvol, böyük hərf, kiçik hərf və rəqəm ehtiva etməlidir.";
-    if (personal.password !== personal.confirmPassword) return "Şifrələr uyğun deyil";
-    if (!personal.birthDate) return "Doğum tarixi tələb olunur";
-    if (!personal.gender) return "Cinsiyyət seçin";
-    if (!personal.finId || personal.finId.length !== 7) return "FIN nömrəsi dəqiq 7 simvol olmalıdır";
-    if (!photoFile) return "Profil şəklini yükləyib düzəldin";
+      return t("auth.passwordWeak");
+    if (personal.password !== personal.confirmPassword) return t("regPage.passwordsMismatch");
+    if (!personal.birthDate) return t("regPage.errBirthRequired");
+    if (!personal.gender) return t("regPage.errGenderRequired");
+    if (!personal.finId || personal.finId.length !== 7) return t("regPage.errFin");
+    if (!photoFile) return t("regPage.errPhoto");
     return null;
   };
   const validateStep1 = () => {
     const valid = educations.filter(e => e.institution.trim() && e.degree.trim() && e.graduationYear);
-    if (valid.length === 0) return "Ən azı 1 təhsil tam doldurun";
+    if (valid.length === 0) return t("regPage.errEdu");
     if (birthYear) {
       const invalid = valid.find(e => Number(e.graduationYear) - birthYear < MIN_GRADUATION_AGE);
-      if (invalid) return `Bitirmə ili (${invalid.graduationYear}) doğum tarixinizlə uyğun deyil`;
+      if (invalid) return t("regPage.errGradYear", { year: invalid.graduationYear });
     }
-    if (!diplomaFile) return "Diplom faylı tələb olunur";
+    if (!diplomaFile) return t("regPage.errDiploma");
     return null;
   };
   const validateStep2 = () => {
-    if (!professional.title) return "İxtisas / vəzifə adı daxil edin";
-    if (!professional.experienceYears) return "Təcrübəni seçin";
-    if (professional.priorSessions !== "" && (!Number.isFinite(Number(professional.priorSessions)) || Number(professional.priorSessions) < 0)) return "Seans sayı mənfi ola bilməz";
-    if (professional.languages.length === 0) return "Ən azı bir dil seçin";
-    if (professional.specializations.length === 0) return "Ən azı bir ixtisaslaşma seçin";
+    if (!professional.title) return t("regPage.errTitle");
+    if (!professional.experienceYears) return t("regPage.errExperience");
+    if (professional.priorSessions !== "" && (!Number.isFinite(Number(professional.priorSessions)) || Number(professional.priorSessions) < 0)) return t("regPage.errSessions");
+    if (professional.languages.length === 0) return t("regPage.errLang");
+    if (professional.specializations.length === 0) return t("regPage.errSpec");
     const bioLen = professional.bio.trim().length;
-    if (bioLen < 100) return "Bio ən azı 100 simvol olmalıdır";
-    if (bioLen > 1000) return "Bio 1000 simvoldan uzun ola bilməz";
+    if (bioLen < 100) return t("regPage.errBioShort");
+    if (bioLen > 1000) return t("regPage.errBioLong");
     return null;
   };
   const validateStep3 = () => {
-    if (!consents.ethics || !consents.gdpr || !consents.terms) return "Bütün razılıqları işarələyin";
+    if (!consents.ethics || !consents.gdpr || !consents.terms) return t("regPage.errConsents");
     return null;
   };
 
@@ -350,7 +354,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
       try {
         const res = await checkEmail(personal.email);
         if (res.taken) {
-          setError("Bu email artıq qeydiyyatdan keçib. Daxil olmağa cəhd edin.");
+          setError(t("regPage.errEmailTaken"));
           return;
         }
       } catch {
@@ -398,7 +402,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
       await registerPsychologist(data, diplomaFile, certificateFiles, photoFile);
       setSuccess(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Qeydiyyat uğursuz oldu");
+      setError(err instanceof Error ? err.message : t("regPage.registerFailed"));
     } finally { setLoading(false); }
   };
 
@@ -409,22 +413,22 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
           <path d="M20 6L9 17l-5-5" />
         </svg>
       </div>
-      <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, color: "var(--oxford)", marginBottom: 10 }}>Müraciətiniz qəbul edildi!</h2>
+      <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, color: "var(--oxford)", marginBottom: 10 }}>{t("regPage.appliedTitle")}</h2>
       <p style={{ fontSize: 14, color: "var(--oxford-60)", marginBottom: 28 }}>
-        Komandamız məlumatlarınızı yoxladıqdan sonra <strong style={{ color: "var(--oxford)" }}>{personal.email}</strong> ünvanına bildiriş göndərəcək.
+        {t("regPage.appliedBody", { email: personal.email })}
       </p>
-      <Link href="/" className="btn btn-primary" style={{ borderRadius: 10, display: "block", textAlign: "center", height: 50, lineHeight: "50px" }}>Ana səhifəyə qayıt</Link>
+      <Link href="/" className="btn btn-primary" style={{ borderRadius: 10, display: "block", textAlign: "center", height: 50, lineHeight: "50px" }}>{t("regPage.backHome")}</Link>
     </div>
   );
 
   return (
     <>
-      <StepIndicator steps={PSY_STEPS} current={step} />
+      <StepIndicator steps={PSY_STEP_KEYS} current={step} />
 
       {/* STEP 0 — Personal */}
       {step === 0 && (
         <form onSubmit={next} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Field label="Profil şəkli (məcburi)">
+          <Field label={t("regPage.photoLabel")}>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ width: 80, height: 80, borderRadius: 10, background: "#F0F4FA", overflow: "hidden", border: "2px solid #E5E7EB", flexShrink: 0 }}>
                 {photoPreview ? (
@@ -438,7 +442,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
                 <label style={{ display: "inline-block", cursor: "pointer" }}>
                   <input type="file" accept="image/*" onChange={onPickPhoto} style={{ display: "none" }} />
                   <span style={{ display: "inline-block", padding: "8px 14px", border: "1.5px solid var(--oxford)", borderRadius: 8, fontSize: 13, color: "var(--oxford)", background: "#fff", whiteSpace: "nowrap" }}>
-                    {photoFile ? "Şəkli dəyiş" : "Şəkil seç və düzəlt"}
+                    {photoFile ? t("regPage.photoChange") : t("regPage.photoPick")}
                   </span>
                 </label>
                 {photoFile && (
@@ -448,8 +452,8 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
                 )}
                 {!photoFile && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>
-                    <span>JPG/PNG</span>
-                    <span>sürüşdür və zoom et</span>
+                    <span>{t("regPage.photoHintFormat")}</span>
+                    <span>{t("regPage.photoHintDrag")}</span>
                   </div>
                 )}
               </div>
@@ -457,37 +461,37 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
           </Field>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Field label="Ad"><input className="auth-input" value={personal.firstName} onChange={setP("firstName")} required style={{ minWidth: 0, width: "100%" }} /></Field>
-            <Field label="Soyad"><input className="auth-input" value={personal.lastName} onChange={setP("lastName")} required style={{ minWidth: 0, width: "100%" }} /></Field>
+            <Field label={t("auth.firstName")}><input className="auth-input" value={personal.firstName} onChange={setP("firstName")} required style={{ minWidth: 0, width: "100%" }} /></Field>
+            <Field label={t("auth.lastName")}><input className="auth-input" value={personal.lastName} onChange={setP("lastName")} required style={{ minWidth: 0, width: "100%" }} /></Field>
           </div>
-          <Field label="Email"><input type="email" className="auth-input" value={personal.email} onChange={setP("email")} required style={{ minWidth: 0, width: "100%" }} /></Field>
+          <Field label={t("auth.email")}><input type="email" className="auth-input" value={personal.email} onChange={setP("email")} required style={{ minWidth: 0, width: "100%" }} /></Field>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Field label="Telefon"><input type="tel" className="auth-input" value={personal.phone} onChange={setP("phone")} placeholder="+994 50 000 00 00" required style={{ minWidth: 0, width: "100%" }} /></Field>
-            <Field label="Doğum tarixi"><DatePicker value={personal.birthDate} onChange={v => setPersonal(p => ({ ...p, birthDate: v }))} theme="light" style={{ minWidth: 0, width: "100%" }} ariaLabel="Doğum tarixi" /></Field>
+            <Field label={t("auth.phone")}><input type="tel" className="auth-input" value={personal.phone} onChange={setP("phone")} placeholder="+994 50 000 00 00" required style={{ minWidth: 0, width: "100%" }} /></Field>
+            <Field label={t("regPage.birthDate")}><DatePicker value={personal.birthDate} onChange={v => setPersonal(p => ({ ...p, birthDate: v }))} theme="light" style={{ minWidth: 0, width: "100%" }} ariaLabel={t("regPage.birthDate")} /></Field>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Field label="Cinsiyyət">
+            <Field label={t("regPage.gender")}>
               <select className="auth-select" value={personal.gender} onChange={setP("gender")} required style={{ minWidth: 0, width: "100%" }}>
-                <option value="">Seçin</option>
-                <option value="FEMALE">Qadın</option>
-                <option value="MALE">Kişi</option>
-                <option value="OTHER">Digər</option>
+                <option value="">{t("regPage.select")}</option>
+                <option value="FEMALE">{t("regPage.genderFemale")}</option>
+                <option value="MALE">{t("regPage.genderMale")}</option>
+                <option value="OTHER">{t("regPage.genderOther")}</option>
               </select>
             </Field>
-            <Field label="FIN / ID nömrəsi">
-              <input className="auth-input" value={personal.finId} onChange={setP("finId")} placeholder="məs. 1ABC234" required maxLength={7} style={{ minWidth: 0, width: "100%" }} />
+            <Field label={t("regPage.finId")}>
+              <input className="auth-input" value={personal.finId} onChange={setP("finId")} placeholder={t("regPage.finPh")} required maxLength={7} style={{ minWidth: 0, width: "100%" }} />
             </Field>
           </div>
 
-          <Field label="Şifrə">
+          <Field label={t("auth.password")}>
             <div className="auth-input-wrap">
               <input type={showPass ? "text" : "password"} className="auth-input" value={personal.password} onChange={setP("password")} required />
               <button type="button" className="auth-eye" onClick={() => setShowPass(v => !v)}><EyeIcon open={showPass} /></button>
             </div>
           </Field>
-          <Field label="Şifrəni təsdiqlə">
+          <Field label={t("regPage.confirmPassword")}>
             <div className="auth-input-wrap">
               <input type={showConfirm ? "text" : "password"} className="auth-input" value={personal.confirmPassword} onChange={setP("confirmPassword")} required />
               <button type="button" className="auth-eye" onClick={() => setShowConfirm(v => !v)}><EyeIcon open={showConfirm} /></button>
@@ -496,9 +500,9 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
 
           {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>{error}</div>}
           <div style={{ display: "flex", gap: 10 }}>
-            <button type="button" onClick={onBack} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← Geri</button>
+            <button type="button" onClick={onBack} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← {t("regPage.backStep")}</button>
             <button type="submit" disabled={loading} className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 10, flex: 1 }}>
-              {loading ? "Yoxlanılır..." : "Növbəti →"}
+              {loading ? t("regPage.checking") : `${t("regPage.nextCta")} →`}
             </button>
           </div>
         </form>
@@ -508,30 +512,30 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
       {step === 1 && (
         <form onSubmit={next} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ background: "var(--bg-blue)", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "var(--oxford-60)" }}>
-            Bütün təhsillərinizi əlavə edin. Ən azı 1 ali təhsil tələb olunur.
+            {t("regPage.eduIntro")}
           </div>
 
           {educations.map((ed, i) => (
             <div key={i} style={{ background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <strong style={{ fontSize: 13, color: "var(--oxford)" }}>Təhsil #{i + 1}</strong>
+                <strong style={{ fontSize: 13, color: "var(--oxford)" }}>{t("regPage.eduN", { n: i + 1 })}</strong>
                 {educations.length > 1 && (
-                  <button type="button" onClick={() => removeEducation(i)} style={{ fontSize: 12, color: "#991B1B", background: "transparent", border: "none", cursor: "pointer" }}>Sil</button>
+                  <button type="button" onClick={() => removeEducation(i)} style={{ fontSize: 12, color: "#991B1B", background: "transparent", border: "none", cursor: "pointer" }}>{t("regPage.deleteRow")}</button>
                 )}
               </div>
-              <Field label="Təhsil müəssisəsi">
-                <input className="auth-input" value={ed.institution} onChange={(e) => updateEducation(i, "institution", e.target.value)} placeholder="məs. Bakı Dövlət Universiteti" required />
+              <Field label={t("regPage.eduInstitution")}>
+                <input className="auth-input" value={ed.institution} onChange={(e) => updateEducation(i, "institution", e.target.value)} placeholder={t("regPage.eduInstitutionPh")} required />
               </Field>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 130px", gap: 10, marginTop: 10 }}>
-                <Field label="Dərəcə">
+                <Field label={t("regPage.eduDegree")}>
                   <select className="auth-select" value={ed.degree} onChange={(e) => updateEducation(i, "degree", e.target.value)} required>
-                    <option value="">Seçin</option>
+                    <option value="">{t("regPage.select")}</option>
                     {DEGREE_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </Field>
-                <Field label="Bitirmə ili">
+                <Field label={t("regPage.eduYear")}>
                   <select className="auth-select" value={ed.graduationYear} onChange={(e) => updateEducation(i, "graduationYear", e.target.value)} required>
-                    <option value="">İl</option>
+                    <option value="">{t("regPage.yearPh")}</option>
                     {graduationYearOptions.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </Field>
@@ -541,10 +545,10 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
 
           <button type="button" onClick={addEducation}
             style={{ padding: "10px 14px", border: "1.5px dashed var(--oxford-20)", background: "transparent", borderRadius: 10, fontSize: 13, color: "var(--oxford-60)", cursor: "pointer" }}>
-            + Daha bir təhsil əlavə et
+            {t("regPage.eduAdd")}
           </button>
 
-          <Field label="Diplom faylı (məcburi)" hint="PDF, JPG və ya PNG. Admin yoxlayır">
+          <Field label={t("regPage.diploma")} hint={t("regPage.diplomaHint")}>
             <label className="auth-file-label">
               <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }}
                 onChange={e => setDiplomaFile(e.target.files?.[0] ?? null)} />
@@ -555,7 +559,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
                 {diplomaFile ? (
                   <span style={{ color: "var(--oxford)", fontWeight: 500 }}>{diplomaFile.name}</span>
                 ) : (
-                  <span>Diplom yükləyin</span>
+                  <span>{t("regPage.diplomaUpload")}</span>
                 )}
               </div>
             </label>
@@ -563,8 +567,8 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
 
           {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>{error}</div>}
           <div style={{ display: "flex", gap: 10 }}>
-            <button type="button" onClick={() => setStep(0)} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← Geri</button>
-            <button type="submit" className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 10, flex: 1 }}>Növbəti →</button>
+            <button type="button" onClick={() => setStep(0)} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← {t("regPage.backStep")}</button>
+            <button type="submit" className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 10, flex: 1 }}>{t("regPage.nextCta")} →</button>
           </div>
         </form>
       )}
@@ -572,16 +576,16 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
       {/* STEP 2 — Professional */}
       {step === 2 && (
         <form onSubmit={next} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <Field label="İxtisas / vəzifə adı" hint="məs. Klinik Psixoloq, Psixoterapevt">
+          <Field label={t("regPage.proTitle")} hint={t("regPage.proTitleHint")}>
             <input className="auth-input" value={professional.title}
               onChange={e => setProfessional(p => ({ ...p, title: e.target.value }))}
-              placeholder="Klinik Psixoloq" required />
+              placeholder={t("regPage.proTitlePh")} required />
           </Field>
 
-          <Field label="Ümumi təcrübə">
+          <Field label={t("regPage.experience")}>
             <select className="auth-select" value={professional.experienceYears}
               onChange={e => setProfessional(p => ({ ...p, experienceYears: e.target.value }))} required>
-              <option value="">Seçin</option>
+              <option value="">{t("regPage.select")}</option>
               {EXP_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
           </Field>
@@ -592,37 +596,37 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
               placeholder="0" />
           </Field>
 
-          <Field label="Bildiyi dillər (bir neçə seçin)" hint="Siyahıda yoxdursa, dili yazıb əlavə edin">
+          <Field label={t("regPage.langs")} hint={t("regPage.langsHint")}>
             <ChipToggle options={LANGUAGE_OPTIONS} selected={professional.languages}
               onChange={v => setProfessional(p => ({ ...p, languages: v }))}
-              allowCustom customPlaceholder="Başqa dil əlavə et..." />
+              allowCustom customPlaceholder={t("regPage.langsCustomPh")} />
           </Field>
 
-          <Field label="İxtisaslaşma sahələri (bir neçə seçin)" hint="Müştərilər filter üçün bunu görəcək">
+          <Field label={t("regPage.specs")} hint={t("regPage.specsHint")}>
             <ChipToggle options={SPEC_OPTIONS} selected={professional.specializations}
               onChange={v => setProfessional(p => ({ ...p, specializations: v }))} />
           </Field>
 
-          <Field label="Seans növləri (opsional)">
+          <Field label={t("regPage.sessionTypes")}>
             <ChipToggle options={SESSION_TYPES} selected={professional.sessionTypes}
               onChange={v => setProfessional(p => ({ ...p, sessionTypes: v }))} />
           </Field>
 
-          <Field label={`Özünüz haqqında — bio (${professional.bio.length}/1000)`} hint="100-1000 simvol — müştərilər görəcək">
+          <Field label={t("regPage.bioLabel", { n: professional.bio.length })} hint={t("regPage.bioHint")}>
             <textarea className="auth-textarea" rows={5} value={professional.bio}
               onChange={e => setProfessional(p => ({ ...p, bio: e.target.value }))}
-              placeholder="Yanaşmanız, metodlarınız, müştərilərinizə nə vəd edirsiniz..." required />
+              placeholder={t("regPage.bioPh")} required />
           </Field>
 
-          <Field label="Motivasiya / yanaşma (opsional)">
+          <Field label={t("regPage.motivation")}>
             <textarea className="auth-textarea" rows={3} value={professional.motivation}
               onChange={e => setProfessional(p => ({ ...p, motivation: e.target.value }))} />
           </Field>
 
           {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>{error}</div>}
           <div style={{ display: "flex", gap: 10 }}>
-            <button type="button" onClick={() => setStep(1)} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← Geri</button>
-            <button type="submit" className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 10, flex: 1 }}>Növbəti →</button>
+            <button type="button" onClick={() => setStep(1)} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← {t("regPage.backStep")}</button>
+            <button type="submit" className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 10, flex: 1 }}>{t("regPage.nextCta")} →</button>
           </div>
         </form>
       )}
@@ -631,30 +635,30 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
       {step === 3 && (
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ background: "var(--bg-blue)", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "var(--oxford-60)" }}>
-            Sertifikat və seminarlar opsionaldır, lakin profilinizi gücləndirir.
+            {t("regPage.certIntro")}
           </div>
 
           {certificates.map((c, i) => (
             <div key={i} style={{ background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <strong style={{ fontSize: 13, color: "var(--oxford)" }}>
-                  {c.type === "SEMINAR" ? "Seminar" : "Sertifikat"} #{i + 1}
+                  {c.type === "SEMINAR" ? t("regPage.seminar") : t("regPage.certificate")} #{i + 1}
                 </strong>
-                <button type="button" onClick={() => removeCertificate(i)} style={{ fontSize: 12, color: "#991B1B", background: "transparent", border: "none", cursor: "pointer" }}>Sil</button>
+                <button type="button" onClick={() => removeCertificate(i)} style={{ fontSize: 12, color: "#991B1B", background: "transparent", border: "none", cursor: "pointer" }}>{t("regPage.deleteRow")}</button>
               </div>
-              <Field label={c.type === "SEMINAR" ? "Seminar adı" : "Sertifikat adı"}>
+              <Field label={c.type === "SEMINAR" ? t("regPage.seminarTitleLabel") : t("regPage.certTitleLabel")}>
                 <input className="auth-input" value={c.title}
                   onChange={(e) => updateCertificate(i, "title", e.target.value)} required />
               </Field>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 130px", gap: 10, marginTop: 10 }}>
-                <Field label="Verən təşkilat">
+                <Field label={t("regPage.issuer")}>
                   <input className="auth-input" value={c.issuer}
                     onChange={(e) => updateCertificate(i, "issuer", e.target.value)} />
                 </Field>
-                <Field label="İl">
+                <Field label={t("regPage.year")}>
                   <select className="auth-select" value={c.year}
                     onChange={(e) => updateCertificate(i, "year", e.target.value)}>
-                    <option value="">İl</option>
+                    <option value="">{t("regPage.yearPh")}</option>
                     {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </Field>
@@ -665,15 +669,15 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" onClick={() => addCertificate("CERTIFICATE")}
               style={{ flex: 1, padding: "10px 14px", border: "1.5px dashed var(--oxford-20)", background: "transparent", borderRadius: 10, fontSize: 13, color: "var(--oxford-60)", cursor: "pointer" }}>
-              + Sertifikat
+              {t("regPage.addCert")}
             </button>
             <button type="button" onClick={() => addCertificate("SEMINAR")}
               style={{ flex: 1, padding: "10px 14px", border: "1.5px dashed var(--oxford-20)", background: "transparent", borderRadius: 10, fontSize: 13, color: "var(--oxford-60)", cursor: "pointer" }}>
-              + Seminar
+              {t("regPage.addSeminar")}
             </button>
           </div>
 
-          <Field label="Sertifikat skanları (opsional)">
+          <Field label={t("regPage.certScans")}>
             <label className="auth-file-label">
               <input type="file" accept=".pdf,.jpg,.jpeg,.png" multiple style={{ display: "none" }}
                 onChange={e => {
@@ -685,9 +689,9 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
                 {certificateFiles.length > 0 ? (
-                  <span style={{ color: "var(--oxford)", fontWeight: 500 }}>{certificateFiles.length} fayl seçildi</span>
+                  <span style={{ color: "var(--oxford)", fontWeight: 500 }}>{t("regPage.filesSelected", { n: certificateFiles.length })}</span>
                 ) : (
-                  <span>Skanları yükləyin</span>
+                  <span>{t("regPage.scansUpload")}</span>
                 )}
               </div>
             </label>
@@ -705,20 +709,20 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
           </Field>
 
           <div style={{ background: "#F9FAFB", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-            <strong style={{ fontSize: 13, color: "var(--oxford)" }}>Razılıqlar (məcburi)</strong>
+            <strong style={{ fontSize: 13, color: "var(--oxford)" }}>{t("regPage.consentsTitle")}</strong>
             <ConsentRow checked={consents.ethics} onChange={v => setConsents(c => ({ ...c, ethics: v }))}
-              label="Mərkəzin etik kodeksini oxudum və qəbul edirəm" />
+              label={t("regPage.consentEthics")} />
             <ConsentRow checked={consents.gdpr} onChange={v => setConsents(c => ({ ...c, gdpr: v }))}
-              label="Şəxsi məlumatlarımın işlənməsinə razıyam (GDPR)" />
+              label={t("regPage.consentGdpr")} />
             <ConsentRow checked={consents.terms} onChange={v => setConsents(c => ({ ...c, terms: v }))}
-              label="Platforma istifadə şərtlərini qəbul edirəm" />
+              label={t("regPage.consentTerms")} />
           </div>
 
           {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>{error}</div>}
           <div style={{ display: "flex", gap: 10 }}>
-            <button type="button" onClick={() => setStep(2)} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← Geri</button>
+            <button type="button" onClick={() => setStep(2)} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← {t("regPage.backStep")}</button>
             <button type="submit" disabled={loading} className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 10, flex: 1 }}>
-              {loading ? "Göndərilir..." : "Müraciət göndər"}
+              {loading ? t("common.sending") : t("regPage.submitApplication")}
             </button>
           </div>
         </form>
@@ -786,8 +790,8 @@ export default function RegisterPage() {
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                       </svg>
                     </div>
-                    <h3>Müştəri</h3>
-                    <p>Psixoloji dəstək almaq istəyirəm</p>
+                    <h3>{t("regPage.rolePatient")}</h3>
+                    <p>{t("regPage.rolePatientDesc")}</p>
                   </button>
                   <button type="button" className="auth-role-card" onClick={() => setRole("psychologist")}>
                     <div className="auth-role-icon" style={{ background: "var(--sage-soft)", color: "var(--sage)" }}>
@@ -795,8 +799,8 @@ export default function RegisterPage() {
                         <path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" />
                       </svg>
                     </div>
-                    <h3>Psixoloq</h3>
-                    <p>Platforma üzərindən müştəri qəbul etmək istəyirəm</p>
+                    <h3>{t("regPage.rolePsy")}</h3>
+                    <p>{t("regPage.rolePsyDesc")}</p>
                   </button>
                 </div>
                 <p style={{ textAlign: "center", fontSize: 14, color: "var(--oxford-60)", marginTop: 28 }}>
@@ -808,16 +812,16 @@ export default function RegisterPage() {
 
             {role === "patient" && (
               <>
-                <h1 style={{ fontFamily: "var(--serif)", fontSize: 26, fontWeight: 500, color: "var(--oxford)", marginBottom: 6 }}>Müştəri qeydiyyatı</h1>
-                <p style={{ fontSize: 14, color: "var(--oxford-60)", marginBottom: 24 }}>Bir neçə saniyəyə hesabınızı yaradın</p>
+                <h1 style={{ fontFamily: "var(--serif)", fontSize: 26, fontWeight: 500, color: "var(--oxford)", marginBottom: 6 }}>{t("regPage.patientTitle")}</h1>
+                <p style={{ fontSize: 14, color: "var(--oxford-60)", marginBottom: 24 }}>{t("regPage.patientSub")}</p>
                 <PatientForm onBack={() => setRole(null)} />
               </>
             )}
 
             {role === "psychologist" && (
               <>
-                <h1 style={{ fontFamily: "var(--serif)", fontSize: 26, fontWeight: 500, color: "var(--oxford)", marginBottom: 6 }}>Psixoloq qeydiyyatı</h1>
-                <p style={{ fontSize: 14, color: "var(--oxford-60)", marginBottom: 24 }}>Profilinizi yaradın — komandamız yoxladıqdan sonra aktivləşəcək</p>
+                <h1 style={{ fontFamily: "var(--serif)", fontSize: 26, fontWeight: 500, color: "var(--oxford)", marginBottom: 6 }}>{t("regPage.psyTitle")}</h1>
+                <p style={{ fontSize: 14, color: "var(--oxford-60)", marginBottom: 24 }}>{t("regPage.psySub")}</p>
                 <PsychologistForm onBack={() => setRole(null)} />
               </>
             )}
@@ -828,16 +832,16 @@ export default function RegisterPage() {
       <div className="auth-panel">
         <div className="auth-panel-content">
           <Image src="/images/logos/logo-white.png" alt="Fanus" width={110} height={36} style={{ objectFit: "contain" }} />
-          <h2 className="auth-panel-title" style={{ fontFamily: "var(--serif)" }}>{panelData.title}</h2>
-          <p className="auth-panel-sub">{panelData.sub}</p>
+          <h2 className="auth-panel-title" style={{ fontFamily: "var(--serif)" }}>{t(panelData.titleKey)}</h2>
+          <p className="auth-panel-sub">{t(panelData.subKey)}</p>
           <div className="auth-panel-trust">
-            {panelData.trust.map(t => (
-              <div key={t} className="auth-panel-trust-item">
+            {panelData.trustKeys.map(key => (
+              <div key={key} className="auth-panel-trust-item">
                 <div className="auth-panel-trust-icon">
                   <svg width="16" height="16" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
                 </div>
                 <div className="auth-panel-trust-text">
-                  <strong>{t}</strong>
+                  <strong>{t(key)}</strong>
                 </div>
               </div>
             ))}

@@ -9,11 +9,13 @@ import Link from "next/link";
 import Breadcrumb from "@/components/Breadcrumb";
 import { useRouter } from "next/navigation";
 import { getPublicCatalogTest, submitPublicCatalogTest, type TakeTest } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function PublicTakeTestPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const testId = Number(id);
   const router = useRouter();
+  const { t } = useT();
 
   const [test, setTest] = useState<TakeTest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -22,11 +24,12 @@ export default function PublicTakeTestPage({ params }: { params: Promise<{ id: s
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!Number.isFinite(testId)) { setError("Test tapılmadı"); setLoading(false); return; }
+    if (!Number.isFinite(testId)) { setError(t("testsPage.notFound")); setLoading(false); return; }
     getPublicCatalogTest(testId)
       .then(setTest)
-      .catch(() => setError("Test tapılmadı və ya yayımdan çıxarılıb"))
+      .catch(() => setError(t("testsPage.notFoundOrUnpublished")))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testId]);
 
   const total = test?.questions.length ?? 0;
@@ -44,26 +47,26 @@ export default function PublicTakeTestPage({ params }: { params: Promise<{ id: s
       try { localStorage.setItem("pendingTestClaim", res.claimToken); } catch { /* private mode */ }
       router.push(`/tests/${testId}/result?token=${encodeURIComponent(res.claimToken)}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Cavablar göndərilmədi");
+      setError(e instanceof Error ? e.message : t("testsPage.submitFailed"));
       setBusy(false);
     }
   };
 
   if (loading) {
-    return <div className="fanus-container" style={{ padding: "80px 0", textAlign: "center", color: "var(--oxford-60)" }}>Yüklənir…</div>;
+    return <div className="fanus-container" style={{ padding: "80px 0", textAlign: "center", color: "var(--oxford-60)" }}>{t("common.loading")}</div>;
   }
   if (error || !test) {
     return (
       <div className="fanus-container" style={{ padding: "80px 0", textAlign: "center" }}>
-        <p style={{ fontSize: 16, fontWeight: 600, color: "var(--oxford)", marginBottom: 12 }}>{error ?? "Test tapılmadı"}</p>
-        <Link href="/tests" style={{ color: "var(--brand)", fontWeight: 600 }}>← Testlərə qayıt</Link>
+        <p style={{ fontSize: 16, fontWeight: 600, color: "var(--oxford)", marginBottom: 12 }}>{error ?? t("testsPage.notFound")}</p>
+        <Link href="/tests" style={{ color: "var(--brand)", fontWeight: 600 }}>← {t("testsPage.backToTests")}</Link>
       </div>
     );
   }
 
   return (
     <>
-      <Breadcrumb items={[{ label: "Testlər", href: "/tests" }, { label: test.title }]} />
+      <Breadcrumb items={[{ label: t("nav.tests"), href: "/tests" }, { label: test.title }]} />
       <div className="fanus-container" style={{ padding: "8px 0 72px", maxWidth: 760 }}>
       <h1 style={{ fontFamily: "var(--font-poppins), system-ui, sans-serif", fontSize: "clamp(30px, 4vw, 52px)", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.12, color: "var(--fanus-ink)", margin: "10px 0 12px" }}>{test.title}</h1>
       {test.description && <p style={{ fontSize: 15, color: "var(--oxford-60)", lineHeight: 1.6, margin: "0 0 8px" }}>{test.description}</p>}
@@ -105,7 +108,7 @@ export default function PublicTakeTestPage({ params }: { params: Promise<{ id: s
 
       <div style={{ position: "sticky", bottom: 0, background: "linear-gradient(to top, #fff 60%, transparent)", padding: "20px 0 8px", marginTop: 24 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 600 }}>{answered} / {total} cavablandırılıb</span>
+          <span style={{ fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 600 }}>{t("testsPage.answeredOf", { a: answered, t: total })}</span>
           <button
             type="button"
             onClick={submit}
@@ -113,11 +116,11 @@ export default function PublicTakeTestPage({ params }: { params: Promise<{ id: s
             className="fanus-btn fanus-btn-primary"
             style={{ opacity: !ready || busy ? 0.55 : 1, cursor: !ready || busy ? "not-allowed" : "pointer" }}
           >
-            {busy ? "Göndərilir…" : "Testi bitir"}
+            {busy ? t("common.sending") : t("testsPage.finishCta")}
           </button>
         </div>
         <p style={{ fontSize: 12.5, color: "var(--oxford-60)", margin: "10px 0 0" }}>
-          Nəticənizi görmək üçün son addımda qeydiyyatdan keçmək lazımdır.
+          {t("testsPage.registerNote")}
         </p>
       </div>
       </div>

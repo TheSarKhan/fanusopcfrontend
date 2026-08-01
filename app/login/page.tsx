@@ -8,6 +8,7 @@ import { buildPanelUrl } from "@/lib/auth";
 import { holdOverlay } from "@/lib/loadingOverlay";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 function MailIcon() {
   return (
@@ -46,8 +47,8 @@ const TRUST = [
         <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
       </svg>
     ),
-    title: "Məxfi söhbət",
-    sub: "Yazdıqlarınız sizdə və psixoloqunuzda qalır",
+    titleKey: "authPage.trust1Title" as MessageKey,
+    subKey: "authPage.trust1Sub" as MessageKey,
   },
   {
     icon: (
@@ -56,8 +57,8 @@ const TRUST = [
         <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
     ),
-    title: "Sertifikatlı psixoloqlar",
-    sub: "Hamısı yoxlanılıb və təsdiqlənib",
+    titleKey: "authPage.trust2Title" as MessageKey,
+    subKey: "authPage.trust2Sub" as MessageKey,
   },
   {
     icon: (
@@ -65,8 +66,8 @@ const TRUST = [
         <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
       </svg>
     ),
-    title: "Onlayn seans",
-    sub: "Evdən, telefondan və ya kompüterdən",
+    titleKey: "authPage.trust3Title" as MessageKey,
+    subKey: "authPage.trust3Sub" as MessageKey,
   },
 ];
 
@@ -80,13 +81,13 @@ export default function LoginPage() {
   const [reactivateInfo, setReactivateInfo] = useState("");
 
   const handleReactivate = async () => {
-    if (!email.trim()) { setError("Bərpa linki üçün əvvəlcə e-poçtunuzu daxil edin."); return; }
+    if (!email.trim()) { setError(t("authPage.reactivateNeedEmail")); return; }
     setError(""); setReactivateInfo("");
     try {
       await reactivateRequest(email.trim());
-      setReactivateInfo("Əgər bu email üzrə silinmiş hesab varsa, bərpa linki göndərildi — e-poçtunuzu yoxlayın.");
+      setReactivateInfo(t("authPage.reactivateSent"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Bərpa linki göndərilmədi");
+      setError(err instanceof Error ? err.message : t("authPage.reactivateFailed"));
     }
   };
 
@@ -98,7 +99,7 @@ export default function LoginPage() {
       return;
     }
     if (params.get("session") === "expired") {
-      setError("Sessiyanız bitdi. Yenidən daxil olun.");
+      setError(t("authPage.sessionExpired"));
     }
 
     // Warm up TCP/TLS to every role subdomain so the post-login hard-redirect
@@ -113,6 +114,7 @@ export default function LoginPage() {
       link.crossOrigin = "anonymous";
       document.head.appendChild(link);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,7 +138,7 @@ export default function LoginPage() {
         await new Promise(r => setTimeout(r, 120));
       }
       if (!verified) {
-        throw new Error("Sessiya yaradıla bilmədi. Yenidən cəhd edin.");
+        throw new Error(t("authPage.sessionCreateFailed"));
       }
 
       // Always land on the role's subdomain. If a `?next=` deep-link was
@@ -161,7 +163,7 @@ export default function LoginPage() {
       // release ÇAĞIRILMIR — brauzer navigasiya edənə qədər popup açıq qalsın.
     } catch (err: unknown) {
       releaseOverlay(); // xəta: popupı bağla
-      setError(err instanceof Error ? err.message : "Giriş uğursuz oldu");
+      setError(err instanceof Error ? err.message : t("authPage.loginFailed"));
       setLoading(false);
     }
   };
@@ -218,7 +220,7 @@ export default function LoginPage() {
                     className="auth-input"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    placeholder="email@nümunə.az"
+                    placeholder={t("pub.emailPlaceholder")}
                     required
                   />
                 </div>
@@ -279,10 +281,10 @@ export default function LoginPage() {
             </p>
 
             <p style={{ textAlign: "center", fontSize: 12.5, color: "var(--oxford-60)", marginTop: 8 }}>
-              Hesabınız silinib?{" "}
+              {t("authPage.deletedAccountQ")}{" "}
               <button type="button" onClick={handleReactivate}
                 style={{ background: "none", border: "none", color: "var(--oxford)", fontWeight: 600, cursor: "pointer", textDecoration: "underline", padding: 0, fontSize: 12.5, fontFamily: "inherit" }}>
-                Bərpa linki göndərin
+                {t("authPage.sendReactivate")}
               </button>
             </p>
           </div>
@@ -306,18 +308,18 @@ export default function LoginPage() {
             </span>
           </span>
           <h2 className="auth-panel-title">
-            Daha yaxşı hiss etmək<br />bu gün başlayır
+            {t("authPage.panelTitle1")}<br />{t("authPage.panelTitle2")}
           </h2>
           <p className="auth-panel-sub">
-            Azərbaycanda öz dilinizdə, öz mədəniyyətinizdə psixoloji dəstək. Hər addımda yanınızdayıq.
+            {t("authPage.panelSub")}
           </p>
           <div className="auth-panel-trust">
-            {TRUST.map((t) => (
-              <div key={t.title} className="auth-panel-trust-item">
-                <div className="auth-panel-trust-icon">{t.icon}</div>
+            {TRUST.map((item) => (
+              <div key={item.titleKey} className="auth-panel-trust-item">
+                <div className="auth-panel-trust-icon">{item.icon}</div>
                 <div className="auth-panel-trust-text">
-                  <strong>{t.title}</strong>
-                  <span>{t.sub}</span>
+                  <strong>{t(item.titleKey)}</strong>
+                  <span>{t(item.subKey)}</span>
                 </div>
               </div>
             ))}

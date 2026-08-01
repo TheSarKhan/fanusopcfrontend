@@ -6,20 +6,21 @@ import Deco from "@/components/Deco";
 import Breadcrumb from "@/components/Breadcrumb";
 import type { BlogPost } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { azFormatDate } from "@/lib/datetime";
 import { displayCategory } from "@/lib/blog";
 
 type Cat = "all" | "anxiety" | "relations" | "selfcare" | "sleep" | "youth" | "mindful";
 type Illu = "sun" | "people" | "flame" | "moon" | "waves" | "compass";
 
-const FILTERS: { id: Cat; label: string }[] = [
-  { id: "all",       label: "Hamısı" },
-  { id: "anxiety",   label: "Narahatlıq" },
-  { id: "relations", label: "Münasibətlər" },
-  { id: "selfcare",  label: "Özünəqayğı" },
-  { id: "sleep",     label: "Yuxu" },
-  { id: "youth",     label: "Yeniyetmə" },
-  { id: "mindful",   label: "Mindfulness" },
+const FILTERS: { id: Cat; labelKey: MessageKey }[] = [
+  { id: "all",       labelKey: "blogPage.filterAll" },
+  { id: "anxiety",   labelKey: "blogPage.filterAnxiety" },
+  { id: "relations", labelKey: "blogPage.filterRelations" },
+  { id: "selfcare",  labelKey: "blogPage.filterSelfcare" },
+  { id: "sleep",     labelKey: "blogPage.filterSleep" },
+  { id: "youth",     labelKey: "blogPage.filterYouth" },
+  { id: "mindful",   labelKey: "blogPage.filterMindful" },
 ];
 
 const ILLU_BY_CAT: Record<Cat, Illu> = {
@@ -70,6 +71,7 @@ const FALLBACK: Item[] = [
 type SortBy = "new" | "quick";
 
 export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
+  const { t } = useT();
   const items: Item[] = useMemo(() => {
     if (!posts || posts.length === 0) return FALLBACK;
     return posts.map((p) => {
@@ -82,16 +84,16 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
         title: p.title,
         excerpt: p.excerpt,
         date: azFormatDate(p.publishedDate),
-        read: `${p.readTimeMinutes} dəq`,
+        read: t("pub.readMinutes", { n: p.readTimeMinutes }),
         readMinutes: p.readTimeMinutes,
         publishedAt: new Date(p.publishedDate).getTime(),
-        author: p.authorName ?? "Fanus redaksiya",
+        author: p.authorName ?? t("blogPage.editorial"),
         illu: ILLU_BY_CAT[cat],
         coverUrl: p.coverImageUrl,
         views: p.viewCount ?? 0,
       };
     });
-  }, [posts]);
+  }, [posts, t]);
 
   const [filter, setFilter] = useState<Cat>("all");
   const [sortBy, setSortBy] = useState<SortBy>("new");
@@ -104,13 +106,13 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
     return [...result].sort((a, b) => b.publishedAt - a.publishedAt);
   }, [items, filter, sortBy]);
 
-  const activeFilterLabel =
-    filter === "all" ? null : FILTERS.find((f) => f.id === filter)?.label ?? null;
+  const activeKey = filter === "all" ? null : FILTERS.find((f) => f.id === filter)?.labelKey ?? null;
+  const activeFilterLabel = activeKey ? t(activeKey) : null;
   const resetFilters = () => setFilter("all");
 
   return (
     <div className="fanus-root">
-      <Breadcrumb items={[{ label: "Bloq" }]} />
+      <Breadcrumb items={[{ label: t("pub.crumbBlog") }]} />
       <ArtHero />
       <ArtFilters active={filter} onChange={setFilter} />
       <ArtList
@@ -156,17 +158,18 @@ function ArtHero() {
 }
 
 function ArtFilters({ active, onChange }: { active: Cat; onChange: (c: Cat) => void }) {
+  const { t } = useT();
   return (
     <div className="ap-filters">
       <div className="fanus-container">
         <div className="ap-filters__chips">
-          {FILTERS.map((t) => (
+          {FILTERS.map((f) => (
             <button
-              key={t.id}
-              className={`ap-chip ${active === t.id ? "is-active" : ""}`}
-              onClick={() => onChange(t.id)}
+              key={f.id}
+              className={`ap-chip ${active === f.id ? "is-active" : ""}`}
+              onClick={() => onChange(f.id)}
             >
-              {t.label}
+              {t(f.labelKey)}
             </button>
           ))}
         </div>
@@ -203,6 +206,7 @@ function ArtList({
   activeFilterLabel: string | null;
   onReset: () => void;
 }) {
+  const { t } = useT();
   return (
     <section className="ap-list">
       <Deco type="mesh-blob" style={{ top: 60, right: "-5%", width: 400, opacity: .35 }} anim="drift" />
@@ -211,7 +215,7 @@ function ArtList({
         <div className="ap-list__head">
           <div className="ap-list__head-left">
             <div className="ap-list__count">
-              <strong>{items.length}</strong> məqalə
+              {t("blogPage.articleCount", { n: items.length })}
             </div>
             {activeFilterLabel && (
               <div className="ap-list__active">
@@ -219,7 +223,7 @@ function ArtList({
                   {activeFilterLabel}
                 </span>
                 <button className="ap-list__reset" onClick={onReset}>
-                  Filtri sıfırla
+                  {t("blogPage.resetFilter")}
                 </button>
               </div>
             )}
@@ -229,19 +233,19 @@ function ArtList({
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortBy)}
           >
-            <option value="new">Ən yeni</option>
-            <option value="quick">Qısa oxunuş</option>
+            <option value="new">{t("blogPage.sortNewest")}</option>
+            <option value="quick">{t("blogPage.sortQuick")}</option>
           </select>
         </div>
 
         {items.length === 0 ? (
           <div className="ap-empty">
             <div className="ap-empty__icon"><SparkleIcon /></div>
-            <h3>Heç bir məqalə tapılmadı</h3>
-            <p>Bu filtrə uyğun nəticə yoxdur. Başqa kateqoriya seçin.</p>
+            <h3>{t("blogPage.emptyTitle")}</h3>
+            <p>{t("blogPage.emptyBody")}</p>
             {activeFilterLabel && (
               <button className="fanus-btn fanus-btn-light fanus-btn-sm" onClick={onReset}>
-                Hamısını göstər
+                {t("blogPage.showAll")}
               </button>
             )}
           </div>
@@ -265,7 +269,7 @@ function ArtList({
                     {a.views != null && a.views > 0 && (
                       <>
                         <span className="ap-card__sep" />
-                        <span className="ap-card__read">{a.views} baxış</span>
+                        <span className="ap-card__read">{t("pub.viewsCount", { n: a.views })}</span>
                       </>
                     )}
                   </div>
@@ -275,9 +279,9 @@ function ArtList({
                     <span className="ap-card__avatar">{a.author.split(" ").map((n) => n[0]).join("")}</span>
                     <div>
                       <div className="ap-card__author-name">{a.author}</div>
-                      <div className="ap-card__author-role">Psixoloq</div>
+                      <div className="ap-card__author-role">{t("pub.authorRole")}</div>
                     </div>
-                    <span className="ap-card__cta">Oxu <Arrow /></span>
+                    <span className="ap-card__cta">{t("blogPage.readCta")} <Arrow /></span>
                   </div>
                 </div>
               </Link>
@@ -409,18 +413,19 @@ function ClockIcon() {
 }
 
 function ArtNewsletter() {
+  const { t } = useT();
   return (
     <section className="ap-news">
       <Deco type="circles-mix" style={{ top: 30, right: "6%", width: 220, opacity: .55 }} />
       <Deco type="target" style={{ bottom: 30, left: "8%", width: 130, opacity: .55 }} anim="drift" />
       <div className="fanus-container">
         <div className="ap-news__head">
-          <h2>Aylıq məqalə bülletenimizə <span className="fanus-serif-accent">abunə olun</span></h2>
-          <p>Hər ay Fanus psixoloqlarının seçilmiş yazıları birbaşa e-poçtunuza gəlsin.</p>
-          <form className="ap-news__form" onSubmit={(e) => { e.preventDefault(); alert("Təşəkkürlər!"); }}>
-            <input type="email" placeholder="email@nümunə.az" required />
+          <h2>{t("blogPage.newsletterTitle")} <span className="fanus-serif-accent">{t("blogPage.newsletterTitleAccent")}</span></h2>
+          <p>{t("blogPage.newsletterText")}</p>
+          <form className="ap-news__form" onSubmit={(e) => { e.preventDefault(); alert(t("blogPage.newsletterThanks")); }}>
+            <input type="email" placeholder={t("pub.emailPlaceholder")} required />
             <button type="submit" className="fanus-btn fanus-btn-primary">
-              Abunə ol <Arrow />
+              {t("blogPage.newsletterCta")} <Arrow />
             </button>
           </form>
         </div>

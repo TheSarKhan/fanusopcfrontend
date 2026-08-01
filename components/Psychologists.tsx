@@ -106,7 +106,7 @@ function PsyCard({ p }: { p: CardItem }) {
 
   return (
     <article className="pp-card">
-      <Link href={`/psychologists/${p.slug}`} className="pp-card__head" aria-label={`${p.name} profili`}>
+      <Link href={`/psychologists/${p.slug}`} className="pp-card__head" aria-label={t("pub.profileAria", { name: p.name })}>
         <div className="pp-card__photo">
           {p.photoUrl ? (
              
@@ -119,16 +119,16 @@ function PsyCard({ p }: { p: CardItem }) {
         <div className="pp-card__head-body">
           <div className="pp-card__name-row">
             <h3 className="pp-card__name">{p.name}</h3>
-            <span className="pp-card__verified" title="Doğrulanmış psixoloq" aria-label="Doğrulanmış psixoloq">
+            <span className="pp-card__verified" title={t("pub.verifiedPsy")} aria-label={t("pub.verifiedPsy")}>
               <ShieldIcon />
             </span>
           </div>
           <p className="pp-card__title">{p.title}</p>
           <div className="pp-card__rating">
             {filledStars > 0 ? (
-              <><Stars value={filledStars} /><strong>{p.rating}</strong></>
+              <><Stars value={filledStars} label={t("pub.starsAria", { n: filledStars })} /><strong>{p.rating}</strong></>
             ) : (
-              <strong style={{ color: "var(--oxford-60)", fontWeight: 700 }}>Yeni</strong>
+              <strong style={{ color: "var(--oxford-60)", fontWeight: 700 }}>{t("pub.newBadge")}</strong>
             )}
             {sessionLabel && <span className="pp-card__rating-sub">{sessionLabel}</span>}
           </div>
@@ -304,9 +304,9 @@ function PsyCard({ p }: { p: CardItem }) {
   );
 }
 
-function Stars({ value }: { value: number }) {
+function Stars({ value, label }: { value: number; label: string }) {
   return (
-    <span style={{ display: "inline-flex", gap: 1 }} aria-label={`${value} ulduz`}>
+    <span style={{ display: "inline-flex", gap: 1 }} aria-label={label}>
       {[1, 2, 3, 4, 5].map((n) => (
         <svg key={n} width="12" height="12" viewBox="0 0 24 24" fill={n <= value ? "#C97D2E" : "#E4ECFA"}>
           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />

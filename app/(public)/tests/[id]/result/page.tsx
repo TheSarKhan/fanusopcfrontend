@@ -9,18 +9,20 @@ import Link from "next/link";
 import Breadcrumb from "@/components/Breadcrumb";
 import { useSearchParams } from "next/navigation";
 import { patientApi, tryGetMe, type PublicTestResult } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function PublicTestResultPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const search = useSearchParams();
   const token = search.get("token");
+  const { t } = useT();
 
   const [state, setState] = useState<"checking" | "locked" | "ready" | "error">("checking");
   const [result, setResult] = useState<PublicTestResult | null>(null);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (!token) { setState("error"); setMessage("Nəticə linki tapılmadı."); return; }
+    if (!token) { setState("error"); setMessage(t("testsPage.linkMissing")); return; }
     try { localStorage.setItem("pendingTestClaim", token); } catch { /* private mode */ }
 
     let alive = true;
@@ -36,22 +38,23 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
       } catch (e) {
         if (!alive) return;
         setState("error");
-        setMessage(e instanceof Error ? e.message : "Nəticə açıla bilmədi");
+        setMessage(e instanceof Error ? e.message : t("testsPage.errorTitle"));
       }
     })();
     return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const wrap = (children: React.ReactNode) => (
     <>
-      <Breadcrumb items={[{ label: "Testlər", href: "/tests" }, { label: "Nəticə" }]} />
+      <Breadcrumb items={[{ label: t("nav.tests"), href: "/tests" }, { label: t("pub.crumbResult") }]} />
       <div className="fanus-container" style={{ padding: "16px 0 72px", maxWidth: 620 }}>
         <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderRadius: 18, padding: 32 }}>{children}</div>
       </div>
     </>
   );
 
-  if (state === "checking") return wrap(<p style={{ textAlign: "center", color: "var(--oxford-60)", margin: 0 }}>Yoxlanılır…</p>);
+  if (state === "checking") return wrap(<p style={{ textAlign: "center", color: "var(--oxford-60)", margin: 0 }}>{t("testsPage.checking")}</p>);
 
   if (state === "locked") {
     return wrap(
@@ -61,14 +64,13 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
             <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
         </div>
-        <h1 style={{ fontSize: 21, fontWeight: 800, color: "var(--oxford)", margin: "0 0 10px" }}>Cavablarınız qeydə alındı</h1>
+        <h1 style={{ fontSize: 21, fontWeight: 800, color: "var(--oxford)", margin: "0 0 10px" }}>{t("testsPage.lockedTitle")}</h1>
         <p style={{ fontSize: 14.5, color: "var(--oxford-60)", lineHeight: 1.6, margin: "0 0 22px" }}>
-          Nəticənizi görmək üçün pasiyent kimi qeydiyyatdan keçin və ya hesabınıza daxil olun.
-          Nəticə avtomatik hesabınıza bağlanacaq və istənilən vaxt yenidən baxa biləcəksiniz.
+          {t("testsPage.lockedBody")}
         </p>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-          <Link href="/register" className="fanus-btn fanus-btn-primary">Qeydiyyatdan keç</Link>
-          <Link href="/login" className="fanus-btn fanus-btn-ghost">Daxil ol</Link>
+          <Link href="/register" className="fanus-btn fanus-btn-primary">{t("auth.registerCta")}</Link>
+          <Link href="/login" className="fanus-btn fanus-btn-ghost">{t("auth.loginCta")}</Link>
         </div>
       </div>
     );
@@ -77,9 +79,9 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
   if (state === "error" || !result) {
     return wrap(
       <div style={{ textAlign: "center" }}>
-        <h1 style={{ fontSize: 19, fontWeight: 700, color: "var(--oxford)", margin: "0 0 10px" }}>Nəticə açıla bilmədi</h1>
-        <p style={{ fontSize: 14, color: "var(--oxford-60)", margin: "0 0 20px" }}>{message || "Link köhnəlib və ya başqa hesaba bağlanıb."}</p>
-        <Link href="/tests" className="fanus-btn fanus-btn-ghost">Testlərə qayıt</Link>
+        <h1 style={{ fontSize: 19, fontWeight: 700, color: "var(--oxford)", margin: "0 0 10px" }}>{t("testsPage.errorTitle")}</h1>
+        <p style={{ fontSize: 14, color: "var(--oxford-60)", margin: "0 0 20px" }}>{message || t("testsPage.errorBody")}</p>
+        <Link href="/tests" className="fanus-btn fanus-btn-ghost">{t("testsPage.backToTests")}</Link>
       </div>
     );
   }
@@ -88,7 +90,7 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
   return wrap(
     <div>
       <div style={{ textAlign: "center", marginBottom: 22 }}>
-        <p style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, margin: "0 0 6px" }}>{result.testTitle ?? "Test nəticəsi"}</p>
+        <p style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, margin: "0 0 6px" }}>{result.testTitle ?? t("testsPage.resultFallbackTitle")}</p>
         <div style={{ fontSize: 40, fontWeight: 800, color: "var(--oxford)", lineHeight: 1 }}>{result.totalScore}<span style={{ fontSize: 20, color: "var(--oxford-60)", fontWeight: 700 }}> / {result.maxScore}</span></div>
         {result.scaleLabel && (
           <div style={{ display: "inline-block", marginTop: 10, padding: "5px 14px", borderRadius: 999, background: "#F1F6FE", color: "var(--brand-700, #1051B7)", fontSize: 14, fontWeight: 700 }}>
@@ -109,15 +111,14 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
 
       <div style={{ background: "#F1F6FE", border: "1px solid #DCE8FB", borderRadius: 12, padding: 16, marginBottom: 22 }}>
         <p style={{ fontSize: 13.5, color: "var(--oxford)", lineHeight: 1.6, margin: 0 }}>
-          Bu nəticə diaqnoz deyil. Dəqiq qiymətləndirmə üçün psixoloqla seans keçirin —
-          mütəxəssisimiz nəticəni sizinlə birlikdə təhlil edəcək.
+          {t("testsPage.disclaimer")}
         </p>
       </div>
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Link href={`/psychologists`} className="fanus-btn fanus-btn-primary">Psixoloq seç</Link>
-        <Link href="/patient" className="fanus-btn fanus-btn-ghost">Hesabım</Link>
-        <Link href={`/tests/${id}`} className="fanus-btn fanus-btn-ghost">Testi yenidən keç</Link>
+        <Link href={`/psychologists`} className="fanus-btn fanus-btn-primary">{t("testsPage.choosePsy")}</Link>
+        <Link href="/patient" className="fanus-btn fanus-btn-ghost">{t("testsPage.myAccount")}</Link>
+        <Link href={`/tests/${id}`} className="fanus-btn fanus-btn-ghost">{t("testsPage.retake")}</Link>
       </div>
     </div>
   );

@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { meApi, patientApi } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
-import { azFormatDate, azTodayIso, pastPreferredError } from "@/lib/datetime";
+import { azFormatDate, azTodayIso, pastPreferredCode } from "@/lib/datetime";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 /**
  * "Fanus təyin etsin" — login olmuş pasiyent hansı psixoloqu seçəcəyini bilmirsə,
@@ -20,21 +22,19 @@ import { azFormatDate, azTodayIso, pastPreferredError } from "@/lib/datetime";
  *  (AppointmentService.CRISIS_NOTE_MARKER). */
 const CRISIS_NOTE_MARKER = "[TƏCİLİ]";
 
-const BUDGET_OPTIONS = [
-  "50 AZN-dək",
-  "50-100 AZN",
-  "100-200 AZN",
-  "200 AZN-dən çox",
-  "Danışıq əsasında",
+/** Dəyər operator qeydinə yazılır və backend-ə gedir — tərcümə OLUNMUR;
+ *  yalnız görünən etiket lokallaşdırılır. */
+const BUDGET_OPTIONS: { value: string; key: MessageKey }[] = [
+  { value: "50 AZN-dək",       key: "quickReq.budget1" },
+  { value: "50-100 AZN",       key: "quickReq.budget2" },
+  { value: "100-200 AZN",      key: "quickReq.budget3" },
+  { value: "200 AZN-dən çox",  key: "quickReq.budget4" },
+  { value: "Danışıq əsasında", key: "quickReq.budget5" },
 ];
 
-const NEXT_STEPS = [
-  "Operatorumuz müraciətinizi nəzərdən keçirir.",
-  "Sizinlə əlaqə saxlayıb ehtiyacınıza uyğun psixoloqu təklif edirik.",
-  "Psixoloq və seans vaxtı təsdiqlənir — seansınız planlanır.",
-];
+const NEXT_STEPS: MessageKey[] = ["quickReq.step1", "quickReq.step2", "quickReq.step3"];
 
-const STEPS = ["Əlaqə", "Ehtiyacınız", "Vaxt tərcihi"];
+const STEPS: MessageKey[] = ["patAssign.step1", "patAssign.step2", "patAssign.step3"];
 
 const INITIAL = {
   name: "", phone: "", email: "", age: "", reason: "",
@@ -47,6 +47,7 @@ export default function FanusAssignWizard({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const overlayRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState(INITIAL);
@@ -103,18 +104,18 @@ export default function FanusAssignWizard({
 
   const validateStep = (): string => {
     if (step === 0) {
-      if (!form.name.trim()) return "Ad və soyadınızı yazın";
-      if (!form.phone.trim()) return "Əlaqə nömrənizi yazın";
-      if (!form.email.trim()) return "E-poçtunuzu yazın";
+      if (!form.name.trim()) return t("patAssign.errName");
+      if (!form.phone.trim()) return t("patAssign.errPhone");
+      if (!form.email.trim()) return t("patAssign.errEmail");
     }
     if (step === 1) {
-      if (!form.reason.trim()) return "Müraciətin səbəbini yazın";
-      if (!form.budget) return "Büdcə aralığını seçin";
+      if (!form.reason.trim()) return t("quickReq.errReason");
+      if (!form.budget) return t("patAssign.errBudget");
     }
     if (step === 2) {
       // Keçmiş tarix/saat üçün müraciət qəbul edilmir.
-      const past = pastPreferredError(form.preferredDate, form.preferredTime);
-      if (past) return past;
+      const past = pastPreferredCode(form.preferredDate, form.preferredTime);
+      if (past) return t(`sched.${past}` as MessageKey);
     }
     return "";
   };
@@ -170,10 +171,10 @@ export default function FanusAssignWizard({
     } catch (err: unknown) {
       setError(
         err instanceof TypeError
-          ? "Serverlə əlaqə qurula bilmədi. İnternet bağlantınızı yoxlayıb yenidən cəhd edin."
+          ? t("quickReq.errNetwork")
           : (err instanceof Error && err.message
               ? err.message
-              : "Müraciət göndərilmədi. Yenidən cəhd edin.")
+              : t("quickReq.errSubmit"))
       );
     } finally {
       setSending(false);
@@ -205,16 +206,16 @@ export default function FanusAssignWizard({
           {!success && (
             <div>
               <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0B1A35" }}>
-                Fanus təyin etsin
+                {t("patAssign.title")}
               </h2>
               <p style={{ margin: "6px 0 0", fontSize: 13, color: "#52718F" }}>
-                Bir neçə sual — ehtiyacınıza uyğun psixoloqu biz seçək.
+                {t("patAssign.sub")}
               </p>
             </div>
           )}
           <button
             onClick={onClose}
-            aria-label="Bağla"
+            aria-label={t("common.close")}
             style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#9CA3AF", flexShrink: 0 }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -237,10 +238,10 @@ export default function FanusAssignWizard({
               </svg>
             </div>
             <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: "#065F46" }}>
-              Müraciətiniz qəbul edildi!
+              {t("quickReq.successTitle")}
             </h3>
             <p style={{ margin: "0 0 20px", fontSize: 14, color: "#374151" }}>
-              Müraciətiniz operator komandamıza çatdı. Bundan sonra proses belə davam edir:
+              {t("quickReq.successBody")}
             </p>
 
             <div style={{
@@ -248,10 +249,10 @@ export default function FanusAssignWizard({
               borderRadius: 12, padding: "16px 18px", marginBottom: 14, textAlign: "left",
             }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0B1A35", marginBottom: 12 }}>
-                Növbəti addımlar
+                {t("quickReq.stepsTitle")}
               </div>
-              {NEXT_STEPS.map((step, i) => (
-                <div key={step} style={{
+              {NEXT_STEPS.map((stepKey, i) => (
+                <div key={stepKey} style={{
                   display: "flex", gap: 12, alignItems: "flex-start",
                   marginBottom: i === NEXT_STEPS.length - 1 ? 0 : 12,
                 }}>
@@ -260,13 +261,13 @@ export default function FanusAssignWizard({
                     background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 700,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>{i + 1}</span>
-                  <span style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.5, paddingTop: 1 }}>{step}</span>
+                  <span style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.5, paddingTop: 1 }}>{t(stepKey)}</span>
                 </div>
               ))}
             </div>
 
             <p style={{ margin: "0 0 20px", fontSize: 12.5, color: "#6B7280", lineHeight: 1.5 }}>
-              Prosesin gedişatı və psixoloq təyinatı barədə e-poçtunuza bildiriş göndəriləcək.
+              {t("quickReq.emailNote")}
             </p>
 
             {crisisDetected && (
@@ -275,12 +276,11 @@ export default function FanusAssignWizard({
                 borderRadius: 10, padding: "14px 16px", marginBottom: 20, textAlign: "left",
               }}>
                 <strong style={{ display: "block", fontSize: 14, color: "#92400E", marginBottom: 6 }}>
-                  Təcili dəstəyə ehtiyacınız varsa
+                  {t("quickReq.crisisTitle")}
                 </strong>
                 <p style={{ margin: 0, fontSize: 13, color: "#78350F", lineHeight: 1.5 }}>
-                  Müraciətiniz prioritet olaraq qəbul edildi. Özünüzə zərər vermə düşüncələriniz
-                  varsa, gözləməyin — dərhal <strong>103</strong> Təcili Tibbi Yardım xəttinə və ya{" "}
-                  <strong>*1123</strong> Psixoloji Dəstək xəttinə zəng edin.
+                  {t("quickReq.crisisP1")} <strong>103</strong> {t("quickReq.crisisP2")}{" "}
+                  <strong>*1123</strong> {t("quickReq.crisisP3")}
                 </p>
               </div>
             )}
@@ -293,15 +293,15 @@ export default function FanusAssignWizard({
                 border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
               }}
             >
-              Bağla
+              {t("common.close")}
             </button>
           </div>
         ) : (
           <>
             {/* Mərhələ göstəricisi */}
             <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
-              {STEPS.map((label, i) => (
-                <div key={label} style={{ flex: 1 }}>
+              {STEPS.map((labelKey, i) => (
+                <div key={labelKey} style={{ flex: 1 }}>
                   <div style={{
                     height: 4, borderRadius: 999,
                     background: i <= step ? "var(--brand, #1051B7)" : "#E5EAF2",
@@ -310,7 +310,7 @@ export default function FanusAssignWizard({
                     marginTop: 6, fontSize: 11, fontWeight: 600,
                     color: i <= step ? "var(--brand, #1051B7)" : "#9CA3AF",
                   }}>
-                    {label}
+                    {t(labelKey)}
                   </div>
                 </div>
               ))}
@@ -327,25 +327,25 @@ export default function FanusAssignWizard({
                     background: "#F2F6FD", border: "1px solid #D8E2EF", borderRadius: 10,
                     padding: "10px 12px", fontSize: 12.5, color: "#52718F", lineHeight: 1.55,
                   }}>
-                    Bu məlumatlar hesabınızdan götürülür. Dəyişmək üçün profil səhifənizi yeniləyin.
+                    {t("patAssign.accountNote")}
                   </div>
-                  <Field label={locked.name ? "Ad Soyad" : "Ad Soyad *"}>
+                  <Field label={locked.name ? t("patAssign.fName") : t("patAssign.fNameReq")}>
                     <input style={locked.name ? lockedStyle : inputStyle} value={form.name}
                            readOnly={locked.name}
                            onChange={e => set("name")(e.target.value)} />
                   </Field>
-                  <Field label={locked.phone ? "Əlaqə nömrəsi" : "Əlaqə nömrəsi *"}>
+                  <Field label={locked.phone ? t("patAssign.fPhone") : t("patAssign.fPhoneReq")}>
                     <input style={locked.phone ? lockedStyle : inputStyle} value={form.phone}
                            readOnly={locked.phone}
                            onChange={e => set("phone")(e.target.value)}
                            placeholder="+994 XX XXX XX XX" />
                   </Field>
-                  <Field label={locked.email ? "E-poçt" : "E-poçt *"}>
+                  <Field label={locked.email ? t("patAssign.fEmail") : t("patAssign.fEmailReq")}>
                     <input style={locked.email ? lockedStyle : inputStyle} type="email" value={form.email}
                            readOnly={locked.email}
                            onChange={e => set("email")(e.target.value)} />
                   </Field>
-                  <Field label="Yaş (opsional)">
+                  <Field label={t("patAssign.fAge")}>
                     <input style={inputStyle} type="number" min={0} value={form.age} onChange={e => set("age")(e.target.value)} />
                   </Field>
                 </>
@@ -353,18 +353,18 @@ export default function FanusAssignWizard({
 
               {step === 1 && (
                 <>
-                  <Field label="Müraciətin səbəbi *">
+                  <Field label={t("patAssign.fReason")}>
                     <textarea
                       style={{ ...inputStyle, minHeight: 96, resize: "vertical" }}
                       value={form.reason}
                       onChange={e => set("reason")(e.target.value)}
-                      placeholder="Nə ilə bağlı dəstək axtarırsınız?"
+                      placeholder={t("patAssign.reasonPh")}
                     />
                   </Field>
-                  <Field label="Büdcə *">
+                  <Field label={t("patAssign.fBudget")}>
                     <select style={inputStyle} value={form.budget} onChange={e => set("budget")(e.target.value)}>
-                      <option value="">Seçin</option>
-                      {BUDGET_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                      <option value="">{t("patAssign.budgetPh")}</option>
+                      {BUDGET_OPTIONS.map(b => <option key={b.value} value={b.value}>{t(b.key)}</option>)}
                     </select>
                   </Field>
                 </>
@@ -375,7 +375,7 @@ export default function FanusAssignWizard({
                   {/* Tarix və saat AYRI sahələr idi (DatePicker + TimePicker) — indi
                       randevu istəyindəki kimi tək `withTime` seçici: təqvimin altında
                       saat/dəqiqə sətri və "Hazır" düyməsi var, seçim orada bitir. */}
-                  <Field label="Üstünlük verilən vaxt (opsional)">
+                  <Field label={t("patAssign.fPreferred")}>
                     <DatePicker
                       withTime
                       value={preferredAt}
@@ -386,7 +386,7 @@ export default function FanusAssignWizard({
                       min={azTodayIso()}
                     />
                   </Field>
-                  <Field label="Əlavə qeydlər (opsional)">
+                  <Field label={t("patAssign.fNotes")}>
                     <textarea
                       style={{ ...inputStyle, minHeight: 72, resize: "vertical" }}
                       value={form.notes}
@@ -408,16 +408,16 @@ export default function FanusAssignWizard({
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
                 {step > 0 && (
                   <button type="button" onClick={back} disabled={sending} className="fanus-btn fanus-btn-ghost">
-                    Geri
+                    {t("common.back")}
                   </button>
                 )}
                 {step < STEPS.length - 1 ? (
                   <button type="button" onClick={next} className="fanus-btn fanus-btn-primary">
-                    İrəli
+                    {t("common.next")}
                   </button>
                 ) : (
                   <button type="button" onClick={submit} disabled={sending} className="fanus-btn fanus-btn-primary">
-                    {sending ? "Göndərilir…" : "Müraciəti göndər"}
+                    {sending ? t("common.sending") : t("quickReq.submit")}
                   </button>
                 )}
               </div>

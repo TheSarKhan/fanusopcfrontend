@@ -22,8 +22,17 @@ import AddToCalendarMenu from "@/components/AddToCalendarMenu";
 import JoinSessionButton from "@/components/JoinSessionButton";
 import { toast } from "@/components/Toast";
 import { STATUS, PKG_STATUS, PA_STYLE, SlotPicker, initialsOf } from "../../shared";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { Locale } from "@/lib/i18n/messages";
+
+/** Sıra sayı — AZ-də sait ahəngli şəkilçi ("3-cü"), digər dillərdə sadə rəqəm
+ *  (lüğətdəki ifadə özü formatı verir: "Session #3", "3. seans", "Сессия №3"). */
+export function ordinalFor(locale: Locale, n: number): string {
+  return locale === "az" ? azOrdinal(n) : String(n);
+}
 
 export default function PatientPackageDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { t, locale } = useT();
   const { id } = use(params);
   const packageId = Number(id);
 
@@ -75,7 +84,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
   // Əl ilə seçilmiş vaxt — slot ilə eyni axın: operatora gedir, təsdiqdən sonra
   // randevuya çevrilir. Backend iş qrafikini/dolu vaxtı yoxlayır (uyğun deyilsə xəta).
   const scheduleManual = async () => {
-    if (!manualDateTime) { toast("Tarix və saat seçin", "error"); return; }
+    if (!manualDateTime) { toast(t("patPkg.errPickDateTime"), "error"); return; }
     setBusy(true);
     try {
       await patientApi.schedulePackageSession(packageId, { startAt: azLocalToISO(manualDateTime) });
@@ -87,7 +96,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
   const backLink = (
     <Link href="/patient/appointments?tab=paketler" style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none", marginBottom: 10 }}>
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-      Randevulara qayıt
+      {t("patHistory.back")}
     </Link>
   );
 
@@ -95,7 +104,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
     return (
       <div className="psy-appt-page" style={{ width: "100%" }}>
         {backLink}
-        <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>Yüklənir…</div>
+        <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>{t("common.loading")}</div>
       </div>
     );
   }
@@ -105,7 +114,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
       <div className="psy-appt-page" style={{ width: "100%" }}>
         {backLink}
         <div style={{ background: "#fff", border: "1px solid #EDF1F8", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: 40, textAlign: "center", fontSize: 14, color: "var(--oxford-60)", fontWeight: 600 }}>
-          Paket tapılmadı
+          {t("patPkg.notFound")}
         </div>
       </div>
     );
@@ -129,9 +138,9 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
               <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
             </svg>
-            Paket
+            {t("patPkg.label")}
           </span>
-          <span style={{ background: st.bg, color: st.color, fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>{st.label}</span>
+          <span style={{ background: st.bg, color: st.color, fontSize: 12, fontWeight: 700, padding: "5px 11px", borderRadius: 999 }}>{t(st.labelKey)}</span>
         </div>
 
         <h1 style={{ margin: "0 0 10px", fontSize: 21, fontWeight: 700, letterSpacing: "-.01em", color: "var(--oxford)" }}>{pkg.packageName}</h1>
@@ -146,7 +155,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
             <span style={{ display: "inline-flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>
               {/* pkg.remaining = planlaşdırılmamış rezerv; "qalıb" kimi oxunmasın deyə aşağıda ayrıca göstərilir. */}
-              <span>{completed}/{pkg.total} seans keçirilib</span>
+              <span>{t("patPkg.doneOfTotal", { done: completed, total: pkg.total })}</span>
             </span>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>{Math.round(completedPct)}%</span>
           </div>
@@ -155,19 +164,19 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
             <div style={{ width: `${plannedPct}%`, height: "100%", background: "#9DBCEB" }} />
           </div>
           <div style={{ display: "flex", gap: 12, marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)", flexWrap: "wrap" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1051B7", flex: "none" }} />{completed} keçirilib</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#9DBCEB", flex: "none" }} />{planned} planlanıb</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--brand-100)", flex: "none" }} />{pkg.remaining} planlanmamış</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1051B7", flex: "none" }} />{t("patAppt.pkgLegendDone", { n: completed })}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#9DBCEB", flex: "none" }} />{t("patAppt.pkgLegendPlanned", { n: planned })}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--brand-100)", flex: "none" }} />{t("patAppt.pkgLegendUnplanned", { n: pkg.remaining })}</span>
           </div>
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 130, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 3 }}>Ödənilib</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 3 }}>{t("patAppt.pkgPaid")}</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{formatAzn(pkg.pricePaid)}</div>
           </div>
           <div style={{ flex: 1, minWidth: 130, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 3 }}>Alınıb</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--oxford-60)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 3 }}>{t("patAppt.pkgPurchased")}</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{azFormatDate(pkg.purchasedAt)}</div>
           </div>
         </div>
@@ -175,7 +184,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
         {pkg.status === "ACTIVE" && (
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--brand-50)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "9px 12px", marginTop: 14, fontSize: 12.5, color: "var(--brand-700)", fontWeight: 600, lineHeight: 1.45 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ flex: "none", marginTop: 2 }}><circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" /></svg>
-            <span>Bu psixoloqla aldığınız yeni seanslar, balans qaldıqca, avtomatik bu paketdən hesablanır.</span>
+            <span>{t("patPkg.autoDeductHint")}</span>
           </div>
         )}
       </div>
@@ -183,7 +192,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
       {/* ── Seanslar ── */}
       <section style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--oxford)", marginBottom: 12 }}>
-          Paketin seansları
+          {t("patPkg.sessionsTitle")}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {sessions.map((a, i) => (
@@ -191,8 +200,10 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
           ))}
           {Array.from({ length: Math.max(0, pkg.remaining) }, (_, i) => (
             <div key={`empty-${i}`} style={{ display: "flex", alignItems: "center", gap: 12, background: "#F8FAFD", border: "1px dashed #C7DAF5", borderRadius: 12, padding: "12px 15px" }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)", minWidth: 74 }}>{azOrdinal(sessions.length + i + 1)} seans</span>
-              <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 500 }}>Hələ planlanmayıb</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)", minWidth: 74 }}>
+                {t("appt.sessionNumber", { ordinal: ordinalFor(locale, sessions.length + i + 1) })}
+              </span>
+              <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 500 }}>{t("patPkg.notPlanned")}</span>
             </div>
           ))}
         </div>
@@ -207,7 +218,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" />
           </svg>
-          Seans planla
+          {t("patPkg.planCta")}
         </button>
       )}
 
@@ -224,26 +235,26 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
                 </svg>
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>Seans planla</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{t("patPkg.planCta")}</div>
                 <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 2, lineHeight: 1.45 }}>
-                  Seçdiyiniz vaxt operatora gedəcək, təsdiqdən sonra randevuya çevriləcək.
+                  {t("patPkg.planModalSub")}
                 </div>
               </div>
-              <button type="button" onClick={() => setPlanning(false)} aria-label="Bağla"
+              <button type="button" onClick={() => setPlanning(false)} aria-label={t("common.close")}
                 style={{ width: 34, height: 34, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F2F6FD", border: "none", borderRadius: 9, color: "var(--oxford-60)", cursor: "pointer" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
               </button>
             </div>
 
             <div style={{ padding: "18px 22px 22px" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--brand-700)", marginBottom: 10 }}>Psixoloqun açıq vaxtından seçin</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--brand-700)", marginBottom: 10 }}>{t("patPkg.pickFromSlots")}</div>
               <SlotPicker psychologistId={pkg.psychologistId} busy={busy} onPick={scheduleSlot}
-                confirmNote="Seçdiyiniz vaxt operatora göndəriləcək, təsdiqdən sonra randevuya çevriləcək." />
+                confirmNote={t("patPkg.manualHint")} />
 
               {/* Əl ilə daxiletmə — boş saat siyahısında olmayan vaxt üçün. */}
               <button type="button" onClick={() => setManualOpen(o => !o)}
                 style={{ marginTop: 14, background: "none", border: "none", color: "var(--brand-700)", fontSize: 12.5, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
-                {manualOpen ? "Əl ilə daxiletməni gizlət" : "Və ya vaxtı əl ilə daxil et"}
+                {manualOpen ? t("patPkg.manualHide") : t("patPkg.manualShow")}
               </button>
               {manualOpen && (
                 <div style={{ marginTop: 10, background: "var(--brand-50)", border: "1px solid #D6E2F7", borderRadius: 10, padding: 12 }}>
@@ -252,11 +263,11 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
                     <DatePicker withTime value={manualDateTime} onChange={v => setManualDateTime(v)} placeholder="gg.aa.iiii ss:dd" theme="light" size="sm" style={{ flex: "1 1 200px" }} />
                     <button type="button" onClick={scheduleManual} disabled={busy}
                       style={{ flex: "none", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 16px", fontSize: 13, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>
-                      {busy ? "Göndərilir…" : "Göndər"}
+                      {busy ? t("common.sending") : t("common.submit")}
                     </button>
                   </div>
                   <div style={{ fontSize: 11.5, color: "var(--oxford-60)", marginTop: 8, lineHeight: 1.5 }}>
-                    Seçdiyiniz vaxt operatora göndəriləcək, təsdiqdən sonra randevuya çevriləcək.
+                    {t("patPkg.manualHint")}
                   </div>
                 </div>
               )}
@@ -272,6 +283,7 @@ export default function PatientPackageDetailPage({ params }: { params: Promise<{
 /* ─── Paket seans sətri ──────────────────────────────────────────────────── */
 
 function SessionRow({ a, ordinal, now }: { a: AppointmentDetail; ordinal: number; now: Date }) {
+  const { t, locale } = useT();
   const st = STATUS[a.status] ?? STATUS.PENDING;
   const when = a.startAt ?? a.requestedStartAt;
   const isUpcoming = !!a.startAt
@@ -284,21 +296,23 @@ function SessionRow({ a, ordinal, now }: { a: AppointmentDetail; ordinal: number
   const isProposal = (a.status === "PENDING" || a.status === "NEW") && !a.startAt;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: "12px 15px", opacity: isDone ? .8 : 1 }}>
-      <span style={{ fontSize: 13, fontWeight: 700, color: isDone ? "var(--oxford-60)" : "var(--oxford)", minWidth: 74 }}>{azOrdinal(ordinal)} seans</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: isDone ? "var(--oxford-60)" : "var(--oxford)", minWidth: 74 }}>
+        {t("appt.sessionNumber", { ordinal: ordinalFor(locale, ordinal) })}
+      </span>
       <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
         <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>
           {when
-            ? `${azFormatDate(when)}, ${azFormatTime(when)}${isProposal ? " (təklif edilib)" : ""}`
-            : "Operator vaxtı təyin edəcək"}
+            ? `${azFormatDate(when)}, ${azFormatTime(when)}${isProposal ? ` ${t("patPkg.proposedSuffix")}` : ""}`
+            : t("patPkg.operatorWillSet")}
         </span>
         {isProposal && (
           <span style={{ fontSize: 11.5, fontWeight: 600, color: "#92400E", display: "inline-flex", alignItems: "center", gap: 5 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-            Vaxt təklifiniz göndərilib, operator təsdiqi gözlənilir
+            {t("patPkg.proposalHint")}
           </span>
         )}
       </div>
-      <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>{isProposal ? "Təsdiq gözlənilir" : st.label}</span>
+      <span style={{ background: st.bg, color: st.color, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>{isProposal ? t("patPkg.awaitingApproval") : t(st.labelKey)}</span>
       <span style={{ flex: 1 }} />
       {isUpcoming && (
         <div style={{ display: "flex", gap: 7 }}>

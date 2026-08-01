@@ -12,48 +12,50 @@ import {
   type Psychologist,
 } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { withSlugs } from "@/lib/slug";
 import { getStoredUser } from "@/lib/auth";
 import { azFormatTime } from "@/lib/datetime";
 import { FEATURE_GOALS } from "@/lib/features";
 
-const STATUS_LABEL: Record<string, { label: string; bg: string; fg: string }> = {
-  PENDING:               { label: "Gözlənilir",      bg: "#FEF3C7", fg: "#92400E" },
-  ASSIGNED:              { label: "Təyin edilib",    bg: "var(--brand-50)", fg: "var(--brand-700)" },
-  CONFIRMED:             { label: "Təsdiqlənib",     bg: "#D1FAE5", fg: "#065F46" },
-  AWAITING_CONFIRMATION: { label: "Təsdiq gözlənir", bg: "#FEF3C7", fg: "#92400E" },
-  CANCEL_REQUESTED:      { label: "Ləğv gözlənir",  bg: "#FEE2E2", fg: "#991B1B" },
-  COMPLETED:             { label: "Tamamlandı",      bg: "#F3F4F6", fg: "#374151" },
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
+const STATUS_LABEL: Record<string, { labelKey: MessageKey; bg: string; fg: string }> = {
+  PENDING:               { labelKey: "apptStatus.pending",         bg: "#FEF3C7", fg: "#92400E" },
+  ASSIGNED:              { labelKey: "apptStatus.assigned",        bg: "var(--brand-50)", fg: "var(--brand-700)" },
+  CONFIRMED:             { labelKey: "apptStatus.confirmed",       bg: "#D1FAE5", fg: "#065F46" },
+  AWAITING_CONFIRMATION: { labelKey: "apptStatus.awaiting",        bg: "#FEF3C7", fg: "#92400E" },
+  CANCEL_REQUESTED:      { labelKey: "apptStatus.cancelRequested", bg: "#FEE2E2", fg: "#991B1B" },
+  COMPLETED:             { labelKey: "apptStatus.completed",       bg: "#F3F4F6", fg: "#374151" },
 };
 
-function greet(): string {
+function greet(t: Translate): string {
   const h = new Date().getHours();
-  if (h < 6) return "Xoş gecələr";
-  if (h < 12) return "Sabahınız xeyir";
-  if (h < 18) return "Günortanız xeyir";
-  return "Axşamınız xeyir";
+  if (h < 6) return t("patDash.greetNight");
+  if (h < 12) return t("patDash.greetMorning");
+  if (h < 18) return t("patDash.greetAfternoon");
+  return t("patDash.greetEvening");
 }
 
-function fmtDay(iso: string) {
+function fmtDay(t: Translate, iso: string) {
   const d = new Date(iso);
   const today = new Date();
   const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
   const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
-  if (same(d, today)) return "Bu gün";
-  if (same(d, tomorrow)) return "Sabah";
-  const months = ["Yanvar","Fevral","Mart","Aprel","May","İyun","İyul","Avqust","Sentyabr","Oktyabr","Noyabr","Dekabr"];
-  return `${d.getDate()} ${months[d.getMonth()]}`;
+  if (same(d, today)) return t("common.today");
+  if (same(d, tomorrow)) return t("common.tomorrow");
+  return `${d.getDate()} ${t(`months.m${d.getMonth() + 1}` as MessageKey)}`;
 }
 
-function timeUntil(target: Date): { text: string; urgent: boolean } {
+function timeUntil(t: Translate, target: Date): { text: string; urgent: boolean } {
   const ms = target.getTime() - Date.now();
-  if (ms < 0) return { text: "indi başladı", urgent: true };
+  if (ms < 0) return { text: t("patDash.startedNow"), urgent: true };
   const m = Math.floor(ms / 60000);
-  if (m < 60) return { text: `${m} dəq qaldı`, urgent: m <= 15 };
+  if (m < 60) return { text: t("patDash.minLeft", { n: m }), urgent: m <= 15 };
   const h = Math.floor(m / 60);
-  if (h < 24) return { text: `${h} saat ${m % 60} dəq qaldı`, urgent: false };
+  if (h < 24) return { text: t("patDash.hourMinLeft", { h, m: m % 60 }), urgent: false };
   const d = Math.floor(h / 24);
-  return { text: `${d} gün qaldı`, urgent: false };
+  return { text: t("patDash.daysLeft", { n: d }), urgent: false };
 }
 
 function initials(name?: string | null): string {
@@ -185,7 +187,7 @@ export default function PatientDashboard() {
     <div className="pdash">
       {/* ── Hero ───────────────────────────────────────────────────────── */}
       <PatientHero
-        userName={user?.firstName ?? "Pasiyent"}
+        userName={user?.firstName ?? t("patDash.guestName")}
         next={next}
       />
 
@@ -196,17 +198,17 @@ export default function PatientDashboard() {
           {/* ── Engagement strip ─────────────────────────────────────── */}
           <div className="pnl-stats">
             <StatTile
-              label="Bu ay seans"
+              label={t("patDash.statMonthSessions")}
               value={monthStats.completed}
               href="/patient/appointments"
             />
             <StatTile
-              label="Aktiv tapşırıq"
+              label={t("patDash.statActiveTasks")}
               value={taskStats.pending}
               href="/patient/homework"
             />
             <StatTile
-              label="Bitirilmiş tapşırıq"
+              label={t("patDash.statDoneTasks")}
               value={taskStats.completed}
               href="/patient/homework"
             />
@@ -217,12 +219,12 @@ export default function PatientDashboard() {
           <div className="pnl-2col" style={{ marginBottom: 16 }}>
             <Card>
               <CardHead
-                title="Sizə tövsiyə olunan psixoloqlar"
-                subtitle={favorites.length > 0 ? "Sevimlilərinizdən və yüksək reytinqlilərdən" : "Yüksək reytinqli mütəxəssislər"}
-                link={{ href: "/patient/psychologists", label: "Hamısına bax →" }}
+                title={t("patDash.recTitle")}
+                subtitle={favorites.length > 0 ? t("patDash.recSubFav") : t("patDash.recSubTop")}
+                link={{ href: "/patient/psychologists", label: t("patDash.seeAll") }}
               />
               {recommended.length === 0 ? (
-                <Empty msg="Hələ aktiv psixoloq yoxdur." />
+                <Empty msg={t("patDash.recEmpty")} />
               ) : (
                 <div>
                   {recommended.slice(0, 4).map(p => (
@@ -233,9 +235,9 @@ export default function PatientDashboard() {
             </Card>
 
             <Card>
-              <CardHead title="Son aktivlik" subtitle="Randevular və tapşırıqlar" />
+              <CardHead title={t("patDash.activityTitle")} subtitle={t("patDash.activitySub")} />
               {activityFeed.length === 0 ? (
-                <Empty msg="Hələ aktivlik yoxdur. İlk randevunuzu alın." />
+                <Empty msg={t("patDash.activityEmpty")} />
               ) : (
                 <div>
                   {activityFeed.map((it, i) => (
@@ -258,9 +260,9 @@ export default function PatientDashboard() {
               {FEATURE_GOALS && activeGoals.length > 0 && (
                 <Card>
                   <CardHead
-                    title="Aktiv hədəflərim"
-                    subtitle={`${goals.length} hədəfdən ${activeGoals.length}-i açıqdır`}
-                    link={{ href: "/patient/goals", label: "Hamısına bax →" }}
+                    title={t("patDash.goalsTitle")}
+                    subtitle={t("patDash.goalsSub", { total: goals.length, open: activeGoals.length })}
+                    link={{ href: "/patient/goals", label: t("patDash.seeAll") }}
                   />
                   <div>
                     {activeGoals.map(g => (
@@ -272,7 +274,7 @@ export default function PatientDashboard() {
                           </span>
                           <span className="pnl-row__val" style={{ fontSize: 13 }}>{g.progressPct}%</span>
                         </div>
-                        <div className="pnl-row__meta">{g.psychologistName ?? "Psixoloqunuz"}</div>
+                        <div className="pnl-row__meta">{g.psychologistName ?? t("pat.yourPsy")}</div>
                         <ProgressBar pct={g.progressPct} />
                       </Link>
                     ))}
@@ -289,7 +291,7 @@ export default function PatientDashboard() {
                         ? t("course.dashboardLine", {
                             done: activeCourse.done,
                             total: activeCourse.total,
-                            next: `${fmtDay((activeCourse.upcoming.startAt ?? activeCourse.upcoming.requestedStartAt)!)} ${azFormatTime((activeCourse.upcoming.startAt ?? activeCourse.upcoming.requestedStartAt)!)}`,
+                            next: `${fmtDay(t, (activeCourse.upcoming.startAt ?? activeCourse.upcoming.requestedStartAt)!)} ${azFormatTime((activeCourse.upcoming.startAt ?? activeCourse.upcoming.requestedStartAt)!)}`,
                           })
                         : t("course.dashboardNoNext", {
                             done: activeCourse.done,
@@ -308,12 +310,12 @@ export default function PatientDashboard() {
 
             {taskStats.overdue > 0 && (
               <Card tone="warn">
-                <CardHead title={`${taskStats.overdue} gecikmiş tapşırıq`} />
+                <CardHead title={t("patDash.overdueTitle", { n: taskStats.overdue })} />
                 <p style={{ margin: 0, fontSize: 13, color: "#92400E", lineHeight: 1.6 }}>
-                  Vaxtı keçmiş tapşırıqları bağlayın və psixoloqunuza geri bildirim göndərin.
+                  {t("patDash.overdueBody")}
                 </p>
                 <Link href="/patient/homework" className="pnl-link" style={{ marginTop: 12, display: "inline-block" }}>
-                  Tapşırıqlara bax →
+                  {t("patDash.overdueCta")}
                 </Link>
               </Card>
             )}
@@ -327,12 +329,9 @@ export default function PatientDashboard() {
 /* ─── Subcomponents ──────────────────────────────────────────────────── */
 
 function PatientHero({ userName, next }: { userName: string; next: AppointmentDetail | null }) {
+  const { t } = useT();
   const today = new Date();
-  const dayLabel = (() => {
-    const days = ["Bazar","Bazar ertəsi","Çərşənbə axşamı","Çərşənbə","Cümə axşamı","Cümə","Şənbə"];
-    const months = ["Yanvar","Fevral","Mart","Aprel","May","İyun","İyul","Avqust","Sentyabr","Oktyabr","Noyabr","Dekabr"];
-    return `${days[today.getDay()]}, ${today.getDate()} ${months[today.getMonth()]}`;
-  })();
+  const dayLabel = `${t(`days.d${today.getDay()}` as MessageKey)}, ${today.getDate()} ${t(`months.m${today.getMonth() + 1}` as MessageKey)}`;
 
   const status = next ? STATUS_LABEL[next.status] : null;
 
@@ -343,12 +342,12 @@ function PatientHero({ userName, next }: { userName: string; next: AppointmentDe
           isə adi kart. */}
       <div className="pnl-head">
         <div>
-          <h1 className="pnl-head__title">{greet()}, {userName}</h1>
+          <h1 className="pnl-head__title">{greet(t)}, {userName}</h1>
           <p className="pnl-head__sub">{dayLabel}</p>
         </div>
         <div className="pnl-head__actions">
           <Link href="/patient/psychologists" className={next ? "pnl-btn pnl-btn--ghost" : "pnl-btn"}>
-            Psixoloq tap
+            {t("patDash.findPsy")}
           </Link>
         </div>
       </div>
@@ -356,15 +355,15 @@ function PatientHero({ userName, next }: { userName: string; next: AppointmentDe
       <div className="pnl-card" style={{ marginBottom: 16 }}>
         <div className="pnl-card__head">
           <div>
-            <h2 className="pnl-card__title">Yaxınlaşan seans</h2>
+            <h2 className="pnl-card__title">{t("patDash.upcomingTitle")}</h2>
             {!next && (
               <p className="pnl-card__sub">
-                Hələ planlaşdırılmış seans yoxdur — sizə uyğun mütəxəssisi seçin.
+                {t("patDash.upcomingEmpty")}
               </p>
             )}
           </div>
           {next && (
-            <Link href="/patient/appointments" className="pnl-link">Detalları aç →</Link>
+            <Link href="/patient/appointments" className="pnl-link">{t("patDash.openDetails")}</Link>
           )}
         </div>
 
@@ -378,14 +377,14 @@ function PatientHero({ userName, next }: { userName: string; next: AppointmentDe
               }}>
                 {azFormatTime(next.startAt)}
               </span>
-              <span style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{fmtDay(next.startAt)}</span>
+              <span style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{fmtDay(t, next.startAt)}</span>
             </span>
 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="pnl-row__title" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {next.psychologistName ?? "Psixoloq təyin olunur"}
+                {next.psychologistName ?? t("patDash.psyPending")}
               </div>
-              <div className="pnl-row__meta">{timeUntil(new Date(next.startAt)).text}</div>
+              <div className="pnl-row__meta">{timeUntil(t, new Date(next.startAt)).text}</div>
             </div>
 
             {/* Pill deyil — rəngli nöqtə + düz mətn. */}
@@ -395,7 +394,7 @@ function PatientHero({ userName, next }: { userName: string; next: AppointmentDe
                 background: status?.fg ?? "var(--oxford-60)",
               }} />
               <span style={{ fontSize: 12.5, color: "var(--oxford-60)", whiteSpace: "nowrap" }}>
-                {status?.label ?? next.status}
+                {status ? t(status.labelKey) : next.status}
               </span>
             </span>
           </div>
@@ -457,6 +456,7 @@ function StatTile({
 }
 
 function PsyRecCard({ p, favorite }: { p: Psychologist; favorite: boolean }) {
+  const { t } = useT();
   return (
     // Sətir formatı: avatar + ad/ixtisas. Reytinq rəqəmi, "çip"lər və ayrıca
     // kart çərçivəsi götürülüb — siyahı sakit oxunur.
@@ -477,7 +477,7 @@ function PsyRecCard({ p, favorite }: { p: Psychologist; favorite: boolean }) {
         <div className="pnl-row__title" style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
           {favorite && (
-            <span aria-label="Sevimli" style={{ color: "var(--rose, #C97D7D)", display: "inline-flex", flex: "none" }}>
+            <span aria-label={t("patDash.favAria")} style={{ color: "var(--rose, #C97D7D)", display: "inline-flex", flex: "none" }}>
               <IconHeart small />
             </span>
           )}
@@ -516,33 +516,35 @@ function FeedStatus({ color, label }: { color: string; label: string }) {
 }
 
 function ApptActivityRow({ a }: { a: AppointmentDetail }) {
+  const { t } = useT();
   const ts = a.startAt ?? a.createdAt;
-  const meta = STATUS_LABEL[a.status] ?? { label: a.status, bg: "#F3F4F6", fg: "#374151" };
+  const meta = STATUS_LABEL[a.status];
   return (
     <Link href="/patient/appointments" className="pnl-row" style={{ textDecoration: "none", color: "inherit" }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="pnl-row__title" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {a.psychologistName ?? "Psixoloq təyin olunur"}
+          {a.psychologistName ?? t("patDash.psyPending")}
         </div>
-        <div className="pnl-row__meta">{ts && <>{fmtDay(ts)}, {azFormatTime(ts)}</>}</div>
+        <div className="pnl-row__meta">{ts && <>{fmtDay(t, ts)}, {azFormatTime(ts)}</>}</div>
       </div>
-      <FeedStatus color={meta.fg} label={meta.label} />
+      <FeedStatus color={meta?.fg ?? "#374151"} label={meta ? t(meta.labelKey) : a.status} />
     </Link>
   );
 }
 
-function TaskActivityRow({ t }: { t: Homework }) {
-  const status = t.status === "COMPLETED" ? { label: "Bitdi", bg: "#D1FAE5", fg: "#065F46" }
-    : t.status === "IN_PROGRESS" ? { label: "Davam edir", bg: "#DBEAFE", fg: "#1E40AF" }
-    : { label: "Gözləyir", bg: "#FEF3C7", fg: "#92400E" };
+function TaskActivityRow({ t: hw }: { t: Homework }) {
+  const { t } = useT();
+  const status = hw.status === "COMPLETED" ? { label: t("patDash.taskDone"), fg: "#065F46" }
+    : hw.status === "IN_PROGRESS" ? { label: t("patDash.taskInProgress"), fg: "#1E40AF" }
+    : { label: t("patDash.taskPending"), fg: "#92400E" };
   return (
     <Link href="/patient/homework" className="pnl-row" style={{ textDecoration: "none", color: "inherit" }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="pnl-row__title" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {t.title}
+          {hw.title}
         </div>
         <div className="pnl-row__meta">
-          {fmtDay(t.completedAt ?? t.createdAt)}
+          {fmtDay(t, hw.completedAt ?? hw.createdAt)}
         </div>
       </div>
       <FeedStatus color={status.fg} label={status.label} />

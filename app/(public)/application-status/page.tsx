@@ -4,15 +4,11 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getApplicationStatus, type ApplicationStatusResult } from "@/lib/api";
-
-function fmtDate(iso?: string | null) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()}`;
-}
+import { azFormatDate } from "@/lib/datetime";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function ApplicationStatusPage() {
+  const { t } = useT();
   const params = useSearchParams();
   const token = params.get("token");
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
@@ -49,8 +45,8 @@ export default function ApplicationStatusPage() {
                 <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-[#1A2535]">Yoxlanılır...</h2>
-            <p className="text-[#52718F] text-sm mt-2">Müraciətinizin statusu yüklənir</p>
+            <h2 className="text-xl font-bold text-[#1A2535]">{t("appStatus.checking")}</h2>
+            <p className="text-[#52718F] text-sm mt-2">{t("appStatus.checkingSub")}</p>
           </>
         )}
 
@@ -61,16 +57,16 @@ export default function ApplicationStatusPage() {
                 <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-[#1A2535] mb-2">Link etibarsızdır</h2>
+            <h2 className="text-xl font-bold text-[#1A2535] mb-2">{t("appStatus.invalidTitle")}</h2>
             <p className="text-[#52718F] text-sm leading-relaxed mb-6">
-              Müraciət statusu linki etibarsızdır və ya vaxtı bitib. Zəhmət olmasa e-poçtunuzdakı düyməni yenidən klikləyin.
+              {t("appStatus.invalidBody")}
             </p>
             <Link
               href="/contact"
               className="block py-3 rounded-xl text-sm font-bold"
               style={{ background: "var(--brand)", color: "#fff" }}
             >
-              Bizimlə əlaqə
+              {t("appStatus.contactCta")}
             </Link>
           </>
         )}
@@ -82,22 +78,21 @@ export default function ApplicationStatusPage() {
                 <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-[#1A2535] mb-2">Müraciətiniz baxılır</h2>
+            <h2 className="text-xl font-bold text-[#1A2535] mb-2">{t("appStatus.pendingTitle")}</h2>
             <p className="text-[#52718F] text-sm leading-relaxed mb-2">
-              {data.firstName ? `Salam, ${data.firstName}! ` : ""}
-              Müraciətiniz qəbul edilib və komandamız sənədlərinizi yoxlayır.
-              Nəticə barədə e-poçt vasitəsilə bildiriş alacaqsınız.
+              {data.firstName ? `${t("appStatus.pendingGreeting", { name: data.firstName })} ` : ""}
+              {t("appStatus.pendingBody")}
             </p>
             <p className="text-[#8AAABF] text-xs leading-relaxed mb-6">
-              Adətən bu proses 2–5 iş günü ərzində tamamlanır.
-              {data.submittedAt ? ` Göndərilmə tarixi: ${fmtDate(data.submittedAt)}.` : ""}
+              {t("appStatus.pendingEta")}
+              {data.submittedAt ? ` ${t("appStatus.submittedAt", { date: azFormatDate(data.submittedAt) })}` : ""}
             </p>
             <Link
               href="/"
               className="block py-3 rounded-xl text-sm font-bold"
               style={{ background: "var(--bg-blue)", color: "var(--oxford)" }}
             >
-              Ana səhifəyə qayıt
+              {t("regPage.backHome")}
             </Link>
           </>
         )}
@@ -109,17 +104,17 @@ export default function ApplicationStatusPage() {
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-[#1A2535] mb-2">Müraciətiniz təsdiqləndi!</h2>
+            <h2 className="text-xl font-bold text-[#1A2535] mb-2">{t("appStatus.approvedTitle")}</h2>
             <p className="text-[#52718F] text-sm leading-relaxed mb-6">
-              {data.firstName ? `Təbriklər, ${data.firstName}! ` : ""}
-              Artıq mövcud email və şifrənizlə psixoloq panelinə daxil ola bilərsiniz.
+              {data.firstName ? `${t("appStatus.approvedGreeting", { name: data.firstName })} ` : ""}
+              {t("appStatus.approvedBody")}
             </p>
             <Link
               href="/login"
               className="block py-3 rounded-xl text-sm font-bold"
               style={{ background: "var(--brand)", color: "#fff" }}
             >
-              Daxil ol
+              {t("auth.loginCta")}
             </Link>
           </>
         )}
@@ -131,9 +126,9 @@ export default function ApplicationStatusPage() {
                 <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-[#1A2535] mb-2">Müraciətiniz qəbul edilmədi</h2>
+            <h2 className="text-xl font-bold text-[#1A2535] mb-2">{t("appStatus.rejectedTitle")}</h2>
             <p className="text-[#52718F] text-sm leading-relaxed mb-3">
-              Təəssüf ki, hazırda müraciətinizi təsdiqləyə bilmədik.
+              {t("appStatus.rejectedBody")}
             </p>
             {data.adminNote && (
               <div style={{
@@ -141,7 +136,7 @@ export default function ApplicationStatusPage() {
                 padding: "10px 14px", margin: "0 0 16px", textAlign: "left",
               }}>
                 <p style={{ margin: 0, color: "#991B1B", fontSize: 13 }}>
-                  <strong>Qeyd:</strong> {data.adminNote}
+                  <strong>{t("appStatus.noteLabel")}</strong> {data.adminNote}
                 </p>
               </div>
             )}
@@ -150,7 +145,7 @@ export default function ApplicationStatusPage() {
               className="block py-3 rounded-xl text-sm font-bold"
               style={{ background: "var(--brand)", color: "#fff" }}
             >
-              Bizimlə əlaqə
+              {t("appStatus.contactCta")}
             </Link>
           </>
         )}

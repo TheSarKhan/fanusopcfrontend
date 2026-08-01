@@ -4,22 +4,18 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { patientApi, type TestAssignment } from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
-
-function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const months = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
-  const d = new Date(iso.includes("T") ? iso : iso + "T00:00:00");
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
-}
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
+import { azFormatDate } from "@/lib/datetime";
 
 function isDone(a: TestAssignment): boolean {
   return a.status === "COMPLETED" || a.hasResult;
 }
 
-const STATUS_META: Record<string, { label: string; bg: string; fg: string; border: string }> = {
-  ASSIGNED:    { label: "Təyin edilib", bg: "var(--brand-50)", fg: "var(--brand-700)", border: "var(--brand-100)" },
-  IN_PROGRESS: { label: "Davam edir",   bg: "#FEF3C7",         fg: "#92400E",          border: "#FDE68A" },
-  COMPLETED:   { label: "Tamamlandı",   bg: "#D1FAE5",         fg: "#065F46",          border: "#A7F3D0" },
+const STATUS_META: Record<string, { labelKey: MessageKey; bg: string; fg: string; border: string }> = {
+  ASSIGNED:    { labelKey: "patTests.statusAssigned",   bg: "var(--brand-50)", fg: "var(--brand-700)", border: "var(--brand-100)" },
+  IN_PROGRESS: { labelKey: "patTests.statusInProgress", bg: "#FEF3C7",         fg: "#92400E",          border: "#FDE68A" },
+  COMPLETED:   { labelKey: "patTests.statusCompleted",  bg: "#D1FAE5",         fg: "#065F46",          border: "#A7F3D0" },
 };
 
 function statusMeta(a: TestAssignment) {
@@ -28,6 +24,7 @@ function statusMeta(a: TestAssignment) {
 }
 
 export default function PatientTestsPage() {
+  const { t } = useT();
   const [items, setItems] = useState<TestAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -41,10 +38,10 @@ export default function PatientTestsPage() {
 
   return (
     <div className="pgoals">
-      <PageHeader title="Testlərim" subtitle="Psixoloqunuzun sizə təyin etdiyi psixoloji testlər. Testi həll edin və nəticənizi dərhal görün." />
+      <PageHeader title={t("patTests.title")} subtitle={t("patTests.sub")} />
 
       {loading ? (
-        <div className="pgoals__loading">Yüklənir…</div>
+        <div className="pgoals__loading">{t("common.loading")}</div>
       ) : err ? (
         <div className="pgoals__error">{err}</div>
       ) : items.length === 0 ? (
@@ -54,16 +51,16 @@ export default function PatientTestsPage() {
               <path d="M9 2h6a2 2 0 0 1 2 2v2H7V4a2 2 0 0 1 2-2z" /><path d="M5 4h2v18a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm14 0h-2v18a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="9" y1="12" x2="15" y2="12" /><line x1="9" y1="16" x2="13" y2="16" />
             </svg>
           </div>
-          <div className="pgoals__empty-title">Hələ test təyin edilməyib</div>
+          <div className="pgoals__empty-title">{t("patTests.emptyTitle")}</div>
           <p className="pgoals__empty-body">
-            Psixoloqunuz sizə test təyin etdikdə burada görünəcək. Növbəti seansda mövzunu müzakirə edə bilərsiniz.
+            {t("patTests.emptyBody")}
           </p>
-          <Link href="/patient/appointments" className="pgoals__empty-cta">Randevulara bax →</Link>
+          <Link href="/patient/appointments" className="pgoals__empty-cta">{t("patTests.emptyCta")}</Link>
         </div>
       ) : (
         <section className="pgoals__section">
           <div className="pgoals__section-head">
-            <h2>Bütün testlər</h2>
+            <h2>{t("patTests.allTests")}</h2>
             <span className="pgoals__section-n">{items.length}</span>
           </div>
           <div className="pgoals__list">
@@ -76,24 +73,24 @@ export default function PatientTestsPage() {
                     <div className="pgoal-card__title">{a.testTitle}</div>
                     <span className="pgoal-card__status"
                       style={{ background: meta.bg, color: meta.fg, borderColor: meta.border }}>
-                      {meta.label}
+                      {t(meta.labelKey)}
                     </span>
                   </div>
 
                   {a.note && <div className="pgoal-card__desc">{a.note}</div>}
 
                   <div className="pgoal-card__meta">
-                    <span className="pgoal-card__date">Təyin edildi: {fmtDate(a.assignedAt)}</span>
+                    <span className="pgoal-card__date">{t("patTests.assignedAt", { date: azFormatDate(a.assignedAt) })}</span>
                     {done && a.completedAt && (
                       <span style={{ color: "#065F46", fontWeight: 600 }}>
-                        Tamamlandı: {fmtDate(a.completedAt)}
+                        {t("patTests.completedAt", { date: azFormatDate(a.completedAt) })}
                       </span>
                     )}
                     <Link
                       href={`/patient/tests/${a.id}`}
                       className="pgoal-card__action"
                       style={done ? undefined : { color: "#fff", background: "var(--brand)", border: "none", padding: "6px 14px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
-                      {done ? "Nəticə →" : "Testi həll et →"}
+                      {done ? t("patTests.resultCta") : t("patTests.takeCta")}
                     </Link>
                   </div>
                 </article>

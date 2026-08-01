@@ -10,8 +10,10 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { requestClaimOtp, verifyClaimOtp, ClaimAlreadyActiveError } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function ClaimPage() {
+  const { t } = useT();
   const params = useSearchParams();
   const [step, setStep] = useState<"email" | "code" | "done" | "alreadyActive">("email");
   const [email, setEmail] = useState(params.get("email") ?? "");
@@ -30,11 +32,11 @@ export default function ClaimPage() {
 
   const sendCode = async () => {
     setErr(null); setInfo(null);
-    if (!email.trim()) { setErr("Email daxil edin"); return; }
+    if (!email.trim()) { setErr(t("claimPage.errEmail")); return; }
     setBusy(true);
     try {
       const r = await requestClaimOtp(email.trim(), claimToken);
-      setInfo(r.message ?? "Kod göndərildi.");
+      setInfo(r.message ?? t("claimPage.codeSent"));
       setStep("code");
     } catch (e) {
       if (e instanceof ClaimAlreadyActiveError) { setStep("alreadyActive"); return; }
@@ -45,10 +47,10 @@ export default function ClaimPage() {
 
   const activate = async () => {
     setErr(null);
-    if (!code.trim()) { setErr("Kodu daxil edin"); return; }
+    if (!code.trim()) { setErr(t("claimPage.errCode")); return; }
     // Qeydiyyatla eyni parol qaydası — ən az 8 simvol, böyük hərf, kiçik hərf, rəqəm.
     if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
-      setErr("Şifrə ən az 8 simvol, böyük hərf, kiçik hərf və rəqəm ehtiva etməlidir.");
+      setErr(t("auth.passwordWeak"));
       return;
     }
     setBusy(true);
@@ -71,9 +73,9 @@ export default function ClaimPage() {
     <div className="min-h-screen flex items-center justify-center px-4"
       style={{ background: "linear-gradient(135deg, var(--brand-700) 0%, var(--brand) 100%)" }}>
       <div style={{ background: "#fff", borderRadius: "1.5rem", padding: "2.5rem", width: "100%", maxWidth: 420, boxShadow: "0 24px 80px rgba(0,0,0,0.3)" }}>
-        <h2 className="text-xl font-bold text-[#1A2535]" style={{ marginBottom: 6 }}>Hesabı aktivləşdir</h2>
+        <h2 className="text-xl font-bold text-[#1A2535]" style={{ marginBottom: 6 }}>{t("claimPage.title")}</h2>
         <p className="text-[#52718F] text-sm" style={{ marginBottom: 18 }}>
-          Operator sizin üçün hesab yaradıbsa, email-inizə gələn kodla aktivləşdirin. Mövcud randevularınız hesabınıza bağlı qalacaq.
+          {t("claimPage.sub")}
         </p>
 
         {err && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 10, borderRadius: 8, fontSize: 13, marginBottom: 12 }}>{err}</div>}
@@ -81,21 +83,22 @@ export default function ClaimPage() {
 
         {step === "email" && (
           <div style={{ display: "grid", gap: 12 }}>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email ünvanınız" style={inp} autoFocus />
-            <button onClick={sendCode} disabled={busy} style={btn}>{busy ? "Göndərilir…" : "Kod göndər"}</button>
-            <Link href="/login" className="text-[#52718F] text-sm" style={{ textAlign: "center" }}>Hesabınız var? Daxil ol</Link>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t("claimPage.emailPh")} style={inp} autoFocus />
+            <button onClick={sendCode} disabled={busy} style={btn}>{busy ? t("common.sending") : t("claimPage.sendCode")}</button>
+            <Link href="/login" className="text-[#52718F] text-sm" style={{ textAlign: "center" }}>{t("claimPage.haveAccount")}</Link>
           </div>
         )}
 
         {step === "code" && (
           <div style={{ display: "grid", gap: 12 }}>
-            <input value={code} onChange={e => setCode(e.target.value)} placeholder="6 rəqəmli kod" inputMode="numeric" maxLength={6}
+            <input value={code} onChange={e => setCode(e.target.value)} placeholder={t("claimPage.codePh")} inputMode="numeric" maxLength={6}
               style={{ ...inp, letterSpacing: 6, textAlign: "center", fontWeight: 700, fontSize: 18 }} autoFocus />
             <div style={{ position: "relative" }}>
               <input type={showPw ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="Yeni parol (min 8 simvol, böyük hərf, rəqəm)" style={{ ...inp, paddingRight: 42 }} />
+                placeholder={t("claimPage.newPasswordPh")} style={{ ...inp, paddingRight: 42 }} />
               <button type="button" onClick={() => setShowPw(s => !s)}
-                aria-label={showPw ? "Parolu gizlət" : "Parolu göstər"} title={showPw ? "Parolu gizlət" : "Parolu göstər"}
+                aria-label={showPw ? t("claimPage.hidePassword") : t("claimPage.showPassword")}
+                title={showPw ? t("claimPage.hidePassword") : t("claimPage.showPassword")}
                 style={{ position: "absolute", top: "50%", right: 8, transform: "translateY(-50%)", background: "none", border: "none", padding: 4, cursor: "pointer", color: "#94A3B8", display: "inline-flex" }}>
                 {showPw ? (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
@@ -105,12 +108,12 @@ export default function ClaimPage() {
               </button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Ad (ops.)" style={inp} />
-              <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Soyad (ops.)" style={inp} />
+              <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder={t("claimPage.firstNamePh")} style={inp} />
+              <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder={t("claimPage.lastNamePh")} style={inp} />
             </div>
-            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Telefon (ops.)" style={inp} />
-            <button onClick={activate} disabled={busy} style={btn}>{busy ? "Aktivləşdirilir…" : "Aktivləşdir"}</button>
-            <button onClick={sendCode} disabled={busy} style={{ background: "none", border: "none", color: "var(--brand-700)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Kodu yenidən göndər</button>
+            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder={t("claimPage.phonePh")} style={inp} />
+            <button onClick={activate} disabled={busy} style={btn}>{busy ? t("claimPage.activating") : t("claimPage.activate")}</button>
+            <button onClick={sendCode} disabled={busy} style={{ background: "none", border: "none", color: "var(--brand-700)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("claimPage.resend")}</button>
           </div>
         )}
 
@@ -121,12 +124,12 @@ export default function ClaimPage() {
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
-            <h3 className="text-lg font-bold text-[#1A2535]" style={{ marginBottom: 6 }}>Hesabınız artıq aktivdir</h3>
+            <h3 className="text-lg font-bold text-[#1A2535]" style={{ marginBottom: 6 }}>{t("claimPage.alreadyTitle")}</h3>
             <p className="text-[#52718F] text-sm" style={{ marginBottom: 18 }}>
-              Bu aktivləşdirmə linki bir dəfə istifadə olunub. Parolunuzla daxil ola bilərsiniz.
+              {t("claimPage.alreadyBody")}
             </p>
-            <Link href="/login" className="block py-3 rounded-xl text-sm font-bold text-white" style={{ background: "var(--brand)" }}>Daxil ol</Link>
-            <Link href="/forgot-password" className="text-[#52718F] text-sm" style={{ display: "block", marginTop: 12 }}>Parolu unutmusunuz?</Link>
+            <Link href="/login" className="block py-3 rounded-xl text-sm font-bold text-white" style={{ background: "var(--brand)" }}>{t("auth.loginCta")}</Link>
+            <Link href="/forgot-password" className="text-[#52718F] text-sm" style={{ display: "block", marginTop: 12 }}>{t("claimPage.forgotPassword")}</Link>
           </div>
         )}
 
@@ -137,9 +140,9 @@ export default function ClaimPage() {
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             </div>
-            <h3 className="text-lg font-bold text-[#1A2535]" style={{ marginBottom: 6 }}>Hesab aktivləşdirildi!</h3>
-            <p className="text-[#52718F] text-sm" style={{ marginBottom: 18 }}>İndi daxil ola və randevularınızı görə bilərsiniz.</p>
-            <Link href="/login" className="block py-3 rounded-xl text-sm font-bold text-white" style={{ background: "var(--brand)" }}>Daxil ol</Link>
+            <h3 className="text-lg font-bold text-[#1A2535]" style={{ marginBottom: 6 }}>{t("claimPage.doneTitle")}</h3>
+            <p className="text-[#52718F] text-sm" style={{ marginBottom: 18 }}>{t("claimPage.doneBody")}</p>
+            <Link href="/login" className="block py-3 rounded-xl text-sm font-bold text-white" style={{ background: "var(--brand)" }}>{t("auth.loginCta")}</Link>
           </div>
         )}
       </div>

@@ -10,13 +10,17 @@ import {
 } from "@/lib/api";
 import { toast } from "@/components/Toast";
 import PageHeader from "@/components/PageHeader";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
-const MOOD_LABELS = [
-  "Çox pisəm",     // 1
-  "Pis hiss edirəm",
-  "Orta",
-  "Yaxşıyam",
-  "Çox yaxşıyam",  // 5
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
+const MOOD_KEYS: MessageKey[] = [
+  "patSupport.mood1", // 1
+  "patSupport.mood2",
+  "patSupport.mood3",
+  "patSupport.mood4",
+  "patSupport.mood5", // 5
 ];
 
 function whatsappLink(phone: string | null | undefined): string | null {
@@ -25,19 +29,20 @@ function whatsappLink(phone: string | null | undefined): string | null {
   return digits ? `https://wa.me/${digits}` : null;
 }
 
-function fmtRelative(iso: string): string {
+function fmtRelative(t: Translate, iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
   const min = Math.floor(ms / 60000);
-  if (min < 1) return "indi";
-  if (min < 60) return `${min} dəq öncə`;
+  if (min < 1) return t("patSupport.relNow");
+  if (min < 60) return t("patSupport.relMin", { n: min });
   const h = Math.floor(min / 60);
-  if (h < 24) return `${h} saat öncə`;
+  if (h < 24) return t("patSupport.relHour", { n: h });
   const d = Math.floor(h / 24);
-  if (d < 30) return `${d} gün öncə`;
-  return `${Math.floor(d / 30)} ay öncə`;
+  if (d < 30) return t("patSupport.relDay", { n: d });
+  return t("patSupport.relMonth", { n: Math.floor(d / 30) });
 }
 
 export default function PatientSupportPage() {
+  const { t } = useT();
   const [status, setStatus] = useState<CrisisStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -77,12 +82,12 @@ export default function PatientSupportPage() {
 
   return (
     <div className="psupport">
-      <PageHeader title="Dəstək" subtitle="Çətin anlarda təkbaşına deyilsiniz. Aşağıdakı vasitələrdən istifadə edin və ya bizimlə əlaqə saxlayın." />
+      <PageHeader title={t("patSupport.title")} subtitle={t("patSupport.sub")} />
 
       {loading ? (
-        <div className="psupport__loading">Yüklənir…</div>
+        <div className="psupport__loading">{t("common.loading")}</div>
       ) : !status ? (
-        <div className="psupport__error">{err ?? "Xəta baş verdi."}</div>
+        <div className="psupport__error">{err ?? t("common.error")}</div>
       ) : (
         <>
           {/* Crisis CTA — most prominent for risk-flagged patients */}
@@ -92,26 +97,26 @@ export default function PatientSupportPage() {
                 <IconAlert />
               </div>
               <div className="psupport__crisis-body">
-                <div className="psupport__crisis-title">Sizin üçün dəstək hazırdır</div>
-                <p>Əgər özünüzə zərər vermək istəyirsinizsə və ya kəskin böhran yaşayırsınızsa — dərhal aşağıdakı xətlərdən birinə zəng edin. Cavab dərhal gələcək.</p>
+                <div className="psupport__crisis-title">{t("patSupport.crisisTitle")}</div>
+                <p>{t("patSupport.crisisBody")}</p>
               </div>
             </div>
           )}
 
           {/* Quick contacts: psychologist + operator team */}
           <section className="psupport__section">
-            <h2>Sizinlə əlaqə</h2>
+            <h2>{t("patSupport.contactsTitle")}</h2>
             <div className="psupport__contacts">
               {status.myPsychologist && (
-                <ContactCard label="Psixoloqunuz" psy={status.myPsychologist} accent="brand" />
+                <ContactCard label={t("pat.yourPsy")} psy={status.myPsychologist} accent="brand" />
               )}
-              <ContactCard label="Fanus dəstək komandası" psy={status.supportOperator} accent="neutral" />
+              <ContactCard label={t("patSupport.supportTeam")} psy={status.supportOperator} accent="neutral" />
             </div>
           </section>
 
           {/* Hotlines */}
           <section className="psupport__section">
-            <h2>Təcili xətlər</h2>
+            <h2>{t("patSupport.hotlinesTitle")}</h2>
             <div className="psupport__hotlines">
               {status.hotlines.map(h => <HotlineCard key={h.phone} h={h} />)}
             </div>
@@ -119,9 +124,9 @@ export default function PatientSupportPage() {
 
           {/* Mood check-in */}
           <section className="psupport__section">
-            <h2>Necəsən? Qısa check-in</h2>
+            <h2>{t("patSupport.checkInTitle")}</h2>
             <p className="psupport__sub">
-              Cari halınızı bizə bildirin — yüksək riskli vaxtlarda operator komandamıza dərhal bildiriş gedir.
+              {t("patSupport.checkInSub")}
             </p>
             <div className="psupport__checkin">
               <div className="psupport__mood-row">
@@ -131,21 +136,21 @@ export default function PatientSupportPage() {
                     onClick={() => setMood(n)}
                     data-tone={n <= 2 ? "low" : n === 3 ? "mid" : "good"}>
                     <span className="psupport__mood-num">{n}</span>
-                    <span className="psupport__mood-label">{MOOD_LABELS[n - 1]}</span>
+                    <span className="psupport__mood-label">{t(MOOD_KEYS[n - 1])}</span>
                   </button>
                 ))}
               </div>
               <textarea value={note} onChange={e => setNote(e.target.value)}
                 rows={3} maxLength={2000}
-                placeholder="(İstəyə bağlı) Qısa təfərrüat — nə hiss edirsiniz?"
+                placeholder={t("patSupport.notePh")}
                 className="psupport__note" />
               {thanks && (
-                <div className="psupport__thanks">Təşəkkürlər. Komandamız izləyəcək.</div>
+                <div className="psupport__thanks">{t("patSupport.thanks")}</div>
               )}
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <button onClick={submitCheckIn} disabled={mood == null || submitting}
                   className="psupport__submit">
-                  {submitting ? "Göndərilir…" : "Göndər"}
+                  {submitting ? t("common.sending") : t("common.submit")}
                 </button>
               </div>
             </div>
@@ -154,7 +159,7 @@ export default function PatientSupportPage() {
           {/* History */}
           {status.recentCheckIns.length > 0 && (
             <section className="psupport__section">
-              <h2>Son check-in-ləriniz</h2>
+              <h2>{t("patSupport.historyTitle")}</h2>
               <div className="psupport__history">
                 {status.recentCheckIns.map(c => <HistoryRow key={c.id} c={c} />)}
               </div>
@@ -195,6 +200,7 @@ function ContactCard({ label, psy, accent }: { label: string; psy: CrisisContact
 }
 
 function HotlineCard({ h }: { h: CrisisHotline }) {
+  const { t } = useT();
   return (
     <a href={`tel:${h.phone.replace(/\s/g, "")}`} className="psupport__hotline">
       <div className="psupport__hotline-icon" data-always={h.alwaysOpen}>
@@ -206,7 +212,7 @@ function HotlineCard({ h }: { h: CrisisHotline }) {
         <div className="psupport__hotline-desc">{h.description}</div>
         <div className="psupport__hotline-hours">
           {h.alwaysOpen
-            ? <span className="psupport__hotline-247">24/7 açıq</span>
+            ? <span className="psupport__hotline-247">{t("patSupport.alwaysOpen")}</span>
             : <span>{h.hours}</span>}
         </div>
       </div>
@@ -215,14 +221,15 @@ function HotlineCard({ h }: { h: CrisisHotline }) {
 }
 
 function HistoryRow({ c }: { c: CrisisCheckIn }) {
+  const { t } = useT();
   const tone = c.moodScore <= 2 ? "low" : c.moodScore === 3 ? "mid" : "good";
   return (
     <div className="psupport__hist" data-tone={tone}>
       <div className="psupport__hist-mood">{c.moodScore}/5</div>
       <div className="psupport__hist-body">
-        <div className="psupport__hist-label">{MOOD_LABELS[c.moodScore - 1]}</div>
+        <div className="psupport__hist-label">{t(MOOD_KEYS[c.moodScore - 1])}</div>
         {c.note && <div className="psupport__hist-note">«{c.note}»</div>}
-        <div className="psupport__hist-time">{fmtRelative(c.createdAt)}</div>
+        <div className="psupport__hist-time">{fmtRelative(t, c.createdAt)}</div>
       </div>
     </div>
   );

@@ -14,12 +14,14 @@ import {
 } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
 import { FEATURE_GOALS } from "@/lib/features";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
-const RISK_LABEL: Record<PatientRiskLevel, { label: string; bg: string; fg: string }> = {
-  LOW:      { label: "Aşağı risk",  bg: "#FEF3C7", fg: "#92400E" },
-  MEDIUM:   { label: "Orta risk",   bg: "#FED7AA", fg: "#9A3412" },
-  HIGH:     { label: "Yüksək risk", bg: "#FEE2E2", fg: "#991B1B" },
-  CRITICAL: { label: "Kritik risk", bg: "#FEE2E2", fg: "#7F1D1D" },
+const RISK_LABEL: Record<PatientRiskLevel, { labelKey: MessageKey; bg: string; fg: string }> = {
+  LOW:      { labelKey: "patProfile.riskLow",      bg: "#FEF3C7", fg: "#92400E" },
+  MEDIUM:   { labelKey: "patProfile.riskMedium",   bg: "#FED7AA", fg: "#9A3412" },
+  HIGH:     { labelKey: "patProfile.riskHigh",     bg: "#FEE2E2", fg: "#991B1B" },
+  CRITICAL: { labelKey: "patProfile.riskCritical", bg: "#FEE2E2", fg: "#7F1D1D" },
 };
 
 function initials(name?: string | null): string {
@@ -28,6 +30,7 @@ function initials(name?: string | null): string {
 }
 
 export default function PatientProfilePage() {
+  const { t } = useT();
   const [appts, setAppts] = useState<AppointmentDetail[]>([]);
   const [tasks, setTasks] = useState<Homework[]>([]);
   const [goals, setGoals] = useState<PatientGoalView[]>([]);
@@ -73,8 +76,8 @@ export default function PatientProfilePage() {
 
   return (
     <ProfileShell
-      title="Profilim"
-      subtitle="Şəxsi məlumatlarınızı və hesab parametrlərinizi idarə edin"
+      title={t("patProfile.title")}
+      subtitle={t("patProfile.sub")}
       sideExtras={
         <div className="ppr-side">
           {riskLevel && (RISK_LABEL[riskLevel]) && (
@@ -82,31 +85,31 @@ export default function PatientProfilePage() {
               background: RISK_LABEL[riskLevel].bg,
               color: RISK_LABEL[riskLevel].fg,
             }}>
-              <div className="ppr-side-risk__label">Klinik işarələnmə</div>
-              <div className="ppr-side-risk__value">{RISK_LABEL[riskLevel].label}</div>
+              <div className="ppr-side-risk__label">{t("patProfile.riskLabel")}</div>
+              <div className="ppr-side-risk__value">{t(RISK_LABEL[riskLevel].labelKey)}</div>
               <Link href="/patient/support" className="ppr-side-risk__link">
-                Dəstək paneli →
+                {t("patProfile.supportLink")}
               </Link>
             </div>
           )}
 
           <div className="ppr-side-card">
             <div className="ppr-side-card__head">
-              <h3>Sizin haqqınızda</h3>
+              <h3>{t("patProfile.aboutYou")}</h3>
             </div>
             <div className="ppr-side-stats">
-              <StatItem label="Tamamlanmış seans" value={stats.totalSessions} href="/patient/appointments" />
+              <StatItem label={t("patProfile.statSessions")} value={stats.totalSessions} href="/patient/appointments" />
               {FEATURE_GOALS && (
-                <StatItem label="Aktiv hədəf" value={stats.activeGoals} href="/patient/goals" />
+                <StatItem label={t("patProfile.statGoals")} value={stats.activeGoals} href="/patient/goals" />
               )}
-              <StatItem label="Açıq tapşırıq" value={stats.pendingTasks} href="/patient/homework" />
-              <StatItem label="Sevimli psixoloq" value={stats.favoriteCount} href="/patient/favorites" />
+              <StatItem label={t("patProfile.statTasks")} value={stats.pendingTasks} href="/patient/homework" />
+              <StatItem label={t("patProfile.statFav")} value={stats.favoriteCount} href="/patient/favorites" />
             </div>
           </div>
 
           <div className="ppr-side-card">
             <div className="ppr-side-card__head">
-              <h3>Sürətli giriş</h3>
+              <h3>{t("patProfile.quickAccess")}</h3>
             </div>
             <Link href="/patient/psychologists" className="ppr-side-link">
               <span className="ppr-side-link__icon">
@@ -115,8 +118,8 @@ export default function PatientProfilePage() {
                 </svg>
               </span>
               <span className="ppr-side-link__text">
-                <strong>Psixoloq tap</strong>
-                <small>Yeni mütəxəssis seç</small>
+                <strong>{t("patProfile.findPsy")}</strong>
+                <small>{t("patProfile.findPsySub")}</small>
               </span>
               <span className="ppr-side-link__arrow">›</span>
             </Link>
@@ -127,8 +130,8 @@ export default function PatientProfilePage() {
                 </svg>
               </span>
               <span className="ppr-side-link__text">
-                <strong>Dəstək</strong>
-                <small>Hotline-lar və check-in</small>
+                <strong>{t("patProfile.support")}</strong>
+                <small>{t("patProfile.supportSub")}</small>
               </span>
               <span className="ppr-side-link__arrow">›</span>
             </Link>
@@ -139,8 +142,8 @@ export default function PatientProfilePage() {
         psyDetails ? (
           <div className="ppr-card">
             <div className="ppr-card__head">
-              <h2>Mənim psixoloqum</h2>
-              <p>Son seanslarınız bu mütəxəssislədir</p>
+              <h2>{t("patProfile.myPsy")}</h2>
+              <p>{t("patProfile.myPsySub")}</p>
             </div>
             <div className="ppr-psy">
               <div className="ppr-psy__avatar">
@@ -167,11 +170,11 @@ export default function PatientProfilePage() {
                   <>
                     <Link href={`/patient/psychologists/${psyDetails.slug}`}
                       className="ppr-btn ppr-btn--ghost">
-                      Profil
+                      {t("patProfile.profileCta")}
                     </Link>
                     <Link href={`/patient/book/${psyDetails.slug}`}
                       className="ppr-btn ppr-btn--primary">
-                      Rezerv et
+                      {t("patProfile.bookCta")}
                     </Link>
                   </>
                 )}

@@ -6,20 +6,16 @@ import { useEffect, useMemo, useState } from "react";
 import { patientApi, type PatientGoalStatus, type PatientGoalView } from "@/lib/api";
 import { FEATURE_GOALS } from "@/lib/features";
 import PageHeader from "@/components/PageHeader";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
+import { azFormatDate } from "@/lib/datetime";
 
-const STATUS_META: Record<PatientGoalStatus, { label: string; bg: string; fg: string; border: string }> = {
-  OPEN:        { label: "Açıq",        bg: "var(--brand-50)", fg: "var(--brand-700)", border: "var(--brand-100)" },
-  IN_PROGRESS: { label: "Davam edir",  bg: "#FEF3C7",         fg: "#92400E",         border: "#FDE68A" },
-  ACHIEVED:    { label: "Çatdı",       bg: "#D1FAE5",         fg: "#065F46",         border: "#A7F3D0" },
-  ABANDONED:   { label: "Tərk edilib", bg: "#F3F4F6",         fg: "#374151",         border: "#E5E7EB" },
+const STATUS_META: Record<PatientGoalStatus, { labelKey: MessageKey; bg: string; fg: string; border: string }> = {
+  OPEN:        { labelKey: "patGoals.statusOpen",       bg: "var(--brand-50)", fg: "var(--brand-700)", border: "var(--brand-100)" },
+  IN_PROGRESS: { labelKey: "patGoals.statusInProgress", bg: "#FEF3C7",         fg: "#92400E",         border: "#FDE68A" },
+  ACHIEVED:    { labelKey: "patGoals.statusAchieved",   bg: "#D1FAE5",         fg: "#065F46",         border: "#A7F3D0" },
+  ABANDONED:   { labelKey: "patGoals.statusAbandoned",  bg: "#F3F4F6",         fg: "#374151",         border: "#E5E7EB" },
 };
-
-function fmtDate(iso: string | null): string {
-  if (!iso) return "—";
-  const months = ["Yanvar","Fevral","Mart","Aprel","May","İyun","İyul","Avqust","Sentyabr","Oktyabr","Noyabr","Dekabr"];
-  const d = new Date(iso.includes("T") ? iso : iso + "T00:00:00");
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
-}
 
 function initials(name: string | null): string {
   if (!name) return "?";
@@ -32,6 +28,7 @@ export default function PatientGoalsPage() {
   // Goals MVP-dən gizlədilib — flag açıq deyilsə birbaşa URL ilə də açılmasın.
   if (!FEATURE_GOALS) notFound();
 
+  const { t } = useT();
   const [goals, setGoals] = useState<PatientGoalView[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
@@ -73,10 +70,10 @@ export default function PatientGoalsPage() {
 
   return (
     <div className="pgoals">
-      <PageHeader title="Mənim hədəflərim" subtitle="Psixoloqunuzla razılaşdırdığınız hədəflər. İrəliləyişinizi qeyd edin — psixoloqunuza dərhal bildiriş gedir." />
+      <PageHeader title={t("patGoals.title")} subtitle={t("patGoals.sub")} />
 
       {loading ? (
-        <div className="pgoals__loading">Yüklənir…</div>
+        <div className="pgoals__loading">{t("common.loading")}</div>
       ) : err ? (
         <div className="pgoals__error">{err}</div>
       ) : goals.length === 0 ? (
@@ -86,28 +83,28 @@ export default function PatientGoalsPage() {
               <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
             </svg>
           </div>
-          <div className="pgoals__empty-title">Hələ hədəf təyin edilməyib</div>
+          <div className="pgoals__empty-title">{t("patGoals.emptyTitle")}</div>
           <p className="pgoals__empty-body">
-            Psixoloqunuzla seans zamanı razılaşdığınız hədəflər burada görünəcək. Növbəti seansda mövzunu müzakirə edə bilərsiniz.
+            {t("patGoals.emptyBody")}
           </p>
-          <Link href="/patient/appointments" className="pgoals__empty-cta">Randevulara bax →</Link>
+          <Link href="/patient/appointments" className="pgoals__empty-cta">{t("patTests.emptyCta")}</Link>
         </div>
       ) : (
         <>
           {grouped.active.length > 0 && (
-            <Section title="Aktiv" count={grouped.active.length}>
+            <Section title={t("patGoals.secActive")} count={grouped.active.length}>
               {grouped.active.map(g => (
                 <GoalCard key={g.id} g={g} editable onUpdated={(u) => setGoals(prev => prev.map(x => x.id === u.id ? u : x))} />
               ))}
             </Section>
           )}
           {grouped.done.length > 0 && (
-            <Section title="Çatdığım" count={grouped.done.length}>
+            <Section title={t("patGoals.secAchieved")} count={grouped.done.length}>
               {grouped.done.map(g => <GoalCard key={g.id} g={g} />)}
             </Section>
           )}
           {grouped.abandoned.length > 0 && (
-            <Section title="Tərk edilmiş" count={grouped.abandoned.length}>
+            <Section title={t("patGoals.secAbandoned")} count={grouped.abandoned.length}>
               {grouped.abandoned.map(g => <GoalCard key={g.id} g={g} />)}
             </Section>
           )}
@@ -115,7 +112,7 @@ export default function PatientGoalsPage() {
             <div style={{ textAlign: "center", marginTop: 16 }}>
               <button type="button" onClick={loadMore} disabled={loadingMore}
                 style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
-                {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - goals.length)})`}
+                {loadingMore ? t("common.loading") : t("pat.loadMore", { n: Math.min(PAGE_SIZE, totalElements - goals.length) })}
               </button>
             </div>
           )}
@@ -144,6 +141,7 @@ function GoalCard({
   editable?: boolean;
   onUpdated?: (u: PatientGoalView) => void;
 }) {
+  const { t } = useT();
   const [now] = useState(() => Date.now());
   const meta = STATUS_META[g.status];
   const overdue = g.targetDate && (g.status === "OPEN" || g.status === "IN_PROGRESS")
@@ -175,7 +173,7 @@ function GoalCard({
         <div className="pgoal-card__title">{g.title}</div>
         <span className="pgoal-card__status"
           style={{ background: meta.bg, color: meta.fg, borderColor: meta.border }}>
-          {meta.label}
+          {t(meta.labelKey)}
         </span>
       </div>
 
@@ -184,8 +182,8 @@ function GoalCard({
       <div className="pgoal-card__psy">
         <div className="pgoal-card__psy-avatar">{initials(g.psychologistName)}</div>
         <div className="pgoal-card__psy-info">
-          <strong>{g.psychologistName ?? "Psixoloqunuz"}</strong>
-          <span>tərəfindən təyin olunub</span>
+          <strong>{g.psychologistName ?? t("pat.yourPsy")}</strong>
+          <span>{t("patGoals.assignedBy")}</span>
         </div>
       </div>
 
@@ -199,20 +197,20 @@ function GoalCard({
       <div className="pgoal-card__meta">
         {g.targetDate && (
           <span className={`pgoal-card__date${overdue ? " is-overdue" : ""}`}>
-            Hədəf tarixi: {fmtDate(g.targetDate)}
+            {t("patGoals.targetDate", { date: azFormatDate(g.targetDate) })}
           </span>
         )}
         {/* gecikmə ayrıca sətir elementi — meta sıra flex gap ilə ayırır */}
         {g.targetDate && overdue && (
-          <span style={{ color: "#991B1B", fontWeight: 700 }}>gecikib</span>
+          <span style={{ color: "#991B1B", fontWeight: 700 }}>{t("patGoals.overdue")}</span>
         )}
         {g.achievedAt && (
-          <span style={{ color: "#065F46", fontWeight: 600 }}>Tamamlandı: {fmtDate(g.achievedAt)}</span>
+          <span style={{ color: "#065F46", fontWeight: 600 }}>{t("patGoals.achievedAt", { date: azFormatDate(g.achievedAt) })}</span>
         )}
         {editable && !editing && (
           <button onClick={() => { setEditing(true); setProgress(g.progressPct); setErr(null); }}
             className="pgoal-card__action">
-            İrəliləyiş əlavə et
+            {t("patGoals.addProgress")}
           </button>
         )}
       </div>
@@ -221,22 +219,22 @@ function GoalCard({
         <div className="pgoal-card__editor">
           <div className="pgoal-card__editor-row">
             <label>
-              İndi nə qədər irəlilədim: <strong>{progress}%</strong>
+              {t("patGoals.progressLabel")} <strong>{progress}%</strong>
             </label>
             <input type="range" min={0} max={100} step={5}
               value={progress} onChange={e => setProgress(Number(e.target.value))} />
           </div>
           <textarea value={note} onChange={e => setNote(e.target.value)}
             rows={2} maxLength={500}
-            placeholder="(istəyə bağlı) qısa qeyd — nə dəyişdi, hansı çətinlik var?"
+            placeholder={t("patGoals.notePh")}
             className="pgoal-card__editor-note" />
           {err && <div className="pgoal-card__editor-err">{err}</div>}
           <div className="pgoal-card__editor-actions">
             <button onClick={() => setEditing(false)} className="pgoal-card__btn pgoal-card__btn--ghost">
-              Ləğv
+              {t("patGoals.cancelShort")}
             </button>
             <button onClick={save} disabled={saving} className="pgoal-card__btn pgoal-card__btn--primary">
-              {saving ? "Saxlanılır…" : "Saxla"}
+              {saving ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </div>

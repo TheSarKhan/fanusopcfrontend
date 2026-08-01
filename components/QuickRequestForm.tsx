@@ -4,7 +4,9 @@ import { useState } from "react";
 import { submitSessionRequest } from "@/lib/api";
 import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
-import { azNowTime, azTodayIso, pastPreferredError } from "@/lib/datetime";
+import { azNowTime, azTodayIso, pastPreferredCode } from "@/lib/datetime";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 /**
  * Psixoloqsuz sürətli müraciət forması (Sayt BRD §8.2) — həm Əlaqə səhifəsində
@@ -18,23 +20,22 @@ const INITIAL = {
   preferredDate: "", preferredTime: "", notes: "", budget: "",
 };
 
-const BUDGET_OPTIONS = [
-  "50 AZN-dək",
-  "50-100 AZN",
-  "100-200 AZN",
-  "200 AZN-dən çox",
-  "Danışıq əsasında",
+/** Dəyər backend-ə göndərilir və operator panelində göstərilir — tərcümə OLUNMUR;
+ *  yalnız görünən etiket lokallaşdırılır. */
+const BUDGET_OPTIONS: { value: string; key: MessageKey }[] = [
+  { value: "50 AZN-dək",       key: "quickReq.budget1" },
+  { value: "50-100 AZN",       key: "quickReq.budget2" },
+  { value: "100-200 AZN",      key: "quickReq.budget3" },
+  { value: "200 AZN-dən çox",  key: "quickReq.budget4" },
+  { value: "Danışıq əsasında", key: "quickReq.budget5" },
 ];
 
 // Göndərişdən sonra istifadəçiyə prosesin şəffaflığı üçün göstərilir (müraciət → operator →
 // psixoloq təyinatı → seans). Operator hovuz/claim/çevirmə axını ilə uyğundur.
-const NEXT_STEPS = [
-  "Operatorumuz müraciətinizi nəzərdən keçirir.",
-  "Sizinlə əlaqə saxlayıb ehtiyacınıza uyğun psixoloqu təklif edirik.",
-  "Psixoloq və seans vaxtı təsdiqlənir — seansınız planlanır.",
-];
+const NEXT_STEPS: MessageKey[] = ["quickReq.step1", "quickReq.step2", "quickReq.step3"];
 
 export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
+  const { t } = useT();
   const [form, setForm] = useState(INITIAL);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -52,16 +53,16 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim())   { setError("Ad Soyad daxil edin"); return; }
-    if (!form.phone.trim())  { setError("Telefon nömrəsi daxil edin"); return; }
-    if (form.phone.replace(/\D/g, "").length < 9) { setError("Düzgün telefon nömrəsi daxil edin"); return; }
-    if (!form.email.trim())  { setError("E-poçt ünvanı daxil edin"); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError("Düzgün e-poçt ünvanı daxil edin"); return; }
-    if (!form.budget)        { setError("Büdcə seçin"); return; }
-    if (!form.reason.trim()) { setError("Müraciətin səbəbini yazın"); return; }
+    if (!form.name.trim())   { setError(t("quickReq.errName")); return; }
+    if (!form.phone.trim())  { setError(t("quickReq.errPhone")); return; }
+    if (form.phone.replace(/\D/g, "").length < 9) { setError(t("quickReq.errPhoneInvalid")); return; }
+    if (!form.email.trim())  { setError(t("quickReq.errEmail")); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setError(t("quickReq.errEmailInvalid")); return; }
+    if (!form.budget)        { setError(t("quickReq.errBudget")); return; }
+    if (!form.reason.trim()) { setError(t("quickReq.errReason")); return; }
     // Keçmiş tarix/saat üçün müraciət qəbul edilmir.
-    const past = pastPreferredError(form.preferredDate, form.preferredTime);
-    if (past) { setError(past); return; }
+    const past = pastPreferredCode(form.preferredDate, form.preferredTime);
+    if (past) { setError(t(`sched.${past}` as MessageKey)); return; }
     // Üstünlük verilən tarix/saat sadəcə istəyi göstərir (real bron deyil, operator
     // zəngləşib uyğun vaxtı təyin edəcək) — vaxt məhdudiyyəti yoxdur.
     setError("");
@@ -86,10 +87,10 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
       // olaraq istifadəçi üçün mənasızdır — əvəzinə izah edici mesaj göstəririk.
       setError(
         err instanceof TypeError
-          ? "Serverlə əlaqə qurula bilmədi. İnternet bağlantınızı yoxlayıb yenidən cəhd edin."
+          ? t("quickReq.errNetwork")
           : (err instanceof Error && err.message
               ? err.message
-              : "Müraciət göndərilmədi. Yenidən cəhd edin.")
+              : t("quickReq.errSubmit"))
       );
     } finally {
       setSending(false);
@@ -109,10 +110,10 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
           </svg>
         </div>
         <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: "#065F46" }}>
-          Müraciətiniz qəbul edildi!
+          {t("quickReq.successTitle")}
         </h3>
         <p style={{ margin: "0 0 20px", fontSize: 14, color: "#374151" }}>
-          Müraciətiniz operator komandamıza çatdı. Bundan sonra proses belə davam edir:
+          {t("quickReq.successBody")}
         </p>
 
         {/* Növbəti addımlar — prosesin şəffaflığı */}
@@ -121,10 +122,10 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
           borderRadius: 12, padding: "16px 18px", marginBottom: 14, textAlign: "left",
         }}>
           <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0B1A35", marginBottom: 12 }}>
-            Növbəti addımlar
+            {t("quickReq.stepsTitle")}
           </div>
-          {NEXT_STEPS.map((step, i) => (
-            <div key={i} style={{
+          {NEXT_STEPS.map((stepKey, i) => (
+            <div key={stepKey} style={{
               display: "flex", gap: 12, alignItems: "flex-start",
               marginBottom: i === NEXT_STEPS.length - 1 ? 0 : 12,
             }}>
@@ -133,13 +134,13 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
                 background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>{i + 1}</span>
-              <span style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.5, paddingTop: 1 }}>{step}</span>
+              <span style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.5, paddingTop: 1 }}>{t(stepKey)}</span>
             </div>
           ))}
         </div>
 
         <p style={{ margin: "0 0 24px", fontSize: 12.5, color: "#6B7280", lineHeight: 1.5 }}>
-          Prosesin gedişatı və psixoloq təyinatı barədə e-poçtunuza bildiriş göndəriləcək.
+          {t("quickReq.emailNote")}
         </p>
         {crisisDetected && (
           <div style={{
@@ -148,12 +149,11 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
             textAlign: "left",
           }}>
             <strong style={{ display: "block", fontSize: 14, color: "#92400E", marginBottom: 6 }}>
-              Təcili dəstəyə ehtiyacınız varsa
+              {t("quickReq.crisisTitle")}
             </strong>
             <p style={{ margin: 0, fontSize: 13, color: "#78350F", lineHeight: 1.5 }}>
-              Müraciətiniz prioritet olaraq qəbul edildi. Özünüzə zərər vermə düşüncələriniz
-              varsa, gözləməyin — dərhal <strong>103</strong> Təcili Tibbi Yardım xəttinə və ya{" "}
-              <strong>*1123</strong> Psixoloji Dəstək xəttinə zəng edin.
+              {t("quickReq.crisisP1")} <strong>103</strong> {t("quickReq.crisisP2")}{" "}
+              <strong>*1123</strong> {t("quickReq.crisisP3")}
             </p>
           </div>
         )}
@@ -165,7 +165,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
               border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
             }}
           >
-            Bağla
+            {t("common.close")}
           </button>
         )}
       </div>
@@ -185,14 +185,14 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
 
       {/* Name */}
       <div style={{ marginBottom: 14 }}>
-        <label style={labelStyle}>Ad Soyad *</label>
+        <label style={labelStyle}>{t("quickReq.labelName")}</label>
         <input type="text" value={form.name} onChange={set("name")}
-          placeholder="Adınız və Soyadınız" style={inputStyle} />
+          placeholder={t("quickReq.phName")} style={inputStyle} />
       </div>
 
       {/* Phone */}
       <div style={{ marginBottom: 14 }}>
-        <label style={labelStyle}>Əlaqə nömrəsi *</label>
+        <label style={labelStyle}>{t("quickReq.labelPhone")}</label>
         <input type="tel" inputMode="tel" value={form.phone} onChange={setPhone}
           placeholder="+994 50 000 00 00" maxLength={20} style={inputStyle} />
       </div>
@@ -200,12 +200,12 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
       {/* Email + Age */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 12, marginBottom: 14 }}>
         <div>
-          <label style={labelStyle}>E-poçt *</label>
+          <label style={labelStyle}>{t("quickReq.labelEmail")}</label>
           <input type="email" value={form.email} onChange={set("email")}
             placeholder="example@email.com" style={inputStyle} />
         </div>
         <div>
-          <label style={labelStyle}>Yaş</label>
+          <label style={labelStyle}>{t("quickReq.labelAge")}</label>
           <input type="number" value={form.age} onChange={set("age")}
             min={5} max={120} placeholder="25" style={inputStyle} />
         </div>
@@ -213,25 +213,25 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
 
       {/* Budget (Sayt BRD §8.2 — məcburi) */}
       <div style={{ marginBottom: 14 }}>
-        <label style={labelStyle}>Büdcə *</label>
+        <label style={labelStyle}>{t("quickReq.labelBudget")}</label>
         <select value={form.budget} onChange={set("budget")} style={inputStyle}>
-          <option value="">Seçin...</option>
-          {BUDGET_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+          <option value="">{t("quickReq.budgetPh")}</option>
+          {BUDGET_OPTIONS.map(b => <option key={b.value} value={b.value}>{t(b.key)}</option>)}
         </select>
       </div>
 
       {/* Reason */}
       <div style={{ marginBottom: 14 }}>
-        <label style={labelStyle}>Müraciətin səbəbi *</label>
+        <label style={labelStyle}>{t("quickReq.labelReason")}</label>
         <textarea value={form.reason} onChange={set("reason")} rows={4}
-          placeholder="Nə haqqında məsləhət almaq istədiyinizi qısaca yazın..."
+          placeholder={t("quickReq.phReason")}
           style={{ ...inputStyle, resize: "vertical" }} />
       </div>
 
       {/* Preferred date + time */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 140px", gap: 12, marginBottom: 14 }}>
         <div>
-          <label style={labelStyle}>Üstünlük verilən tarix (opsional)</label>
+          <label style={labelStyle}>{t("quickReq.labelDate")}</label>
           <DatePicker
             value={form.preferredDate}
             onChange={val => setForm(prev => ({ ...prev, preferredDate: val }))}
@@ -241,7 +241,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
           />
         </div>
         <div>
-          <label style={labelStyle}>Saat (opsional)</label>
+          <label style={labelStyle}>{t("quickReq.labelTime")}</label>
           <TimePicker
             value={form.preferredTime}
             onChange={val => setForm(prev => ({ ...prev, preferredTime: val }))}
@@ -254,9 +254,9 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
 
       {/* Notes */}
       <div style={{ marginBottom: 22 }}>
-        <label style={labelStyle}>Əlavə qeydlər (opsional)</label>
+        <label style={labelStyle}>{t("quickReq.labelNotes")}</label>
         <textarea value={form.notes} onChange={set("notes")} rows={2}
-          placeholder="Başqa bildirmək istədiyiniz bir şey..."
+          placeholder={t("quickReq.phNotes")}
           style={{ ...inputStyle, resize: "vertical" }} />
       </div>
 
@@ -271,7 +271,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
           opacity: sending ? 0.7 : 1,
         }}
       >
-        {sending ? "Göndərilir..." : "Müraciəti göndər"}
+        {sending ? t("common.sending") : t("quickReq.submit")}
       </button>
     </form>
   );

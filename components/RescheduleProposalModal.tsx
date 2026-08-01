@@ -2,24 +2,27 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { patientApi, type RescheduleProposal } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
-const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
 function pad2(n: number) { return String(n).padStart(2, "0"); }
-function fmtFull(iso: string) {
+function fmtFull(t: Translate, iso: string) {
   const d = new Date(iso);
-  return `${pad2(d.getDate())} ${MONTHS_AZ[d.getMonth()]} ${d.getFullYear()}, ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return `${pad2(d.getDate())} ${t(`months.m${d.getMonth() + 1}` as MessageKey)} ${d.getFullYear()}, ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
-function fmtRange(start: string, end: string) {
+function fmtRange(t: Translate, start: string, end: string) {
   const a = new Date(start), b = new Date(end);
-  return `${pad2(a.getDate())} ${MONTHS_AZ[a.getMonth()]}, ${pad2(a.getHours())}:${pad2(a.getMinutes())}–${pad2(b.getHours())}:${pad2(b.getMinutes())}`;
+  return `${pad2(a.getDate())} ${t(`months.m${a.getMonth() + 1}` as MessageKey)}, ${pad2(a.getHours())}:${pad2(a.getMinutes())}–${pad2(b.getHours())}:${pad2(b.getMinutes())}`;
 }
-function fmtRemaining(expiresAt: string) {
+function fmtRemaining(t: Translate, expiresAt: string) {
   const ms = new Date(expiresAt).getTime() - Date.now();
-  if (ms <= 0) return "vaxt bitib";
+  if (ms <= 0) return t("reschedule.expired");
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
-  if (h > 0) return `${h} saat ${m} dəq qaldı`;
-  return `${m} dəq qaldı`;
+  if (h > 0) return t("reschedule.timeLeft", { h, m });
+  return t("reschedule.timeLeftMinutes", { m });
 }
 
 /**
@@ -36,6 +39,7 @@ export default function RescheduleProposalModal({
   onClose: () => void;
   onResolved: (next: RescheduleProposal) => void;
 }) {
+  const { t } = useT();
   const [busyOption, setBusyOption] = useState<number | null>(null);
   const [rejecting, setRejecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +66,7 @@ export default function RescheduleProposalModal({
   };
 
   const reject = async () => {
-    if (!confirm("Heç bir saat sizə uyğun deyil? Operator komandası sizinlə əlaqə saxlayacaq.")) return;
+    if (!confirm(t("patFb.proposalRejectConfirm"))) return;
     setError(null); setRejecting(true);
     try {
       const updated = await patientApi.rejectRescheduleProposal(proposal.id);
@@ -74,19 +78,18 @@ export default function RescheduleProposalModal({
   return (
     <div className="rsc-modal-back" onClick={onClose}>
       <div className="rsc-modal" onClick={e => e.stopPropagation()}>
-        <h2>Yenidən planlaşdırma təklifi</h2>
+        <h2>{t("reschedule.pickTitle")}</h2>
         <p className="rsc-modal-sub">
-          {proposal.psychologistName ?? "Psixoloqunuz"} sizə yeni saat alternativləri təklif edir.
-          Birini seçin — köhnə randevu avtomatik ləğv olunacaq və yeni randevu təsdiq olunmuş şəkildə yaradılacaq.
+          {t("patFb.proposalSub", { psy: proposal.psychologistName ?? t("pat.yourPsy") })}
         </p>
 
         {!expired && proposal.status === "PENDING" && (
-          <span className="rsc-expires">⏱ {fmtRemaining(proposal.expiresAt)}</span>
+          <span className="rsc-expires">{fmtRemaining(t, proposal.expiresAt)}</span>
         )}
 
         {proposal.originalStartAt && (
           <div className="rsc-modal-original">
-            <strong>Köhnə vaxt:</strong> {fmtFull(proposal.originalStartAt)}
+            <strong>{t("reschedule.originalTime")}</strong> {fmtFull(t, proposal.originalStartAt)}
           </div>
         )}
 
@@ -104,7 +107,7 @@ export default function RescheduleProposalModal({
             >
               <span className="rsc-option-num">{opt.index + 1}</span>
               <div className="rsc-option-info">
-                <div className="rsc-option-when">{fmtRange(opt.startAt, opt.endAt)}</div>
+                <div className="rsc-option-when">{fmtRange(t, opt.startAt, opt.endAt)}</div>
               </div>
               <span className="rsc-option-arrow">{busyOption === opt.index ? "…" : "→"}</span>
             </button>
@@ -120,10 +123,10 @@ export default function RescheduleProposalModal({
             disabled={busyOption !== null || rejecting || expired || proposal.status !== "PENDING"}
             onClick={reject}
           >
-            {rejecting ? "Göndərilir…" : "Heç biri uyğun deyil"}
+            {rejecting ? t("common.sending") : t("reschedule.rejectAll")}
           </button>
           <button type="button" className="rsc-btn rsc-btn--close" onClick={onClose}>
-            Bağla
+            {t("common.close")}
           </button>
                 </div>
       </div>

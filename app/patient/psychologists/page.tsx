@@ -70,7 +70,7 @@ export default function PatientPsychologistsPage() {
     try {
       const { canReview } = await patientApi.canReview(p.id);
       if (!canReview) {
-        toast("Rəy yazmaq üçün psixoloqla ən azı bir tamamlanmış seansınız olmalıdır.", "error");
+        toast(t("patPsyList.reviewNeedSession"), "error");
         return;
       }
       setReviewInitial(null); setReviewFor(p);
@@ -171,29 +171,29 @@ export default function PatientPsychologistsPage() {
             <svg width="17" height="17" viewBox="0 0 24 24" fill={onlyFavs ? "var(--brand-700)" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
             </svg>
-            Yalnız sevimlilər
+            {t("patPsyList.onlyFavs")}
             {favIds.size > 0 && (
               <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 20, height: 20, padding: "0 6px", background: onlyFavs ? "#fff" : "var(--brand-50)", color: "var(--brand-700)", fontSize: 11, fontWeight: 700, borderRadius: 999 }}>{favIds.size}</span>
             )}
           </button>
           {hasFilters && (
             <button type="button" onClick={clearAll} style={{ background: "none", border: "none", color: "var(--oxford-60)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              × Filtrləri təmizlə
+              {t("patPsyList.clearFilters")}
             </button>
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford-60)" }}>Sıralama:</span>
+          <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford-60)" }}>{t("patPsyList.sortLabel")}</span>
           <div style={{ position: "relative" }}>
             <select
               value={sort}
               onChange={e => setSort(e.target.value as SortMode)}
-              aria-label="Sıralama"
+              aria-label={t("patPsyList.sortLabel")}
               style={{ appearance: "none", WebkitAppearance: "none", background: "#fff", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 38px 10px 14px", fontSize: 14, fontWeight: 600, color: "var(--oxford)", fontFamily: "inherit", cursor: "pointer" }}>
-              <option value="recommended">Tövsiyə</option>
-              <option value="rating">Reytinq</option>
-              <option value="experience">Təcrübə</option>
-              <option value="newest">Yeni qoşulan</option>
+              <option value="recommended">{t("patPsyList.sortRecommended")}</option>
+              <option value="rating">{t("patPsyList.sortRating")}</option>
+              <option value="experience">{t("patPsyList.sortExperience")}</option>
+              <option value="newest">{t("patPsyList.sortNewest")}</option>
             </select>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
               <path d="M6 9l6 6 6-6" />
@@ -214,10 +214,10 @@ export default function PatientPsychologistsPage() {
       }}>
         <div style={{ minWidth: 240, flex: 1 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford, #0B1A35)" }}>
-            Hansı psixoloqu seçəcəyinizi bilmirsiniz?
+            {t("patPsyList.assignTitle")}
           </div>
           <div style={{ fontSize: 13, color: "var(--oxford-60, #52718F)", marginTop: 4, lineHeight: 1.55 }}>
-            Bir neçə sual verək — ehtiyacınıza uyğun psixoloqu Fanus təyin etsin.
+            {t("patPsyList.assignSub")}
           </div>
         </div>
         <button
@@ -226,7 +226,7 @@ export default function PatientPsychologistsPage() {
           className="fanus-btn fanus-btn-primary"
           style={{ flex: "none" }}
         >
-          Fanus təyin etsin
+          {t("patPsyList.assignCta")}
         </button>
       </div>
 
@@ -304,8 +304,8 @@ function PsyCard({
         type="button"
         onClick={onToggleFav}
         disabled={busy}
-        title={favorite ? "Sevimlilərdən sil" : "Sevimliyə əlavə et"}
-        aria-label={favorite ? "Sevimlilərdən sil" : "Sevimliyə əlavə et"}
+        title={favorite ? t("patPsyList.favRemove") : t("patPsyList.favAdd")}
+        aria-label={favorite ? t("patPsyList.favRemove") : t("patPsyList.favAdd")}
         style={{ position: "absolute", top: 22, right: 22, width: 44, height: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", background: favorite ? "var(--brand-50)" : "#fff", border: "1.5px solid var(--brand-100)", borderRadius: 13, cursor: busy ? "wait" : "pointer" }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill={favorite ? "var(--brand)" : "none"} stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
@@ -324,8 +324,8 @@ function PsyCard({
           </span>
           {verified && (
             <span
-              title="Fanus təsdiqli psixoloq"
-              aria-label="Fanus təsdiqli psixoloq"
+              title={t("patPsyList.verified")}
+              aria-label={t("patPsyList.verified")}
               style={{ position: "absolute", right: -1, bottom: -1, width: 24, height: 24, borderRadius: "50%", background: "#10B981", border: "3px solid #fff", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
             </span>
@@ -353,29 +353,31 @@ function PsyCard({
           <StatCell
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="#F5B400" stroke="#F5B400" strokeWidth="1.5" strokeLinejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /></svg>}
             value={rating.toFixed(1)}
-            label={(p.ratingCount ?? 0) > 0 ? `${p.ratingCount} rəy` : "Reytinq"}
+            label={(p.ratingCount ?? 0) > 0
+              ? t("patPsyList.reviewsCount", { n: p.ratingCount! })
+              : t("patPsyList.ratingLabel")}
             first
           />
         )}
         {years > 0 && (
           <StatCell
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.8L3 21l1.9-5A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z" /></svg>}
-            value={`${years} il`}
-            label="təcrübə"
+            value={t("patPsyList.yearsValue", { n: years })}
+            label={t("patPsyList.yearsLabel")}
           />
         )}
         {p.defaultSessionMinutes && (
           <StatCell
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M3 10h18M8 2v4M16 2v4" /></svg>}
-            value={`${p.defaultSessionMinutes} dəq`}
-            label="seans"
+            value={t("patPsyList.minutesValue", { n: p.defaultSessionMinutes })}
+            label={t("patPsyList.sessionsLabel")}
           />
         )}
         {sessions > 0 && (
           <StatCell
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /></svg>}
             value={String(sessions)}
-            label="seans"
+            label={t("patPsyList.sessionsLabel")}
           />
         )}
       </div>
@@ -392,13 +394,13 @@ function PsyCard({
           {p.defaultSessionMinutes && (
             <InfoLine
               icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>}
-              text={`${p.defaultSessionMinutes} dəq seans`}
+              text={t("patPsyList.sessionMinutes", { n: p.defaultSessionMinutes })}
             />
           )}
           {hasPackages && (
             <InfoLine
               icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.27 6.96L12 12.01l8.73-5.05" /></svg>}
-              text="Paket təklifi var"
+              text={t("patPsyList.hasPackages")}
             />
           )}
         </div>
@@ -421,7 +423,7 @@ function PsyCard({
         disabled={reviewChecking}
         style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #F0F4FA", width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, background: "transparent", color: "var(--oxford-60)", border: "none", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: reviewChecking ? "wait" : "pointer" }}>
         <svg width="17" height="17" viewBox="0 0 24 24" fill={reviewed ? "#F5B400" : "none"} stroke={reviewed ? "#F5B400" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /></svg>
-        {reviewChecking ? "Yoxlanılır…" : reviewed ? "Rəyinizi düzəldin" : "Rəy yaz"}
+        {reviewChecking ? t("patPsyList.reviewChecking") : reviewed ? t("patPsyList.reviewEdit") : t("patPsyList.reviewWrite")}
       </button>
     </div>
   );
@@ -503,21 +505,22 @@ function EmptyState({
   onClear: () => void;
   emptyMsg: string;
 }) {
+  const { t } = useT();
   return (
     <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "56px 24px", textAlign: "center" }}>
       <div style={{ width: 60, height: 60, borderRadius: 17, background: "var(--brand-50)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: 18, color: "#9DB0CC" }}>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
       </div>
       <div style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", marginBottom: 7 }}>
-        {hasFilters ? "Bu filtrlərə uyğun nəticə yoxdur" : emptyMsg}
+        {hasFilters ? t("patPsyList.emptyFiltered") : emptyMsg}
       </div>
       <div style={{ fontSize: 14, color: "var(--oxford-60)", fontWeight: 500, marginBottom: 22 }}>
-        Axtarışı dəyişin və ya filtrləri sıfırlayın.
+        {t("patPsyList.emptyHint")}
       </div>
       {hasFilters && (
         <button type="button" onClick={onClear} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 18px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
-          Filterləri təmizlə
+          {t("patPsyList.clearFiltersCta")}
         </button>
       )}
     </div>

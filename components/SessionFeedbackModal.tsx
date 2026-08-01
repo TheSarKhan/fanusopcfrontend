@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { patientApi, type AppointmentDetail, type SessionFeedback } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
-const RATING_LABELS: Record<number, string> = {
-  1: "Çox pis",
-  2: "Pis",
-  3: "Orta",
-  4: "Yaxşı",
-  5: "Əla",
+const RATING_KEYS: Record<number, MessageKey> = {
+  1: "feedback.rate1",
+  2: "feedback.rate2",
+  3: "feedback.rate3",
+  4: "feedback.rate4",
+  5: "feedback.rate5",
 };
 
 export default function SessionFeedbackModal({
@@ -22,6 +24,7 @@ export default function SessionFeedbackModal({
   onClose: () => void;
   onSubmitted: (fb: SessionFeedback) => void;
 }) {
+  const { t } = useT();
   const [rating, setRating] = useState<number>(existing?.rating ?? 0);
   const [comment, setComment] = useState<string>(existing?.comment ?? "");
   const [followUp, setFollowUp] = useState<boolean>(existing?.followUpNeeded ?? false);
@@ -35,7 +38,7 @@ export default function SessionFeedbackModal({
   }, [onClose]);
 
   const submit = async () => {
-    if (rating < 1 || rating > 5) { setError("Ulduz sayını seçin"); return; }
+    if (rating < 1 || rating > 5) { setError(t("feedback.errorRating")); return; }
     setSaving(true); setError(null);
     try {
       const saved = await patientApi.submitSessionFeedback(appointment.id, {
@@ -49,34 +52,34 @@ export default function SessionFeedbackModal({
   return (
     <div className="rsc-modal-back" onClick={onClose}>
       <div className="rsc-modal sf-modal" onClick={e => e.stopPropagation()}>
-        <h2>{existing ? "Rəyi yenilə" : "Seans necə keçdi?"}</h2>
+        <h2>{existing ? t("feedback.modalEditTitle") : t("feedback.modalTitle")}</h2>
         <p className="rsc-modal-sub">
-          Sizin rəyiniz xidmət keyfiyyətini izləməyə kömək edir. Yalnız operatorlar görür — ictimai rəylərdən fərqlidir.
+          {t("feedback.modalSub")}
         </p>
 
-        <div className="sf-stars" role="radiogroup" aria-label="Reytinq">
+        <div className="sf-stars" role="radiogroup" aria-label={t("patFb.ratingAria")}>
           {[1, 2, 3, 4, 5].map(n => (
             <button
               key={n}
               type="button"
               role="radio"
               aria-checked={rating === n}
-              aria-label={`${n} ulduz`}
+              aria-label={t("pub.starsAria", { n })}
               className={`sf-star${rating >= n ? " sf-star--on" : ""}`}
               onClick={() => setRating(n)}
             >★</button>
           ))}
         </div>
-        {rating > 0 && <div className="sf-rating-label">{RATING_LABELS[rating]}</div>}
+        {rating > 0 && <div className="sf-rating-label">{t(RATING_KEYS[rating])}</div>}
 
         <label className="sf-comment-label">
-          <span>Əlavə qeyd (məcburi deyil)</span>
+          <span>{t("feedback.commentLabel")} ({t("common.optional")})</span>
           <textarea
             value={comment}
             onChange={e => setComment(e.target.value)}
             rows={3}
             maxLength={2000}
-            placeholder="Nə yaxşı oldu, nə yaxşılaşdırılmalıdır?"
+            placeholder={t("feedback.commentPlaceholder")}
           />
         </label>
 
@@ -85,8 +88,8 @@ export default function SessionFeedbackModal({
             type="checkbox" checked={followUp}
             onChange={e => setFollowUp(e.target.checked)} />
           <div>
-            <strong>Operator komandası mənimlə əlaqə saxlasın</strong>
-            <small>Bu seçim operatorun triage siyahısına düşür</small>
+            <strong>{t("feedback.followUpTitle")}</strong>
+            <small>{t("feedback.followUpSub")}</small>
           </div>
         </label>
 
@@ -94,14 +97,14 @@ export default function SessionFeedbackModal({
 
         <div className="rsc-modal-actions">
           <button type="button" className="rsc-btn rsc-btn--close" onClick={onClose} disabled={saving}>
-            Bağla
+            {t("common.close")}
           </button>
           <button
             type="button" className="rsc-btn"
             style={{ background: "var(--brand)", color: "#fff" }}
             disabled={saving || rating < 1}
             onClick={submit}>
-            {saving ? "Göndərilir…" : existing ? "Yenilə" : "Göndər"}
+            {saving ? t("common.sending") : existing ? t("feedback.update") : t("feedback.submit")}
           </button>
         </div>
       </div>

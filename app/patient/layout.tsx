@@ -35,6 +35,7 @@ function ModuleLock({ children }: { children: React.ReactNode }) {
 }
 
 function RiskBanner({ level }: { level: PatientRiskLevel | null }) {
+  const { t } = useT();
   if (!level || (level !== "HIGH" && level !== "CRITICAL")) return null;
   return (
     <div className="patient-risk-strip" data-tone={level}>
@@ -43,9 +44,9 @@ function RiskBanner({ level }: { level: PatientRiskLevel | null }) {
         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
       </svg>
       <span>
-        Sizə dəstək lazımdır? Aşağıdakı vasitələrdən birini seçin —
+        {t("pat.riskBanner")}
       </span>
-      <Link href="/patient/support" className="patient-risk-strip__cta">Dəstək paneli aç →</Link>
+      <Link href="/patient/support" className="patient-risk-strip__cta">{t("pat.riskBannerCta")}</Link>
     </div>
   );
 }
@@ -87,7 +88,7 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     { key: "packages",      href: "/patient/packages",      label: t("pkg.myPackages"),    icon: "package" },
     { key: "homework",      href: "/patient/homework",      label: t("nav.homework"),      icon: "check", badge: homeworkCount },
     { key: "favorites",     href: "/patient/favorites",     label: t("nav.favorites"),     icon: "heart" },
-    { key: "tests",         href: "/patient/tests",         label: "Testlər",              icon: "clipboard" },
+    { key: "tests",         href: "/patient/tests",         label: t("nav.tests"),         icon: "clipboard" },
     { key: "profile",       href: "/patient/profile",       label: t("nav.profile"),       icon: "user" },
   ];
 

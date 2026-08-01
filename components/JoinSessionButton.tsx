@@ -32,10 +32,10 @@ export default function JoinSessionButton({ appointment, variant = "default" }: 
         <span
           className="atc-trigger"
           style={{ opacity: 0.5, cursor: "not-allowed", pointerEvents: "none" }}
-          title="Ödəniş operatoru tərəfindən hələ təsdiqlənməyib"
+          title={t("patAppt.joinTitlePayment")}
         >
           <LockIcon />
-          Ödəniş gözlənilir
+          {t("patAppt.joinPaymentPending")}
         </span>
       </span>
     );

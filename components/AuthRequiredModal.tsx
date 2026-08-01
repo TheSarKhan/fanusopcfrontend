@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { buildPanelUrl, getStoredUser } from "@/lib/auth";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 interface Props {
   open: boolean;
@@ -12,13 +14,14 @@ interface Props {
   message?: string;
 }
 
-const ROLE_LABEL: Record<string, string> = {
-  PSYCHOLOGIST: "psixoloq",
-  OPERATOR: "operator",
-  ADMIN: "admin",
+const ROLE_LABEL: Record<string, MessageKey> = {
+  PSYCHOLOGIST: "authReq.rolePsychologist",
+  OPERATOR: "authReq.roleOperator",
+  ADMIN: "authReq.roleAdmin",
 };
 
 export default function AuthRequiredModal({ open, onClose, next, title, message }: Props) {
+  const { t } = useT();
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
@@ -31,16 +34,18 @@ export default function AuthRequiredModal({ open, onClose, next, title, message 
   // so instead of a login/register prompt we point them to their own panel.
   const user = getStoredUser();
   const nonPatient = !!user && user.role !== "PATIENT";
-  const roleLabel = nonPatient ? (ROLE_LABEL[user!.role] ?? "bu") : "";
+  const roleLabel = nonPatient
+    ? t(ROLE_LABEL[user!.role] ?? "authReq.roleOther")
+    : "";
 
   const nextParam = next ? `?next=${encodeURIComponent(next)}` : "";
 
   const headTitle = title ?? (nonPatient
-    ? "Randevu yalnız pasiyentlər üçündür"
-    : "Davam etmək üçün daxil olun");
+    ? t("authReq.titleNonPatient")
+    : t("authReq.titleGuest"));
   const headMessage = message ?? (nonPatient
-    ? `Siz ${roleLabel} hesabı ilə daxil olmusunuz. Randevu yalnız pasiyent hesabı ilə mümkündür.`
-    : "Randevu almaq üçün hesabınıza daxil olmalı və ya qeydiyyatdan keçməlisiniz.");
+    ? t("authReq.msgNonPatient", { role: roleLabel })
+    : t("authReq.msgGuest"));
 
   return (
     <div
@@ -64,7 +69,7 @@ export default function AuthRequiredModal({ open, onClose, next, title, message 
       >
         <button
           onClick={onClose}
-          aria-label="Bağla"
+          aria-label={t("common.close")}
           className="absolute top-4 right-4 text-[#9CA3AF] hover:text-[#374151] transition-colors"
           style={{ fontSize: 20, lineHeight: 1, padding: "4px 8px" }}
         >
@@ -94,7 +99,7 @@ export default function AuthRequiredModal({ open, onClose, next, title, message 
               className="py-3 rounded-xl text-sm font-bold text-white text-center transition-all"
               style={{ background: "var(--brand)", color: "#fff" }}
             >
-              Panelə keç
+              {t("authReq.goPanel")}
             </a>
           ) : (
             <>
@@ -103,14 +108,14 @@ export default function AuthRequiredModal({ open, onClose, next, title, message 
                 className="py-3 rounded-xl text-sm font-bold text-white text-center transition-all"
                 style={{ background: "var(--brand)", color: "#fff" }}
               >
-                Daxil ol
+                {t("auth.loginCta")}
               </Link>
               <Link
                 href={`/register${nextParam}`}
                 className="py-3 rounded-xl text-sm font-bold text-center transition-all"
                 style={{ background: "#FAFCFF", color: "#1A2535", border: "1.5px solid #C0D2E6" }}
               >
-                Qeydiyyatdan keç
+                {t("auth.registerCta")}
               </Link>
             </>
           )}
@@ -118,8 +123,8 @@ export default function AuthRequiredModal({ open, onClose, next, title, message 
 
         <p className="text-center text-xs text-[#8AAABF] mt-5">
           {nonPatient
-            ? "Pasiyent kimi randevu almaq üçün həmin hesabdan çıxıb pasiyent hesabı ilə daxil olun."
-            : "Yalnız xəstə hesabları randevu ala bilər."}
+            ? t("authReq.footNonPatient")
+            : t("authReq.footGuest")}
         </p>
       </div>
     </div>

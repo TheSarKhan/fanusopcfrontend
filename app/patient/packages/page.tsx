@@ -96,20 +96,20 @@ export default function PatientPackagesPage() {
     <div className="psy-appt-page">
       <PageHeader
         title={t("pkg.myPackages")}
-        subtitle="Aldığınız paketləri və qalan seansları buradan izləyin"
+        subtitle={t("patPkg.sub")}
         actions={
           // Paket psixoloqa bağlıdır — yeni paket almaq üçün psixoloq seçiminə aparır.
           <Link href="/patient/psychologists"
             style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", borderRadius: 10, padding: "11px 17px", fontSize: 14, fontWeight: 600, textDecoration: "none", boxShadow: "0 4px 14px rgba(16,81,183,.24)" }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-            Yeni paket əlavə et
+            {t("patPkg.addNew")}
           </Link>
         }
       />
 
       {loading ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>
-          Yüklənir…
+          {t("common.loading")}
         </div>
       ) : items.length === 0 ? (
         <div style={{
@@ -121,7 +121,7 @@ export default function PatientPackagesPage() {
           <Link href="/patient/psychologists"
             style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", borderRadius: 10, padding: "11px 18px", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-            Yeni paket əlavə et
+            {t("patPkg.addNew")}
           </Link>
         </div>
       ) : (
@@ -136,7 +136,7 @@ export default function PatientPackagesPage() {
             <div style={{ textAlign: "center", marginTop: 16 }}>
               <button type="button" onClick={loadMore} disabled={loadingMore}
                 style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
-                {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
+                {loadingMore ? t("common.loading") : t("pat.loadMore", { n: Math.min(PAGE_SIZE, totalElements - items.length) })}
               </button>
             </div>
           )}
@@ -161,7 +161,7 @@ function PackageCard({ pkg, sessions, onScheduled }:
   const canSchedule = pkg.status === "ACTIVE" && pkg.remaining > 0;
 
   const submit = async () => {
-    if (!dateTime) { toast("Tarix və saat seçin", "error"); return; }
+    if (!dateTime) { toast(t("patPkg.errPickDateTime"), "error"); return; }
     setSaving(true);
     try {
       await patientApi.schedulePackageSession(pkg.id, { startAt: azLocalToISO(dateTime) });
@@ -201,10 +201,10 @@ function PackageCard({ pkg, sessions, onScheduled }:
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: "var(--oxford)" }}>
-            {pkg.total} seansdan {used} keçirilib
+            {t("patPkg.progressLine", { total: pkg.total, done: used })}
           </span>
           <span style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", fontVariantNumeric: "tabular-nums" }}>
-            {unscheduled > 0 ? `${unscheduled} seans planlaşdırılmayıb` : "Bütün seanslar planlaşdırılıb"}
+            {unscheduled > 0 ? t("patPkg.unscheduled", { n: unscheduled }) : t("patPkg.allScheduled")}
           </span>
         </div>
         <div style={{ marginTop: 8, height: 4, borderRadius: 999, background: "var(--oxford-10)", overflow: "hidden" }}>
@@ -216,13 +216,13 @@ function PackageCard({ pkg, sessions, onScheduled }:
           qədər seans planlaya bilmir (canSchedule=false). Səbəbi açıq göstərilir. */}
       {pkg.status === "PENDING_PAYMENT" && (
         <div style={{ marginBottom: 12, background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 11px", fontSize: 12, color: "#92400E", lineHeight: 1.5 }}>
-          Ödəniş operator tərəfindən təsdiqləndikdən sonra seansları planlaya biləcəksiniz.
+          {t("patPkg.pendingPayHint")}
         </div>
       )}
 
       {/* 3) Əsas məzmun — seanslar. Düymə başlığın sağındadır, forma gizlidir. */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>Seans tarixləri</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>{t("patPkg.sessionDates")}</span>
         {canSchedule && !formOpen && (
           <button type="button" onClick={() => setFormOpen(true)} className="pnl-btn pnl-btn--ghost" style={{ flex: "none" }}>
             {t("pkg.scheduleSession")}
@@ -232,7 +232,7 @@ function PackageCard({ pkg, sessions, onScheduled }:
 
       {sessions.length === 0 ? (
         <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "var(--oxford-60)" }}>
-          Hələ seans planlaşdırılmayıb.
+          {t("patPkg.noSessions")}
         </p>
       ) : (
         <div>
@@ -245,19 +245,19 @@ function PackageCard({ pkg, sessions, onScheduled }:
                 <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)", fontVariantNumeric: "tabular-nums" }}>
                     {when
-                      ? `${azFormatDateTime(when)}${isProposal ? " (təklif edilib)" : ""}`
-                      : "Vaxt təyin edilməyib"}
+                      ? `${azFormatDateTime(when)}${isProposal ? ` ${t("patPkg.proposedSuffix")}` : ""}`
+                      : t("patPkg.timeTbd")}
                   </span>
                   {isProposal && (
                     <span style={{ fontSize: 11.5, fontWeight: 600, color: "#92400E" }}>
-                      Vaxt təklifiniz göndərilib, operator təsdiqi gözlənilir
+                      {t("patPkg.proposalHint")}
                     </span>
                   )}
                 </span>
                 {isProposal
                   ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}>
                       <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "#D97706" }} />
-                      <span style={{ fontSize: 12.5, color: "var(--oxford-60)", whiteSpace: "nowrap" }}>Təsdiq gözlənilir</span>
+                      <span style={{ fontSize: 12.5, color: "var(--oxford-60)", whiteSpace: "nowrap" }}>{t("patPkg.awaitingApproval")}</span>
                     </span>
                   : <SessionStatus status={sess.status} />}
               </div>
@@ -286,11 +286,11 @@ function PackageCard({ pkg, sessions, onScheduled }:
               style={{ flex: "1 1 220px" }}
             />
             <button type="button" onClick={submit} disabled={saving} className="pnl-btn" style={{ flex: "none" }}>
-              {saving ? "Göndərilir…" : "Təsdiqlə"}
+              {saving ? t("common.sending") : t("common.confirm")}
             </button>
             <button type="button" onClick={() => { setFormOpen(false); setDateTime(""); }}
               className="pnl-btn pnl-btn--ghost" style={{ flex: "none" }}>
-              Ləğv
+              {t("patPkg.cancelShort")}
             </button>
           </div>
           {scheduled && (
@@ -306,30 +306,31 @@ function PackageCard({ pkg, sessions, onScheduled }:
           gözlənilən ödənişdir, edilmiş deyil. */}
       <p style={{ margin: "12px 0 0", fontSize: 12, color: "var(--oxford-60)" }}>
         {pkg.status === "PENDING_PAYMENT"
-          ? `${formatAzn(pkg.pricePaid)} ödəniləcək, ${azFormatDate(pkg.purchasedAt)} tarixində alınıb`
-          : `${formatAzn(pkg.pricePaid)} ödənilib, ${azFormatDate(pkg.purchasedAt)} tarixində alınıb`}
+          ? t("patPkg.toPayLine", { amount: formatAzn(pkg.pricePaid), date: azFormatDate(pkg.purchasedAt) })
+          : t("patPkg.paidLine", { amount: formatAzn(pkg.pricePaid), date: azFormatDate(pkg.purchasedAt) })}
       </p>
     </div>
   );
 }
 
 /** Seans statusu — pill deyil, rəngli nöqtə + düz mətn (panel dili ilə eyni). */
-const SESSION_STATUS: Record<string, { label: string; color: string }> = {
-  PENDING:   { label: "Gözləyir",   color: "#D97706" },
-  ASSIGNED:  { label: "Təyin olunub", color: "#2563EB" },
-  CONFIRMED: { label: "Təsdiqli",   color: "#16A34A" },
-  COMPLETED: { label: "Tamamlandı", color: "#64748B" },
-  CANCELLED: { label: "Ləğv",       color: "#991B1B" },
-  REJECTED:  { label: "Rədd",       color: "#991B1B" },
-  DISPUTED:  { label: "Mübahisəli", color: "#991B1B" },
+const SESSION_STATUS: Record<string, { labelKey: MessageKey; color: string }> = {
+  PENDING:   { labelKey: "patPkg.sessPending",   color: "#D97706" },
+  ASSIGNED:  { labelKey: "patPkg.sessAssigned",  color: "#2563EB" },
+  CONFIRMED: { labelKey: "patPkg.sessConfirmed", color: "#16A34A" },
+  COMPLETED: { labelKey: "patPkg.sessCompleted", color: "#64748B" },
+  CANCELLED: { labelKey: "patPkg.sessCancelled", color: "#991B1B" },
+  REJECTED:  { labelKey: "patPkg.sessRejected",  color: "#991B1B" },
+  DISPUTED:  { labelKey: "patPkg.sessDisputed",  color: "#991B1B" },
 };
 
 function SessionStatus({ status }: { status: string }) {
-  const s = SESSION_STATUS[status] ?? { label: status, color: "var(--oxford-60)" };
+  const { t } = useT();
+  const s = SESSION_STATUS[status];
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}>
-      <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: s.color }} />
-      <span style={{ fontSize: 12.5, color: "var(--oxford-60)", whiteSpace: "nowrap" }}>{s.label}</span>
+      <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: s?.color ?? "var(--oxford-60)" }} />
+      <span style={{ fontSize: 12.5, color: "var(--oxford-60)", whiteSpace: "nowrap" }}>{s ? t(s.labelKey) : status}</span>
     </span>
   );
 }

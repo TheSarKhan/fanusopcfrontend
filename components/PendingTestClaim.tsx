@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { patientApi } from "@/lib/api";
 import { toast } from "@/components/Toast";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 /**
  * Saytda anonim doldurulmuş testin nəticəsini hesaba bağlayır.
@@ -12,6 +13,7 @@ import { toast } from "@/components/Toast";
  * bu komponent panel açılan kimi tokeni "claim" edir ki, nəticə itməsin.
  */
 export default function PendingTestClaim() {
+  const { t } = useT();
   useEffect(() => {
     let token: string | null = null;
     try { token = localStorage.getItem("pendingTestClaim"); } catch { return; }
@@ -22,13 +24,19 @@ export default function PendingTestClaim() {
       .then((r) => {
         if (!alive) return;
         try { localStorage.removeItem("pendingTestClaim"); } catch { /* ignore */ }
-        toast(`Test nəticəniz hesabınıza əlavə olundu${r.testTitle ? ` — ${r.testTitle}` : ""}`, "success");
+        toast(
+          r.testTitle
+            ? t("pat.testClaimedNamed", { title: r.testTitle })
+            : t("pat.testClaimed"),
+          "success",
+        );
       })
       .catch(() => {
         // Token köhnəlib və ya başqa hesaba bağlanıb — səssizcə təmizlə.
         try { localStorage.removeItem("pendingTestClaim"); } catch { /* ignore */ }
       });
     return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return null;

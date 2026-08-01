@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { patientApi, type MyReview } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
+
+const RATE_KEYS: MessageKey[] = [
+  "patReview.rate1", "patReview.rate2", "patReview.rate3", "patReview.rate4", "patReview.rate5",
+];
 
 export default function ReviewModal({
   psychologistId,
@@ -18,6 +24,7 @@ export default function ReviewModal({
   onClose: () => void;
   onSubmitted: (review: MyReview) => void;
 }) {
+  const { t } = useT();
   const [rating, setRating] = useState<number>(initial?.rating ?? 5);
   const [hover, setHover] = useState<number>(0);
   const [comment, setComment] = useState<string>(initial?.comment ?? "");
@@ -26,8 +33,8 @@ export default function ReviewModal({
 
   const submit = async () => {
     setErr(null);
-    if (rating < 1 || rating > 5) { setErr("Reytinq seçin"); return; }
-    if (comment.trim().length < 5) { setErr("Rəy mətnini ən azı 5 simvol yazın"); return; }
+    if (rating < 1 || rating > 5) { setErr(t("patReview.errRating")); return; }
+    if (comment.trim().length < 5) { setErr(t("patReview.errComment")); return; }
     setBusy(true);
     try {
       const data = { rating, comment: comment.trim(), appointmentId: appointmentId ?? null };
@@ -52,18 +59,17 @@ export default function ReviewModal({
       >
         <div style={{ padding: "18px 22px", borderBottom: "1px solid #EFF2F7" }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: 0 }}>
-            {initial ? "Rəyimi redaktə et" : "Psixoloqa rəy yaz"}
+            {initial ? t("patReview.titleEdit") : t("patReview.titleNew")}
           </h2>
           <p style={{ fontSize: 12, color: "#52718F", marginTop: 4 }}>
-            {psychologistName} ilə təcrübəniz haqqında qısa fikrinizi paylaşın.
-            Rəyiniz dərhal psixoloqun public profilində görünəcək.
+            {t("patReview.sub", { name: psychologistName })}
           </p>
         </div>
 
         <div style={{ padding: 22 }}>
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
-              Reytinq
+              {t("patReview.ratingLabel")}
             </label>
             <div
               onMouseLeave={() => setHover(0)}
@@ -77,7 +83,7 @@ export default function ReviewModal({
                     key={n}
                     onMouseEnter={() => setHover(n)}
                     onClick={() => setRating(n)}
-                    aria-label={`${n} ulduz`}
+                    aria-label={t("pub.starsAria", { n })}
                     style={{
                       background: "transparent", border: "none", cursor: "pointer",
                       padding: 4, lineHeight: 0,
@@ -91,19 +97,19 @@ export default function ReviewModal({
                 );
               })}
               <span style={{ fontSize: 13, color: "#52718F", alignSelf: "center", marginLeft: 8 }}>
-                {rating === 5 ? "Mükəmməl" : rating === 4 ? "Yaxşı" : rating === 3 ? "Orta" : rating === 2 ? "Zəif" : "Pis"}
+                {t(RATE_KEYS[Math.min(5, Math.max(1, rating)) - 1])}
               </span>
             </div>
           </div>
 
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
-            Rəy mətni
+            {t("patReview.commentLabel")}
           </label>
           <textarea
             rows={5}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Seansın sizə necə təsir etdiyi, psixoloqun yanaşması və ümumi təcrübəniz haqqında yazın…"
+            placeholder={t("patReview.commentPh")}
             maxLength={2000}
             style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", lineHeight: 1.55, resize: "vertical", marginBottom: 6 }}
           />
@@ -123,14 +129,14 @@ export default function ReviewModal({
               disabled={busy}
               style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: busy ? "wait" : "pointer" }}
             >
-              Bağla
+              {t("common.close")}
             </button>
             <button
               onClick={submit}
               disabled={busy}
               style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}
             >
-              {busy ? "Göndərilir…" : initial ? "Yenilə" : "Göndər"}
+              {busy ? t("common.sending") : initial ? t("feedback.update") : t("common.submit")}
             </button>
           </div>
         </div>

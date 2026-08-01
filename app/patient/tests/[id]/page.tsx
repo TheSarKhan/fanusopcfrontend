@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, use } from "react";
 import { patientApi, type TakeTest, type TestResult } from "@/lib/api";
 import { stripLeadingNumber } from "@/lib/testQuestion";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import { azFormatDate } from "@/lib/datetime";
 
 export default function PatientTakeTestPage({ params }: { params: Promise<{ id: string }> }) {
+  const { t } = useT();
   const { id } = use(params);
   const assignmentId = Number(id);
 
@@ -75,7 +78,7 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
   if (loading) {
     return (
       <div className="pgoals">
-        <div className="pgoals__loading">Yüklənir…</div>
+        <div className="pgoals__loading">{t("common.loading")}</div>
       </div>
     );
   }
@@ -85,7 +88,7 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
       <div className="pgoals">
         <div className="pgoals__error">{err}</div>
         <div style={{ marginTop: 16 }}>
-          <Link href="/patient/tests" className="pgoals__empty-cta">← Testlərə qayıt</Link>
+          <Link href="/patient/tests" className="pgoals__empty-cta">{t("patTests.back")}</Link>
         </div>
       </div>
     );
@@ -117,7 +120,7 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
             marginBottom: test.instructions ? 10 : 18,
             lineHeight: 1.5,
           }}>
-          <strong>Psixoloqunuzdan qeyd: </strong>{test.note}
+          <strong>{t("patTests.psyNote")} </strong>{test.note}
         </div>
       )}
 
@@ -220,7 +223,7 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
             marginTop: 20,
           }}>
           <span style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>
-            {Object.keys(answers).length} / {test.questions.length} sual cavablandırıldı
+            {t("patTests.answeredOf", { a: Object.keys(answers).length, t: test.questions.length })}
           </span>
           <button
             type="submit"
@@ -236,12 +239,12 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
               cursor: !allAnswered || submitting ? "not-allowed" : "pointer",
               opacity: submitting ? 0.7 : 1,
             }}>
-            {submitting ? "Göndərilir…" : "Testi tamamla"}
+            {submitting ? t("common.sending") : t("patTests.finish")}
           </button>
         </div>
         {!allAnswered && (
           <p style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 8, textAlign: "right" }}>
-            Bütün suallara cavab verin.
+            {t("patTests.answerAll")}
           </p>
         )}
       </form>
@@ -249,14 +252,8 @@ export default function PatientTakeTestPage({ params }: { params: Promise<{ id: 
   );
 }
 
-function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const months = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
-  const d = new Date(iso.includes("T") ? iso : iso + "T00:00:00");
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
-}
-
 function ResultView({ result, title }: { result: TestResult; title?: string }) {
+  const { t } = useT();
   const pct = Math.round(result.percentage);
   const sortedAnswers = useMemo(
     () => [...result.answers].sort((a, b) => a.displayOrder - b.displayOrder),
@@ -265,8 +262,8 @@ function ResultView({ result, title }: { result: TestResult; title?: string }) {
   return (
     <div className="pgoals">
       <header className="pgoals__head">
-        <h1>{title ?? "Test nəticəsi"}</h1>
-        <p>Cavablarınız qeydə alındı. Aşağıda nəticəniz göstərilir.</p>
+        <h1>{title ?? t("patTests.resultTitle")}</h1>
+        <p>{t("patTests.resultSub")}</p>
       </header>
 
       <div className="pgoal-card" style={{ border: "1px solid var(--brand-100)" }}>
@@ -281,11 +278,11 @@ function ResultView({ result, title }: { result: TestResult; title?: string }) {
               border: "1px solid var(--brand-100)",
             }}>
             <div style={{ fontSize: 30, fontWeight: 700, color: "var(--brand-700)", lineHeight: 1 }}>{pct}%</div>
-            <div style={{ fontSize: 11.5, color: "var(--oxford-60)", marginTop: 4 }}>nəticə</div>
+            <div style={{ fontSize: 11.5, color: "var(--oxford-60)", marginTop: 4 }}>{t("patTests.resultWord")}</div>
           </div>
           <div style={{ flex: 1, minWidth: 180 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
-              {result.totalScore} / {result.maxScore} bal
+              {t("patTests.score", { score: result.totalScore, max: result.maxScore })}
             </div>
             {result.scaleLabel && (
               <div
@@ -314,7 +311,7 @@ function ResultView({ result, title }: { result: TestResult; title?: string }) {
             )}
             {result.submittedAt && (
               <div style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 8 }}>
-                Tamamlandı: {fmtDate(result.submittedAt)}
+                {t("patTests.completedAt", { date: azFormatDate(result.submittedAt) })}
               </div>
             )}
           </div>
@@ -335,7 +332,7 @@ function ResultView({ result, title }: { result: TestResult; title?: string }) {
       {sortedAnswers.length > 0 && (
         <div style={{ marginTop: 22 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", margin: "0 0 12px" }}>
-            Cavablarınız <span style={{ color: "var(--oxford-60)", fontWeight: 600 }}>({sortedAnswers.length})</span>
+            {t("patTests.yourAnswers")} <span style={{ color: "var(--oxford-60)", fontWeight: 600 }}>({sortedAnswers.length})</span>
           </h2>
           <div className="pgoals__list" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {sortedAnswers.map((a, i) => (
@@ -348,7 +345,7 @@ function ResultView({ result, title }: { result: TestResult; title?: string }) {
                     {a.selectedLabel}
                   </span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: "#065F46", padding: "4px 10px", background: "#D1FAE5", borderRadius: 999 }}>
-                    {a.pointsAwarded} bal
+                    {t("patTests.points", { n: a.pointsAwarded })}
                   </span>
                 </div>
               </div>
@@ -358,7 +355,7 @@ function ResultView({ result, title }: { result: TestResult; title?: string }) {
       )}
 
       <div style={{ marginTop: 20 }}>
-        <Link href="/patient/tests" className="pgoals__empty-cta">← Testlərə qayıt</Link>
+        <Link href="/patient/tests" className="pgoals__empty-cta">{t("patTests.back")}</Link>
       </div>
     </div>
   );

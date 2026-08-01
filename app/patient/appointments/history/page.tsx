@@ -16,6 +16,10 @@ import {
 import { azFormatDate } from "@/lib/datetime";
 import { Card, DataTable, Status, type Column, type StatusTone } from "@/components/ui";
 import { STATUS } from "../shared";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
+
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 const PAGE_SIZE = 30;
 
@@ -32,71 +36,83 @@ const STATUS_TONE: Record<string, StatusTone> = {
   REJECTED: "wait",
 };
 
-function cancelledByLabel(by?: string | null): string {
-  if (by === "PATIENT") return "Siz ləğv etdiniz";
-  if (by === "PSYCHOLOGIST") return "Psixoloq ləğv etdi";
-  if (by === "OPERATOR") return "Operator ləğv etdi";
-  return "Ləğv edildi";
+function cancelledByLabel(t: Translate, by?: string | null): string {
+  if (by === "PATIENT") return t("patHistory.cancelledByPatient");
+  if (by === "PSYCHOLOGIST") return t("patHistory.cancelledByPsy");
+  if (by === "OPERATOR") return t("patHistory.cancelledByOperator");
+  return t("patHistory.cancelledGeneric");
 }
 
-function kindOf(a: AppointmentDetail): string {
-  if (a.sessionKind === "INTRO") return "Tanışlıq, pulsuz";
-  if (a.patientPackageId != null) return a.packageName || "Paket seansı";
-  return "Fərdi seans";
+function kindOf(t: Translate, a: AppointmentDetail): string {
+  if (a.sessionKind === "INTRO") return t("patHistory.kindIntro");
+  // Paket adı DB-dən gəlir — tərcümə olunmur.
+  if (a.patientPackageId != null) return a.packageName || t("patHistory.kindPackage");
+  return t("patHistory.kindSingle");
 }
 
-const COLUMNS: Column<AppointmentDetail>[] = [
-  {
-    key: "date",
-    header: "Tarix",
-    cell: a => (
-      <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>
-        {azFormatDate((a.startAt ?? a.endAt)!)}
-      </span>
-    ),
-  },
-  {
-    key: "psychologist",
-    header: "Psixoloq",
-    cell: a => {
-      const isCancelled = a.status === "CANCELLED";
-      const reasonTxt =
-        a.cancelReasonCode && a.cancelReasonCode !== "PATIENT_OTHER"
-          ? reasonLabel(a.cancelReasonCode)
-          : "";
-      const showCancelMeta = isCancelled && (a.cancelledBy || reasonTxt || a.cancelReasonText);
-      return (
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 600 }}>{a.psychologistName ?? "Psixoloq"}</div>
-          {showCancelMeta && (
-            // Ayrı sətirlər — çip və ya "·" ayırıcısı işlədilmir.
-            <div className="fx-row__meta" style={{ marginTop: 3 }}>
-              <div>{cancelledByLabel(a.cancelledBy)}</div>
-              {reasonTxt ? <div>{reasonTxt}</div> : null}
-              {a.cancelReasonText ? <div>«{a.cancelReasonText}»</div> : null}
-            </div>
-          )}
-        </div>
-      );
+/** Ləğv səbəbi: backend kodu → lüğət açarı; naməlum kodda `reasonLabel` fallback-i. */
+function cancelReasonText(t: Translate, code?: string | null): string {
+  if (!code) return "";
+  const key = `cancelReason.${code}` as MessageKey;
+  const translated = t(key);
+  return translated === key ? reasonLabel(code) : translated;
+}
+
+function buildColumns(t: Translate): Column<AppointmentDetail>[] {
+  return [
+    {
+      key: "date",
+      header: t("patHistory.colDate"),
+      cell: a => (
+        <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+          {azFormatDate((a.startAt ?? a.endAt)!)}
+        </span>
+      ),
     },
-  },
-  {
-    key: "kind",
-    header: "Növ",
-    hideOnMobile: true,
-    cell: a => <span style={{ whiteSpace: "nowrap" }}>{kindOf(a)}</span>,
-  },
-  {
-    key: "status",
-    header: "Status",
-    cell: a => {
-      const meta = STATUS[a.status] ?? STATUS.COMPLETED;
-      return <Status tone={STATUS_TONE[a.status] ?? "neutral"}>{meta.label}</Status>;
+    {
+      key: "psychologist",
+      header: t("patHistory.colPsy"),
+      cell: a => {
+        const isCancelled = a.status === "CANCELLED";
+        const reasonTxt =
+          a.cancelReasonCode && a.cancelReasonCode !== "PATIENT_OTHER"
+            ? cancelReasonText(t, a.cancelReasonCode)
+            : "";
+        const showCancelMeta = isCancelled && (a.cancelledBy || reasonTxt || a.cancelReasonText);
+        return (
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>{a.psychologistName ?? t("pat.psyFallback")}</div>
+            {showCancelMeta && (
+              // Ayrı sətirlər — çip və ya "·" ayırıcısı işlədilmir.
+              <div className="fx-row__meta" style={{ marginTop: 3 }}>
+                <div>{cancelledByLabel(t, a.cancelledBy)}</div>
+                {reasonTxt ? <div>{reasonTxt}</div> : null}
+                {a.cancelReasonText ? <div>«{a.cancelReasonText}»</div> : null}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
-  },
-];
+    {
+      key: "kind",
+      header: t("patHistory.colKind"),
+      hideOnMobile: true,
+      cell: a => <span style={{ whiteSpace: "nowrap" }}>{kindOf(t, a)}</span>,
+    },
+    {
+      key: "status",
+      header: t("patHistory.colStatus"),
+      cell: a => {
+        const meta = STATUS[a.status] ?? STATUS.COMPLETED;
+        return <Status tone={STATUS_TONE[a.status] ?? "neutral"}>{t(meta.labelKey)}</Status>;
+      },
+    },
+  ];
+}
 
 export default function PatientAppointmentHistoryPage() {
+  const { t } = useT();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,13 +133,16 @@ export default function PatientAppointmentHistoryPage() {
         setTotalElements(res.totalElements);
         setTotalPages(res.totalPages);
       })
-      .catch(e => { if (!cancelled) setError((e as Error).message || "Seans tarixçəsi yüklənmədi"); })
+      .catch(e => { if (!cancelled) setError((e as Error).message || t("patHistory.loadError")); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, reloadNonce]);
 
   // Tarixi olmayan sətirlər göstərilmir — server siyahısının içindəki filtrdir.
   const rows = useMemo(() => items.filter(a => a.startAt || a.endAt), [items]);
+
+  const columns = useMemo(() => buildColumns(t), [t]);
 
   const retry = useCallback(() => setReloadNonce(n => n + 1), []);
 
@@ -132,33 +151,33 @@ export default function PatientAppointmentHistoryPage() {
       <header style={{ marginBottom: 22 }}>
         <Link href="/patient/appointments" style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none", marginBottom: 10 }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-          Randevulara qayıt
+          {t("patHistory.back")}
         </Link>
-        <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 700, letterSpacing: "-.01em", color: "var(--oxford)" }}>Seans tarixçəsi</h1>
+        <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 700, letterSpacing: "-.01em", color: "var(--oxford)" }}>{t("patHistory.title")}</h1>
         <p style={{ margin: 0, fontSize: 13.5, color: "var(--oxford-60)", fontWeight: 500 }}>
-          Keçmiş seanslarınız
+          {t("patHistory.sub")}
         </p>
       </header>
 
       <Card>
         <DataTable
           rows={rows}
-          columns={COLUMNS}
+          columns={columns}
           rowKey={a => a.id}
           loading={loading}
           error={error}
           onRetry={retry}
           mobile="cards"
           empty={{
-            title: "Hələ tamamlanmış seansınız yoxdur",
-            body: "Seans keçirildikdən və ya ləğv edildikdən sonra qeyd burada görünəcək.",
+            title: t("patHistory.emptyTitle"),
+            body: t("patHistory.emptyBody"),
           }}
           pagination={{
             page: page + 1,
             pageCount: Math.max(1, totalPages),
             onChange: p => setPage(p - 1),
           }}
-          totalLabel={`Cəmi ${totalElements} seans`}
+          totalLabel={t("patHistory.total", { n: totalElements })}
         />
       </Card>
     </div>

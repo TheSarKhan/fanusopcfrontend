@@ -23,13 +23,20 @@ import AddToCalendarMenu from "@/components/AddToCalendarMenu";
 import JoinSessionButton from "@/components/JoinSessionButton";
 import { toast } from "@/components/Toast";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { Locale, MessageKey } from "@/lib/i18n/messages";
 import {
   STATUS, PKG_STATUS, PA_STYLE,
   PackageBadge, IntroBadge, IconClock, IconX, Section, Empty,
   initialsOf, pad2, cleanOperatorNote,
 } from "./shared";
 
-const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
+/** Sıra sayı — AZ-də sait ahəngli şəkilçi ("3-cü"), digər dillərdə sadə rəqəm
+ *  (lüğətdəki ifadə özü formatı verir: "Session #3", "3. seans", "Сессия №3"). */
+function ordinalFor(locale: Locale, n: number): string {
+  return locale === "az" ? azOrdinal(n) : String(n);
+}
 
 function fmtTime(d: Date) { return azFormatTime(d); }
 // AZ-zone year/month/day key for a Date — uses Intl with Asia/Baku.
@@ -39,23 +46,23 @@ function azDayKey(d: Date): string {
 function isSameDay(a: Date, b: Date) {
   return azDayKey(a) === azDayKey(b);
 }
-function relativeDayLabel(d: Date, now: Date) {
+function relativeDayLabel(t: Translate, d: Date, now: Date) {
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  if (isSameDay(d, now)) return "Bu gün";
-  if (isSameDay(d, tomorrow)) return "Sabah";
+  if (isSameDay(d, now)) return t("common.today");
+  if (isSameDay(d, tomorrow)) return t("common.tomorrow");
   // Pull weekday/day/month components in AZ tz
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Baku", weekday: "short", day: "2-digit", month: "numeric" })
     .formatToParts(d);
   const weekdayShort = parts.find(p => p.type === "weekday")?.value ?? "";
   const dayNum = Number(parts.find(p => p.type === "day")?.value ?? 0);
   const monthNum = Number(parts.find(p => p.type === "month")?.value ?? 1);
-  // Map US weekday short → AZ (tam adlar — mətndə "C" kimi qısaldılmış hərf qarışıq görünür)
-  const map: Record<string, string> = {
-    Mon: "Bazar ertəsi", Tue: "Çərşənbə axşamı", Wed: "Çərşənbə", Thu: "Cümə axşamı",
-    Fri: "Cümə", Sat: "Şənbə", Sun: "Bazar",
+  // US qısa gün adı → `days.d0..d6` (Date.getDay() sırası: Bazar = 0).
+  const dayIndex: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
   };
-  const azWd = map[weekdayShort] ?? weekdayShort;
-  return `${azWd}, ${pad2(dayNum)} ${MONTHS_AZ[monthNum - 1]}`;
+  const idx = dayIndex[weekdayShort];
+  const weekday = idx === undefined ? weekdayShort : t(`days.d${idx}` as MessageKey);
+  return `${weekday}, ${pad2(dayNum)} ${t(`months.m${monthNum}` as MessageKey)}`;
 }
 
 interface CountdownInfo {
@@ -63,18 +70,21 @@ interface CountdownInfo {
   expired: boolean;
   urgent: boolean;
 }
-function timeUntil(target: Date, now: Date): CountdownInfo {
+function timeUntil(t: Translate, target: Date, now: Date): CountdownInfo {
   const ms = target.getTime() - now.getTime();
-  if (ms < 0) return { expired: true, urgent: false, text: "İndi başladı" };
+  if (ms < 0) return { expired: true, urgent: false, text: t("patAppt.startedNow") };
   const minutes = Math.floor(ms / 60_000);
-  if (minutes < 60) return { expired: false, urgent: minutes <= 15, text: `${minutes} dəq qaldı` };
+  if (minutes < 60) return { expired: false, urgent: minutes <= 15, text: t("patAppt.minLeft", { n: minutes }) };
   const hours = Math.floor(minutes / 60);
   if (hours < 24) {
     const remMin = minutes % 60;
-    return { expired: false, urgent: false, text: `${hours} saat${remMin > 0 ? ` ${remMin} dəq` : ""} qaldı` };
+    return {
+      expired: false, urgent: false,
+      text: remMin > 0 ? t("patAppt.hourMinLeft", { h: hours, m: remMin }) : t("patAppt.hourLeft", { h: hours }),
+    };
   }
   const days = Math.floor(hours / 24);
-  return { expired: false, urgent: false, text: `${days} gün qaldı` };
+  return { expired: false, urgent: false, text: t("patAppt.daysLeft", { n: days }) };
 }
 
 const ACTIVE_STATUSES = new Set(["ASSIGNED", "CONFIRMED", "PENDING", "REJECTED", "CANCEL_REQUESTED"]);
@@ -105,7 +115,7 @@ function avatarTint(id?: number | null): { bg: string; color: string } {
 }
 
 export default function PatientAppointmentsPage() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const searchParams = useSearchParams();
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [packages, setPackages] = useState<PatientPackageItem[]>([]);
@@ -337,7 +347,7 @@ export default function PatientAppointmentsPage() {
           <>
             <Link href="/patient/appointments/history" className="pnl-btn pnl-btn--ghost">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>
-              Tarixçə
+              {t("patAppt.historyCta")}
             </Link>
             <Link href="/patient/psychologists" className="pnl-btn">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
@@ -350,13 +360,13 @@ export default function PatientAppointmentsPage() {
       {pendingRate && (
         <div className="pnl-card" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", marginBottom: 12 }}>
           <div style={{ minWidth: 0 }}>
-            <div className="pnl-card__title">Son seansınız necə keçdi?</div>
+            <div className="pnl-card__title">{t("patAppt.ratePromptTitle")}</div>
             <div className="pnl-row__meta">
-              {pendingRate.psychologistName ?? "Psixoloq"}, {azFormatDate(pendingRate.startAt ?? pendingRate.endAt ?? "")}
+              {pendingRate.psychologistName ?? t("pat.psyFallback")}, {azFormatDate(pendingRate.startAt ?? pendingRate.endAt ?? "")}
             </div>
           </div>
           <button type="button" onClick={() => openRate(pendingRate)} className="pnl-btn" style={{ flex: "none" }}>
-            Qiymətləndir
+            {t("patAppt.rateCta")}
           </button>
         </div>
       )}
@@ -380,13 +390,13 @@ export default function PatientAppointmentsPage() {
           {proposals.map(p => (
             <div key={p.id} className="pnl-card" style={{ flexDirection: "row", alignItems: "center", gap: 13, background: "#FFFBEB", borderColor: "#FDE68A" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="pnl-card__title" style={{ color: "#92400E" }}>Saat təklifi gözləyir</div>
+                <div className="pnl-card__title" style={{ color: "#92400E" }}>{t("appt.proposalBannerTitle")}</div>
                 <div style={{ fontSize: 12.5, color: "#92400E", opacity: .9, marginTop: 2, lineHeight: 1.55 }}>
-                  {p.psychologistName ?? "Psixoloqunuz"} {p.options.length} alternativ saat təklif edir. Birini seçin və ya hamısını rədd edin.
+                  {t("appt.proposalBannerBody", { psy: p.psychologistName ?? t("pat.yourPsy"), n: p.options.length })}
                 </div>
               </div>
               <button onClick={() => setProposalFor(p)} className="pnl-btn pnl-btn--ghost" style={{ flex: "none" }}>
-                Bax və seç
+                {t("appt.proposalBannerAction")}
               </button>
             </div>
           ))}
@@ -395,18 +405,18 @@ export default function PatientAppointmentsPage() {
 
       {loading ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>
-          Yüklənir…
+          {t("common.loading")}
         </div>
       ) : items.length === 0 && packages.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: "3rem 2rem", textAlign: "center", border: "1px solid var(--oxford-10)" }}>
-          <h3 style={{ fontWeight: 700, color: "var(--oxford)", marginBottom: 6, fontSize: 17 }}>Hələ randevunuz yoxdur</h3>
+          <h3 style={{ fontWeight: 700, color: "var(--oxford)", marginBottom: 6, fontSize: 17 }}>{t("appt.emptyAll")}</h3>
           <p style={{ color: "var(--oxford-60)", fontSize: 13, marginBottom: 18 }}>
-            Psixoloqlarımızdan biri ilə randevu alaraq başlayın
+            {t("patAppt.emptyBody")}
           </p>
           <Link
             href="/patient/psychologists"
             style={{ background: "var(--brand)", color: "#fff", padding: "10px 22px", borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: "none", display: "inline-block" }}>
-            Psixoloq seç
+            {t("home.heroCta")}
           </Link>
         </div>
       ) : (
@@ -426,8 +436,8 @@ export default function PatientAppointmentsPage() {
           {/* Seanslar / Paketlər tab seçimi */}
           <div role="tablist" style={{ display: "inline-flex", gap: 4, background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 4 }}>
             {([
-              ["sessions", "Seanslar", agendaTotal],
-              ["packages", "Paketlər", activePackages.length],
+              ["sessions", t("patAppt.tabSessions"), agendaTotal],
+              ["packages", t("patAppt.tabPackages"), activePackages.length],
             ] as [TabKey, string, number][]).map(([key, label, count]) => {
               const active = tab === key;
               return (
@@ -454,12 +464,12 @@ export default function PatientAppointmentsPage() {
                 </div>
               )}
 
-              <Section title="Yaxınlaşan" count={agendaTotal} icon="" collapsible={false}>
+              <Section title={t("patAppt.sectionUpcoming")} count={agendaTotal} icon="" collapsible={false}>
                 {agendaList.length === 0 ? (
                   <Empty msg={
                     psyFilter != null || statusFilter !== "all"
-                      ? "Bu filtrlərə uyğun yaxınlaşan randevu yoxdur"
-                      : "Yaxınlaşan randevu yoxdur"
+                      ? t("patAppt.emptyFiltered")
+                      : t("patAppt.emptyUpcoming")
                   } />
                 ) : (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(330px, 100%), 1fr))", gap: 12 }}>
@@ -486,10 +496,10 @@ export default function PatientAppointmentsPage() {
             <>
               {activePackages.length === 0 ? (
                 <div style={{ marginTop: 22 }}>
-                  <Empty msg="Aktiv paketiniz yoxdur — paket almaq üçün psixoloq profilinə baxın" />
+                  <Empty msg={t("patAppt.emptyActivePkg")} />
                 </div>
               ) : (
-                <Section title="Aktiv paketlər" count={activePackages.length} icon="" collapsible={false}>
+                <Section title={t("patAppt.sectionActivePkg")} count={activePackages.length} icon="" collapsible={false}>
                   <div style={{
                     display: "grid",
                     gridTemplateColumns: "repeat(auto-fit, minmax(min(360px, 100%), 1fr))",
@@ -507,7 +517,7 @@ export default function PatientAppointmentsPage() {
               )}
 
               {pastPackages.length > 0 && (
-                <Section title="Əvvəlki paketlər" count={pastPackages.length} icon="" card defaultCollapsed>
+                <Section title={t("patAppt.sectionPastPkg")} count={pastPackages.length} icon="" card defaultCollapsed>
                   <div style={{ padding: "0 8px 10px" }}>
                     {pastPackages.map(p => (
                       <PastPackageRow key={`past-${p.id}`} pkg={p} />
@@ -584,13 +594,13 @@ function NextSessionHero({
   onReschedule: (a: AppointmentDetail) => void;
   onCancel: (a: AppointmentDetail) => void;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   // Yaxınlaşan seans yoxdursa burada heç nə göstərmirik — aşağıdakı "Yaxınlaşan"
   // bölməsi onsuz da boş-halı göstərir (təkrar olmasın deyə).
   if (!appt || !appt.startAt) return null;
 
   const start = new Date(appt.startAt);
-  const tu = timeUntil(start, now);
+  const tu = timeUntil(t, start, now);
   // Option B: sessions auto-complete — patient never confirms/disputes a session.
   const showConfirm = false;
   const alreadyConfirmed = !!appt.patientConfirmedAt;
@@ -605,12 +615,6 @@ function NextSessionHero({
   // button), everything else is a secondary ghost action at this same comfortable size.
   const heroGhostBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid var(--brand-200)", borderRadius: 10, padding: "10px 14px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" };
   const heroDangerBtn: React.CSSProperties = { ...heroGhostBtn, color: "#991B1B", border: "1px solid #F3D6D6" };
-
-  // Badge/pill yox — hər biri öz sətrində, aydın etiketlə (yan-yana mətn qarışıq görünürdü).
-  const metaParts: { text: string; color?: string }[] = [];
-  if (sessionNumber) metaParts.push({ text: `Seans sayı: ${azOrdinal(sessionNumber)}` });
-  if (appt.patientPackageId != null) metaParts.push({ text: appt.packageName ? `Paket: ${appt.packageName}` : "Paket" });
-  if (appt.sessionKind === "INTRO") metaParts.push({ text: "Seans növü: Tanışlıq" });
 
   const endD = appt.endAt ? new Date(appt.endAt) : null;
 
@@ -631,7 +635,7 @@ function NextSessionHero({
               <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
             </svg>
           </span>
-          <span style={{ fontSize: 19, fontWeight: 700, color: "#0B1A35" }}>Növbəti seans</span>
+          <span style={{ fontSize: 19, fontWeight: 700, color: "#0B1A35" }}>{t("patAppt.heroTitle")}</span>
         </span>
 
         {/* Badge/kapsul YOX — sadəcə ikon + mətn (qayda referansdan üstündür). */}
@@ -663,7 +667,7 @@ function NextSessionHero({
 
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 21, fontWeight: 700, color: "#0B1A35", marginBottom: 10 }}>
-              {appt.psychologistName ?? "Operator psixoloq təyin edəcək"}
+              {appt.psychologistName ?? t("patAppt.heroPsyPending")}
             </div>
             {(sessionNumber || appt.patientPackageId != null) && (
               <div style={{
@@ -674,7 +678,7 @@ function NextSessionHero({
                 {sessionNumber && (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "#31425C" }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
-                    {azOrdinal(sessionNumber)} seans
+                    {t("appt.sessionNumber", { ordinal: ordinalFor(locale, sessionNumber) })}
                   </span>
                 )}
                 {sessionNumber && appt.patientPackageId != null && (
@@ -683,7 +687,7 @@ function NextSessionHero({
                 {appt.patientPackageId != null && (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "#31425C" }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /></svg>
-                    {appt.packageName ? `Paket: ${appt.packageName}` : "Paket"}
+                    {appt.packageName ? t("patAppt.pkgNamed", { name: appt.packageName }) : t("patAppt.pkgPlain")}
                   </span>
                 )}
               </div>
@@ -699,7 +703,7 @@ function NextSessionHero({
         }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "var(--brand)", fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-            {relativeDayLabel(start, now)}
+            {relativeDayLabel(t, start, now)}
           </span>
           <div style={{
             display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap",
@@ -726,7 +730,7 @@ function NextSessionHero({
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
           </span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)", marginBottom: 3 }}>Mövzunuz</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)", marginBottom: 3 }}>{t("patAppt.noteLabel")}</div>
             <div style={{ fontSize: 14.5, color: "#0B1A35", lineHeight: 1.5 }}>
               &laquo;{appt.note.slice(0, 160)}{appt.note.length > 160 ? "…" : ""}&raquo;
             </div>
@@ -748,7 +752,7 @@ function NextSessionHero({
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
           </span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#92400E", marginBottom: 3 }}>Operator qeydi</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#92400E", marginBottom: 3 }}>{t("patAppt.operatorNoteLabel")}</div>
             <div style={{ fontSize: 14.5, color: "#7C4A0B", lineHeight: 1.5 }}>
               &laquo;{cleanOperatorNote(appt.operatorNote).slice(0, 160)}{cleanOperatorNote(appt.operatorNote).length > 160 ? "…" : ""}&raquo;
             </div>
@@ -759,14 +763,14 @@ function NextSessionHero({
       {cancelRequested ? (
         <div style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, marginTop: 18 }}>
           <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
-          Ləğv istəyiniz operator təsdiqini gözləyir
+          {t("patAppt.cancelPending")}
         </div>
       ) : !tu.expired && (
         <>
           {rescheduleRequested && (
             <div style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, marginTop: 18 }}>
               <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
-              Vaxt dəyişikliyi istəyiniz operatora göndərilib
+              {t("patAppt.reschedPending")}
             </div>
           )}
           <div className="pa-hero-actions" style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 18 }}>
@@ -799,6 +803,7 @@ function PackageProgramCard({
   pkg: PatientPackageItem;
   sessions: AppointmentDetail[];
 }) {
+  const { t } = useT();
   // Balans: remaining = hələ planlanmamış seanslar (backend hesabıdır).
   // Tamamlanan/planlanan saylar pasiyentin randevu siyahısından çıxarılır.
   const completed = sessions.filter(a => a.status === "COMPLETED").length;
@@ -815,9 +820,9 @@ function PackageProgramCard({
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
             <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" />
           </svg>
-          Paket
+          {t("patAppt.pkgBadge")}
         </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}><span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "#16A34A" }} /><span style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Aktiv</span></span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}><span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "#16A34A" }} /><span style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{t("pkg.active")}</span></span>
       </div>
 
       <div style={{ fontSize: 18, fontWeight: 700, color: "var(--oxford)", marginBottom: 4 }}>{pkg.packageName}</div>
@@ -832,7 +837,7 @@ function PackageProgramCard({
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>
             {/* "qalıb" yazmırıq: pkg.remaining planlaşdırılmamış rezervdir, aşağıdakı ayırmada göstərilir. */}
-            {pkg.total} seansdan {completed} keçirilib
+            {t("patAppt.pkgProgressLine", { total: pkg.total, done: completed })}
           </span>
           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>{Math.round(completedPct)}%</span>
         </div>
@@ -841,25 +846,25 @@ function PackageProgramCard({
           <div style={{ width: `${plannedPct}%`, height: "100%", background: "#9DBCEB" }} />
         </div>
         <div style={{ display: "flex", gap: 12, marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)", flexWrap: "wrap" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1051B7", flex: "none" }} />{completed} keçirilib</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#9DBCEB", flex: "none" }} />{planned} planlanıb</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--brand-100)", flex: "none" }} />{pkg.remaining} planlanmamış</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1051B7", flex: "none" }} />{t("patAppt.pkgLegendDone", { n: completed })}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#9DBCEB", flex: "none" }} />{t("patAppt.pkgLegendPlanned", { n: planned })}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--brand-100)", flex: "none" }} />{t("patAppt.pkgLegendUnplanned", { n: pkg.remaining })}</span>
         </div>
       </div>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 130, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 3 }}>Ödənilib</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 3 }}>{t("patAppt.pkgPaid")}</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{formatAzn(pkg.pricePaid)}</div>
         </div>
         <div style={{ flex: 1, minWidth: 130, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 12px" }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 3 }}>Alınıb</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 3 }}>{t("patAppt.pkgPurchased")}</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{azFormatDate(pkg.purchasedAt)}</div>
         </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: "auto", paddingTop: 4, color: "var(--brand)", fontSize: 13.5, fontWeight: 700 }}>
-        {pkg.remaining > 0 ? "Paketə bax və seans planla" : "Paketə bax"}
+        {pkg.remaining > 0 ? t("patAppt.pkgViewAndPlan") : t("patAppt.pkgView")}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
       </div>
     </div>
@@ -870,6 +875,7 @@ function PackageProgramCard({
 /* ─── Əvvəlki paket sətri — klik → paket detal səhifəsi ──────────────────── */
 
 function PastPackageRow({ pkg }: { pkg: PatientPackageItem }) {
+  const { t } = useT();
   const st = PKG_STATUS[pkg.status] ?? PKG_STATUS.EXHAUSTED;
   // İstifadə = FAKTİKİ keçirilmiş seans (pkg.completed), rezerv fərqi deyil.
   const used = pkg.completed;
@@ -880,9 +886,9 @@ function PastPackageRow({ pkg }: { pkg: PatientPackageItem }) {
         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{pkg.packageName}</div>
         <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 2 }}>{pkg.psychologistName}</div>
       </div>
-      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>{used}/{pkg.total} seans keçirilib</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>{t("patAppt.pkgSessionsUsed", { used, total: pkg.total })}</span>
       <span style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>{formatAzn(pkg.pricePaid)}</span>
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}><span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: st.color }} /><span style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{st.label}</span></span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }}><span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: st.color }} /><span style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{t(st.labelKey)}</span></span>
     </Link>
   );
 }
@@ -898,6 +904,7 @@ function FilterBar({
   onPsy: (id: number | null) => void;
   onStatus: (s: StatusFilter) => void;
 }) {
+  const { t } = useT();
   const totalUpcoming = psyChips.reduce((n, c) => n + c.count, 0);
   const chipStyle = (active: boolean): React.CSSProperties => ({
     display: "inline-flex", alignItems: "center", gap: 8,
@@ -921,7 +928,7 @@ function FilterBar({
           <span style={{ width: 24, height: 24, borderRadius: "50%", background: psyFilter === null ? "rgba(255,255,255,.25)" : "#082F6D", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><circle cx="12" cy="12" r="2" /><circle cx="5" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
           </span>
-          Hamısı <span style={{ opacity: .7, fontWeight: 700 }}>{totalUpcoming}</span>
+          {t("patAppt.filterAll")} <span style={{ opacity: .7, fontWeight: 700 }}>{totalUpcoming}</span>
         </button>
         {psyChips.map(p => {
           const active = psyFilter === p.id;
@@ -941,7 +948,7 @@ function FilterBar({
       <div style={{ display: "flex", gap: 8, flex: "none" }}>
         {(["all", "confirmed", "pending"] as StatusFilter[]).map(s => (
           <button key={s} type="button" onClick={() => onStatus(s)} style={statusStyle(statusFilter === s)}>
-            {s === "all" ? "Hamısı" : s === "confirmed" ? "Təsdiqlənmiş" : "Gözləyir"}
+            {s === "all" ? t("patAppt.filterAll") : s === "confirmed" ? t("patAppt.filterConfirmed") : t("patAppt.filterPending")}
           </button>
         ))}
       </div>
@@ -966,21 +973,22 @@ function AgendaRow({
   onReschedule: () => void;
   onCancel: () => void;
 }) {
+  const { t, locale } = useT();
   // Operator təsdiqi gözləyən müraciət (PENDING/REJECTED) — ayrıca bölmə yoxdur,
   // eyni kart sırasında göstərilir: vaxt "istədiyiniz vaxt"dır, əməliyyatlar bağlıdır.
   const awaiting = a.status === "PENDING" || a.status === "REJECTED";
   const when = a.startAt ?? a.requestedStartAt;
   const start = a.startAt ? new Date(a.startAt) : null;
   const status = STATUS[a.status] ?? STATUS.ASSIGNED;
-  const tu = start ? timeUntil(start, now) : null;
+  const tu = start ? timeUntil(t, start, now) : null;
   const isToday = start ? isSameDay(start, now) : false;
   const cancelRequested = a.status === "CANCEL_REQUESTED";
   const rescheduleRequested = !!a.rescheduleRequestedAt
     && (a.status === "CONFIRMED" || a.status === "ASSIGNED");
   const psyName = a.psychologistName ?? a.requestedPsychologistName ?? null;
   const awaitingHint = a.status === "REJECTED"
-    ? "Operator sizə yeni psixoloq təyin edəcək"
-    : "Operatorumuz müraciətinizi nəzərdən keçirir";
+    ? t("patAppt.awaitingRejected")
+    : t("patAppt.awaitingPending");
   return (
     <div className={`psy-card psy-card--today${isNext ? " psy-card--next" : ""}`} style={{ display: "flex", flexDirection: "column" }}>
       {/* Şəkil + ad, sağda 3 nöqtə menyu */}
@@ -991,8 +999,8 @@ function AgendaRow({
           ) : initialsOf(psyName)}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="psy-card__name">{psyName ?? "Operator təyin edəcək"}</div>
-          {sessionNumber != null && <div className="psy-card__nth">{azOrdinal(sessionNumber)} seans</div>}
+          <div className="psy-card__name">{psyName ?? t("patAppt.rowPsyPending")}</div>
+          {sessionNumber != null && <div className="psy-card__nth">{t("appt.sessionNumber", { ordinal: ordinalFor(locale, sessionNumber) })}</div>}
         </div>
         {!cancelRequested && !awaiting && (
           <SessionCardMenu a={a} onReschedule={onReschedule} onCancel={onCancel}
@@ -1004,12 +1012,12 @@ function AgendaRow({
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
         {when ? (
           <span className="psy-card__time">
-            {relativeDayLabel(new Date(when), now)}, {fmtTime(new Date(when))}{start && a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}
+            {relativeDayLabel(t, new Date(when), now)}, {fmtTime(new Date(when))}{start && a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}
           </span>
         ) : (
-          <span className="psy-card__time" style={{ color: "var(--oxford-60)" }}>Vaxt operator təyin edəcək</span>
+          <span className="psy-card__time" style={{ color: "var(--oxford-60)" }}>{t("patAppt.rowTimePending")}</span>
         )}
-        {awaiting && when && <span style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>istədiyiniz vaxt</span>}
+        {awaiting && when && <span style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>{t("patAppt.rowRequestedTime")}</span>}
         {isToday && tu && !tu.expired && (
           <span className={tu.urgent ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: tu.urgent ? "#991B1B" : "#047857", fontSize: 12, fontWeight: 600 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
@@ -1020,8 +1028,8 @@ function AgendaRow({
 
       {/* Status + nişanlar */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-        <span className="psy-card__badge" style={{ background: status.bg, color: status.color }}>{status.label}</span>
-        {isNext && <span className="psy-card__chip psy-card__chip--next">Növbəti</span>}
+        <span className="psy-card__badge" style={{ background: status.bg, color: status.color }}>{t(status.labelKey)}</span>
+        {isNext && <span className="psy-card__chip psy-card__chip--next">{t("patAppt.chipNext")}</span>}
         {a.patientPackageId != null && <PackageBadge name={a.packageName} />}
         {a.sessionKind === "INTRO" && <IntroBadge />}
       </div>
@@ -1030,7 +1038,7 @@ function AgendaRow({
       {cancelRequested && (
         <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
           <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
-          Ləğv istəyiniz operator təsdiqini gözləyir
+          {t("patAppt.cancelPending")}
         </div>
       )}
       {awaiting && (
@@ -1042,7 +1050,7 @@ function AgendaRow({
       {rescheduleRequested && (
         <div style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600 }}>
           <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
-          Vaxt dəyişikliyi istəyiniz operatora göndərilib
+          {t("patAppt.reschedPending")}
         </div>
       )}
 
@@ -1051,7 +1059,7 @@ function AgendaRow({
         <button type="button" onClick={onOpen}
           style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 14px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>
-          Aç
+          {t("patAppt.openCta")}
         </button>
         {!cancelRequested && !awaiting && (
           <div style={{ flex: 1.6 }}>
@@ -1065,17 +1073,19 @@ function AgendaRow({
 
 /* Google Calendar hadisə linki (AddToCalendarMenu ilə eyni format) —
    3 nöqtə menyusu və detal pəncərəsi tərəfindən paylaşılır. */
-function gcalHrefFor(a: AppointmentDetail): string | null {
+function gcalHrefFor(t: Translate, a: AppointmentDetail): string | null {
   if (!a.startAt || !a.endAt) return null;
   return googleCalendarUrl({
     uid: String(a.id),
-    title: `Fanus seansı${a.psychologistName ? ` — ${a.psychologistName}` : ""}`,
+    title: a.psychologistName
+      ? t("patAppt.calTitleWith", { name: a.psychologistName })
+      : t("patAppt.calTitle"),
     description: [
-      a.psychologistName ? `Psixoloq: ${a.psychologistName}` : null,
-      a.note ? `Qeyd: ${a.note}` : null,
+      a.psychologistName ? t("patAppt.calPsyLine", { name: a.psychologistName }) : null,
+      a.note ? t("patAppt.calNoteLine", { note: a.note }) : null,
       appUrl("/patient/appointments"),
     ].filter(Boolean).join("\n"),
-    location: "Online (Fanus)",
+    location: t("patAppt.calLocation"),
     start: new Date(a.startAt),
     end: new Date(a.endAt),
     url: appUrl("/patient/appointments"),
@@ -1085,6 +1095,7 @@ function gcalHrefFor(a: AppointmentDetail): string | null {
 /* Qoşulma düyməsi — link operator tərəfindən təyin edilibsə aktiv (brand),
    edilməyibsə boz/deaktiv. Ödəniş təsdiqlənməyibsə də bloklanır. */
 function SessionJoinButton({ a }: { a: AppointmentDetail }) {
+  const { t } = useT();
   const link = a.meetingLink;
   const paymentPending = a.paymentStatus === "PENDING";
   const base: React.CSSProperties = {
@@ -1097,16 +1108,16 @@ function SessionJoinButton({ a }: { a: AppointmentDetail }) {
       <a href={link} target="_blank" rel="noopener noreferrer"
         style={{ ...base, background: "var(--brand)", color: "#fff", textDecoration: "none" }}>
         <VideoIcon />
-        Seansa qoşul
+        {t("patAppt.joinCta")}
       </a>
     );
   }
   return (
     <span
-      title={paymentPending ? "Ödəniş operator tərəfindən hələ təsdiqlənməyib" : "Görüş linkini operator təyin edəcək"}
+      title={paymentPending ? t("patAppt.joinTitlePayment") : t("patAppt.joinTitleNoLink")}
       style={{ ...base, background: "#EEF2F8", color: "#9AA7BD", cursor: "not-allowed", userSelect: "none" }}>
       <VideoIcon />
-      {paymentPending ? "Ödəniş gözlənilir" : "Seansa qoşul"}
+      {paymentPending ? t("patAppt.joinPaymentPending") : t("patAppt.joinCta")}
     </span>
   );
 }
@@ -1127,6 +1138,7 @@ function SessionCardMenu({ a, onReschedule, onCancel, hideReschedule }: {
   /** Vaxt dəyişikliyi istəyi artıq göndərilib — təkrar göndərməyə imkan vermə. */
   hideReschedule?: boolean;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
 
   const itemStyle: React.CSSProperties = {
@@ -1136,11 +1148,11 @@ function SessionCardMenu({ a, onReschedule, onCancel, hideReschedule }: {
     color: "var(--oxford)", cursor: "pointer", textDecoration: "none", textAlign: "left",
   };
 
-  const gcalHref = gcalHrefFor(a);
+  const gcalHref = gcalHrefFor(t, a);
 
   return (
     <div style={{ position: "relative", flex: "none" }}>
-      <button type="button" aria-label="Əməliyyatlar" onClick={() => setOpen(o => !o)}
+      <button type="button" aria-label={t("patAppt.menuAria")} onClick={() => setOpen(o => !o)}
         style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", background: open ? "var(--brand-50)" : "transparent", color: "var(--oxford-60)", border: "none", borderRadius: 8, cursor: "pointer" }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden><circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" /></svg>
       </button>
@@ -1151,19 +1163,19 @@ function SessionCardMenu({ a, onReschedule, onCancel, hideReschedule }: {
             {gcalHref && (
               <a href={gcalHref} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)} style={itemStyle}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-                Google Calendar-a əlavə et
+                {t("patAppt.addGoogle")}
               </a>
             )}
             {!hideReschedule && (
               <button type="button" onClick={() => { setOpen(false); onReschedule(); }} style={itemStyle}>
                 <IconClock />
-                Vaxtı dəyiş
+                {t("staff.cardReschedule")}
               </button>
             )}
             <div style={{ height: 1, background: "#F0F4FA", margin: "4px 6px" }} />
             <button type="button" onClick={() => { setOpen(false); onCancel(); }} style={{ ...itemStyle, color: "#991B1B" }}>
               <IconX />
-              Ləğv et
+              {t("staff.cardCancel")}
             </button>
           </div>
         </>
@@ -1187,16 +1199,17 @@ function SessionDetailModal({
   onReschedule: () => void;
   onCancel: () => void;
 }) {
+  const { t, locale } = useT();
   const status = STATUS[a.status] ?? STATUS.ASSIGNED;
   const start = a.startAt ? new Date(a.startAt) : null;
-  const tu = start ? timeUntil(start, now) : null;
+  const tu = start ? timeUntil(t, start, now) : null;
   const cancelRequested = a.status === "CANCEL_REQUESTED";
   const rescheduleRequested = !!a.rescheduleRequestedAt
     && (a.status === "CONFIRMED" || a.status === "ASSIGNED");
   // Operator təsdiqi gözləyən müraciət — görüş/əməliyyat blokları bağlıdır.
   const awaiting = a.status === "PENDING" || a.status === "REJECTED";
   const psyName = a.psychologistName ?? a.requestedPsychologistName ?? null;
-  const gcalHref = gcalHrefFor(a);
+  const gcalHref = gcalHrefFor(t, a);
 
   const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 4 };
   const ghostBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 14px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", textDecoration: "none" };
@@ -1214,12 +1227,12 @@ function SessionDetailModal({
             ) : initialsOf(psyName)}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{psyName ?? "Operator təyin edəcək"}</div>
-            {sessionNumber != null && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1 }}>{azOrdinal(sessionNumber)} seans</div>}
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{psyName ?? t("patAppt.rowPsyPending")}</div>
+            {sessionNumber != null && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1 }}>{t("appt.sessionNumber", { ordinal: ordinalFor(locale, sessionNumber) })}</div>}
           </div>
-          <span className="psy-card__badge" style={{ background: status.bg, color: status.color, flex: "none" }}>{status.label}</span>
+          <span className="psy-card__badge" style={{ background: status.bg, color: status.color, flex: "none" }}>{t(status.labelKey)}</span>
           {a.sessionKind === "INTRO" && <IntroBadge />}
-          <button type="button" aria-label="Bağla" onClick={onClose}
+          <button type="button" aria-label={t("common.close")} onClick={onClose}
             style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "var(--oxford-60)", border: "none", borderRadius: 8, cursor: "pointer", flex: "none" }}>
             <IconX />
           </button>
@@ -1228,14 +1241,14 @@ function SessionDetailModal({
         <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Vaxt */}
           <div>
-            <div style={labelStyle}>Vaxt</div>
+            <div style={labelStyle}>{t("patAppt.detailTime")}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
                 {a.startAt
                   ? `${azFormatDate(a.startAt)}, ${fmtTime(new Date(a.startAt))}${a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}`
                   : a.requestedStartAt
-                    ? `İstədiyiniz vaxt: ${azFormatDate(a.requestedStartAt)}, ${fmtTime(new Date(a.requestedStartAt))}`
-                    : "Operator vaxtı təyin edəcək"}
+                    ? t("patAppt.detailRequestedTime", { when: `${azFormatDate(a.requestedStartAt)}, ${fmtTime(new Date(a.requestedStartAt))}` })
+                    : t("patAppt.detailTimeTbd")}
               </span>
               {tu && !tu.expired && (
                 <span className={tu.urgent ? "pa-live" : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 5, color: tu.urgent ? "#991B1B" : "#047857", fontSize: 12.5, fontWeight: 600 }}>
@@ -1249,18 +1262,18 @@ function SessionDetailModal({
           {/* Paket bağlantısı */}
           {a.patientPackageId != null && (
             <div>
-              <div style={labelStyle}>Paket</div>
+              <div style={labelStyle}>{t("patAppt.detailPackage")}</div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: "var(--brand-50)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 13px", flexWrap: "wrap" }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: "var(--brand-700)" }}>
                   <PackageBadge name={a.packageName} />
-                  {a.packageName ?? "Paket seansı"}
+                  {a.packageName ?? t("patAppt.detailPkgFallback")}
                   {/* Gedişat = keçirilmiş seans / alınmış seans. */}
                   {a.packageTotal != null && a.packageCompleted != null && (
-                    <span style={{ fontWeight: 600, color: "var(--oxford-60)", fontSize: 12.5 }}>{a.packageCompleted}/{a.packageTotal} seans keçirilib</span>
+                    <span style={{ fontWeight: 600, color: "var(--oxford-60)", fontSize: 12.5 }}>{t("patAppt.detailPkgProgress", { done: a.packageCompleted, total: a.packageTotal })}</span>
                   )}
                 </span>
                 <Link href={`/patient/appointments/packages/${a.patientPackageId}`} style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", textDecoration: "none", whiteSpace: "nowrap" }}>
-                  Paketə bax
+                  {t("patAppt.pkgView")}
                 </Link>
               </div>
             </div>
@@ -1269,11 +1282,11 @@ function SessionDetailModal({
           {/* Ödəniş (yalnız tək seans) */}
           {a.paymentStatus != null && (
             <div>
-              <div style={labelStyle}>Ödəniş</div>
+              <div style={labelStyle}>{t("patAppt.detailPayment")}</div>
               <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)" }}>
-                {a.paymentAmount ? formatAzn(a.paymentAmount) : "Məbləğ təyin edilməyib"}
+                {a.paymentAmount ? formatAzn(a.paymentAmount) : t("patAppt.detailAmountTbd")}
                 <span style={{ color: a.paymentStatus === "PAID" ? "#047857" : "#92400E", marginLeft: 8 }}>
-                  {a.paymentStatus === "PAID" ? "Təsdiqlənib" : "Operator təsdiqi gözlənilir"}
+                  {a.paymentStatus === "PAID" ? t("patAppt.detailPaid") : t("patAppt.detailPayAwaiting")}
                 </span>
               </div>
             </div>
@@ -1282,7 +1295,7 @@ function SessionDetailModal({
           {/* Mövzu */}
           {a.note && (
             <div>
-              <div style={labelStyle}>Mövzunuz</div>
+              <div style={labelStyle}>{t("patAppt.noteLabel")}</div>
               <div style={{ fontSize: 13.5, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 13px", lineHeight: 1.5 }}>
                 «{a.note}»
               </div>
@@ -1292,7 +1305,7 @@ function SessionDetailModal({
           {/* Operator qeydi */}
           {cleanOperatorNote(a.operatorNote) && (
             <div>
-              <div style={labelStyle}>Operator qeydi</div>
+              <div style={labelStyle}>{t("patAppt.operatorNoteLabel")}</div>
               <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 13px", fontSize: 13.5, color: "#92400E", fontWeight: 500, lineHeight: 1.5 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 2 }}><path d="M9 12h6M9 16h4M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" /></svg>
                 <span style={{ fontStyle: "italic" }}>«{cleanOperatorNote(a.operatorNote)}»</span>
@@ -1303,11 +1316,11 @@ function SessionDetailModal({
           {/* Görüş linki — gözləyən müraciətdə hələ mənasızdır */}
           {!awaiting && (
             <div>
-              <div style={labelStyle}>Görüş</div>
+              <div style={labelStyle}>{t("patAppt.detailMeeting")}</div>
               <SessionJoinButton a={a} />
               {!a.meetingLink && (
                 <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500, marginTop: 6 }}>
-                  Görüş linki operator tərəfindən seans vaxtından əvvəl təyin ediləcək.
+                  {t("patAppt.detailMeetingHint")}
                 </div>
               )}
             </div>
@@ -1318,34 +1331,34 @@ function SessionDetailModal({
             <div style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>
               <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
               {cancelRequested
-                ? "Ləğv istəyiniz operator təsdiqini gözləyir"
+                ? t("patAppt.cancelPending")
                 : a.status === "REJECTED"
-                  ? "Operator sizə yeni psixoloq təyin edəcək"
-                  : "Operatorumuz müraciətinizi nəzərdən keçirir"}
+                  ? t("patAppt.awaitingRejected")
+                  : t("patAppt.awaitingPending")}
             </div>
           ) : (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", borderTop: "1px solid #F0F4FA", paddingTop: 16 }}>
               {rescheduleRequested && (
                 <div style={{ width: "100%", display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>
                   <span className="pa-live" style={{ width: 7, height: 7, borderRadius: "50%", background: "#F59E0B", flex: "none" }} />
-                  Vaxt dəyişikliyi istəyiniz operatora göndərilib
+                  {t("patAppt.reschedPending")}
                 </div>
               )}
               {gcalHref && (
                 <a href={gcalHref} target="_blank" rel="noopener noreferrer" style={ghostBtn}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-                  Google Calendar-a əlavə et
+                  {t("patAppt.addGoogle")}
                 </a>
               )}
               {!rescheduleRequested && (
                 <button type="button" onClick={onReschedule} style={ghostBtn}>
                   <IconClock />
-                  Vaxtı dəyiş
+                  {t("staff.cardReschedule")}
                 </button>
               )}
               <button type="button" onClick={onCancel} style={{ ...ghostBtn, color: "#991B1B", border: "1px solid #F3D6D6" }}>
                 <IconX />
-                Ləğv et
+                {t("staff.cardCancel")}
               </button>
             </div>
           )}
@@ -1364,6 +1377,7 @@ function CancelRequestNoteModal({
   onClose: () => void;
   onDone: (updated: AppointmentDetail) => void;
 }) {
+  const { t } = useT();
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   // Modal açılan andakı vaxt — render içində Date.now() çağırmamaq üçün state-də.
@@ -1393,40 +1407,42 @@ function CancelRequestNoteModal({
       <div onClick={e => e.stopPropagation()}
         style={{ background: "#fff", borderRadius: 16, maxWidth: 460, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden" }}>
         <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--brand-100)" }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Randevunu ləğv et</h3>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>{t("cancel.modalTitle")}</h3>
           <p style={{ fontSize: 12.5, color: "var(--oxford-60)", margin: "4px 0 0" }}>
-            Ləğv istəyiniz operatora gedəcək — qısaca səbəbi yaza bilərsiniz (məcburi deyil).
+            {t("patAppt.cancelSub")}
           </p>
         </div>
         <div style={{ padding: 22 }}>
           {isLate ? (
             <div style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#991B1B", lineHeight: 1.5 }}>
-              Seansa <strong>{Math.max(0, Math.floor(hoursLeft!))} saat</strong> qalıb (24 saatdan az).{" "}
+              {t("patAppt.lateA")}{" "}
+              <strong>{t("patAppt.lateB", { n: Math.max(0, Math.floor(hoursLeft!)) })}</strong>{" "}
+              {t("patAppt.lateC")}{" "}
               {isPackageSession ? (
-                <>Bu halda <strong>bu seans krediti geri qaytarılmır</strong> və gec-ləğv sayğacınıza əlavə olunur.</>
+                <>{t("patAppt.caseA")} <strong>{t("patAppt.latePkgB")}</strong> {t("patAppt.lateTail")}</>
               ) : paymentConfirmed ? (
-                <>Bu halda <strong>ödənişiniz geri qaytarılmır</strong> və gec-ləğv sayğacınıza əlavə olunur.</>
+                <>{t("patAppt.caseA")} <strong>{t("patAppt.latePaidB")}</strong> {t("patAppt.lateTail")}</>
               ) : (
-                <>Bu, gec-ləğv sayğacınıza əlavə olunacaq.</>
+                <>{t("patAppt.latePlain")}</>
               )}
             </div>
           ) : isPackageSession ? (
             <div style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#166534", lineHeight: 1.5 }}>
-              Seansa 24 saatdan çox qaldığı üçün <strong>bu seans krediti paketinizə geri qaytarılacaq</strong> — başqa vaxta təyin edə bilərsiniz. Paketin ödənişinə təsir etmir.
+              {t("patAppt.earlyA")} <strong>{t("patAppt.earlyPkgB")}</strong> {t("patAppt.earlyPkgC")}
             </div>
           ) : paymentConfirmed ? (
             <div style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#166534", lineHeight: 1.5 }}>
-              Seansa 24 saatdan çox qaldığı üçün <strong>ödənişiniz geri qaytarmaya uyğundur</strong> — operator müraciətinizi nəzərdən keçirib əlaqə saxlayacaq.
+              {t("patAppt.earlyA")} <strong>{t("patAppt.earlyPaidB")}</strong> {t("patAppt.earlyPaidC")}
             </div>
           ) : null}
           <textarea rows={3} value={note} onChange={e => setNote(e.target.value)}
-            placeholder="Səbəb (məcburi deyil)"
+            placeholder={t("patAppt.cancelReasonPh")}
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
-            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid var(--brand-100)", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>Geri</button>
+            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid var(--brand-100)", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>{t("common.back")}</button>
             <button onClick={submit} disabled={saving}
               style={{ padding: "8px 20px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "#DC2626", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
-              {saving ? "Göndərilir…" : "Ləğv istəyi göndər"}
+              {saving ? t("common.sending") : t("patAppt.cancelSubmit")}
             </button>
           </div>
         </div>
@@ -1444,6 +1460,7 @@ function RescheduleRequestNoteModal({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const { t } = useT();
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -1461,20 +1478,20 @@ function RescheduleRequestNoteModal({
       <div onClick={e => e.stopPropagation()}
         style={{ background: "#fff", borderRadius: 16, maxWidth: 460, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden" }}>
         <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--brand-100)" }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Vaxtı dəyişmək istəyirəm</h3>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>{t("patAppt.reschedTitle")}</h3>
           <p style={{ fontSize: 12.5, color: "var(--oxford-60)", margin: "4px 0 0" }}>
-            İstəyinizi operatora göndərin — sizə uyğun yeni vaxtı operator təyin edəcək.
+            {t("patAppt.reschedSub")}
           </p>
         </div>
         <div style={{ padding: 22 }}>
           <textarea rows={4} value={note} onChange={e => setNote(e.target.value)}
-            placeholder="Hansı vaxt sizə daha uyğundur? (məs. həftə içi axşamlar, və ya konkret tarix)"
+            placeholder={t("patAppt.reschedPh")}
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--brand-100)", fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", resize: "vertical" }} />
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
-            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid var(--brand-100)", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>Bağla</button>
+            <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid var(--brand-100)", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer", fontWeight: 600 }}>{t("common.close")}</button>
             <button onClick={submit} disabled={saving}
               style={{ padding: "8px 20px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
-              {saving ? "Göndərilir…" : "İstək göndər"}
+              {saving ? t("common.sending") : t("patAppt.reschedSubmit")}
             </button>
           </div>
         </div>
@@ -1492,6 +1509,7 @@ function DisputeModal({
   onClose: () => void;
   onDone: (updated: AppointmentDetail) => void;
 }) {
+  const { t } = useT();
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -1512,27 +1530,27 @@ function DisputeModal({
       <div onClick={e => e.stopPropagation()}
         style={{ background: "#fff", borderRadius: 16, width: "min(480px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
         <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--brand-100)" }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Seans baş tutmadı</h2>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>{t("patAppt.disputeTitle")}</h2>
           <p style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 4 }}>
-            Operator komandamız müraciətinizə baxıb sizinlə əlaqə saxlayacaq.
+            {t("patAppt.disputeSub")}
           </p>
         </div>
         <div style={{ padding: 22 }}>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
-            Səbəb (məcburi deyil)
+            {t("patAppt.disputeReason")}
           </label>
           <textarea
             rows={4} value={reason} onChange={e => setReason(e.target.value)}
-            placeholder="Məsələn: psixoloq qoşulmadı, texniki problem, vaxt uyğun deyildi…"
+            placeholder={t("patAppt.disputePh")}
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12 }} />
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>
-              Bağla
+              {t("common.close")}
             </button>
             <button onClick={submit} disabled={saving}
               style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "#DC2626", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
-              {saving ? "Göndərilir…" : "Operator'a bildir"}
+              {saving ? t("common.sending") : t("patAppt.disputeSubmit")}
             </button>
           </div>
         </div>

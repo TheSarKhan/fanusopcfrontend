@@ -6,19 +6,20 @@ import HomeworkDetailModal from "@/components/HomeworkDetailModal";
 import HomeworkLabelChip from "@/components/HomeworkLabelChip";
 import PageHeader from "@/components/PageHeader";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { azFormatDate } from "@/lib/datetime";
 
-const COLUMNS: { status: HomeworkStatus; label: string; tone: string; hint: string }[] = [
-  { status: "PENDING",     label: "Gözləyir",   tone: "#F59E0B", hint: "Hələ başlamadıqların" },
-  { status: "IN_PROGRESS", label: "Davam edir", tone: "#3B82F6", hint: "Üzərində işlədiklərin" },
-  { status: "COMPLETED",   label: "Tamamlandı", tone: "#10B981", hint: "Bitirdiklərin" },
+const COLUMNS: { status: HomeworkStatus; labelKey: MessageKey; tone: string; hintKey: MessageKey }[] = [
+  { status: "PENDING",     labelKey: "patHw.colPending",    tone: "#F59E0B", hintKey: "patHw.hintPending" },
+  { status: "IN_PROGRESS", labelKey: "patHw.colInProgress", tone: "#3B82F6", hintKey: "patHw.hintInProgress" },
+  { status: "COMPLETED",   labelKey: "patHw.colCompleted",  tone: "#10B981", hintKey: "patHw.hintCompleted" },
 ];
 
 const PRIORITY_COLOR: Record<HomeworkPriority, string> = {
   LOW: "#10B981", MEDIUM: "#F59E0B", HIGH: "#DC2626",
 };
-const PRIORITY_LABEL: Record<HomeworkPriority, string> = {
-  LOW: "Aşağı", MEDIUM: "Orta", HIGH: "Yüksək",
+const PRIORITY_LABEL: Record<HomeworkPriority, MessageKey> = {
+  LOW: "patHw.prioLow", MEDIUM: "patHw.prioMedium", HIGH: "patHw.prioHigh",
 };
 
 const DRAG_MIME = "application/x-fanus-homework";
@@ -118,7 +119,7 @@ export default function PatientHomeworkPage() {
         .pat-hw-grid { display: grid; grid-template-columns: repeat(3, minmax(260px, 1fr)); gap: 12px; }
         @media (max-width: 760px) { .pat-hw-grid { grid-template-columns: 1fr; } }
       `}</style>
-      <PageHeader title={t("staff.patHwTitle")} subtitle="Kartı tutub başqa sütuna sürükləyərək statusunu dəyişin və ya açıb şərh yazın." />
+      <PageHeader title={t("staff.patHwTitle")} subtitle={t("patHw.sub")} />
 
       {loading ? (
         <div style={{ background: "#fff", padding: 40, borderRadius: 14, textAlign: "center", color: "var(--oxford-60)" }}>{t("common.loading")}</div>
@@ -147,7 +148,7 @@ export default function PatientHomeworkPage() {
             <div style={{ textAlign: "center", marginTop: 16 }}>
               <button type="button" onClick={loadMore} disabled={loadingMore}
                 style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
-                {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
+                {loadingMore ? t("common.loading") : t("pat.loadMore", { n: Math.min(PAGE_SIZE, totalElements - items.length) })}
               </button>
             </div>
           )}
@@ -170,7 +171,7 @@ function KanbanColumn({
   column, items, isDropTarget, isDragging,
   onCardClick, onDragStart, onDragEnd, onDragOver, onDrop,
 }: {
-  column: { status: HomeworkStatus; label: string; tone: string; hint: string };
+  column: { status: HomeworkStatus; labelKey: MessageKey; tone: string; hintKey: MessageKey };
   items: Homework[];
   isDropTarget: boolean;
   isDragging: boolean;
@@ -180,6 +181,7 @@ function KanbanColumn({
   onDragOver: (status: HomeworkStatus, e: React.DragEvent) => void;
   onDrop: (status: HomeworkStatus, e: React.DragEvent) => void;
 }) {
+  const { t } = useT();
   return (
     <div
       onDragOver={e => onDragOver(column.status, e)}
@@ -198,8 +200,8 @@ function KanbanColumn({
         <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: column.tone, flexShrink: 0 }} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>{column.label}</div>
-            <div style={{ fontSize: 10.5, color: "var(--oxford-60)", marginTop: 1 }}>{column.hint}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>{t(column.labelKey)}</div>
+            <div style={{ fontSize: 10.5, color: "var(--oxford-60)", marginTop: 1 }}>{t(column.hintKey)}</div>
           </div>
         </div>
         <span style={{
@@ -214,7 +216,7 @@ function KanbanColumn({
             color: "var(--oxford-60)", border: "1px dashed var(--oxford-10)",
             borderRadius: 10, background: "#fff",
           }}>
-            {isDragging ? "Buraya buraxın" : "Boşdur"}
+            {isDragging ? t("patHw.dropHere") : t("patHw.emptyCol")}
           </div>
         ) : (
           items.map(h => (
@@ -237,6 +239,7 @@ function KanbanCard({
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
 }) {
+  const { t } = useT();
   const overdue = isOverdue(h);
   return (
     <div
@@ -276,7 +279,7 @@ function KanbanCard({
         <span style={{
           padding: "1px 6px", borderRadius: 4, fontWeight: 700,
           background: PRIORITY_COLOR[h.priority], color: "#fff",
-        }}>{PRIORITY_LABEL[h.priority]}</span>
+        }}>{t(PRIORITY_LABEL[h.priority])}</span>
 
         {h.dueDate && (
           <span style={{

@@ -28,11 +28,13 @@ export default function AddToCalendarMenu({
   const start = new Date(appointment.startAt);
   const end = new Date(appointment.endAt);
 
-  const summary = title ?? `Fanus seansı${appointment.psychologistName ? ` — ${appointment.psychologistName}` : ""}`;
+  const summary = title ?? (appointment.psychologistName
+    ? t("patAppt.calTitleWith", { name: appointment.psychologistName })
+    : t("patAppt.calTitle"));
   const apptsUrl = appUrl("/patient/appointments");
   const description = [
-    appointment.psychologistName ? `Psixoloq: ${appointment.psychologistName}` : null,
-    appointment.note ? `Qeyd: ${appointment.note}` : null,
+    appointment.psychologistName ? t("patAppt.calPsyLine", { name: appointment.psychologistName }) : null,
+    appointment.note ? t("patAppt.calNoteLine", { note: appointment.note }) : null,
     apptsUrl,
   ].filter(Boolean).join("\n");
 
@@ -40,7 +42,7 @@ export default function AddToCalendarMenu({
     uid: String(appointment.id),
     title: summary,
     description,
-    location: "Online (Fanus)",
+    location: t("patAppt.calLocation"),
     start, end,
     url: apptsUrl,
   };

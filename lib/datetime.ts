@@ -182,12 +182,25 @@ export function azNowTime(): string {
  * olunur — keçmiş vaxta müraciət göndərmək mümkün olmamalıdır.
  */
 export function pastPreferredError(date?: string | null, time?: string | null): string | null {
+  const code = pastPreferredCode(date, time);
+  if (code === "pastDate") return "Keçmiş tarixə seans müraciəti göndərmək mümkün deyil";
+  if (code === "pastTime") return "Seçilmiş saat artıq keçib — bu gün üçün daha gec saat seçin";
+  return null;
+}
+
+/**
+ * `pastPreferredError`-un lokallaşdırıla bilən variantı: mətn yerinə lüğət açarının
+ * son hissəsini qaytarır (`sched.pastDate` / `sched.pastTime`). Çağıran komponent
+ * `useT()` ilə tərcümə edir.
+ */
+export function pastPreferredCode(
+  date?: string | null,
+  time?: string | null,
+): "pastDate" | "pastTime" | null {
   if (!date) return null;
   const today = azTodayIso();
-  if (date < today) return "Keçmiş tarixə seans müraciəti göndərmək mümkün deyil";
-  if (date === today && time && time < azNowTime()) {
-    return "Seçilmiş saat artıq keçib — bu gün üçün daha gec saat seçin";
-  }
+  if (date < today) return "pastDate";
+  if (date === today && time && time < azNowTime()) return "pastTime";
   return null;
 }
 

@@ -8,27 +8,30 @@
 import { useEffect, useMemo, useState } from "react";
 import { getPsychologistAvailability, type AvailableSlot } from "@/lib/api";
 import { azFormatDate, azFormatTime } from "@/lib/datetime";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
-export const STATUS: Record<string, { label: string; color: string; bg: string; accent: string }> = {
-  PENDING:                { label: "Gözlənilir",       color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
-  ASSIGNED:               { label: "Təyin edilib",     color: "var(--brand-700)", bg: "var(--brand-50)", accent: "var(--brand)" },
-  CONFIRMED:              { label: "Təsdiqlənib",      color: "#065F46",          bg: "#D1FAE5",         accent: "#10B981" },
-  AWAITING_CONFIRMATION:  { label: "Təsdiq gözlənir",  color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
-  DISPUTED:               { label: "Mübahisəli",       color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
-  COMPLETED:              { label: "Tamamlandı",       color: "#374151",          bg: "#F3F4F6",         accent: "#9CA3AF" },
-  CANCELLED:              { label: "Ləğv edildi",      color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
-  CANCEL_REQUESTED:       { label: "Ləğv gözlənir",    color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
-  REJECTED:               { label: "Yenidən təyin",    color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
+/** Status → rəng + lüğət açarı. Etiket `useT()` ilə çağırış yerində həll olunur. */
+export const STATUS: Record<string, { labelKey: MessageKey; color: string; bg: string; accent: string }> = {
+  PENDING:                { labelKey: "apptStatus.pending",          color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
+  ASSIGNED:               { labelKey: "apptStatus.assigned",         color: "var(--brand-700)", bg: "var(--brand-50)", accent: "var(--brand)" },
+  CONFIRMED:              { labelKey: "apptStatus.confirmed",        color: "#065F46",          bg: "#D1FAE5",         accent: "#10B981" },
+  AWAITING_CONFIRMATION:  { labelKey: "apptStatus.awaiting",         color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
+  DISPUTED:               { labelKey: "apptStatus.disputed",         color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
+  COMPLETED:              { labelKey: "apptStatus.completed",        color: "#374151",          bg: "#F3F4F6",         accent: "#9CA3AF" },
+  CANCELLED:              { labelKey: "apptStatus.cancelled",        color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
+  CANCEL_REQUESTED:       { labelKey: "apptStatus.cancelRequested",  color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
+  REJECTED:               { labelKey: "apptStatus.rejected",         color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
 };
 
-export const PKG_STATUS: Record<string, { label: string; color: string; bg: string }> = {
+export const PKG_STATUS: Record<string, { labelKey: MessageKey; color: string; bg: string }> = {
   // PENDING_PAYMENT normalda pasiyentə göstərilmir — yalnız ehtiyat etiket.
-  PENDING_PAYMENT: { label: "Ödəniş gözlənilir", color: "#92400E", bg: "#FEF3C7" },
-  ACTIVE:    { label: "Aktiv",         color: "#065F46", bg: "#D1FAE5" },
+  PENDING_PAYMENT: { labelKey: "pkg.pendingPayment", color: "#92400E", bg: "#FEF3C7" },
+  ACTIVE:    { labelKey: "pkg.active",    color: "#065F46", bg: "#D1FAE5" },
   // EXHAUSTED = bütün seanslar keçirilib.
-  EXHAUSTED: { label: "Bitib",         color: "#374151", bg: "#F3F4F6" },
-  EXPIRED:   { label: "Müddəti keçib", color: "#92400E", bg: "#FEF3C7" },
-  CANCELLED: { label: "Ləğv edilib",   color: "#991B1B", bg: "#FEE2E2" },
+  EXHAUSTED: { labelKey: "pkg.exhausted", color: "#374151", bg: "#F3F4F6" },
+  EXPIRED:   { labelKey: "pkg.expired",   color: "#92400E", bg: "#FEF3C7" },
+  CANCELLED: { labelKey: "pkg.cancelled", color: "#991B1B", bg: "#FEE2E2" },
 };
 
 // Modula xas animasiya + filter scrollbar gizlətməsi (media query inline ola bilmir).
@@ -57,21 +60,23 @@ export function cleanOperatorNote(note?: string | null): string {
 
 /* Paket seansını adi seans siyahılarında fərqləndirən nişan. */
 export function PackageBadge({ name }: { name?: string | null }) {
+  const { t } = useT();
   return (
     <span title={name ?? undefined} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--brand-50)", color: "var(--brand-700)", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
       </svg>
-      Paket
+      {t("patAppt.pkgBadge")}
     </span>
   );
 }
 
 /* Pulsuz tanışlıq (INTRO, 15 dəq) görüşünü adi seans siyahılarında fərqləndirən nişan. */
 export function IntroBadge() {
+  const { t } = useT();
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "#D1FAE5", color: "#065F46", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999, whiteSpace: "nowrap" }}>
-      Pulsuz tanışlıq
+      {t("patAppt.introBadge")}
     </span>
   );
 }
@@ -160,6 +165,7 @@ export function SlotPicker({ psychologistId, busy, onPick, confirmNote }: {
   onPick: (slot: AvailableSlot) => void | Promise<void>;
   confirmNote?: string;
 }) {
+  const { t } = useT();
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [loading, setLoading] = useState(true);
   // Saata basmaq müraciəti birbaşa göndərmir — əvvəlcə təsdiq popup-ı çıxır.
@@ -187,8 +193,8 @@ export function SlotPicker({ psychologistId, busy, onPick, confirmNote }: {
     return Array.from(map.entries());
   }, [slots]);
 
-  if (loading) return <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Açıq vaxtlar yüklənir…</div>;
-  if (slots.length === 0) return <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>Bu psixoloqun yaxın 3 həftədə açıq vaxtı yoxdur.</div>;
+  if (loading) return <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{t("patAppt.slotsLoading")}</div>;
+  if (slots.length === 0) return <div style={{ fontSize: 12.5, color: "var(--oxford-60)" }}>{t("patAppt.slotsEmpty")}</div>;
 
   // Təsdiqlə: sorğu bitənə qədər popup açıq qalır (busy → "Göndərilir…"), sonra bağlanır.
   const confirm = async () => { if (!picked) return; await onPick(picked); setPicked(null); };
@@ -221,21 +227,21 @@ export function SlotPicker({ psychologistId, busy, onPick, confirmNote }: {
                 <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
               </svg>
             </div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Bu vaxtı təsdiqləyirsiniz?</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>{t("patAppt.slotConfirmTitle")}</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "var(--brand-700)", marginBottom: 8 }}>
               {azFormatDate(picked.startAt)}, {azFormatTime(picked.startAt)}
             </div>
             <div style={{ fontSize: 13, color: "var(--oxford-60)", lineHeight: 1.5, marginBottom: 20 }}>
-              {confirmNote ?? "Seçdiyiniz vaxt operatora göndəriləcək, təsdiqdən sonra randevuya çevriləcək."}
+              {confirmNote ?? t("patAppt.slotConfirmNote")}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button type="button" disabled={busy} onClick={() => setPicked(null)}
                 style={{ flex: 1, background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: busy ? "wait" : "pointer" }}>
-                Ləğv et
+                {t("common.cancel")}
               </button>
               <button type="button" disabled={busy} onClick={confirm}
                 style={{ flex: 1.4, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer" }}>
-                {busy ? "Göndərilir…" : "Bəli, göndər"}
+                {busy ? t("common.sending") : t("patAppt.slotConfirmYes")}
               </button>
             </div>
           </div>

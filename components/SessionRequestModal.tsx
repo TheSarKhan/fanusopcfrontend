@@ -4,21 +4,24 @@ import { useEffect, useRef, useState } from "react";
 import QuickRequestForm from "@/components/QuickRequestForm";
 import { buildPanelUrl, clearUser, getStoredUser } from "@/lib/auth";
 import { tryGetMe } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
-const ROLE_LABEL: Record<string, string> = {
-  PATIENT: "Pasiyent",
-  PSYCHOLOGIST: "Psixoloq",
-  OPERATOR: "Operator",
-  ADMIN: "Administrator",
+const ROLE_LABEL: Record<string, MessageKey> = {
+  PATIENT: "sessModal.rolePatient",
+  PSYCHOLOGIST: "sessModal.rolePsychologist",
+  OPERATOR: "sessModal.roleOperator",
+  ADMIN: "sessModal.roleAdmin",
 };
 
 /** "Bizə Müraciət Edin" — psixoloqsuz sürətli müraciət modalı (Sayt BRD §8.2, SAYT-FR-19). */
 export default function SessionRequestModal({ open, onClose }: Props) {
+  const { t } = useT();
   const overlayRef = useRef<HTMLDivElement>(null);
   const [formKey, setFormKey] = useState(0);
 
@@ -87,17 +90,17 @@ export default function SessionRequestModal({ open, onClose }: Props) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
             <div>
               <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0B1A35" }}>
-                Seans üçün müraciət
+                {t("sessModal.title")}
               </h2>
               <p style={{ margin: "6px 0 0", fontSize: 13, color: "#52718F" }}>
                 {role === null
-                  ? "Formanı doldurun, operator sizinlə əlaqə saxlayacaq."
-                  : "Hesab məlumatı yoxlanılır…"}
+                  ? t("sessModal.subGuest")
+                  : t("sessModal.subChecking")}
               </p>
             </div>
             <button
               onClick={onClose}
-              aria-label="Bağla"
+              aria-label={t("common.close")}
               style={{
                 background: "none", border: "none", cursor: "pointer",
                 padding: 4, color: "#9CA3AF", flexShrink: 0,
@@ -110,14 +113,14 @@ export default function SessionRequestModal({ open, onClose }: Props) {
           </div>
 
           {role === undefined || role === "PATIENT" ? (
-            <p style={{ margin: 0, fontSize: 13.5, color: "#52718F" }}>Yüklənir…</p>
+            <p style={{ margin: 0, fontSize: 13.5, color: "#52718F" }}>{t("common.loading")}</p>
           ) : role === null ? (
             <QuickRequestForm key={formKey} onDone={onClose} />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "#0B1A35" }}>
-                Siz <strong>{ROLE_LABEL[role] ?? role}</strong> hesabı ilə daxil olmusunuz.
-                Seans müraciəti yalnız pasiyentlər üçündür.
+                {t("sessModal.roleBefore")} <strong>{ROLE_LABEL[role] ? t(ROLE_LABEL[role]) : role}</strong>{" "}
+                {t("sessModal.roleAfter")}
               </p>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button
@@ -125,10 +128,10 @@ export default function SessionRequestModal({ open, onClose }: Props) {
                   onClick={() => { window.location.href = buildPanelUrl(role); }}
                   className="fanus-btn fanus-btn-primary"
                 >
-                  Panelə keç
+                  {t("sessModal.goPanel")}
                 </button>
                 <button type="button" onClick={onClose} className="fanus-btn fanus-btn-ghost">
-                  Bağla
+                  {t("common.close")}
                 </button>
               </div>
             </div>

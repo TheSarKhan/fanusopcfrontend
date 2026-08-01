@@ -5,104 +5,109 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { notificationsApi, type NotificationItem } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { humanizeDates, azFormatDate } from "@/lib/datetime";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
+
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 type IconName =
   | "calendar" | "check" | "refresh" | "x" | "clock" | "hourglass" | "check2"
   | "alert" | "handshake" | "star" | "target" | "bell" | "heart";
 
-const TYPE_META: Record<string, { icon: IconName; label: string; tone: "brand" | "good" | "warn" | "danger" | "neutral" }> = {
-  APPOINTMENT_ASSIGNED:               { icon: "calendar",  label: "Randevu təyini",  tone: "brand" },
-  APPOINTMENT_CONFIRMED:              { icon: "check",     label: "Təsdiqləndi",     tone: "good" },
-  APPOINTMENT_REJECTED:               { icon: "refresh",   label: "Rədd",            tone: "warn" },
-  APPOINTMENT_CANCELLED:              { icon: "x",         label: "Ləğv",            tone: "danger" },
-  APPOINTMENT_REMINDER:               { icon: "clock",     label: "Xatırlatma",      tone: "brand" },
-  APPOINTMENT_AWAITING_CONFIRMATION:  { icon: "hourglass", label: "Təsdiq gözlənir", tone: "warn" },
-  APPOINTMENT_COMPLETED:              { icon: "check2",    label: "Tamamlandı",      tone: "good" },
-  APPOINTMENT_DISPUTED:               { icon: "alert",     label: "Mübahisə",        tone: "danger" },
-  APPOINTMENT_DISPUTE_RESOLVED:       { icon: "handshake", label: "Mübahisə həll",   tone: "good" },
-  APPOINTMENT_CANCEL_REQUESTED:       { icon: "x",         label: "Ləğv tələbi",     tone: "warn" },
-  APPOINTMENT_NEW:                    { icon: "calendar",  label: "Yeni müraciət",   tone: "brand" },
-  APPOINTMENT_PENDING:                { icon: "hourglass", label: "Müraciət qəbul edildi", tone: "warn" },
-  APPOINTMENT_PATIENT_CONFIRMED:      { icon: "check",     label: "Pasient təsdiqlədi", tone: "good" },
-  APPOINTMENT_HANDOFF:                { icon: "refresh",   label: "Operatora ötürüldü", tone: "warn" },
-  APPOINTMENT_CANCEL_REQUEST_PENDING: { icon: "hourglass", label: "Ləğv tələbi göndərildi", tone: "warn" },
-  APPOINTMENT_CANCEL_REQUEST_APPROVED:{ icon: "check2",    label: "Ləğv tələbi təsdiqləndi", tone: "good" },
-  APPOINTMENT_CANCEL_REQUEST_REJECTED:{ icon: "x",         label: "Ləğv tələbi rədd edildi", tone: "danger" },
-  APPOINTMENT_MEETING_LINK:           { icon: "calendar",  label: "Seans linki",     tone: "brand" },
-  APPOINTMENT_CLAIM_STOLEN:           { icon: "refresh",   label: "Müraciət təhvil alındı", tone: "neutral" },
-  APPOINTMENT_DISPUTE_STALE:          { icon: "alert",     label: "Mübahisə gecikib", tone: "danger" },
-  APPOINTMENT_SLA_OVERDUE:            { icon: "alert",     label: "Gecikmə (SLA)",   tone: "danger" },
-  APPOINTMENT_SLA_ESCALATED:          { icon: "alert",     label: "Eskalasiya (SLA)", tone: "danger" },
-  RESCHEDULE_REQUESTED:               { icon: "clock",     label: "Vaxt dəyişikliyi", tone: "warn" },
-  RESCHEDULE_PROPOSED:                { icon: "clock",     label: "Yeni saat təklifi", tone: "brand" },
-  RESCHEDULE_ACCEPTED:                { icon: "check2",    label: "Təklif qəbul edildi", tone: "good" },
-  RESCHEDULE_REQUEST_ACCEPTED:        { icon: "check2",    label: "Vaxt dəyişikliyi qəbul edildi", tone: "good" },
-  RESCHEDULE_REQUEST_REJECTED:        { icon: "x",         label: "Vaxt dəyişikliyi rədd edildi", tone: "danger" },
-  RESCHEDULE_REQUEST_EXPIRED:         { icon: "clock",     label: "Vaxt dəyişikliyi vaxtı bitdi", tone: "neutral" },
-  RESCHEDULE_FAILED:                  { icon: "x",         label: "Planlama uğursuz", tone: "danger" },
-  RESCHEDULE_MEDIATION_DECLINED:      { icon: "x",         label: "Vasitəçilik rədd edildi", tone: "warn" },
-  SERIES_CANCEL_REQUESTED:            { icon: "x",         label: "Seriya ləğv tələbi", tone: "warn" },
-  SERIES_CANCEL_REQUEST_PENDING:      { icon: "hourglass", label: "Seriya ləğvi göndərildi", tone: "warn" },
-  SERIES_CANCEL_REQUEST_APPROVED:     { icon: "check2",    label: "Seriya ləğvi təsdiqləndi", tone: "good" },
-  SERIES_CANCEL_REQUEST_REJECTED:     { icon: "x",         label: "Seriya ləğvi rədd edildi", tone: "danger" },
-  SERIES_CANCELLED:                   { icon: "x",         label: "Seriya ləğv edildi", tone: "danger" },
-  SERIES_RESCHEDULED:                 { icon: "clock",     label: "Seriya yenidən planlandı", tone: "brand" },
-  SERIES_ENDED:                       { icon: "check2",    label: "Seriya bitdi",    tone: "neutral" },
-  SERIES_RENEWAL_NOTICE:              { icon: "bell",      label: "Kursunuz bitir",  tone: "warn" },
-  SERIES_RENEWAL_SUGGESTED:           { icon: "bell",      label: "Davam təklifi",   tone: "brand" },
-  REVIEW_PENDING:                     { icon: "star",      label: "Rəy",             tone: "warn" },
-  REVIEW_APPROVED:                    { icon: "star",      label: "Rəy",             tone: "good" },
-  REVIEW_DELETION_REQUEST_NEW:        { icon: "alert",      label: "Rəyin silinmə tələbi", tone: "warn" },
-  REVIEW_DELETION_REQUEST_DECIDED:    { icon: "check2",    label: "Rəy silinmə qərarı", tone: "neutral" },
-  HOMEWORK_ASSIGNED:                  { icon: "target",    label: "Tapşırıq",        tone: "brand" },
-  HOMEWORK_NEW:                       { icon: "target",    label: "Yeni tapşırıq",   tone: "brand" },
-  HOMEWORK_UPDATED:                   { icon: "target",    label: "Tapşırıq yeniləndi", tone: "brand" },
-  HOMEWORK_ATTACHMENT:                { icon: "target",    label: "Tapşırığa fayl əlavə edildi", tone: "neutral" },
-  HOMEWORK_COMMENT:                   { icon: "target",    label: "Tapşırığa şərh",  tone: "neutral" },
-  GOAL_PROGRESS_UPDATED:              { icon: "target",    label: "Hədəf",           tone: "brand" },
-  CRISIS_CHECK_IN:                    { icon: "heart",     label: "Böhran",          tone: "danger" },
-  PATIENT_RISK_FLAGGED:               { icon: "alert",     label: "Risk",            tone: "danger" },
-  PEER_NEW_ARTICLE:                   { icon: "bell",      label: "Yeni məqalə",     tone: "brand" },
-  PEER_NEW_RESOURCE:                  { icon: "target",    label: "Yeni resurs",     tone: "brand" },
-  ARTICLE_COMMENT_REPLY:              { icon: "bell",      label: "Şərhinizə cavab", tone: "brand" },
-  ARTICLE_COMMENT:                    { icon: "bell",      label: "Məqaləyə şərh",   tone: "brand" },
-  ARTICLE_LIKE:                       { icon: "heart",     label: "Məqalə bəyənildi", tone: "brand" },
-  REFERRAL_CONSENT_NEEDED:            { icon: "bell",      label: "Razılıq lazımdır", tone: "warn" },
-  REFERRAL_RECEIVED:                  { icon: "handshake", label: "Yönləndirmə",     tone: "brand" },
-  REFERRAL_ACCEPTED:                  { icon: "check2",    label: "Qəbul olundu",    tone: "good" },
-  REFERRAL_DECLINED:                  { icon: "x",         label: "Rədd",            tone: "danger" },
-  REFERRAL_CANCELLED:                 { icon: "x",         label: "Ləğv",            tone: "neutral" },
-  ACCOUNT_DELETION_REJECTED:          { icon: "x",         label: "Silinmə tələbi rədd edildi", tone: "warn" },
-  PSY_SUSPENDED:                      { icon: "alert",     label: "Hesab dayandırıldı", tone: "danger" },
-  PSY_UNSUSPENDED:                    { icon: "check2",    label: "Hesab bərpa olundu", tone: "good" },
-  CLINICAL_ACCESS_GRANTED:            { icon: "alert",     label: "Klinik baxış icazəsi", tone: "warn" },
-  PACKAGE_TRANSFERRED:                { icon: "handshake", label: "Paket köçürüldü", tone: "brand" },
-  PACKAGE_ASSIGNED:                   { icon: "handshake", label: "Paket təyin edildi", tone: "brand" },
-  POOL_RELEASE_REQUEST_NEW:           { icon: "alert",     label: "Hovuza buraxma tələbi", tone: "warn" },
-  POOL_RELEASE_REQUEST_DECIDED:       { icon: "check2",    label: "Hovuz tələbi qərarı", tone: "neutral" },
-  RESOURCE_SHARE_PENDING:             { icon: "alert",     label: "Resurs paylaşımı gözləyir", tone: "warn" },
-  PSYCH_TEST_NEW:                     { icon: "target",    label: "Yeni test təyin edildi", tone: "brand" },
-  PSYCH_TEST_RESULT:                  { icon: "check2",    label: "Test nəticəsi",   tone: "good" },
-  PSYCH_TEST_SHARE_PENDING:           { icon: "alert",     label: "Test paylaşımı gözləyir", tone: "warn" },
-  REFUND_REQUEST_NEW:                 { icon: "alert",     label: "Yeni iadə tələbi", tone: "warn" },
-  REFUND_REQUEST_DECIDED:             { icon: "check2",    label: "İadə tələbi qərarı", tone: "neutral" },
-  SESSION_REQUEST_NEW:                { icon: "bell",      label: "Yeni sayt müraciəti", tone: "brand" },
-  PAYOUT_PAID:                        { icon: "check2",    label: "Ödəniş icra olundu", tone: "good" },
+/** Görünən ad `ntfType.<KOD>` açarından gəlir — burada yalnız ikon və ton saxlanılır. */
+const TYPE_META: Record<string, { icon: IconName; tone: "brand" | "good" | "warn" | "danger" | "neutral" }> = {
+  APPOINTMENT_ASSIGNED:               { icon: "calendar",  tone: "brand" },
+  APPOINTMENT_CONFIRMED:              { icon: "check",     tone: "good" },
+  APPOINTMENT_REJECTED:               { icon: "refresh",   tone: "warn" },
+  APPOINTMENT_CANCELLED:              { icon: "x",         tone: "danger" },
+  APPOINTMENT_REMINDER:               { icon: "clock",     tone: "brand" },
+  APPOINTMENT_AWAITING_CONFIRMATION:  { icon: "hourglass", tone: "warn" },
+  APPOINTMENT_COMPLETED:              { icon: "check2",    tone: "good" },
+  APPOINTMENT_DISPUTED:               { icon: "alert",     tone: "danger" },
+  APPOINTMENT_DISPUTE_RESOLVED:       { icon: "handshake", tone: "good" },
+  APPOINTMENT_CANCEL_REQUESTED:       { icon: "x",         tone: "warn" },
+  APPOINTMENT_NEW:                    { icon: "calendar",  tone: "brand" },
+  APPOINTMENT_PENDING:                { icon: "hourglass", tone: "warn" },
+  APPOINTMENT_PATIENT_CONFIRMED:      { icon: "check",     tone: "good" },
+  APPOINTMENT_HANDOFF:                { icon: "refresh",   tone: "warn" },
+  APPOINTMENT_CANCEL_REQUEST_PENDING: { icon: "hourglass", tone: "warn" },
+  APPOINTMENT_CANCEL_REQUEST_APPROVED:{ icon: "check2",    tone: "good" },
+  APPOINTMENT_CANCEL_REQUEST_REJECTED:{ icon: "x",         tone: "danger" },
+  APPOINTMENT_MEETING_LINK:           { icon: "calendar",  tone: "brand" },
+  APPOINTMENT_CLAIM_STOLEN:           { icon: "refresh",   tone: "neutral" },
+  APPOINTMENT_DISPUTE_STALE:          { icon: "alert",     tone: "danger" },
+  APPOINTMENT_SLA_OVERDUE:            { icon: "alert",     tone: "danger" },
+  APPOINTMENT_SLA_ESCALATED:          { icon: "alert",     tone: "danger" },
+  RESCHEDULE_REQUESTED:               { icon: "clock",     tone: "warn" },
+  RESCHEDULE_PROPOSED:                { icon: "clock",     tone: "brand" },
+  RESCHEDULE_ACCEPTED:                { icon: "check2",    tone: "good" },
+  RESCHEDULE_REQUEST_ACCEPTED:        { icon: "check2",    tone: "good" },
+  RESCHEDULE_REQUEST_REJECTED:        { icon: "x",         tone: "danger" },
+  RESCHEDULE_REQUEST_EXPIRED:         { icon: "clock",     tone: "neutral" },
+  RESCHEDULE_FAILED:                  { icon: "x",         tone: "danger" },
+  RESCHEDULE_MEDIATION_DECLINED:      { icon: "x",         tone: "warn" },
+  SERIES_CANCEL_REQUESTED:            { icon: "x",         tone: "warn" },
+  SERIES_CANCEL_REQUEST_PENDING:      { icon: "hourglass", tone: "warn" },
+  SERIES_CANCEL_REQUEST_APPROVED:     { icon: "check2",    tone: "good" },
+  SERIES_CANCEL_REQUEST_REJECTED:     { icon: "x",         tone: "danger" },
+  SERIES_CANCELLED:                   { icon: "x",         tone: "danger" },
+  SERIES_RESCHEDULED:                 { icon: "clock",     tone: "brand" },
+  SERIES_ENDED:                       { icon: "check2",    tone: "neutral" },
+  SERIES_RENEWAL_NOTICE:              { icon: "bell",      tone: "warn" },
+  SERIES_RENEWAL_SUGGESTED:           { icon: "bell",      tone: "brand" },
+  REVIEW_PENDING:                     { icon: "star",      tone: "warn" },
+  REVIEW_APPROVED:                    { icon: "star",      tone: "good" },
+  REVIEW_DELETION_REQUEST_NEW:        { icon: "alert",     tone: "warn" },
+  REVIEW_DELETION_REQUEST_DECIDED:    { icon: "check2",    tone: "neutral" },
+  HOMEWORK_ASSIGNED:                  { icon: "target",    tone: "brand" },
+  HOMEWORK_NEW:                       { icon: "target",    tone: "brand" },
+  HOMEWORK_UPDATED:                   { icon: "target",    tone: "brand" },
+  HOMEWORK_ATTACHMENT:                { icon: "target",    tone: "neutral" },
+  HOMEWORK_COMMENT:                   { icon: "target",    tone: "neutral" },
+  GOAL_PROGRESS_UPDATED:              { icon: "target",    tone: "brand" },
+  CRISIS_CHECK_IN:                    { icon: "heart",     tone: "danger" },
+  PATIENT_RISK_FLAGGED:               { icon: "alert",     tone: "danger" },
+  PEER_NEW_ARTICLE:                   { icon: "bell",      tone: "brand" },
+  PEER_NEW_RESOURCE:                  { icon: "target",    tone: "brand" },
+  ARTICLE_COMMENT_REPLY:              { icon: "bell",      tone: "brand" },
+  ARTICLE_COMMENT:                    { icon: "bell",      tone: "brand" },
+  ARTICLE_LIKE:                       { icon: "heart",     tone: "brand" },
+  REFERRAL_CONSENT_NEEDED:            { icon: "bell",      tone: "warn" },
+  REFERRAL_RECEIVED:                  { icon: "handshake", tone: "brand" },
+  REFERRAL_ACCEPTED:                  { icon: "check2",    tone: "good" },
+  REFERRAL_DECLINED:                  { icon: "x",         tone: "danger" },
+  REFERRAL_CANCELLED:                 { icon: "x",         tone: "neutral" },
+  ACCOUNT_DELETION_REJECTED:          { icon: "x",         tone: "warn" },
+  PSY_SUSPENDED:                      { icon: "alert",     tone: "danger" },
+  PSY_UNSUSPENDED:                    { icon: "check2",    tone: "good" },
+  CLINICAL_ACCESS_GRANTED:            { icon: "alert",     tone: "warn" },
+  PACKAGE_TRANSFERRED:                { icon: "handshake", tone: "brand" },
+  PACKAGE_ASSIGNED:                   { icon: "handshake", tone: "brand" },
+  POOL_RELEASE_REQUEST_NEW:           { icon: "alert",     tone: "warn" },
+  POOL_RELEASE_REQUEST_DECIDED:       { icon: "check2",    tone: "neutral" },
+  RESOURCE_SHARE_PENDING:             { icon: "alert",     tone: "warn" },
+  PSYCH_TEST_NEW:                     { icon: "target",    tone: "brand" },
+  PSYCH_TEST_RESULT:                  { icon: "check2",    tone: "good" },
+  PSYCH_TEST_SHARE_PENDING:           { icon: "alert",     tone: "warn" },
+  REFUND_REQUEST_NEW:                 { icon: "alert",     tone: "warn" },
+  REFUND_REQUEST_DECIDED:             { icon: "check2",    tone: "neutral" },
+  SESSION_REQUEST_NEW:                { icon: "bell",      tone: "brand" },
+  PAYOUT_PAID:                        { icon: "check2",    tone: "good" },
 };
 
-function timeAgo(iso: string, now: Date = new Date()): string {
+function timeAgo(t: Translate, iso: string, now: Date = new Date()): string {
   const diff = Math.max(0, now.getTime() - new Date(iso).getTime());
   const m = Math.floor(diff / 60_000);
-  if (m < 1) return "indi";
-  if (m < 60) return `${m} dəq əvvəl`;
+  if (m < 1) return t("ntf.agoNow");
+  if (m < 60) return t("ntf.agoMin", { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} saat əvvəl`;
+  if (h < 24) return t("ntf.agoHour", { n: h });
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d} gün əvvəl`;
+  if (d < 7) return t("ntf.agoDay", { n: d });
   return azFormatDate(iso);
 }
 
-function groupByDay(items: NotificationItem[]): Array<{ label: string; items: NotificationItem[] }> {
+function groupByDay(t: Translate, items: NotificationItem[]): Array<{ label: string; items: NotificationItem[] }> {
   const groups = new Map<string, NotificationItem[]>();
   const today = new Date();
   const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
@@ -112,8 +117,8 @@ function groupByDay(items: NotificationItem[]): Array<{ label: string; items: No
   for (const it of items) {
     const d = new Date(it.createdAt);
     let label: string;
-    if (sameDay(d, today)) label = "Bu gün";
-    else if (sameDay(d, yesterday)) label = "Dünən";
+    if (sameDay(d, today)) label = t("ntf.groupToday");
+    else if (sameDay(d, yesterday)) label = t("ntf.groupYesterday");
     else label = azFormatDate(d);
     if (!groups.has(label)) groups.set(label, []);
     groups.get(label)!.push(it);
@@ -124,6 +129,7 @@ function groupByDay(items: NotificationItem[]): Array<{ label: string; items: No
 type FilterTab = "ALL" | "UNREAD" | "APPOINTMENT" | "OTHER";
 
 export default function NotificationsPage() {
+  const { t } = useT();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -213,7 +219,7 @@ export default function NotificationsPage() {
     return list;
   }, [items, filter, search]);
 
-  const groups = useMemo(() => groupByDay(filtered), [filtered]);
+  const groups = useMemo(() => groupByDay(t, filtered), [t, filtered]);
 
   const onItemClick = async (it: NotificationItem) => {
     if (!it.readAt) {
@@ -264,7 +270,7 @@ export default function NotificationsPage() {
   const bulkDelete = async () => {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
-    if (!confirm(`${ids.length} bildirişi silmək istəyirsiniz?`)) return;
+    if (!confirm(t("ntf.deleteConfirm", { n: ids.length }))) return;
     setBusy(true);
     try {
       await notificationsApi.deleteBulk(ids);
@@ -281,38 +287,38 @@ export default function NotificationsPage() {
     <div className="ntf-page">
       <header className="ntf-header">
         <div>
-          <h1 className="ntf-title">Bildirişlər</h1>
+          <h1 className="ntf-title">{t("ntf.title")}</h1>
           <p className="ntf-sub">
             {counts.unread > 0
-              ? `${counts.unread} oxunmamış bildiriş`
-              : "Hamısı oxunmuş"}
+              ? t("ntf.subUnread", { n: counts.unread })
+              : t("ntf.subAllRead")}
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {!selectMode && counts.unread > 0 && (
             <button onClick={markAllRead} disabled={busy} className="ntf-btn-primary">
-              {busy ? "..." : "Hamısını oxumuş kimi qeyd et"}
+              {busy ? "..." : t("ntf.markAllRead")}
             </button>
           )}
           {!selectMode ? (
             <button onClick={() => setSelectMode(true)} className="ntf-btn-ghost">
-              Seç
+              {t("ntf.selectCta")}
             </button>
           ) : (
-            <button onClick={exitSelect} className="ntf-btn-ghost">Ləğv</button>
+            <button onClick={exitSelect} className="ntf-btn-ghost">{t("ntf.selectExit")}</button>
           )}
         </div>
       </header>
 
       {selectMode && selected.size > 0 && (
         <div className="ntf-bulkbar">
-          <span><strong>{selected.size}</strong> seçilib</span>
+          <span><strong>{t("ntf.selectedCount", { n: selected.size })}</strong></span>
           <div className="ntf-bulkbar-actions">
             <button onClick={bulkMarkRead} disabled={busy} className="ntf-bulkbar-btn ntf-bulkbar-btn--primary">
-              Oxumuş işarələ
+              {t("ntf.bulkMarkRead")}
             </button>
             <button onClick={bulkDelete} disabled={busy} className="ntf-bulkbar-btn ntf-bulkbar-btn--danger">
-              Sil
+              {t("ntf.bulkDelete")}
             </button>
           </div>
         </div>
@@ -321,16 +327,16 @@ export default function NotificationsPage() {
       <div className="ntf-toolbar">
         <nav className="ntf-tabs" role="tablist">
           <FilterTabButton active={filter === "ALL"} onClick={() => setFilter("ALL")} count={counts.all}>
-            Hamısı
+            {t("ntf.tabAll")}
           </FilterTabButton>
           <FilterTabButton active={filter === "UNREAD"} onClick={() => setFilter("UNREAD")} count={counts.unread} accent>
-            Oxunmamış
+            {t("ntf.tabUnread")}
           </FilterTabButton>
           <FilterTabButton active={filter === "APPOINTMENT"} onClick={() => setFilter("APPOINTMENT")} count={counts.appointment}>
-            Randevular
+            {t("ntf.tabAppointments")}
           </FilterTabButton>
           <FilterTabButton active={filter === "OTHER"} onClick={() => setFilter("OTHER")} count={counts.other}>
-            Digər
+            {t("ntf.tabOther")}
           </FilterTabButton>
         </nav>
         <div className="ntf-search">
@@ -342,14 +348,14 @@ export default function NotificationsPage() {
             type="search"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Axtar…"
+            placeholder={t("ntf.searchPh")}
           />
           <kbd>/</kbd>
         </div>
       </div>
 
       {loading ? (
-        <div className="ntf-loading">Yüklənir…</div>
+        <div className="ntf-loading">{t("ntf.loading")}</div>
       ) : groups.length === 0 ? (
         <div className="ntf-empty">
           <div className="ntf-empty-icon" aria-hidden>
@@ -359,15 +365,15 @@ export default function NotificationsPage() {
           </div>
           <div className="ntf-empty-title">
             {search.trim()
-              ? "Bu axtarışa uyğun nəticə yoxdur"
-              : filter === "UNREAD" ? "Oxunmamış bildiriş yoxdur" : "Hələ bildiriş yoxdur"}
+              ? t("ntf.emptyNoMatch")
+              : filter === "UNREAD" ? t("ntf.emptyUnread") : t("ntf.emptyNone")}
           </div>
           <p className="ntf-empty-sub">
             {search.trim()
-              ? "Açar sözünü dəyişdirib yenidən cəhd edin."
+              ? t("ntf.emptyNoMatchSub")
               : filter === "UNREAD"
-                ? "Hamısını oxumusunuz, təbriklər."
-                : "Sizinlə bağlı yenilik olanda burada görünəcək."}
+                ? t("ntf.emptyUnreadSub")
+                : t("ntf.emptyNoneSub")}
           </p>
         </div>
       ) : (
@@ -396,7 +402,7 @@ export default function NotificationsPage() {
         <div style={{ textAlign: "center", marginTop: 16 }}>
           <button type="button" onClick={loadMore} disabled={loadingMore}
             style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
-            {loadingMore ? "Yüklənir…" : "Daha çox göstər"}
+            {loadingMore ? t("ntf.loading") : t("ntf.loadMore")}
           </button>
         </div>
       )}
@@ -436,7 +442,11 @@ function NotificationRow({
   selected?: boolean;
   onToggleSelect?: () => void;
 }) {
-  const meta = TYPE_META[item.type] ?? { icon: "bell" as IconName, label: item.type.replace(/_/g, " "), tone: "neutral" as const };
+  const { t } = useT();
+  const meta = TYPE_META[item.type];
+  const icon = meta?.icon ?? ("bell" as IconName);
+  const tone = meta?.tone ?? ("neutral" as const);
+  const label = meta ? t(`ntfType.${item.type}` as MessageKey) : item.type.replace(/_/g, " ");
   const isUnread = !item.readAt;
   const [justRead, setJustRead] = useState(false);
 
@@ -460,18 +470,18 @@ function NotificationRow({
           onClick={e => e.stopPropagation()}
           className="ntf-row-check" />
       )}
-      <div className={`ntf-row-icon${isUnread ? " is-unread" : ""}${justRead ? " is-justread" : ""}`} data-tone={meta.tone} aria-hidden>
-        <NotifIcon name={meta.icon} />
+      <div className={`ntf-row-icon${isUnread ? " is-unread" : ""}${justRead ? " is-justread" : ""}`} data-tone={tone} aria-hidden>
+        <NotifIcon name={icon} />
       </div>
       <div className="ntf-row-main">
         <div className="ntf-row-head">
-          <span className="ntf-row-type">{meta.label}</span>
-          <span className="ntf-row-time">{timeAgo(item.createdAt)}</span>
+          <span className="ntf-row-type">{label}</span>
+          <span className="ntf-row-time">{timeAgo(t, item.createdAt)}</span>
         </div>
         <div className="ntf-row-title">{humanizeDates(item.title)}</div>
         {item.body && <div className="ntf-row-body">{humanizeDates(item.body)}</div>}
       </div>
-      {isUnread && !selectable && <span className="ntf-row-dot" aria-label="oxunmamış" />}
+      {isUnread && !selectable && <span className="ntf-row-dot" aria-label={t("ntf.unreadAria")} />}
     </>
   );
 

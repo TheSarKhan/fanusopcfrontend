@@ -158,10 +158,10 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
 
   return (
     <PanelShell
-      brandLabel="Operator"
+      brandLabel={t("roleLabel.OPERATOR")}
       homeHref="/operator"
       navItems={nav}
-      user={{ name, initials, role: "Operator" }}
+      user={{ name, initials, role: t("roleLabel.OPERATOR") }}
     >
       <ModuleLock>{children}</ModuleLock>
     </PanelShell>

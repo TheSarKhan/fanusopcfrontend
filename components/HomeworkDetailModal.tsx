@@ -9,8 +9,12 @@ import {
 } from "@/lib/api";
 import HomeworkLabelChip, { labelColors } from "./HomeworkLabelChip";
 import { azFormatDate, azFormatDateTime } from "@/lib/datetime";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 type Role = "PSYCHOLOGIST" | "PATIENT";
+
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 function formatFileSize(bytes?: number | null): string {
   if (!bytes) return "";
@@ -23,19 +27,20 @@ function formatDateTime(iso: string): string {
   return azFormatDateTime(iso);
 }
 
-const ACTION_LABEL: Record<string, string> = {
-  CREATED: "yaratdı",
-  EDITED: "redaktə etdi",
-  MOVED: "köçürdü",
-  PRIORITY_CHANGED: "prioritetini dəyişdi",
-  ITEM_ADDED: "alt-tapşırıq əlavə etdi",
-  ITEM_DONE: "alt-tapşırığı işarələdi",
-  ITEM_REOPENED: "alt-tapşırığı yenidən açdı",
-  ATTACHMENT_ADDED: "fayl əlavə etdi",
-  COMMENTED: "şərh yazdı",
-  LABEL_ADDED: "etiket əlavə etdi",
-  MARKED: "statusu dəyişdi",
-};
+const ACTIONS = [
+  "CREATED", "EDITED", "MOVED", "PRIORITY_CHANGED", "ITEM_ADDED", "ITEM_DONE",
+  "ITEM_REOPENED", "ATTACHMENT_ADDED", "COMMENTED", "LABEL_ADDED", "MARKED",
+];
+
+/** Aktivlik jurnalı kodunu görünən mətnə çevirir; naməlum kod kiçik hərflə qalır. */
+function actionLabel(t: Translate, action: string) {
+  return ACTIONS.includes(action) ? t(`hwAction.${action}` as MessageKey) : action.toLowerCase();
+}
+
+/** Backend rol kodu → görünən ad (yalnız bu modalın iki rolu üçün). */
+function roleName(t: Translate, role: string) {
+  return role === "PSYCHOLOGIST" ? t("roleLabel.PSYCHOLOGIST") : t("roleLabel.PATIENT");
+}
 
 interface Props {
   homework: Homework;
@@ -52,6 +57,7 @@ interface Props {
 export default function HomeworkDetailModal({
   homework, role, availableLabels = [], onClose, onMutate, onDelete,
 }: Props) {
+  const { t } = useT();
   const api = role === "PSYCHOLOGIST" ? psychologistApi : patientApi;
   const [comments, setComments] = useState<HomeworkComment[]>([]);
   const [activity, setActivity] = useState<HomeworkActivity[]>([]);
@@ -95,7 +101,7 @@ export default function HomeworkDetailModal({
 
   const deleteItem = async (item: HomeworkChecklistItem) => {
     if (role !== "PSYCHOLOGIST") return;
-    if (!confirm(`"${item.label}" silinsin?`)) return;
+    if (!confirm(t("hwModal.deleteItemConfirm", { name: item.label }))) return;
     try {
       await psychologistApi.homeworkDeleteItem(homework.id, item.id);
       const list = homework.checklist.filter(i => i.id !== item.id);
@@ -111,7 +117,7 @@ export default function HomeworkDetailModal({
     if (role !== "PSYCHOLOGIST") return;
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 30 * 1024 * 1024) { alert("Maksimum 30 MB"); return; }
+    if (file.size > 30 * 1024 * 1024) { alert(t("hwModal.fileTooLarge")); return; }
     setBusy(true);
     try {
       const att = await psychologistApi.homeworkUploadAttachment(homework.id, file);
@@ -124,7 +130,7 @@ export default function HomeworkDetailModal({
   };
 
   const deleteAttachment = async (att: HomeworkAttachment) => {
-    if (!confirm(`"${att.fileName}" silinsin?`)) return;
+    if (!confirm(t("hwModal.deleteFileConfirm", { name: att.fileName }))) return;
     try {
       await api.homeworkDeleteAttachment(homework.id, att.id);
       onMutate({ ...homework, attachments: homework.attachments.filter(a => a.id !== att.id) });
@@ -145,7 +151,7 @@ export default function HomeworkDetailModal({
   };
 
   const removeComment = async (c: HomeworkComment) => {
-    if (!confirm("Şərh silinsin?")) return;
+    if (!confirm(t("hwModal.deleteCommentConfirm"))) return;
     try {
       await api.homeworkDeleteComment(homework.id, c.id);
       setComments(prev => prev.filter(x => x.id !== c.id));
@@ -207,19 +213,19 @@ export default function HomeworkDetailModal({
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>
               <span>{homework.patientName}</span>
               <span>{formatDateTime(homework.createdAt)}</span>
-              {homework.dueDate && <span>son tarix: {azFormatDate(homework.dueDate)}</span>}
+              {homework.dueDate && <span>{t("hwModal.dueDate", { date: azFormatDate(homework.dueDate) })}</span>}
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {role === "PSYCHOLOGIST" && onDelete && (
-              <button onClick={onDelete} style={{ ...iconBtn("#991B1B", "#FEE2E2"), display: "inline-flex", alignItems: "center", gap: 5 }} title="Tapşırığı sil">
+              <button onClick={onDelete} style={{ ...iconBtn("#991B1B", "#FEE2E2"), display: "inline-flex", alignItems: "center", gap: 5 }} title={t("hwModal.deleteTaskTitle")}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
                 </svg>
-                Sil
+                {t("hwModal.deleteShort")}
               </button>
             )}
-            <button onClick={onClose} style={iconBtn("var(--oxford-60)", "var(--oxford-10)")}>Bağla</button>
+            <button onClick={onClose} style={iconBtn("var(--oxford-60)", "var(--oxford-10)")}>{t("hwModal.close")}</button>
           </div>
         </div>
 
@@ -234,7 +240,7 @@ export default function HomeworkDetailModal({
             )}
 
             {/* Checklist */}
-            <Section title={`Alt-tapşırıqlar${homework.checklistTotal > 0 ? ` (${homework.checklistCompleted}/${homework.checklistTotal})` : ""}`}>
+            <Section title={`${t("hwModal.checklistTitle")}${homework.checklistTotal > 0 ? ` (${homework.checklistCompleted}/${homework.checklistTotal})` : ""}`}>
               {homework.checklistTotal > 0 && (
                 <div style={{ height: 4, background: "var(--brand-50)", borderRadius: 2, marginBottom: 8, overflow: "hidden" }}>
                   <div style={{ width: `${progress}%`, height: "100%", background: "var(--brand)", transition: "width 0.2s" }} />
@@ -260,7 +266,7 @@ export default function HomeworkDetailModal({
                       {role === "PSYCHOLOGIST" && (
                         <button onClick={(e) => { e.preventDefault(); deleteItem(item); }}
                           style={{ background: "transparent", border: "none", color: "var(--oxford-40,#9EAFC2)", cursor: "pointer", padding: "2px 4px", lineHeight: 1, display: "inline-flex", alignItems: "center", borderRadius: 4 }}
-                          title="Alt-tapşırığı sil">
+                          title={t("hwModal.deleteItemTitle")}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                             <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
                           </svg>
@@ -274,16 +280,16 @@ export default function HomeworkDetailModal({
                 <div style={{ display: "flex", gap: 6 }}>
                   <input value={newItem} onChange={e => setNewItem(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }}
-                    placeholder="Yeni alt-tapşırıq…"
+                    placeholder={t("hwModal.newItemPh")}
                     style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid var(--oxford-10)", fontSize: 12.5 }} />
                   <button onClick={addItem} disabled={busy || !newItem.trim()}
-                    style={smallBtn(!newItem.trim())}>+ Əlavə et</button>
+                    style={smallBtn(!newItem.trim())}>{t("hwModal.addItem")}</button>
                 </div>
               )}
             </Section>
 
             {/* Attachments */}
-            <Section title={`Fayllar${homework.attachments.length > 0 ? ` (${homework.attachments.length})` : ""}`}
+            <Section title={`${t("hwModal.filesTitle")}${homework.attachments.length > 0 ? ` (${homework.attachments.length})` : ""}`}
               right={role === "PSYCHOLOGIST" && (
                 <label style={{
                   cursor: busy ? "wait" : "pointer", fontSize: 12, fontWeight: 600,
@@ -292,11 +298,11 @@ export default function HomeworkDetailModal({
                 }}>
                   <input ref={fileRef} type="file" onChange={onPickFile} disabled={busy}
                     style={{ display: "none" }} />
-                  {busy ? "Yüklənir…" : "+ Fayl yüklə"}
+                  {busy ? t("hwModal.uploading") : t("hwModal.uploadFile")}
                 </label>
               )}>
               {homework.attachments.length === 0 ? (
-                <div style={{ fontSize: 12, color: "var(--oxford-60)" }}>Heç bir fayl yoxdur</div>
+                <div style={{ fontSize: 12, color: "var(--oxford-60)" }}>{t("hwModal.noFiles")}</div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {homework.attachments.map(att => {
@@ -312,13 +318,13 @@ export default function HomeworkDetailModal({
                           {att.fileName}
                         </a>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 10, color: "var(--oxford-60)", flexShrink: 0 }}>
-                          <span>{att.uploadedByRole === role ? "Siz" : (att.uploadedByRole === "PSYCHOLOGIST" ? "Psixoloq" : "Pasiyent")}</span>
+                          <span>{att.uploadedByRole === role ? t("hwModal.uploaderYou") : roleName(t, att.uploadedByRole)}</span>
                           <span>{formatFileSize(att.fileSize)}</span>
                         </span>
                         {canDelete && (
                           <button onClick={() => deleteAttachment(att)}
                             style={{ background: "transparent", border: "none", color: "var(--oxford-40,#9EAFC2)", cursor: "pointer", padding: "2px 4px", lineHeight: 1, display: "inline-flex", alignItems: "center", borderRadius: 4 }}
-                            title="Faylı sil">
+                            title={t("hwModal.deleteFileTitle")}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                               <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
                             </svg>
@@ -335,17 +341,17 @@ export default function HomeworkDetailModal({
             <div style={{ marginTop: 18, borderTop: "1px solid var(--oxford-10)", paddingTop: 16 }}>
               <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
                 <TabBtn active={tab === "comments"} onClick={() => setTab("comments")}>
-                  Şərhlər ({comments.length})
+                  {t("hwModal.tabComments", { n: comments.length })}
                 </TabBtn>
                 <TabBtn active={tab === "activity"} onClick={() => setTab("activity")}>
-                  Aktivlik
+                  {t("hwModal.tabActivity")}
                 </TabBtn>
               </div>
 
               {tab === "comments" ? (
                 <>
                   {comments.length === 0 ? (
-                    <div style={{ fontSize: 12, color: "var(--oxford-60)", marginBottom: 10 }}>Hələ şərh yoxdur</div>
+                    <div style={{ fontSize: 12, color: "var(--oxford-60)", marginBottom: 10 }}>{t("hwModal.noComments")}</div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
                       {comments.map(c => (
@@ -357,7 +363,7 @@ export default function HomeworkDetailModal({
                         }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                             <span style={{ fontSize: 11, fontWeight: 700, color: "var(--brand-700)" }}>
-                              {c.authorName ?? (c.authorRole === "PSYCHOLOGIST" ? "Psixoloq" : "Pasiyent")}
+                              {c.authorName ?? roleName(t, c.authorRole)}
                             </span>
                             <span style={{ fontSize: 10, color: "var(--oxford-60)" }}>{formatDateTime(c.createdAt)}</span>
                           </div>
@@ -367,7 +373,7 @@ export default function HomeworkDetailModal({
                           {(role === "PSYCHOLOGIST" || c.authorRole === role) && (
                             <button onClick={() => removeComment(c)}
                               style={{ background: "transparent", border: "none", color: "var(--oxford-60)", cursor: "pointer", fontSize: 11, padding: 0, marginTop: 4 }}>
-                              Sil
+                              {t("hwModal.deleteShort")}
                             </button>
                           )}
                         </div>
@@ -377,7 +383,7 @@ export default function HomeworkDetailModal({
                   <div>
                     <textarea rows={2} value={commentBody}
                       onChange={e => setCommentBody(e.target.value)}
-                      placeholder="Şərh yazın…"
+                      placeholder={t("hwModal.commentPh")}
                       style={{
                         width: "100%", padding: 10, borderRadius: 10,
                         border: "1px solid var(--oxford-10)", fontSize: 13,
@@ -391,14 +397,14 @@ export default function HomeworkDetailModal({
                           cursor: busy || !commentBody.trim() ? "not-allowed" : "pointer",
                           opacity: !commentBody.trim() ? 0.6 : 1,
                         }}>
-                        Göndər
+                        {t("hwModal.send")}
                       </button>
                     </div>
                   </div>
                 </>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {activity.length === 0 && <div style={{ fontSize: 12, color: "var(--oxford-60)" }}>Aktivlik yoxdur</div>}
+                  {activity.length === 0 && <div style={{ fontSize: 12, color: "var(--oxford-60)" }}>{t("hwModal.noActivity")}</div>}
                   {activity.map(a => (
                     <div key={a.id} style={{
                       display: "flex", alignItems: "flex-start", gap: 10,
@@ -410,10 +416,10 @@ export default function HomeworkDetailModal({
                       }} />
                       <div style={{ flex: 1, fontSize: 12, color: "var(--oxford-60)" }}>
                         <span style={{ fontWeight: 600, color: "var(--oxford)" }}>
-                          {a.actorName ?? (a.actorRole === "PSYCHOLOGIST" ? "Psixoloq" : "Pasiyent")}
+                          {a.actorName ?? roleName(t, a.actorRole)}
                         </span>
                         {" "}
-                        {ACTION_LABEL[a.action] ?? a.action.toLowerCase()}
+                        {actionLabel(t, a.action)}
                         {a.meta && <span style={{ color: "var(--oxford-80)" }}>{` — ${a.meta}`}</span>}
                         <div style={{ fontSize: 10, color: "var(--oxford-60)", marginTop: 2 }}>{formatDateTime(a.createdAt)}</div>
                       </div>
@@ -432,23 +438,23 @@ export default function HomeworkDetailModal({
             display: "flex", flexDirection: "column", gap: 14,
             overflow: "auto", maxHeight: "70vh",
           }}>
-            <MetaBlock title="Status">
+            <MetaBlock title={t("hwModal.metaStatus")}>
               <span style={{
                 display: "inline-flex", padding: "4px 10px", borderRadius: 999,
                 fontSize: 12, fontWeight: 700,
                 background: homework.status === "COMPLETED" ? "#D1FAE5" : homework.status === "IN_PROGRESS" ? "#DBEAFE" : "#FEF3C7",
                 color: homework.status === "COMPLETED" ? "#065F46" : homework.status === "IN_PROGRESS" ? "#1E40AF" : "#92400E",
               }}>
-                {homework.status === "COMPLETED" ? "Tamamlandı" : homework.status === "IN_PROGRESS" ? "Davam edir" : "Gözləyir"}
+                {homework.status === "COMPLETED" ? t("hwModal.stCompleted") : homework.status === "IN_PROGRESS" ? t("hwModal.stInProgress") : t("hwModal.stPending")}
               </span>
               {role === "PATIENT" && homework.status !== "COMPLETED" && (
                 <div style={{ marginTop: 8, fontSize: 11, color: "var(--oxford-60)" }}>
-                  Pasiyent panelində kartı sütunlar arası (Gözləyir → Davam edir → Tamamlandı) sürükləyərək statusu dəyişə bilərsiniz
+                  {t("hwModal.dragHint")}
                 </div>
               )}
             </MetaBlock>
 
-            <MetaBlock title="Prioritet">
+            <MetaBlock title={t("hwModal.metaPriority")}>
               {role === "PSYCHOLOGIST" ? (
                 <div style={{ display: "flex", gap: 6 }}>
                   {(["LOW", "MEDIUM", "HIGH"] as HomeworkPriority[]).map(p => (
@@ -460,7 +466,7 @@ export default function HomeworkDetailModal({
                         color: homework.priority === p ? "#fff" : PRIORITY_COLOR[p],
                         fontSize: 11, fontWeight: 700, cursor: "pointer",
                       }}>
-                      {PRIORITY_LABEL[p]}
+                      {priorityLabel(t, p)}
                     </button>
                   ))}
                 </div>
@@ -470,19 +476,19 @@ export default function HomeworkDetailModal({
                   fontSize: 12, fontWeight: 700,
                   background: PRIORITY_COLOR[homework.priority],
                   color: "#fff",
-                }}>{PRIORITY_LABEL[homework.priority]}</span>
+                }}>{priorityLabel(t, homework.priority)}</span>
               )}
             </MetaBlock>
 
-            <MetaBlock title="Etiketlər">
+            <MetaBlock title={t("hwModal.metaLabels")}>
               {homework.labels.length === 0 && (
-                <div style={{ fontSize: 11, color: "var(--oxford-60)", marginBottom: 6 }}>Heç bir etiket yoxdur</div>
+                <div style={{ fontSize: 11, color: "var(--oxford-60)", marginBottom: 6 }}>{t("hwModal.noLabels")}</div>
               )}
               {role === "PSYCHOLOGIST" ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {availableLabels.length === 0 ? (
                     <div style={{ fontSize: 11, color: "var(--oxford-60)" }}>
-                      Etiket paletiniz boşdur. Tapşırıqlar səhifəsindən etiket yaradın.
+                      {t("hwModal.emptyPalette")}
                     </div>
                   ) : (
                     availableLabels.map(l => {
@@ -519,12 +525,12 @@ export default function HomeworkDetailModal({
               )}
             </MetaBlock>
 
-            <MetaBlock title="Müştəri">
+            <MetaBlock title={t("hwModal.metaClient")}>
               <div style={{ fontSize: 13, color: "var(--oxford)", fontWeight: 600 }}>{homework.patientName}</div>
             </MetaBlock>
 
             {homework.completionNote && (
-              <MetaBlock title="Müştəri qeydi">
+              <MetaBlock title={t("hwModal.metaClientNote")}>
                 <div style={{ fontSize: 12, color: "var(--oxford)", whiteSpace: "pre-wrap" }}>{homework.completionNote}</div>
               </MetaBlock>
             )}
@@ -538,9 +544,12 @@ export default function HomeworkDetailModal({
 const PRIORITY_COLOR: Record<HomeworkPriority, string> = {
   LOW: "#10B981", MEDIUM: "#F59E0B", HIGH: "#DC2626",
 };
-const PRIORITY_LABEL: Record<HomeworkPriority, string> = {
-  LOW: "Aşağı", MEDIUM: "Orta", HIGH: "Yüksək",
+const PRIORITY_KEY: Record<HomeworkPriority, MessageKey> = {
+  LOW: "hwModal.prioLow", MEDIUM: "hwModal.prioMedium", HIGH: "hwModal.prioHigh",
 };
+function priorityLabel(t: Translate, p: HomeworkPriority) {
+  return t(PRIORITY_KEY[p]);
+}
 
 function Section({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (

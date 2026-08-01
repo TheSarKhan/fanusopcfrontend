@@ -94,10 +94,10 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <PanelShell
-      brandLabel="Admin"
+      brandLabel={t("roleLabel.ADMIN")}
       homeHref="/admin"
       navItems={nav}
-      user={me}
+      user={{ name: me.name, initials: me.initials, role: t("roleLabel.ADMIN") }}
     >
       {/* Wrap admin pages in .admin-shell so existing admin.css selectors apply. */}
       <div className="admin-shell">{children}</div>

@@ -9,6 +9,7 @@ import { getMainSiteUrl } from "@/lib/auth";
 import PanelIcon, { type IconName } from "./PanelIcon";
 import NotificationBell from "./NotificationBell";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export interface PanelNavItem {
   href: string;
@@ -61,6 +62,7 @@ export default function PanelShell({
   profileHref,
   onLockedClick,
 }: PanelShellProps) {
+  const { t } = useT();
   const resolvedProfileHref = profileHref ?? `${homeHref.replace(/\/$/, "")}/profile`;
   const pathname = usePathname();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -136,7 +138,7 @@ export default function PanelShell({
         <button
           type="button"
           className="ps-side__toggle"
-          aria-label={collapsed ? "Sidebar-ı aç" : "Sidebar-ı bağla"}
+          aria-label={collapsed ? t("pshell.sidebarExpand") : t("pshell.sidebarCollapse")}
           onClick={toggleCollapsed}
         >
           <PanelIcon name="chevron" size={13} stroke={2.4} style={{ transform: collapsed ? undefined : "rotate(180deg)" }} />
@@ -165,7 +167,7 @@ export default function PanelShell({
           {!isMobile && <div className="ps-side__controls">{controls}</div>}
           <button
             className="ps-side__close"
-            aria-label="Bağla"
+            aria-label={t("pshell.closeAria")}
             onClick={() => setMobileOpen(false)}
           >
             <PanelIcon name="x" size={18} stroke={2} />
@@ -187,12 +189,12 @@ export default function PanelShell({
                   type="button"
                   className="ps-nav ps-nav--locked"
                   onClick={() => { setMobileOpen(false); onLockedClick?.(item); }}
-                  title="Planınıza daxil deyil"
+                  title={t("pshell.lockedTitle")}
                   style={{ background: "none", border: "none", width: "100%", textAlign: "left", cursor: "pointer", font: "inherit", opacity: 0.62 }}
                 >
                   <PanelIcon name={item.icon} size={18} stroke={1.8} />
                   <span>{item.label}</span>
-                  <span style={{ marginLeft: "auto", display: "inline-flex" }} aria-label="Kilidli">
+                  <span style={{ marginLeft: "auto", display: "inline-flex" }} aria-label={t("pshell.lockedAria")}>
                     <PanelIcon name="lock" size={14} stroke={1.9} />
                   </span>
                 </button>
@@ -210,8 +212,8 @@ export default function PanelShell({
                 {item.badge !== undefined && item.badge > 0 && (
                   <span
                     className={`ps-nav__badge${item.badgeTone === "warn" ? " ps-nav__badge--warn" : ""}`}
-                    title={`${item.badge} gözləyən`}
-                    aria-label={`${item.badge} gözləyən`}
+                    title={t("pshell.pendingBadge", { n: item.badge })}
+                    aria-label={t("pshell.pendingBadge", { n: item.badge })}
                   >
                     {item.badge > 99 ? "99+" : item.badge}
                   </span>
@@ -226,7 +228,7 @@ export default function PanelShell({
             href={resolvedProfileHref}
             className="ps-side__user-link"
             onClick={() => setMobileOpen(false)}
-            aria-label="Profilə bax"
+            aria-label={t("pshell.profileAria")}
           >
             <div className="ps-side__avatar">
               {photoUrl ? (
@@ -249,10 +251,10 @@ export default function PanelShell({
           </Link>
           <button
             className="ps-side__logout"
-            aria-label="Çıxış"
+            aria-label={t("pshell.logout")}
             onClick={handleLogout}
             disabled={loggingOut}
-            title="Çıxış"
+            title={t("pshell.logout")}
           >
             <PanelIcon name="logout" size={16} stroke={2} />
           </button>
@@ -265,7 +267,7 @@ export default function PanelShell({
         <header className={`ps-top${topbarAction ? "" : " ps-top--empty"}`}>
           <button
             className="ps-top__menu"
-            aria-label="Menyu"
+            aria-label={t("pshell.menuAria")}
             onClick={() => setMobileOpen(true)}
           >
             <PanelIcon name="menu" size={20} stroke={2} />

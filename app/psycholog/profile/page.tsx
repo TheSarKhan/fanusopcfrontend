@@ -10,6 +10,7 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
 
 export default function PsychologProfilePage() {
+  const { t } = useT();
   const [me, setMe] = useState<Psychologist | null>(null);
 
   useEffect(() => {
@@ -18,8 +19,8 @@ export default function PsychologProfilePage() {
 
   return (
     <ProfileShell
-      title="Profilim"
-      subtitle="Şəxsi məlumatlarınızı və psixoloq profilinizi idarə edin"
+      title={t("uprof.psyTitle")}
+      subtitle={t("uprof.psySub")}
       sideExtras={
         me?.slug ? (
           <div className="uprof-card uprof-side-card">

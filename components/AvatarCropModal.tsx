@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 const VIEWPORT = 280;
 const OUTPUT_SIZE = 480;
@@ -21,6 +22,7 @@ export default function AvatarCropModal({
   onCancel: () => void;
   onCropped: (cropped: File) => Promise<void>;
 }) {
+  const { t } = useT();
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -110,15 +112,15 @@ export default function AvatarCropModal({
       canvas.width = OUTPUT_SIZE;
       canvas.height = OUTPUT_SIZE;
       const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas dəstəklənmir");
+      if (!ctx) throw new Error(t("avcrop.errCanvas"));
       ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
 
       const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.92));
-      if (!blob) throw new Error("Şəkil emalı uğursuz oldu");
+      if (!blob) throw new Error(t("avcrop.errProcess"));
 
       await onCropped(new File([blob], "avatar.jpg", { type: "image/jpeg" }));
     } catch (e) {
-      setErr((e as Error).message || "Kəsmə uğursuz oldu");
+      setErr((e as Error).message || t("avcrop.errCrop"));
     } finally {
       setSaving(false);
     }
@@ -127,9 +129,9 @@ export default function AvatarCropModal({
   return (
     <div className="rsc-modal-back" onClick={saving ? undefined : onCancel}>
       <div className="rsc-modal avcrop-modal" onClick={e => e.stopPropagation()}>
-        <h2>Şəkli kəs</h2>
+        <h2>{t("avcrop.title")}</h2>
         <p className="rsc-modal-sub">
-          Sürüşdürərək yerini, aşağıdakı sürgü ilə ölçüsünü tənzimləyin. İşıqlandırılmış dairə profildə görünəcək sahədir.
+          {t("avcrop.sub")}
         </p>
 
         <div
@@ -171,7 +173,7 @@ export default function AvatarCropModal({
             value={zoom}
             onChange={e => onZoomChange(Number(e.target.value))}
             disabled={!natural || saving}
-            aria-label="Yaxınlaşdırma"
+            aria-label={t("avcrop.zoomAria")}
           />
           <span aria-hidden>+</span>
         </div>
@@ -180,7 +182,7 @@ export default function AvatarCropModal({
 
         <div className="rsc-modal-actions">
           <button type="button" className="rsc-btn rsc-btn--close" onClick={onCancel} disabled={saving}>
-            Ləğv et
+            {t("avcrop.cancel")}
           </button>
           <button
             type="button"
@@ -189,7 +191,7 @@ export default function AvatarCropModal({
             onClick={onConfirm}
             disabled={saving || !natural}
           >
-            {saving ? "Yüklənir…" : "Təsdiqlə"}
+            {saving ? t("avcrop.uploading") : t("avcrop.confirm")}
           </button>
         </div>
       </div>

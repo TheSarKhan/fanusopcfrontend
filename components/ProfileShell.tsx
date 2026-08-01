@@ -5,14 +5,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { meApi, patientApi, revalidatePsychologistsCache, type AccountStatus, type EmergencyContact, type MeProfile } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import AvatarCropModal from "@/components/AvatarCropModal";
 
-const ROLE_LABEL: Record<string, string> = {
-  PATIENT: "Pasiyent",
-  PSYCHOLOGIST: "Psixoloq",
-  OPERATOR: "Operator",
-  ADMIN: "Administrator",
-};
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
+const ROLES = ["PATIENT", "PSYCHOLOGIST", "OPERATOR", "ADMIN"];
+
+/** Backend rol kodunu görünən ada çevirir; naməlum kod olduğu kimi qalır. */
+function roleLabel(t: Translate, role: string) {
+  return ROLES.includes(role) ? t(`roleLabel.${role}` as MessageKey) : role;
+}
 
 /* ─── Şifrə sahəsi + göz düyməsi (login/register ilə eyni ikon) ───────── */
 function EyeIcon({ open }: { open: boolean }) {
@@ -37,6 +40,7 @@ function PasswordInput({
   autoComplete?: string;
   required?: boolean;
 }) {
+  const { t } = useT();
   const [show, setShow] = useState(false);
   return (
     <span className="uprof-pw">
@@ -51,7 +55,7 @@ function PasswordInput({
         type="button"
         className="uprof-pw__eye"
         onClick={() => setShow(v => !v)}
-        aria-label={show ? "Şifrəni gizlət" : "Şifrəni göstər"}
+        aria-label={show ? t("uprof.pwHide") : t("uprof.pwShow")}
       >
         <EyeIcon open={show} />
       </button>
@@ -65,11 +69,10 @@ function fmtDateTime(iso?: string | null) {
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-function fmtDate(iso?: string | null) {
+function fmtDate(t: Translate, iso?: string | null) {
   if (!iso) return "—";
   const d = new Date(iso);
-  const months = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  return `${d.getDate()} ${t(`months.m${d.getMonth() + 1}` as MessageKey)} ${d.getFullYear()}`;
 }
 
 function initialsOf(me: MeProfile) {
@@ -84,7 +87,7 @@ export interface ProfileShellProps {
   extras?: React.ReactNode;
   /** Optional role-specific cards rendered in the right side column ABOVE the default Hesab durumu card. */
   sideExtras?: React.ReactNode;
-  /** Optional title override (defaults to "Profil") */
+  /** Optional title override (defaults to the localized "Profile") */
   title?: string;
   /** Subtitle below title */
   subtitle?: string;
@@ -92,7 +95,8 @@ export interface ProfileShellProps {
 
 /** Unified profile page shell used by every panel role. Renders identity hero + 2-col
  *  grid (forms on the left, status/activity sidebar on the right). */
-export default function ProfileShell({ extras, sideExtras, title = "Profil", subtitle }: ProfileShellProps) {
+export default function ProfileShell({ extras, sideExtras, title, subtitle }: ProfileShellProps) {
+  const { t } = useT();
   const [me, setMe] = useState<MeProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -113,8 +117,8 @@ export default function ProfileShell({ extras, sideExtras, title = "Profil", sub
     refreshStatus();
   }, [refreshStatus]);
 
-  if (loading) return <div className="uprof-page"><div className="uprof-loading">Yüklənir…</div></div>;
-  if (err || !me) return <div className="uprof-page"><div className="uprof-error">{err || "Profil yüklənə bilmədi"}</div></div>;
+  if (loading) return <div className="uprof-page"><div className="uprof-loading">{t("uprof.loading")}</div></div>;
+  if (err || !me) return <div className="uprof-page"><div className="uprof-error">{err || t("uprof.loadError")}</div></div>;
 
   return (
     <div className="uprof-page">
@@ -122,7 +126,7 @@ export default function ProfileShell({ extras, sideExtras, title = "Profil", sub
         <div>
           {/* Rol etiketi (uppercase eyebrow) silindi — kit qaydası. Rol onsuz da
               aşağıdakı kimlik kartında və "Hesab" siyahısında görünür. */}
-          <h1 className="uprof-title">{title}</h1>
+          <h1 className="uprof-title">{title ?? t("uprof.titleDefault")}</h1>
           {subtitle && <p className="uprof-sub">{subtitle}</p>}
         </div>
       </header>
@@ -154,21 +158,22 @@ export default function ProfileShell({ extras, sideExtras, title = "Profil", sub
 /* ─── Pending-deletion banner (top of every panel profile page) ──────────── */
 
 function DeletionBanner({ status, onCancelled }: { status: AccountStatus; onCancelled: () => void }) {
+  const { t } = useT();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   // Avtomatik silinmə tarixi YOXDUR — qərarı admin verir. Ona görə "neçə gün
   // qalıb" sayğacı əvəzinə istəyin göndərildiyi tarix göstərilir.
-  const requestedLabel = status.deletionRequestedAt ? fmtDate(status.deletionRequestedAt) : "—";
+  const requestedLabel = status.deletionRequestedAt ? fmtDate(t, status.deletionRequestedAt) : "—";
 
   const onCancel = async () => {
-    if (!confirm("Hesab silmə tələbini ləğv etmək istəyirsiniz?")) return;
+    if (!confirm(t("uprof.delCancelConfirm"))) return;
     setErr(null);
     setBusy(true);
     try {
       await meApi.cancelDeletionRequest();
       onCancelled();
     } catch (e) {
-      setErr((e as Error).message || "Ləğv etmə uğursuz oldu");
+      setErr((e as Error).message || t("uprof.delCancelFailed"));
     } finally {
       setBusy(false);
     }
@@ -192,11 +197,9 @@ function DeletionBanner({ status, onCancelled }: { status: AccountStatus; onCanc
       }}
     >
       <div style={{ flex: "1 1 320px" }}>
-        <strong>Hesab silinmə tələbiniz baxılır</strong>
+        <strong>{t("uprof.delBannerTitle")}</strong>
         <div style={{ fontSize: 13, marginTop: 4 }}>
-          Tələb {requestedLabel} tarixində göndərilib. Qərar verilənə qədər hesabınız
-          işləkdir, yalnız yeni seans və paket ala bilməzsiniz. Tələbi istənilən an
-          ləğv edə bilərsiniz.
+          {t("uprof.delBannerBody", { date: requestedLabel })}
         </div>
         {err && <div style={{ color: "#b00020", fontSize: 13, marginTop: 6 }}>{err}</div>}
       </div>
@@ -206,7 +209,7 @@ function DeletionBanner({ status, onCancelled }: { status: AccountStatus; onCanc
         disabled={busy}
         className="uprof-btn uprof-btn--primary"
       >
-        {busy ? "Ləğv edilir…" : "Silmə tələbini ləğv et"}
+        {busy ? t("uprof.delCancelling") : t("uprof.delCancelCta")}
       </button>
     </div>
   );
@@ -215,6 +218,7 @@ function DeletionBanner({ status, onCancelled }: { status: AccountStatus; onCanc
 /* ─── Identity hero (full-width strip) ───────────────────────────────────── */
 
 function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfile) => void }) {
+  const { t } = useT();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -226,8 +230,8 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-selecting the same file after a cancelled crop
     if (!file) return;
-    if (!file.type.startsWith("image/")) { setErr("Yalnız şəkil faylı seçə bilərsiniz"); return; }
-    if (file.size > 5 * 1024 * 1024) { setErr("Şəkil ölçüsü 5MB-dan böyük ola bilməz"); return; }
+    if (!file.type.startsWith("image/")) { setErr(t("uprof.photoOnlyImage")); return; }
+    if (file.size > 5 * 1024 * 1024) { setErr(t("uprof.photoTooLarge")); return; }
     setPendingFile(file);
   };
 
@@ -248,7 +252,7 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
   };
 
   const onRemove = async () => {
-    if (!confirm("Profil şəklini silmək istəyirsiniz?")) return;
+    if (!confirm(t("uprof.photoRemoveConfirm"))) return;
     setErr(null);
     setRemoving(true);
     try {
@@ -256,7 +260,7 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
       onChanged({ ...me, photoUrl: null });
       window.dispatchEvent(new CustomEvent("profilePhotoChanged", { detail: { photoUrl: null } }));
       if (me.role === "PSYCHOLOGIST") revalidatePsychologistsCache();
-    } catch (e) { setErr((e as Error).message || "Silmə uğursuz oldu"); }
+    } catch (e) { setErr((e as Error).message || t("uprof.photoRemoveFailed")); }
     finally { setRemoving(false); }
   };
 
@@ -271,8 +275,8 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
           className="uprof-hero-avatar"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          aria-label="Profil şəklini dəyişdir"
-          title={uploading ? "Yüklənir…" : "Şəkli dəyişdir"}
+          aria-label={t("uprof.avatarAria")}
+          title={uploading ? t("uprof.uploading") : t("uprof.photoChange")}
         >
           {me.photoUrl ? (
             <Image
@@ -293,14 +297,14 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
           <h2 className="uprof-hero-name">{fullName}</h2>
           <p className="uprof-hero-email">{me.email}</p>
           <div className="uprof-hero-meta">
-            <span className="uprof-pill">{ROLE_LABEL[me.role] ?? me.role}</span>
+            <span className="uprof-pill">{roleLabel(t, me.role)}</span>
             {me.emailVerified ? (
-              <span className="uprof-pill uprof-pill--good">Email təsdiqli</span>
+              <span className="uprof-pill uprof-pill--good">{t("uprof.emailVerifiedPill")}</span>
             ) : (
-              <span className="uprof-pill uprof-pill--warn">Email təsdiqsiz</span>
+              <span className="uprof-pill uprof-pill--warn">{t("uprof.emailUnverifiedPill")}</span>
             )}
             {me.lastLogin && (
-              <span className="uprof-pill-soft">Son giriş: {fmtDateTime(me.lastLogin)}</span>
+              <span className="uprof-pill-soft">{t("uprof.lastLoginPill", { when: fmtDateTime(me.lastLogin) })}</span>
             )}
           </div>
         </div>
@@ -315,7 +319,7 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 7h4l2-3h6l2 3h4v13H3z" /><circle cx="12" cy="13" r="4" />
             </svg>
-            {uploading ? "Yüklənir…" : me.photoUrl ? "Şəkli dəyişdir" : "Şəkil yüklə"}
+            {uploading ? t("uprof.uploading") : me.photoUrl ? t("uprof.photoChange") : t("uprof.photoUpload")}
           </button>
           {me.photoUrl && (
             <button
@@ -324,7 +328,7 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
               disabled={removing}
               className="uprof-hero-btn uprof-hero-btn--ghost"
             >
-              {removing ? "..." : "Sil"}
+              {removing ? "..." : t("uprof.photoDelete")}
             </button>
           )}
         </div>
@@ -352,27 +356,28 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
 /* ─── Right column default cards ─────────────────────────────────────────── */
 
 function AccountStatusCard({ me }: { me: MeProfile }) {
+  const { t } = useT();
   return (
     <div className="uprof-card uprof-side-card">
       <div className="uprof-side-card-head">
-        <h3>Hesab durumu</h3>
+        <h3>{t("uprof.statusTitle")}</h3>
       </div>
       <dl className="uprof-side-list">
         <div>
-          <dt>Rol</dt>
-          <dd>{ROLE_LABEL[me.role] ?? me.role}</dd>
+          <dt>{t("uprof.statusRole")}</dt>
+          <dd>{roleLabel(t, me.role)}</dd>
         </div>
         <div>
-          <dt>Email</dt>
-          <dd>{me.emailVerified ? <span className="uprof-status uprof-status--good">Təsdiqli</span> : <span className="uprof-status uprof-status--warn">Təsdiq edilməyib</span>}</dd>
+          <dt>{t("uprof.statusEmail")}</dt>
+          <dd>{me.emailVerified ? <span className="uprof-status uprof-status--good">{t("uprof.statusVerified")}</span> : <span className="uprof-status uprof-status--warn">{t("uprof.statusUnverified")}</span>}</dd>
         </div>
         <div>
-          <dt>Son giriş</dt>
+          <dt>{t("uprof.statusLastLogin")}</dt>
           <dd>{me.lastLogin ? fmtDateTime(me.lastLogin) : "—"}</dd>
         </div>
         <div>
-          <dt>Üzv olub</dt>
-          <dd>{fmtDate(me.createdAt)}</dd>
+          <dt>{t("uprof.statusMemberSince")}</dt>
+          <dd>{fmtDate(t, me.createdAt)}</dd>
         </div>
       </dl>
     </div>
@@ -380,6 +385,7 @@ function AccountStatusCard({ me }: { me: MeProfile }) {
 }
 
 function ActivityShortcutCard({ role }: { role: string }) {
+  const { t } = useT();
   const base = role === "PSYCHOLOGIST" ? "/psycholog"
              : role === "OPERATOR"     ? "/operator"
              : role === "ADMIN"        ? "/admin"
@@ -387,13 +393,13 @@ function ActivityShortcutCard({ role }: { role: string }) {
   return (
     <div className="uprof-card uprof-side-card">
       <div className="uprof-side-card-head">
-        <h3>Aktivlik</h3>
+        <h3>{t("uprof.activityTitle")}</h3>
       </div>
       <Link href={`${base}/notifications`} className="uprof-side-link">
         <div className="uprof-side-link-icon"></div>
         <div className="uprof-side-link-text">
-          <strong>Bildirişlər</strong>
-          <small>Bütün bildirişlərinizə baxın</small>
+          <strong>{t("uprof.activityNotifications")}</strong>
+          <small>{t("uprof.activityNotificationsSub")}</small>
         </div>
         <span className="uprof-side-link-arrow">›</span>
       </Link>
@@ -404,6 +410,7 @@ function ActivityShortcutCard({ role }: { role: string }) {
 /* ─── Main column forms ──────────────────────────────────────────────────── */
 
 function BasicInfoCard({ me, onUpdated }: { me: MeProfile; onUpdated: (m: MeProfile) => void }) {
+  const { t } = useT();
   const [firstName, setFirstName] = useState(me.firstName ?? "");
   const [lastName, setLastName] = useState(me.lastName ?? "");
   const [phone, setPhone] = useState(me.phone ?? "");
@@ -429,43 +436,43 @@ function BasicInfoCard({ me, onUpdated }: { me: MeProfile; onUpdated: (m: MeProf
       onUpdated(updated);
       setSavedAt(Date.now());
       setTimeout(() => setSavedAt(null), 2500);
-    } catch (e) { setErr((e as Error).message || "Yenilənmə uğursuz oldu"); }
+    } catch (e) { setErr((e as Error).message || t("uprof.updateFailed")); }
     finally { setSaving(false); }
   };
 
   return (
     <form className="uprof-card" onSubmit={submit}>
       <div className="uprof-card-head">
-        <h2>Şəxsi məlumatlar</h2>
-        <p>Adınız, soyadınız və əlaqə nömrəsi</p>
+        <h2>{t("uprof.basicTitle")}</h2>
+        <p>{t("uprof.basicSub")}</p>
       </div>
       <div className="uprof-form">
         <div className="uprof-grid-2">
           <div className="uprof-field">
-            <label>Ad</label>
+            <label>{t("uprof.fFirstName")}</label>
             <input value={firstName} onChange={e => setFirstName(e.target.value)} maxLength={100} />
           </div>
           <div className="uprof-field">
-            <label>Soyad</label>
+            <label>{t("uprof.fLastName")}</label>
             <input value={lastName} onChange={e => setLastName(e.target.value)} maxLength={100} />
           </div>
         </div>
         <div className="uprof-field">
-          <label>Email</label>
+          <label>{t("uprof.fEmail")}</label>
           <input value={me.email} disabled />
-          <small>Email dəyişmək üçün dəstək komandamızla əlaqə saxlayın</small>
+          <small>{t("uprof.emailHint")}</small>
         </div>
         <div className="uprof-field">
-          <label>Telefon</label>
+          <label>{t("uprof.fPhone")}</label>
           <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+994 50 000 00 00" maxLength={30} />
         </div>
 
         {err && <div className="uprof-error-inline">{err}</div>}
 
         <div className="uprof-actions">
-          {savedAt && <span className="uprof-saved">Yadda saxlanıldı</span>}
+          {savedAt && <span className="uprof-saved">{t("uprof.saved")}</span>}
           <button type="submit" disabled={!dirty || saving} className="uprof-btn uprof-btn--primary">
-            {saving ? "Saxlanılır…" : "Yadda saxla"}
+            {saving ? t("uprof.saving") : t("uprof.save")}
           </button>
         </div>
       </div>
@@ -514,7 +521,7 @@ function EmergencyContactCard() {
       await patientApi.updateEmergencyContact(payload);
       setSavedAt(Date.now());
       setTimeout(() => setSavedAt(null), 2500);
-    } catch (e) { setErr((e as Error).message || "Yenilənmə uğursuz oldu"); }
+    } catch (e) { setErr((e as Error).message || t("uprof.updateFailed")); }
     finally { setSaving(false); }
   };
 
@@ -549,7 +556,7 @@ function EmergencyContactCard() {
         <div className="uprof-actions">
           {savedAt && <span className="uprof-saved">{t("emergency.saved")}</span>}
           <button type="submit" disabled={saving} className="uprof-btn uprof-btn--primary">
-            {saving ? "Saxlanılır…" : t("emergency.save")}
+            {saving ? t("uprof.saving") : t("emergency.save")}
           </button>
         </div>
       </div>
@@ -558,6 +565,7 @@ function EmergencyContactCard() {
 }
 
 function PasswordCard() {
+  const { t } = useT();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -569,39 +577,39 @@ function PasswordCard() {
     e.preventDefault();
     setErr(null);
     if (next.length < 8 || !/[A-Z]/.test(next) || !/[a-z]/.test(next) || !/[0-9]/.test(next)) {
-      setErr("Şifrə ən az 8 simvol, böyük hərf, kiçik hərf və rəqəm ehtiva etməlidir.");
+      setErr(t("uprof.pwWeak"));
       return;
     }
-    if (next !== confirm) { setErr("Yeni şifrə təkrarı uyğun deyil"); return; }
+    if (next !== confirm) { setErr(t("uprof.pwMismatch")); return; }
     setSaving(true);
     try {
       await meApi.changePassword({ currentPassword: current, newPassword: next });
       setCurrent(""); setNext(""); setConfirm("");
       setSavedAt(Date.now());
       setTimeout(() => setSavedAt(null), 3000);
-    } catch (e) { setErr((e as Error).message || "Şifrə dəyişmə uğursuz oldu"); }
+    } catch (e) { setErr((e as Error).message || t("uprof.pwChangeFailed")); }
     finally { setSaving(false); }
   };
 
   return (
     <form className="uprof-card" onSubmit={submit}>
       <div className="uprof-card-head">
-        <h2>Şifrə</h2>
-        <p>Hesabınızın təhlükəsizliyi üçün şifrəni mütəmadi yeniləyin</p>
+        <h2>{t("uprof.pwTitle")}</h2>
+        <p>{t("uprof.pwSub")}</p>
       </div>
       <div className="uprof-form">
         <div className="uprof-field">
-          <label>Cari şifrə</label>
+          <label>{t("uprof.pwCurrent")}</label>
           <PasswordInput value={current} onChange={setCurrent} autoComplete="current-password" required />
         </div>
         <div className="uprof-grid-2">
           <div className="uprof-field">
-            <label>Yeni şifrə</label>
+            <label>{t("uprof.pwNew")}</label>
             <PasswordInput value={next} onChange={setNext} autoComplete="new-password" required />
-            <small>Ən azı 8 simvol, böyük/kiçik hərf, rəqəm</small>
+            <small>{t("uprof.pwHint")}</small>
           </div>
           <div className="uprof-field">
-            <label>Yeni şifrə təkrarı</label>
+            <label>{t("uprof.pwRepeat")}</label>
             <PasswordInput value={confirm} onChange={setConfirm} autoComplete="new-password" required />
           </div>
         </div>
@@ -609,9 +617,9 @@ function PasswordCard() {
         {err && <div className="uprof-error-inline">{err}</div>}
 
         <div className="uprof-actions">
-          {savedAt && <span className="uprof-saved">Şifrə yeniləndi</span>}
+          {savedAt && <span className="uprof-saved">{t("uprof.pwUpdated")}</span>}
           <button type="submit" disabled={!current || !next || !confirm || saving} className="uprof-btn uprof-btn--primary">
-            {saving ? "Yenilənir…" : "Şifrəni yenilə"}
+            {saving ? t("uprof.pwUpdating") : t("uprof.pwSubmit")}
           </button>
         </div>
       </div>
@@ -630,6 +638,7 @@ function PrivacyCard({
   status: AccountStatus | null;
   onStatusChanged: () => void;
 }) {
+  const { t } = useT();
   const [exporting, setExporting] = useState(false);
   const [exportErr, setExportErr] = useState<string | null>(null);
 
@@ -654,10 +663,11 @@ function PrivacyCard({
 
   const onDelete = async () => {
     setDeleteErr(null);
-    if (!pwd) { setDeleteErr("Şifrənizi daxil edin"); return; }
+    if (!pwd) { setDeleteErr(t("uprof.delErrPwd")); return; }
+    // "SİL" backend-ə göndərilən təsdiq sözüdür — tərcümə OLUNMUR.
     if (confirmText.trim().toUpperCase() !== "SİL"
         && confirmText.trim().toLowerCase() !== email.toLowerCase()) {
-      setDeleteErr("Təsdiq sahəsinə \"SİL\" və ya email yazın");
+      setDeleteErr(t("uprof.delErrConfirm"));
       return;
     }
     setDeleting(true);
@@ -690,34 +700,33 @@ function PrivacyCard({
 
   return (
     <div className="uprof-card uprof-card--privacy">
-      <h2 className="uprof-card-title">Məxfilik və data</h2>
+      <h2 className="uprof-card-title">{t("uprof.privTitle")}</h2>
       <p className="uprof-card-sub">
-        GDPR çərçivəsində məlumatlarınıza tam çıxışınız var.
+        {t("uprof.privSub")}
       </p>
 
       <div className="uprof-priv-row">
         <div className="uprof-priv-info">
-          <strong>Datalarımı yüklə</strong>
-          <small>Profil, randevu, rəy və bildirişlərinizin tam arxivini ZIP olaraq alın.</small>
+          <strong>{t("uprof.exportTitle")}</strong>
+          <small>{t("uprof.exportSub")}</small>
         </div>
         <button onClick={onExport} disabled={exporting}
           className="uprof-btn uprof-btn--ghost">
-          {exporting ? "Hazırlanır…" : "Yüklə"}
+          {exporting ? t("uprof.exportPreparing") : t("uprof.exportCta")}
         </button>
       </div>
       {exportErr && <div className="uprof-error-inline">{exportErr}</div>}
 
       <div className="uprof-priv-row uprof-priv-row--danger">
         <div className="uprof-priv-info">
-          <strong>Hesabımı sil</strong>
+          <strong>{t("uprof.delTitle")}</strong>
           {status?.deletionRequestedAt ? (
             <small>
-              Tələbiniz baxılır — qərar verilənə qədər istənilən an ləğv edə bilərsiniz.
+              {t("uprof.delPendingSub")}
             </small>
           ) : (
             <small>
-              Tələb göndərilir və dəstək komandası tərəfindən baxılır. Təsdiqlənsə
-              hesabınıza giriş bağlanır; seans tarixçəniz sənədləşmə üçün saxlanılır.
+              {t("uprof.delSub")}
             </small>
           )}
         </div>
@@ -727,12 +736,12 @@ function PrivacyCard({
             disabled={cancelling}
             className="uprof-btn uprof-btn--primary"
           >
-            {cancelling ? "Ləğv edilir…" : "Silmə tələbini ləğv et"}
+            {cancelling ? t("uprof.delCancelling") : t("uprof.delCancelCta")}
           </button>
         ) : (
           !deleteOpen && (
             <button onClick={() => setDeleteOpen(true)} className="uprof-btn uprof-btn--danger">
-              Sil
+              {t("uprof.delCta")}
             </button>
           )
         )}
@@ -742,27 +751,24 @@ function PrivacyCard({
       {deleteOpen && !status?.deletionRequestedAt && (
         <div className="uprof-priv-confirm">
           <p>
-            <strong>Diqqət:</strong> tələbiniz dəstək komandasına gedir. Qərar verilənə
-            qədər hesabınız işləkdir, yalnız yeni seans və paket ala bilməzsiniz.
-            Təsdiqlənsə hesabınıza giriş bağlanır; seans və ödəniş tarixçəniz sənədləşmə
-            tələbləri üçün saxlanılır.
+            <strong>{t("uprof.delWarnStrong")}</strong> {t("uprof.delWarnBody")}
           </p>
           <label>
-            <span>Cari şifrə</span>
+            <span>{t("uprof.pwCurrent")}</span>
             <PasswordInput value={pwd} onChange={setPwd} autoComplete="current-password" />
           </label>
           <label>
-            <span>Təsdiq üçün <strong>SİL</strong> və ya email yazın</span>
+            <span>{t("uprof.delConfirmPre")} <strong>SİL</strong> {t("uprof.delConfirmPost")}</span>
             <input type="text" value={confirmText} onChange={e => setConfirmText(e.target.value)} placeholder="SİL" />
           </label>
           <label>
-            <span>Səbəb (opsional)</span>
+            <span>{t("uprof.delReasonLabel")}</span>
             <textarea
               value={reason}
               onChange={e => setReason(e.target.value)}
               maxLength={500}
               rows={3}
-              placeholder="Nə üçün hesabınızı silmək istəyirsiniz?"
+              placeholder={t("uprof.delReasonPh")}
               style={{ resize: "vertical" }}
             />
           </label>
@@ -770,10 +776,10 @@ function PrivacyCard({
           <div className="uprof-actions">
             <button onClick={() => { setDeleteOpen(false); setPwd(""); setConfirmText(""); setDeleteErr(null); }}
               className="uprof-btn uprof-btn--ghost" disabled={deleting}>
-              Ləğv
+              {t("uprof.cancelShort")}
             </button>
             <button onClick={onDelete} disabled={deleting} className="uprof-btn uprof-btn--danger">
-              {deleting ? "Göndərilir…" : "Hesabımı sil"}
+              {deleting ? t("uprof.delSending") : t("uprof.delSubmit")}
             </button>
           </div>
         </div>

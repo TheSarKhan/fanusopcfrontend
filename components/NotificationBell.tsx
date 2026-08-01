@@ -6,20 +6,25 @@ import { useEffect, useRef, useState } from "react";
 import { notificationsApi, type NotificationItem } from "@/lib/api";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { humanizeDates, azFormatDate } from "@/lib/datetime";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
-function timeAgo(iso: string): string {
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
+function timeAgo(t: Translate, iso: string): string {
   const diff = Math.max(0, Date.now() - new Date(iso).getTime());
   const m = Math.floor(diff / 60_000);
-  if (m < 1) return "indi";
-  if (m < 60) return `${m} dəq əvvəl`;
+  if (m < 1) return t("ntf.agoNow");
+  if (m < 60) return t("ntf.agoMin", { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} saat əvvəl`;
+  if (h < 24) return t("ntf.agoHour", { n: h });
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d} gün əvvəl`;
+  if (d < 7) return t("ntf.agoDay", { n: d });
   return azFormatDate(iso);
 }
 
 export default function NotificationBell({ align = "right" }: { align?: "left" | "right" } = {}) {
+  const { t } = useT();
   const pathname = usePathname();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
@@ -124,7 +129,7 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
       <button
         type="button"
         onClick={toggle}
-        aria-label="Bildirişlər"
+        aria-label={t("ntf.title")}
         style={{
           width: 40, height: 40, borderRadius: 12,
           background: open ? "#EEF2FF" : "transparent",
@@ -138,7 +143,7 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
         {unread > 0 && (
-          <span aria-label={`${unread} oxunmamış`} style={{
+          <span aria-label={t("ntf.unreadCountAria", { n: unread })} style={{
             position: "absolute", top: 2, right: 2, minWidth: 16, height: 16,
             borderRadius: 8, background: "#DC2626", color: "#fff",
             fontSize: 10, fontWeight: 700, padding: "0 4px",
@@ -161,20 +166,20 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
           display: "flex", flexDirection: "column",
         }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid #EFF2F7", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#1A2535", margin: 0 }}>Bildirişlər</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: "#1A2535", margin: 0 }}>{t("ntf.title")}</h3>
             {unread > 0 && (
               <button onClick={onMarkAll} style={{ fontSize: 12, color: "#3B6FA5", background: "transparent", border: "none", cursor: "pointer" }}>
-                Hamısını oxunmuş et
+                {t("notif.markAllRead")}
               </button>
             )}
           </div>
 
           <div style={{ overflow: "auto", flex: 1 }}>
             {loading ? (
-              <div style={{ padding: 24, textAlign: "center", fontSize: 13, color: "#52718F" }}>Yüklənir…</div>
+              <div style={{ padding: 24, textAlign: "center", fontSize: 13, color: "#52718F" }}>{t("ntf.loading")}</div>
             ) : items.length === 0 ? (
               <div style={{ padding: 32, textAlign: "center", fontSize: 13, color: "#52718F" }}>
-                Hələ bildiriş yoxdur.
+                {t("ntf.bellEmpty")}
               </div>
             ) : (
               items.slice(0, 8).map(n => (
@@ -199,7 +204,7 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
                           {humanizeDates(n.body)}
                         </div>
                       )}
-                      <div style={{ fontSize: 11, color: "#8AAABF", marginTop: 4 }}>{timeAgo(n.createdAt)}</div>
+                      <div style={{ fontSize: 11, color: "#8AAABF", marginTop: 4 }}>{timeAgo(t, n.createdAt)}</div>
                     </div>
                   </div>
                 </button>
@@ -217,7 +222,7 @@ export default function NotificationBell({ align = "right" }: { align?: "left" |
               background: "var(--brand-50)",
             }}
           >
-            Bütün bildirişləri gör →
+            {t("ntf.bellSeeAll")}
           </Link>
         </div>
       )}

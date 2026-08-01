@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import ProfileShell from "@/components/ProfileShell";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function OperatorProfilePage() {
+  const { t } = useT();
   return (
     <ProfileShell
-      title="Profil"
-      subtitle="Operator hesabınız və əlaqə məlumatları"
+      title={t("uprof.opTitle")}
+      subtitle={t("uprof.opSub")}
       sideExtras={
         <div className="uprof-card uprof-side-card">
           <div className="uprof-side-card-head">

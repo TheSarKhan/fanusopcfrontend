@@ -1783,7 +1783,6 @@ export const ru: typeof az = {
     finishCta: "Завершить тест",
     scalesTitle: "Шкала оценки",
     answersTitle: "Ваши ответы",
-    answersUnavailable: "Этот результат записан до того, как ответы начали сохраняться, поэтому детализации нет.",
     pointsShort: "{n} балл.",
     assignedAt: "Назначен: {date}",
     completedAt: "Завершён: {date}",

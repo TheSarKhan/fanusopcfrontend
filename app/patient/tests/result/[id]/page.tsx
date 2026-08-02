@@ -112,15 +112,14 @@ export default function PatientTestResultDetailPage({ params }: { params: Promis
         </section>
       )}
 
-      {/* Cavablar */}
-      <section className="pgoals__section">
-        <div className="pgoals__section-head">
-          <h2>{t("patTests.answersTitle")}</h2>
-          {r.answers.length > 0 && <span className="pgoals__section-n">{r.answers.length}</span>}
-        </div>
-        {r.answers.length === 0 ? (
-          <p className="pgoals__empty-body" style={{ margin: 0 }}>{t("patTests.answersUnavailable")}</p>
-        ) : (
+      {/* Cavablar — hər doldurmada saxlanılır, ona görə praktikada həmişə doludur.
+          Boş qalsa (yalnız köhnə qeydlərdə) bölmə ümumiyyətlə göstərilmir. */}
+      {r.answers.length > 0 && (
+        <section className="pgoals__section">
+          <div className="pgoals__section-head">
+            <h2>{t("patTests.answersTitle")}</h2>
+            <span className="pgoals__section-n">{r.answers.length}</span>
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {r.answers.map((a, i) => (
               <div key={a.questionId}
@@ -137,8 +136,8 @@ export default function PatientTestResultDetailPage({ params }: { params: Promis
               </div>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       <p style={{ fontSize: 13, color: "var(--oxford-60)", lineHeight: 1.6, marginTop: 16,
                   background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 10, padding: 14 }}>

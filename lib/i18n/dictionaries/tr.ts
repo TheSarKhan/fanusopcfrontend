@@ -1803,7 +1803,6 @@ export const tr: typeof az = {
     finishCta: "Testi bitir",
     scalesTitle: "Değerlendirme ölçeği",
     answersTitle: "Verdiğiniz cevaplar",
-    answersUnavailable: "Bu sonuç, cevaplar saklanmaya başlamadan önce doldurulmuş; bu yüzden soru-cevap ayrıntısı yok.",
     pointsShort: "{n} puan",
     assignedAt: "Atandı: {date}",
     completedAt: "Tamamlandı: {date}",

@@ -1780,7 +1780,6 @@ export const en: typeof az = {
     finishCta: "Finish test",
     scalesTitle: "Scoring scale",
     answersTitle: "Your answers",
-    answersUnavailable: "This result was recorded before answers were stored, so there is no per-question detail.",
     pointsShort: "{n} pts",
     assignedAt: "Assigned: {date}",
     completedAt: "Completed: {date}",

@@ -1831,7 +1831,6 @@ export const az = {
     finishCta: "Testi bitir",
     scalesTitle: "Qiymətləndirmə şkalası",
     answersTitle: "Verdiyiniz cavablar",
-    answersUnavailable: "Bu nəticə cavabların saxlanılmasından əvvəl doldurulub, ona görə sual-cavab detalı yoxdur.",
     pointsShort: "{n} bal",
     assignedAt: "Təyin edildi: {date}",
     completedAt: "Tamamlandı: {date}",

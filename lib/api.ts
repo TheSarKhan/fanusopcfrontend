@@ -1485,6 +1485,8 @@ export interface PublicSubmitResponse {
   crisis?: boolean;
 }
 export interface PublicTestResult {
+  /** Nəticənin öz id-si — detal səhifəsinə keçid üçün (V136). */
+  id: number;
   testId: number;
   testTitle?: string | null;
   totalScore: number;
@@ -1499,6 +1501,19 @@ export interface PublicTestResult {
  *  Uyğun teqlənmiş mütəxəssis yoxdursa boş massiv qayıdır. */
 export const getTestRecommendations = (testId: number) =>
   get<RecommendedPsychologist[]>(`/public/psych-tests/catalog/${testId}/recommendations`, { cache: "no-store" });
+
+/** Nəticə detalı — bal, şkala zolaqları və verilən cavablar (V136).
+ *  `answers` yalnız V136-dan sonrakı doldurmalar üçün doludur. */
+export interface PublicTestResultDetail extends PublicTestResult {
+  answers: {
+    questionId: number; questionText: string; selectedOptionId: number;
+    selectedLabel: string; pointsAwarded: number; displayOrder: number;
+  }[];
+  scales: {
+    id: number; label: string; minScore: number; maxScore: number;
+    color?: string | null; description?: string | null; displayOrder: number;
+  }[];
+}
 
 export const getPublicTestCatalog = () =>
   get<PublicTestCard[]>("/public/psych-tests/catalog", { next: { revalidate: 0 } });
@@ -2709,6 +2724,17 @@ export const patientApi = {
     authedRequest<PublicTestResult>("POST", `/patient/psych-tests/public-results/${claimToken}/claim`),
   myPublicTestResults: () =>
     authedRequest<PublicTestResult[]>("GET", "/patient/psych-tests/public-results"),
+  /** Nəticə detalı — cavablar və şkala zolaqları (V136). */
+  publicTestResultDetail: (id: number) =>
+    authedRequest<PublicTestResultDetail>("GET", `/patient/psych-tests/public-results/${id}/detail`),
+  /** Paneldəki publik test kataloqu — girişli istifadəçi üçün. */
+  testCatalog: () =>
+    authedRequest<PublicTestCard[]>("GET", "/patient/psych-tests/catalog"),
+  takeCatalogTest: (testId: number) =>
+    authedRequest<TakeTest>("GET", `/patient/psych-tests/catalog/${testId}`),
+  /** Paneldən doldurma — nəticə birbaşa hesaba yazılır, sahiblənmə addımı yoxdur. */
+  submitCatalogTest: (testId: number, data: { answers: SubmitAnswer[] }) =>
+    authedRequest<PublicTestResult>("POST", `/patient/psych-tests/catalog/${testId}/submit`, data),
   myTestAssignments: () => authedRequest<TestAssignment[]>("GET", "/patient/psych-tests/assignments"),
   takeTest: (assignmentId: number) => authedRequest<TakeTest>("GET", `/patient/psych-tests/assignments/${assignmentId}`),
   submitTest: (assignmentId: number, data: { answers: SubmitAnswer[]; respondentName?: string }) =>

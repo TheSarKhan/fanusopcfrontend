@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { patientApi, type TestAssignment, type PublicTestResult } from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
+import { Tabs } from "@/components/ui";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { azFormatDate } from "@/lib/datetime";
@@ -31,6 +32,9 @@ export default function PatientTestsPage() {
   const [selfResults, setSelfResults] = useState<PublicTestResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  // İki mənbə ayrı tablardadır: psixoloqun təyin etdiyi testlər paneldə doldurulur,
+  // özün doldurduqların isə yalnız nəticə kimi baxılır — axınları fərqlidir.
+  const [tab, setTab] = useState<"assigned" | "self">("assigned");
 
   useEffect(() => {
     Promise.allSettled([
@@ -53,15 +57,17 @@ export default function PatientTestsPage() {
     return () => window.removeEventListener("fanus:test-claimed", onClaimed);
   }, []);
 
-  const selfSection = selfResults.length > 0 && (
+  const selfSection = selfResults.length === 0 ? (
+    <div className="pgoals__empty">
+      <div className="pgoals__empty-title">{t("patTests.selfEmptyTitle")}</div>
+      <p className="pgoals__empty-body">{t("patTests.selfEmptyBody")}</p>
+      <Link href="/patient/tests/catalog" className="pgoals__empty-cta">{t("patTests.newTestCta")}</Link>
+    </div>
+  ) : (
     <section className="pgoals__section">
-      <div className="pgoals__section-head">
-        <h2>{t("patTests.selfTitle")}</h2>
-        <span className="pgoals__section-n">{selfResults.length}</span>
-      </div>
       <div className="pgoals__list">
         {selfResults.map((r, i) => (
-          <article key={`${r.testId}-${i}`} className="pgoal-card">
+          <article key={r.id ?? `${r.testId}-${i}`} className="pgoal-card">
             <div className="pgoal-card__top">
               <div className="pgoal-card__title">{r.testTitle ?? t("patTests.selfFallbackTitle")}</div>
               {r.scaleLabel && (
@@ -77,6 +83,9 @@ export default function PatientTestsPage() {
               <span style={{ fontWeight: 700, color: "var(--oxford)" }}>
                 {t("patTests.scoreOf", { score: r.totalScore, max: r.maxScore })}
               </span>
+              <Link href={`/patient/tests/result/${r.id}`} className="pgoal-card__action">
+                {t("patTests.detailCta")}
+              </Link>
             </div>
           </article>
         ))}
@@ -88,11 +97,30 @@ export default function PatientTestsPage() {
     <div className="pgoals">
       <PageHeader title={t("patTests.title")} subtitle={t("patTests.sub")} />
 
+      {/* Tablar + kataloq düyməsi. «Yeni test doldur» hər iki tabda görünür:
+          istifadəçi harada olursa-olsun yeni test doldura bilməlidir. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+        <Tabs
+          items={[
+            { key: "assigned", label: t("patTests.tabAssigned"), count: items.length },
+            { key: "self", label: t("patTests.tabSelf"), count: selfResults.length },
+          ] as const}
+          value={tab}
+          onChange={setTab}
+        />
+        <Link href="/patient/tests/catalog" className="pgoal-card__action"
+          style={{ color: "#fff", background: "var(--brand)", border: "none", padding: "8px 16px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
+          {t("patTests.newTestCta")}
+        </Link>
+      </div>
+
       {loading ? (
         <div className="pgoals__loading">{t("common.loading")}</div>
       ) : err ? (
         <div className="pgoals__error">{err}</div>
-      ) : items.length === 0 && selfResults.length === 0 ? (
+      ) : tab === "self" ? (
+        selfSection
+      ) : items.length === 0 ? (
         <div className="pgoals__empty">
           <div className="pgoals__empty-icon">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -106,14 +134,7 @@ export default function PatientTestsPage() {
           <Link href="/patient/appointments" className="pgoals__empty-cta">{t("patTests.emptyCta")}</Link>
         </div>
       ) : (
-        <>
-        {selfSection}
-        {items.length > 0 && (
         <section className="pgoals__section">
-          <div className="pgoals__section-head">
-            <h2>{t("patTests.allTests")}</h2>
-            <span className="pgoals__section-n">{items.length}</span>
-          </div>
           <div className="pgoals__list">
             {items.map(a => {
               const meta = statusMeta(a);
@@ -149,8 +170,6 @@ export default function PatientTestsPage() {
             })}
           </div>
         </section>
-        )}
-        </>
       )}
     </div>
   );

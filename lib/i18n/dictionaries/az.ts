@@ -1269,7 +1269,7 @@ export const az = {
     langsHint: "Siyahıda yoxdursa, dili yazıb əlavə edin",
     langsCustomPh: "Başqa dil əlavə et...",
     specs: "İxtisaslaşma sahələri (bir neçə seçin)",
-    specsHint: "Müştərilər filter üçün bunu görəcək",
+    specsHint: "Bu seçim profilinizdə göstərilir və ana səhifədəki «Bu gün özünüzü necə hiss edirsiniz?» bölməsində sizi kimə tövsiyə edəcəyimizi müəyyən edir.",
     sessionTypes: "Seans növləri (opsional)",
     bioLabel: "Özünüz haqqında — bio ({n}/1000)",
     bioHint: "100-1000 simvol — müştərilər görəcək",

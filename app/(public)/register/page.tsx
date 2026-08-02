@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { checkEmail, registerPatient, registerPsychologist, type PsychologistRegistrationData } from "@/lib/api";
 import PhotoCropper from "@/components/PhotoCropper";
+import TopicPicker, { TOPIC_AZ_LABELS } from "@/components/TopicPicker";
 import DatePicker from "@/components/DatePicker";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -39,7 +40,6 @@ const PANEL: Record<"patient" | "psychologist", { titleKey: MessageKey; subKey: 
   },
 };
 
-const SPEC_OPTIONS = ["Depressiya", "Anksiyete", "Travma", "Münasibətlər", "Stress", "Özünüinkişaf", "Ailə terapiyası", "Uşaq psixologiyası", "Asılılıq", "Yuxu pozğunluqları", "Sevgi", "Böhran dəstəyi"];
 const SESSION_TYPES = ["Fərdi seans", "Cütlük terapiyası", "Qrup terapiyası", "Uşaq terapiyası"];
 const LANGUAGE_OPTIONS = ["Azərbaycan dili", "Rus dili", "İngilis dili", "Türk dili", "Alman dili", "Fransız dili"];
 const DEGREE_OPTIONS = ["Bakalavr", "Magistr", "PhD / Doktor", "Rezident", "Digər"];
@@ -270,6 +270,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
     title: "", experienceYears: "", priorSessions: "",
     languages: [] as string[],
     specializations: [] as string[],
+    topics: [] as string[],
     sessionTypes: [] as string[],
     bio: "", motivation: "",
   });
@@ -329,7 +330,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
     if (!professional.experienceYears) return t("regPage.errExperience");
     if (professional.priorSessions !== "" && (!Number.isFinite(Number(professional.priorSessions)) || Number(professional.priorSessions) < 0)) return t("regPage.errSessions");
     if (professional.languages.length === 0) return t("regPage.errLang");
-    if (professional.specializations.length === 0) return t("regPage.errSpec");
+    if (professional.topics.length === 0) return t("regPage.errSpec");
     const bioLen = professional.bio.trim().length;
     if (bioLen < 100) return t("regPage.errBioShort");
     if (bioLen > 1000) return t("regPage.errBioLong");
@@ -385,7 +386,10 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
         experienceYears: professional.experienceYears,
         priorSessions: professional.priorSessions ? Number(professional.priorSessions) : undefined,
         languages: professional.languages,
-        specializations: professional.specializations,
+        topics: professional.topics,
+        // İxtisas etiketi seçilmiş mövzulardan törəyir: tək seçim, iki istifadə.
+        // Ad həmişə azərbaycancadır — bu sahə bazada saxlanılır və hamıya göstərilir.
+        specializations: professional.topics.map(c => TOPIC_AZ_LABELS[c]).filter(Boolean),
         sessionTypes: professional.sessionTypes,
         educations: educations
           .filter(ed => ed.institution.trim())
@@ -603,8 +607,8 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
           </Field>
 
           <Field label={t("regPage.specs")} hint={t("regPage.specsHint")}>
-            <ChipToggle options={SPEC_OPTIONS} selected={professional.specializations}
-              onChange={v => setProfessional(p => ({ ...p, specializations: v }))} />
+            <TopicPicker value={professional.topics}
+              onChange={v => setProfessional(p => ({ ...p, topics: v }))} />
           </Field>
 
           <Field label={t("regPage.sessionTypes")}>

@@ -1249,7 +1249,7 @@ export const tr: typeof az = {
     langsHint: "Listede yoksa dili yazıp ekleyin",
     langsCustomPh: "Başka bir dil ekle...",
     specs: "Uzmanlık alanları (birkaç seçin)",
-    specsHint: "Danışanlar bunu filtrede görecek",
+    specsHint: "Bu seçim profilinizde görünür ve ana sayfadaki «Bugün kendinizi nasıl hissediyorsunuz?» bölümünde sizi kime önereceğimizi belirler.",
     sessionTypes: "Seans türleri (isteğe bağlı)",
     bioLabel: "Kendiniz hakkında — biyografi ({n}/1000)",
     bioHint: "100–1000 karakter — danışanlar görecek",

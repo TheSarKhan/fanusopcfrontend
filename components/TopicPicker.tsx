@@ -16,6 +16,31 @@ export const TOPIC_CODES = [
   "ANGER", "ADDICTION", "SELF_ESTEEM", "SLEEP", "SELF_GROWTH",
 ] as const;
 
+/**
+ * Bazaya yazılan azərbaycanca adlar.
+ *
+ * `specializations` sahəsi bütün istifadəçilərə göstərilən DB məzmunudur, ona görə
+ * interfeys dilindən asılı OLMAMALIDIR — rus dilində qeydiyyatdan keçən psixoloqun
+ * kartında ixtisas rusca yazılmamalıdır. Göstərmə üçün tərcümə lüğətdən gəlir.
+ */
+export const TOPIC_AZ_LABELS: Record<string, string> = {
+  ANXIETY: "Narahatlıq və panika",
+  DEPRESSION: "Depressiya",
+  BURNOUT: "Tükənmişlik",
+  TRAUMA: "Travma",
+  GRIEF: "İtki və yas",
+  RELATIONSHIPS: "Münasibətlər",
+  FAMILY: "Ailə",
+  PARENTING: "Valideynlik",
+  YOUTH: "Yeniyetmə və uşaq",
+  LONELINESS: "Tənhalıq",
+  ANGER: "Qəzəb və impuls",
+  ADDICTION: "Asılılıq",
+  SELF_ESTEEM: "Özünəinam",
+  SLEEP: "Yuxu",
+  SELF_GROWTH: "Özünüinkişaf",
+};
+
 /** SELF_ESTEEM → selfEsteem */
 export function topicKey(code: string) {
   return code.toLowerCase().replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());

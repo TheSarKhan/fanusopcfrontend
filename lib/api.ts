@@ -1023,6 +1023,8 @@ export interface PsychologistRegistrationData {
   priorSessions?: number;
   languages: string[];
   specializations: string[];
+  /** Mövzu teqləri (V134) — əhval tövsiyəsinin əsası, psixoloq qeydiyyatda seçir. */
+  topics: string[];
   sessionTypes: string[];
   // Multi rows (will be JSON-stringified)
   educations: { institution: string; degree?: string; graduationYear?: string }[];
@@ -1056,6 +1058,7 @@ export const registerPsychologist = (
   if (data.priorSessions != null) form.append("priorExperienceSessions", String(data.priorSessions));
   data.languages.forEach(l => form.append("languages", l));
   data.specializations.forEach(s => form.append("specializations", s));
+  data.topics.forEach(t => form.append("topics", t));
   data.sessionTypes.forEach(s => form.append("sessionTypes", s));
   form.append("educationsJson", JSON.stringify(data.educations));
   form.append("certificatesJson", JSON.stringify(data.certificates));

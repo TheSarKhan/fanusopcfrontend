@@ -1226,7 +1226,7 @@ export const en: typeof az = {
     langsHint: "If a language is missing, type it and add it",
     langsCustomPh: "Add another language...",
     specs: "Areas of specialisation (select several)",
-    specsHint: "Clients will see this when filtering",
+    specsHint: "This appears on your profile and decides who we recommend you to in the “How are you feeling today?” section on the home page.",
     sessionTypes: "Session types (optional)",
     bioLabel: "About you — bio ({n}/1000)",
     bioHint: "100–1000 characters — clients will see this",

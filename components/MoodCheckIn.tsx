@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Deco from "@/components/Deco";
-import { getBlogPosts, getPsychologists, trackFunnelEvent, type BlogPost, type Psychologist } from "@/lib/api";
-import { withSlugs } from "@/lib/slug";
-import { MOOD_TO_CAT, deriveCategory, type MoodId } from "@/lib/moodMap";
+import { getMoodRecommendations, trackFunnelEvent, type MoodRecommendation } from "@/lib/api";
+import { type MoodId } from "@/lib/moodMap";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 export type Mood = { id: MoodId; label: string; color: string };
@@ -316,13 +316,19 @@ export default function MoodCheckIn({ compact = false, trigger = false }: { comp
   );
 }
 
+/** Backend mövzu kodunu lüğət açarına çevirir: SELF_ESTEEM → selfEsteem. */
+function topicKey(code: string) {
+  return code.toLowerCase().replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+}
+
 export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }) {
   const { t } = useT();
-  // GAP-08: real psychologists matched to the selected mood's category.
-  const [allPsy, setAllPsy] = useState<(Psychologist & { slug: string })[]>([]);
-  const [posts, setPosts] = useState<BlogPost[]>([]);
-  const cat = MOOD_TO_CAT[mood.id];
-  const matchHref = cat === "all" ? "/psychologists" : `/psychologists?filter=${cat}`;
+
+  // Tövsiyə backend-də hesablanır (V133): mövzu teqləri üzərində çəkili uyğunluq.
+  // Əvvəl bütün psixoloq və məqalə siyahısı brauzerə yüklənib burada süzülürdü və
+  // uyğun az tapılanda boşluq təsadüfi adamlarla doldurulurdu — indi doldurulmur.
+  const [rec, setRec] = useState<MoodRecommendation | null>(null);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -330,33 +336,21 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
   }, []);
 
   useEffect(() => {
-    getPsychologists()
-      .then(list => setAllPsy(withSlugs(list.filter(p => p.active !== false))))
-      .catch(() => setAllPsy([]));
-  }, []);
+    let alive = true;
+    setState("loading");
+    getMoodRecommendations(mood.id)
+      .then(r => { if (alive) { setRec(r); setState("ready"); } })
+      .catch(() => { if (alive) setState("error"); });
+    return () => { alive = false; };
+  }, [mood.id]);
 
-  useEffect(() => {
-    getBlogPosts().then(setPosts).catch(() => setPosts([]));
-  }, []);
+  const psychologists = rec?.psychologists ?? [];
+  const articles = rec?.articles ?? [];
 
-  const matched = useMemo(() => {
-    const byRating = [...allPsy].sort(
-      (a, b) => parseFloat(b.rating ?? "0") - parseFloat(a.rating ?? "0"));
-    if (cat === "all") return byRating.slice(0, 3);
-    const inCat = byRating.filter(p => deriveCategory(p.specializations ?? []) === cat);
-    // Top up with best-rated others when the category is thin.
-    const rest = byRating.filter(p => !inCat.includes(p));
-    return [...inCat, ...rest].slice(0, 3);
-  }, [allPsy, cat]);
-
-  // Real blog posts matched to the mood's category (top up with latest when thin).
-  const matchedArticles = useMemo(() => {
-    if (cat === "all") return posts.slice(0, 3);
-    const catOf = (p: BlogPost) => deriveCategory([p.category, p.title, p.excerpt].filter(Boolean) as string[]);
-    const inCat = posts.filter(p => catOf(p) === cat);
-    const rest = posts.filter(p => !inCat.includes(p));
-    return [...inCat, ...rest].slice(0, 3);
-  }, [posts, cat]);
+  // Uyğunluğun hansı mövzulara görə qurulduğu — ziyarətçi "niyə bu?" sualına cavab görsün.
+  const topicLabels = (rec?.topics ?? [])
+    .slice(0, 3)
+    .map(code => t(`topic.${topicKey(code)}` as MessageKey));
 
   const MESSAGE_KEYS: Record<MoodId, "mood.msgHappy" | "mood.msgAnxious" | "mood.msgSad" | "mood.msgTired" | "mood.msgAngry" | "mood.msgMixed" | "mood.msgLonely"> = {
     happy:   "mood.msgHappy",
@@ -383,16 +377,36 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
             {t(MESSAGE_KEYS[mood.id])}
             <span className="fanus-serif-accent">&rdquo;</span>
           </h3>
+          {topicLabels.length > 0 && (
+            <div className="fanus-mm-topics">
+              <span className="fanus-mm-topics__label">{t("mood.matchedOn")}:</span>
+              {topicLabels.map(label => <span key={label} className="fanus-mm-topic">{label}</span>)}
+            </div>
+          )}
         </div>
         <div className="fanus-mm-body">
+          {state === "error" ? (
+            <div className="fanus-mm-note">
+              <strong>{t("mood.loadFailed")}</strong>
+              <button type="button" className="fanus-btn fanus-btn-light fanus-btn-sm" style={{ marginTop: 4 }}
+                onClick={() => { setState("loading"); getMoodRecommendations(mood.id)
+                  .then(r => { setRec(r); setState("ready"); })
+                  .catch(() => setState("error")); }}>
+                {t("mood.retry")}
+              </button>
+            </div>
+          ) : <>
           <div>
             <div className="fanus-mm-title">{t("mood.suggestedArticles")}</div>
             <div className="fanus-mm-articles">
-              {matchedArticles.length === 0 ? (
-                <div style={{ fontSize: 13, color: "var(--fanus-ink-3)", padding: "10px 4px", gridColumn: "1 / -1" }}>
-                  {t("common.loading")}
+              {state === "loading" ? (
+                <div className="fanus-mm-note">{t("common.loading")}</div>
+              ) : articles.length === 0 ? (
+                <div className="fanus-mm-note">
+                  <strong>{t("mood.noArticles")}</strong>
+                  <span>{t("mood.noArticlesHint")}</span>
                 </div>
-              ) : matchedArticles.map((a) => (
+              ) : articles.map((a) => (
                 <Link key={a.id} className="fanus-mm-article" href={`/blog/${a.slug}`}>
                   <span className="fanus-mm-article__tag">{a.category}</span>
                   <span className="fanus-mm-article__title">{a.title}</span>
@@ -404,11 +418,17 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
           <div>
             <div className="fanus-mm-title">{t("mood.suggestedPsychologists")}</div>
             <div className="fanus-mm-psyc">
-              {matched.length === 0 ? (
-                <div style={{ fontSize: 13, color: "var(--fanus-ink-3)", padding: "10px 4px" }}>
-                  {t("common.loading")}
+              {state === "loading" ? (
+                <div className="fanus-mm-note">{t("common.loading")}</div>
+              ) : psychologists.length === 0 ? (
+                <div className="fanus-mm-note">
+                  <strong>{t("mood.noPsychologists")}</strong>
+                  <span>{t("mood.noPsychologistsHint")}</span>
+                  <Link href="/psychologists" className="fanus-btn fanus-btn-light fanus-btn-sm" style={{ marginTop: 4 }}>
+                    {t("mood.browseAll")}
+                  </Link>
                 </div>
-              ) : matched.map((p) => (
+              ) : psychologists.map((p) => (
                 <div key={p.id} className="fanus-mm-psyc-card">
                   <div className="fanus-mm-psyc-card__avatar" style={{ background: p.accentColor || "#1051B7" }}>
                     {p.photoUrl
@@ -430,7 +450,7 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
                     )}
                   </div>
                   <Link
-                    href={`/book/${p.slug}`}
+                    href={`/book/${p.id}`}
                     className="fanus-btn fanus-btn-light fanus-btn-sm"
                     onClick={() => trackFunnelEvent("MOOD_BOOKING_CLICK", mood.id)}
                   >
@@ -440,11 +460,12 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
               ))}
             </div>
           </div>
+          </>}
         </div>
         <div className="fanus-mm-foot">
           <button className="fanus-btn fanus-btn-ghost" onClick={onClose}>{t("mood.later")}</button>
           <Link
-            href={matchHref}
+            href="/psychologists"
             className="fanus-btn fanus-btn-primary"
             onClick={() => trackFunnelEvent("MOOD_MATCH_CLICK", mood.id)}
           >
@@ -466,6 +487,19 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
           margin: 12px 0 0; color: var(--fanus-ink);
         }
         .fanus-mm-body { padding: 24px 36px; display: flex; flex-direction: column; gap: 28px; }
+        .fanus-mm-note {
+          grid-column: 1 / -1;
+          display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+          padding: 18px; border: 1px dashed var(--fanus-line); border-radius: 14px;
+          font-size: 13px; color: var(--fanus-ink-3);
+        }
+        .fanus-mm-note strong { font-size: 14px; font-weight: 700; color: var(--fanus-ink-2); }
+        .fanus-mm-topics { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+        .fanus-mm-topics__label { font-size: 12px; font-weight: 600; color: var(--fanus-ink-3); }
+        .fanus-mm-topic {
+          font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+          background: var(--fanus-primary-50); color: var(--fanus-ink-2);
+        }
         .fanus-mm-title {
           font-size: 13px; font-weight: 700;
           letter-spacing: .06em; color: var(--fanus-ink-2);

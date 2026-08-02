@@ -384,6 +384,8 @@ export interface Psychologist {
   /** Panel salamlamasında bəy/xanım xitabı üçün (V131). */
   gender?: "FEMALE" | "MALE" | "OTHER" | null;
   displayedSessionCount?: number;
+  /** Əhval tövsiyəsi üçün mövzu teqləri (V133) — admin seçir. */
+  topics?: string[];
 }
 
 // Modul A — public/pasiyent kartda göstərilən paket xülasəsi. Qiymət sahələri
@@ -480,6 +482,8 @@ export interface BlogPost {
   coverImageUrl?: string;
   readTimeMinutes: number;
   publishedDate: string;
+  /** Əhval tövsiyəsi üçün mövzu teqləri (V133). */
+  topics?: string[];
   slug: string;
   featured: boolean;
   active: boolean;
@@ -766,6 +770,54 @@ export const getAnnouncements = () => get<Announcement[]>("/announcements");
 export const getBlogPosts = () => get<BlogPost[]>("/blog-posts", { next: { tags: ["blog-posts"] } });
 export const getBlogPostBySlug = (slug: string) =>
   get<BlogPost>(`/blog-posts/${slug}`, { next: { tags: ["blog-posts", `blog-post-${slug}`] } });
+/* ─── Əhval tövsiyəsi (V133) ───────────────────────────────────────────────── */
+
+export type MoodId = "happy" | "anxious" | "sad" | "tired" | "angry" | "mixed" | "lonely";
+
+export interface RecommendedPsychologist {
+  id: number;
+  name: string;
+  title: string;
+  specializations: string[];
+  photoUrl?: string;
+  accentColor?: string;
+  rating: string;
+  ratingCount: number;
+  topics: string[];
+  matchScore: number;
+}
+
+export interface RecommendedArticle {
+  id: number;
+  slug: string;
+  title: string;
+  category: string;
+  categoryColor?: string;
+  categoryBg?: string;
+  readTimeMinutes: number;
+  topics: string[];
+  matchScore: number;
+}
+
+export interface MoodRecommendation {
+  mood: string;
+  /** Bu əhvalın hansı mövzulara baxdığı — çəkiyə görə sıralı. */
+  topics: string[];
+  psychologists: RecommendedPsychologist[];
+  articles: RecommendedArticle[];
+}
+
+/**
+ * Siyahılar boş qayıda bilər — bu, xəta deyil. Backend uyğun teqlənməmiş
+ * psixoloqu/məqaləni qəsdən göstərmir; boşluğu doldurmaq ziyarətçini yanlış
+ * mütəxəssisə yönləndirərdi.
+ */
+export const getMoodRecommendations = (mood: MoodId) =>
+  get<MoodRecommendation>(`/mood/recommendations?mood=${encodeURIComponent(mood)}`, { cache: "no-store" });
+
+/** Admin teq seçimi üçün mövcud mövzu kodları. */
+export const getMoodTopics = () => get<string[]>("/mood/topics");
+
 export const getFaqs = () => get<Faq[]>("/faqs");
 export const getTestimonials = () => get<Testimonial[]>("/testimonials");
 export const getSiteConfig = () => get<SiteConfig>("/site-config");

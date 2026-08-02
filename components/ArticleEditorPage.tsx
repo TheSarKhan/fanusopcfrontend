@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, type CSSProperties } from "re
 import { adminApi, type BlogPost, type BlogCategory } from "@/lib/api";
 import { getMainSiteUrl } from "@/lib/auth";
 import ArticleEditor from "@/components/ArticleEditor";
+import TopicPicker from "@/components/TopicPicker";
 import { COVER_PRESETS, coverPresetPath, type CoverPreset } from "@/components/coverPresets";
 
 export interface ArticleEditorApi {
@@ -83,6 +84,8 @@ interface FormState {
   slug: string;
   publishedDate: string;
   tags: string[];
+  /** Əhval tövsiyəsi üçün mövzu teqləri (V133). */
+  topics: string[];
   featured: boolean;
   active: boolean;
   status: string;
@@ -116,6 +119,7 @@ function buildPayload(data: FormState): Omit<BlogPost, "id"> {
     slug: data.slug.trim() || `draft-${Date.now()}`,
     publishedDate: data.publishedDate,
     tags: data.tags,
+    topics: data.topics,
     featured: data.featured,
     active: data.active,
     status: data.status,
@@ -142,6 +146,7 @@ export default function ArticleEditorPage({
     slug: article?.slug ?? "",
     publishedDate: article?.publishedDate ?? new Date().toISOString().split("T")[0],
     tags: article?.tags ?? [],
+    topics: article?.topics ?? [],
     featured: article?.featured ?? false,
     active: article?.active ?? true,
     status: article?.status ?? "DRAFT",
@@ -572,6 +577,18 @@ export default function ArticleEditorPage({
                 <div style={{ fontSize: 11, color: "#8AAABF", marginTop: 6 }}>
                   Boş buraxsanız məqalədə kateqoriya nişanı göstərilməyəcək.
                 </div>
+              </div>
+
+              {/* Mövzu teqləri (V133) — ana səhifədəki əhval tövsiyəsinin mənbəyi.
+                  Kateqoriya ziyarətçiyə göstərilən etiketdir; bu isə uyğunlaşdırma
+                  üçündür və teqsiz məqalə heç bir əhvala tövsiyə olunmur. */}
+              <div style={{ marginTop: 18 }}>
+                <TopicPicker
+                  value={form.topics}
+                  onChange={v => setField("topics", v)}
+                  label="Əhval tövsiyəsi üçün mövzular"
+                  hint="Ana səhifədəki «Bu gün özünüzü necə hiss edirsiniz?» bölməsi bu teqlərə baxır. Teq seçilməsə, məqalə orada göstərilməyəcək."
+                />
               </div>
             </>
           )}

@@ -1,36 +1,12 @@
 /**
- * GAP-08: mood → specialization-category bridge.
+ * Əhval seçimlərinin kod siyahısı.
  *
- * `Cat` mirrors the public psychologists page filter ids; `deriveCategory`
- * is the single source of truth for mapping free-text specializations onto
- * those categories (previously private to PsychologistsPage).
+ * Əvvəl bu fayl əhvalı ixtisas kateqoriyasına bağlayan cədvəl (`MOOD_TO_CAT`) və
+ * sərbəst mətndən kateqoriya təxmin edən regex (`deriveCategory`) saxlayırdı.
+ * Tövsiyə məntiqi V133-də backend-ə köçdü və strukturlu mövzu teqlərinə əsaslanır,
+ * ona görə hər ikisi silindi — uyğunluq artıq mətndən təxmin edilmir.
+ *
+ * Kodlar backend-dəki `Mood` enum-u ilə eyni olmalıdır.
  */
 
-export type Cat = "all" | "anxiety" | "trauma" | "family" | "depression" | "youth" | "addiction";
-
 export type MoodId = "happy" | "anxious" | "sad" | "tired" | "angry" | "mixed" | "lonely";
-
-/** Which specialization category fits each mood. "all" = no filter. */
-export const MOOD_TO_CAT: Record<MoodId, Cat> = {
-  // Yaxşı hiss edən üçün süzgəc yoxdur — bütün psixoloqlar göstərilir (özünüinkişaf,
-  // mövcud vəziyyəti qorumaq üçün müraciət də normaldır).
-  happy:   "all",
-  anxious: "anxiety",
-  sad:     "depression",
-  tired:   "depression",   // burnout lives under depression specialists
-  angry:   "addiction",    // impulse-control expertise
-  mixed:   "anxiety",
-  lonely:  "family",       // relationship-focused therapists
-};
-
-/** Categorize a psychologist by their free-text specializations. */
-export function deriveCategory(specs: string[]): Cat {
-  const s = specs.join(" ").toLowerCase();
-  if (s.match(/narahat|panik|okd|stress|anksi/)) return "anxiety";
-  if (s.match(/travm|tssp|yas|emdr/))            return "trauma";
-  if (s.match(/münasib|ailə|cütlük|boşanma/))    return "family";
-  if (s.match(/depres|burnout/))                 return "depression";
-  if (s.match(/yeniyetm|valideyn|uşaq/))         return "youth";
-  if (s.match(/asılıl|impuls/))                  return "addiction";
-  return "all";
-}

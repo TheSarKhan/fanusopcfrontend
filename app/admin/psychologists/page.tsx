@@ -19,6 +19,7 @@ import {
 import { toast } from "@/components/Toast";
 import { azFormatDate, azFormatDateTime } from "@/lib/datetime";
 import PanelIcon from "@/components/PanelIcon";
+import TopicPicker from "@/components/TopicPicker";
 import {
   PageHead,
   SectionTitle,
@@ -556,7 +557,52 @@ function PsyOverview({ row, profile, loading }: { row: AdminPsychologistRow; pro
           <p style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.6 }}>{profile.bio}</p>
         </div>
       )}
+      {profile && row.userId != null && (
+        <PsyTopicsEditor userId={row.userId} profile={profile} />
+      )}
     </DrawerSection>
+  );
+}
+
+/**
+ * Mövzu teqləri (V133) — ana səhifədəki əhval tövsiyəsinin yeganə mənbəyi.
+ * Teq seçilməyən psixoloq heç bir əhval üçün tövsiyə olunmur; bu qəsdəndir,
+ * uyğunsuz mütəxəssis göstərməkdənsə heç nə göstərmirik.
+ */
+function PsyTopicsEditor({ userId, profile }: { userId: number; profile: Psychologist }) {
+  const [topics, setTopics] = useState<string[]>(profile.topics ?? []);
+  const [saving, setSaving] = useState(false);
+  const dirty = topics.join(",") !== (profile.topics ?? []).join(",");
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const { id: _id, ...rest } = profile;
+      await adminApi.updateUserPsychologistProfile(userId, { ...rest, topics });
+      toast("Mövzular yadda saxlanıldı");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Yadda saxlanmadı", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 18 }}>
+      <TopicPicker
+        value={topics}
+        onChange={setTopics}
+        label="Əhval tövsiyəsi üçün mövzular"
+        hint="Ana səhifədəki «Bu gün özünüzü necə hiss edirsiniz?» bölməsi bu teqlərə baxır. Teq seçilməsə, bu psixoloq heç bir əhval üçün tövsiyə olunmayacaq."
+      />
+      {dirty && (
+        <div style={{ marginTop: 10 }}>
+          <Button size="sm" onClick={save} disabled={saving}>
+            {saving ? "Saxlanılır…" : "Mövzuları saxla"}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 

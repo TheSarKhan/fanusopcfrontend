@@ -781,6 +781,8 @@ export interface RecommendedPsychologist {
   specializations: string[];
   photoUrl?: string;
   accentColor?: string;
+  experience?: string;
+  sessionTypes?: string;
   rating: string;
   ratingCount: number;
   topics: string[];

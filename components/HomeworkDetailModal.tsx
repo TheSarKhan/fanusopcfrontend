@@ -38,7 +38,7 @@ function actionLabel(t: Translate, action: string) {
 }
 
 /** Backend rol kodu → görünən ad (yalnız bu modalın iki rolu üçün). */
-function roleName(t: Translate, role: string) {
+function roleName(t: Translate, role: string | null | undefined) {
   return role === "PSYCHOLOGIST" ? t("roleLabel.PSYCHOLOGIST") : t("roleLabel.PATIENT");
 }
 

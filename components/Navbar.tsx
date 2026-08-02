@@ -15,7 +15,11 @@ export default function Navbar() {
   const isHome = pathname === "/";
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-  const [panelUrl, setPanelUrl] = useState<string | null>(null);
+  // undefined = sessiya hələ yoxlanılmayıb (server render + hidrasiyaya qədər),
+  // null = giriş edilməyib, string = panel ünvanı. Üç vəziyyət lazımdır: SiteChrome
+  // artıq serverdə render olunduğu üçün, iki vəziyyətlə giriş etmiş istifadəçi bir an
+  // "Daxil ol" görüb sonra "Hesabım"a keçərdi.
+  const [panelUrl, setPanelUrl] = useState<string | null | undefined>(undefined);
   // Şəffaf/ağ variant: ana səhifədə yuxarıda (hero videonun üstündə) — mobil daxil,
   // çünki mobil hero da artıq tam-ekran tünd videodur.
   // Mobil menyu açıqdırsa light SÖNÜR: açıq menyu ağ paneldir, ağ loqo/burger ağ fonda
@@ -62,7 +66,8 @@ export default function Navbar() {
     return () => { cancelled = true; };
   }, []);
 
-  const isLoggedIn = panelUrl !== null;
+  const authKnown = panelUrl !== undefined;
+  const isLoggedIn = authKnown && panelUrl !== null;
 
   return (
     <header className={`fanus-nav ${scrolled ? "is-scrolled" : ""} ${open ? "is-open" : ""} ${light ? "fanus-nav--light" : ""}`}>
@@ -95,7 +100,11 @@ export default function Navbar() {
 
         <div className="fanus-nav__cta">
           <LanguageSwitcher variant="default" />
-          {isLoggedIn ? (
+          {!authKnown ? (
+            // Yer tutucu: eni giriş düymələri ilə eynidir ki, sessiya bilinəndə
+            // navbar sıçramasın.
+            <span aria-hidden style={{ display: "inline-block", width: 168, height: 38 }} />
+          ) : isLoggedIn ? (
             <a href={panelUrl!} className="fanus-btn fanus-btn-primary fanus-btn-sm">
               {t("nav.myAccount")}
             </a>

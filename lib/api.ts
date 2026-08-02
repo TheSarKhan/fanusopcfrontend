@@ -1477,7 +1477,13 @@ export const getApplicationStatus = (token: string) =>
 // Nəticə pasiyent kimi qeydiyyatdan/girişdən sonra claim ilə açılır.
 
 export interface PublicTestCard { id: number; title: string; description?: string | null; questionCount: number }
-export interface PublicSubmitResponse { claimToken: string; message: string }
+export interface PublicSubmitResponse {
+  claimToken: string;
+  message: string;
+  /** Risk sualı müsbət cavablanıb — nəticə qeydiyyatın arxasında olsa da,
+   *  təcili dəstək məlumatı DƏRHAL göstərilməlidir (V135). */
+  crisis?: boolean;
+}
 export interface PublicTestResult {
   testId: number;
   testTitle?: string | null;
@@ -1488,6 +1494,11 @@ export interface PublicTestResult {
   scaleDescription?: string | null;
   submittedAt: string;
 }
+
+/** Test nəticəsinə uyğun psixoloqlar — testin mövzu teqlərinə görə (V135).
+ *  Uyğun teqlənmiş mütəxəssis yoxdursa boş massiv qayıdır. */
+export const getTestRecommendations = (testId: number) =>
+  get<RecommendedPsychologist[]>(`/public/psych-tests/catalog/${testId}/recommendations`, { cache: "no-store" });
 
 export const getPublicTestCatalog = () =>
   get<PublicTestCard[]>("/public/psych-tests/catalog", { next: { revalidate: 0 } });

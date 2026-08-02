@@ -8,18 +8,22 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import Breadcrumb from "@/components/Breadcrumb";
 import { useSearchParams } from "next/navigation";
-import { patientApi, tryGetMe, type PublicTestResult } from "@/lib/api";
+import { patientApi, tryGetMe, getTestRecommendations, type PublicTestResult, type RecommendedPsychologist } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function PublicTestResultPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const search = useSearchParams();
   const token = search.get("token");
+  // Kriz bayrağı testi doldurma səhifəsindən gəlir. Nəticə qeydiyyatın arxasındadır,
+  // amma təcili dəstək məlumatı hər halda — giriş etməmiş ziyarətçiyə də — göstərilir.
+  const crisis = search.get("crisis") === "1";
   const { t } = useT();
 
   const [state, setState] = useState<"checking" | "locked" | "ready" | "error">("checking");
   const [result, setResult] = useState<PublicTestResult | null>(null);
   const [message, setMessage] = useState("");
+  const [matches, setMatches] = useState<RecommendedPsychologist[]>([]);
 
   useEffect(() => {
     if (!token) { setState("error"); setMessage(t("testsPage.linkMissing")); return; }
@@ -45,6 +49,60 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  // Testin mövzu teqlərinə uyğun psixoloqlar. Uyğun teqlənmiş mütəxəssis yoxdursa
+  // siyahı boş qalır — uyğunsuz adla doldurmuruq.
+  useEffect(() => {
+    const testId = Number(id);
+    if (!Number.isFinite(testId)) return;
+    let alive = true;
+    getTestRecommendations(testId)
+      .then(r => { if (alive) setMatches(r); })
+      .catch(() => { if (alive) setMatches([]); });
+    return () => { alive = false; };
+  }, [id]);
+
+  const crisisBlock = crisis && (
+    <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 12, padding: 16, marginBottom: 20 }}>
+      <p style={{ fontSize: 14.5, fontWeight: 800, color: "#991B1B", margin: "0 0 8px" }}>
+        {t("testsPage.crisisTitle")}
+      </p>
+      <p style={{ fontSize: 13.5, color: "#7F1D1D", lineHeight: 1.65, margin: "0 0 12px" }}>
+        {t("testsPage.crisisBody")}
+      </p>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <a href="tel:112" className="fanus-btn fanus-btn-primary" style={{ background: "#DC2626", borderColor: "#DC2626" }}>
+          {t("testsPage.crisisCall")}
+        </a>
+        <a href="tel:8600" className="fanus-btn fanus-btn-ghost">{t("testsPage.crisisHotline")}</a>
+      </div>
+    </div>
+  );
+
+  const matchBlock = matches.length > 0 && (
+    <div style={{ marginBottom: 22 }}>
+      <p style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)", margin: "0 0 10px" }}>
+        {t("testsPage.matchedTitle")}
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {matches.map(p => (
+          <Link key={p.id} href={`/psychologists/${p.id}`}
+            style={{ display: "flex", alignItems: "center", gap: 12, padding: 12,
+                     background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 12 }}>
+            <span style={{ width: 38, height: 38, borderRadius: "50%", background: p.accentColor || "#1051B7",
+                           color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                           fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+              {p.name.split(" ").filter(Boolean).map(n => n[0]).slice(0, 2).join("")}
+            </span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>{p.name}</span>
+              <span style={{ display: "block", fontSize: 12.5, color: "var(--oxford-60)" }}>{p.title}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+
   const wrap = (children: React.ReactNode) => (
     <>
       <Breadcrumb items={[{ label: t("nav.tests"), href: "/tests" }, { label: t("pub.crumbResult") }]} />
@@ -58,6 +116,8 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
 
   if (state === "locked") {
     return wrap(
+      <div>
+        {crisisBlock}
       <div style={{ textAlign: "center" }}>
         <div style={{ width: 54, height: 54, borderRadius: "50%", background: "#F1F6FE", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
@@ -72,6 +132,7 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
           <Link href="/register" className="fanus-btn fanus-btn-primary">{t("auth.registerCta")}</Link>
           <Link href="/login" className="fanus-btn fanus-btn-ghost">{t("auth.loginCta")}</Link>
         </div>
+      </div>
       </div>
     );
   }
@@ -89,6 +150,7 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
   const pct = Math.max(0, Math.min(100, Number(result.percentage) || 0));
   return wrap(
     <div>
+      {crisisBlock}
       <div style={{ textAlign: "center", marginBottom: 22 }}>
         <p style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, margin: "0 0 6px" }}>{result.testTitle ?? t("testsPage.resultFallbackTitle")}</p>
         <div style={{ fontSize: 40, fontWeight: 800, color: "var(--oxford)", lineHeight: 1 }}>{result.totalScore}<span style={{ fontSize: 20, color: "var(--oxford-60)", fontWeight: 700 }}> / {result.maxScore}</span></div>
@@ -114,6 +176,8 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
           {t("testsPage.disclaimer")}
         </p>
       </div>
+
+      {matchBlock}
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <Link href={`/psychologists`} className="fanus-btn fanus-btn-primary">{t("testsPage.choosePsy")}</Link>

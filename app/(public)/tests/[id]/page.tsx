@@ -45,7 +45,10 @@ export default function PublicTakeTestPage({ params }: { params: Promise<{ id: s
       });
       // Token brauzerdə saxlanılır ki, qeydiyyatdan sonra nəticə avtomatik açılsın.
       try { localStorage.setItem("pendingTestClaim", res.claimToken); } catch { /* private mode */ }
-      router.push(`/tests/${testId}/result?token=${encodeURIComponent(res.claimToken)}`);
+      // Kriz bayrağı URL ilə ötürülür: nəticə qeydiyyatın arxasındadır, amma
+      // təcili dəstək məlumatı qeydiyyatsız da dərhal görünməlidir.
+      const crisisParam = res.crisis ? "&crisis=1" : "";
+      router.push(`/tests/${testId}/result?token=${encodeURIComponent(res.claimToken)}${crisisParam}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("testsPage.submitFailed"));
       setBusy(false);

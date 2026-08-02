@@ -61,7 +61,6 @@ export default function PatientTestsPage() {
     <div className="pgoals__empty">
       <div className="pgoals__empty-title">{t("patTests.selfEmptyTitle")}</div>
       <p className="pgoals__empty-body">{t("patTests.selfEmptyBody")}</p>
-      <Link href="/patient/tests/catalog" className="pgoals__empty-cta">{t("patTests.newTestCta")}</Link>
     </div>
   ) : (
     <section className="pgoals__section">
@@ -97,9 +96,9 @@ export default function PatientTestsPage() {
     <div className="pgoals">
       <PageHeader title={t("patTests.title")} subtitle={t("patTests.sub")} />
 
-      {/* Tablar + kataloq düyməsi. «Yeni test doldur» hər iki tabda görünür:
-          istifadəçi harada olursa-olsun yeni test doldura bilməlidir. */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+      {/* İki mənbə ayrı tablarda: psixoloqun təyin etdiyi testlər paneldə doldurulur,
+          saytda işlədilənlərə isə yalnız nəticə kimi baxılır. */}
+      <div style={{ marginBottom: 16 }}>
         <Tabs
           items={[
             { key: "assigned", label: t("patTests.tabAssigned"), count: items.length },
@@ -108,10 +107,6 @@ export default function PatientTestsPage() {
           value={tab}
           onChange={setTab}
         />
-        <Link href="/patient/tests/catalog" className="pgoal-card__action"
-          style={{ color: "#fff", background: "var(--brand)", border: "none", padding: "8px 16px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
-          {t("patTests.newTestCta")}
-        </Link>
       </div>
 
       {loading ? (

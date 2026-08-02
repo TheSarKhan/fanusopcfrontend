@@ -16,6 +16,7 @@ import {
   type PatientPackageItem,
 } from "@/lib/api";
 import { azFormatDate, azFormatTime, azOrdinal, azLocalToISO } from "@/lib/datetime";
+import { ordinalFor } from "@/lib/ordinal";
 import { formatAzn } from "@/lib/money";
 import DatePicker from "@/components/DatePicker";
 import AddToCalendarMenu from "@/components/AddToCalendarMenu";
@@ -24,12 +25,6 @@ import { toast } from "@/components/Toast";
 import { STATUS, PKG_STATUS, PA_STYLE, SlotPicker, initialsOf } from "../../shared";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import type { Locale } from "@/lib/i18n/messages";
-
-/** Sıra sayı — AZ-də sait ahəngli şəkilçi ("3-cü"), digər dillərdə sadə rəqəm
- *  (lüğətdəki ifadə özü formatı verir: "Session #3", "3. seans", "Сессия №3"). */
-export function ordinalFor(locale: Locale, n: number): string {
-  return locale === "az" ? azOrdinal(n) : String(n);
-}
 
 export default function PatientPackageDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { t, locale } = useT();

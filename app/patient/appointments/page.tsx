@@ -12,6 +12,7 @@ import {
   type SessionFeedback,
 } from "@/lib/api";
 import { googleCalendarUrl } from "@/lib/calendar";
+import { ordinalFor } from "@/lib/ordinal";
 import { appUrl } from "@/lib/appUrl";
 import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { azFormatTime, azFormatDate, azOrdinal, hoursSince } from "@/lib/datetime";
@@ -31,12 +32,6 @@ import {
 } from "./shared";
 
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
-
-/** Sıra sayı — AZ-də sait ahəngli şəkilçi ("3-cü"), digər dillərdə sadə rəqəm
- *  (lüğətdəki ifadə özü formatı verir: "Session #3", "3. seans", "Сессия №3"). */
-function ordinalFor(locale: Locale, n: number): string {
-  return locale === "az" ? azOrdinal(n) : String(n);
-}
 
 function fmtTime(d: Date) { return azFormatTime(d); }
 // AZ-zone year/month/day key for a Date — uses Intl with Asia/Baku.

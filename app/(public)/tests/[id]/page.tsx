@@ -9,6 +9,7 @@ import Link from "next/link";
 import Breadcrumb from "@/components/Breadcrumb";
 import { useRouter } from "next/navigation";
 import { getPublicCatalogTest, submitPublicCatalogTest, type TakeTest } from "@/lib/api";
+import { savePendingClaim } from "@/lib/pendingTestClaim";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function PublicTakeTestPage({ params }: { params: Promise<{ id: string }> }) {
@@ -44,7 +45,8 @@ export default function PublicTakeTestPage({ params }: { params: Promise<{ id: s
         answers: test.questions.map(q => ({ questionId: q.id, selectedOptionId: answers[q.id] })),
       });
       // Token brauzerdə saxlanılır ki, qeydiyyatdan sonra nəticə avtomatik açılsın.
-      try { localStorage.setItem("pendingTestClaim", res.claimToken); } catch { /* private mode */ }
+      // Cookie ilə saxlanılır: panel ayrı alt-domendədir, localStorage ora çatmır.
+      savePendingClaim(res.claimToken);
       // Kriz bayrağı URL ilə ötürülür: nəticə qeydiyyatın arxasındadır, amma
       // təcili dəstək məlumatı qeydiyyatsız da dərhal görünməlidir.
       const crisisParam = res.crisis ? "&crisis=1" : "";

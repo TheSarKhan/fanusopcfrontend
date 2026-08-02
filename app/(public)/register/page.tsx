@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { checkEmail, registerPatient, registerPsychologist, type PsychologistRegistrationData } from "@/lib/api";
 import PhotoCropper from "@/components/PhotoCropper";
@@ -137,6 +138,9 @@ function ChipToggle({ options, selected, onChange, allowCustom = false, customPl
 /* ─── Patient form ─── */
 function PatientForm({ onBack }: { onBack: () => void }) {
   const { t } = useT();
+  // Testdən gələn ziyarətçi üçün: qeydiyyat → e-poçt təsdiqi → giriş yolunda
+  // hədəf itməsin deyə `next` uğur ekranındakı giriş linkinə ötürülür.
+  const nextParam = useSearchParams().get("next");
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", emergencyContactName: "", emergencyContactPhone: "", emergencyContactRelation: "", residentialAddress: "", password: "", confirmPassword: "" });
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -171,7 +175,7 @@ function PatientForm({ onBack }: { onBack: () => void }) {
       <p style={{ fontSize: 14, color: "var(--oxford-60)", marginBottom: 28 }}>
         {t("regPage.emailSentBody", { email: form.email })}
       </p>
-      <Link href="/login" className="btn btn-primary" style={{ borderRadius: 10, display: "block", textAlign: "center", height: 50, lineHeight: "50px" }}>{t("auth.loginCta")}</Link>
+      <Link href={nextParam ? `/login?next=${encodeURIComponent(nextParam)}` : "/login"} className="btn btn-primary" style={{ borderRadius: 10, display: "block", textAlign: "center", height: 50, lineHeight: "50px" }}>{t("auth.loginCta")}</Link>
     </div>
   );
 

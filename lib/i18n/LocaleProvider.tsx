@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { readCookie, writeCookie } from "@/lib/crossSiteCookie";
 import {
   DEFAULT_LOCALE, SUPPORTED_LOCALES,
   format, resolveMessage,
@@ -17,37 +18,6 @@ interface LocaleContextValue {
 }
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
-
-function readCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]+)"));
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
-/**
- * Cookie-nin bölüşüləcəyi domen — dil seçimi əsas sayt VƏ panellər (patient./operator./
- * psycholog./admin. alt-domenləri) arasında qorunsun deyə registrable domenə yazılır
- * (məs. ".khansoft.az"). Domainsiz yazılsaydı cookie yalnız cari host üçün olardı və
- * login sonrası alt-domenə keçəndə itərdi → dil ingiliscəyə "sıfırlanardı".
- */
-function cookieDomain(): string {
-  if (typeof window === "undefined") return "";
-  const host = window.location.hostname;
-  if (host === "localhost" || host.endsWith(".localhost")) return "localhost";
-  const parts = host.split(".");
-  if (parts.length >= 2) return "." + parts.slice(-2).join(".");
-  return host;
-}
-
-function writeCookie(name: string, value: string, days: number) {
-  if (typeof document === "undefined") return;
-  const exp = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
-  const domain = cookieDomain();
-  // Köhnə host-only (domainsiz) nüsxəni təmizlə ki, iki eyni-adlı cookie qalmasın.
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${exp}; path=/; SameSite=Lax`
-    + (domain ? `; Domain=${domain}` : "");
-}
 
 function detectInitialLocale(): Locale {
   // 1) explicit cookie wins

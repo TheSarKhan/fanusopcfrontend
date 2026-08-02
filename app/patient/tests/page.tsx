@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { patientApi, type TestAssignment } from "@/lib/api";
+import { patientApi, type TestAssignment, type PublicTestResult } from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
@@ -26,15 +26,63 @@ function statusMeta(a: TestAssignment) {
 export default function PatientTestsPage() {
   const { t } = useT();
   const [items, setItems] = useState<TestAssignment[]>([]);
+  // Saytda özü doldurduğu və hesabına bağladığı testlərin nəticələri. Psixoloqun
+  // təyin etdiyi testlərdən ayrı siyahıdır — mənbəyi və axını fərqlidir.
+  const [selfResults, setSelfResults] = useState<PublicTestResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    patientApi.myTestAssignments()
-      .then(setItems)
-      .catch(e => setErr((e as Error).message))
-      .finally(() => setLoading(false));
+    Promise.allSettled([
+      patientApi.myTestAssignments(),
+      patientApi.myPublicTestResults(),
+    ]).then(([a, r]) => {
+      if (a.status === "fulfilled") setItems(a.value);
+      else setErr((a.reason as Error).message);
+      // Publik nəticələr ikinci dərəcəlidir — alınmasa səhifə yenə işləməlidir.
+      if (r.status === "fulfilled") setSelfResults(r.value);
+    }).finally(() => setLoading(false));
   }, []);
+
+  // Panel açılan anda gözləyən test tokeni sahiblənilirsə, siyahını yenilə.
+  useEffect(() => {
+    const onClaimed = () => {
+      patientApi.myPublicTestResults().then(setSelfResults).catch(() => { /* ikinci dərəcəli */ });
+    };
+    window.addEventListener("fanus:test-claimed", onClaimed);
+    return () => window.removeEventListener("fanus:test-claimed", onClaimed);
+  }, []);
+
+  const selfSection = selfResults.length > 0 && (
+    <section className="pgoals__section">
+      <div className="pgoals__section-head">
+        <h2>{t("patTests.selfTitle")}</h2>
+        <span className="pgoals__section-n">{selfResults.length}</span>
+      </div>
+      <div className="pgoals__list">
+        {selfResults.map((r, i) => (
+          <article key={`${r.testId}-${i}`} className="pgoal-card">
+            <div className="pgoal-card__top">
+              <div className="pgoal-card__title">{r.testTitle ?? t("patTests.selfFallbackTitle")}</div>
+              {r.scaleLabel && (
+                <span className="pgoal-card__status"
+                  style={{ background: "var(--brand-50)", color: "var(--brand-700)", borderColor: "var(--brand-100)" }}>
+                  {r.scaleLabel}
+                </span>
+              )}
+            </div>
+            {r.scaleDescription && <div className="pgoal-card__desc">{r.scaleDescription}</div>}
+            <div className="pgoal-card__meta">
+              <span className="pgoal-card__date">{t("patTests.takenAt", { date: azFormatDate(r.submittedAt) })}</span>
+              <span style={{ fontWeight: 700, color: "var(--oxford)" }}>
+                {t("patTests.scoreOf", { score: r.totalScore, max: r.maxScore })}
+              </span>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
 
   return (
     <div className="pgoals">
@@ -44,7 +92,7 @@ export default function PatientTestsPage() {
         <div className="pgoals__loading">{t("common.loading")}</div>
       ) : err ? (
         <div className="pgoals__error">{err}</div>
-      ) : items.length === 0 ? (
+      ) : items.length === 0 && selfResults.length === 0 ? (
         <div className="pgoals__empty">
           <div className="pgoals__empty-icon">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -58,6 +106,9 @@ export default function PatientTestsPage() {
           <Link href="/patient/appointments" className="pgoals__empty-cta">{t("patTests.emptyCta")}</Link>
         </div>
       ) : (
+        <>
+        {selfSection}
+        {items.length > 0 && (
         <section className="pgoals__section">
           <div className="pgoals__section-head">
             <h2>{t("patTests.allTests")}</h2>
@@ -98,6 +149,8 @@ export default function PatientTestsPage() {
             })}
           </div>
         </section>
+        )}
+        </>
       )}
     </div>
   );

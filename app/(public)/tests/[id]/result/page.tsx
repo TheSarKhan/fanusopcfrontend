@@ -9,6 +9,7 @@ import Link from "next/link";
 import Breadcrumb from "@/components/Breadcrumb";
 import { useSearchParams } from "next/navigation";
 import { patientApi, tryGetMe, getTestRecommendations, type PublicTestResult, type RecommendedPsychologist } from "@/lib/api";
+import { savePendingClaim, clearPendingClaim } from "@/lib/pendingTestClaim";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function PublicTestResultPage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,7 +28,7 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
 
   useEffect(() => {
     if (!token) { setState("error"); setMessage(t("testsPage.linkMissing")); return; }
-    try { localStorage.setItem("pendingTestClaim", token); } catch { /* private mode */ }
+    savePendingClaim(token);
 
     let alive = true;
     (async () => {
@@ -38,7 +39,7 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
         const r = await patientApi.claimPublicTestResult(token);
         if (!alive) return;
         setResult(r); setState("ready");
-        try { localStorage.removeItem("pendingTestClaim"); } catch { /* ignore */ }
+        clearPendingClaim();
       } catch (e) {
         if (!alive) return;
         setState("error");
@@ -129,8 +130,11 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
           {t("testsPage.lockedBody")}
         </p>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-          <Link href="/register" className="fanus-btn fanus-btn-primary">{t("auth.registerCta")}</Link>
-          <Link href="/login" className="fanus-btn fanus-btn-ghost">{t("auth.loginCta")}</Link>
+          {/* next= panelin test səhifəsinə aparır: giriş həmişə rolun alt-domeninə
+              yönləndirir, ona görə publik URL-ə qaytarmaq mümkün deyil. Nəticə orada
+              gözləyir — token cookie ilə keçir və panel açılanda sahiblənilir. */}
+          <Link href="/register?next=/patient/tests" className="fanus-btn fanus-btn-primary">{t("auth.registerCta")}</Link>
+          <Link href="/login?next=/patient/tests" className="fanus-btn fanus-btn-ghost">{t("auth.loginCta")}</Link>
         </div>
       </div>
       </div>

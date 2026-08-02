@@ -80,7 +80,6 @@ interface FormState {
   category: string;
   categoryColor: string;
   categoryBg: string;
-  emoji: string;
   slug: string;
   publishedDate: string;
   tags: string[];
@@ -114,7 +113,6 @@ function buildPayload(data: FormState): Omit<BlogPost, "id"> {
     category: data.category.trim(),
     categoryColor: data.categoryColor,
     categoryBg: data.categoryBg,
-    emoji: data.emoji,
     slug: data.slug.trim() || `draft-${Date.now()}`,
     publishedDate: data.publishedDate,
     tags: data.tags,
@@ -141,7 +139,6 @@ export default function ArticleEditorPage({
     category: article?.category ?? "",
     categoryColor: article?.categoryColor ?? "#002147",
     categoryBg: article?.categoryBg ?? "#E0EBF7",
-    emoji: article?.emoji ?? "📝",
     slug: article?.slug ?? "",
     publishedDate: article?.publishedDate ?? new Date().toISOString().split("T")[0],
     tags: article?.tags ?? [],
@@ -566,7 +563,6 @@ export default function ArticleEditorPage({
                           }}
                           style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s", border: selected ? `2px solid ${cat.color}` : "2px solid #E4EDF6", background: selected ? cat.bg : "#fff", color: selected ? cat.color : "#52718F" }}
                         >
-                          <span>{cat.emoji}</span>
                           {cat.name}
                         </button>
                       );

@@ -465,7 +465,6 @@ export interface BlogCategory {
   name: string;
   color: string;
   bg: string;
-  emoji: string;
   active: boolean;
   sortOrder: number;
 }
@@ -481,7 +480,6 @@ export interface BlogPost {
   coverImageUrl?: string;
   readTimeMinutes: number;
   publishedDate: string;
-  emoji: string;
   slug: string;
   featured: boolean;
   active: boolean;

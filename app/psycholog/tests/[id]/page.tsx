@@ -253,11 +253,16 @@ function ResultDetail({ result }: { result: TestResult }) {
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: "#1A2535", marginBottom: 8 }}>
-                    {stripLeadingNumber(a.questionText)}
+                    {a.questionText
+                      ? stripLeadingNumber(a.questionText)
+                      /* Sual sonradan silinib — mətn artıq mövcud deyil. */
+                      : <span style={{ fontStyle: "italic", color: "#6B7280", fontWeight: 500 }}>
+                          Sual silinib
+                        </span>}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 13, color: "#374151", padding: "4px 10px", background: "var(--brand-50)", borderRadius: 8, border: "1px solid var(--brand-100)" }}>
-                      {a.selectedLabel}
+                      {a.selectedLabel ?? "Variant silinib"}
                     </span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#065F46", padding: "4px 10px", background: "#D1FAE5", borderRadius: 999 }}>
                       {a.pointsAwarded} bal

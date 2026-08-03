@@ -338,11 +338,18 @@ function ResultView({ result, title }: { result: TestResult; title?: string }) {
             {sortedAnswers.map((a, i) => (
               <div key={a.questionId} className="pgoal-card" style={{ border: "1px solid var(--brand-100)" }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)", marginBottom: 8 }}>
-                  {i + 1}. {stripLeadingNumber(a.questionText)}
+                  {i + 1}.{" "}
+                  {a.questionText
+                    ? stripLeadingNumber(a.questionText)
+                    /* Test redaktə olunub və sual silinib — mətn heç yerdə qalmayıb.
+                       Boş sətir əvəzinə səbəbi yazırıq. */
+                    : <span style={{ fontStyle: "italic", color: "var(--oxford-60)", fontWeight: 500 }}>
+                        {t("patTests.deletedQuestion")}
+                      </span>}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 13, color: "var(--oxford)", padding: "4px 10px", background: "var(--brand-50)", borderRadius: 8, border: "1px solid var(--brand-100)" }}>
-                    {a.selectedLabel}
+                    {a.selectedLabel ?? t("patTests.deletedOption")}
                   </span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: "#065F46", padding: "4px 10px", background: "#D1FAE5", borderRadius: 999 }}>
                     {t("patTests.points", { n: a.pointsAwarded })}

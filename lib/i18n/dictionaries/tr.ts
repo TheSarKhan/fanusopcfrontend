@@ -1786,6 +1786,8 @@ export const tr: typeof az = {
     selfTitle: "Sitede doldurduğum testler",
     selfFallbackTitle: "Psikolojik test",
     takenAt: "Dolduruldu: {date}",
+    deletedQuestion: "Soru silinmiş",
+    deletedOption: "Seçenek silinmiş",
     scoreOf: "{score} / {max} puan",
     tabAssigned: "Psikoloğun atadığı",
     tabSelf: "Sitede doldurduklarım",

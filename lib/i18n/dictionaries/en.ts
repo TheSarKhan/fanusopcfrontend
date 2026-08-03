@@ -1763,6 +1763,8 @@ export const en: typeof az = {
     selfTitle: "Tests I took on the website",
     selfFallbackTitle: "Psychological test",
     takenAt: "Taken: {date}",
+    deletedQuestion: "Question was deleted",
+    deletedOption: "Option was deleted",
     scoreOf: "{score} / {max} points",
     tabAssigned: "Assigned by therapist",
     tabSelf: "Taken on the website",

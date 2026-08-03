@@ -1766,6 +1766,8 @@ export const ru: typeof az = {
     selfTitle: "Тесты, пройденные на сайте",
     selfFallbackTitle: "Психологический тест",
     takenAt: "Пройден: {date}",
+    deletedQuestion: "Вопрос удалён",
+    deletedOption: "Вариант удалён",
     scoreOf: "{score} / {max} баллов",
     tabAssigned: "Назначенные психологом",
     tabSelf: "Пройденные на сайте",

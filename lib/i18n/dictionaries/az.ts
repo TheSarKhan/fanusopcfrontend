@@ -1814,6 +1814,8 @@ export const az = {
     selfTitle: "Saytda işlətdiyim testlər",
     selfFallbackTitle: "Psixoloji test",
     takenAt: "Doldurulub: {date}",
+    deletedQuestion: "Sual silinib",
+    deletedOption: "Variant silinib",
     scoreOf: "{score} / {max} bal",
     tabAssigned: "Psixoloqun təyin etdiyi",
     tabSelf: "Saytda işlətdiklərim",

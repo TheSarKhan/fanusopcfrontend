@@ -53,7 +53,7 @@ const TAG_PRESETS = [
   "Yüksək risk", "Aşağı risk",
   "Anksiyete", "Depressiya", "Travma", "Münasibətlər",
   "İlk müraciət", "Uzun müddətli",
-  "Daimi müştəri", "VIP",
+  "Daimi pasiyent", "VIP",
 ];
 
 const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
@@ -176,14 +176,14 @@ const NOTE_TEMPLATES: { key: string; label: string; title: string; body: string 
     label: "Gedişat qeydi",
     title: "Seans qeydi",
     body:
-      "Hal-hazırkı vəziyyət:\n\nBu seansda işlənən mövzu:\n\nİstifadə olunan texnika:\n\nMüştəri reaksiyası / inkişaf:\n\nEv tapşırığı:\n\nNövbəti seans üçün plan:",
+      "Hal-hazırkı vəziyyət:\n\nBu seansda işlənən mövzu:\n\nİstifadə olunan texnika:\n\nPasiyent reaksiyası / inkişaf:\n\nEv tapşırığı:\n\nNövbəti seans üçün plan:",
   },
   {
     key: "closure",
     label: "Sonlanma notu",
     title: "Terapiya sonlanması",
     body:
-      "Ümumi nəticə və qazanımlar:\n\nQalan risklər / diqqət olunmalı sahələr:\n\nMüştərinin öz qiymətləndirməsi:\n\nGələcək tövsiyələr:\n\nİstinad üçün resurslar:",
+      "Ümumi nəticə və qazanımlar:\n\nQalan risklər / diqqət olunmalı sahələr:\n\nPasiyentin öz qiymətləndirməsi:\n\nGələcək tövsiyələr:\n\nİstinad üçün resurslar:",
   },
 ];
 
@@ -500,7 +500,7 @@ export default function PatientDetailPage() {
 
       <Link href="/psycholog/clients" className="fx-link" style={{ display: "inline-flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
         <svg className="fx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 18l-6-6 6-6" /></svg>
-        Müştərilərə qayıt
+        Pasiyentlərə qayıt
       </Link>
 
       {loading ? (
@@ -508,8 +508,8 @@ export default function PatientDetailPage() {
       ) : !client ? (
         <EmptyBlock
           boxed
-          title="Müştəri tapılmadı"
-          body="Bu müştəri silinmiş ola bilər və ya sizin siyahınızda deyil. Müştərilər səhifəsindən yenidən seçin."
+          title="Pasiyent tapılmadı"
+          body="Bu pasiyent silinmiş ola bilər və ya sizin siyahınızda deyil. Pasiyentlər səhifəsindən yenidən seçin."
         />
       ) : (
         <>
@@ -739,7 +739,7 @@ export default function PatientDetailPage() {
             <div style={{ animation: "m360Fade .2s ease" }}>
               {packageGroups.length === 0 ? (
                 <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "32px 24px", textAlign: "center" }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Bu müştərinin paketi yoxdur</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Bu pasiyentin paketi yoxdur</div>
                   <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>Paket alındıqda proqram və seansları burada görünəcək.</p>
                 </div>
               ) : (
@@ -923,7 +923,7 @@ function GoalsSection({
         <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "32px 24px", textAlign: "center" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Hələ hədəf əlavə edilməyib</div>
           <div style={{ fontSize: 13, color: "var(--oxford-60)", maxWidth: 460, margin: "0 auto", lineHeight: 1.5 }}>
-            Hədəf əlavə edərək müştərinin inkişafını ölçə bilərsiniz: «anksiyetə hücumlarını azaltmaq», «gündəlik rituallar yaratmaq» və s.
+            Hədəf əlavə edərək pasiyentin inkişafını ölçə bilərsiniz: «anksiyetə hücumlarını azaltmaq», «gündəlik rituallar yaratmaq» və s.
           </div>
         </div>
       ) : (
@@ -1201,7 +1201,7 @@ function SessionsSection({ items }: { items: AppointmentDetail[] }) {
             onSortChange={next => { setSort(next); setPage(1); }}
             empty={{
               title: "Tək seans yoxdur",
-              body: "Bu müştəri ilə paketdən kənar seans təyin olunduqda burada görünəcək.",
+              body: "Bu pasiyent ilə paketdən kənar seans təyin olunduqda burada görünəcək.",
             }}
             pagination={{ page: safePage, pageCount, onChange: setPage }}
             totalLabel={`Cəmi ${sorted.length} seans`}
@@ -1691,7 +1691,7 @@ function NotesSection(props: {
                   }
                 : {
                     title: "Hələ klinik qeyd yoxdur",
-                    body: "Bu müştəri üçün ilk qeydinizi yazın.",
+                    body: "Bu pasiyent üçün ilk qeydinizi yazın.",
                   }
             }
             pagination={{ page: safePage, pageCount, onChange: setPage }}

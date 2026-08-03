@@ -4,7 +4,7 @@
 // Mənbələr bir siyahıda birləşir: ümumi gate tələbləri (bloklama, ödəniş mark-paid/ləğv,
 // komissiya, qiymət — V120), İadə və Hovuz-buraxma. Ön-təsdiq modeli: operator əməliyyatı
 // PENDING qalır, admin təsdiqləyənə qədər icra olunmur. Siyahı, süzgəc və səhifələmə
-// müştəri tərəfindədir (təsdiqlər az həcmlidir).
+// pasiyent tərəfindədir (təsdiqlər az həcmlidir).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -90,7 +90,7 @@ export default function AdminApprovalsPage() {
 
   const load = useCallback(() => {
     setLoading(true); setError(null);
-    // Bütün statusları çəkirik ki, KPI tam bölgünü göstərsin; süzgəc müştəridədir.
+    // Bütün statusları çəkirik ki, KPI tam bölgünü göstərsin; süzgəc pasiyentdədir.
     adminApi.listAllApprovals()
       .then(setRows)
       .catch((e) => setError((e as Error).message || "Təsdiqlər yüklənmədi"))

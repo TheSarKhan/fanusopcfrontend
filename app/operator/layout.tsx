@@ -147,7 +147,7 @@ function OperatorShell({ children }: { children: React.ReactNode }) {
     { key: "meetingLinks",  href: "/operator/meeting-links", label: "Görüş linkləri",        icon: "video", badge: meetingLinksCount },
     { key: "payments",      href: "/operator/payments",     label: t("pkg.paymentsTitle"),   icon: "package", badge: paymentsCount },
     { key: "analytics",     href: "/operator/analytics",    label: t("nav.analytics"),       icon: "chart" },
-    { key: "customers",     href: "/operator/customers",     label: "Müştərilər",            icon: "users" },
+    { key: "customers",     href: "/operator/customers",     label: "Pasiyentlər",            icon: "users" },
     { key: "psychologists", href: "/operator/psychologists", label: "Psixoloqlar", icon: "user" },
     { key: "requests",      href: "/operator/requests",      label: "Rəy silmə tələbləri",   icon: "flag" },
     { key: "feedback",      href: "/operator/feedback",      label: "Seans rəyləri",         icon: "star", badge: feedbackCount },

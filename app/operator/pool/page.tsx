@@ -332,7 +332,7 @@ function PoolApptCard({
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12.5, fontWeight: 600, color: a.origin === "DIRECT" ? "#15803D" : "var(--brand-700)", marginBottom: 15 }}>
           <IconUser />
           {/* Ad və istənilən vaxt ayrı span-larda — flex boşluğu ayırır. */}
-          <span>{a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən"}: {a.requestedPsychologistName}</span>
+          <span>{a.origin === "DIRECT" ? "Pasiyent seçdi" : "İstənilən"}: {a.requestedPsychologistName}</span>
           {a.requestedStartAt && <span className="fx-num" style={{ color: "var(--oxford-60)" }}>{fmtDt(a.requestedStartAt)}</span>}
         </div>
       ) : (
@@ -474,7 +474,7 @@ function PoolPackageCard({
         </button>
         <button type="button" onClick={e => { e.stopPropagation(); onOpen(); }}
           className="fx-btn fx-btn--ghost" style={{ flex: "none" }}>
-          Müştəri profili
+          Pasiyent profili
         </button>
       </div>
     </div>
@@ -553,7 +553,7 @@ function PoolPendingPackageCard({
         </button>
         <button type="button" onClick={e => { e.stopPropagation(); onOpen(); }}
           className="fx-btn fx-btn--ghost" style={{ flex: "none" }}>
-          Müştəri profili
+          Pasiyent profili
         </button>
       </div>
     </div>

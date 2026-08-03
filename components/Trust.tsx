@@ -90,7 +90,7 @@ export default function Trust({ testimonials }: { testimonials: Testimonial[] })
 
       <div className="container">
         <div className="text-center mb-10">
-          <p className="section-label justify-center">Müştəri rəyləri</p>
+          <p className="section-label justify-center">Dəstək alanların rəyləri</p>
           <h2
             className="text-3xl sm:text-4xl font-bold mb-3"
             style={{  color: "#1A2535" }}
@@ -98,7 +98,7 @@ export default function Trust({ testimonials }: { testimonials: Testimonial[] })
             Onlar bizə güvəndilər
           </h2>
           <p className="text-[#52718F] max-w-sm mx-auto text-sm leading-relaxed">
-            Hər müştərimizin hekayəsi bizim üçün xüsusidir.
+            Dəstək alan hər kəsin hekayəsi bizim üçün xüsusidir.
           </p>
         </div>
       </div>

@@ -275,7 +275,7 @@ function initialsOf(name?: string | null): string {
 }
 
 /** Kimlik xanası — rol etiketi + avatar + ad. Pasiyent xanası klikləndikdə
- *  müştəri profilinə keçir; psixoloq təyin edilməyibsə solğun göstərilir. */
+ *  pasiyent profilinə keçir; psixoloq təyin edilməyibsə solğun göstərilir. */
 function IdentityCell({ role, name, tone, muted, onClick }: {
   role: string; name: string; tone: "brand" | "lilac"; muted?: boolean; onClick?: () => void;
 }) {

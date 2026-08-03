@@ -220,7 +220,7 @@ export default function PsychologistAvailabilityPage() {
           <div>
             <h2 style={cardTitleStyle}>Həftəlik cədvəl</h2>
             <p style={cardSubStyle}>
-              Hər gün üçün açıq vaxt aralıqlarını qurun. Müştərilər bu pəncərələrdə {savedMinutes} dəqiqəlik slotlara rezerv edə biləcəklər.
+              Hər gün üçün açıq vaxt aralıqlarını qurun. Pasiyentlər bu pəncərələrdə {savedMinutes} dəqiqəlik slotlara rezerv edə biləcəklər.
             </p>
           </div>
           <button onClick={() => setSlotModal({ day: null })} style={primaryBtn}>

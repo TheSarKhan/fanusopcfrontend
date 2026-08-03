@@ -1,6 +1,6 @@
 "use client";
 
-// Modul H — operator müştəri profili (360° görünüş, Fanus UI Kit).
+// Modul H — operator pasiyent profili (360° görünüş, Fanus UI Kit).
 // Pasiyentin qeydiyyatı, seans bölgüsü, ödənişlər, paketlər, test nəticələri,
 // rəylər, qayğı paneli, operator qeydləri (CRM) və fəaliyyət jurnalı bir səhifədə.
 // Modul G məxfi sahələri (təcili əlaqə/ünvan) açıq işarələnir.
@@ -321,7 +321,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
     }
     // Seanslar — HƏR seans (paylı/pulsuz fərq etməz) açıq "Seans" event-i kimi.
     // Əvvəllər seanslar timeline-da yalnız ÖDƏNİŞ event-i ilə görünürdü; pulsuz
-    // tanışlıq (INTRO) ödəniş yaratmadığı üçün müştəri tarixçəsində görünmürdü.
+    // tanışlıq (INTRO) ödəniş yaratmadığı üçün pasiyent tarixçəsində görünmürdü.
     for (const s of profile.appointments) {
       const at = s.startAt ?? s.createdAt;
       if (!at) continue;
@@ -427,7 +427,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
 
       {/* Breadcrumb */}
       <div className="fx-breadcrumb" style={{ marginBottom: 18 }}>
-        <Link href="/operator/customers">Müştərilər</Link>
+        <Link href="/operator/customers">Pasiyentlər</Link>
         <Icon name="chevron-right" className="fx-icon" style={{ width: 12, height: 12 }} />
         <span className="fx-current">{h.name}</span>
       </div>
@@ -534,7 +534,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
         )}
         {h.operatorCreated && !h.emailVerified && (
           <button type="button" onClick={resendActivation} disabled={resendingActivation} className="fx-btn fx-btn--ghost"
-            title="Hesab hələ aktivləşdirilməyib — müştəri emaildəki linkdən şifrəsini təyin etməlidir">
+            title="Hesab hələ aktivləşdirilməyib — pasiyent emaildəki linkdən şifrəsini təyin etməlidir">
             <Icon name="mail" />{resendingActivation ? "…" : "Aktivləşdirmə dəvətini yenidən göndər"}
           </button>
         )}
@@ -549,10 +549,10 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
         {/* SOL SÜTUN */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-          {/* Müştəri jurnalı */}
+          {/* Pasiyent jurnalı */}
           <div className="fx-card" style={{ padding: "22px 26px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>
-              <span className="fx-card-title">Müştəri jurnalı</span>
+              <span className="fx-card-title">Pasiyent jurnalı</span>
               <div style={{ display: "flex", gap: 12, fontSize: 11, color: "var(--oxford-60)", flexWrap: "wrap" }}>
                 <LegendDot tone="seans" label="Seans" />
                 <LegendDot tone="pay" label="Ödəniş" />
@@ -666,7 +666,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
           <div className="fx-card" style={{ padding: "20px 26px", display: "flex", flexDirection: "column", gap: 16 }}>
             <span className="fx-card-title">Test nəticələri</span>
             {profile.testResults.length === 0 ? (
-              <EmptyBlock icon="check-square" title="Test nəticəsi yoxdur" sub="Müştəriyə test göndərəndə nəticələr burada görünəcək" bare />
+              <EmptyBlock icon="check-square" title="Test nəticəsi yoxdur" sub="Pasiyentə test göndərəndə nəticələr burada görünəcək" bare />
             ) : (
               profile.testResults.map((tr, i) => (
                 <div key={tr.assignmentId} style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: i < profile.testResults.length - 1 ? 16 : 0, borderBottom: i < profile.testResults.length - 1 ? "1px solid var(--hairline)" : "none" }}>
@@ -688,7 +688,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
                     </>
                   ) : (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-                      <span style={{ fontSize: 12, color: "var(--oxford-60)" }}>Müştəriyə göndərilib, cavab gözlənilir</span>
+                      <span style={{ fontSize: 12, color: "var(--oxford-60)" }}>Pasiyentə göndərilib, cavab gözlənilir</span>
                       <span className="fx-pill fx-pill--pending">{statusLabel(tr.status)}</span>
                     </div>
                   )}
@@ -701,7 +701,7 @@ export default function OperatorCustomerProfilePage({ params }: { params: Promis
           <div className="fx-card" style={{ padding: "20px 26px", display: "flex", flexDirection: "column", gap: 12 }}>
             <span className="fx-card-title">Verilmiş rəylər</span>
             {profile.reviewsGiven.length === 0 ? (
-              <EmptyBlock icon="star" title="Rəy yoxdur" sub="Müştərinin verdiyi rəylər burada görünəcək" bare />
+              <EmptyBlock icon="star" title="Rəy yoxdur" sub="Pasiyentin verdiyi rəylər burada görünəcək" bare />
             ) : (
               profile.reviewsGiven.map((r, i) => (
                 <div key={r.id} style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: i < profile.reviewsGiven.length - 1 ? 12 : 0, borderBottom: i < profile.reviewsGiven.length - 1 ? "1px solid var(--hairline)" : "none" }}>

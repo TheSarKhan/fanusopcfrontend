@@ -402,7 +402,7 @@ export default function UIKitPage() {
                 1,200+
               </div>
               <div style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", fontWeight: 500 }}>
-                Aktiv Müştəri
+                Aktiv Pasiyent
               </div>
             </div>
 

@@ -168,7 +168,7 @@ export default function AdminPaymentsPage() {
 
   const columns: Column<PaymentItem>[] = [
     {
-      key: "patientName", header: "Müştəri",
+      key: "patientName", header: "Pasiyent",
       cell: p => (
         <div style={{ minWidth: 0 }}>
           <div className="fx-row__title">
@@ -253,7 +253,7 @@ export default function AdminPaymentsPage() {
             <SearchInput
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Müştəri adı və ya telefon"
+              placeholder="Pasiyent adı və ya telefon"
               aria-label="Ödəniş axtar"
               autoComplete="off"
             />
@@ -405,7 +405,7 @@ function PaymentDrawer({ payment, onAction }: {
 }) {
   const p = payment;
   const rows: { label: string; value: React.ReactNode }[] = [
-    { label: "Müştəri", value: p.patientName + (p.patientAccountDeleted ? " (silinmiş hesab)" : "") },
+    { label: "Pasiyent", value: p.patientName + (p.patientAccountDeleted ? " (silinmiş hesab)" : "") },
     { label: "Telefon", value: p.patientPhone || "—" },
     { label: "Psixoloq", value: p.psychologistName || "—" },
     { label: "Məbləğ", value: money(p.amount, p.currency) },
@@ -646,7 +646,7 @@ function CreatePaymentModal({ psychologists, onClose, onDone }: {
           {busy ? "Yaradılır…" : "Yarat"}
         </Button>
       </>}>
-      <Field label="Müştəri adı">
+      <Field label="Pasiyent adı">
         <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ad Soyad" />
       </Field>
       <Field label="Telefon">

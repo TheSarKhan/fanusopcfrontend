@@ -131,7 +131,7 @@ export default function PsychologClientsPage() {
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const searchRef = useRef<HTMLDivElement | null>(null);
 
-  // Etiketlər bir dəfə yüklənir — müştəri siyahısı isə server-side səhifələnir.
+  // Etiketlər bir dəfə yüklənir — pasiyent siyahısı isə server-side səhifələnir.
   useEffect(() => {
     psychologistApi.allMyPatientTags()
       .then(ts => {
@@ -163,7 +163,7 @@ export default function PsychologClientsPage() {
         setTotalElements(res.totalElements);
         setPage(0);
       })
-      .catch(e => { if (!cancelled) setError((e as Error).message || "Müştərilər yüklənmədi"); })
+      .catch(e => { if (!cancelled) setError((e as Error).message || "Pasiyentlər yüklənmədi"); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [debouncedSearch, reloadNonce]);
@@ -177,7 +177,7 @@ export default function PsychologClientsPage() {
         setTotalElements(res.totalElements);
         setPage(res.page);
       })
-      .catch(e => setError((e as Error).message || "Müştərilər yüklənmədi"))
+      .catch(e => setError((e as Error).message || "Pasiyentlər yüklənmədi"))
       .finally(() => setLoadingMore(false));
   };
 
@@ -368,7 +368,7 @@ export default function PsychologClientsPage() {
       {/* Yükləmə xətası — səhifə yüklənmədiyi üçün toast deyil, yerində qutu + təkrar cəhd. */}
       {error && (
         <div style={{ marginBottom: 16 }}>
-          <Banner tone="error" title="Müştərilər yüklənmədi">
+          <Banner tone="error" title="Pasiyentlər yüklənmədi">
             {error}
             <div style={{ marginTop: 10 }}>
               <Button variant="ghost" size="sm" onClick={() => setReloadNonce(n => n + 1)}>
@@ -384,11 +384,11 @@ export default function PsychologClientsPage() {
       ) : visible.length === 0 ? (
         <EmptyBlock
           boxed
-          title={hasFilters ? "Bu filtrlərə uyğun müştəri tapılmadı" : t("staff.psyClientsEmpty")}
+          title={hasFilters ? "Bu filtrlərə uyğun pasiyent tapılmadı" : t("staff.psyClientsEmpty")}
           body={
             hasFilters
               ? "Axtarış sözünü qısaldın və ya seçilmiş filtrləri götürün."
-              : "İlk seansınız keçiriləndən sonra müştəriləriniz burada siyahılanacaq."
+              : "İlk seansınız keçiriləndən sonra pasiyentləriniz burada siyahılanacaq."
           }
           actions={hasFilters ? <Button variant="ghost" onClick={clearFilters}>Filtrləri təmizlə</Button> : undefined}
         />

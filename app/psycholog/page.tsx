@@ -177,7 +177,7 @@ export default function PsychologDashboard() {
             />
             <Stat label="Bu həftə" value={stats?.thisWeekTotal ?? 0} meta="planlaşdırılmış seans" />
             <Stat label="Yaxınlaşan" value={stats?.upcomingCount ?? 0} meta="növbəti randevular" />
-            <Stat label="Aktiv müştəri" value={stats?.activeClientsLast90Days ?? 0} meta="son 90 gün" />
+            <Stat label="Aktiv pasiyent" value={stats?.activeClientsLast90Days ?? 0} meta="son 90 gün" />
           </Stats>
 
           {/* ── Əsas şəbəkə: 2 sütun × 2 sətir ─────────────────────────────────
@@ -229,7 +229,7 @@ export default function PsychologDashboard() {
             </Card>
 
             <Card fill>
-              <CardHead title="Müraciətin mənbəyi" sub="Sizi kim seçib — müştəri, yoxsa Fanus" />
+              <CardHead title="Müraciətin mənbəyi" sub="Sizi kim seçib — pasiyent, yoxsa Fanus" />
               <CardBody>
                 <OriginDonut
                   direct={stats?.originDirectCount ?? 0}
@@ -270,7 +270,7 @@ function TodayRow({ a }: { a: AppointmentDetail }) {
           {formatTime(a.startAt)}
         </span>
       }
-      title={a.patientName ?? "Müştəri"}
+      title={a.patientName ?? "Pasiyent"}
       meta={a.endAt ? `${formatTime(a.startAt)} – ${formatTime(a.endAt)}` : "Onlayn seans"}
       status={<SessionStatus status={a.status} />}
     />
@@ -281,7 +281,7 @@ function UpcomingRow({ a }: { a: AppointmentDetail }) {
   return (
     <Link href="/psycholog/appointments" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
       <Row
-        title={a.patientName ?? "Müştəri"}
+        title={a.patientName ?? "Pasiyent"}
         meta={`${formatDayShort(a.startAt)}, ${formatTime(a.startAt)}`}
       />
     </Link>
@@ -311,7 +311,7 @@ function PricingSummaryCard({ pricing, packages }: {
         {active.length === 0 ? (
           <EmptyBlock
             title="Paket təyin edilməyib"
-            body="Paket təklif etsəniz müştərilər bir neçə seansı birlikdə ala bilər. «Qiymətlər & Paketlər» səhifəsindən əlavə edin."
+            body="Paket təklif etsəniz pasiyentlər bir neçə seansı birlikdə ala bilər. «Qiymətlər & Paketlər» səhifəsindən əlavə edin."
             actions={<Link href="/psycholog/packages" className={buttonClass("ghost", { size: "sm" })}>Qiymətlər &amp; Paketlər</Link>}
           />
         ) : (
@@ -381,7 +381,7 @@ function shortDate(iso?: string) {
 }
 
 /* ─── Müraciət mənbəyi (donut) ────────────────────────────────────────────
-   İki kateqoriya: müştəri məhz bu psixoloqu seçib (DIRECT) vs Fanus yönləndirib
+   İki kateqoriya: pasiyent məhz bu psixoloqu seçib (DIRECT) vs Fanus yönləndirib
    (PLATFORM_MATCHED). Rənglər gözlə seçilməyib — brend mavisi + kəhrəba cütü
    CVD validatorundan keçib (ΔE 29.7 protan / 35.8 normal, hamısı PASS).
    Rəqəmlər mətn kimi də verilir (etiketlərdə), yəni məlumat yalnız rəngdə deyil. */
@@ -435,7 +435,7 @@ function OriginDonut({ direct, matched }: { direct: number; matched: number }) {
 
       {/* Birbaşa etiketlər — həm leqend, həm rəqəm. Mətn ink rəngindədir. */}
       <div>
-        <OriginLegendRow color={ORIGIN_COLORS.direct} label="Müştərinin tələbi"
+        <OriginLegendRow color={ORIGIN_COLORS.direct} label="Pasiyentin tələbi"
                          value={direct} pct={pct(direct)} />
         <OriginLegendRow color={ORIGIN_COLORS.matched} label="Fanusun yönləndirməsi"
                          value={matched} pct={pct(matched)} />

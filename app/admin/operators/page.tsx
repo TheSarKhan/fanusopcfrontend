@@ -2,7 +2,7 @@
 
 // Admin · Operatorlar modulu — Fanus UI Kit.
 //  • Operator = OPERATOR rollu User. Cədvəl: server pagination + filtr (status/axtarış) + sort.
-//  • KPI: ümumi/aktiv/deaktiv + aqreqat aktivlik (təyin, müştəri, paket, konvert, cavab, SLA).
+//  • KPI: ümumi/aktiv/deaktiv + aqreqat aktivlik (təyin, pasiyent, paket, konvert, cavab, SLA).
 //  • «Yeni operator» → email/ad/telefon (giriş məlumatları operatora email ilə gedir).
 //  • Sətir → ətraflı Drawer: statistika + əməliyyatlar (aktiv/deaktiv, şifrə reset,
 //    doğrulama emaili, email dəyiş, sessiyaları bağla, sil).
@@ -121,7 +121,7 @@ export default function OperatorsPage() {
       ),
     },
     { key: "assigned30", header: "Təyin (30g)", sortable: true, numeric: true, hideOnMobile: true, cell: (o) => o.assigned30 },
-    { key: "customersCreated", header: "Müştəri", sortable: true, numeric: true, hideOnMobile: true, cell: (o) => o.customersCreated },
+    { key: "customersCreated", header: "Pasiyent", sortable: true, numeric: true, hideOnMobile: true, cell: (o) => o.customersCreated },
     { key: "packagesSold", header: "Paket", sortable: true, numeric: true, hideOnMobile: true, cell: (o) => o.packagesSold },
     { key: "sessionRequestsConverted", header: "Konvert", sortable: true, numeric: true, hideOnMobile: true, cell: (o) => o.sessionRequestsConverted },
     { key: "avgResponseMinutes", header: "Orta cavab", sortable: true, hideOnMobile: true, cell: (o) => fmtMinutes(o.avgResponseMinutes) },
@@ -147,7 +147,7 @@ export default function OperatorsPage() {
         <Stat value={kpi?.active ?? "—"} label="Aktiv" />
         <Stat value={kpi?.inactive ?? "—"} label="Deaktiv" />
         <Stat value={kpi?.assigned30 ?? "—"} label="Təyin (30 gün)" />
-        <Stat value={kpi?.customersCreated ?? "—"} label="Yaradılan müştəri" />
+        <Stat value={kpi?.customersCreated ?? "—"} label="Yaradılan pasiyent" />
         <Stat value={kpi?.packagesSold ?? "—"} label="Satılan paket" />
         <Stat value={kpi?.sessionRequestsConverted ?? "—"} label="Konvert müraciət" />
         <Stat value={kpi ? fmtMinutes(kpi.avgResponseMinutes) : "—"} label="Orta cavab" />
@@ -237,7 +237,7 @@ function OperatorDrawer({ op, onToggleActive, onChanged, onDeleted }: {
           <InfoRow label="Təyin edilən (30 gün)" value={op.assigned30} />
           <InfoRow label="Orta cavab vaxtı" value={fmtMinutes(op.avgResponseMinutes)} />
           <InfoRow label="SLA pozuntusu (30 gün)" value={op.slaViolations30} />
-          <InfoRow label="Yaradılan müştəri" value={op.customersCreated} />
+          <InfoRow label="Yaradılan pasiyent" value={op.customersCreated} />
           <InfoRow label="Satılan paket" value={op.packagesSold} />
           <InfoRow label="Konvert müraciət" value={op.sessionRequestsConverted} />
           <InfoRow label="Son giriş" value={fmtDateTime(op.lastLogin)} />

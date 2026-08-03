@@ -2508,7 +2508,7 @@ export interface PaymentItem {
 export interface AdminPaymentQuery {
   /** Vergüllə ayrılmış status qrupu, məs. "PAID,PARTIALLY_REFUNDED". */
   status?: string;
-  /** Müştəri adı və ya telefonu üzrə axtarış. */
+  /** Pasiyent adı və ya telefonu üzrə axtarış. */
   q?: string;
   /** ISO gün (YYYY-MM-DD) — filtr `ödənilmə, yoxdursa yaranma` tarixi üzrədir. */
   from?: string;
@@ -3582,7 +3582,7 @@ export interface PsychologistStats {
   sessionHoursThisMonth?: number;
   weeklyStreak?: number;
   noShowsLast90Days?: number;
-  /** Müştəri məhz bu psixoloqu seçib (ləğv/rədd istisna). */
+  /** Pasiyent məhz bu psixoloqu seçib (ləğv/rədd istisna). */
   originDirectCount?: number;
   /** Fanus yönləndirib — platforma uyğunlaşdırması. */
   originMatchedCount?: number;
@@ -3961,7 +3961,7 @@ export interface OperatorAppointmentFull {
   pendingRescheduleProposal?: RescheduleProposal | null;
 }
 
-// Modul H — operator müştəri profili + psixoloq statistikası + analitika
+// Modul H — operator pasiyent profili + psixoloq statistikası + analitika
 export interface CustomerProfile {
   history: PatientHistory;
   lastLogin?: string | null;
@@ -3977,7 +3977,7 @@ export interface CustomerProfile {
   reviewsGiven: { id: number; psychologistName?: string | null; rating: number; comment?: string | null; status: string; createdAt?: string | null }[];
   activity: { type: "AUDIT" | "SUPPORT" | "APPOINTMENT" | "TEST"; action?: string | null; summary?: string | null; at: string }[];
 }
-/** Operator müştəri qeydi — zəng/izləmə/müşahidə (Müştəri 360 "Operator qeydləri"). */
+/** Operator pasiyent qeydi — zəng/izləmə/müşahidə (Pasiyent 360 "Operator qeydləri"). */
 export interface CustomerNote {
   id: number;
   text: string;
@@ -4122,7 +4122,7 @@ export const operatorApi = {
   /** "Paketlər" tabı status sayğacları (çiplər). */
   packagesSummary: () =>
     authedRequest<PackageCounts>("GET", "/operator/packages/summary"),
-  /** Müştərilər səhifəsi — son aktiv N pasiyentin randevuları. */
+  /** Pasiyentlər səhifəsi — son aktiv N pasiyentin randevuları. */
   listRecentCustomerAppointments: (patients = 30) =>
     authedRequest<AppointmentDetail[]>("GET", `/operator/appointments/recent-customers?patients=${patients}`),
   // ─── Psixoloqlar arası yönləndirmə təsdiqi ───────────────────────────────

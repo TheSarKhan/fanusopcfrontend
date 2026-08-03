@@ -706,7 +706,7 @@ function PsyHomeworkRow({ h, onOpen, onDelete }: {
           </span>
         )}
         {h.completionNote && (
-          <span style={{ color: "var(--brand-700)" }}>Müştəri qeydi var</span>
+          <span style={{ color: "var(--brand-700)" }}>Pasiyent qeydi var</span>
         )}
       </div>
     </div>

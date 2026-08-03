@@ -462,9 +462,9 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     // ── ÖDƏNİŞ mərhələsi — linkdən ƏVVƏL. Pasiyent ödəməsə link göndərilmir. ──
     if (paymentDue) {
       if (canMarkPaid)
-        return { tone: "action", title: "Müştəri ödəniş etməlidir — ödəniş təsdiqlənəndə link göndərilə bilər.", sub: `Məbləğ: ${a.paymentAmount} ₼`, btnLabel: paying ? "…" : "Ödənildi olaraq işarələ", action: "payMark" };
+        return { tone: "action", title: "Pasiyent ödəniş etməlidir — ödəniş təsdiqlənəndə link göndərilə bilər.", sub: `Məbləğ: ${a.paymentAmount} ₼`, btnLabel: paying ? "…" : "Ödənildi olaraq işarələ", action: "payMark" };
       if (needsAmount)
-        return { tone: "action", title: "Seans məbləğini təyin edin ki, müştəri ödəyə bilsin.", btnLabel: "Məbləği təyin et", action: "paySet" };
+        return { tone: "action", title: "Seans məbləğini təyin edin ki, pasiyent ödəyə bilsin.", btnLabel: "Məbləği təyin et", action: "paySet" };
       return { tone: "action", title: "Ödəniş təsdiqlənməyib — link ödənişdən sonra göndərilir.", btnLabel: "Ödənişlərə bax", action: "payView" };
     }
     if (isAssigned && a.paymentConfirmed && !a.meetingLink && !isFinal)
@@ -504,7 +504,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
 
   // Backend qaydası (OP-FR-04): yalnız toxunulmamış müraciət sərbəst buraxılır.
   // Hovuza qaytarmaq yalnız TƏYİNATDAN ƏVVƏL mümkündür: psixoloq və ya vaxt
-  // təyin edilibsə randevu artıq müştəriyə söz verilib.
+  // təyin edilibsə randevu artıq pasiyentə söz verilib.
   const canReleaseToPool = (a.status === "PENDING" || a.status === "NEW")
     && !a.psychologistId && !a.startAt;
 
@@ -560,7 +560,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
               )}
               {/* Hovuza qaytarmaq YALNIZ heç nə təyin edilməmiş müraciətdə
                   mümkündür. Psixoloq/vaxt təyin ediləndən sonra randevu artıq
-                  müştəriyə söz verilib — belə sətri hovuza atmaq olmaz, ona görə
+                  pasiyentə söz verilib — belə sətri hovuza atmaq olmaz, ona görə
                   düymə tamamilə gizlədilir (Admin təsdiqi yolu da göstərilmir). */}
               {claim?.mine && canReleaseToPool && (
                 <button
@@ -661,7 +661,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
                       <div style={{ minWidth: 0 }}>
                         <div className="fx-num" style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)" }}>{a.paymentAmount} ₼</div>
                         <div className="fx-muted" style={{ fontSize: 12, marginTop: 2 }}>
-                          {a.paymentStatus === "PAID" ? "Ödəniş təsdiqlənib" : "Müştəri ödəməlidir — link ödənişdən sonra göndərilir"}
+                          {a.paymentStatus === "PAID" ? "Ödəniş təsdiqlənib" : "Pasiyent ödəməlidir — link ödənişdən sonra göndərilir"}
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 8, flex: "none", flexWrap: "wrap" }}>
@@ -708,7 +708,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
                   ) : !a.paymentConfirmed ? (
                     <div className="fx-banner fx-banner--warn">
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                      <span>Əvvəlcə ödəniş təsdiqlənməlidir — müştəri ödəyəndən sonra link əlavə oluna və göndərilə bilər.</span>
+                      <span>Əvvəlcə ödəniş təsdiqlənməlidir — pasiyent ödəyəndən sonra link əlavə oluna və göndərilə bilər.</span>
                     </div>
                   ) : (
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
@@ -811,7 +811,7 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
               rows={4}
               value={releaseReason}
               onChange={e => setReleaseReason(e.target.value)}
-              placeholder="Məsələn: müştəri ilə əlaqə qurula bilmir, başqa operatora uyğundur…"
+              placeholder="Məsələn: pasiyent ilə əlaqə qurula bilmir, başqa operatora uyğundur…"
             />
           </label>
         </ModalShell>
@@ -972,9 +972,9 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
       <div className="opd-card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
         <div className="opd-card__title">Müraciət xülasəsi</div>
         <div className="opd-kv"><span className="opd-kv__k">İstənilən vaxt</span><span className="opd-kv__v">{fmtDateTime(a.requestedStartAt)}</span></div>
-        {/* origin=DIRECT → etiketin özü "Müştəri seçdi" olur (badge lazım deyil). */}
+        {/* origin=DIRECT → etiketin özü "Pasiyent seçdi" olur (badge lazım deyil). */}
         <div className="opd-kv">
-          <span className="opd-kv__k">{a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən psixoloq"}</span>
+          <span className="opd-kv__k">{a.origin === "DIRECT" ? "Pasiyent seçdi" : "İstənilən psixoloq"}</span>
           <span className="opd-kv__v" style={{ fontFamily: "inherit" }}>
             {a.psychologistName ?? a.requestedPsychologistName ?? "Fanusa həvalə edilib"}
           </span>
@@ -985,14 +985,14 @@ function ContextZone({ full, phone, t, qs, nowMs, onHistoryChanged }: {
         {a.note && <RequestNote text={a.note} />}
       </div>
 
-      {/* Bu müştərinin digər seansları — cross-appointment kontekst (Son fəaliyyət
+      {/* Bu pasiyentin digər seansları — cross-appointment kontekst (Son fəaliyyət
           yalnız BU müraciətin hadisələridir; əvvəlki seanslar orada görünmür). */}
       {(() => {
         const others = (h?.recent ?? []).filter(r => r.id !== a.id);
         if (others.length === 0) return null;
         return (
           <div className="opd-card" style={{ padding: 16 }}>
-            <div className="opd-card__title" style={{ marginBottom: 10 }}>Müştərinin seansları</div>
+            <div className="opd-card__title" style={{ marginBottom: 10 }}>Pasiyentin seansları</div>
             {others.slice(0, 6).map((r, i, arr) => {
               // İki sətir: üstdə psixoloqun adı, altda boz tarix və rəngli status.
               // Ayırıcı işarə yoxdur — sətir bölgüsü və boşluq ayırır.
@@ -1490,7 +1490,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
     setSinglePrice(prev => (prev.trim() ? prev : String(standardPrice)));
   }, [standardPrice, priceLocked, allowance?.packageName]);
 
-  // Mövcud təyin olunmuş vaxtı (startAt) — varsa — və ya müştərinin istədiyi vaxtı avtomatik göstər.
+  // Mövcud təyin olunmuş vaxtı (startAt) — varsa — və ya pasiyentin istədiyi vaxtı avtomatik göstər.
   // Təyin edilmiş randevuda startAt artıq booked-dur → açıq slotlarda görünmür → manual sahə ilə əks olunur,
   // ona görə yenidən girişdə "Vaxt" özəti boş (seçilməmiş kimi) qalmasın.
   useEffect(() => {
@@ -2030,7 +2030,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
           <>
             {/* Psixoloq seçilməyibsə yalnız AÇIQ SLOTLAR göstərilə bilmir —
                 vaxtın özü əl ilə yazıla bilər. Əvvəl bu hal bütün modalı
-                bloklayırdı və operator müştərinin vaxtını dəyişə bilmirdi. */}
+                bloklayırdı və operator pasiyentin vaxtını dəyişə bilmirdi. */}
             {!psyId && (
               <div className="fx-banner fx-banner--warn" style={{ marginBottom: 12 }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" /></svg>
@@ -2095,7 +2095,7 @@ function AssignBlock({ appointment, suggestions, cold, guardAction, selectRef, o
                           const disabled = atCap && !active;
                           return (
                             <button key={s.startAt} type="button"
-                              title={isRequested ? (proposedStart ? "Təklif olunan vaxt" : "Müştərinin istədiyi vaxt") : disabled ? "Tavan dolub" : undefined}
+                              title={isRequested ? (proposedStart ? "Təklif olunan vaxt" : "Pasiyentin istədiyi vaxt") : disabled ? "Tavan dolub" : undefined}
                               disabled={disabled}
                               onClick={disabled ? undefined : () => toggleSlot(s.startAt)}
                               style={{ position: "relative", padding: "9px 15px", borderRadius: 9, fontSize: 14, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.55 : 1, fontFamily: "inherit",

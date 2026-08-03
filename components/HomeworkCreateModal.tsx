@@ -164,7 +164,7 @@ export default function HomeworkCreateModal({
 
   async function save() {
     if (!canSave) {
-      if (!patientValid) setErr("Müştəri seçin");
+      if (!patientValid) setErr("Pasiyent seçin");
       else if (!titleValid) setErr("Başlıq lazımdır");
       return;
     }
@@ -256,7 +256,7 @@ export default function HomeworkCreateModal({
         <div ref={scrollRef} style={{ overflow: "auto", padding: "22px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
 
           {/* Patient picker */}
-          <Field label="Müştəri" required>
+          <Field label="Pasiyent" required>
             {selectedPatient ? (
               <button onClick={() => setPatientPickerOpen(true)}
                 style={pickerBtnStyle(true)}>

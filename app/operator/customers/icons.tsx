@@ -1,6 +1,6 @@
 import type { ReactNode, SVGProps } from "react";
 
-// Fanus UI Kit ikonları (icons.svg-dən inline) — Müştərilər modulu üçün lokal.
+// Fanus UI Kit ikonları (icons.svg-dən inline) — Pasiyentlər modulu üçün lokal.
 type Spec = { sw?: number; fill?: boolean; body: ReactNode };
 
 const ICONS: Record<string, Spec> = {

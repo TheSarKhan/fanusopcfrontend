@@ -708,7 +708,7 @@ export default function OperatorAppointmentsPage() {
       ) : a.requestedPsychologistName ? (
         <>
           <div style={{ fontSize: 12.5, fontStyle: a.origin === "DIRECT" ? undefined : "italic" }}>{a.requestedPsychologistName}</div>
-          <div className="fx-muted" style={{ fontSize: 11.5 }}>{a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən"}</div>
+          <div className="fx-muted" style={{ fontSize: 11.5 }}>{a.origin === "DIRECT" ? "Pasiyent seçdi" : "İstənilən"}</div>
         </>
       ) : (
         <span className="fx-muted" style={{ fontSize: 12.5, fontStyle: "italic" }}>Təyin olunmayıb</span>
@@ -1731,7 +1731,7 @@ function AppointmentCard({
     );
     assignColor = "var(--oxford)"; assignItalic = false;
   } else if (a.requestedPsychologistName) {
-    assignLabel = a.origin === "DIRECT" ? "Müştəri seçdi" : "İstənilən";
+    assignLabel = a.origin === "DIRECT" ? "Pasiyent seçdi" : "İstənilən";
     assignValue = (
       <span style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
         <span>{a.requestedPsychologistName}</span>

@@ -1,10 +1,10 @@
 "use client";
 
-// Modul H — operator "Müştərilər" direktoriyası (Fanus UI Kit).
+// Modul H — operator "Pasiyentlər" direktoriyası (Fanus UI Kit).
 //  • Axtarış: operatorApi.search → pasiyent hitləri (ad / telefon / email).
-//  • Default: randevulardan törədilən "Son müştərilər" — zəngin sətir
+//  • Default: randevulardan törədilən "Son pasiyentlər" — zəngin sətir
 //    (Son fəaliyyət, paket, psixoloq, gəlmədi nişanı), seqment tabları + sıralama.
-//  • "Yeni müştəri": operatorApi.createPatient → yeni pasiyentin 360° profilinə keçid.
+//  • "Yeni pasiyent": operatorApi.createPatient → yeni pasiyentin 360° profilinə keçid.
 //  • Cədvəl <DataTable>-dır; sıralama və səhifələmə tam siyahı üzərində
 //    aparılır (API sadə massiv qaytarır — client-side səhifələmə).
 
@@ -61,7 +61,7 @@ interface CustomerRow {
 
 const DONE_STATUSES = new Set(["CANCELLED", "REJECTED", "COMPLETED"]);
 
-/** Randevu siyahısından unikal müştəriləri zənginləşdirib son fəaliyyətə görə sıralayır. */
+/** Randevu siyahısından unikal pasiyentləri zənginləşdirib son fəaliyyətə görə sıralayır. */
 function deriveRecent(appts: AppointmentDetail[]): CustomerRow[] {
   const now = Date.now();
   type Acc = {
@@ -153,14 +153,14 @@ export default function OperatorCustomersPage() {
 
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 30); }, []);
 
-  // Default — son aktiv pasiyentlərin randevularından "son müştərilər" siyahısı.
+  // Default — son aktiv pasiyentlərin randevularından "son pasiyentlər" siyahısı.
   useEffect(() => {
     let alive = true;
     setRecent(null);
     setRecentError(null);
     operatorApi.listRecentCustomerAppointments(30)
       .then(a => { if (alive) setRecent(deriveRecent(a)); })
-      .catch(e => { if (alive) { setRecent([]); setRecentError((e as Error).message || "Müştəri siyahısı yüklənmədi."); } });
+      .catch(e => { if (alive) { setRecent([]); setRecentError((e as Error).message || "Pasiyent siyahısı yüklənmədi."); } });
     return () => { alive = false; };
   }, [reloadNonce]);
 
@@ -240,7 +240,7 @@ export default function OperatorCustomersPage() {
 
   const nameColumn: Column<CustomerRow> = {
     key: "name",
-    header: "Müştəri",
+    header: "Pasiyent",
     sortable: !searching,
     cell: r => (
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -294,21 +294,21 @@ export default function OperatorCustomersPage() {
     <div className="panel-page">
       {/* Başlıq */}
       <PageHeader
-        title="Müştərilər"
+        title="Pasiyentlər"
         subtitle="Axtarış, seqment və sətir əməliyyatları üçün direktoriya"
         actions={
           <Button variant="primary" onClick={() => setNewOpen(true)} icon={<Icon name="plus" />}>
-            Yeni müştəri
+            Yeni pasiyent
           </Button>
         }
       />
 
       {/* KPI zolağı */}
       <div className="fx-card fx-card--lg fx-kpi-row" style={{ gridTemplateColumns: "repeat(4,1fr)", marginBottom: 16 }}>
-        <Kpi label="Son müştərilər" value={stats.total} meta="son fəaliyyətə görə" />
+        <Kpi label="Son pasiyentlər" value={stats.total} meta="son fəaliyyətə görə" />
         <Kpi label="Yaxın seansı olan" value={stats.near} meta="qarşıdan gələn" color="var(--sage)" />
         <Kpi label="Diqqət tələb edən" value={stats.attention} meta="gəlmədi nişanlı" color="var(--amber)" />
-        <Kpi label="Paketli" value={stats.packaged} meta="aktiv paketli müştəri" />
+        <Kpi label="Paketli" value={stats.packaged} meta="aktiv paketli pasiyent" />
       </div>
 
       {/* Siyahı kartı */}
@@ -331,7 +331,7 @@ export default function OperatorCustomersPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 20px", flexWrap: "wrap", borderBottom: "1px solid var(--hairline)" }}>
           <div className="fx-search" style={{ flex: 1, minWidth: 240, maxWidth: 380 }}>
             <Icon name="search" />
-            <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} aria-label="Müştəri axtar" placeholder="Ad, telefon və ya email üzrə axtar" autoComplete="off" />
+            <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} aria-label="Pasiyent axtar" placeholder="Ad, telefon və ya email üzrə axtar" autoComplete="off" />
           </div>
           {psychOptions.length > 0 && (
             <select value={psych} onChange={e => setPsych(e.target.value)} aria-label="Psixoloq" className="fx-select fx-select--inline">
@@ -357,9 +357,9 @@ export default function OperatorCustomersPage() {
               title: `«${term}» üçün nəticə yoxdur`,
               body: "Yazılışı yoxlayın və ya başqa açar sözlə cəhd edin.",
             } : {
-              title: tab === "all" ? "Hələ müştəri yoxdur" : "Bu seqmentdə müştəri yoxdur",
-              body: "Yeni müştəri əlavə edin və ya axtarışdan istifadə edin.",
-              actions: <Button variant="primary" size="sm" onClick={() => setNewOpen(true)}>Yeni müştəri</Button>,
+              title: tab === "all" ? "Hələ pasiyent yoxdur" : "Bu seqmentdə pasiyent yoxdur",
+              body: "Yeni pasiyent əlavə edin və ya axtarışdan istifadə edin.",
+              actions: <Button variant="primary" size="sm" onClick={() => setNewOpen(true)}>Yeni pasiyent</Button>,
             }}
             actions={r => (
               <>
@@ -388,7 +388,7 @@ export default function OperatorCustomersPage() {
             }}
             totalLabel={searching
               ? `${allRows.length} nəticə tapıldı`
-              : `${allRows.length} müştəri göstərilir`}
+              : `${allRows.length} pasiyent göstərilir`}
           />
         </div>
       </div>
@@ -409,7 +409,7 @@ function Kpi({ label, value, meta, color }: { label: string; value: number; meta
   );
 }
 
-// ─── Yeni müştəri modalı ─────────────────────────────────────────────────────
+// ─── Yeni pasiyent modalı ─────────────────────────────────────────────────────
 function CreatePatientModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: number) => void }) {
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -429,10 +429,10 @@ function CreatePatientModal({ onClose, onCreated }: { onClose: () => void; onCre
         lastName: lastName.trim() || undefined,
         phone: phone.trim() || undefined,
       });
-      toast("Müştəri yaradıldı", "success");
+      toast("Pasiyent yaradıldı", "success");
       onCreated(r.patientId);
     } catch (e) {
-      toast((e as Error).message || "Müştəri yaradıla bilmədi", "error");
+      toast((e as Error).message || "Pasiyent yaradıla bilmədi", "error");
       setBusy(false);
     }
   };
@@ -441,7 +441,7 @@ function CreatePatientModal({ onClose, onCreated }: { onClose: () => void; onCre
     <div className="fx-overlay fx-overlay--center" onClick={onClose}>
       <div className="fx-modal" onClick={e => e.stopPropagation()}>
         <div className="fx-modal__icon fx-modal__icon--brand"><Icon name="user" className="fx-icon fx-icon--lg" /></div>
-        <h3 className="fx-h3">Yeni müştəri</h3>
+        <h3 className="fx-h3">Yeni pasiyent</h3>
         <div className="fx-modal__text">Email mütləqdir — dəvət oraya göndərilir. Yaradıldıqdan sonra 360° profil açılır.</div>
         <div className="fx-field">
           <label className="fx-label">Email *</label>

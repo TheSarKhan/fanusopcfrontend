@@ -4,7 +4,7 @@
  * Operatorun pasiyent adına randevu yaratması (telefon intake).
  * İki istifadə:
  *   - Randevular səhifəsi: pasiyenti axtar/yarat → psixoloq → (ops.) paket → seans.
- *   - Müştəri 360° profili: {@code presetPatientId} verilir → pasiyent kilidli,
+ *   - Pasiyent 360° profili: {@code presetPatientId} verilir → pasiyent kilidli,
  *     birbaşa psixoloq + (ops.) paket + seans.
  * Paket seçilərsə ilk seans paketdən sərf olunur ({@code patientPackageId}).
  */

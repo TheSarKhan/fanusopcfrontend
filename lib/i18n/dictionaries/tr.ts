@@ -86,13 +86,13 @@ export const tr: typeof az = {
     heroSub: "Size uygun psikoloğu buluyor, online seans düzenliyoruz.",
     heroCta: "Psikolog seç",
     heroSecondaryCta: "Nasıl işliyor",
-    statTotalClients: "Danışan",
+    statTotalClients: "Destek alan",
     statTotalPsychologists: "Psikolog",
     statSessionsCompleted: "Tamamlanan seans",
     sectionPsychologistsTitle: "Önerilen psikologlar",
     sectionPsychologistsSub: "Sertifikalı ve uzman profesyoneller",
     sectionFaqTitle: "Sıkça sorulan sorular",
-    sectionTestimonialsTitle: "Danışan yorumları",
+    sectionTestimonialsTitle: "Destek alanların yorumları",
   },
 
   footer: {
@@ -464,8 +464,8 @@ export const tr: typeof az = {
   },
 
   test: {
-    eyebrow: "Danışan yorumları",
-    title: "Danışanlarımız ne diyor",
+    eyebrow: "Destek alanların yorumları",
+    title: "Destek alanlar ne diyor",
     sub: "İsimler gizlilik için değiştirilmiştir.",
   },
 
@@ -895,7 +895,7 @@ export const tr: typeof az = {
     markPaid: "Ödendi",
     paid: "Ödenmiş",
     amount: "Tutar",
-    patient: "Danışan",
+    patient: "Kullanıcı",
     method: "Yöntem",
     date: "Tarih",
     noPayments: "Bekleyen ödeme yok",
@@ -973,7 +973,7 @@ export const tr: typeof az = {
     sessionType: "Seans türü",
     duration: "Süre",
     minutes: "{n} dk",
-    clientReviews: "Danışan yorumları",
+    clientReviews: "Destek alanların yorumları",
     authorArticles: "Yazarın makaleleri",
     articleCount: "{n} makale",
     noArticlesTitle: "Henüz yayımlanmış makale yok",
@@ -1186,11 +1186,11 @@ export const tr: typeof az = {
   },
 
   regPage: {
-    rolePatient: "Danışan",
+    rolePatient: "Destek al",
     rolePatientDesc: "Psikolojik destek almak istiyorum",
     rolePsy: "Psikolog",
     rolePsyDesc: "Platform üzerinden danışan kabul etmek istiyorum",
-    patientTitle: "Danışan kaydı",
+    patientTitle: "Kayıt",
     patientSub: "Hesabınızı birkaç saniyede oluşturun",
     psyTitle: "Psikolog kaydı",
     psySub: "Profilinizi oluşturun — ekibimiz inceledikten sonra etkinleşecek",
@@ -2118,7 +2118,7 @@ export const tr: typeof az = {
 
   // ── Rol adları (backend kodları) ──────────────────────────────────────
   roleLabel: {
-    PATIENT: "Danışan",
+    PATIENT: "Kullanıcı",
     PSYCHOLOGIST: "Psikolog",
     OPERATOR: "Operatör",
     ADMIN: "Yönetici",
@@ -2248,6 +2248,7 @@ export const tr: typeof az = {
     noLabels: "Henüz etiket yok",
     emptyPalette: "Etiket paletiniz boş. Ödevler sayfasından etiket oluşturun.",
     metaClient: "Danışan",
+    actorPatient: "Danışan",
     metaClientNote: "Danışan notu",
   },
 

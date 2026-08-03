@@ -512,7 +512,7 @@ function PrimaryAction({ a, busy, h }: { a: AppointmentDetail; busy: boolean; h:
    Sıralama hər statusda eynidir ki, psixoloq axtarmasın:
      1) seansı idarə et (vaxt dəyişikliyi tələbi)
      2) seansdan sonrakı işlər (qeyd, baş tutmadı)
-     3) kontekst (müştəri 360°, təqvimə əlavə)
+     3) kontekst (pasiyent 360°, təqvimə əlavə)
      4) dağıdıcı (ləğv / rədd) — RowMenu bunları ayırıcı xəttdən sonra göstərir. */
 function buildMenu(a: AppointmentDetail, h: Handlers, now: Date): MenuItem[] {
   const ico = "#5C6B85";
@@ -541,7 +541,7 @@ function buildMenu(a: AppointmentDetail, h: Handlers, now: Date): MenuItem[] {
   }
 
   // 3) Kontekst
-  if (a.patientId) m.push({ label: "Müştəri 360°", href: `/psycholog/clients/${a.patientId}`, icon: <IUser s={15} c={ico} /> });
+  if (a.patientId) m.push({ label: "Pasiyent 360°", href: `/psycholog/clients/${a.patientId}`, icon: <IUser s={15} c={ico} /> });
   const gcal = gcalHrefFor(a);
   if (gcal && (a.status === "ASSIGNED" || a.status === "CONFIRMED")) {
     m.push({ label: "Google Calendar-a əlavə et", href: gcal, icon: <ICal s={15} c={ico} /> });
@@ -733,10 +733,10 @@ function SessionDetailModal({
             </div>
           )}
 
-          {/* Müştəri konteksti — qeyd sayı, son klinik qeyd, əhval */}
+          {/* Pasiyent konteksti — qeyd sayı, son klinik qeyd, əhval */}
           {(client || note) && (
             <div>
-              <div style={labelStyle}>Müştəri konteksti</div>
+              <div style={labelStyle}>Pasiyent konteksti</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 7, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 13px" }}>
                 {client && (
                   <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 10 }}>
@@ -822,7 +822,7 @@ function PatientPackagesCard({ group, now, busyId, h }: {
         {group.patientId != null && (
           <Link href={`/psycholog/clients/${group.patientId}`} className="gor-link" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, textDecoration: "none", flex: "none" }}>
             <IUser s={14} />
-            Müştəri 360°
+            Pasiyent 360°
           </Link>
         )}
       </div>

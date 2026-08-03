@@ -278,7 +278,7 @@ export default function OperatorDashboard() {
                 <SectionLabel>Sürətli əməliyyatlar</SectionLabel>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
                   <Quick href="/operator/pool" title="Müraciət sırası" sub="sahibsiz müraciətlər" icon={<Ico d={I_INBOX} w={18} />} />
-                  <Quick href="/operator/customers" title="Müştərilər" sub="pasiyent axtar" icon={<Ico d={I_USERS} w={18} />} />
+                  <Quick href="/operator/customers" title="Pasiyentlər" sub="pasiyent axtar" icon={<Ico d={I_USERS} w={18} />} />
                   <Quick href="/operator/payments" title="Ödənişlər" sub="təsdiq / qaytarma" icon={<Ico d={I_CARD} w={18} />} />
                   <Quick href="/operator/meeting-links" title="Görüş linkləri" sub="link göndər" icon={<Ico d={I_VIDEO} w={18} />} />
                 </div>

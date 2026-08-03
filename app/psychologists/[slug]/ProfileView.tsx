@@ -239,7 +239,7 @@ export default function ProfileView({
               </Block>
             )}
 
-            {/* Müştəri rəyləri */}
+            {/* Pasiyent rəyləri */}
             <Block icon={<StarIcon size={18} />} title={t("psyProfile.clientReviews")}>
               <CompactReviews reviews={reviews} summary={reviewSummary} t={t} />
             </Block>

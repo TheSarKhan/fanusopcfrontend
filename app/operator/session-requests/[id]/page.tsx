@@ -122,7 +122,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
   // Seans qiyməti — psixoloq seçiləndə onun standart qiyməti (individualPrice) ilə öndoldurulur,
   // operator dəyişə bilər. Boş buraxılsa backend individualPrice-a (o da yoxdursa 0-a) düşür.
   const [convertPrice, setConvertPrice] = useState("");
-  // Psixoloqun boş saatları — randevu alarkən istifadə olunan eyni slot-seçici (Müştərilər/Paket
+  // Psixoloqun boş saatları — randevu alarkən istifadə olunan eyni slot-seçici (Pasiyentlər/Paket
   // axınları ilə eyni nümunə): psixoloq seçiləndə yaxın 3 həftənin boş vaxtları göstərilir.
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -450,7 +450,7 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
                     {req.convertedPatientId && (
                       <button type="button" className="fx-btn fx-btn--ghost" style={{ borderColor: "rgba(74,155,127,.35)", color: "#2E6B54" }}
                         onClick={() => router.push(`/operator/customers/${req.convertedPatientId}`)}>
-                        Müştəri profilinə bax
+                        Pasiyent profilinə bax
                       </button>
                     )}
                   </div>
@@ -862,7 +862,7 @@ function CancelReasonModal({ busy, onClose, onConfirm }: {
           Ləğv səbəbini yazın — bu qeyd müraciətin tarixçəsində saxlanılır. Sonra “Bərpa et” ilə geri qaytara bilərsiniz.
         </p>
         <textarea className="fx-textarea" rows={3} autoFocus value={reason} onChange={e => setReason(e.target.value)}
-          placeholder="Məsələn: Əlaqə saxlanılmadı, müştəri imtina etdi, uyğun vaxt tapılmadı..." />
+          placeholder="Məsələn: Əlaqə saxlanılmadı, pasiyent imtina etdi, uyğun vaxt tapılmadı..." />
         <div className="fx-modal__actions">
           <button type="button" onClick={onClose} disabled={busy} className="fx-btn fx-btn--ghost">
             Vaz keç

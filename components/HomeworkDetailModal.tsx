@@ -39,7 +39,9 @@ function actionLabel(t: Translate, action: string) {
 
 /** Backend rol kodu → görünən ad (yalnız bu modalın iki rolu üçün). */
 function roleName(t: Translate, role: string | null | undefined) {
-  return role === "PSYCHOLOGIST" ? t("roleLabel.PSYCHOLOGIST") : t("roleLabel.PATIENT");
+  // Jurnal psixoloqun gözü ilə oxunur: burada «Pasiyent» yazılır.
+  // roleLabel.PATIENT isə istifadəçinin ÖZ profilində göründüyü üçün «İstifadəçi»dir.
+  return role === "PSYCHOLOGIST" ? t("roleLabel.PSYCHOLOGIST") : t("hwModal.actorPatient");
 }
 
 interface Props {

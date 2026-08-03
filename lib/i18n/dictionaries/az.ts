@@ -60,7 +60,7 @@ export const az = {
     notifications: "Bildirişlər",
     profile: "Profil",
     dashboard: "Ümumi baxış",
-    clients: "Müştərilər",
+    clients: "Pasiyentlər",
     calendar: "Cədvəl",
     homework: "Tapşırıqlar",
     articles: "Məqalələrim",
@@ -93,13 +93,13 @@ export const az = {
     heroSub: "Sizə uyğun psixoloqu tapırıq, onlayn seans təşkil edirik.",
     heroCta: "Psixoloq seç",
     heroSecondaryCta: "Necə işləyir",
-    statTotalClients: "Müştəri",
+    statTotalClients: "Dəstək alan",
     statTotalPsychologists: "Psixoloq",
     statSessionsCompleted: "Tamamlanmış seans",
     sectionPsychologistsTitle: "Tövsiyə olunan psixoloqlar",
     sectionPsychologistsSub: "Sertifikatlı və ixtisaslı mütəxəssislər",
     sectionFaqTitle: "Tez-tez verilən suallar",
-    sectionTestimonialsTitle: "Müştəri rəyləri",
+    sectionTestimonialsTitle: "Dəstək alanların rəyləri",
   },
 
   footer: {
@@ -471,8 +471,8 @@ export const az = {
   },
 
   test: {
-    eyebrow: "Müştəri rəyləri",
-    title: "Müştərilərimiz nə deyir",
+    eyebrow: "Dəstək alanların rəyləri",
+    title: "Dəstək alanlar nə deyir",
     sub: "Adlar məxfilik üçün dəyişdirilib.",
   },
 
@@ -623,7 +623,7 @@ export const az = {
   staff: {
     // Operator dashboard
     opDashTitle: "Operator paneli",
-    opDashSub: "Triyaj sırası, KPI-lar və müştəri hərəkəti",
+    opDashSub: "Triyaj sırası, KPI-lar və pasiyent hərəkəti",
     opPendingTitle: "Yeni müraciətlər",
     opActiveTitle: "Aktiv randevular",
     opDisputedTitle: "Mübahisəli",
@@ -719,10 +719,10 @@ export const az = {
     psySectionHistory: "Tarixçə",
 
     // Psy clients
-    psyClientsTitle: "Müştərilər",
-    psyClientsSub: "Hər müştəriyə dair gizli qeydləri buradan idarə edin",
-    psyClientsEmpty: "Hələ müştəriniz yoxdur.",
-    psyClientsFilterAll: "Cəmi müştəri",
+    psyClientsTitle: "Pasiyentlər",
+    psyClientsSub: "Hər pasiyentə dair gizli qeydləri buradan idarə edin",
+    psyClientsEmpty: "Hələ pasiyentiniz yoxdur.",
+    psyClientsFilterAll: "Cəmi pasiyent",
     psyClientsFilterActive: "Aktiv",
     psyClientsFilterDormant: "Passiv",
     psyClientsFilterFlagged: "İşarələnmiş",
@@ -763,7 +763,7 @@ export const az = {
 
     // Psy extra pages
     psyHomeworkTitle: "Tapşırıqlar",
-    psyHomeworkSub: "Müştərilərinizə verdiyiniz tapşırıqları idarə edin",
+    psyHomeworkSub: "Pasiyentlərinizə verdiyiniz tapşırıqları idarə edin",
     psyHomeworkNew: "+ Yeni tapşırıq",
     psyHomeworkEmpty: "Hələ tapşırıq verməmisiniz",
     psyCalendarTitle: "Cədvəl",
@@ -903,7 +903,7 @@ export const az = {
     markPaid: "Ödənildi",
     paid: "Ödənilib",
     amount: "Məbləğ",
-    patient: "Pasiyent",
+    patient: "İstifadəçi",
     method: "Üsul",
     date: "Tarix",
     noPayments: "Gözləyən ödəniş yoxdur",
@@ -985,7 +985,7 @@ export const az = {
     sessionType: "Seans tipi",
     duration: "Müddət",
     minutes: "{n} dəq",
-    clientReviews: "Müştəri rəyləri",
+    clientReviews: "Dəstək alanların rəyləri",
     authorArticles: "Müəllifin məqalələri",
     articleCount: "{n} məqalə",
     noArticlesTitle: "Hələ dərc edilmiş məqalə yoxdur",
@@ -1206,11 +1206,11 @@ export const az = {
 
   // ── Qeydiyyat səhifəsi ────────────────────────────────────────────────
   regPage: {
-    rolePatient: "Müştəri",
+    rolePatient: "Dəstək al",
     rolePatientDesc: "Psixoloji dəstək almaq istəyirəm",
     rolePsy: "Psixoloq",
-    rolePsyDesc: "Platforma üzərindən müştəri qəbul etmək istəyirəm",
-    patientTitle: "Müştəri qeydiyyatı",
+    rolePsyDesc: "Platforma üzərindən pasiyent qəbul etmək istəyirəm",
+    patientTitle: "Qeydiyyat",
     patientSub: "Bir neçə saniyəyə hesabınızı yaradın",
     psyTitle: "Psixoloq qeydiyyatı",
     psySub: "Profilinizi yaradın — komandamız yoxladıqdan sonra aktivləşəcək",
@@ -1221,7 +1221,7 @@ export const az = {
     panelPatientTrust3: "Peşəkar dəstək",
     panelPsyTitle: "Platformamıza qoşulun",
     panelPsySub: "Azərbaycanda psixoloji yardımı əlçatan etmək missiyasında bizimlə olun.",
-    panelPsyTrust1: "Geniş müştəri bazası",
+    panelPsyTrust1: "Geniş pasiyent bazası",
     panelPsyTrust2: "Çevik iş qrafiki",
     panelPsyTrust3: "Peşəkar dəstək komandası",
     emailSentTitle: "Email göndərildi!",
@@ -1277,8 +1277,8 @@ export const az = {
     specsHint: "Bu seçim profilinizdə göstərilir və ana səhifədəki «Bu gün özünüzü necə hiss edirsiniz?» bölməsində sizi kimə tövsiyə edəcəyimizi müəyyən edir.",
     sessionTypes: "Seans növləri (opsional)",
     bioLabel: "Özünüz haqqında — bio ({n}/1000)",
-    bioHint: "100-1000 simvol — müştərilər görəcək",
-    bioPh: "Yanaşmanız, metodlarınız, müştərilərinizə nə vəd edirsiniz...",
+    bioHint: "100-1000 simvol — pasiyentlər görəcək",
+    bioPh: "Yanaşmanız, metodlarınız, pasiyentlərinizə nə vəd edirsiniz...",
     motivation: "Motivasiya / yanaşma (opsional)",
     certIntro: "Sertifikat və seminarlar opsionaldır, lakin profilinizi gücləndirir.",
     certificate: "Sertifikat",
@@ -2146,7 +2146,7 @@ export const az = {
 
   // ── Rol adları (backend kodları) ──────────────────────────────────────
   roleLabel: {
-    PATIENT: "Pasiyent",
+    PATIENT: "İstifadəçi",
     PSYCHOLOGIST: "Psixoloq",
     OPERATOR: "Operator",
     ADMIN: "Administrator",
@@ -2275,8 +2275,9 @@ export const az = {
     metaLabels: "Etiketlər",
     noLabels: "Heç bir etiket yoxdur",
     emptyPalette: "Etiket paletiniz boşdur. Tapşırıqlar səhifəsindən etiket yaradın.",
-    metaClient: "Müştəri",
-    metaClientNote: "Müştəri qeydi",
+    metaClient: "Pasiyent",
+    actorPatient: "Pasiyent",
+    metaClientNote: "Pasiyent qeydi",
   },
 
   // ── Tapşırıq aktivlik jurnalı (backend kodları) ───────────────────────

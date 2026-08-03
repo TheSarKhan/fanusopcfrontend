@@ -116,7 +116,7 @@ export default function PsychologPackagesPage() {
 
   // Xüsusi satış cədvəli — paket kartları ilə eyni məlumatı, sətir formasında.
   const customColumns: Column<CustomPackageSale>[] = [
-    { key: "patient", header: "Müştəri", cell: r => r.patientName },
+    { key: "patient", header: "Pasiyent", cell: r => r.patientName },
     { key: "name", header: "Paket", cell: r => r.packageName },
     {
       key: "progress",
@@ -154,7 +154,7 @@ export default function PsychologPackagesPage() {
   const earningColumns: Column<PsychologistEarningRow>[] = [
     {
       key: "patient",
-      header: "Müştəri",
+      header: "Pasiyent",
       cell: r => r.patientName ?? "—",
     },
     {
@@ -173,7 +173,7 @@ export default function PsychologPackagesPage() {
     },
     {
       key: "amount",
-      header: "Müştəri ödəyib",
+      header: "Pasiyent ödəyib",
       numeric: true,
       sortable: true,
       sortValue: r => r.amount,
@@ -360,7 +360,7 @@ function PlatformShareModal({ data, columns, onClose }: {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>Platforma payı</div>
             <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--oxford-60)", marginTop: 2 }}>
-              Müştərinin ödədiyi qiymət dəyişmir — pay yalnız sizə keçən məbləğdən tutulur.
+              Pasiyentin ödədiyi qiymət dəyişmir — pay yalnız sizə keçən məbləğdən tutulur.
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Bağla"
@@ -371,14 +371,14 @@ function PlatformShareModal({ data, columns, onClose }: {
 
         <div style={{ padding: "18px 22px 22px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(160px, 100%), 1fr))", gap: 13, marginBottom: 16 }}>
-            <MiniStat label="Müştərilərin ödədiyi" value={formatAzn(data.grossTotal)} />
+            <MiniStat label="Pasiyentlərin ödədiyi" value={formatAzn(data.grossTotal)} />
             <MiniStat label="Platforma payı" value={formatAzn(data.commissionTotal)} />
             <MiniStat label="Qazancınız" value={formatAzn(data.netTotal)} color="#082F6D" />
             <MiniStat label="Ödənilməmiş qalıq" value={formatAzn(data.balance)} />
           </div>
 
           <div style={{ display: "grid", gap: 6, background: "#F6FAFF", border: "1px solid #E9F1FC", borderRadius: 12, padding: "13px 16px", fontSize: 12.5, fontWeight: 500, color: "var(--oxford-60)", lineHeight: 1.6, marginBottom: 18 }}>
-            <div>Müştəri sizi özü seçəndə tutulan pay: <b style={{ color: "var(--oxford)" }}>{pct(data.directCommissionPercent)}</b></div>
+            <div>Pasiyent sizi özü seçəndə tutulan pay: <b style={{ color: "var(--oxford)" }}>{pct(data.directCommissionPercent)}</b></div>
             <div>Fanus sizi təyin edəndə tutulan pay: <b style={{ color: "var(--oxford)" }}>{pct(data.currentCommissionPercent)}</b></div>
             <div>Faiz ödəniş təsdiqlənən anda möhürlənir — qayda sonradan dəyişsə, keçmiş ödənişlər toxunulmaz qalır.</div>
             <div>Cəmlərə yalnız təsdiqlənmiş ödənişlər daxildir. Artıq ödənilib: <b style={{ color: "var(--oxford)" }}>{formatAzn(data.paidOut)}</b></div>

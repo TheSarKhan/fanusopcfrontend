@@ -485,7 +485,7 @@ export function OutcomeModal({
               </label>
               <textarea
                 rows={6} value={body} onChange={e => setBody(e.target.value)}
-                placeholder="İşlənən mövzu, müştəri reaksiyası, gələcək plan…"
+                placeholder="İşlənən mövzu, pasiyent reaksiyası, gələcək plan…"
                 autoFocus
                 style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box", resize: "vertical" }} />
 

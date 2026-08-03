@@ -319,7 +319,7 @@ export default function PatientAppointmentsPage() {
 
   // Bu randevunun pasiyentin həmin psixoloqla keçirdiyi seanslar arasındakı
   // xronoloji sıra nömrəsi (1-dən). Yalnız pasiyentin ÖZ randevuları (myAppointments)
-  // üzərindən hesablanır — psixoloqun digər müştərilərlə seansları daxil deyil.
+  // üzərindən hesablanır — psixoloqun digər pasiyentlərlə seansları daxil deyil.
   // Ləğv/rədd olunmuş və hələ təyin olunmamış (PENDING) müraciətlər seans sayılmır.
   const SESSION_RANK_EXCLUDE = new Set(["CANCELLED", "REJECTED", "PENDING"]);
   const sessionOrdinalFor = (appt: AppointmentDetail): number | null => {

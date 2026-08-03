@@ -4,7 +4,7 @@
 // Psixoloq seans tarixçəsi — tamamlanmış / ləğv edilmiş / rədd edilmiş
 // seansların tam siyahısı, ardıcıl kart grid-i. Əsas randevu səhifəsindəki
 // "Tarixçə" düyməsindən açılır. Buradan seans qeydi yazmaq, yaxın keçmişdəki
-// seansı "baş tutmadı" kimi bildirmək və Müştəri 360° səhifəsinə keçmək olur.
+// seansı "baş tutmadı" kimi bildirmək və Pasiyent 360° səhifəsinə keçmək olur.
 // ============================================================================
 
 import Link from "next/link";
@@ -223,7 +223,7 @@ function HistoryCard({
 
   const menu: MenuItem[] = [];
   if (reportableNoShow) menu.push({ label: "Baş tutmadı", onClick: onDispute, icon: <IAlert s={15} c="#5C6B85" /> });
-  if (a.patientId) menu.push({ label: "Müştəri 360°", href: `/psycholog/clients/${a.patientId}`, icon: <IUser /> });
+  if (a.patientId) menu.push({ label: "Pasiyent 360°", href: `/psycholog/clients/${a.patientId}`, icon: <IUser /> });
 
   return (
     <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "14px 16px", display: "flex", flexDirection: "column" }}>

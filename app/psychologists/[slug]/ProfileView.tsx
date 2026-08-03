@@ -6,7 +6,12 @@
  * render var ki, `useT()` (klient hook) ilə dörd dilə tərcümə oluna bilsin.
  */
 
-import type { BlogPost, Psychologist, PublicReview, ReviewSummary } from "@/lib/api";
+import { useEffect, useState } from "react";
+import {
+  getPsychologistReviews,
+  getPsychologistReviewSummary,
+  type BlogPost, type Psychologist, type PublicReview, type ReviewSummary,
+} from "@/lib/api";
 import BookingCta from "./BookingCta";
 import Breadcrumb from "@/components/Breadcrumb";
 import ViewTracker from "@/components/ViewTracker";
@@ -58,13 +63,34 @@ export default function ProfileView({
   posts,
   reviews,
   reviewSummary,
+  reviewsDegraded = false,
 }: {
   psychologist: Psychologist;
   posts: BlogPost[];
   reviews: PublicReview[];
   reviewSummary: ReviewSummary;
+  /** Server render zamanı rəy sorğuları uğursuz olub — brauzerdən yenidən yüklə. */
+  reviewsDegraded?: boolean;
 }) {
   const { t } = useT();
+
+  // Özünübərpa: SSR-də backend rəy sorğusuna cavab verməyibsə (freeze/502 anı),
+  // boş "Rəy yoxdur" vəziyyətində qalmayaq — brauzer öz tərəfindən yükləyir.
+  const [liveReviews, setLiveReviews] = useState<PublicReview[]>(reviews);
+  const [liveSummary, setLiveSummary] = useState<ReviewSummary>(reviewSummary);
+  useEffect(() => {
+    if (!reviewsDegraded) return;
+    let alive = true;
+    Promise.all([
+      getPsychologistReviews(psychologist.id),
+      getPsychologistReviewSummary(psychologist.id),
+    ]).then(([r, s]) => {
+      if (!alive) return;
+      setLiveReviews(r);
+      setLiveSummary(s);
+    }).catch(() => { /* backend hələ də cavabsızdırsa, mövcud boş vəziyyət qalır */ });
+    return () => { alive = false; };
+  }, [reviewsDegraded, psychologist.id]);
 
   const hasPhoto = !!psychologist.photoUrl?.trim();
   const initials = getInitials(psychologist.name);
@@ -241,7 +267,7 @@ export default function ProfileView({
 
             {/* Pasiyent rəyləri */}
             <Block icon={<StarIcon size={18} />} title={t("psyProfile.clientReviews")}>
-              <CompactReviews reviews={reviews} summary={reviewSummary} t={t} />
+              <CompactReviews reviews={liveReviews} summary={liveSummary} t={t} />
             </Block>
 
             {/* Müəllifin məqalələri */}

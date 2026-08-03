@@ -67,12 +67,17 @@ export default async function PsychologistProfilePage(
     redirect(`/psychologists/${psychologist.slug}`);
   }
 
+  // Rəy sorğuları backend səksəkəsində (freeze/502) sakitcə boş qayıtmasın:
+  // uğursuzluğu qeyd edirik və ProfileView brauzerdən yenidən yükləyir.
+  // Əks halda səhifə "Rəy yoxdur" kimi görünür və yalnız refresh-dən sonra düzəlirdi.
+  let reviewsDegraded = false;
   const [allPosts, reviews, reviewSummary] = await Promise.all([
     getBlogPosts().catch(() => []),
-    getPsychologistReviews(psychologist.id).catch(() => [] as PublicReview[]),
-    getPsychologistReviewSummary(psychologist.id).catch(
-      () => ({ total: 0, average: 0, distribution: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 } } as ReviewSummary)
-    ),
+    getPsychologistReviews(psychologist.id).catch(() => { reviewsDegraded = true; return [] as PublicReview[]; }),
+    getPsychologistReviewSummary(psychologist.id).catch(() => {
+      reviewsDegraded = true;
+      return { total: 0, average: 0, distribution: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 } } as ReviewSummary;
+    }),
   ]);
 
   const posts = allPosts.filter(
@@ -85,6 +90,7 @@ export default async function PsychologistProfilePage(
       posts={posts}
       reviews={reviews}
       reviewSummary={reviewSummary}
+      reviewsDegraded={reviewsDegraded}
     />
   );
 }

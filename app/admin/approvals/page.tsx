@@ -240,12 +240,20 @@ function DecisionModal({ row, approve, onClose, onDone }: {
   const submit = async () => {
     setBusy(true);
     try {
-      await adminApi.decideApproval(row.kind, row.id, approve, note.trim() || undefined);
-      toast(
-        isDeletion
-          ? (approve ? "Hesab silindi — data saxlanılır, bərpa mümkündür" : "Silinmə istəyi rədd edildi")
-          : (approve ? "Təsdiqləndi və icra olundu" : "Rədd edildi"),
-        "success");
+      const res = await adminApi.decideApproval(row.kind, row.id, approve, note.trim() || undefined);
+      // Köhnəlmiş tələb: hədəf (məs. ödəniş) artıq başqa bölmədən emal olunubsa,
+      // backend icra etmədən tələbi avtomatik bağlayıb REJECTED qaytarır —
+      // bu halda "Təsdiqləndi və icra olundu" demək yanlış olardı.
+      const closed = res as { status?: string; decisionNote?: string } | null;
+      if (approve && closed && typeof closed === "object" && closed.status === "REJECTED") {
+        toast(closed.decisionNote || "Əməliyyat artıq başqa bölmədən icra olunub — tələb bağlandı", "info");
+      } else {
+        toast(
+          isDeletion
+            ? (approve ? "Hesab silindi — data saxlanılır, bərpa mümkündür" : "Silinmə istəyi rədd edildi")
+            : (approve ? "Təsdiqləndi və icra olundu" : "Rədd edildi"),
+          "success");
+      }
       onDone();
     } catch (e) { toast((e as Error).message, "error"); setBusy(false); }
   };

@@ -142,6 +142,8 @@ function PatientForm({ onBack }: { onBack: () => void }) {
   // hədəf itməsin deyə `next` uğur ekranındakı giriş linkinə ötürülür.
   const nextParam = useSearchParams().get("next");
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", emergencyContactName: "", emergencyContactPhone: "", emergencyContactRelation: "", residentialAddress: "", password: "", confirmPassword: "" });
+  // İstifadə qaydalarının qəbulu (bax /terms): ilk ikisi məcburidir, marketinq opsionaldır.
+  const [consents, setConsents] = useState({ terms: false, health: false, marketing: false });
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -155,9 +157,10 @@ function PatientForm({ onBack }: { onBack: () => void }) {
     if (form.password.length < 8 || !/[A-Z]/.test(form.password) || !/[a-z]/.test(form.password) || !/[0-9]/.test(form.password))
       return setError(t("auth.passwordWeak"));
     if (form.password !== form.confirmPassword) return setError(t("regPage.passwordsMismatch"));
+    if (!consents.terms || !consents.health) return setError(t("regPage.errPatientConsents"));
     setLoading(true); setError("");
     try {
-      await registerPatient({ email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName, phone: form.phone || undefined, emergencyContactName: form.emergencyContactName || undefined, emergencyContactPhone: form.emergencyContactPhone || undefined, emergencyContactRelation: form.emergencyContactRelation || undefined, residentialAddress: form.residentialAddress || undefined });
+      await registerPatient({ email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName, phone: form.phone || undefined, emergencyContactName: form.emergencyContactName || undefined, emergencyContactPhone: form.emergencyContactPhone || undefined, emergencyContactRelation: form.emergencyContactRelation || undefined, residentialAddress: form.residentialAddress || undefined, consentTerms: consents.terms, consentHealthData: consents.health, consentMarketing: consents.marketing });
       setSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("regPage.registerFailed"));
@@ -219,6 +222,20 @@ function PatientForm({ onBack }: { onBack: () => void }) {
           <button type="button" className="auth-eye" onClick={() => setShowConfirm(v => !v)}><EyeIcon open={showConfirm} /></button>
         </div>
       </Field>
+      {/* İstifadə qaydalarının qəbulu — qeydiyyat üçün məcburi razılıqlar */}
+      <div style={{ background: "#F9FAFB", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+        <strong style={{ fontSize: 13, color: "var(--oxford)" }}>{t("regPage.consentsTitle")}</strong>
+        <ConsentRow checked={consents.terms} onChange={v => setConsents(c => ({ ...c, terms: v }))}
+          label={t("regPage.patientConsentTerms")} />
+        <ConsentRow checked={consents.health} onChange={v => setConsents(c => ({ ...c, health: v }))}
+          label={t("regPage.patientConsentHealth")} />
+        <ConsentRow checked={consents.marketing} onChange={v => setConsents(c => ({ ...c, marketing: v }))}
+          label={t("regPage.patientConsentMarketing")} />
+        <Link href="/terms" target="_blank" style={{ fontSize: 12.5, fontWeight: 700, color: "#1051B7", textDecoration: "none" }}>
+          {t("regPage.readTermsLink")} →
+        </Link>
+      </div>
+
       {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>{error}</div>}
       <div style={{ display: "flex", gap: 10 }}>
         <button type="button" onClick={onBack} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← {t("regPage.backStep")}</button>
@@ -724,6 +741,9 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
               label={t("regPage.consentGdpr")} />
             <ConsentRow checked={consents.terms} onChange={v => setConsents(c => ({ ...c, terms: v }))}
               label={t("regPage.consentTerms")} />
+            <Link href="/terms#mutexessisler" target="_blank" style={{ fontSize: 12.5, fontWeight: 700, color: "#1051B7", textDecoration: "none" }}>
+              {t("regPage.readTermsLink")} →
+            </Link>
           </div>
 
           {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>{error}</div>}

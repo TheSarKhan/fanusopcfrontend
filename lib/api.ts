@@ -1001,6 +1001,10 @@ export const registerPatient = (data: {
   emergencyContactPhone?: string;
   emergencyContactRelation?: string;
   residentialAddress?: string;
+  // İstifadə qaydalarının qəbulu (bax /terms) — ilk ikisi məcburidir.
+  consentTerms?: boolean;
+  consentHealthData?: boolean;
+  consentMarketing?: boolean;
 }) => trackedFetch(`${BASE}/auth/register/patient`, {
   method: "POST",
   credentials: "include",

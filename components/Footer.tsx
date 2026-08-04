@@ -94,6 +94,14 @@ export default function Footer() {
         </div>
       </div>
 
+      {/* Böhran xəbərdarlığı — Fanus təcili yardım xidməti deyil (112 / 103). */}
+      <div className="fanus-ftr__crisis" role="note">
+        <div className="fanus-container fanus-ftr__crisis-inner">
+          <span className="fanus-ftr__crisis-icon" aria-hidden="true"><AlertIcon /></span>
+          <p>{t("footer2.crisis")}</p>
+        </div>
+      </div>
+
       <div className="fanus-container fanus-ftr__bottom">
         <div>{t("footer2.rights")}</div>
         <div className="fanus-ftr__bottom-links">
@@ -205,6 +213,22 @@ export default function Footer() {
         }
         .fanus-ftr__lang { display: inline-flex; align-items: center; gap: 6px; color: var(--fanus-ink-3); font-size: 12px; margin-top: 16px; }
 
+        .fanus-ftr__crisis {
+          background: #FFF7EC;
+          border-top: 1px solid #F3E3C8;
+        }
+        .fanus-ftr__crisis-inner {
+          display: flex; align-items: flex-start; gap: 10px;
+          padding: 14px 28px;
+        }
+        .fanus-ftr__crisis-icon {
+          color: #B45309; flex-shrink: 0; display: inline-flex; margin-top: 2px;
+        }
+        .fanus-ftr__crisis p {
+          margin: 0; font-size: 13px; line-height: 1.55;
+          color: #7C5A1E;
+        }
+
         .fanus-ftr__bottom {
           display: flex; align-items: center; justify-content: space-between;
           padding: 24px 28px;
@@ -231,6 +255,7 @@ export default function Footer() {
 }
 
 function Arrow() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>; }
+function AlertIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9L2.5 17.5a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" /><line x1="12" y1="9" x2="12" y2="13.5" /><circle cx="12" cy="16.8" r="0.6" fill="currentColor" stroke="none" /></svg>; }
 function PhoneIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 4h4l2 5-3 2a12 12 0 005 5l2-3 5 2v4a2 2 0 01-2 2A17 17 0 013 6a2 2 0 012-2z" /></svg>; }
 function MailIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>; }
 function PinIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s7-6 7-12a7 7 0 00-14 0c0 6 7 12 7 12z" /><circle cx="12" cy="9" r="2.5" /></svg>; }

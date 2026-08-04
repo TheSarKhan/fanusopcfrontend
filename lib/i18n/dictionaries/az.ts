@@ -579,6 +579,7 @@ export const az = {
     privacy: "Məxfilik",
     terms: "İstifadə şərtləri",
     ethics: "Etika kodeksi",
+    crisis: "Fanus təcili yardım xidməti deyil. Özünüzə və ya başqasına zərər vermək riski, yaxud təcili təhlükə varsa, 112-yə və ya 103 Təcili Tibbi Yardıma zəng edin və ən yaxın təcili yardım şöbəsinə müraciət edin.",
   },
 
   // ── Psychologist detail page ─────────────────────────────────────────

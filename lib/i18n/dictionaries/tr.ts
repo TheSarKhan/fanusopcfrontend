@@ -571,6 +571,7 @@ export const tr: typeof az = {
     privacy: "Gizlilik",
     terms: "Kullanım koşulları",
     ethics: "Etik kuralları",
+    crisis: "Fanus bir acil yardım hizmeti değildir. Kendinize veya bir başkasına zarar verme riski ya da acil bir tehlike varsa 112'yi veya 103 Acil Tıbbi Yardım'ı arayın ve en yakın acil servise başvurun.",
   },
 
   // ── Psychologist detail page ─────────────────────────────────────────

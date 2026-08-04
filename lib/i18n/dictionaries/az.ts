@@ -965,6 +965,11 @@ export const az = {
   },
 
   // ── Psixoloq profili (publik) ─────────────────────────────────────────
+  psyPlan: {
+    label: "Cari plan",
+    none: "Plan təyin edilməyib",
+    modules: "{n} modul açıqdır",
+  },
   psyProfile: {
     verified: "Doğrulanmış",
     ratingLabel: "Reytinq",

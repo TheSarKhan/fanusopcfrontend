@@ -9,7 +9,7 @@ import PanelShell, { type PanelNavItem } from "@/components/PanelShell";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { getStoredUser } from "@/lib/auth";
 import { useT } from "@/lib/i18n/LocaleProvider";
-import { psychologistApi } from "@/lib/api";
+import { psychologistApi, type MyPlan } from "@/lib/api";
 import {
   PSYCHOLOG_MODULES,
   isPsychologPathLockedWith,
@@ -46,6 +46,44 @@ function ModuleLock({ enabled, children }: { enabled: Set<string> | null; childr
 }
 
 /** Kilidli nav sətrinə klikləyəndə çıxan izah modalı. */
+/**
+ * Sidebar-ın altındakı plan nişanı. Plan təyin olunmayıbsa da göstərilir — psixoloq
+ * "mənə plan verilməyib" ilə "planım var, amma modul bağlıdır" arasındakı fərqi
+ * görməlidir; əks halda kilidli modulun səbəbi anlaşılmır.
+ */
+function PlanBadge({ plan }: { plan: MyPlan }) {
+  const { t } = useT();
+  const color = plan.tikColor || "var(--brand)";
+  return (
+    <Link
+      href="/psycholog/profile"
+      style={{
+        display: "flex", alignItems: "center", gap: 10, margin: "0 12px 8px",
+        padding: "9px 12px", borderRadius: 10, textDecoration: "none",
+        background: "var(--brand-50)", border: "1px solid var(--brand-100)",
+      }}
+    >
+      <span aria-hidden style={{
+        width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
+        background: plan.assigned ? color : "var(--oxford-30, #B8C6D6)",
+      }} />
+      <span style={{ minWidth: 0, lineHeight: 1.35 }}>
+        <span style={{ display: "block", fontSize: 10.5, fontWeight: 700, letterSpacing: ".04em",
+                       textTransform: "uppercase", color: "var(--oxford-60)" }}>
+          {t("psyPlan.label")}
+        </span>
+        <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--oxford)",
+                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {plan.assigned ? plan.name : t("psyPlan.none")}
+        </span>
+        <span style={{ display: "block", fontSize: 11, color: "var(--oxford-60)" }}>
+          {t("psyPlan.modules", { n: plan.moduleCount })}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 function PlanLockModal({ label, onClose }: { label: string; onClose: () => void }) {
   return (
     <div className="fx-overlay fx-overlay--center" onClick={onClose} style={{ zIndex: 9000, padding: 20 }}>
@@ -75,11 +113,17 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
   // Təyin olunan plana görə açıq modullar — backend-dən. null = hələ yüklənməyib
   // (bu halda statik PSYCHOLOG_MODULES fallback kimi işlədilir, kilid tətbiq olunmur).
   const [modules, setModules] = useState<Set<string> | null>(null);
+  // Cari plan — sidebar-ın altında göstərilir ki, psixoloq hansı paketdə olduğunu
+  // panelə baxan kimi bilsin (əvvəl bunu heç yerdən görmək mümkün deyildi).
+  const [plan, setPlan] = useState<MyPlan | null>(null);
   useEffect(() => {
     let alive = true;
     psychologistApi.getMyModules()
       .then((keys) => { if (alive) setModules(new Set(keys)); })
       .catch(() => { /* fallback: statik konfiq (isEnabled aşağıda) */ });
+    psychologistApi.getMyPlan()
+      .then((p) => { if (alive) setPlan(p); })
+      .catch(() => { /* plan göstərilməsə panel yenə işləməlidir */ });
     return () => { alive = false; };
   }, []);
 
@@ -119,6 +163,7 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
       navItems={nav}
       user={{ name, initials, role: t("pricing.rolePsychologist") }}
       onLockedClick={(item) => setLockedLabel(item.label)}
+      sideFooter={plan && <PlanBadge plan={plan} />}
     >
       <ModuleLock enabled={modules}>{children}</ModuleLock>
       <WhatsAppButton side="right" />

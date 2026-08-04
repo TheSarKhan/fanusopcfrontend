@@ -953,6 +953,11 @@ export const tr: typeof az = {
     crumbResult: "Sonuç",
   },
 
+  psyPlan: {
+    label: "Mevcut plan",
+    none: "Plan atanmamış",
+    modules: "{n} modül açık",
+  },
   psyProfile: {
     verified: "Doğrulanmış",
     ratingLabel: "Puan",

@@ -930,6 +930,11 @@ export const en: typeof az = {
     crumbResult: "Result",
   },
 
+  psyPlan: {
+    label: "Current plan",
+    none: "No plan assigned",
+    modules: "{n} modules enabled",
+  },
   psyProfile: {
     verified: "Verified",
     ratingLabel: "Rating",

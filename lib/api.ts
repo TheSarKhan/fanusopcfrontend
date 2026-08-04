@@ -3071,10 +3071,19 @@ export interface PsychResourceReq {
 }
 
 // ─── Psychologist API ─────────────────────────────────────────────────────────
+export interface MyPlan {
+  assigned: boolean;
+  name?: string | null;
+  tikColor?: string | null;
+  moduleCount: number;
+}
+
 export const psychologistApi = {
   me: () => authedRequest<Psychologist>("GET", "/psychologist/me"),
   /** Panelin dinamik modul gating-i — təyin olunan plana görə açıq modul açarları. */
   getMyModules: () => authedRequest<string[]>("GET", "/psychologist/me/modules"),
+  /** Psixoloqun cari planı — sidebar-da göstərilir. assigned=false → plan təyin edilməyib. */
+  getMyPlan: () => authedRequest<MyPlan>("GET", "/psychologist/me/plan"),
   updateSessionMinutes: (minutes: number) =>
     authedRequest<Psychologist>("PUT", "/psychologist/me/session-minutes", { minutes }),
   // Modul D — profil statistikası mənbəyi (FANUS_PLATFORM seçimi +10% görünürlük)

@@ -933,6 +933,11 @@ export const ru: typeof az = {
     crumbResult: "Результат",
   },
 
+  psyPlan: {
+    label: "Текущий план",
+    none: "План не назначен",
+    modules: "Доступно модулей: {n}",
+  },
   psyProfile: {
     verified: "Проверен",
     ratingLabel: "Рейтинг",

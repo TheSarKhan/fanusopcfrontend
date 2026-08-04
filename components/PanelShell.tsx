@@ -49,6 +49,11 @@ interface PanelShellProps {
   profileHref?: string;
   /** Kilidli (plana daxil olmayan) nav sətrinə klik — məs. "planınızı dəyişin" modalı. */
   onLockedClick?: (item: PanelNavItem) => void;
+  /**
+   * Yan menyunun altında, profil sətrinin ÜSTÜNDƏ göstərilən əlavə blok.
+   * Psixoloq paneli burada cari planını göstərir; digər panellər ötürmür.
+   */
+  sideFooter?: React.ReactNode;
 }
 
 export default function PanelShell({
@@ -61,6 +66,7 @@ export default function PanelShell({
   topbarExtras,
   profileHref,
   onLockedClick,
+  sideFooter,
 }: PanelShellProps) {
   const { t } = useT();
   const resolvedProfileHref = profileHref ?? `${homeHref.replace(/\/$/, "")}/profile`;
@@ -222,6 +228,8 @@ export default function PanelShell({
             );
           })}
         </nav>
+
+        {sideFooter}
 
         <div className="ps-side__user">
           <Link

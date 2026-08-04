@@ -84,7 +84,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
     // Məzmun
     { href: "/admin/blog",              label: t("nav.blog"),          icon: "edit" },
     { href: "/admin/resources",         label: "Resurslar",            icon: "journal",   badge: badge("resources") },
-    { href: "/admin/tests",             label: "Testlər",              icon: "clipboard", badge: badge("tests") },
+    { href: "/admin/tests",             label: "Psixoloji Testlər",              icon: "clipboard", badge: badge("tests") },
     // Ünsiyyət
     { href: "/admin/messages",          label: t("nav.messages"),      icon: "message",   badge: badge("messages") },
     { href: "/admin/reviews",           label: t("nav.reviews"),       icon: "star",      badge: badge("reviews") },

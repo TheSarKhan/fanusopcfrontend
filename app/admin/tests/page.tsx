@@ -79,7 +79,7 @@ export default function AdminTestsPage() {
       sort, dir, page, size,
     })
       .then((res) => { setData(res); if (res.totalPages > 0 && page >= res.totalPages) setPage(0); })
-      .catch((e) => setError((e as Error).message || "Testlər yüklənmədi"))
+      .catch((e) => setError((e as Error).message || "Psixoloji testlər yüklənmədi"))
       .finally(() => setLoading(false));
   }, [dq, statusF, authorF, sort, dir, page, size]);
   useEffect(() => { load(); }, [load]);
@@ -135,7 +135,7 @@ export default function AdminTestsPage() {
 
   return (
     <div className="page" suppressHydrationWarning>
-      <PageHead title="Testlər" sub="Platformadakı bütün psixoloji testlər — admin və psixoloq testləri."
+      <PageHead title="Psixoloji Testlər" sub="Platformadakı bütün psixoloji testlər — admin və psixoloq testləri."
         actions={<Button variant="primary" onClick={() => router.push("/admin/tests/new")} icon={<PanelIcon name="plus" size={16} />}>Yeni test</Button>} />
 
       <Stats style={{ marginBottom: 16, gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>

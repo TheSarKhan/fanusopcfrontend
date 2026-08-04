@@ -125,7 +125,7 @@ export default function TestResultPage() {
   return (
     <div>
       <Link href="/psycholog/tests" style={{ display: "inline-block", fontSize: 13, color: "#52718F", textDecoration: "none", marginBottom: 16 }}>
-        ← Testlərə qayıt
+        ← Psixoloji testlərə qayıt
       </Link>
 
       {selected ? (

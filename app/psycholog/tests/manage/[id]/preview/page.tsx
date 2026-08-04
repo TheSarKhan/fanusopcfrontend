@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { psychologistApi, type PsyTest } from "@/lib/api";
+import { stripLeadingNumber } from "@/lib/testQuestion";
 
 export default function PsyTestPreviewPage() {
   const params = useParams<{ id: string }>();
@@ -27,7 +28,7 @@ export default function PsyTestPreviewPage() {
   return (
     <div style={{ width: "100%", maxWidth: 720, margin: "0 auto" }}>
       <div style={{ marginBottom: 16 }}>
-        <Link href="/psycholog/tests" style={{ fontSize: 13, color: "#52718F", textDecoration: "none" }}>← Testlərə qayıt</Link>
+        <Link href="/psycholog/tests" style={{ fontSize: 13, color: "#52718F", textDecoration: "none" }}>← Psixoloji testlərə qayıt</Link>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1A2535", margin: "8px 0 2px" }}>Önizləmə</h1>
         <p style={{ fontSize: 12.5, color: "#52718F", margin: 0 }}>İştirakçının gördüyü kimi</p>
       </div>
@@ -55,7 +56,7 @@ export default function PsyTestPreviewPage() {
           {questions.map((q, qi) => (
             <div key={q.id} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: "#1A2535" }}>
-                {qi + 1}. {q.text}
+                {qi + 1}. {stripLeadingNumber(q.text)}
               </div>
               {q.imageUrl && (
                  

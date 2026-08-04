@@ -346,7 +346,7 @@ type PsyDrawerTab = "overview" | "files" | "pricing" | "plan" | "actions";
 // Plan ilə idarə olunan modullar (backend ALLOWED_MODULES ilə eyni).
 const PLAN_MODULES: { key: string; label: string }[] = [
   { key: "packages", label: "Paketlər & Qiymətlər" },
-  { key: "tests", label: "Testlər" },
+  { key: "tests", label: "Psixoloji Testlər" },
   { key: "homework", label: "Tapşırıqlar" },
   { key: "articles", label: "Məqalələr" },
   { key: "community", label: "İcma" },

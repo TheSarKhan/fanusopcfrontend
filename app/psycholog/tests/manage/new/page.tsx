@@ -11,7 +11,7 @@ export default function PsyNewTestPage() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <Link href="/psycholog/tests" style={{ fontSize: 13, color: "#52718F", textDecoration: "none" }}>← Testlərə qayıt</Link>
+        <Link href="/psycholog/tests" style={{ fontSize: 13, color: "#52718F", textDecoration: "none" }}>← Psixoloji testlərə qayıt</Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: "8px 0 4px" }}>Yeni test</h1>
         <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>
           Addım-addım doldurun — dəyişikliklər avtomatik saxlanılır. Test dərhal öz

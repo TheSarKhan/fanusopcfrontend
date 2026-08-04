@@ -26,7 +26,7 @@ export default function PsyEditTestPage() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <Link href="/psycholog/tests" style={{ fontSize: 13, color: "#52718F", textDecoration: "none" }}>← Testlərə qayıt</Link>
+        <Link href="/psycholog/tests" style={{ fontSize: 13, color: "#52718F", textDecoration: "none" }}>← Psixoloji testlərə qayıt</Link>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: "8px 0 0" }}>Testi redaktə et</h1>
       </div>
 

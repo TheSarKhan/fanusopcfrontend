@@ -8,6 +8,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { patientApi, type TakeTest } from "@/lib/api";
+import { stripLeadingNumber } from "@/lib/testQuestion";
 import PageHeader from "@/components/PageHeader";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -71,7 +72,7 @@ export default function PatientTakeCatalogTestPage({ params }: { params: Promise
           {test.questions.map((q, qi) => (
             <article key={q.id} className="pgoal-card">
               <div className="pgoal-card__title" style={{ marginBottom: 10 }}>
-                {qi + 1}. {q.text}
+                {qi + 1}. {stripLeadingNumber(q.text)}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {q.options.map(o => {

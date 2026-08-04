@@ -248,7 +248,7 @@ export default function PsychologTestsPage() {
 
       <PageHeader
         title="Psixoloji testlər"
-        subtitle="Testləri yaradın, önizləyin və statistikaya baxın."
+        subtitle="Psixoloji testləri yaradın, önizləyin və statistikaya baxın."
         actions={
           <button
             type="button"

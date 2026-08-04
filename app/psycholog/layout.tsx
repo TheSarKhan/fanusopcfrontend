@@ -94,7 +94,7 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
     { key: "packages",     href: "/psycholog/packages",     label: "Qiymətlər & Paketlər", icon: "package" },
     { key: "clients",      href: "/psycholog/clients",      label: t("nav.clients"),      icon: "users" },
     { key: "homework",     href: "/psycholog/homework",     label: t("nav.homework"),     icon: "check" },
-    { key: "tests",        href: "/psycholog/tests",        label: "Testlər",             icon: "clipboard" },
+    { key: "tests",        href: "/psycholog/tests",        label: "Psixoloji Testlər",             icon: "clipboard" },
     { key: "articles",     href: "/psycholog/articles",     label: t("nav.articles"),     icon: "book" },
     { key: "community",    href: "/psycholog/community",    label: "İcma",                icon: "chat" },
     { key: "resources",    href: "/psycholog/resources",    label: "Resurslar",           icon: "content" },

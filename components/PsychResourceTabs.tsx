@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/psycholog/resources", label: "Resurslar" },
-  { href: "/psycholog/tests",     label: "Testlər" },
+  { href: "/psycholog/tests",     label: "Psixoloji Testlər" },
 ] as const;
 
 export default function PsychResourceTabs() {

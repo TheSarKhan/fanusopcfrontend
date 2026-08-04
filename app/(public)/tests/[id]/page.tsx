@@ -9,6 +9,7 @@ import Link from "next/link";
 import Breadcrumb from "@/components/Breadcrumb";
 import { useRouter } from "next/navigation";
 import { getPublicCatalogTest, submitPublicCatalogTest, type TakeTest } from "@/lib/api";
+import { stripLeadingNumber } from "@/lib/testQuestion";
 import { savePendingClaim } from "@/lib/pendingTestClaim";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
@@ -85,7 +86,7 @@ export default function PublicTakeTestPage({ params }: { params: Promise<{ id: s
         {test.questions.map((q, qi) => (
           <div key={q.id} style={{ background: "#fff", border: "1px solid #EDF1F8", borderRadius: 14, padding: 20 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 12, lineHeight: 1.45 }}>
-              {qi + 1}. {q.text}
+              {qi + 1}. {stripLeadingNumber(q.text)}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {q.options.map(o => {

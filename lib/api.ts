@@ -1237,7 +1237,6 @@ export interface CommandCenter {
   disputed: CommandCenterDisputed;
   slaOverdue: CommandCenterQueue;
   slaHours: number;
-  crisis: CommandCenterQueue;
   contactMessages: CommandCenterQueue;
   deletionRequests: CommandCenterQueue;
   emailFailures: CommandCenterQueue;
@@ -1324,16 +1323,9 @@ export interface HomeworkAnswer {
   completionNote: string | null;
   createdAt: string;
 }
-export interface CheckInEntry {
-  id: number;
-  moodScore: number;
-  note: string | null;
-  createdAt: string;
-}
 export interface ClinicalData {
   sessionNotes: ClinicalNote[];
   homework: HomeworkAnswer[];
-  checkIns: CheckInEntry[];
   /** Jurnal backend-də saxlanmır — UI bunu açıq deyir. */
   journalAvailable: boolean;
 }
@@ -2703,8 +2695,6 @@ export const patientApi = {
 
   // Crisis support
   crisisStatus: () => authedRequest<CrisisStatus>("GET", "/patient/crisis/status"),
-  crisisCheckIn: (data: { moodScore: number; note?: string | null }) =>
-    authedRequest<CrisisCheckIn>("POST", "/patient/crisis/check-in", data),
 
   // Treatment goals (read-only + progress self-report)
   goals: () => authedRequest<PatientGoalView[]>("GET", "/patient/goals"),
@@ -3232,8 +3222,6 @@ export const psychologistApi = {
     authedRequest<PatientGoal>("PUT", `/psychologist/goals/${goalId}`, data),
   deleteGoal: (goalId: number) =>
     authedRequest<void>("DELETE", `/psychologist/goals/${goalId}`),
-  patientCrisisHistory: (patientId: number) =>
-    authedRequest<CrisisCheckIn[]>("GET", `/psychologist/clients/${patientId}/crisis-check-ins`),
 
   // Homework
   homework: () => authedRequest<Homework[]>("GET", "/psychologist/homework"),
@@ -3891,7 +3879,6 @@ export interface OperatorStats {
   slaHours: number;
   staleDisputedCount: number;
   disputeTimeoutHours: number;
-  crisisUnackedCount: number;
   assignedToday: number;
   completedThisMonth: number;
   rejectedThisMonth: number;
@@ -4409,10 +4396,6 @@ export const operatorApi = {
   unblockUser: (userId: number) =>
     authedRequest<void | PendingApprovalResponse>("POST", `/operator/users/${userId}/unblock`),
   stats: () => authedRequest<OperatorStats>("GET", "/operator/stats"),
-  crisisCheckIns: () => authedRequest<OperatorCrisisCheckIn[]>("GET", "/operator/crisis/check-ins"),
-  /** GAP-07: mark a high-risk check-in as seen (idempotent). */
-  acknowledgeCrisisCheckIn: (id: number) =>
-    authedRequest<OperatorCrisisCheckIn>("POST", `/operator/crisis/check-ins/${id}/acknowledge`),
   search: (q: string, limit = 10) =>
     authedRequest<OperatorSearchResponse>(
       "GET",
@@ -4613,12 +4596,6 @@ export interface OperatorSearchResponse {
   appointments: OperatorSearchHit[];
 }
 
-export interface CrisisCheckIn {
-  id: number;
-  moodScore: number;
-  note: string | null;
-  createdAt: string;
-}
 export interface CrisisHotline {
   name: string;
   description: string;
@@ -4635,21 +4612,7 @@ export interface CrisisContactPsy {
 }
 export interface CrisisStatus {
   riskLevel: PatientRiskLevel | null;
-  recentCheckIns: CrisisCheckIn[];
   hotlines: CrisisHotline[];
   myPsychologist: CrisisContactPsy | null;
   supportOperator: CrisisContactPsy;
-}
-export interface OperatorCrisisCheckIn {
-  id: number;
-  patientId: number;
-  patientName: string;
-  riskLevel: PatientRiskLevel | null;
-  moodScore: number;
-  note: string | null;
-  createdAt: string;
-  // GAP-07: quick contact + acknowledgement state
-  patientPhone: string | null;
-  acknowledgedByName: string | null;
-  acknowledgedAt: string | null;
 }

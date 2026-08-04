@@ -118,7 +118,6 @@ export default function AdminDashboardPage() {
       { key: "disputed", label: "Mübahisəli seanslar", href: "/admin/appointments", queue: cc.disputed, escalated: cc.disputed.escalatedCount },
       { key: "cancelRequests", label: "Ləğv istəkləri", href: "/admin/appointments", queue: cc.cancelRequests },
       { key: "slaOverdue", label: `Cavabsız müraciət (${cc.slaHours}s+)`, href: "/admin/appointments", queue: cc.slaOverdue },
-      { key: "crisis", label: "Böhran siqnalları", href: "/admin/appointments", queue: cc.crisis },
       { key: "reviews", label: "Rəy moderasiyası", href: "/admin/reviews", queue: cc.reviews },
       { key: "contactMessages", label: "Əlaqə mesajları", href: "/admin/messages", queue: cc.contactMessages },
       { key: "emailFailures", label: "Uğursuz e-poçtlar (24s)", href: "/admin/notifications", queue: cc.emailFailures },

@@ -19,6 +19,7 @@ import {
 import { toast } from "@/components/Toast";
 import { azFormatDate, azFormatDateTime } from "@/lib/datetime";
 import PanelIcon from "@/components/PanelIcon";
+import PlanTickIcon from "@/components/PlanTickIcon";
 import TopicPicker from "@/components/TopicPicker";
 import {
   PageHead,
@@ -961,7 +962,7 @@ function PlansTab() {
             <Card key={pl.id}>
               <div style={{ padding: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ width: 14, height: 14, borderRadius: 4, background: pl.tikColor, flexShrink: 0 }} />
+                  <PlanTickIcon color={pl.tikColor} size={22} />
                   <div style={{ fontWeight: 700, flex: 1, minWidth: 0 }}>{pl.name}</div>
                   {!pl.active && <Status tone="muted">Deaktiv</Status>}
                 </div>
@@ -1037,9 +1038,11 @@ function PlanEditor({ plan, onClose, onSaved }: { plan: PsychologistPlan | null;
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <Field label="Plan adı"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Məs: Tam giriş" autoFocus /></Field>
-          <Field label="Tik rəngi" help="Seçilmiş modulların yanındakı işarənin rəngi.">
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <input type="color" value={tikColor} onChange={(e) => setTikColor(e.target.value)} style={{ width: 44, height: 32, border: "1px solid var(--hairline)", borderRadius: 6, background: "none", cursor: "pointer" }} aria-label="Tik rəngi" />
+          <Field label="Plan nişanı və rəngi" help="Nişan planın rəngində çəkilir — rəngi dəyişdikcə aşağıdakı önizləmə də dəyişir.">
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              {/* Canlı önizləmə: ikon vektordur, ona görə rəng dərhal tətbiq olunur. */}
+              <PlanTickIcon color={tikColor} size={44} title="Plan nişanı" />
+              <input type="color" value={tikColor} onChange={(e) => setTikColor(e.target.value)} style={{ width: 44, height: 32, border: "1px solid var(--hairline)", borderRadius: 6, background: "none", cursor: "pointer" }} aria-label="Nişan rəngi" />
               <span className="fx-subtitle">{tikColor}</span>
             </div>
           </Field>

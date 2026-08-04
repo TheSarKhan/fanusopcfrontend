@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import PanelAuthGuard from "@/components/PanelAuthGuard";
 import PanelIcon from "@/components/PanelIcon";
+import PlanTickIcon from "@/components/PlanTickIcon";
 import PanelShell, { type PanelNavItem } from "@/components/PanelShell";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { getStoredUser } from "@/lib/auth";
@@ -63,10 +64,8 @@ function PlanBadge({ plan }: { plan: MyPlan }) {
         background: "var(--brand-50)", border: "1px solid var(--brand-100)",
       }}
     >
-      <span aria-hidden style={{
-        width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
-        background: plan.assigned ? color : "var(--oxford-30, #B8C6D6)",
-      }} />
+      {/* Planın öz nişanı — rəngi plandan gəlir. Plan yoxdursa boz çəkilir. */}
+      <PlanTickIcon color={plan.assigned ? color : "var(--oxford-30, #B8C6D6)"} size={26} />
       <span style={{ minWidth: 0, lineHeight: 1.35 }}>
         <span style={{ display: "block", fontSize: 10.5, fontWeight: 700, letterSpacing: ".04em",
                        textTransform: "uppercase", color: "var(--oxford-60)" }}>

@@ -48,9 +48,14 @@ function ModuleLock({ enabled, children }: { enabled: Set<string> | null; childr
 
 /** Kilidli nav sətrinə klikləyəndə çıxan izah modalı. */
 /**
- * Sidebar-ın altındakı plan nişanı. Plan təyin olunmayıbsa da göstərilir — psixoloq
- * "mənə plan verilməyib" ilə "planım var, amma modul bağlıdır" arasındakı fərqi
- * görməlidir; əks halda kilidli modulun səbəbi anlaşılmır.
+ * Sidebar-ın altında, profil sətrinin üstündə plan sətri.
+ *
+ * Tək sətirdir və çərçivəsi yoxdur: sidebar-ın alt hissəsi onsuz da profil bloku ilə
+ * doludur, ora ikinci kart qoymaq sıxlıq yaradırdı. Modul sayı da yazılmır — psixoloq
+ * üçün dəyər daşımır, açıq modulları menyunun özündə görür.
+ *
+ * Plan təyin olunmayıbsa da göstərilir: psixoloq «mənə plan verilməyib» ilə «planım
+ * var, amma bu modul bağlıdır» arasındakı fərqi görməlidir.
  */
 function PlanBadge({ plan }: { plan: MyPlan }) {
   const { t } = useT();
@@ -58,26 +63,21 @@ function PlanBadge({ plan }: { plan: MyPlan }) {
   return (
     <Link
       href="/psycholog/profile"
+      title={plan.assigned ? t("psyPlan.named", { name: plan.name ?? "" }) : t("psyPlan.none")}
       style={{
-        display: "flex", alignItems: "center", gap: 10, margin: "0 12px 8px",
-        padding: "9px 12px", borderRadius: 10, textDecoration: "none",
-        background: "var(--brand-50)", border: "1px solid var(--brand-100)",
+        display: "flex", alignItems: "center", gap: 9,
+        margin: "0 14px 6px", padding: "6px 0", textDecoration: "none",
+        borderTop: "1px solid var(--hairline, rgba(0,33,71,.10))",
+        paddingTop: 10,
       }}
     >
       {/* Planın öz nişanı — rəngi plandan gəlir. Plan yoxdursa boz çəkilir. */}
-      <PlanTickIcon color={plan.assigned ? color : "var(--oxford-30, #B8C6D6)"} size={26} />
-      <span style={{ minWidth: 0, lineHeight: 1.35 }}>
-        <span style={{ display: "block", fontSize: 10.5, fontWeight: 700, letterSpacing: ".04em",
-                       textTransform: "uppercase", color: "var(--oxford-60)" }}>
-          {t("psyPlan.label")}
-        </span>
-        <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--oxford)",
-                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {plan.assigned ? plan.name : t("psyPlan.none")}
-        </span>
-        <span style={{ display: "block", fontSize: 11, color: "var(--oxford-60)" }}>
-          {t("psyPlan.modules", { n: plan.moduleCount })}
-        </span>
+      <PlanTickIcon color={plan.assigned ? color : "var(--oxford-30, #B8C6D6)"} size={20} />
+      <span style={{
+        minWidth: 0, fontSize: 12.5, fontWeight: 700, color: "var(--oxford)",
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>
+        {plan.assigned ? t("psyPlan.named", { name: plan.name ?? "" }) : t("psyPlan.none")}
       </span>
     </Link>
   );

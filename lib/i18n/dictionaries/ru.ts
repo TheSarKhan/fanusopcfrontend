@@ -934,9 +934,8 @@ export const ru: typeof az = {
   },
 
   psyPlan: {
-    label: "Текущий план",
+    named: "План {name}",
     none: "План не назначен",
-    modules: "Доступно модулей: {n}",
   },
   psyProfile: {
     verified: "Проверен",

@@ -954,9 +954,8 @@ export const tr: typeof az = {
   },
 
   psyPlan: {
-    label: "Mevcut plan",
+    named: "{name} plan",
     none: "Plan atanmamış",
-    modules: "{n} modül açık",
   },
   psyProfile: {
     verified: "Doğrulanmış",

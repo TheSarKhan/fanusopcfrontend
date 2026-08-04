@@ -931,9 +931,8 @@ export const en: typeof az = {
   },
 
   psyPlan: {
-    label: "Current plan",
+    named: "{name} plan",
     none: "No plan assigned",
-    modules: "{n} modules enabled",
   },
   psyProfile: {
     verified: "Verified",

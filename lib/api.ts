@@ -3085,8 +3085,13 @@ export const psychologistApi = {
   updateSessionMinutes: (minutes: number) =>
     authedRequest<Psychologist>("PUT", "/psychologist/me/session-minutes", { minutes }),
   // Modul D — profil statistikası mənbəyi (FANUS_PLATFORM seçimi +10% görünürlük)
-  updateStatsSource: (statsSource: "FANUS_PLATFORM" | "PRIOR_EXPERIENCE") =>
-    authedRequest<Psychologist>("PUT", "/psychologist/me/stats-source", { statsSource }),
+  /** @param priorExperienceSessions ötürülməsə bazadakı rəqəmə toxunulmur. */
+  updateStatsSource: (
+    statsSource: "FANUS_PLATFORM" | "PRIOR_EXPERIENCE",
+    priorExperienceSessions?: number,
+  ) =>
+    authedRequest<Psychologist>("PUT", "/psychologist/me/stats-source",
+      priorExperienceSessions === undefined ? { statsSource } : { statsSource, priorExperienceSessions }),
 
   // Modul A/C — psixoloqun öz qiymət/paket idarəsi (FANUS isə redaktə 403)
   myPricing: () =>

@@ -491,6 +491,10 @@ function StatsSourceCard({
 
   const [selected, setSelected] = useState<StatsSource>(initialSource);
   const [savedSource, setSavedSource] = useState<StatsSource>(initialSource);
+  // Platformadan əvvəlki seans sayı elə burada redaktə olunur — rəqəm seçimin
+  // yanındadır, ayrıca ekran açmağa ehtiyac qalmır.
+  const [prior, setPrior] = useState<string>(String(priorCount));
+  const [savedPrior, setSavedPrior] = useState<number>(priorCount);
   const [saving, setSaving] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
 
@@ -499,15 +503,20 @@ function StatsSourceCard({
     window.setTimeout(() => setSavedFlash(false), 2200);
   };
 
-  const dirty = selected !== savedSource;
+  const priorNum = Number(prior);
+  const priorValid = prior.trim() !== "" && Number.isFinite(priorNum) && priorNum >= 0 && priorNum <= 100000;
+  const dirty = selected !== savedSource || (priorValid && priorNum !== savedPrior);
 
   const save = async () => {
     setSaving(true);
     try {
-      const res = await psychologistApi.updateStatsSource(selected);
+      const res = await psychologistApi.updateStatsSource(selected, priorValid ? priorNum : undefined);
       const nextSource = res.statsSource ?? selected;
       setSelected(nextSource);
       setSavedSource(nextSource);
+      const nextPrior = res.priorExperienceSessions ?? priorNum;
+      setPrior(String(nextPrior));
+      setSavedPrior(nextPrior);
       onSaved({
         statsSource: res.statsSource,
         fanusSessionCount: res.fanusSessionCount,
@@ -569,9 +578,34 @@ function StatsSourceCard({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{opt.label}</span>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--brand-700)" }}>
-                      {opt.count} {t("psyStats.sessions")}
-                    </span>
+                    {opt.value === "PRIOR_EXPERIENCE" ? (
+                      /* Bu rəqəm psixoloqun özü bildirdiyi məlumatdır (qeydiyyatda da
+                         belədir), ona görə burada redaktə oluna bilər. Fanus sayı isə
+                         platformada hesablanır — ona toxunulmur. */
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100000}
+                          value={prior}
+                          onChange={(e) => setPrior(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={t("psyStats.priorOption")}
+                          style={{
+                            width: 84, padding: "4px 8px", borderRadius: 7, fontSize: 13, fontWeight: 800,
+                            color: "var(--brand-700)", textAlign: "right",
+                            border: `1px solid ${priorValid ? "var(--oxford-10)" : "#DC2626"}`,
+                          }}
+                        />
+                        <span style={{ fontSize: 13, fontWeight: 800, color: "var(--brand-700)" }}>
+                          {t("psyStats.sessions")}
+                        </span>
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 13, fontWeight: 800, color: "var(--brand-700)" }}>
+                        {opt.count} {t("psyStats.sessions")}
+                      </span>
+                    )}
                   </div>
                   {opt.boost && (
                     <span style={{

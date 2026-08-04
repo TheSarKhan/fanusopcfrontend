@@ -2494,6 +2494,8 @@ export const az = {
     srcFanusNote: "Platformada təsdiqlənmiş seanslar. Bu mənbə reytinq hesablanmasına müsbət təsir edir.",
     srcPrior: "Əvvəlki təcrübə",
     srcPriorNote: "Fanusdan əvvəl keçirdiyin seanslar. Platforma tərəfindən təsdiqlənmir.",
+    srcPriorCountLabel: "Platformadan əvvəlki ümumi seans sayı",
+    srcPriorSavedToast: "Əvvəlki təcrübə yadda saxlandı",
     srcSelected: "Seçilmiş mənbə",
     srcSavedToast: "Mənbə yadda saxlandı",
 

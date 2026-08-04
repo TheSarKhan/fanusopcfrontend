@@ -2443,6 +2443,8 @@ export const en: typeof az = {
     srcFanusNote: "Sessions confirmed on the platform. This source has a positive effect on the rating calculation.",
     srcPrior: "Prior experience",
     srcPriorNote: "Sessions you held before Fanus. Not verified by the platform.",
+    srcPriorCountLabel: "Total sessions before the platform",
+    srcPriorSavedToast: "Prior experience saved",
     srcSelected: "Selected source",
     srcSavedToast: "Source saved",
 

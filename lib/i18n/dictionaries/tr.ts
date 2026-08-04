@@ -2466,6 +2466,8 @@ export const tr: typeof az = {
     srcFanusNote: "Platformda onaylanmış seanslar. Bu kaynak puan hesaplamasını olumlu etkiler.",
     srcPrior: "Önceki deneyim",
     srcPriorNote: "Fanus'tan önce yaptığın seanslar. Platform tarafından doğrulanmaz.",
+    srcPriorCountLabel: "Platformdan önceki toplam seans sayısı",
+    srcPriorSavedToast: "Önceki deneyim kaydedildi",
     srcSelected: "Seçilen kaynak",
     srcSavedToast: "Kaynak kaydedildi",
 

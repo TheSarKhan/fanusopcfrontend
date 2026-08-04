@@ -2446,6 +2446,8 @@ export const ru: typeof az = {
     srcFanusNote: "Сеансы, подтверждённые на платформе. Этот источник положительно влияет на расчёт рейтинга.",
     srcPrior: "Прежний опыт",
     srcPriorNote: "Сеансы, проведённые до Fanus. Платформой не подтверждаются.",
+    srcPriorCountLabel: "Общее число сеансов до платформы",
+    srcPriorSavedToast: "Прежний опыт сохранён",
     srcSelected: "Выбранный источник",
     srcSavedToast: "Источник сохранён",
 

@@ -458,6 +458,12 @@ function StatsSourceCard({
   const [selected, setSelected] = useState<StatsSource>(me.statsSource ?? "FANUS_PLATFORM");
   const [saving, setSaving] = useState(false);
 
+  // Əvvəlki təcrübə sayı — psixoloq özü redaktə edə bilir.
+  const [priorInput, setPriorInput] = useState(String(me.priorExperienceSessions ?? 0));
+  const [savingPrior, setSavingPrior] = useState(false);
+  const priorDirty = priorInput.trim() !== ""
+    && Number(priorInput) !== (me.priorExperienceSessions ?? 0);
+
   const choose = async (value: StatsSource) => {
     if (value === selected || saving) return;
     setSaving(true);
@@ -480,6 +486,27 @@ function StatsSourceCard({
     }
   };
 
+  const savePrior = async () => {
+    const n = parseInt(priorInput, 10);
+    if (!Number.isFinite(n) || n < 0) return;
+    setSavingPrior(true);
+    try {
+      const res = await psychologistApi.updateStatsSource(selected, n);
+      onSaved({
+        statsSource: res.statsSource,
+        fanusSessionCount: res.fanusSessionCount,
+        priorExperienceSessions: res.priorExperienceSessions,
+        displayedSessionCount: res.displayedSessionCount,
+      });
+      setPriorInput(String(res.priorExperienceSessions ?? n));
+      toast(t("prof.srcPriorSavedToast"));
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setSavingPrior(false);
+    }
+  };
+
   const options: { value: StatsSource; label: string; note: string; count: number }[] = [
     { value: "FANUS_PLATFORM", label: t("prof.srcFanus"), note: t("prof.srcFanusNote"), count: me.fanusSessionCount ?? 0 },
     { value: "PRIOR_EXPERIENCE", label: t("prof.srcPrior"), note: t("prof.srcPriorNote"), count: me.priorExperienceSessions ?? 0 },
@@ -492,12 +519,18 @@ function StatsSourceCard({
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginTop: 16 }}>
         {options.map(opt => {
           const active = selected === opt.value;
+          const isPrior = opt.value === "PRIOR_EXPERIENCE";
           return (
-            <button
+            /* div + role="button" — kartın içində redaktə inputu olduğu üçün
+               nested button/input qadağasına düşməmək üçün button işlədilmir. */
+            <div
               key={opt.value}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => choose(opt.value)}
-              disabled={saving}
+              onKeyDown={e => {
+                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(opt.value); }
+              }}
               style={{
                 textAlign: "left", background: "#fff",
                 border: active ? `1px solid ${PC.ink}` : `1px solid ${PC.border2}`,
@@ -517,19 +550,49 @@ function StatsSourceCard({
                   </svg>
                 )}
               </span>
-              <span style={{ flex: "1 1 auto", minWidth: 0 }}>
-                <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: PC.ink }}>{opt.label}</span>
-                <span style={{ display: "block", fontSize: 19, fontWeight: 600, letterSpacing: "-0.02em", marginTop: 8, color: PC.ink }}>
+              <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: PC.ink }}>{opt.label}</div>
+                <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-0.02em", marginTop: 8, color: PC.ink }}>
                   {opt.count}
-                </span>
-                <span style={{ display: "block", fontSize: 12, color: PC.soft, lineHeight: 1.5, marginTop: 6 }}>{opt.note}</span>
-                {active && (
-                  <span style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: PC.ink, marginTop: 8 }}>
-                    {t("prof.srcSelected")}
-                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: PC.soft, lineHeight: 1.5, marginTop: 6 }}>{opt.note}</div>
+
+                {isPrior && (
+                  /* Redaktə sahəsi — klik seçimi işə salmasın deyə propagation dayandırılır. */
+                  <div
+                    onClick={e => e.stopPropagation()}
+                    onKeyDown={e => e.stopPropagation()}
+                    style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${PC.hair}` }}
+                  >
+                    <span style={labelStyle}>{t("prof.srcPriorCountLabel")}</span>
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={priorInput}
+                        onChange={e => setPriorInput(e.target.value.replace(/[^0-9]/g, ""))}
+                        style={{ ...inputStyle, maxWidth: 120 }}
+                      />
+                      {savingPrior ? (
+                        <span style={{ ...btnIdle, fontSize: 12.5, padding: "8px 13px" }}>
+                          <Spinner />{t("prof.saving")}
+                        </span>
+                      ) : priorDirty ? (
+                        <button type="button" onClick={savePrior} style={{ ...btnDark, fontSize: 12.5, padding: "8px 14px" }}>
+                          {t("prof.save")}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
                 )}
-              </span>
-            </button>
+
+                {active && (
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: PC.ink, marginTop: 8 }}>
+                    {t("prof.srcSelected")}
+                  </div>
+                )}
+              </div>
+            </div>
           );
         })}
       </div>

@@ -1,13 +1,76 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import ProfileShell from "@/components/ProfileShell";
+import ProfileShell, {
+  PC, cardStyle, sideCardStyle, sectionH2, sectionSub, labelStyle, inputStyle,
+  rowSplit, rowKey, rowVal, btnDark, btnGhost, btnIdle,
+  ModalScrim, modalBoxStyle, ConfirmDialog, type ConfirmSpec,
+  Spinner, IconTrash,
+} from "@/components/ProfileShell";
 import GoogleCalendarCard from "@/components/GoogleCalendarCard";
 import { psychologistApi, type Psychologist, type PackageDto, type PackageReq } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
+
+function CalendarIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <rect x="2.4" y="3.4" width="11.2" height="10.2" rx="1.6" />
+      <path d="M2.4 6.6h11.2M5.6 2.4v2M10.4 2.4v2" strokeLinecap="round" />
+    </svg>
+  );
+}
+function ClockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <circle cx="8" cy="8" r="5.6" />
+      <path d="M8 5.2V8l2 1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+function PersonIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <circle cx="8" cy="5.8" r="2.4" />
+      <path d="M3.4 13.2c.5-2.3 2.4-3.5 4.6-3.5s4.1 1.2 4.6 3.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+function BellIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M6.1 12.8h3.8M4.4 12.8V7.4a3.6 3.6 0 0 1 7.2 0v5.4M3.2 12.8h9.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+function PencilIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M10.6 3.4l2 2-6.4 6.4-2.6.6.6-2.6 6.4-6.4Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function PlusIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <path d="M8 3.6v8.8M3.6 8h8.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+function LockIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <rect x="3.6" y="7" width="8.8" height="6" rx="1.4" />
+      <path d="M5.8 7V5.4a2.2 2.2 0 0 1 4.4 0V7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function initialsOf(name?: string | null): string {
+  if (!name) return "?";
+  return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
+}
 
 export default function PsychologProfilePage() {
   const { t } = useT();
@@ -17,201 +80,71 @@ export default function PsychologProfilePage() {
     psychologistApi.me().then(setMe).catch(() => setMe(null));
   }, []);
 
+  const editable = me?.psychologistType === "NORMAL";
+  const minutes = me?.defaultSessionMinutes ?? 50;
+
   return (
     <ProfileShell
-      title={t("uprof.psyTitle")}
-      subtitle={t("uprof.psySub")}
-      sideExtras={
-        me?.slug ? (
-          <div className="uprof-card uprof-side-card">
-            <div className="uprof-side-card-head">
-              <h3>Sürətli giriş</h3>
-            </div>
-            <Link href={`/psychologists/${me.slug}`} target="_blank" className="uprof-side-link">
-              <div className="uprof-side-link-icon"></div>
-              <div className="uprof-side-link-text">
-                <strong>İctimai profilim</strong>
-                <small>Pasiyentlərə görünən səhifə</small>
-              </div>
-              <span className="uprof-side-link-arrow">›</span>
-            </Link>
-            <Link href="/psycholog/availability" className="uprof-side-link" style={{ borderTop: "1px solid var(--brand-100)" }}>
-              <div className="uprof-side-link-icon"></div>
-              <div className="uprof-side-link-text">
-                <strong>İş vaxtları</strong>
-                <small>Həftəlik cədvəl və istisnalar</small>
-              </div>
-              <span className="uprof-side-link-arrow">›</span>
-            </Link>
-            <Link href="/psycholog/calendar" className="uprof-side-link" style={{ borderTop: "1px solid var(--brand-100)" }}>
-              <div className="uprof-side-link-icon"></div>
-              <div className="uprof-side-link-text">
-                <strong>Cədvəl</strong>
-                <small>Həftəlik randevu izləməsi</small>
-              </div>
-              <span className="uprof-side-link-arrow">›</span>
-            </Link>
-          </div>
-        ) : null
-      }
+      title={t("prof.psyTitle")}
+      subtitle={t("prof.psySub")}
       extras={
         me ? (
           <>
-          <GoogleCalendarCard />
-          <PricingCard editable={me.psychologistType === "NORMAL"} />
-          <StatsSourceCard
-            initialSource={me.statsSource ?? "FANUS_PLATFORM"}
-            fanusCount={me.fanusSessionCount ?? 0}
-            priorCount={me.priorExperienceSessions ?? 0}
-            onSaved={(p) => setMe(prev => prev ? { ...prev, ...p } : prev)}
-          />
-          <div className="uprof-card">
-            <div className="uprof-card-head">
-              <h2>İctimai psixoloq profili</h2>
-              <p>Pasiyentlərin gördüyü məlumatlar</p>
-            </div>
-            <div style={{ padding: 20, display: "grid", gap: 16 }}>
-              <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                <div style={{
-                  width: 64, height: 64, borderRadius: "50%",
-                  background: "var(--brand-50)", color: "var(--brand-700)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontWeight: 700, fontSize: 22, flexShrink: 0,
-                  border: "1px solid var(--brand-100)", overflow: "hidden",
-                }}>
-                  {me.photoUrl ? (
-                     
-                    <img src={me.photoUrl} alt={me.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : (
-                    me.name.split(" ").filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase()
-                  )}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{me.name}</div>
-                  <div style={{ fontSize: 13, color: "var(--oxford-60)", marginTop: 2 }}>{me.title}</div>
-                </div>
-              </div>
-
-              <dl style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, margin: 0, fontSize: 13 }}>
-                <div>
-                  <dt style={{ color: "var(--oxford-60)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4 }}>İxtisaslar</dt>
-                  <dd style={{ margin: "4px 0 0", color: "var(--oxford)", fontWeight: 500 }}>
-                    {me.specializations?.slice(0, 4).join(", ") || "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt style={{ color: "var(--oxford-60)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4 }}>Dillər</dt>
-                  <dd style={{ margin: "4px 0 0", color: "var(--oxford)", fontWeight: 500 }}>{me.languages || "—"}</dd>
-                </div>
-                <div>
-                  <dt style={{ color: "var(--oxford-60)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4 }}>Təcrübə</dt>
-                  <dd style={{ margin: "4px 0 0", color: "var(--oxford)", fontWeight: 500 }}>{me.experience ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt style={{ color: "var(--oxford-60)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.4 }}>Seans müddəti</dt>
-                  <dd style={{ margin: "4px 0 0", color: "var(--oxford)", fontWeight: 500 }}>{me.defaultSessionMinutes ?? 50} dəq</dd>
-                </div>
-              </dl>
-
-              <p style={{ fontSize: 11.5, color: "var(--oxford-60)", margin: 0, lineHeight: 1.6, padding: "10px 12px", background: "var(--brand-50)", borderRadius: 8, borderLeft: "3px solid var(--brand-200)" }}>
-                Bio, ixtisas və sertifikat dəyişiklikləri üçün admin komandasıyla əlaqə saxlayın —
-                hər güncəlləmə pasiyentlər tərəfindən görünür və yoxlanılır.
-              </p>
-            </div>
-          </div>
+            <PricingCard editable={editable} minutes={minutes} />
+            <StatsSourceCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
           </>
-        ) : null
+        ) : undefined
+      }
+      statusRows={
+        me ? [{
+          label: t("prof.accType"),
+          value: editable ? t("prof.accTypeNormal") : t("prof.accTypeManaged"),
+        }] : undefined
+      }
+      quickLinks={[
+        ...(me?.slug ? [{
+          href: `/psychologists/${me.slug}`,
+          label: t("prof.qlPublicProfile"),
+          icon: <PersonIcon />,
+          external: true,
+        }] : []),
+        { href: "/psycholog/availability", label: t("prof.qlAvailability"), icon: <ClockIcon /> },
+        { href: "/psycholog/calendar", label: t("prof.qlCalendar"), icon: <CalendarIcon /> },
+        { href: "/psycholog/notifications", label: t("prof.qlNotifications"), icon: <BellIcon /> },
+      ]}
+      sideBottom={
+        me ? (
+          <>
+            <GoogleCalendarCard />
+            <PublicPreviewCard me={me} minutes={minutes} />
+          </>
+        ) : undefined
       }
     />
   );
 }
 
-/* ─── Qiymət və Paketlər (Modul A/C) ───────────────────────────────────────── */
+/* ─── Qiymətləndirmə (Modul A/C) — fərdi qiymət + paketlər ───────────────── */
 
-const fieldStyle: React.CSSProperties = {
-  width: "100%", padding: "9px 11px", borderRadius: 8,
-  border: "1px solid var(--oxford-10)", outline: "none",
-  fontSize: 13, color: "var(--oxford)", background: "#fff",
-};
-const labelStyle: React.CSSProperties = {
-  display: "block", fontSize: 11, fontWeight: 600, color: "var(--oxford-60)",
-  textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 5,
-};
-
-function PencilIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-    </svg>
-  );
-}
-function TrashIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M3 6h18" />
-      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-    </svg>
-  );
-}
-function PlusIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
-}
-function CheckIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-function LockIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3" y="11" width="18" height="11" rx="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
-}
-
-function PricingCard({ editable }: { editable: boolean }) {
+function PricingCard({ editable, minutes }: { editable: boolean; minutes: number }) {
   const { t } = useT();
 
   const [loading, setLoading] = useState(true);
-  const [individualPrice, setIndividualPrice] = useState<number | null>(null);
-  const [individualInput, setIndividualInput] = useState<string>("");
+  const [priceInput, setPriceInput] = useState("");
   const [savedPrice, setSavedPrice] = useState<number | null>(null);
   const [savingPrice, setSavingPrice] = useState(false);
 
   const [packages, setPackages] = useState<PackageDto[]>([]);
-  const [savedFlash, setSavedFlash] = useState(false);
+  const [confirmSpec, setConfirmSpec] = useState<ConfirmSpec | null>(null);
 
-  // Add package form
-  const [addName, setAddName] = useState("");
-  const [addSessions, setAddSessions] = useState("");
-  const [addPrice, setAddPrice] = useState("");
-  const [adding, setAdding] = useState(false);
-
-  // Edit package form (inline)
-  const [editId, setEditId] = useState<number | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editSessions, setEditSessions] = useState("");
-  const [editPrice, setEditPrice] = useState("");
-  const [savingEdit, setSavingEdit] = useState(false);
-
-  const flashSaved = () => {
-    setSavedFlash(true);
-    window.setTimeout(() => setSavedFlash(false), 2200);
-  };
+  // Paket modalı
+  const [pkgOpen, setPkgOpen] = useState(false);
+  const [pkgId, setPkgId] = useState<number | null>(null);
+  const [pkgName, setPkgName] = useState("");
+  const [pkgCount, setPkgCount] = useState("");
+  const [pkgTotal, setPkgTotal] = useState("");
+  const [pkgErr, setPkgErr] = useState("");
+  const [pkgSaving, setPkgSaving] = useState(false);
 
   const loadPackages = () =>
     psychologistApi.myPackages().then(setPackages).catch(() => setPackages([]));
@@ -219,31 +152,26 @@ function PricingCard({ editable }: { editable: boolean }) {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      psychologistApi.myPricing().catch(() => ({ individualPrice: null, currency: "AZN" })),
+      psychologistApi.myPricing().catch(() => ({ individualPrice: null as number | null, currency: "AZN" })),
       psychologistApi.myPackages().catch(() => [] as PackageDto[]),
     ]).then(([pricing, pkgs]) => {
-      setIndividualPrice(pricing.individualPrice);
       setSavedPrice(pricing.individualPrice);
-      setIndividualInput(pricing.individualPrice != null ? String(pricing.individualPrice) : "");
+      setPriceInput(pricing.individualPrice != null ? String(pricing.individualPrice) : "");
       setPackages(pkgs);
     }).finally(() => setLoading(false));
   }, []);
 
-  const priceDirty = Number(individualInput) !== (savedPrice ?? 0) && individualInput.trim() !== "";
+  const priceDirty = priceInput.trim() !== "" && Number(priceInput) !== (savedPrice ?? Number.NaN);
 
-  const saveIndividual = async () => {
-    const val = Number(individualInput);
-    if (!Number.isFinite(val) || val < 0) {
-      toast(t("pricing.individualPrice"), "error");
-      return;
-    }
+  const savePrice = async () => {
+    const val = Number(priceInput);
+    if (!Number.isFinite(val) || val <= 0) { toast(t("prof.priceErr"), "error"); return; }
     setSavingPrice(true);
     try {
       const res = await psychologistApi.updateMyPricing(val);
-      setIndividualPrice(res.individualPrice);
       setSavedPrice(res.individualPrice);
-      setIndividualInput(res.individualPrice != null ? String(res.individualPrice) : "");
-      flashSaved();
+      setPriceInput(res.individualPrice != null ? String(res.individualPrice) : "");
+      toast(t("prof.priceSavedToast"));
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {
@@ -251,390 +179,421 @@ function PricingCard({ editable }: { editable: boolean }) {
     }
   };
 
-  const addPackage = async () => {
-    const sessionCount = Number(addSessions);
-    const packagePrice = Number(addPrice);
-    if (!addName.trim() || !Number.isFinite(sessionCount) || sessionCount < 1
-      || !Number.isFinite(packagePrice) || packagePrice < 0) {
-      toast(t("pricing.addPackage"), "error");
-      return;
-    }
-    setAdding(true);
+  const openNewPkg = () => {
+    setPkgId(null); setPkgName(""); setPkgCount(""); setPkgTotal(""); setPkgErr("");
+    setPkgOpen(true);
+  };
+  const openEditPkg = (p: PackageDto) => {
+    setPkgId(p.id); setPkgName(p.name); setPkgCount(String(p.sessionCount));
+    setPkgTotal(String(p.packagePrice)); setPkgErr("");
+    setPkgOpen(true);
+  };
+
+  const savePkg = async () => {
+    const count = parseInt(pkgCount, 10);
+    const total = Number(pkgTotal);
+    if (!pkgName.trim()) { setPkgErr(t("prof.pkgErrName")); return; }
+    if (!Number.isFinite(count) || count < 1) { setPkgErr(t("prof.pkgErrCount")); return; }
+    if (!Number.isFinite(total) || total <= 0) { setPkgErr(t("prof.pkgErrPrice")); return; }
+    setPkgSaving(true);
     try {
-      const req: PackageReq = { name: addName.trim(), sessionCount, packagePrice };
-      await psychologistApi.createMyPackage(req);
+      const req: PackageReq = { name: pkgName.trim(), sessionCount: count, packagePrice: total };
+      if (pkgId == null) {
+        await psychologistApi.createMyPackage(req);
+        toast(t("prof.pkgSavedToast"));
+      } else {
+        await psychologistApi.updateMyPackage(pkgId, req);
+        toast(t("prof.pkgUpdatedToast"));
+      }
       await loadPackages();
-      setAddName(""); setAddSessions(""); setAddPrice("");
-      flashSaved();
+      setPkgOpen(false);
     } catch (e) {
       toast((e as Error).message, "error");
     } finally {
-      setAdding(false);
+      setPkgSaving(false);
     }
   };
 
-  const startEdit = (p: PackageDto) => {
-    setEditId(p.id);
-    setEditName(p.name);
-    setEditSessions(String(p.sessionCount));
-    setEditPrice(String(p.packagePrice));
-  };
+  const openDeletePkg = (p: PackageDto) => setConfirmSpec({
+    title: t("prof.pkgDeleteTitle"),
+    body: t("prof.pkgDeleteBody", { name: p.name }),
+    label: t("prof.pkgDeleteLabel"),
+    run: async () => {
+      try {
+        await psychologistApi.deleteMyPackage(p.id);
+        setPackages(prev => prev.filter(x => x.id !== p.id));
+        toast(t("prof.pkgDeletedToast"));
+      } catch (e) {
+        toast((e as Error).message, "error");
+      }
+    },
+  });
 
-  const saveEdit = async (id: number) => {
-    const sessionCount = Number(editSessions);
-    const packagePrice = Number(editPrice);
-    if (!editName.trim() || !Number.isFinite(sessionCount) || sessionCount < 1
-      || !Number.isFinite(packagePrice) || packagePrice < 0) {
-      toast(t("pricing.packageName"), "error");
-      return;
-    }
-    setSavingEdit(true);
-    try {
-      const req: PackageReq = { name: editName.trim(), sessionCount, packagePrice };
-      await psychologistApi.updateMyPackage(id, req);
-      await loadPackages();
-      setEditId(null);
-      flashSaved();
-    } catch (e) {
-      toast((e as Error).message, "error");
-    } finally {
-      setSavingEdit(false);
-    }
-  };
-
-  const removePackage = async (id: number) => {
-    if (!confirm(t("pricing.deleteConfirm"))) return;
-    try {
-      await psychologistApi.deleteMyPackage(id);
-      setPackages(prev => prev.filter(p => p.id !== id));
-      flashSaved();
-    } catch (e) {
-      toast((e as Error).message, "error");
-    }
-  };
+  const pkgPerPreview = (() => {
+    const c = parseInt(pkgCount, 10);
+    const v = Number(pkgTotal);
+    if (!Number.isFinite(c) || c < 1 || !Number.isFinite(v) || v <= 0) return "—";
+    return formatAzn(v / c);
+  })();
 
   return (
-    <div className="uprof-card">
-      <div className="uprof-card-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+    <section style={cardStyle}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div>
-          <h2>{t("pricing.sectionTitle")}</h2>
-          <p>{editable ? t("pricing.individual") + ", " + t("pricing.packages") : t("pricing.managedByAdmin")}</p>
+          <h2 style={sectionH2}>{t("prof.priceTitle")}</h2>
+          <p style={sectionSub}>{t("prof.priceSub")}</p>
         </div>
-        {savedFlash && (
+        {!editable && (
           <span style={{
-            display: "inline-flex", alignItems: "center", gap: 5,
-            padding: "5px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700,
-            color: "var(--brand-700)", background: "var(--brand-50)", border: "1px solid var(--brand-200)",
+            display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12,
+            fontWeight: 500, color: PC.mut, border: `1px solid ${PC.border}`,
+            borderRadius: 8, padding: "6px 10px",
           }}>
-            <CheckIcon />{t("pricing.saved")}
+            <LockIcon />
+            {t("prof.readonly")}
           </span>
         )}
       </div>
 
-      <div style={{ padding: 20, display: "grid", gap: 18 }}>
-        {loading ? (
-          <div style={{ padding: 24, textAlign: "center", color: "var(--oxford-60)", fontSize: 13 }}>Yüklənir…</div>
-        ) : (
-          <>
-            {/* Individual price */}
+      {loading ? (
+        <div style={{ fontSize: 12.5, color: PC.faint, marginTop: 18 }}>{t("prof.loadingNote")}</div>
+      ) : !editable ? (
+        /* ── Yalnız oxunan rejim — qiymətləri admin idarə edir ── */
+        <>
+          <div style={{
+            border: `1px solid ${PC.border}`, borderRadius: 10, background: PC.panel,
+            padding: "14px 16px", marginTop: 16, fontSize: 12.5, color: PC.mut, lineHeight: 1.55,
+          }}>
+            {t("prof.priceLockedNote")}
+          </div>
+          <div style={{
+            display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16,
+            marginTop: 18, paddingBottom: 14, borderBottom: `1px solid ${PC.hair}`,
+          }}>
             <div>
-              <label style={labelStyle}>{t("pricing.individualPrice")}</label>
-              {editable ? (
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <input
-                    type="number" min={0} step="0.01" value={individualInput}
-                    onChange={e => setIndividualInput(e.target.value)}
-                    placeholder="0,00"
-                    style={{ ...fieldStyle, maxWidth: 180 }}
-                  />
-                  <button onClick={saveIndividual} disabled={savingPrice || !priceDirty}
-                    style={{
-                      padding: "9px 16px", borderRadius: 8, border: "none",
-                      background: priceDirty ? "var(--brand)" : "var(--oxford-10)",
-                      color: priceDirty ? "#fff" : "var(--oxford-60)",
-                      fontSize: 12.5, fontWeight: 700,
-                      cursor: savingPrice || !priceDirty ? "default" : "pointer",
-                      transition: "background 0.15s",
-                    }}>
-                    {savingPrice ? "…" : t("pricing.save")}
+              <div style={{ fontSize: 12, fontWeight: 500, color: PC.soft }}>{t("prof.priceIndividual")}</div>
+              <div style={{ fontSize: 12, color: PC.faint, marginTop: 3 }}>{t("prof.priceDurationNote", { n: minutes })}</div>
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.02em", color: PC.ink }}>
+              {savedPrice != null ? formatAzn(savedPrice) : "—"}
+            </div>
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 500, color: PC.soft, margin: "16px 0 10px" }}>{t("prof.pkgsTitle")}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 12 }}>
+            {packages.map(p => (
+              <div key={p.id} style={{ border: `1px solid ${PC.border}`, borderRadius: 10, padding: "14px 15px", background: PC.panel }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: PC.ink }}>{p.name}</div>
+                <div style={{ fontSize: 12, color: PC.faint, marginTop: 3 }}>{t("prof.pkgSessions", { n: p.sessionCount })}</div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 12 }}>
+                  <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.02em", color: PC.ink }}>{formatAzn(p.packagePrice)}</span>
+                </div>
+                <div style={{ fontSize: 12, color: PC.soft, marginTop: 4 }}>{t("prof.pkgPer", { price: formatAzn(p.perSessionPrice) })}</div>
+              </div>
+            ))}
+            {packages.length === 0 && (
+              <div style={{
+                border: `1px dashed ${PC.border2}`, borderRadius: 10, padding: "18px 15px",
+                fontSize: 12.5, color: PC.faint, lineHeight: 1.5,
+              }}>
+                {t("prof.pkgsEmpty")}
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        /* ── Redaktə rejimi — NORMAL tip psixoloq ── */
+        <>
+          <div style={{
+            display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 16,
+            marginTop: 18, paddingBottom: 18, borderBottom: `1px solid ${PC.hair}`,
+          }}>
+            <label style={{ display: "block", flex: "0 0 200px" }}>
+              <span style={labelStyle}>{t("prof.priceIndividualInput")}</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={priceInput}
+                onChange={e => setPriceInput(e.target.value.replace(/[^0-9.]/g, ""))}
+                style={inputStyle}
+              />
+            </label>
+            <div style={{ fontSize: 12, color: PC.faint, lineHeight: 1.5, flex: "1 1 200px", paddingBottom: 10 }}>
+              {t("prof.priceHint", { n: minutes })}
+            </div>
+            {savingPrice ? (
+              <span style={{ ...btnIdle, marginBottom: 1 }}><Spinner />{t("prof.saving")}</span>
+            ) : priceDirty ? (
+              <button type="button" onClick={savePrice} style={{ ...btnDark, marginBottom: 1 }}>
+                {t("prof.priceSave")}
+              </button>
+            ) : null}
+          </div>
+
+          <div style={{
+            display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between",
+            gap: 12, margin: "18px 0 10px",
+          }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: PC.ink }}>{t("prof.pkgsTitle")}</div>
+              <div style={{ fontSize: 12, color: PC.faint, marginTop: 3 }}>{t("prof.pkgsSub")}</div>
+            </div>
+            <button type="button" onClick={openNewPkg} style={{ ...btnGhost, padding: "7px 12px" }}>
+              <PlusIcon />
+              {t("prof.pkgAdd")}
+            </button>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+            {packages.map(p => (
+              <div key={p.id} style={{
+                border: `1px solid ${PC.border}`, borderRadius: 10, padding: "14px 15px",
+                background: "#fff", display: "flex", flexDirection: "column", gap: 3,
+              }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: PC.ink }}>{p.name}</div>
+                <div style={{ fontSize: 12, color: PC.faint }}>{t("prof.pkgSessions", { n: p.sessionCount })}</div>
+                <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.02em", marginTop: 10, color: PC.ink }}>
+                  {formatAzn(p.packagePrice)}
+                </div>
+                <div style={{ fontSize: 12, color: PC.soft }}>{t("prof.pkgPer", { price: formatAzn(p.perSessionPrice) })}</div>
+                <div style={{ display: "flex", gap: 8, marginTop: 12, paddingTop: 12, borderTop: `1px solid ${PC.hair}` }}>
+                  <button type="button" onClick={() => openEditPkg(p)} style={{
+                    display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600,
+                    color: PC.ink, background: "#fff", border: `1px solid ${PC.border2}`,
+                    borderRadius: 7, padding: "5px 10px", cursor: "pointer",
+                  }}>
+                    <PencilIcon />
+                    {t("prof.pkgEdit")}
+                  </button>
+                  <button type="button" onClick={() => openDeletePkg(p)} title={t("prof.pkgDeleteTitle")} style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    color: PC.mut, background: "#fff", border: `1px solid ${PC.border2}`,
+                    borderRadius: 7, padding: "5px 8px", cursor: "pointer",
+                  }}>
+                    <IconTrash size={13} />
                   </button>
                 </div>
-              ) : (
-                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>
-                  {individualPrice != null ? formatAzn(individualPrice) : (
-                    <span style={{ fontSize: 13, fontWeight: 500, color: "var(--oxford-60)" }}>{t("pricing.noPrice")}</span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Packages */}
-            <div>
-              <div style={{ ...labelStyle, marginBottom: 10 }}>{t("pricing.packages")}</div>
-
-              {packages.length === 0 ? (
-                <p style={{ margin: 0, fontSize: 13, color: "var(--oxford-60)" }}>—</p>
-              ) : (
-                <div style={{ display: "grid", gap: 8 }}>
-                  {packages.map(p => (
-                    editable && editId === p.id ? (
-                      <div key={p.id} style={{ display: "grid", gap: 8, padding: 12, borderRadius: 10, border: "1px solid var(--brand-200)", background: "var(--brand-50)" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 110px", gap: 8 }}>
-                          <input value={editName} onChange={e => setEditName(e.target.value)} placeholder={t("pricing.packageName")} style={fieldStyle} />
-                          <input type="number" min={1} step={1} value={editSessions} onChange={e => setEditSessions(e.target.value)} placeholder={t("pricing.sessionCount")} style={fieldStyle} />
-                          <input type="number" min={0} step="0.01" value={editPrice} onChange={e => setEditPrice(e.target.value)} placeholder={t("pricing.packagePrice")} style={fieldStyle} />
-                        </div>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={() => saveEdit(p.id)} disabled={savingEdit}
-                            style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: "var(--brand)", color: "#fff", fontSize: 12.5, fontWeight: 700, cursor: savingEdit ? "default" : "pointer" }}>
-                            {savingEdit ? "…" : t("pricing.save")}
-                          </button>
-                          <button onClick={() => setEditId(null)}
-                            style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--oxford-10)", background: "#fff", color: "var(--oxford-60)", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div key={p.id} style={{
-                        display: "flex", alignItems: "center", gap: 12,
-                        padding: "11px 13px", borderRadius: 10,
-                        border: "1px solid var(--oxford-10)", background: "#fff",
-                      }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{p.name}</div>
-                          <div style={{ fontSize: 11.5, color: "var(--oxford-60)", marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                            <span>{p.sessionCount} {t("pricing.sessionCount").toLowerCase()}</span>
-                            <span>{formatAzn(p.perSessionPrice)}{t("pricing.perSession")}</span>
-                          </div>
-                        </div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: "var(--brand-700)", whiteSpace: "nowrap" }}>
-                          {formatAzn(p.packagePrice)}
-                        </div>
-                        {editable && (
-                          <div style={{ display: "flex", gap: 6 }}>
-                            <button onClick={() => startEdit(p)} title={t("pricing.edit")}
-                              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 8, border: "1px solid var(--oxford-10)", background: "#fff", color: "var(--oxford-60)", cursor: "pointer" }}>
-                              <PencilIcon />
-                            </button>
-                            <button onClick={() => removePackage(p.id)} title={t("pricing.delete")}
-                              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 8, border: "1px solid #fecdca", background: "#fff", color: "#b42318", cursor: "pointer" }}>
-                              <TrashIcon />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  ))}
-                </div>
-              )}
-
-              {/* Add package form */}
-              {editable && (
-                <div style={{ marginTop: 12, padding: 12, borderRadius: 10, border: "1px dashed var(--oxford-10)", background: "var(--brand-50)" }}>
-                  <div style={{ ...labelStyle, marginBottom: 8 }}>{t("pricing.addPackage")}</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 110px auto", gap: 8, alignItems: "center" }}>
-                    <input value={addName} onChange={e => setAddName(e.target.value)} placeholder={t("pricing.packageName")} style={fieldStyle} />
-                    <input type="number" min={1} step={1} value={addSessions} onChange={e => setAddSessions(e.target.value)} placeholder={t("pricing.sessionCount")} style={fieldStyle} />
-                    <input type="number" min={0} step="0.01" value={addPrice} onChange={e => setAddPrice(e.target.value)} placeholder={t("pricing.packagePrice")} style={fieldStyle} />
-                    <button onClick={addPackage} disabled={adding}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 8, border: "none", background: "var(--brand)", color: "#fff", fontSize: 12.5, fontWeight: 700, cursor: adding ? "default" : "pointer", whiteSpace: "nowrap" }}>
-                      <PlusIcon />{adding ? "…" : t("pricing.addPackage")}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {!editable && (
-              <p style={{
-                display: "flex", alignItems: "center", gap: 7,
-                fontSize: 11.5, color: "var(--oxford-60)", margin: 0, lineHeight: 1.6,
-                padding: "10px 12px", background: "var(--brand-50)", borderRadius: 8, borderLeft: "3px solid var(--brand-200)",
+              </div>
+            ))}
+            {packages.length === 0 && (
+              <div style={{
+                border: `1px dashed ${PC.border2}`, borderRadius: 10, padding: "18px 15px",
+                fontSize: 12.5, color: PC.faint, lineHeight: 1.5,
               }}>
-                <LockIcon />{t("pricing.managedByAdmin")}
-              </p>
+                {t("prof.pkgsEmpty")}
+              </div>
             )}
-          </>
-        )}
-      </div>
-    </div>
+          </div>
+        </>
+      )}
+
+      {/* Paket əlavə/redaktə modalı */}
+      {pkgOpen && (
+        <ModalScrim>
+          <div style={{ ...modalBoxStyle, maxWidth: 440 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.015em", margin: 0, color: PC.ink }}>
+              {pkgId == null ? t("prof.pkgModalNew") : t("prof.pkgModalEdit")}
+            </h3>
+            <p style={{ fontSize: 12.5, color: PC.soft, lineHeight: 1.5, margin: "5px 0 0" }}>{t("prof.pkgModalSub")}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 18 }}>
+              <label style={{ display: "block" }}>
+                <span style={labelStyle}>{t("prof.pkgName")}</span>
+                <input type="text" value={pkgName} onChange={e => setPkgName(e.target.value)} style={inputStyle} />
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <label style={{ display: "block" }}>
+                  <span style={labelStyle}>{t("prof.pkgCount")}</span>
+                  <input type="text" inputMode="numeric" value={pkgCount}
+                    onChange={e => setPkgCount(e.target.value.replace(/[^0-9]/g, ""))} style={inputStyle} />
+                </label>
+                <label style={{ display: "block" }}>
+                  <span style={labelStyle}>{t("prof.pkgPrice")}</span>
+                  <input type="text" inputMode="decimal" value={pkgTotal}
+                    onChange={e => setPkgTotal(e.target.value.replace(/[^0-9.]/g, ""))} style={inputStyle} />
+                </label>
+              </div>
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                padding: "12px 14px", border: `1px solid ${PC.hair}`, borderRadius: 10, background: PC.panel,
+              }}>
+                <span style={{ fontSize: 12.5, color: PC.soft }}>{t("prof.pkgPerLabel")}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: PC.ink }}>{pkgPerPreview}</span>
+              </div>
+              {pkgErr && (
+                <div style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.5, color: PC.ink }}>{pkgErr}</div>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 18, paddingTop: 16, borderTop: `1px solid ${PC.hair}` }}>
+              {pkgSaving ? (
+                <span style={{ ...btnIdle, flex: "1 1 auto", justifyContent: "center" }}><Spinner />{t("prof.saving")}</span>
+              ) : (
+                <button type="button" onClick={savePkg} style={{ ...btnDark, flex: "1 1 auto", justifyContent: "center", padding: "9px 14px" }}>
+                  {t("prof.save")}
+                </button>
+              )}
+              <button type="button" onClick={() => setPkgOpen(false)} disabled={pkgSaving}
+                style={{ ...btnGhost, fontSize: 13, padding: "9px 14px" }}>
+                {t("prof.cancel")}
+              </button>
+            </div>
+          </div>
+        </ModalScrim>
+      )}
+
+      <ConfirmDialog spec={confirmSpec} onClose={() => setConfirmSpec(null)} />
+    </section>
   );
 }
 
-/* ─── Profil statistikası — statistika mənbəyi (Modul D) ────────────────────── */
+/* ─── Statistika mənbəyi (Modul D) — kliklə seçilir və dərhal saxlanır ───── */
 
 type StatsSource = "FANUS_PLATFORM" | "PRIOR_EXPERIENCE";
 
-function BoostIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M3 17l6-6 4 4 8-8" />
-      <path d="M21 7v6h-6" />
-    </svg>
-  );
-}
-
 function StatsSourceCard({
-  initialSource, fanusCount, priorCount, onSaved,
+  me, onSaved,
 }: {
-  initialSource: StatsSource;
-  fanusCount: number;
-  priorCount: number;
+  me: Psychologist;
   onSaved: (p: Partial<Psychologist>) => void;
 }) {
   const { t } = useT();
-
-  const [selected, setSelected] = useState<StatsSource>(initialSource);
-  const [savedSource, setSavedSource] = useState<StatsSource>(initialSource);
-  // Platformadan əvvəlki seans sayı elə burada redaktə olunur — rəqəm seçimin
-  // yanındadır, ayrıca ekran açmağa ehtiyac qalmır.
-  const [prior, setPrior] = useState<string>(String(priorCount));
-  const [savedPrior, setSavedPrior] = useState<number>(priorCount);
+  const [selected, setSelected] = useState<StatsSource>(me.statsSource ?? "FANUS_PLATFORM");
   const [saving, setSaving] = useState(false);
-  const [savedFlash, setSavedFlash] = useState(false);
 
-  const flashSaved = () => {
-    setSavedFlash(true);
-    window.setTimeout(() => setSavedFlash(false), 2200);
-  };
-
-  const priorNum = Number(prior);
-  const priorValid = prior.trim() !== "" && Number.isFinite(priorNum) && priorNum >= 0 && priorNum <= 100000;
-  const dirty = selected !== savedSource || (priorValid && priorNum !== savedPrior);
-
-  const save = async () => {
+  const choose = async (value: StatsSource) => {
+    if (value === selected || saving) return;
     setSaving(true);
+    const prev = selected;
+    setSelected(value);
     try {
-      const res = await psychologistApi.updateStatsSource(selected, priorValid ? priorNum : undefined);
-      const nextSource = res.statsSource ?? selected;
-      setSelected(nextSource);
-      setSavedSource(nextSource);
-      const nextPrior = res.priorExperienceSessions ?? priorNum;
-      setPrior(String(nextPrior));
-      setSavedPrior(nextPrior);
+      const res = await psychologistApi.updateStatsSource(value);
       onSaved({
         statsSource: res.statsSource,
         fanusSessionCount: res.fanusSessionCount,
         priorExperienceSessions: res.priorExperienceSessions,
         displayedSessionCount: res.displayedSessionCount,
       });
-      flashSaved();
+      toast(t("prof.srcSavedToast"));
     } catch (e) {
+      setSelected(prev);
       toast((e as Error).message, "error");
     } finally {
       setSaving(false);
     }
   };
 
-  const options: { value: StatsSource; label: string; count: number; boost: boolean }[] = [
-    { value: "FANUS_PLATFORM", label: t("psyStats.fanusOption"), count: fanusCount, boost: true },
-    { value: "PRIOR_EXPERIENCE", label: t("psyStats.priorOption"), count: priorCount, boost: false },
+  const options: { value: StatsSource; label: string; note: string; count: number }[] = [
+    { value: "FANUS_PLATFORM", label: t("prof.srcFanus"), note: t("prof.srcFanusNote"), count: me.fanusSessionCount ?? 0 },
+    { value: "PRIOR_EXPERIENCE", label: t("prof.srcPrior"), note: t("prof.srcPriorNote"), count: me.priorExperienceSessions ?? 0 },
   ];
 
   return (
-    <div className="uprof-card">
-      <div className="uprof-card-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-        <div>
-          <h2>{t("psyStats.title")}</h2>
-          <p>{t("psyStats.sessions")}</p>
-        </div>
-        {savedFlash && (
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 5,
-            padding: "5px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700,
-            color: "var(--brand-700)", background: "var(--brand-50)", border: "1px solid var(--brand-200)",
-          }}>
-            <CheckIcon />{t("psyStats.saved")}
-          </span>
-        )}
+    <section style={cardStyle}>
+      <h2 style={sectionH2}>{t("prof.srcTitle")}</h2>
+      <p style={{ ...sectionSub, maxWidth: "70ch" }}>{t("prof.srcSub")}</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginTop: 16 }}>
+        {options.map(opt => {
+          const active = selected === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => choose(opt.value)}
+              disabled={saving}
+              style={{
+                textAlign: "left", background: "#fff",
+                border: active ? `1px solid ${PC.ink}` : `1px solid ${PC.border2}`,
+                borderRadius: 10, padding: "15px 16px", cursor: saving ? "default" : "pointer",
+                display: "flex", gap: 12, alignItems: "flex-start",
+              }}
+            >
+              <span style={{ flex: "0 0 auto", marginTop: 2 }}>
+                {active ? (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={PC.ink} strokeWidth="1.5" aria-hidden>
+                    <circle cx="8" cy="8" r="6.2" />
+                    <circle cx="8" cy="8" r="3" fill={PC.ink} stroke="none" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={PC.border3} strokeWidth="1.5" aria-hidden>
+                    <circle cx="8" cy="8" r="6.2" />
+                  </svg>
+                )}
+              </span>
+              <span style={{ flex: "1 1 auto", minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: PC.ink }}>{opt.label}</span>
+                <span style={{ display: "block", fontSize: 19, fontWeight: 600, letterSpacing: "-0.02em", marginTop: 8, color: PC.ink }}>
+                  {opt.count}
+                </span>
+                <span style={{ display: "block", fontSize: 12, color: PC.soft, lineHeight: 1.5, marginTop: 6 }}>{opt.note}</span>
+                {active && (
+                  <span style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: PC.ink, marginTop: 8 }}>
+                    {t("prof.srcSelected")}
+                  </span>
+                )}
+              </span>
+            </button>
+          );
+        })}
       </div>
+    </section>
+  );
+}
 
-      <div style={{ padding: 20, display: "grid", gap: 18 }}>
-        <div style={{ display: "grid", gap: 10 }}>
-          {options.map(opt => {
-            const active = selected === opt.value;
-            return (
-              <label key={opt.value}
-                style={{
-                  display: "flex", alignItems: "flex-start", gap: 12,
-                  padding: "13px 14px", borderRadius: 10, cursor: "pointer",
-                  border: active ? "1px solid var(--brand-200)" : "1px solid var(--oxford-10)",
-                  background: active ? "var(--brand-50)" : "#fff",
-                  transition: "background 0.15s, border-color 0.15s",
-                }}>
-                <input
-                  type="radio"
-                  name="stats-source"
-                  value={opt.value}
-                  checked={active}
-                  onChange={() => setSelected(opt.value)}
-                  style={{ marginTop: 3, accentColor: "var(--brand)", cursor: "pointer", flexShrink: 0 }}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{opt.label}</span>
-                    {opt.value === "PRIOR_EXPERIENCE" ? (
-                      /* Bu rəqəm psixoloqun özü bildirdiyi məlumatdır (qeydiyyatda da
-                         belədir), ona görə burada redaktə oluna bilər. Fanus sayı isə
-                         platformada hesablanır — ona toxunulmur. */
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                        <input
-                          type="number"
-                          min={0}
-                          max={100000}
-                          value={prior}
-                          onChange={(e) => setPrior(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label={t("psyStats.priorOption")}
-                          style={{
-                            width: 84, padding: "4px 8px", borderRadius: 7, fontSize: 13, fontWeight: 800,
-                            color: "var(--brand-700)", textAlign: "right",
-                            border: `1px solid ${priorValid ? "var(--oxford-10)" : "#DC2626"}`,
-                          }}
-                        />
-                        <span style={{ fontSize: 13, fontWeight: 800, color: "var(--brand-700)" }}>
-                          {t("psyStats.sessions")}
-                        </span>
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: 13, fontWeight: 800, color: "var(--brand-700)" }}>
-                        {opt.count} {t("psyStats.sessions")}
-                      </span>
-                    )}
-                  </div>
-                  {opt.boost && (
-                    <span style={{
-                      display: "inline-flex", alignItems: "center", gap: 6, marginTop: 6,
-                      fontSize: 11.5, color: "var(--oxford-60)", lineHeight: 1.5,
-                    }}>
-                      <BoostIcon />{t("psyStats.boostNote")}
-                    </span>
-                  )}
-                </div>
-              </label>
-            );
-          })}
+/* ─── İctimai profil önizləməsi (yan sütun) ──────────────────────────────── */
+
+function PublicPreviewCard({ me, minutes }: { me: Psychologist; minutes: number }) {
+  const { t } = useT();
+  return (
+    <section style={sideCardStyle}>
+      <h2 style={sectionH2}>{t("prof.pvTitle")}</h2>
+      <p style={sectionSub}>{t("prof.pvSub")}</p>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 12, marginTop: 16,
+        paddingTop: 14, borderTop: `1px solid ${PC.hair}`,
+      }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: "50%", border: `1px solid ${PC.border}`,
+          background: PC.bg, overflow: "hidden", display: "flex", alignItems: "center",
+          justifyContent: "center", fontSize: 14, fontWeight: 600, color: PC.mut, flex: "0 0 auto",
+        }}>
+          {me.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={me.photoUrl} alt={me.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <span>{initialsOf(me.name)}</span>
+          )}
         </div>
-
-        <div>
-          <button onClick={save} disabled={saving || !dirty}
-            style={{
-              padding: "9px 16px", borderRadius: 8, border: "none",
-              background: dirty ? "var(--brand)" : "var(--oxford-10)",
-              color: dirty ? "#fff" : "var(--oxford-60)",
-              fontSize: 12.5, fontWeight: 700,
-              cursor: saving || !dirty ? "default" : "pointer",
-              transition: "background 0.15s",
-            }}>
-            {saving ? "…" : t("psyStats.save")}
-          </button>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: PC.ink }}>{me.name}</div>
+          <div style={{ fontSize: 12, color: PC.soft, marginTop: 2 }}>{me.title}</div>
         </div>
       </div>
-    </div>
+      <div style={{ ...rowSplit, alignItems: "flex-start", marginTop: 14 }}>
+        <span style={{ ...rowKey, flex: "0 0 auto" }}>{t("prof.pvSpecs")}</span>
+        <span style={{ ...rowVal, textAlign: "right" }}>
+          {me.specializations?.slice(0, 4).join(", ") || "—"}
+        </span>
+      </div>
+      <div style={{ ...rowSplit, alignItems: "flex-start" }}>
+        <span style={rowKey}>{t("prof.pvLangs")}</span>
+        <span style={{ ...rowVal, textAlign: "right" }}>{me.languages || "—"}</span>
+      </div>
+      <div style={rowSplit}>
+        <span style={rowKey}>{t("prof.pvExp")}</span>
+        <span style={rowVal}>{me.experience || "—"}</span>
+      </div>
+      <div style={rowSplit}>
+        <span style={rowKey}>{t("prof.pvDuration")}</span>
+        <span style={rowVal}>{t("prof.pvMinutes", { n: minutes })}</span>
+      </div>
+      <div style={{ ...rowSplit, padding: "11px 0 0" }}>
+        <span style={rowKey}>{t("prof.pvShownCount")}</span>
+        <span style={rowVal}>{t("prof.pvSessions", { n: me.displayedSessionCount ?? 0 })}</span>
+      </div>
+      <div style={{
+        fontSize: 11.5, color: PC.faint, lineHeight: 1.55, marginTop: 14,
+        paddingTop: 13, borderTop: `1px solid ${PC.hair}`,
+      }}>
+        {t("prof.pvAdminNote")}
+      </div>
+    </section>
   );
 }

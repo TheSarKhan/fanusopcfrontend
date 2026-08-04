@@ -4,9 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { meApi, patientApi, revalidatePsychologistsCache, type AccountStatus, type EmergencyContact, type MeProfile } from "@/lib/api";
+import { azFormatDate, azFormatDateTime } from "@/lib/datetime";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
 import AvatarCropModal from "@/components/AvatarCropModal";
+import { toast } from "@/components/Toast";
 
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
@@ -17,63 +19,494 @@ function roleLabel(t: Translate, role: string) {
   return ROLES.includes(role) ? t(`roleLabel.${role}` as MessageKey) : role;
 }
 
-/* ─── Şifrə sahəsi + göz düyməsi (login/register ilə eyni ikon) ───────── */
-function EyeIcon({ open }: { open: boolean }) {
+/* ─── Dizayn tokenləri (Claude Design referansından 1:1) ─────────────────── */
+
+export const PC = {
+  ink: "#12171a",
+  mut: "#565f63",
+  soft: "#6d767a",
+  faint: "#8c9599",
+  dim: "#a3abae",
+  border: "#e3e7e7",
+  border2: "#dde2e2",
+  border3: "#c9cfd0",
+  hair: "#edf0f0",
+  bg: "#f5f7f7",
+  panel: "#f8fafa",
+  green: "#2f5d50",
+} as const;
+
+export const cardStyle: React.CSSProperties = {
+  border: `1px solid ${PC.border}`, borderRadius: 12, background: "#fff", padding: 22,
+};
+export const sideCardStyle: React.CSSProperties = {
+  border: `1px solid ${PC.border}`, borderRadius: 12, background: "#fff", padding: 20,
+};
+export const sectionH2: React.CSSProperties = {
+  fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", margin: 0, color: PC.ink,
+};
+export const sectionSub: React.CSSProperties = {
+  fontSize: 12.5, color: PC.soft, lineHeight: 1.55, margin: "5px 0 0",
+};
+export const labelStyle: React.CSSProperties = {
+  display: "block", fontSize: 12, fontWeight: 500, color: PC.soft, marginBottom: 6,
+};
+export const inputStyle: React.CSSProperties = {
+  width: "100%", boxSizing: "border-box", fontSize: 13.5, color: PC.ink,
+  background: "#fff", border: `1px solid ${PC.border2}`, borderRadius: 8,
+  padding: "9px 11px", outline: "none",
+};
+export const inputReadonlyStyle: React.CSSProperties = {
+  ...inputStyle, color: PC.faint, background: "#f7f9f9", border: "1px solid #e9edee",
+};
+export const btnDark: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600,
+  color: "#fff", background: PC.ink, border: `1px solid ${PC.ink}`, borderRadius: 8,
+  padding: "9px 16px", cursor: "pointer",
+};
+export const btnGhost: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600,
+  color: PC.ink, background: "#fff", border: `1px solid ${PC.border2}`, borderRadius: 8,
+  padding: "8px 13px", cursor: "pointer",
+};
+export const btnIdle: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600,
+  color: PC.dim, background: "#f2f5f5", border: "1px solid #e9edee", borderRadius: 8,
+  padding: "9px 16px",
+};
+export const rowSplit: React.CSSProperties = {
+  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14,
+  padding: "11px 0", borderTop: `1px solid ${PC.hair}`,
+};
+export const rowKey: React.CSSProperties = { fontSize: 12.5, color: PC.soft };
+export const rowVal: React.CSSProperties = { fontSize: 12.5, fontWeight: 500, color: PC.ink };
+export const gridAutoFit: React.CSSProperties = {
+  display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px 18px", marginTop: 18,
+};
+export const footerRow: React.CSSProperties = {
+  display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12,
+  marginTop: 20, paddingTop: 16, borderTop: `1px solid ${PC.hair}`,
+};
+
+/* ─── Ortaq ikonlar ──────────────────────────────────────────────────────── */
+
+export function Spinner({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor"
+      strokeWidth="1.8" style={{ animation: "fanusSpin .8s linear infinite" }} aria-hidden>
+      <path d="M8 2.4a5.6 5.6 0 1 1-5.6 5.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+export function IconCheck({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <path d="M3.4 8.4l2.6 2.6 6-6.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+export function IconChevron({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M6.4 4 10 8l-3.6 4" strokeLinecap="round" />
+    </svg>
+  );
+}
+export function IconExternal({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M6.4 3.4h6.2v6.2M12.6 3.4 7 9M12.6 9.6v3H3.4V3.4h3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+export function IconTrash({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M3.4 5h9.2M6.4 5V3.6h3.2V5M4.6 5l.5 8h5.8l.5-8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconWarn({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke={PC.ink} strokeWidth="1.5" aria-hidden>
+      <path d="M10 3.4 2.8 16h14.4L10 3.4Z" strokeLinejoin="round" />
+      <path d="M10 8v3.4M10 13.6v.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconUndo({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M3 8a5 5 0 1 1 1.6 3.7M3 8V4.8M3 8h3.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconCamera({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M2.6 6.2h1.8l1-1.6h5.2l1 1.6h1.8v6.2H2.6V6.2Z" strokeLinejoin="round" />
+      <circle cx="8" cy="9.3" r="2" />
+    </svg>
+  );
+}
+function IconDownload({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M8 3v7M5.2 7.4 8 10.2l2.8-2.8M3.2 12.6h9.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconEye({ open }: { open: boolean }) {
   return open ? (
-    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M1.6 8S4 4.2 8 4.2 14.4 8 14.4 8 12 11.8 8 11.8 1.6 8 1.6 8Z" strokeLinejoin="round" />
+      <circle cx="8" cy="8" r="1.9" />
     </svg>
   ) : (
-    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-      <line x1="1" y1="1" x2="23" y2="23" />
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M1.6 8S4 4.2 8 4.2 14.4 8 14.4 8 12 11.8 8 11.8 1.6 8 1.6 8Z" strokeLinejoin="round" />
+      <path d="M3 13 13 3" strokeLinecap="round" />
     </svg>
   );
 }
 
+/* ─── Ortaq modal skeleti + təsdiq dialoqu ───────────────────────────────── */
+
+export function ModalScrim({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(18,23,26,.34)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      padding: 24, zIndex: 60, overflow: "auto",
+    }}>
+      {children}
+    </div>
+  );
+}
+export const modalBoxStyle: React.CSSProperties = {
+  background: "#fff", border: `1px solid ${PC.border}`, borderRadius: 14,
+  width: "100%", maxWidth: 430, padding: 22, animation: "fanusRise .18s ease-out",
+};
+
+export interface ConfirmSpec {
+  title: string;
+  body: string;
+  label: string;
+  run: () => void;
+}
+
+export function ConfirmDialog({ spec, onClose }: { spec: ConfirmSpec | null; onClose: () => void }) {
+  const { t } = useT();
+  if (!spec) return null;
+  return (
+    <ModalScrim>
+      <div style={modalBoxStyle}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.015em", margin: 0, color: PC.ink }}>{spec.title}</h3>
+        <p style={{ fontSize: 13, color: PC.mut, lineHeight: 1.6, margin: "8px 0 0" }}>{spec.body}</p>
+        <div style={{ display: "flex", gap: 10, marginTop: 20, paddingTop: 16, borderTop: `1px solid ${PC.hair}` }}>
+          <button type="button" onClick={() => { onClose(); spec.run(); }} style={btnDark}>{spec.label}</button>
+          <button type="button" onClick={onClose} style={{ ...btnGhost, fontSize: 13, padding: "9px 15px" }}>{t("prof.cancel")}</button>
+        </div>
+      </div>
+    </ModalScrim>
+  );
+}
+
+/* ─── Form altlığı — saxla / saxlanılır / saxlandı / dəyişiklik yoxdur ───── */
+
+export function SaveFooter({
+  dirty, saving, saved, onSave, onDiscard, submitLabel, border = true,
+}: {
+  dirty: boolean;
+  saving: boolean;
+  saved: boolean;
+  onSave: () => void;
+  onDiscard?: () => void;
+  submitLabel?: string;
+  border?: boolean;
+}) {
+  const { t } = useT();
+  const label = submitLabel ?? t("prof.save");
+  return (
+    <div style={border ? footerRow : { ...footerRow, marginTop: 18, paddingTop: 0, borderTop: "none" }}>
+      {saving ? (
+        <span style={btnIdle}><Spinner />{t("prof.saving")}</span>
+      ) : dirty ? (
+        <button type="submit" onClick={onSave} style={btnDark}>{label}</button>
+      ) : (
+        <span style={btnIdle}>{label}</span>
+      )}
+      {dirty && !saving && onDiscard && (
+        <button type="button" onClick={onDiscard} style={{
+          fontSize: 12.5, fontWeight: 500, color: PC.mut, background: "none", border: "none",
+          padding: "6px 2px", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2,
+        }}>
+          {t("prof.discard")}
+        </button>
+      )}
+      {!dirty && !saving && (
+        saved ? (
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5,
+            fontWeight: 500, color: PC.ink, animation: "fanusRise .2s ease-out",
+          }}>
+            <IconCheck />{t("prof.saved")}
+          </span>
+        ) : (
+          <span style={{ fontSize: 12.5, color: PC.faint }}>{t("prof.noChanges")}</span>
+        )
+      )}
+    </div>
+  );
+}
+
+/* ─── Şifrə sahəsi + göz düyməsi ─────────────────────────────────────────── */
+
 function PasswordInput({
-  value, onChange, autoComplete, required,
+  value, onChange, autoComplete,
 }: {
   value: string;
   onChange: (v: string) => void;
   autoComplete?: string;
-  required?: boolean;
 }) {
   const { t } = useT();
   const [show, setShow] = useState(false);
   return (
-    <span className="uprof-pw">
+    <span style={{
+      display: "flex", alignItems: "center", border: `1px solid ${PC.border2}`,
+      borderRadius: 8, background: "#fff", paddingRight: 4,
+    }}>
       <input
         type={show ? "text" : "password"}
         value={value}
         onChange={e => onChange(e.target.value)}
         autoComplete={autoComplete}
-        required={required}
+        style={{
+          flex: "1 1 auto", minWidth: 0, fontSize: 13.5, color: PC.ink,
+          background: "none", border: "none", padding: "9px 11px", outline: "none",
+        }}
       />
       <button
         type="button"
-        className="uprof-pw__eye"
         onClick={() => setShow(v => !v)}
+        title={t("prof.pwToggle")}
         aria-label={show ? t("uprof.pwHide") : t("uprof.pwShow")}
+        style={{
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          color: PC.faint, background: "none", border: "none", padding: 6, cursor: "pointer",
+        }}
       >
-        <EyeIcon open={show} />
+        <IconEye open={show} />
       </button>
     </span>
   );
 }
 
-function fmtDateTime(iso?: string | null) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+const PHONE_RE = /^\+?[0-9 ()-]{9,}$/;
+
+/* ─── ProfileShell — bütün panel rollarının vahid profil skeleti ─────────── */
+
+export interface ProfileQuickLink {
+  href: string;
+  label: string;
+  icon?: React.ReactNode;
+  external?: boolean;
 }
 
-function fmtDate(t: Translate, iso?: string | null) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return `${d.getDate()} ${t(`months.m${d.getMonth() + 1}` as MessageKey)} ${d.getFullYear()}`;
+export interface ProfileShellProps {
+  /** Başlıq (default: lokal "Profil") və alt başlıq. */
+  title?: string;
+  subtitle?: string;
+  /** Əsas sütunda Əsas məlumat (+ pasientdə Təcili əlaqə) ilə Şifrə arasına düşən rol kartları. */
+  extras?: React.ReactNode;
+  /** Yan sütunda Hesab durumu kartından ƏVVƏL göstərilən kartlar (məs. risk kartı). */
+  sideExtras?: React.ReactNode;
+  /** Yan sütunda Sürətli keçidlərdən SONRA göstərilən kartlar (məs. təqvim, önizləmə). */
+  sideBottom?: React.ReactNode;
+  /** Sürətli keçidlər — verilməsə yalnız bildiriş parametrləri keçidi göstərilir. */
+  quickLinks?: ProfileQuickLink[];
+  /** Hesab durumu kartına rol-spesifik əlavə sətirlər (məs. Hesab tipi). */
+  statusRows?: { label: string; value: React.ReactNode }[];
 }
+
+export default function ProfileShell({
+  title, subtitle, extras, sideExtras, sideBottom, quickLinks, statusRows,
+}: ProfileShellProps) {
+  const { t } = useT();
+  const [me, setMe] = useState<MeProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [confirmSpec, setConfirmSpec] = useState<ConfirmSpec | null>(null);
+
+  // GDPR hesab statusu — gözləyən silinmə bannerini idarə edir.
+  const [status, setStatus] = useState<AccountStatus | null>(null);
+
+  const refreshStatus = useCallback(() => {
+    meApi.accountStatus().then(setStatus).catch(() => { /* qeyri-kritik */ });
+  }, []);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setErr(null);
+    meApi.get()
+      .then(setMe)
+      .catch(e => setErr((e as Error).message))
+      .finally(() => setLoading(false));
+    refreshStatus();
+  }, [refreshStatus]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const head = (
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
+      <div>
+        <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.025em", margin: 0, color: PC.ink }}>
+          {title ?? t("uprof.titleDefault")}
+        </h1>
+        {subtitle && (
+          <p style={{ fontSize: 13.5, color: PC.soft, lineHeight: 1.5, margin: "6px 0 0", maxWidth: "62ch" }}>
+            {subtitle}
+          </p>
+        )}
+      </div>
+      {me?.lastLogin && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: PC.soft }}>
+          <span>{t("prof.lastLogin")}</span>
+          <span style={{ color: PC.ink, fontWeight: 500 }}>{azFormatDateTime(me.lastLogin)}</span>
+        </div>
+      )}
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {head}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ ...cardStyle, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ width: 180, height: 14, borderRadius: 4, background: "#e9edee", animation: "fanusPulse 1.4s ease-in-out infinite" }} />
+            <div style={{ width: "100%", height: 11, borderRadius: 4, background: "#eef1f1", animation: "fanusPulse 1.4s ease-in-out .1s infinite" }} />
+            <div style={{ width: "72%", height: 11, borderRadius: 4, background: "#eef1f1", animation: "fanusPulse 1.4s ease-in-out .2s infinite" }} />
+          </div>
+          <div style={{ ...cardStyle, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ width: 140, height: 14, borderRadius: 4, background: "#e9edee", animation: "fanusPulse 1.4s ease-in-out infinite" }} />
+            <div style={{ width: "90%", height: 11, borderRadius: 4, background: "#eef1f1", animation: "fanusPulse 1.4s ease-in-out .15s infinite" }} />
+          </div>
+          <div style={{ fontSize: 12.5, color: PC.faint }}>{t("prof.loadingNote")}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (err || !me) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {head}
+        <div style={{
+          border: `1px solid ${PC.border3}`, borderRadius: 12, background: "#fff", padding: 26,
+          display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 12, maxWidth: 520,
+        }}>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke={PC.ink} strokeWidth="1.5" aria-hidden>
+            <circle cx="10" cy="10" r="7.2" />
+            <path d="M10 6.4v4M10 13.2v.6" strokeLinecap="round" />
+          </svg>
+          <div style={{ fontSize: 15, fontWeight: 600, color: PC.ink }}>{t("prof.errTitle")}</div>
+          <div style={{ fontSize: 13, color: PC.mut, lineHeight: 1.55 }}>{err || t("prof.errBody")}</div>
+          <button type="button" onClick={load} style={{ ...btnDark, marginTop: 2, padding: "8px 14px" }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+              <path d="M13 8a5 5 0 1 1-1.6-3.7M13 4.8V8M13 8H9.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {t("prof.retry")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {status?.deletionRequestedAt && (
+        <DeletionBanner status={status} onCancelled={refreshStatus} setConfirm={setConfirmSpec} />
+      )}
+
+      {head}
+
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 20 }}>
+        <div style={{ flex: "1 1 620px", minWidth: 0, display: "flex", flexDirection: "column", gap: 20 }}>
+          <IdentityCard me={me} onChanged={setMe} setConfirm={setConfirmSpec} />
+          <BasicInfoCard me={me} onUpdated={setMe} />
+          {me.role === "PATIENT" && <EmergencyContactCard />}
+          {extras}
+          <PasswordCard />
+          <PrivacyCard status={status} onStatusChanged={refreshStatus} setConfirm={setConfirmSpec} />
+        </div>
+
+        <div style={{
+          flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column",
+          gap: 20, position: "sticky", top: 86,
+        }}>
+          {sideExtras}
+          <AccountStatusCard me={me} statusRows={statusRows} />
+          <QuickLinksCard role={me.role} links={quickLinks} />
+          {sideBottom}
+        </div>
+      </div>
+
+      <ConfirmDialog spec={confirmSpec} onClose={() => setConfirmSpec(null)} />
+    </div>
+  );
+}
+
+/* ─── Gözləyən silinmə banneri ───────────────────────────────────────────── */
+
+function DeletionBanner({
+  status, onCancelled, setConfirm,
+}: {
+  status: AccountStatus;
+  onCancelled: () => void;
+  setConfirm: (c: ConfirmSpec | null) => void;
+}) {
+  const { t } = useT();
+  const requestedLabel = status.deletionRequestedAt ? azFormatDate(status.deletionRequestedAt) : "—";
+
+  const openCancel = () => setConfirm({
+    title: t("prof.delCancelTitle"),
+    body: t("prof.delCancelBody"),
+    label: t("prof.delCancelCta"),
+    run: async () => {
+      try {
+        await meApi.cancelDeletionRequest();
+        toast(t("prof.delCancelledToast"));
+        onCancelled();
+      } catch (e) {
+        toast((e as Error).message, "error");
+      }
+    },
+  });
+
+  return (
+    <div role="alert" style={{
+      border: `1px solid ${PC.border3}`, borderRadius: 12, background: "#fff",
+      padding: "16px 18px", display: "flex", alignItems: "flex-start", gap: 14,
+    }}>
+      <span style={{ flex: "0 0 auto", marginTop: 1 }}><IconWarn /></span>
+      <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: PC.ink }}>{t("prof.delBannerTitle")}</div>
+        <div style={{ fontSize: 12.5, color: PC.mut, lineHeight: 1.55, marginTop: 4 }}>
+          {t("prof.delBannerBody", { date: requestedLabel })}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
+          <button type="button" onClick={openCancel} style={{ ...btnGhost, border: `1px solid ${PC.border3}`, padding: "7px 13px" }}>
+            <IconUndo />
+            {t("prof.delCancelCta")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Kimlik kartı — şəkil, ad, e-poçt, rol/status cədvəli ───────────────── */
 
 function initialsOf(me: MeProfile) {
   const a = (me.firstName?.[0] ?? "").toUpperCase();
@@ -82,156 +515,24 @@ function initialsOf(me: MeProfile) {
   return both || (me.email[0] ?? "?").toUpperCase();
 }
 
-export interface ProfileShellProps {
-  /** Optional role-specific cards rendered below the main forms (full main-column width). */
-  extras?: React.ReactNode;
-  /** Optional role-specific cards rendered in the right side column ABOVE the default Hesab durumu card. */
-  sideExtras?: React.ReactNode;
-  /** Optional title override (defaults to the localized "Profile") */
-  title?: string;
-  /** Subtitle below title */
-  subtitle?: string;
-}
-
-/** Unified profile page shell used by every panel role. Renders identity hero + 2-col
- *  grid (forms on the left, status/activity sidebar on the right). */
-export default function ProfileShell({ extras, sideExtras, title, subtitle }: ProfileShellProps) {
-  const { t } = useT();
-  const [me, setMe] = useState<MeProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
-
-  // GDPR account status — drives the pending-deletion banner. Fetched alongside
-  // the profile so the user sees "cancel deletion" instantly after login.
-  const [status, setStatus] = useState<AccountStatus | null>(null);
-
-  const refreshStatus = useCallback(() => {
-    meApi.accountStatus().then(setStatus).catch(() => { /* non-fatal */ });
-  }, []);
-
-  useEffect(() => {
-    meApi.get()
-      .then(setMe)
-      .catch(e => setErr((e as Error).message))
-      .finally(() => setLoading(false));
-    refreshStatus();
-  }, [refreshStatus]);
-
-  if (loading) return <div className="uprof-page"><div className="uprof-loading">{t("uprof.loading")}</div></div>;
-  if (err || !me) return <div className="uprof-page"><div className="uprof-error">{err || t("uprof.loadError")}</div></div>;
-
-  return (
-    <div className="uprof-page">
-      <header className="uprof-page-head">
-        <div>
-          {/* Rol etiketi (uppercase eyebrow) silindi — kit qaydası. Rol onsuz da
-              aşağıdakı kimlik kartında və "Hesab" siyahısında görünür. */}
-          <h1 className="uprof-title">{title ?? t("uprof.titleDefault")}</h1>
-          {subtitle && <p className="uprof-sub">{subtitle}</p>}
-        </div>
-      </header>
-
-      {status?.deletionRequestedAt && (
-        <DeletionBanner status={status} onCancelled={refreshStatus} />
-      )}
-
-      <IdentityHero me={me} onChanged={setMe} />
-
-      <div className="uprof-grid">
-        <div className="uprof-main">
-          <BasicInfoCard me={me} onUpdated={setMe} />
-          {me.role === "PATIENT" && <EmergencyContactCard />}
-          <PasswordCard />
-          {extras}
-          <PrivacyCard email={me.email} status={status} onStatusChanged={refreshStatus} />
-        </div>
-        <aside className="uprof-side">
-          {sideExtras}
-          <AccountStatusCard me={me} />
-          <ActivityShortcutCard role={me.role} />
-        </aside>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Pending-deletion banner (top of every panel profile page) ──────────── */
-
-function DeletionBanner({ status, onCancelled }: { status: AccountStatus; onCancelled: () => void }) {
-  const { t } = useT();
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  // Avtomatik silinmə tarixi YOXDUR — qərarı admin verir. Ona görə "neçə gün
-  // qalıb" sayğacı əvəzinə istəyin göndərildiyi tarix göstərilir.
-  const requestedLabel = status.deletionRequestedAt ? fmtDate(t, status.deletionRequestedAt) : "—";
-
-  const onCancel = async () => {
-    if (!confirm(t("uprof.delCancelConfirm"))) return;
-    setErr(null);
-    setBusy(true);
-    try {
-      await meApi.cancelDeletionRequest();
-      onCancelled();
-    } catch (e) {
-      setErr((e as Error).message || t("uprof.delCancelFailed"));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div
-      role="alert"
-      style={{
-        border: "1px solid #f0b4b4",
-        background: "#fff5f5",
-        color: "#7a1f1f",
-        padding: "14px 18px",
-        borderRadius: 12,
-        marginBottom: 20,
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 12,
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
-    >
-      <div style={{ flex: "1 1 320px" }}>
-        <strong>{t("uprof.delBannerTitle")}</strong>
-        <div style={{ fontSize: 13, marginTop: 4 }}>
-          {t("uprof.delBannerBody", { date: requestedLabel })}
-        </div>
-        {err && <div style={{ color: "#b00020", fontSize: 13, marginTop: 6 }}>{err}</div>}
-      </div>
-      <button
-        type="button"
-        onClick={onCancel}
-        disabled={busy}
-        className="uprof-btn uprof-btn--primary"
-      >
-        {busy ? t("uprof.delCancelling") : t("uprof.delCancelCta")}
-      </button>
-    </div>
-  );
-}
-
-/* ─── Identity hero (full-width strip) ───────────────────────────────────── */
-
-function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfile) => void }) {
+function IdentityCard({
+  me, onChanged, setConfirm,
+}: {
+  me: MeProfile;
+  onChanged: (m: MeProfile) => void;
+  setConfirm: (c: ConfirmSpec | null) => void;
+}) {
   const { t } = useT();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [removing, setRemoving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setErr(null);
     const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file after a cancelled crop
+    e.target.value = ""; // eyni faylı yenidən seçməyə imkan verir
     if (!file) return;
-    if (!file.type.startsWith("image/")) { setErr(t("uprof.photoOnlyImage")); return; }
-    if (file.size > 5 * 1024 * 1024) { setErr(t("uprof.photoTooLarge")); return; }
+    if (!file.type.startsWith("image/")) { toast(t("uprof.photoOnlyImage"), "error"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast(t("uprof.photoTooLarge"), "error"); return; }
     setPendingFile(file);
   };
 
@@ -241,107 +542,115 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
       const { url } = await meApi.uploadPhoto(croppedFile);
       onChanged({ ...me, photoUrl: url });
       window.dispatchEvent(new CustomEvent("profilePhotoChanged", { detail: { photoUrl: url } }));
-      // The psychologist's photo also lives on their public /psychologists/[slug]
-      // page, which Next.js caches — ping it so the change shows up immediately
-      // instead of waiting for the passive revalidate window.
+      // Psixoloqun şəkli ictimai /psychologists/[slug] səhifəsində də görünür —
+      // Next.js keşini dərhal yenilə.
       if (me.role === "PSYCHOLOGIST") revalidatePsychologistsCache();
       setPendingFile(null);
+      toast(t("prof.photoUpdatedToast"));
+    } catch (e) {
+      toast((e as Error).message, "error");
     } finally {
       setUploading(false);
     }
   };
 
-  const onRemove = async () => {
-    if (!confirm(t("uprof.photoRemoveConfirm"))) return;
-    setErr(null);
-    setRemoving(true);
-    try {
-      await meApi.deletePhoto();
-      onChanged({ ...me, photoUrl: null });
-      window.dispatchEvent(new CustomEvent("profilePhotoChanged", { detail: { photoUrl: null } }));
-      if (me.role === "PSYCHOLOGIST") revalidatePsychologistsCache();
-    } catch (e) { setErr((e as Error).message || t("uprof.photoRemoveFailed")); }
-    finally { setRemoving(false); }
-  };
+  const openRemove = () => setConfirm({
+    title: t("prof.photoRemoveTitle"),
+    body: t("prof.photoRemoveBody"),
+    label: t("prof.photoRemoveLabel"),
+    run: async () => {
+      try {
+        await meApi.deletePhoto();
+        onChanged({ ...me, photoUrl: null });
+        window.dispatchEvent(new CustomEvent("profilePhotoChanged", { detail: { photoUrl: null } }));
+        if (me.role === "PSYCHOLOGIST") revalidatePsychologistsCache();
+        toast(t("prof.photoRemovedToast"));
+      } catch (e) {
+        toast((e as Error).message, "error");
+      }
+    },
+  });
 
   const fullName = (me.firstName || me.lastName) ? `${me.firstName ?? ""} ${me.lastName ?? ""}`.trim() : "—";
 
   return (
-    <section className="uprof-hero">
-      <div className="uprof-hero-bg" aria-hidden />
-      <div className="uprof-hero-main">
-        <button
-          type="button"
-          className="uprof-hero-avatar"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          aria-label={t("uprof.avatarAria")}
-          title={uploading ? t("uprof.uploading") : t("uprof.photoChange")}
-        >
-          {me.photoUrl ? (
-            <Image
-              src={me.photoUrl}
-              alt={me.firstName ?? me.email}
-              width={96}
-              height={96}
-              unoptimized
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            <span>{initialsOf(me)}</span>
-          )}
-          {uploading && <span className="uprof-hero-spin" aria-hidden>⟳</span>}
-        </button>
-
-        <div className="uprof-hero-info">
-          <h2 className="uprof-hero-name">{fullName}</h2>
-          <p className="uprof-hero-email">{me.email}</p>
-          <div className="uprof-hero-meta">
-            <span className="uprof-pill">{roleLabel(t, me.role)}</span>
-            {me.emailVerified ? (
-              <span className="uprof-pill uprof-pill--good">{t("uprof.emailVerifiedPill")}</span>
+    <section style={cardStyle}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 22 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, flex: "0 0 auto" }}>
+          <div style={{
+            width: 88, height: 88, borderRadius: "50%", border: `1px solid ${PC.border}`,
+            background: PC.bg, overflow: "hidden", display: "flex", alignItems: "center",
+            justifyContent: "center", fontSize: 26, fontWeight: 600, color: PC.mut, letterSpacing: "-0.02em",
+          }}>
+            {me.photoUrl ? (
+              <Image
+                src={me.photoUrl}
+                alt={me.firstName ?? me.email}
+                width={88}
+                height={88}
+                unoptimized
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
             ) : (
-              <span className="uprof-pill uprof-pill--warn">{t("uprof.emailUnverifiedPill")}</span>
-            )}
-            {me.lastLogin && (
-              <span className="uprof-pill-soft">{t("uprof.lastLoginPill", { when: fmtDateTime(me.lastLogin) })}</span>
+              <span>{initialsOf(me)}</span>
             )}
           </div>
-        </div>
-
-        <div className="uprof-hero-actions">
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={uploading}
-            className="uprof-hero-btn uprof-hero-btn--primary"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 7h4l2-3h6l2 3h4v13H3z" /><circle cx="12" cy="13" r="4" />
-            </svg>
-            {uploading ? t("uprof.uploading") : me.photoUrl ? t("uprof.photoChange") : t("uprof.photoUpload")}
-          </button>
-          {me.photoUrl && (
+          <div style={{ display: "flex", gap: 8 }}>
             <button
               type="button"
-              onClick={onRemove}
-              disabled={removing}
-              className="uprof-hero-btn uprof-hero-btn--ghost"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+              style={{ ...btnGhost, padding: "6px 11px", gap: 6, opacity: uploading ? 0.6 : 1 }}
             >
-              {removing ? "..." : t("uprof.photoDelete")}
+              {uploading ? <Spinner /> : <IconCamera />}
+              {me.photoUrl ? t("prof.photoChange") : t("prof.photoUpload")}
             </button>
-          )}
+            {me.photoUrl && (
+              <button
+                type="button"
+                onClick={openRemove}
+                title={t("prof.photoRemoveTitle")}
+                style={{ ...btnGhost, padding: "6px 9px", color: PC.mut }}
+              >
+                <IconTrash />
+              </button>
+            )}
+          </div>
+          <input ref={inputRef} type="file" accept="image/*" onChange={onSelectFile} style={{ display: "none" }} />
         </div>
 
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          onChange={onSelectFile}
-          style={{ display: "none" }}
-        />
+        <div style={{ flex: "1 1 300px", minWidth: 0 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", margin: 0, color: PC.ink }}>{fullName}</h2>
+          <div style={{ fontSize: 13, color: PC.soft, marginTop: 4 }}>{me.email}</div>
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+            gap: "14px 20px", marginTop: 18, paddingTop: 16, borderTop: `1px solid ${PC.hair}`,
+          }}>
+            <div>
+              <div style={{ fontSize: 11.5, color: PC.faint, fontWeight: 500 }}>{t("prof.role")}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, marginTop: 3, color: PC.ink }}>{roleLabel(t, me.role)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11.5, color: PC.faint, fontWeight: 500 }}>{t("prof.emailStatus")}</div>
+              {me.emailVerified ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 500, marginTop: 3, color: PC.ink }}>
+                  <IconCheck />
+                  {t("prof.verified")}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, fontWeight: 500, marginTop: 3, color: PC.faint }}>{t("prof.unverified")}</div>
+              )}
+            </div>
+            <div>
+              <div style={{ fontSize: 11.5, color: PC.faint, fontWeight: 500 }}>{t("prof.lastLogin")}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, marginTop: 3, color: PC.ink }}>
+                {me.lastLogin ? azFormatDateTime(me.lastLogin) : "—"}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      {err && <div className="uprof-hero-err">{err}</div>}
+
       {pendingFile && (
         <AvatarCropModal
           file={pendingFile}
@@ -353,61 +662,87 @@ function IdentityHero({ me, onChanged }: { me: MeProfile; onChanged: (m: MeProfi
   );
 }
 
-/* ─── Right column default cards ─────────────────────────────────────────── */
+/* ─── Yan sütun kartları ─────────────────────────────────────────────────── */
 
-function AccountStatusCard({ me }: { me: MeProfile }) {
+function AccountStatusCard({
+  me, statusRows,
+}: {
+  me: MeProfile;
+  statusRows?: { label: string; value: React.ReactNode }[];
+}) {
   const { t } = useT();
   return (
-    <div className="uprof-card uprof-side-card">
-      <div className="uprof-side-card-head">
-        <h3>{t("uprof.statusTitle")}</h3>
+    <section style={sideCardStyle}>
+      <h2 style={{ ...sectionH2, margin: "0 0 4px" }}>{t("prof.accTitle")}</h2>
+      <div style={{ ...rowSplit, marginTop: 12 }}>
+        <span style={rowKey}>{t("prof.role")}</span>
+        <span style={rowVal}>{roleLabel(t, me.role)}</span>
       </div>
-      <dl className="uprof-side-list">
-        <div>
-          <dt>{t("uprof.statusRole")}</dt>
-          <dd>{roleLabel(t, me.role)}</dd>
+      {statusRows?.map(r => (
+        <div key={r.label} style={rowSplit}>
+          <span style={rowKey}>{r.label}</span>
+          <span style={rowVal}>{r.value}</span>
         </div>
-        <div>
-          <dt>{t("uprof.statusEmail")}</dt>
-          <dd>{me.emailVerified ? <span className="uprof-status uprof-status--good">{t("uprof.statusVerified")}</span> : <span className="uprof-status uprof-status--warn">{t("uprof.statusUnverified")}</span>}</dd>
-        </div>
-        <div>
-          <dt>{t("uprof.statusLastLogin")}</dt>
-          <dd>{me.lastLogin ? fmtDateTime(me.lastLogin) : "—"}</dd>
-        </div>
-        <div>
-          <dt>{t("uprof.statusMemberSince")}</dt>
-          <dd>{fmtDate(t, me.createdAt)}</dd>
-        </div>
-      </dl>
-    </div>
+      ))}
+      <div style={rowSplit}>
+        <span style={rowKey}>{t("prof.emailStatus")}</span>
+        <span style={rowVal}>{me.emailVerified ? t("prof.verified") : t("prof.unverified")}</span>
+      </div>
+      <div style={rowSplit}>
+        <span style={rowKey}>{t("prof.lastLogin")}</span>
+        <span style={rowVal}>{me.lastLogin ? azFormatDateTime(me.lastLogin) : "—"}</span>
+      </div>
+      <div style={{ ...rowSplit, padding: "11px 0 0" }}>
+        <span style={rowKey}>{t("prof.memberSince")}</span>
+        <span style={rowVal}>{azFormatDate(me.createdAt)}</span>
+      </div>
+    </section>
   );
 }
 
-function ActivityShortcutCard({ role }: { role: string }) {
+function BellIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M6.1 12.8h3.8M4.4 12.8V7.4a3.6 3.6 0 0 1 7.2 0v5.4M3.2 12.8h9.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function QuickLinksCard({ role, links }: { role: string; links?: ProfileQuickLink[] }) {
   const { t } = useT();
   const base = role === "PSYCHOLOGIST" ? "/psycholog"
              : role === "OPERATOR"     ? "/operator"
              : role === "ADMIN"        ? "/admin"
              : "/patient";
+  const items: ProfileQuickLink[] = links ?? [
+    { href: `${base}/notifications`, label: t("prof.qlNotifications"), icon: <BellIcon /> },
+  ];
   return (
-    <div className="uprof-card uprof-side-card">
-      <div className="uprof-side-card-head">
-        <h3>{t("uprof.activityTitle")}</h3>
-      </div>
-      <Link href={`${base}/notifications`} className="uprof-side-link">
-        <div className="uprof-side-link-icon"></div>
-        <div className="uprof-side-link-text">
-          <strong>{t("uprof.activityNotifications")}</strong>
-          <small>{t("uprof.activityNotificationsSub")}</small>
-        </div>
-        <span className="uprof-side-link-arrow">›</span>
-      </Link>
-    </div>
+    <section style={sideCardStyle}>
+      <h2 style={{ ...sectionH2, margin: "0 0 12px" }}>{t("prof.quickTitle")}</h2>
+      {items.map((l, i) => (
+        <Link
+          key={l.href + l.label}
+          href={l.href}
+          target={l.external ? "_blank" : undefined}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+            padding: i === items.length - 1 ? "11px 0 0" : "11px 0",
+            borderTop: `1px solid ${PC.hair}`, fontSize: 13, fontWeight: 500, color: PC.ink,
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {l.icon}
+            {l.label}
+          </span>
+          {l.external ? <IconExternal /> : <IconChevron />}
+        </Link>
+      ))}
+    </section>
   );
 }
 
-/* ─── Main column forms ──────────────────────────────────────────────────── */
+/* ─── Əsas məlumat formu ─────────────────────────────────────────────────── */
 
 function BasicInfoCard({ me, onUpdated }: { me: MeProfile; onUpdated: (m: MeProfile) => void }) {
   const { t } = useT();
@@ -415,17 +750,24 @@ function BasicInfoCard({ me, onUpdated }: { me: MeProfile; onUpdated: (m: MeProf
   const [lastName, setLastName] = useState(me.lastName ?? "");
   const [phone, setPhone] = useState(me.phone ?? "");
   const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const dirty =
     (firstName.trim() || null) !== (me.firstName ?? null) ||
     (lastName.trim() || null) !== (me.lastName ?? null) ||
     (phone.trim() || null) !== (me.phone ?? null);
 
+  const sub = me.role === "PATIENT" ? t("prof.basicSubPat")
+            : me.role === "PSYCHOLOGIST" ? t("prof.basicSubPsy")
+            : t("prof.basicSubDefault");
+  const emailHint = me.role === "PATIENT" ? t("prof.emailHintPat")
+                  : me.role === "PSYCHOLOGIST" ? t("prof.emailHintPsy")
+                  : t("prof.emailHintDefault");
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr(null);
+    if (!firstName.trim() || !lastName.trim()) { toast(t("prof.errName"), "error"); return; }
+    if (phone.trim() && !PHONE_RE.test(phone.trim())) { toast(t("prof.errPhone"), "error"); return; }
     setSaving(true);
     try {
       const updated = await meApi.update({
@@ -434,82 +776,86 @@ function BasicInfoCard({ me, onUpdated }: { me: MeProfile; onUpdated: (m: MeProf
         phone: phone.trim() || null,
       });
       onUpdated(updated);
-      setSavedAt(Date.now());
-      setTimeout(() => setSavedAt(null), 2500);
-    } catch (e) { setErr((e as Error).message || t("uprof.updateFailed")); }
-    finally { setSaving(false); }
+      setSaved(true);
+      toast(t("prof.savedToast"));
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e2) {
+      toast((e2 as Error).message || t("uprof.updateFailed"), "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reset = () => {
+    setFirstName(me.firstName ?? "");
+    setLastName(me.lastName ?? "");
+    setPhone(me.phone ?? "");
   };
 
   return (
-    <form className="uprof-card" onSubmit={submit}>
-      <div className="uprof-card-head">
-        <h2>{t("uprof.basicTitle")}</h2>
-        <p>{t("uprof.basicSub")}</p>
+    <form style={cardStyle} onSubmit={submit}>
+      <h2 style={sectionH2}>{t("prof.basicTitle")}</h2>
+      <p style={sectionSub}>{sub}</p>
+      <div style={gridAutoFit}>
+        <label style={{ display: "block" }}>
+          <span style={labelStyle}>{t("prof.fFirstName")}</span>
+          <input type="text" value={firstName} onChange={e => { setFirstName(e.target.value); setSaved(false); }} maxLength={100} style={inputStyle} />
+        </label>
+        <label style={{ display: "block" }}>
+          <span style={labelStyle}>{t("prof.fLastName")}</span>
+          <input type="text" value={lastName} onChange={e => { setLastName(e.target.value); setSaved(false); }} maxLength={100} style={inputStyle} />
+        </label>
+        <label style={{ display: "block" }}>
+          <span style={labelStyle}>{t("prof.fPhone")}</span>
+          <input type="tel" value={phone} onChange={e => { setPhone(e.target.value); setSaved(false); }} placeholder="+994 50 000 00 00" maxLength={30} style={inputStyle} />
+        </label>
+        <label style={{ display: "block" }}>
+          <span style={labelStyle}>{t("prof.fEmail")}</span>
+          <input type="email" value={me.email} readOnly style={inputReadonlyStyle} />
+          <span style={{ display: "block", fontSize: 11.5, color: PC.faint, lineHeight: 1.5, marginTop: 6 }}>{emailHint}</span>
+        </label>
       </div>
-      <div className="uprof-form">
-        <div className="uprof-grid-2">
-          <div className="uprof-field">
-            <label>{t("uprof.fFirstName")}</label>
-            <input value={firstName} onChange={e => setFirstName(e.target.value)} maxLength={100} />
-          </div>
-          <div className="uprof-field">
-            <label>{t("uprof.fLastName")}</label>
-            <input value={lastName} onChange={e => setLastName(e.target.value)} maxLength={100} />
-          </div>
-        </div>
-        <div className="uprof-field">
-          <label>{t("uprof.fEmail")}</label>
-          <input value={me.email} disabled />
-          <small>{t("uprof.emailHint")}</small>
-        </div>
-        <div className="uprof-field">
-          <label>{t("uprof.fPhone")}</label>
-          <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+994 50 000 00 00" maxLength={30} />
-        </div>
-
-        {err && <div className="uprof-error-inline">{err}</div>}
-
-        <div className="uprof-actions">
-          {savedAt && <span className="uprof-saved">{t("uprof.saved")}</span>}
-          <button type="submit" disabled={!dirty || saving} className="uprof-btn uprof-btn--primary">
-            {saving ? t("uprof.saving") : t("uprof.save")}
-          </button>
-        </div>
-      </div>
+      <SaveFooter dirty={dirty} saving={saving} saved={saved} onSave={() => {}} onDiscard={reset} />
     </form>
   );
 }
 
-/* ─── Patient-only emergency contact (Modul G) ──────────────────────────────
- * Role-gated upstream (rendered only when me.role === "PATIENT") so that
- * patient-only fields never leak into psychologist/operator/admin profiles. */
+/* ─── Pasient — təcili əlaqə (Modul G) ───────────────────────────────────── */
+
 function EmergencyContactCard() {
   const { t } = useT();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [relation, setRelation] = useState("");
   const [address, setAddress] = useState("");
+  const [savedVals, setSavedVals] = useState({ name: "", phone: "", relation: "", address: "" });
   const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     patientApi.getEmergencyContact()
       .then(data => {
         if (cancelled) return;
-        setName(data.emergencyContactName ?? "");
-        setPhone(data.emergencyContactPhone ?? "");
-        setRelation(data.emergencyContactRelation ?? "");
-        setAddress(data.residentialAddress ?? "");
+        const vals = {
+          name: data.emergencyContactName ?? "",
+          phone: data.emergencyContactPhone ?? "",
+          relation: data.emergencyContactRelation ?? "",
+          address: data.residentialAddress ?? "",
+        };
+        setName(vals.name); setPhone(vals.phone); setRelation(vals.relation); setAddress(vals.address);
+        setSavedVals(vals);
       })
-      .catch(() => { /* non-fatal — empty form */ });
+      .catch(() => { /* qeyri-kritik — boş form */ });
     return () => { cancelled = true; };
   }, []);
 
+  const dirty = name !== savedVals.name || phone !== savedVals.phone
+    || relation !== savedVals.relation || address !== savedVals.address;
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr(null);
+    if (phone.trim() && !PHONE_RE.test(phone.trim())) { toast(t("prof.ecErrPhone"), "error"); return; }
     setSaving(true);
     try {
       const payload: EmergencyContact = {
@@ -519,50 +865,51 @@ function EmergencyContactCard() {
         residentialAddress: address.trim() || null,
       };
       await patientApi.updateEmergencyContact(payload);
-      setSavedAt(Date.now());
-      setTimeout(() => setSavedAt(null), 2500);
-    } catch (e) { setErr((e as Error).message || t("uprof.updateFailed")); }
-    finally { setSaving(false); }
+      setSavedVals({ name, phone, relation, address });
+      setSaved(true);
+      toast(t("prof.ecSavedToast"));
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e2) {
+      toast((e2 as Error).message || t("uprof.updateFailed"), "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reset = () => {
+    setName(savedVals.name); setPhone(savedVals.phone);
+    setRelation(savedVals.relation); setAddress(savedVals.address);
   };
 
   return (
-    <form className="uprof-card" onSubmit={submit}>
-      <div className="uprof-card-head">
-        <h2>{t("emergency.sectionTitle")}</h2>
-        <p>{t("emergency.note")}</p>
+    <form style={cardStyle} onSubmit={submit}>
+      <h2 style={sectionH2}>{t("prof.ecTitle")}</h2>
+      <p style={{ ...sectionSub, maxWidth: "76ch" }}>{t("prof.ecSub")}</p>
+      <div style={gridAutoFit}>
+        <label style={{ display: "block" }}>
+          <span style={labelStyle}>{t("prof.ecName")}</span>
+          <input type="text" value={name} onChange={e => { setName(e.target.value); setSaved(false); }} maxLength={100} style={inputStyle} />
+        </label>
+        <label style={{ display: "block" }}>
+          <span style={labelStyle}>{t("prof.ecPhone")}</span>
+          <input type="tel" value={phone} onChange={e => { setPhone(e.target.value); setSaved(false); }} maxLength={30} style={inputStyle} />
+        </label>
+        <label style={{ display: "block" }}>
+          <span style={labelStyle}>{t("prof.ecRelation")}</span>
+          <input type="text" value={relation} onChange={e => { setRelation(e.target.value); setSaved(false); }} maxLength={100} style={inputStyle} />
+        </label>
+        <label style={{ display: "block", gridColumn: "1 / -1" }}>
+          <span style={labelStyle}>{t("prof.ecAddress")}</span>
+          <textarea rows={2} value={address} onChange={e => { setAddress(e.target.value); setSaved(false); }} maxLength={255}
+            style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5 }} />
+        </label>
       </div>
-      <div className="uprof-form">
-        <div className="uprof-grid-2">
-          <div className="uprof-field">
-            <label>{t("emergency.contactName")}</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder={t("emergency.contactNamePh")} maxLength={100} />
-          </div>
-          <div className="uprof-field">
-            <label>{t("emergency.contactPhone")}</label>
-            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder={t("emergency.contactPhonePh")} maxLength={30} />
-          </div>
-        </div>
-        <div className="uprof-field">
-          <label>{t("emergency.contactRelation")}</label>
-          <input value={relation} onChange={e => setRelation(e.target.value)} placeholder={t("emergency.contactRelationPh")} maxLength={100} />
-        </div>
-        <div className="uprof-field">
-          <label>{t("emergency.address")}</label>
-          <input value={address} onChange={e => setAddress(e.target.value)} placeholder={t("emergency.addressPh")} maxLength={255} />
-        </div>
-
-        {err && <div className="uprof-error-inline">{err}</div>}
-
-        <div className="uprof-actions">
-          {savedAt && <span className="uprof-saved">{t("emergency.saved")}</span>}
-          <button type="submit" disabled={saving} className="uprof-btn uprof-btn--primary">
-            {saving ? t("uprof.saving") : t("emergency.save")}
-          </button>
-        </div>
-      </div>
+      <SaveFooter dirty={dirty} saving={saving} saved={saved} onSave={() => {}} onDiscard={reset} />
     </form>
   );
 }
+
+/* ─── Şifrə dəyişmə — canlı tələb siyahısı ilə ───────────────────────────── */
 
 function PasswordCard() {
   const { t } = useT();
@@ -570,220 +917,285 @@ function PasswordCard() {
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const ruleLen = next.length >= 8;
+  const ruleUpper = /[A-ZĞÜŞİÖÇƏ]/.test(next);
+  const ruleLower = /[a-zğüşıöçə]/.test(next);
+  const ruleDigit = /[0-9]/.test(next);
+  const rules = [
+    { key: "len", text: t("prof.pwReqLen"), ok: ruleLen },
+    { key: "upper", text: t("prof.pwReqUpper"), ok: ruleUpper },
+    { key: "lower", text: t("prof.pwReqLower"), ok: ruleLower },
+    { key: "digit", text: t("prof.pwReqDigit"), ok: ruleDigit },
+  ];
+  const mismatch = confirm.length > 0 && next !== confirm;
+  const valid = ruleLen && ruleUpper && ruleLower && ruleDigit && next === confirm && current.length > 0;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr(null);
-    if (next.length < 8 || !/[A-Z]/.test(next) || !/[a-z]/.test(next) || !/[0-9]/.test(next)) {
-      setErr(t("uprof.pwWeak"));
-      return;
-    }
-    if (next !== confirm) { setErr(t("uprof.pwMismatch")); return; }
+    if (!valid) return;
     setSaving(true);
     try {
       await meApi.changePassword({ currentPassword: current, newPassword: next });
       setCurrent(""); setNext(""); setConfirm("");
-      setSavedAt(Date.now());
-      setTimeout(() => setSavedAt(null), 3000);
-    } catch (e) { setErr((e as Error).message || t("uprof.pwChangeFailed")); }
-    finally { setSaving(false); }
+      setDone(true);
+      toast(t("prof.pwDoneToast"));
+      setTimeout(() => setDone(false), 3000);
+    } catch (e2) {
+      toast((e2 as Error).message || t("uprof.pwChangeFailed"), "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <form className="uprof-card" onSubmit={submit}>
-      <div className="uprof-card-head">
-        <h2>{t("uprof.pwTitle")}</h2>
-        <p>{t("uprof.pwSub")}</p>
+    <form style={cardStyle} onSubmit={submit}>
+      <h2 style={sectionH2}>{t("prof.pwTitle")}</h2>
+      <p style={sectionSub}>{t("prof.pwSub")}</p>
+      <div style={gridAutoFit}>
+        <label style={{ display: "block" }}>
+          <span style={labelStyle}>{t("prof.pwCurrent")}</span>
+          <PasswordInput value={current} onChange={v => { setCurrent(v); setDone(false); }} autoComplete="current-password" />
+        </label>
+        <label style={{ display: "block" }}>
+          <span style={labelStyle}>{t("prof.pwNew")}</span>
+          <PasswordInput value={next} onChange={v => { setNext(v); setDone(false); }} autoComplete="new-password" />
+        </label>
+        <label style={{ display: "block" }}>
+          <span style={labelStyle}>{t("prof.pwRepeat")}</span>
+          <PasswordInput value={confirm} onChange={v => { setConfirm(v); setDone(false); }} autoComplete="new-password" />
+          {mismatch && (
+            <span style={{ display: "block", fontSize: 11.5, fontWeight: 500, color: PC.ink, marginTop: 6 }}>
+              {t("prof.pwMismatch")}
+            </span>
+          )}
+        </label>
       </div>
-      <div className="uprof-form">
-        <div className="uprof-field">
-          <label>{t("uprof.pwCurrent")}</label>
-          <PasswordInput value={current} onChange={setCurrent} autoComplete="current-password" required />
-        </div>
-        <div className="uprof-grid-2">
-          <div className="uprof-field">
-            <label>{t("uprof.pwNew")}</label>
-            <PasswordInput value={next} onChange={setNext} autoComplete="new-password" required />
-            <small>{t("uprof.pwHint")}</small>
-          </div>
-          <div className="uprof-field">
-            <label>{t("uprof.pwRepeat")}</label>
-            <PasswordInput value={confirm} onChange={setConfirm} autoComplete="new-password" required />
-          </div>
-        </div>
 
-        {err && <div className="uprof-error-inline">{err}</div>}
+      <div style={{
+        display: "flex", flexDirection: "column", gap: 7, marginTop: 16,
+        padding: "14px 16px", border: `1px solid ${PC.hair}`, borderRadius: 10, background: PC.panel,
+      }}>
+        <div style={{ fontSize: 11.5, fontWeight: 600, color: PC.mut }}>{t("prof.pwReqTitle")}</div>
+        {rules.map(r => (
+          <div key={r.key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: PC.mut }}>
+            {r.ok ? (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={PC.ink} strokeWidth="1.7" style={{ flex: "0 0 auto" }} aria-hidden>
+                <path d="M3.4 8.4l2.6 2.6 6-6.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke={PC.border3} strokeWidth="1.7" style={{ flex: "0 0 auto" }} aria-hidden>
+                <path d="M4 8h8" strokeLinecap="round" />
+              </svg>
+            )}
+            <span>{r.text}</span>
+          </div>
+        ))}
+      </div>
 
-        <div className="uprof-actions">
-          {savedAt && <span className="uprof-saved">{t("uprof.pwUpdated")}</span>}
-          <button type="submit" disabled={!current || !next || !confirm || saving} className="uprof-btn uprof-btn--primary">
-            {saving ? t("uprof.pwUpdating") : t("uprof.pwSubmit")}
-          </button>
-        </div>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 18 }}>
+        {saving ? (
+          <span style={btnIdle}><Spinner />{t("prof.pwSaving")}</span>
+        ) : valid ? (
+          <button type="submit" style={btnDark}>{t("prof.pwSubmit")}</button>
+        ) : (
+          <span style={btnIdle}>{t("prof.pwSubmit")}</span>
+        )}
+        {done && !saving && (
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5,
+            fontWeight: 500, color: PC.ink, animation: "fanusRise .2s ease-out",
+          }}>
+            <IconCheck />{t("prof.saved")}
+          </span>
+        )}
       </div>
     </form>
   );
 }
 
-/* ─── Privacy / GDPR card (data export + delete account) ─────────────── */
+/* ─── Məxfilik (GDPR) — ixrac + hesab silmə ──────────────────────────────── */
 
 function PrivacyCard({
-  email,
-  status,
-  onStatusChanged,
+  status, onStatusChanged, setConfirm,
 }: {
-  email: string;
   status: AccountStatus | null;
   onStatusChanged: () => void;
+  setConfirm: (c: ConfirmSpec | null) => void;
 }) {
   const { t } = useT();
-  const [exporting, setExporting] = useState(false);
-  const [exportErr, setExportErr] = useState<string | null>(null);
+  const [exportPhase, setExportPhase] = useState<"idle" | "busy" | "done">("idle");
 
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [pwd, setPwd] = useState("");
-  const [confirmText, setConfirmText] = useState("");
-  const [deleting, setDeleting] = useState(false);
-  const [deleteErr, setDeleteErr] = useState<string | null>(null);
-  // Opsional səbəb — admin istəyi nəzərdən keçirəndə görür (V123).
-  const [reason, setReason] = useState("");
+  const [delOpen, setDelOpen] = useState(false);
+  const [delPw, setDelPw] = useState("");
+  const [delWord, setDelWord] = useState("");
+  const [delReason, setDelReason] = useState("");
+  const [delBusy, setDelBusy] = useState(false);
 
-  const [cancelling, setCancelling] = useState(false);
-  const [cancelErr, setCancelErr] = useState<string | null>(null);
+  const pending = !!status?.deletionRequestedAt;
+  const pendingDate = status?.deletionRequestedAt ? azFormatDate(status.deletionRequestedAt) : "—";
 
-  const onExport = async () => {
-    setExportErr(null); setExporting(true);
+  const startExport = async () => {
+    setExportPhase("busy");
     try {
       await meApi.exportData();
-    } catch (e) { setExportErr((e as Error).message); }
-    finally { setExporting(false); }
+      setExportPhase("done");
+      setTimeout(() => setExportPhase("idle"), 5000);
+    } catch (e) {
+      toast((e as Error).message, "error");
+      setExportPhase("idle");
+    }
   };
 
-  const onDelete = async () => {
-    setDeleteErr(null);
-    if (!pwd) { setDeleteErr(t("uprof.delErrPwd")); return; }
-    // "SİL" backend-ə göndərilən təsdiq sözüdür — tərcümə OLUNMUR.
-    if (confirmText.trim().toUpperCase() !== "SİL"
-        && confirmText.trim().toLowerCase() !== email.toLowerCase()) {
-      setDeleteErr(t("uprof.delErrConfirm"));
-      return;
-    }
-    setDeleting(true);
+  // "SİL" backend-ə göndərilən təsdiq sözüdür — tərcümə OLUNMUR.
+  // Azərbaycan "i" hərfinin İ/I böyütmə fərqinə görə hər iki formanı qəbul edirik.
+  const wordOk = ["SİL", "SIL"].includes(delWord.trim().toUpperCase());
+  const delReady = delPw.length > 0 && wordOk && !delBusy;
+
+  const submitDelete = async () => {
+    if (!delReady) return;
+    setDelBusy(true);
     try {
       await meApi.deleteAccount({
-        currentPassword: pwd,
-        confirmation: confirmText,
-        reason: reason.trim() || undefined,
+        currentPassword: delPw,
+        confirmation: delWord.trim(),
+        reason: delReason.trim() || undefined,
       });
-      setDeleteOpen(false);
-      setPwd(""); setConfirmText(""); setReason("");
+      setDelOpen(false);
+      setDelPw(""); setDelWord(""); setDelReason("");
+      toast(t("prof.delSentToast"));
       onStatusChanged();
     } catch (e) {
-      setDeleteErr((e as Error).message);
-    } finally { setDeleting(false); }
-  };
-
-  const onCancelDeletion = async () => {
-    setCancelErr(null);
-    setCancelling(true);
-    try {
-      await meApi.cancelDeletionRequest();
-      onStatusChanged();
-    } catch (e) {
-      setCancelErr((e as Error).message);
+      toast((e as Error).message, "error");
     } finally {
-      setCancelling(false);
+      setDelBusy(false);
     }
   };
 
+  const openCancel = () => setConfirm({
+    title: t("prof.delCancelTitle"),
+    body: t("prof.delCancelBody"),
+    label: t("prof.delCancelCta"),
+    run: async () => {
+      try {
+        await meApi.cancelDeletionRequest();
+        toast(t("prof.delCancelledToast"));
+        onStatusChanged();
+      } catch (e) {
+        toast((e as Error).message, "error");
+      }
+    },
+  });
+
   return (
-    <div className="uprof-card uprof-card--privacy">
-      <h2 className="uprof-card-title">{t("uprof.privTitle")}</h2>
-      <p className="uprof-card-sub">
-        {t("uprof.privSub")}
-      </p>
+    <section style={cardStyle}>
+      <h2 style={sectionH2}>{t("prof.privTitle")}</h2>
+      <p style={sectionSub}>{t("prof.privSub")}</p>
 
-      <div className="uprof-priv-row">
-        <div className="uprof-priv-info">
-          <strong>{t("uprof.exportTitle")}</strong>
-          <small>{t("uprof.exportSub")}</small>
+      <div style={{
+        display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between",
+        gap: 14, marginTop: 18, paddingTop: 16, borderTop: `1px solid ${PC.hair}`,
+      }}>
+        <div style={{ flex: "1 1 300px", minWidth: 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: PC.ink }}>{t("prof.exportTitle")}</div>
+          <div style={{ fontSize: 12.5, color: PC.soft, lineHeight: 1.55, marginTop: 4 }}>{t("prof.exportSub")}</div>
         </div>
-        <button onClick={onExport} disabled={exporting}
-          className="uprof-btn uprof-btn--ghost">
-          {exporting ? t("uprof.exportPreparing") : t("uprof.exportCta")}
-        </button>
-      </div>
-      {exportErr && <div className="uprof-error-inline">{exportErr}</div>}
-
-      <div className="uprof-priv-row uprof-priv-row--danger">
-        <div className="uprof-priv-info">
-          <strong>{t("uprof.delTitle")}</strong>
-          {status?.deletionRequestedAt ? (
-            <small>
-              {t("uprof.delPendingSub")}
-            </small>
-          ) : (
-            <small>
-              {t("uprof.delSub")}
-            </small>
+        <div style={{ flex: "0 0 auto" }}>
+          {exportPhase === "idle" && (
+            <button type="button" onClick={startExport} style={btnGhost}>
+              <IconDownload />
+              {t("prof.exportCta")}
+            </button>
+          )}
+          {exportPhase === "busy" && (
+            <span style={{ ...btnIdle, fontSize: 12.5, padding: "8px 13px" }}>
+              <Spinner />{t("prof.exportBusy")}
+            </span>
+          )}
+          {exportPhase === "done" && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: PC.ink }}>
+              <IconCheck />{t("prof.exportDone")}
+            </span>
           )}
         </div>
-        {status?.deletionRequestedAt ? (
-          <button
-            onClick={onCancelDeletion}
-            disabled={cancelling}
-            className="uprof-btn uprof-btn--primary"
-          >
-            {cancelling ? t("uprof.delCancelling") : t("uprof.delCancelCta")}
-          </button>
-        ) : (
-          !deleteOpen && (
-            <button onClick={() => setDeleteOpen(true)} className="uprof-btn uprof-btn--danger">
-              {t("uprof.delCta")}
-            </button>
-          )
-        )}
       </div>
-      {cancelErr && <div className="uprof-error-inline">{cancelErr}</div>}
 
-      {deleteOpen && !status?.deletionRequestedAt && (
-        <div className="uprof-priv-confirm">
-          <p>
-            <strong>{t("uprof.delWarnStrong")}</strong> {t("uprof.delWarnBody")}
-          </p>
-          <label>
-            <span>{t("uprof.pwCurrent")}</span>
-            <PasswordInput value={pwd} onChange={setPwd} autoComplete="current-password" />
-          </label>
-          <label>
-            <span>{t("uprof.delConfirmPre")} <strong>SİL</strong> {t("uprof.delConfirmPost")}</span>
-            <input type="text" value={confirmText} onChange={e => setConfirmText(e.target.value)} placeholder="SİL" />
-          </label>
-          <label>
-            <span>{t("uprof.delReasonLabel")}</span>
-            <textarea
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-              maxLength={500}
-              rows={3}
-              placeholder={t("uprof.delReasonPh")}
-              style={{ resize: "vertical" }}
-            />
-          </label>
-          {deleteErr && <div className="uprof-error-inline">{deleteErr}</div>}
-          <div className="uprof-actions">
-            <button onClick={() => { setDeleteOpen(false); setPwd(""); setConfirmText(""); setDeleteErr(null); }}
-              className="uprof-btn uprof-btn--ghost" disabled={deleting}>
-              {t("uprof.cancelShort")}
-            </button>
-            <button onClick={onDelete} disabled={deleting} className="uprof-btn uprof-btn--danger">
-              {deleting ? t("uprof.delSending") : t("uprof.delSubmit")}
+      <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${PC.hair}` }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: PC.ink }}>{t("prof.delTitle")}</div>
+        <div style={{ fontSize: 12.5, color: PC.soft, lineHeight: 1.55, marginTop: 4, maxWidth: "74ch" }}>
+          {t("prof.delBody")}
+        </div>
+        {pending ? (
+          <div style={{
+            display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 14,
+            padding: "13px 15px", border: `1px solid ${PC.border}`, borderRadius: 10, background: PC.panel,
+          }}>
+            <span style={{ fontSize: 12.5, color: PC.mut }}>{t("prof.delPendingNote", { date: pendingDate })}</span>
+            <button type="button" onClick={openCancel} style={{ ...btnGhost, padding: "7px 12px" }}>
+              {t("prof.delCancelCta")}
             </button>
           </div>
-        </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => { setDelOpen(true); setDelPw(""); setDelWord(""); setDelReason(""); }}
+            style={{ ...btnGhost, border: `1px solid ${PC.border3}`, marginTop: 14 }}
+          >
+            <IconTrash />
+            {t("prof.delCta")}
+          </button>
+        )}
+      </div>
+
+      {delOpen && !pending && (
+        <ModalScrim>
+          <div style={{ ...modalBoxStyle, maxWidth: 460 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <IconWarn />
+              <h3 style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.015em", margin: 0, color: PC.ink }}>
+                {t("prof.delCta")}
+              </h3>
+            </div>
+            <p style={{ fontSize: 13, color: PC.mut, lineHeight: 1.6, margin: "12px 0 0" }}>{t("prof.delBody")}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 18 }}>
+              <label style={{ display: "block" }}>
+                <span style={labelStyle}>{t("prof.pwCurrent")}</span>
+                <input type="password" value={delPw} onChange={e => setDelPw(e.target.value)} autoComplete="current-password" style={inputStyle} />
+              </label>
+              <label style={{ display: "block" }}>
+                <span style={labelStyle}>{t("prof.delWord")}</span>
+                <input type="text" value={delWord} onChange={e => setDelWord(e.target.value)} placeholder="SİL"
+                  style={{ ...inputStyle, letterSpacing: ".06em" }} />
+              </label>
+              <label style={{ display: "block" }}>
+                <span style={labelStyle}>{t("prof.delReason")}</span>
+                <textarea rows={3} value={delReason} onChange={e => setDelReason(e.target.value)} maxLength={500}
+                  style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5 }} />
+              </label>
+            </div>
+            <div style={{
+              display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center",
+              marginTop: 18, paddingTop: 16, borderTop: `1px solid ${PC.hair}`,
+            }}>
+              {delBusy ? (
+                <span style={{ ...btnIdle, padding: "9px 15px" }}><Spinner />{t("prof.delSending")}</span>
+              ) : delReady ? (
+                <button type="button" onClick={submitDelete} style={{ ...btnDark, padding: "9px 15px" }}>{t("prof.delSubmit")}</button>
+              ) : (
+                <span style={{ ...btnIdle, padding: "9px 15px" }}>{t("prof.delSubmit")}</span>
+              )}
+              <button type="button" onClick={() => setDelOpen(false)} disabled={delBusy}
+                style={{ ...btnGhost, fontSize: 13, padding: "9px 15px" }}>
+                {t("prof.cancel")}
+              </button>
+              {!delReady && !delBusy && (
+                <span style={{ fontSize: 11.5, color: PC.faint, flex: "1 1 100%" }}>{t("prof.delBlockedHint")}</span>
+              )}
+            </div>
+          </div>
+        </ModalScrim>
       )}
-    </div>
+    </section>
   );
 }

@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import ProfileShell from "@/components/ProfileShell";
+import ProfileShell, {
+  PC, cardStyle, sideCardStyle, sectionH2, sectionSub,
+  btnDark, btnGhost, IconChevron,
+} from "@/components/ProfileShell";
 import {
   getPsychologists,
   patientApi,
@@ -17,16 +20,41 @@ import { FEATURE_GOALS } from "@/lib/features";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
 
-const RISK_LABEL: Record<PatientRiskLevel, { labelKey: MessageKey; bg: string; fg: string }> = {
-  LOW:      { labelKey: "patProfile.riskLow",      bg: "#FEF3C7", fg: "#92400E" },
-  MEDIUM:   { labelKey: "patProfile.riskMedium",   bg: "#FED7AA", fg: "#9A3412" },
-  HIGH:     { labelKey: "patProfile.riskHigh",     bg: "#FEE2E2", fg: "#991B1B" },
-  CRITICAL: { labelKey: "patProfile.riskCritical", bg: "#FEE2E2", fg: "#7F1D1D" },
+const RISK_KEYS: Record<PatientRiskLevel, { label: MessageKey; text: MessageKey }> = {
+  LOW:      { label: "prof.riskLow",      text: "prof.riskTextLow" },
+  MEDIUM:   { label: "prof.riskMedium",   text: "prof.riskTextMedium" },
+  HIGH:     { label: "prof.riskHigh",     text: "prof.riskTextHigh" },
+  CRITICAL: { label: "prof.riskCritical", text: "prof.riskTextCritical" },
 };
 
 function initials(name?: string | null): string {
   if (!name) return "?";
   return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
+}
+
+function SearchIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <circle cx="7.2" cy="7.2" r="4.2" />
+      <path d="M10.4 10.4 13.4 13.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+function SupportIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <circle cx="8" cy="8" r="5.8" />
+      <circle cx="8" cy="8" r="2.2" />
+      <path d="M4 4l2.4 2.4M12 4l-2.4 2.4M4 12l2.4-2.4M12 12l-2.4-2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+function BellIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M6.1 12.8h3.8M4.4 12.8V7.4a3.6 3.6 0 0 1 7.2 0v5.4M3.2 12.8h9.6" strokeLinecap="round" />
+    </svg>
+  );
 }
 
 export default function PatientProfilePage() {
@@ -54,144 +82,210 @@ export default function PatientProfilePage() {
     });
   }, []);
 
-  const stats = useMemo(() => ({
-    totalSessions: appts.filter(a => a.status === "COMPLETED").length,
-    activeGoals: goals.filter(g => g.status === "OPEN" || g.status === "IN_PROGRESS").length,
-    pendingTasks: tasks.filter(t => t.status === "PENDING").length,
-    favoriteCount: favorites.length,
-  }), [appts, tasks, goals, favorites]);
+  const stats = useMemo(() => {
+    const items: { label: string; value: number; link: string; href: string }[] = [
+      {
+        label: t("prof.statSessions"),
+        value: appts.filter(a => a.status === "COMPLETED").length,
+        link: t("prof.statSessionsLink"),
+        href: "/patient/appointments",
+      },
+    ];
+    if (FEATURE_GOALS) {
+      items.push({
+        label: t("prof.statGoals"),
+        value: goals.filter(g => g.status === "OPEN" || g.status === "IN_PROGRESS").length,
+        link: t("prof.statGoalsLink"),
+        href: "/patient/goals",
+      });
+    }
+    items.push(
+      {
+        label: t("prof.statTasks"),
+        value: tasks.filter(x => x.status === "PENDING").length,
+        link: t("prof.statTasksLink"),
+        href: "/patient/homework",
+      },
+      {
+        label: t("prof.statFavs"),
+        value: favorites.length,
+        link: t("prof.statFavsLink"),
+        href: "/patient/favorites",
+      },
+    );
+    return items;
+  }, [appts, tasks, goals, favorites, t]);
 
-  // Find the patient's most recent active psychologist for the contact card.
+  // Əlaqə kartı üçün pasientin son aktiv psixoloqu.
   const [psyDetails, setPsyDetails] = useState<(Psychologist & { slug?: string }) | null>(null);
+  const [psyResolved, setPsyResolved] = useState(false);
   useEffect(() => {
     const recentPsyId = appts
       .filter(a => a.psychologistId)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]?.psychologistId;
-    if (!recentPsyId) return;
+    if (!recentPsyId) { setPsyResolved(true); return; }
     getPsychologists().then(list => {
       const withSlug = withSlugs(list);
       setPsyDetails(withSlug.find(p => p.id === recentPsyId) ?? null);
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setPsyResolved(true));
   }, [appts]);
 
   return (
     <ProfileShell
-      title={t("patProfile.title")}
-      subtitle={t("patProfile.sub")}
-      sideExtras={
-        <div className="ppr-side">
-          {riskLevel && (RISK_LABEL[riskLevel]) && (
-            <div className="ppr-side-risk" style={{
-              background: RISK_LABEL[riskLevel].bg,
-              color: RISK_LABEL[riskLevel].fg,
-            }}>
-              <div className="ppr-side-risk__label">{t("patProfile.riskLabel")}</div>
-              <div className="ppr-side-risk__value">{t(RISK_LABEL[riskLevel].labelKey)}</div>
-              <Link href="/patient/support" className="ppr-side-risk__link">
-                {t("patProfile.supportLink")}
-              </Link>
-            </div>
-          )}
-
-          <div className="ppr-side-card">
-            <div className="ppr-side-card__head">
-              <h3>{t("patProfile.aboutYou")}</h3>
-            </div>
-            <div className="ppr-side-stats">
-              <StatItem label={t("patProfile.statSessions")} value={stats.totalSessions} href="/patient/appointments" />
-              {FEATURE_GOALS && (
-                <StatItem label={t("patProfile.statGoals")} value={stats.activeGoals} href="/patient/goals" />
-              )}
-              <StatItem label={t("patProfile.statTasks")} value={stats.pendingTasks} href="/patient/homework" />
-              <StatItem label={t("patProfile.statFav")} value={stats.favoriteCount} href="/patient/favorites" />
-            </div>
-          </div>
-
-          <div className="ppr-side-card">
-            <div className="ppr-side-card__head">
-              <h3>{t("patProfile.quickAccess")}</h3>
-            </div>
-            <Link href="/patient/psychologists" className="ppr-side-link">
-              <span className="ppr-side-link__icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
-              </span>
-              <span className="ppr-side-link__text">
-                <strong>{t("patProfile.findPsy")}</strong>
-                <small>{t("patProfile.findPsySub")}</small>
-              </span>
-              <span className="ppr-side-link__arrow">›</span>
-            </Link>
-            <Link href="/patient/support" className="ppr-side-link" style={{ borderTop: "1px solid var(--brand-100)" }}>
-              <span className="ppr-side-link__icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-                </svg>
-              </span>
-              <span className="ppr-side-link__text">
-                <strong>{t("patProfile.support")}</strong>
-                <small>{t("patProfile.supportSub")}</small>
-              </span>
-              <span className="ppr-side-link__arrow">›</span>
-            </Link>
-          </div>
-        </div>
-      }
+      title={t("prof.patTitle")}
+      subtitle={t("prof.patSub")}
       extras={
-        psyDetails ? (
-          <div className="ppr-card">
-            <div className="ppr-card__head">
-              <h2>{t("patProfile.myPsy")}</h2>
-              <p>{t("patProfile.myPsySub")}</p>
+        <>
+          <MyPsychologistCard psy={psyDetails} resolved={psyResolved} />
+          <section style={cardStyle}>
+            <h2 style={sectionH2}>{t("prof.statsTitle")}</h2>
+            <p style={sectionSub}>{t("prof.statsSub")}</p>
+            <div style={{
+              display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              gap: 12, marginTop: 16,
+            }}>
+              {stats.map(s => (
+                <Link key={s.href} href={s.href} style={{
+                  border: `1px solid ${PC.border}`, borderRadius: 10, padding: "15px 16px",
+                  display: "flex", flexDirection: "column", gap: 4, color: PC.ink,
+                }}>
+                  <span style={{ fontSize: 12, color: PC.soft, fontWeight: 500 }}>{s.label}</span>
+                  <span style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.03em", lineHeight: 1.1, marginTop: 4 }}>
+                    {s.value}
+                  </span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 500, marginTop: 8 }}>
+                    {s.link}
+                    <IconChevron size={13} />
+                  </span>
+                </Link>
+              ))}
             </div>
-            <div className="ppr-psy">
-              <div className="ppr-psy__avatar">
-                {psyDetails.photoUrl ? (
-                   
-                  <img src={psyDetails.photoUrl} alt={psyDetails.name} />
-                ) : (
-                  <span>{initials(psyDetails.name)}</span>
-                )}
-              </div>
-              <div className="ppr-psy__body">
-                <div className="ppr-psy__name">{psyDetails.name}</div>
-                <div className="ppr-psy__title">{psyDetails.title}</div>
-                {psyDetails.specializations && psyDetails.specializations.length > 0 && (
-                  <div className="ppr-psy__tags">
-                    {psyDetails.specializations.slice(0, 3).map(s => (
-                      <span key={s} className="ppr-psy__tag">{s}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="ppr-psy__actions">
-                {psyDetails.slug && (
-                  <>
-                    <Link href={`/patient/psychologists/${psyDetails.slug}`}
-                      className="ppr-btn ppr-btn--ghost">
-                      {t("patProfile.profileCta")}
-                    </Link>
-                    <Link href={`/patient/book/${psyDetails.slug}`}
-                      className="ppr-btn ppr-btn--primary">
-                      {t("patProfile.bookCta")}
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : null
+          </section>
+        </>
       }
+      sideExtras={riskLevel ? <RiskCard level={riskLevel} /> : undefined}
+      quickLinks={[
+        { href: "/patient/psychologists", label: t("prof.qlFindPsy"), icon: <SearchIcon /> },
+        { href: "/patient/support", label: t("prof.qlSupport"), icon: <SupportIcon /> },
+        { href: "/patient/notifications", label: t("prof.qlNotifications"), icon: <BellIcon /> },
+      ]}
     />
   );
 }
 
-function StatItem({ label, value, href }: { label: string; value: number; href: string }) {
+/* ─── Risk səviyyəsi kartı (yan sütun) ───────────────────────────────────── */
+
+function RiskCard({ level }: { level: PatientRiskLevel }) {
+  const { t } = useT();
+  const keys = RISK_KEYS[level];
+  if (!keys) return null;
   return (
-    <Link href={href} className="ppr-stat">
-      <div className="ppr-stat__val">{value}</div>
-      <div className="ppr-stat__label">{label}</div>
-    </Link>
+    <section style={{ ...sideCardStyle, border: `1px solid ${PC.border3}` }}>
+      <h2 style={sectionH2}>{t("prof.riskTitle")}</h2>
+      <div style={{
+        display: "flex", alignItems: "baseline", gap: 10, marginTop: 12,
+        paddingTop: 13, borderTop: `1px solid ${PC.hair}`,
+      }}>
+        <span style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", color: PC.ink }}>
+          {t(keys.label)}
+        </span>
+      </div>
+      <p style={{ fontSize: 12.5, color: PC.mut, lineHeight: 1.6, margin: "12px 0 0" }}>
+        {t(keys.text)}
+      </p>
+      <Link href="/patient/support" style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+        marginTop: 14, paddingTop: 13, borderTop: `1px solid ${PC.hair}`,
+        fontSize: 13, fontWeight: 500, color: PC.ink,
+      }}>
+        <span>{t("prof.riskSupportLink")}</span>
+        <IconChevron />
+      </Link>
+    </section>
+  );
+}
+
+/* ─── Mənim psixoloqum kartı ─────────────────────────────────────────────── */
+
+function MyPsychologistCard({
+  psy, resolved,
+}: {
+  psy: (Psychologist & { slug?: string }) | null;
+  resolved: boolean;
+}) {
+  const { t } = useT();
+  return (
+    <section style={cardStyle}>
+      <h2 style={sectionH2}>{t("prof.myPsyTitle")}</h2>
+      <p style={sectionSub}>{t("prof.myPsySub")}</p>
+
+      {psy ? (
+        <div style={{
+          display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16,
+          marginTop: 16, paddingTop: 16, borderTop: `1px solid ${PC.hair}`,
+        }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: "50%", border: `1px solid ${PC.border}`,
+            background: PC.bg, display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 17, fontWeight: 600, color: PC.mut, flex: "0 0 auto", overflow: "hidden",
+          }}>
+            {psy.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={psy.photoUrl} alt={psy.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <span>{initials(psy.name)}</span>
+            )}
+          </div>
+          <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: PC.ink }}>{psy.name}</div>
+            <div style={{ fontSize: 12.5, color: PC.soft, marginTop: 2 }}>{psy.title}</div>
+            {psy.specializations && psy.specializations.length > 0 && (
+              <div style={{ fontSize: 12.5, color: PC.mut, marginTop: 6 }}>
+                {psy.specializations.slice(0, 3).join(", ")}
+              </div>
+            )}
+          </div>
+          {psy.slug && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, flex: "0 0 auto" }}>
+              <Link href={`/patient/book/${psy.slug}`} style={{ ...btnDark, fontSize: 12.5, padding: "8px 14px" }}>
+                {t("prof.bookCta")}
+              </Link>
+              <Link href={`/patient/psychologists/${psy.slug}`} style={{ ...btnGhost, padding: "8px 14px" }}>
+                {t("prof.profileCta")}
+              </Link>
+            </div>
+          )}
+        </div>
+      ) : resolved ? (
+        <div style={{
+          marginTop: 16, padding: 20, border: `1px dashed ${PC.border2}`, borderRadius: 10,
+          display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16,
+        }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: "50%", border: `1px dashed ${PC.border2}`,
+            display: "flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto", color: PC.dim,
+          }}>
+            <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+              <circle cx="10" cy="7.4" r="3" />
+              <path d="M4 16.4c.7-3 3-4.6 6-4.6s5.3 1.6 6 4.6" strokeLinecap="round" />
+            </svg>
+          </div>
+          <div style={{ flex: "1 1 240px", minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: PC.ink }}>{t("prof.noPsyTitle")}</div>
+            <div style={{ fontSize: 12.5, color: PC.soft, lineHeight: 1.55, marginTop: 4 }}>{t("prof.noPsyBody")}</div>
+          </div>
+          <Link href="/patient/psychologists" style={{ ...btnDark, fontSize: 12.5, padding: "8px 14px", flex: "0 0 auto" }}>
+            {t("prof.findPsyCta")}
+          </Link>
+        </div>
+      ) : (
+        <div style={{
+          marginTop: 16, paddingTop: 16, borderTop: `1px solid ${PC.hair}`,
+          fontSize: 12.5, color: PC.faint,
+        }}>
+          {t("prof.loadingNote")}
+        </div>
+      )}
+    </section>
   );
 }

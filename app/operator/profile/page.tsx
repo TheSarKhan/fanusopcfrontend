@@ -1,8 +1,38 @@
 "use client";
 
-import Link from "next/link";
 import ProfileShell from "@/components/ProfileShell";
 import { useT } from "@/lib/i18n/LocaleProvider";
+
+function DashboardIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M3 12.6V6.2M6.3 12.6V3.4M9.7 12.6V7.6M13 12.6V4.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+function CalendarIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <rect x="2.4" y="3.4" width="11.2" height="10.2" rx="1.6" />
+      <path d="M2.4 6.6h11.2M5.6 2.4v2M10.4 2.4v2" strokeLinecap="round" />
+    </svg>
+  );
+}
+function TrendIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M2 12l4.5-4.5 2.5 2.5L14 4.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10.5 4.5H14V8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function BellIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path d="M6.1 12.8h3.8M4.4 12.8V7.4a3.6 3.6 0 0 1 7.2 0v5.4M3.2 12.8h9.6" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export default function OperatorProfilePage() {
   const { t } = useT();
@@ -10,49 +40,12 @@ export default function OperatorProfilePage() {
     <ProfileShell
       title={t("uprof.opTitle")}
       subtitle={t("uprof.opSub")}
-      sideExtras={
-        <div className="uprof-card uprof-side-card">
-          <div className="uprof-side-card-head">
-            <h3>Sürətli giriş</h3>
-          </div>
-          <Link href="/operator" className="uprof-side-link">
-            <div className="uprof-side-link-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
-              </svg>
-            </div>
-            <div className="uprof-side-link-text">
-              <strong>Dashboard</strong>
-              <small>Triage queue və KPI-lər</small>
-            </div>
-            <span className="uprof-side-link-arrow">›</span>
-          </Link>
-          <Link href="/operator/appointments" className="uprof-side-link" style={{ borderTop: "1px solid var(--brand-100)" }}>
-            <div className="uprof-side-link-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" />
-              </svg>
-            </div>
-            <div className="uprof-side-link-text">
-              <strong>Randevular</strong>
-              <small>Randevuları psixoloqlara təyin et</small>
-            </div>
-            <span className="uprof-side-link-arrow">›</span>
-          </Link>
-          <Link href="/operator/analytics" className="uprof-side-link" style={{ borderTop: "1px solid var(--brand-100)" }}>
-            <div className="uprof-side-link-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" />
-              </svg>
-            </div>
-            <div className="uprof-side-link-text">
-              <strong>Analitika</strong>
-              <small>Performans və trendlər</small>
-            </div>
-            <span className="uprof-side-link-arrow">›</span>
-          </Link>
-        </div>
-      }
+      quickLinks={[
+        { href: "/operator", label: "Dashboard", icon: <DashboardIcon /> },
+        { href: "/operator/appointments", label: "Randevular", icon: <CalendarIcon /> },
+        { href: "/operator/analytics", label: "Analitika", icon: <TrendIcon /> },
+        { href: "/operator/notifications", label: t("prof.qlNotifications"), icon: <BellIcon /> },
+      ]}
     />
   );
 }

@@ -11806,3 +11806,8 @@ a.pread-author:hover .pread-author__name { color: var(--brand-700); }
   .pnl-head__title { font-size: 20px; }
   .pnl-card { padding: 14px; }
 }
+
+/* ─── Panel profil səhifələri (yeni dizayn) — animasiyalar ─────────────── */
+@keyframes fanusSpin { to { transform: rotate(360deg); } }
+@keyframes fanusRise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes fanusPulse { 0%, 100% { opacity: .55; } 50% { opacity: .28; } }

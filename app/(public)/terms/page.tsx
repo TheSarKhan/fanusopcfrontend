@@ -137,7 +137,8 @@ export default function TermsPage() {
         </article>
 
         <p style={{ textAlign: "center", fontSize: 13, color: "#52718F" }}>
-          Sualınız var? <Link href="/contact" style={{ color: "#1051B7", fontWeight: 700 }}>Bizimlə əlaqə saxlayın</Link>
+          Bax həmçinin: <Link href="/privacy" style={{ color: "#1051B7", fontWeight: 700 }}>Məxfilik siyasəti</Link>
+          {" "}· Sualınız var? <Link href="/contact" style={{ color: "#1051B7", fontWeight: 700 }}>Bizimlə əlaqə saxlayın</Link>
         </p>
       </div>
     </div>

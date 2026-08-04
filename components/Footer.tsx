@@ -2,35 +2,30 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
 import { useT } from "@/lib/i18n/LocaleProvider";
-import { getStoredUser } from "@/lib/auth";
 
 export default function Footer() {
   const { t } = useT();
-  const [isAuthed, setIsAuthed] = useState(false);
-  useEffect(() => { setIsAuthed(!!getStoredUser()); }, []);
+  // Yalnız real mövcud bölmələrə keçidlər — saxta səhifə (karyera, mətbuat,
+  // podkast, lüğət) və işləməyən bülleten formu footer-dən çıxarılıb.
   const COLS = [
-    { title: t("footer2.columnFanus"), links: [
+    { title: t("footer2.columnPlatform"), links: [
       { label: t("footer2.linkAbout"),    href: "/about" },
-      { label: t("footer2.linkTeam"),     href: "/about#team" },
-      { label: t("footer2.linkCareer"),   href: "/career" },
-      { label: t("footer2.linkPress"),    href: "/press" },
-      { label: t("footer2.linkPartners"), href: "/partners" },
+      { label: t("nav.services"),         href: "/xidmetler" },
+      { label: t("nav.psychologists"),    href: "/psychologists" },
+      { label: t("nav.tests"),            href: "/tests" },
+      { label: t("nav.blog"),             href: "/blog" },
     ] },
-    { title: t("footer2.columnServices"), links: [
-      { label: t("footer2.linkServiceIndividual"), href: "/xidmetler" },
-      { label: t("footer2.linkServiceCouple"),     href: "/xidmetler" },
-      { label: t("footer2.linkServiceTeen"),       href: "/xidmetler" },
-      { label: t("footer2.linkServiceCorporate"),  href: "/xidmetler" },
-      { label: t("footer2.linkServiceTest"),       href: "/xidmetler" },
+    { title: t("footer2.columnAccount"), links: [
+      { label: t("nav.register"),         href: "/register" },
+      { label: t("nav.login"),            href: "/login" },
+      { label: t("footer2.linkJoinPsy"),  href: "/register?role=psychologist" },
     ] },
-    { title: t("footer2.columnResources"), links: [
-      { label: t("footer2.linkArticles"), href: "/blog" },
-      { label: t("footer2.linkPodcast"),  href: "/blog" },
-      { label: t("footer2.linkMoodTest"), href: "/#hero" },
-      { label: t("footer2.linkGlossary"), href: "/blog" },
+    { title: t("footer2.columnSupport"), links: [
+      { label: t("nav.contact"),          href: "/contact" },
       { label: t("footer2.linkFaq"),      href: "/#faq" },
+      { label: t("footer2.terms"),        href: "/terms" },
+      { label: t("footer2.privacy"),      href: "/privacy" },
     ] },
   ];
   return (
@@ -84,14 +79,6 @@ export default function Footer() {
           </div>
         ))}
 
-        <div className="fanus-ftr__col fanus-ftr__col--news">
-          <h4 className="fanus-ftr__col-title">{t("footer2.newsletter")}</h4>
-          <p className="fanus-ftr__news-text">{t("footer2.newsletterText")}</p>
-          <form className="fanus-ftr__form" onSubmit={(e) => { e.preventDefault(); alert(t("footer2.newsletterThanks")); }}>
-            <input type="email" placeholder={t("pub.emailPlaceholder")} required />
-            <button type="submit" aria-label={t("common.submit")}><SendIcon /></button>
-          </form>
-        </div>
       </div>
 
       {/* Böhran xəbərdarlığı — Fanus təcili yardım xidməti deyil (112 / 103). */}
@@ -104,10 +91,10 @@ export default function Footer() {
 
       <div className="fanus-container fanus-ftr__bottom">
         <div>{t("footer2.rights")}</div>
+        {/* Etika kodeksi səhifəsi hazır olanda /ethics keçidi bura qayıdacaq. */}
         <div className="fanus-ftr__bottom-links">
           <Link href="/privacy">{t("footer2.privacy")}</Link>
           <Link href="/terms">{t("footer2.terms")}</Link>
-          <Link href="/ethics">{t("footer2.ethics")}</Link>
         </div>
       </div>
 
@@ -143,7 +130,7 @@ export default function Footer() {
         .fanus-ftr-cta__ghost:hover { background: rgba(255,255,255,.1); }
 
         .fanus-ftr__main {
-          display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1.2fr;
+          display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr;
           gap: 40px; padding: 64px 28px 48px;
         }
         .fanus-ftr__lockup { display: inline-flex; align-items: center; gap: 5px; }
@@ -192,25 +179,6 @@ export default function Footer() {
         .fanus-ftr__col ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
         .fanus-ftr__col a { color: var(--fanus-ink-2); font-size: 14px; transition: color .2s; }
         .fanus-ftr__col a:hover { color: var(--fanus-primary); }
-        .fanus-ftr__news-text { color: var(--fanus-ink-3); font-size: 14px; margin: 0 0 14px; line-height: 1.5; }
-        .fanus-ftr__form {
-          display: flex; background: white;
-          border: 1px solid var(--fanus-line);
-          border-radius: 999px; overflow: hidden; padding: 4px;
-        }
-        .fanus-ftr__form input {
-          flex: 1; min-width: 0;
-          background: transparent; border: none;
-          padding: 8px 14px; color: var(--fanus-ink);
-          font-family: inherit; font-size: 14px; outline: none;
-        }
-        .fanus-ftr__form input::placeholder { color: var(--fanus-ink-3); }
-        .fanus-ftr__form button {
-          width: 36px; height: 36px; border-radius: 50%;
-          background: var(--fanus-primary); color: white;
-          display: inline-flex; align-items: center; justify-content: center;
-          flex-shrink: 0; cursor: pointer; border: none;
-        }
         .fanus-ftr__lang { display: inline-flex; align-items: center; gap: 6px; color: var(--fanus-ink-3); font-size: 12px; margin-top: 16px; }
 
         .fanus-ftr__crisis {
@@ -254,7 +222,6 @@ export default function Footer() {
   );
 }
 
-function Arrow() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>; }
 function AlertIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9L2.5 17.5a2 2 0 001.7 3h15.6a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" /><line x1="12" y1="9" x2="12" y2="13.5" /><circle cx="12" cy="16.8" r="0.6" fill="currentColor" stroke="none" /></svg>; }
 function PhoneIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 4h4l2 5-3 2a12 12 0 005 5l2-3 5 2v4a2 2 0 01-2 2A17 17 0 013 6a2 2 0 012-2z" /></svg>; }
 function MailIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>; }

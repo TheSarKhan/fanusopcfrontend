@@ -18,6 +18,7 @@ interface CardItem {
   photoUrl?: string;
   statsSource?: "FANUS_PLATFORM" | "PRIOR_EXPERIENCE";
   displayedSessionCount?: number;
+  verified?: boolean;
 }
 
 const FALLBACK: CardItem[] = [
@@ -50,6 +51,7 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
         photoUrl: p.photoUrl?.trim() || undefined,
         statsSource: p.statsSource,
         displayedSessionCount: p.displayedSessionCount,
+        verified: p.verified,
       }))
     : FALLBACK;
 
@@ -119,9 +121,14 @@ function PsyCard({ p }: { p: CardItem }) {
         <div className="pp-card__head-body">
           <div className="pp-card__name-row">
             <h3 className="pp-card__name">{p.name}</h3>
-            <span className="pp-card__verified" title={t("pub.verifiedPsy")} aria-label={t("pub.verifiedPsy")}>
-              <ShieldIcon />
-            </span>
+            {/* Nişan yalnız admin təsdiqləyəndə görünür (V140). Təsdiqlənməyən
+                psixoloq üçün heç nə yazılmır — «təsdiqlənməyib» etiketi mütəxəssisin
+                nüfuzuna zərbə vurardı. */}
+            {p.verified && (
+              <span className="pp-card__verified" title={t("pub.verifiedPsy")} aria-label={t("pub.verifiedPsy")}>
+                <ShieldIcon />
+              </span>
+            )}
           </div>
           <p className="pp-card__title">{p.title}</p>
           <div className="pp-card__rating">

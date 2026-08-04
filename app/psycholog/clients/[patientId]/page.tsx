@@ -9,7 +9,6 @@ import {
   type AppointmentDetail,
   type ClientNote,
   type ClientSummary,
-  type CrisisCheckIn,
   type FollowupTemplate,
   type PatientGoal,
   type PatientGoalPayload,
@@ -227,7 +226,6 @@ export default function PatientDetailPage() {
   const [notes, setNotes] = useState<ClientNote[]>([]);
   const [tags, setTags] = useState<PatientTag[]>([]);
   const [goals, setGoals] = useState<PatientGoal[]>([]);
-  const [crisis, setCrisis] = useState<CrisisCheckIn[]>([]);
   const [loading, setLoading] = useState(true);
   const [now] = useState(() => Date.now());
   const [tab, setTab] = useState<Tab>("overview");
@@ -268,15 +266,13 @@ export default function PatientDetailPage() {
       FEATURE_GOALS
         ? psychologistApi.patientGoals(patientId).catch(() => [] as PatientGoal[])
         : Promise.resolve([] as PatientGoal[]),
-      psychologistApi.patientCrisisHistory(patientId).catch(() => [] as CrisisCheckIn[]),
-    ]).then(([n, c, allAppts, t, tpls, gs, ch]) => {
+    ]).then(([n, c, allAppts, t, tpls, gs]) => {
       setNotes(n);
       setClient(c);
       setAppointments(allAppts.filter(a => a.patientId === patientId));
       setTags(t);
       setCustomTemplates(tpls);
       setGoals(gs);
-      setCrisis(ch);
     }).finally(() => setLoading(false));
   };
 
@@ -479,7 +475,7 @@ export default function PatientDetailPage() {
 
   // İcmalda yan sütun (növbəti seans / ilk müraciət / böhran) varmı — yoxdursa
   // əsas sütun tam eni tutur (boş sağ boşluq qalmasın).
-  const overviewHasSide = !!upcoming?.startAt || !!firstNote?.note || crisis.length > 0;
+  const overviewHasSide = !!upcoming?.startAt || !!firstNote?.note;
 
   return (
     <div className="panel-page">
@@ -720,7 +716,6 @@ export default function PatientDetailPage() {
                     <p style={{ margin: 0, fontSize: 13, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, lineHeight: 1.55 }}>«{firstNote.note}»</p>
                   </div>
                 )}
-                {crisis.length > 0 && <CrisisHistoryCard items={crisis} />}
               </div>
             )}
           </div>
@@ -827,67 +822,6 @@ export default function PatientDetailPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-/* ─── Crisis check-in history ────────────────────────────────────────────── */
-
-function CrisisHistoryCard({ items }: { items: CrisisCheckIn[] }) {
-  // Restrict to last 30 days for the sparkline.
-  const [cutoff] = useState(() => Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const recent = items.filter(c => new Date(c.createdAt).getTime() >= cutoff);
-  if (recent.length === 0) return null;
-  const lowCount = recent.filter(c => c.moodScore <= 2).length;
-  const sortedAsc = [...recent].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  const sparkW = 240, sparkH = 36;
-  const dots = sortedAsc.map((c, i) => {
-    const x = sortedAsc.length === 1 ? sparkW / 2 : (i / (sortedAsc.length - 1)) * (sparkW - 12) + 6;
-    const y = sparkH - ((c.moodScore - 1) / 4) * (sparkH - 10) - 5;
-    return { x, y, mood: c.moodScore, ts: c.createdAt };
-  });
-  const path = dots.map((d, i) => `${i === 0 ? "M" : "L"} ${d.x.toFixed(1)} ${d.y.toFixed(1)}`).join(" ");
-
-  return (
-    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 18, marginBottom: 14 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 15, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-          <span style={{ width: 30, height: 30, borderRadius: 9, background: "#FEE2E2", color: "#991B1B", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-          </span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>Böhran check-in tarixçəsi</span>
-        </div>
-        <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
-          <span>Son 30 gündə <strong style={{ color: "var(--oxford)" }}>{recent.length} check-in</strong></span>
-          {lowCount > 0 && <strong style={{ color: "#991B1B" }}>{lowCount} aşağı əhval</strong>}
-        </span>
-      </div>
-      <svg viewBox={`0 0 ${sparkW} ${sparkH}`} preserveAspectRatio="none" style={{ width: "100%", height: 40, display: "block", marginBottom: 14 }}>
-        <line x1="0" y1={sparkH - 5} x2={sparkW} y2={sparkH - 5} stroke="#FCA5A5" strokeWidth="0.6" strokeDasharray="2 2" opacity="0.6" />
-        {dots.length > 1 && (
-          <path d={path} fill="none" stroke="var(--brand)" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
-        )}
-        {dots.map((d, i) => (
-          <circle key={i} cx={d.x} cy={d.y} r="3"
-            fill={d.mood <= 2 ? "#DC2626" : d.mood === 3 ? "#F59E0B" : "#10B981"}>
-            <title>{`${d.mood}/5, ${azFormatDate(d.ts)}`}</title>
-          </circle>
-        ))}
-      </svg>
-      <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-        {recent.slice(0, 5).map(c => {
-          const low = c.moodScore <= 2, mid = c.moodScore === 3;
-          return (
-            <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 11 }}>
-              <span style={{ background: low ? "#FEE2E2" : mid ? "#FEF3C7" : "#D1FAE5", color: low ? "#991B1B" : mid ? "#92400E" : "#065F46", fontSize: 12, fontWeight: 800, padding: "4px 10px", borderRadius: 8, flex: "none" }}>{c.moodScore}/5</span>
-              {c.note
-                ? <span style={{ flex: 1, fontSize: 13, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500 }}>«{c.note}»</span>
-                : <span style={{ flex: 1, fontSize: 13, color: "#A9B8CC", fontWeight: 500 }}>Qeyd yoxdur</span>}
-              <span style={{ fontSize: 12, color: "#9DB0CC", fontWeight: 600, flex: "none" }}>{fmtDateTime(c.createdAt)}</span>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }

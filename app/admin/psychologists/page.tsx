@@ -408,6 +408,8 @@ function PsychologistsTab({ onPreview }: { onPreview: (f: { url: string; label: 
     { key: "specializations", header: "İxtisas", hideOnMobile: true, cell: (p) => p.specializations.slice(0, 2).join(", ") || <span className="fx-muted">—</span> },
     { key: "ratingCount", header: "Reytinq", sortable: true, hideOnMobile: true, cell: (p) => `${p.rating} (${p.ratingCount})` },
     { key: "status", header: "Status", cell: (p) => p.suspended ? <Status tone="risk">Dayandırılıb</Status> : <Status tone={p.active ? "positive" : "muted"}>{p.active ? "Aktiv" : "Deaktiv"}</Status> },
+    { key: "verified", header: "Təsdiq", hideOnMobile: true,
+      cell: (p) => p.verified ? <Status tone="positive">Təsdiqli</Status> : <Status tone="muted">Yox</Status> },
     { key: "plan", header: "Plan", hideOnMobile: true, cell: (p) => p.planName ? <Status tone="neutral">{p.planName}</Status> : <span className="fx-muted">—</span> },
     { key: "individualPrice", header: "Qiymət", hideOnMobile: true, cell: (p) => p.individualPrice != null ? `${p.individualPrice} ${p.currency ?? "AZN"}` : <span className="fx-muted">—</span> },
   ];
@@ -498,6 +500,7 @@ function PsychologistDrawer({ row, onPreview, onChanged }: {
           <div style={{ minWidth: 0 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Status tone={row.psychologistType === "FANUS" ? "positive" : "muted"}>{row.psychologistType === "FANUS" ? "Fanus" : "Adi"}</Status>
+              {row.verified && <Status tone="positive">Təsdiqli</Status>}
               {row.suspended ? <Status tone="risk">Dayandırılıb</Status> : <Status tone={row.active ? "positive" : "muted"}>{row.active ? "Aktiv" : "Deaktiv"}</Status>}
             </div>
             <div className="fx-subtitle" style={{ marginTop: 4 }}>{row.title}</div>
@@ -805,8 +808,35 @@ function PsyActions({ row, onChanged }: { row: AdminPsychologistRow; onChanged: 
     finally { setBusy(false); }
   };
 
+  const toggleVerified = async () => {
+    setBusy(true);
+    try {
+      await adminApi.setPsychologistVerified(row.id, !row.verified);
+      toast(row.verified ? "Təsdiq nişanı götürüldü" : "Psixoloq təsdiqləndi", "success");
+      onChanged();
+    } catch (e) { toast((e as Error).message, "error"); }
+    finally { setBusy(false); }
+  };
+
   return (
     <DrawerSection>
+      {/* Təsdiq nişanı — publik kartda və profil səhifəsində göstərilir.
+          Dayandırmadan ayrıdır: dayandırılmış psixoloq təyinat almır, təsdiqsiz
+          psixoloq isə işləyir, sadəcə nişanı yoxdur. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>Fanus təsdiqli nişanı</div>
+          <div className="fx-subtitle">
+            {row.verified
+              ? "Nişan saytda göstərilir — kartda və profil səhifəsində."
+              : "Nişan göstərilmir. Psixoloq işləyir, yalnız təsdiq nişanı yoxdur."}
+          </div>
+        </div>
+        <Button variant={row.verified ? "dangerGhost" : "primary"} size="sm" disabled={busy} onClick={toggleVerified}>
+          {row.verified ? "Nişanı götür" : "Təsdiqlə"}
+        </Button>
+      </div>
+
       {row.suspended ? (
         <>
           <Banner tone="warn" title="Dayandırılıb">{row.suspendReason || "Səbəb qeyd edilməyib."}</Banner>

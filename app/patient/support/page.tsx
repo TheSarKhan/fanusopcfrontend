@@ -1,44 +1,23 @@
 "use client";
 
+// Dəstək səhifəsi — risk xəbərdarlığı, sürətli kontaktlar və qaynar xətlər.
+// QEYD: əvvəllər burada mood check-in mexanizmi də var idi (göndərmə + tarixçə);
+// məhsul qərarı ilə platformadan tam çıxarılıb.
+
 import { useEffect, useState } from "react";
 import {
   patientApi,
   type CrisisHotline,
   type CrisisStatus,
-  type CrisisCheckIn,
   type CrisisContactPsy,
 } from "@/lib/api";
-import { toast } from "@/components/Toast";
 import PageHeader from "@/components/PageHeader";
 import { useT } from "@/lib/i18n/LocaleProvider";
-import type { MessageKey } from "@/lib/i18n/messages";
-
-type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
-
-const MOOD_KEYS: MessageKey[] = [
-  "patSupport.mood1", // 1
-  "patSupport.mood2",
-  "patSupport.mood3",
-  "patSupport.mood4",
-  "patSupport.mood5", // 5
-];
 
 function whatsappLink(phone: string | null | undefined): string | null {
   if (!phone) return null;
   const digits = phone.replace(/^\+/, "").replace(/[^\d]/g, "");
   return digits ? `https://wa.me/${digits}` : null;
-}
-
-function fmtRelative(t: Translate, iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const min = Math.floor(ms / 60000);
-  if (min < 1) return t("patSupport.relNow");
-  if (min < 60) return t("patSupport.relMin", { n: min });
-  const h = Math.floor(min / 60);
-  if (h < 24) return t("patSupport.relHour", { n: h });
-  const d = Math.floor(h / 24);
-  if (d < 30) return t("patSupport.relDay", { n: d });
-  return t("patSupport.relMonth", { n: Math.floor(d / 30) });
 }
 
 export default function PatientSupportPage() {
@@ -47,38 +26,12 @@ export default function PatientSupportPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // Check-in form
-  const [mood, setMood] = useState<number | null>(null);
-  const [note, setNote] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [thanks, setThanks] = useState(false);
-
   useEffect(() => {
     patientApi.crisisStatus()
       .then(setStatus)
       .catch(e => setErr((e as Error).message))
       .finally(() => setLoading(false));
   }, []);
-
-  const submitCheckIn = async () => {
-    if (mood == null) return;
-    setSubmitting(true);
-    try {
-      const saved = await patientApi.crisisCheckIn({
-        moodScore: mood,
-        note: note.trim() || null,
-      });
-      setStatus(prev => prev ? { ...prev, recentCheckIns: [saved, ...prev.recentCheckIns].slice(0, 10) } : prev);
-      setThanks(true);
-      setMood(null);
-      setNote("");
-      setTimeout(() => setThanks(false), 4000);
-    } catch (e) {
-      toast((e as Error).message, "error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   return (
     <div className="psupport">
@@ -121,50 +74,6 @@ export default function PatientSupportPage() {
               {status.hotlines.map(h => <HotlineCard key={h.phone} h={h} />)}
             </div>
           </section>
-
-          {/* Mood check-in */}
-          <section className="psupport__section">
-            <h2>{t("patSupport.checkInTitle")}</h2>
-            <p className="psupport__sub">
-              {t("patSupport.checkInSub")}
-            </p>
-            <div className="psupport__checkin">
-              <div className="psupport__mood-row">
-                {[1, 2, 3, 4, 5].map(n => (
-                  <button key={n} type="button"
-                    className={`psupport__mood${mood === n ? " is-active" : ""}`}
-                    onClick={() => setMood(n)}
-                    data-tone={n <= 2 ? "low" : n === 3 ? "mid" : "good"}>
-                    <span className="psupport__mood-num">{n}</span>
-                    <span className="psupport__mood-label">{t(MOOD_KEYS[n - 1])}</span>
-                  </button>
-                ))}
-              </div>
-              <textarea value={note} onChange={e => setNote(e.target.value)}
-                rows={3} maxLength={2000}
-                placeholder={t("patSupport.notePh")}
-                className="psupport__note" />
-              {thanks && (
-                <div className="psupport__thanks">{t("patSupport.thanks")}</div>
-              )}
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button onClick={submitCheckIn} disabled={mood == null || submitting}
-                  className="psupport__submit">
-                  {submitting ? t("common.sending") : t("common.submit")}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* History */}
-          {status.recentCheckIns.length > 0 && (
-            <section className="psupport__section">
-              <h2>{t("patSupport.historyTitle")}</h2>
-              <div className="psupport__history">
-                {status.recentCheckIns.map(c => <HistoryRow key={c.id} c={c} />)}
-              </div>
-            </section>
-          )}
         </>
       )}
     </div>
@@ -217,21 +126,6 @@ function HotlineCard({ h }: { h: CrisisHotline }) {
         </div>
       </div>
     </a>
-  );
-}
-
-function HistoryRow({ c }: { c: CrisisCheckIn }) {
-  const { t } = useT();
-  const tone = c.moodScore <= 2 ? "low" : c.moodScore === 3 ? "mid" : "good";
-  return (
-    <div className="psupport__hist" data-tone={tone}>
-      <div className="psupport__hist-mood">{c.moodScore}/5</div>
-      <div className="psupport__hist-body">
-        <div className="psupport__hist-label">{t(MOOD_KEYS[c.moodScore - 1])}</div>
-        {c.note && <div className="psupport__hist-note">«{c.note}»</div>}
-        <div className="psupport__hist-time">{fmtRelative(t, c.createdAt)}</div>
-      </div>
-    </div>
   );
 }
 

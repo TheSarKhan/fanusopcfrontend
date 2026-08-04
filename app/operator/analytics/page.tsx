@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   operatorApi,
   type OperatorStats,
-  type OperatorCrisisCheckIn,
   type PsychologistConcern,
   type PatientFlagged,
   type OperatorBreakdown,
@@ -16,10 +15,7 @@ import {
   type PaymentSummary,
   type RevenueBreakdown,
 } from "@/lib/api";
-import { subscribeNotifications } from "@/lib/notificationsSocket";
 import { useT } from "@/lib/i18n/LocaleProvider";
-import { toast as uiToast } from "@/components/Toast";
-import { azFormatDateTime } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
 
 const fmtMin = (m: number | null) => m == null ? "—" : m < 60 ? `${Math.round(m)} dəq` : (() => { const h = Math.floor(m / 60); const r = Math.round(m - h * 60); return r > 0 ? `${h} s ${r} dəq` : `${h} s`; })();
@@ -48,20 +44,17 @@ export default function OperatorAnalyticsPage() {
   const [summary, setSummary] = useState<PaymentSummary | null>(null);
   const [revenue, setRevenue] = useState<RevenueBreakdown | null>(null);
   const [ranking, setRanking] = useState<PsychologistRankItem[]>([]);
-  const [crisis, setCrisis] = useState<OperatorCrisisCheckIn[]>([]);
   const [loading, setLoading] = useState(true);
-  const [ackingId, setAckingId] = useState<number | null>(null);
   const [period, setPeriod] = useState<AnalyticsPeriod>("weekly");
   const [series, setSeries] = useState<AnalyticsTimePoint[]>([]);
   const [seriesLoading, setSeriesLoading] = useState(true);
 
   const load = () => {
     Promise.allSettled([
-      operatorApi.stats(), operatorApi.crisisCheckIns(), operatorApi.psychologistRanking(),
+      operatorApi.stats(), operatorApi.psychologistRanking(),
       operatorApi.paymentsSummary(), operatorApi.analyticsRevenue(),
-    ]).then(([s, c, r, sm, rv]) => {
+    ]).then(([s, r, sm, rv]) => {
       if (s.status === "fulfilled") setStats(s.value);
-      if (c.status === "fulfilled") setCrisis(c.value);
       if (r.status === "fulfilled") setRanking(r.value);
       if (sm.status === "fulfilled") setSummary(sm.value);
       if (rv.status === "fulfilled") setRevenue(rv.value);
@@ -75,16 +68,6 @@ export default function OperatorAnalyticsPage() {
     operatorApi.analyticsSessions(period).then(d => { if (alive) setSeries(d); }).catch(() => { if (alive) setSeries([]); }).finally(() => { if (alive) setSeriesLoading(false); });
     return () => { alive = false; };
   }, [period]);
-
-  useEffect(() => subscribeNotifications(n => { if (n.type === "CRISIS_CHECK_IN") load(); }), []);
-
-  const ack = async (id: number) => {
-    setAckingId(id);
-    try {
-      const u = await operatorApi.acknowledgeCrisisCheckIn(id);
-      setCrisis(prev => prev.map(c => c.id === id ? u : c));
-    } catch (e) { uiToast((e as Error).message, "error"); } finally { setAckingId(null); }
-  };
 
   const finKpis = useMemo(() => {
     if (!summary) return [];
@@ -111,8 +94,6 @@ export default function OperatorAnalyticsPage() {
     { label: "Bu gün təyin edilib", value: String(stats.assignedToday), sub: "randevu", numColor: "#082F6D", subColor: "#9DB0CC" },
     { label: "Rədd faizi", value: fmtPct(stats.rejectionRatePct), sub: `${stats.rejectedThisMonth} bu ay`, numColor: stats.rejectionRatePct != null && stats.rejectionRatePct > 15 ? "#991B1B" : "#374151", subColor: "#9DB0CC" },
   ];
-
-  const unseen = crisis.filter(c => !c.acknowledgedAt).length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -299,19 +280,6 @@ export default function OperatorAnalyticsPage() {
         </div>
       </div>
 
-      {/* BÖHRAN */}
-      {crisis.length > 0 && (
-        <div style={{ background: "#FFF5F5", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #FECACA", borderLeft: "3px solid #DC2626", padding: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 15 }}>
-            <span style={{ width: 30, height: 30, borderRadius: 9, background: "#FEE2E2", color: "#991B1B", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}><Ico d="M22 12h-4l-3 9L9 3l-3 9H2" size={16} /></span>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>Böhran check-in-ləri</span>
-            {unseen > 0 && <span style={{ background: "#FEE2E2", color: "#991B1B", fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 999 }}>{unseen} baxılmamış</span>}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-            {crisis.map(c => <CrisisRow key={c.id} c={c} acking={ackingId === c.id} onAck={() => ack(c.id)} />)}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -461,36 +429,6 @@ function FlagPsy({ c }: { c: PsychologistConcern }) {
           {c.rejected > 0 && <span style={{ background: rejTone.bg, color: rejTone.fg, fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{c.rejected} rədd, {fmtPct(c.rejectionRatePct)}</span>}
           <span style={{ background: "#F3F4F6", color: "#374151", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>təsdiq: {fmtMin(c.avgConfirmMinutes)}</span>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function CrisisRow({ c, acking, onAck }: { c: OperatorCrisisCheckIn; acking: boolean; onAck: () => void }) {
-  const unacked = !c.acknowledgedAt;
-  const wa = c.patientPhone ? c.patientPhone.replace(/[^\d]/g, "") : null;
-  const a = av(c.id);
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, background: unacked ? "#FFF1F1" : "#fff", border: `1px solid ${unacked ? "#FECACA" : "#EDF1F8"}`, borderRadius: 11, padding: "12px 14px", flexWrap: "wrap", opacity: unacked ? 1 : 0.7 }}>
-      <span style={{ background: unacked ? "#FEE2E2" : "#FEF3C7", color: unacked ? "#991B1B" : "#92400E", fontSize: 12, fontWeight: 800, padding: "5px 10px", borderRadius: 9, flex: "none" }}>{c.moodScore}/5</span>
-      <span style={{ width: 34, height: 34, borderRadius: "50%", background: a.bg, color: a.color, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flex: "none" }}>{initials(c.patientName)}</span>
-      <div style={{ flex: 1, minWidth: 160 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>{c.patientName}</span>
-          {c.riskLevel && <span style={{ background: "#FEE2E2", color: "#991B1B", fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999 }}>{c.riskLevel === "CRITICAL" ? "Kritik" : c.riskLevel === "HIGH" ? "Yüksək" : c.riskLevel}</span>}
-        </div>
-        {/* Qeyd və tarix ayrı sətirlərdə — ayırıcı işarə yox. */}
-        <div style={{ fontSize: 12, color: "var(--oxford-60)", fontStyle: "italic", fontWeight: 500, marginTop: 3 }}>
-          {c.note && <div>«{c.note.length > 90 ? c.note.slice(0, 90) + "…" : c.note}»</div>}
-          <div style={{ fontStyle: "normal" }}>{azFormatDateTime(c.createdAt)}</div>
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: 7, flex: "none" }}>
-        {c.patientPhone && <a href={`tel:${c.patientPhone}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#fff", color: "#047857", border: "1px solid #A7F3D0", fontSize: 11.5, fontWeight: 600, padding: "6px 11px", borderRadius: 9, textDecoration: "none" }}>Zəng</a>}
-        {wa && <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#F0FDF4", color: "#166534", border: "1px solid #BBF7D0", fontSize: 11.5, fontWeight: 600, padding: "6px 11px", borderRadius: 9, textDecoration: "none" }}>WhatsApp</a>}
-        {unacked
-          ? <button type="button" onClick={onAck} disabled={acking} style={{ background: "#B91C1C", color: "#fff", border: "none", borderRadius: 9, padding: "6px 13px", fontSize: 11.5, fontWeight: 700, fontFamily: "inherit", cursor: acking ? "default" : "pointer" }}>{acking ? "…" : "Baxıldı"}</button>
-          : <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "#9DB0CC" }}><Ico d="M20 6L9 17l-5-5" size={12} /> baxılıb</span>}
       </div>
     </div>
   );

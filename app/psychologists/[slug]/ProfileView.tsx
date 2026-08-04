@@ -127,10 +127,14 @@ export default function ProfileView({
               <div style={{ flex: 1, minWidth: 230 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", marginBottom: 4 }}>
                   <h1 style={{ margin: 0, fontSize: 25, fontWeight: 800, letterSpacing: "-.02em" }}>{psychologist.name}</h1>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--brand)", color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: ".04em", padding: "4px 10px", borderRadius: 999 }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l7 3v6c0 4.5-3 8.3-7 9.5C8 19.3 5 15.5 5 11V5z" /><path d="M9 12l2 2 4-4" /></svg>
-                    {t("psyProfile.verified")}
-                  </span>
+                  {/* Yalnız admin təsdiqləyəndə (V140) — əvvəl şərtsiz göstərilirdi,
+                      yəni platformadakı hər kəs «Fanus təsdiqli» görünürdü. */}
+                  {psychologist.verified && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--brand)", color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: ".04em", padding: "4px 10px", borderRadius: 999 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l7 3v6c0 4.5-3 8.3-7 9.5C8 19.3 5 15.5 5 11V5z" /><path d="M9 12l2 2 4-4" /></svg>
+                      {t("psyProfile.verified")}
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: 15, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 16 }}>{psychologist.title}</div>
                 <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 18 }}>

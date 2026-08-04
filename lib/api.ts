@@ -386,6 +386,8 @@ export interface Psychologist {
   displayedSessionCount?: number;
   /** Əhval tövsiyəsi üçün mövzu teqləri (V133) — admin seçir. */
   topics?: string[];
+  /** «Fanus təsdiqli» nişanı (V140) — yalnız true olanda göstərilir. */
+  verified?: boolean;
 }
 
 // Modul A — public/pasiyent kartda göstərilən paket xülasəsi. Qiymət sahələri
@@ -1572,6 +1574,7 @@ export interface AdminPsychologistRow {
   createdAt: string;
   planId?: number | null;
   planName?: string | null;
+  verified?: boolean;
 }
 // Psixoloq planı — modul aç/bağla şablonu.
 export interface PsychologistPlan {
@@ -1646,6 +1649,11 @@ export const adminApi = {
     authedRequest<Psychologist>("PUT", `/admin/psychologists/${id}`, data).then(p => { revalidatePsychologistsCache(); return p; }),
   deletePsychologist: (id: number) =>
     authedRequest<void>("DELETE", `/admin/psychologists/${id}`).then(r => { revalidatePsychologistsCache(); return r; }),
+  /** «Fanus təsdiqli» nişanını aç/bağla (V140) — ayrıca endpoint, tam profil
+   *  yeniləməsindən fərqli olaraq yalnız bu bayrağa toxunur. */
+  setPsychologistVerified: (id: number, verified: boolean) =>
+    authedRequest<Psychologist>("PATCH", `/admin/psychologists/${id}/verified`, { verified })
+      .then(p => { revalidatePsychologistsCache(); return p; }),
   // Modul C — Fanus/Adi tip + Fanus qiymət/paket idarəsi (ayrıca endpointlər;
   // PsychologistRequest pozisional record-a toxunulmur)
   setPsyType: (psyId: number, type: "FANUS" | "NORMAL") =>

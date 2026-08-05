@@ -9850,6 +9850,17 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1fr 1fr;
+  /* Sol sütunun üstündə topbar var (loqo + dil + geri), sağ panelin isə yoxdur.
+   * Hər iki tərəf öz sahəsinin mərkəzinə görə düzülsəydi, oxlar bu topbar qədər
+   * fərqlənərdi və başlıqlar eyni xəttə düşməzdi — ona görə sağ panelə eyni
+   * hündürlükdə yuxarı boşluq verilir. Dəyər topbar-a `min-height` kimi də
+   * tətbiq olunur ki, fərziyyə deyil, zəmanət olsun. */
+  --auth-topbar-h: 79px;
+  /* İki sütun şaquli mərkəzlənsəydi, başlıqlar yenə eyni xəttə düşməzdi: blokların
+   * hündürlüyü fərqlidir, mərkəz üst-üstə düşəndə üst kənarlar düşmür. Ona görə
+   * hər ikisi eyni yuxarı nöqtəyə bağlanır — başlıqlar məzmunun uzunluğundan
+   * asılı olmayaraq həmişə bir xətdə olur. */
+  --auth-head-top: clamp(56px, 20vh, 180px);
 }
 
 /* Left side */
@@ -9860,10 +9871,16 @@
 }
 .auth-topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 20px 48px;
+  padding: 0 48px;
+  /* `min-height` deyil, dəqiq hündürlük: login və register-də loqo fərqli
+   * ölçüdə render olunur və topbar bir səhifədə 79, digərində 110px çıxırdı —
+   * sağ panelin yuxarı boşluğu isə tək dəyərə bağlıdır. */
+  height: var(--auth-topbar-h);
+  box-sizing: border-box;
   border-bottom: 1px solid #EEF3F8;
   flex-shrink: 0;
 }
+.auth-topbar img { max-height: 40px; width: auto; }
 .auth-back-btn {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: 13px; font-weight: 500; color: var(--oxford-60);
@@ -9884,13 +9901,18 @@
 .auth-topbar .lsw__btn:hover { border-color: var(--oxford-40); background: #F5F8FC; }
 .auth-form-center {
   flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 48px 48px;
+  align-items: center; justify-content: flex-start;
+  padding: var(--auth-head-top) 48px 60px;
 }
 .auth-form-box {
   width: 100%;
   max-width: 420px;
 }
+/* Başlıqların brauzer-default `margin-block-start`-ı blokun üst kənarını mətndən
+ * ayırır və iki sütunda fərqli olur (şrift ölçüləri fərqlidir). Sıfırlanmasa,
+ * bloklar eyni yerdən başlasa da başlıqlar eyni xəttə düşmür. */
+.auth-form-box > *:first-child,
+.auth-panel-content > *:first-child { margin-top: 0; }
 
 /* Right panel — seans videosu + Oxford-blue örtük (mətn oxunaqlı qalsın).
  * Əvvəl burada statik şəkil və iki dekorativ dairə vardı; hər ikisi silinib. */
@@ -9898,8 +9920,8 @@
   position: relative;
   background: #061024;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 60px 48px;
+  align-items: center; justify-content: flex-start;
+  padding: calc(var(--auth-topbar-h) + var(--auth-head-top)) 48px 60px;
   overflow: hidden;
 }
 .auth-panel__video {
@@ -9918,8 +9940,12 @@
   background: linear-gradient(180deg, rgba(4,14,28,.58) 0%, rgba(8,22,44,.60) 50%, rgba(2,10,20,.70) 100%);
   pointer-events: none;
 }
-.auth-panel-content { position: relative; z-index: 2; text-align: center; max-width: 380px; }
-.auth-panel-title { font-family: var(--serif); font-size: clamp(26px,2.8vw,38px); color: white; line-height: 1.2; margin: 28px 0 16px; font-weight: 500; text-shadow: 0 2px 16px rgba(0,0,0,.25); }
+/* 440px: azərbaycanca başlıqlar ingiliscədən uzundur və 380-də üçüncü sətrə
+ * keçib tək söz qoyurdu ("...lazım / deyil"). */
+.auth-panel-content { position: relative; z-index: 2; text-align: center; max-width: 440px; }
+/* margin-top 0 olmalıdır: əvvəl burada loqo vardı və 28px onu ayırırdı; loqo
+ * silindikdən sonra həmin boşluq başlığı sol sütundakı başlıqdan aşağı salırdı. */
+.auth-panel-title { font-family: var(--serif); font-size: clamp(26px,2.8vw,38px); color: white; line-height: 1.2; margin: 0 0 16px; font-weight: 500; text-shadow: 0 2px 16px rgba(0,0,0,.25); }
 /* Fon artıq hərəkətli videodur — mətn ondan ayrılsın deyə kölgə və opaklıq bir az artırılıb. */
 .auth-panel-sub { font-size: 14.5px; color: rgba(255,255,255,0.88); line-height: 1.7; margin-bottom: 40px; text-shadow: 0 1px 10px rgba(0,0,0,.45); }
 .auth-panel-trust { display: flex; flex-direction: column; gap: 12px; }

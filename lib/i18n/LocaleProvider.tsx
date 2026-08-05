@@ -3,12 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { readCookie, writeCookie } from "@/lib/crossSiteCookie";
 import {
-  DEFAULT_LOCALE, SUPPORTED_LOCALES,
+  DEFAULT_LOCALE, SUPPORTED_LOCALES, LOCALE_COOKIE_NAME,
   format, resolveMessage,
   type Locale, type MessageKey,
 } from "./messages";
 
-const COOKIE_NAME = "fanus-locale";
+const COOKIE_NAME = LOCALE_COOKIE_NAME;
 const COOKIE_TTL_DAYS = 365;
 
 interface LocaleContextValue {
@@ -33,12 +33,26 @@ function detectInitialLocale(): Locale {
   return DEFAULT_LOCALE;
 }
 
-export function LocaleProvider({ children }: { children: ReactNode }) {
-  // Server pass renders with DEFAULT_LOCALE, then we hydrate from cookie/nav.
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+/**
+ * `initialLocale` root layout-dan gəlir: server sorğudakı `fanus-locale`
+ * kukisini oxuyur. Bu olmadan server hər zaman DEFAULT_LOCALE ilə render edirdi,
+ * yəni səhifə əvvəlcə azərbaycanca gəlirdi və yalnız hidratasiyadan sonra
+ * seçilmiş dilə keçirdi — server mətni ilə klient mətni uyğunsuz olduğuna görə
+ * bəzi bölmələr (məs. FAQ siyahısı) azərbaycanca qalırdı.
+ */
+export function LocaleProvider({
+  children,
+  initialLocale,
+}: {
+  children: ReactNode;
+  initialLocale?: Locale;
+}) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale ?? DEFAULT_LOCALE);
 
   useEffect(() => {
-    const detected = detectInitialLocale();
+    // Kuki varsa server artıq düzgün dili verib — yenidən təyin etməyə ehtiyac yoxdur.
+    // Kuki yoxdursa brauzerin dilinə baxırıq (detectInitialLocale-un 2-ci addımı).
+    const detected = initialLocale ?? detectInitialLocale();
     if (detected !== locale) setLocaleState(detected);
     // Reflect on <html> so screen readers / SEO get the right hint.
     document.documentElement.lang = detected;

@@ -7,6 +7,22 @@ export const SUPPORTED_LOCALES = ["az", "ru", "en", "tr"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "az";
 
+/**
+ * Seçilmiş dilin saxlandığı kuki. Bu fayl «use client» deyil, ona görə həm
+ * root layout (server), həm də LocaleProvider (klient) eyni adı oxuya bilir —
+ * sabiti klient modulundan idxal etsək, serverdə sətir yox, modul-referens gəlir
+ * və kuki heç vaxt tapılmır.
+ */
+export const LOCALE_COOKIE_NAME = "fanus-locale";
+
+/** Kuki dəyərini təhlükəsiz Locale-ə çevirir; tanınmayan dəyər → null. */
+export function parseLocale(value: string | undefined | null): Locale | null {
+  if (value && (SUPPORTED_LOCALES as readonly string[]).includes(value)) {
+    return value as Locale;
+  }
+  return null;
+}
+
 /** AZ is the source of truth — keys defined there are guaranteed to exist. */
 export type Messages = typeof az;
 export type MessageKey = NestedKeyOf<Messages>;

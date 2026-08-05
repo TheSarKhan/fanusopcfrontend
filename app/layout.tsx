@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import "./globals.css";
 import SiteChrome from "@/components/SiteChrome";
 import { BookingProvider } from "@/context/BookingContext";
 import { MoodProvider } from "@/context/MoodContext";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
+import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, parseLocale } from "@/lib/i18n/messages";
 import { ToastHost } from "@/components/Toast";
 import { ConfirmHost } from "@/components/ConfirmDialog";
 import GlobalLoadingOverlay from "@/components/GlobalLoadingOverlay";
@@ -45,10 +46,15 @@ export default async function RootLayout({
   const subdomain = getSubdomain(host);
   const isPanel = subdomain !== null && PANEL_SUBDOMAINS.has(subdomain);
 
+  // Dil kukisini SERVERDƏ oxuyuruq. Əks halda server hər zaman azərbaycanca
+  // render edir, seçilmiş dil isə yalnız hidratasiyadan sonra tətbiq olunurdu —
+  // ona görə bəzi bölmələr (FAQ siyahısı kimi) az dilində qalırdı.
+  const cookieLocale = parseLocale((await cookies()).get(LOCALE_COOKIE_NAME)?.value);
+
   return (
-    <html lang="az" className={poppins.variable} suppressHydrationWarning>
+    <html lang={cookieLocale ?? DEFAULT_LOCALE} className={poppins.variable} suppressHydrationWarning>
       <body className="min-h-screen flex flex-col" suppressHydrationWarning>
-        <LocaleProvider>
+        <LocaleProvider initialLocale={cookieLocale ?? undefined}>
           {isPanel ? (
             children
           ) : (

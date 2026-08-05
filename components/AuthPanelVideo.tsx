@@ -5,17 +5,20 @@ import { useEffect, useRef } from "react";
 /**
  * Login/Register səhifələrindəki sağ panelin arxa fonu — statik şəkil əvəzinə video.
  *
- * Video portret kadrdır (810×1080) və panel dar-uzun olduğuna görə `object-fit: cover`
- * ilə oturur. Fayl «ping-pong» (irəli + geri) kimi montaj olunub, ona görə loop
- * nöqtəsində sıçrayış görünmür.
+ * Video 800×1000-dir — panelin nisbəti (0.80) ilə eyni. Bu vacibdir: əvvəlki
+ * versiyalarda mənbə 9:16 idi, `cover` hündürlüyün böyük hissəsini kəsir və
+ * insanın başı kadrdan çıxırdı. Eyni nisbətdə kəsim minimuma enir.
+ *
+ * Fayl «ping-pong» (irəli + geri) montaj olunub, ona görə loop nöqtəsində
+ * sıçrayış görünmür.
  *
  * Üstündəki `scrim` mətnin oxunması üçündür: video açıq tonludur, ağ başlıq və
- * kartlar onun üzərində birbaşa oxunmazdı.
+ * kartlar onun üzərində birbaşa oxunmazdı. Örtük qəsdən yüngüldür — noutbuk
+ * seçilməli idi.
  *
- * Mənbə: Pexels #8513143 — onlayn seans (qulaqlıq + noutbukda video zəng), bu
- * platformanın əsl iş formatını göstərir. Pexels lisenziyası kommersiya
- * istifadəsinə açıqdır, atribut tələb etmir. 4K portretdən kəsilib 676×1080-ə
- * sıxılıb: 20 MB → 645 KB.
+ * Mənbə: Pexels #9198476 — noutbukda onlayn seans, qara saçlı qız, kərpic divar.
+ * Pexels lisenziyası kommersiya istifadəsinə açıqdır, atribut tələb etmir.
+ * FullHD-dən 0.80 nisbətində kəsilib: 17 MB → 947 KB.
  */
 export default function AuthPanelVideo() {
   const ref = useRef<HTMLVideoElement>(null);

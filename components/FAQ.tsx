@@ -3,25 +3,28 @@
 import { useState } from "react";
 import type { Faq } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
-const FALLBACK: Faq[] = [
-  { id: 1, question: "Onlayn seans nə qədər təsirlidir?", answer: "Tədqiqatlar göstərir ki, peşəkar psixoloqla aparılan onlayn seanslar effektivlik baxımından klinik müayinələrlə müqayisə oluna bilir. Üstəlik öz mühitinizdə daha açıq danışmaq mümkün olur, yol və gözləmə vaxtı sıfırdır.", displayOrder: 1, active: true },
-  { id: 2, question: "Məlumatlarım təhlükəsizdirmi?", answer: "Bəli. Seans qeydləri saxlanmır. Şəxsi məlumatlarınız üçüncü tərəflərlə paylaşılmır. İstədiyiniz vaxt anonim profil yarada və ya hesabınızı silə bilərsiniz.", displayOrder: 2, active: true },
-  { id: 3, question: "Bir seans nə qədər çəkir və nə qədər başa gəlir?", answer: "Standart seans 50 dəqiqədir. Qiymət psixoloqdan asılı olaraq dəyişir — hər mütəxəssisin profilində açıq göstərilib. Seçdiyiniz psixoloqla ilk 15 dəqiqəlik tanışlıq görüşü pulsuzdur.", displayOrder: 3, active: true },
-  { id: 4, question: "Mənə uyğun psixoloqu necə seçirsiniz?", answer: "Qısa müraciətinizi operator komandamız oxuyur — alqoritm yox, insan. Ehtiyacınıza, dilinizə və büdcənizə uyğun mütəxəssisi qısa müddətdə təklif edirik. İlk tanışlıq görüşündən sonra istəyirsinizsə başqa psixoloqa keçə bilərsiniz.", displayOrder: 4, active: true },
-  { id: 5, question: "Seansı ləğv edə və ya təxirə sala bilərəmmi?", answer: "Bəli. Seansdan ən az 12 saat əvvəl ödənişsiz dəyişdirə bilərsiniz. Daha gec ləğvlərdə ödənişin müəyyən hissəsi tutulur — dəqiq qaydalar müraciət təsdiqi anında göstərilir.", displayOrder: 5, active: true },
-  { id: 6, question: "Hansı problemlərlə müraciət edə bilərəm?", answer: "Narahatlıq, depressiya, münasibət problemləri, travma, burnout, yuxu pozğunluğu, valideynlik stress-i, asılılıqlar. Əmin deyilsinizsə — qısa müraciət göndərin, operator komandamız sizə uyğun mütəxəssisi yönləndirəcək.", displayOrder: 6, active: true },
-  { id: 7, question: "Hansı dildə seans keçirilir?", answer: "Hər psixoloqun profilində çalışdığı dillər (Azərbaycan, rus, ingilis, Türkiyə türkcəsi) göstərilib. Müraciətinizdə üstünlük verdiyiniz dili qeyd edirsiniz.", displayOrder: 7, active: true },
-  { id: 8, question: "Texniki problem olarsa nə edim?", answer: "Video zəng linki seansdan əvvəl e-poçt və SMS ilə gəlir. Bağlantı kəsilərsə WhatsApp-dan bizə yazın — mütəxəssislərimiz onlayn şəkildə, dərhal dəstək olur; operator psixoloqla əlaqə saxlayır və ya seansı yenidən planlaşdırır. Heç nə endirmək lazım deyil — link brauzerdə açılır.", displayOrder: 8, active: true },
-  // Müştəri istəyi: seansın hansı platformada keçirildiyi açıq yazılsın.
-  { id: 9, question: "Seans hansı platformada keçirilir?", answer: "Seanslar Zoom və ya Google Meet üzərindən aparılır. Müraciətinizi təsdiqləyəndə operator sizinlə razılaşır — hansı platforma sizin üçün rahatdırsa, onu seçirik. Link seansdan əvvəl e-poçt və SMS ilə gəlir.", displayOrder: 9, active: true },
-  // Müştəri istəyi: birbaşa əlaqə qadağası açıq yazılsın (şərtlər səhifəsində də var).
-  { id: 10, question: "Psixoloqla birbaşa əlaqə saxlaya bilərəmmi?", answer: "Xeyr. Mütəxəssis sizdən, siz də mütəxəssisdən şəxsi nömrə ala bilməzsiniz. Bütün əlaqə Fanus əməkdaşları vasitəsilə qurulur — bu, prosesin nəzarətdə qalması və sizə lazım olan dəstəyin tam verilməsi üçündür. Sual və ya problem yaranarsa, bizə yazın.", displayOrder: 10, active: true },
-];
+/**
+ * Sualların mətni lüğətdən gəlir — əvvəl bu siyahı koda azərbaycanca yazılmışdı və
+ * dil dəyişəndə tərcümə olunmurdu.
+ *
+ * Bazadan (admin) FAQ gəlirsə ona toxunulmur: o, istifadəçi məzmunudur, hansı dildə
+ * yazılıbsa o dildə göstərilir. Lüğət yalnız susmaya görə siyahı üçündür.
+ */
+const FALLBACK_COUNT = 10;
+
 
 export default function FAQ({ faqs }: { faqs?: Faq[] }) {
   const { t } = useT();
-  const data = (faqs && faqs.length > 0) ? faqs : FALLBACK;
+  const fallback: Faq[] = Array.from({ length: FALLBACK_COUNT }, (_, i) => ({
+    id: i + 1,
+    question: t(`faqList.q${i + 1}` as MessageKey),
+    answer: t(`faqList.a${i + 1}` as MessageKey),
+    displayOrder: i + 1,
+    active: true,
+  }));
+  const data = (faqs && faqs.length > 0) ? faqs : fallback;
   const [open, setOpen] = useState(0);
 
   return (

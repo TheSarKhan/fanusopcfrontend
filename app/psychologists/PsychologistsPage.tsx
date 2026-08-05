@@ -16,6 +16,8 @@ interface Item {
   title: string;
   bio?: string;
   photoUrl?: string;
+  /** «Fanus təsdiqli» nişanı (V140) — admin açıb-bağlayır. */
+  verified?: boolean;
 }
 
 const FALLBACK_BASE: Omit<Item, "slug">[] = [
@@ -30,6 +32,10 @@ const FALLBACK_BASE: Omit<Item, "slug">[] = [
   { id: 9, name: "Günel Həsənli",   title: "Cütlük terapevti",     bio: "Cütlük terapiyası və boşanma prosesi üzrə 8 illik təcrübə. Hər iki tərəfin eşidildiyi mühit yaradır." },
 ];
 const FALLBACK: Item[] = withSlugs(FALLBACK_BASE);
+
+function ShieldIcon({ size = 16 }: { size?: number }) {
+  return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></svg>;
+}
 
 function getInitials(name: string) {
   return name.split(" ").filter(w => w.length > 1).map(w => w[0]).slice(0, 2).join("");
@@ -47,6 +53,7 @@ export default function PsychologistsPage({ psychologists }: { psychologists?: P
       title: p.title,
       bio: p.bio,
       photoUrl: p.photoUrl?.trim() || undefined,
+      verified: p.verified,
     }));
     return withSlugs(mapped);
   }, [psychologists]);
@@ -149,9 +156,19 @@ function PsyCard({ p }: { p: Item }) {
           )}
         </Link>
         <div className="pp-card__head-body">
-          <Link href={`/psychologists/${p.slug ?? p.id}`}>
-            <h3 className="pp-card__name">{p.name}</h3>
-          </Link>
+          <div className="pp-card__name-row">
+            <Link href={`/psychologists/${p.slug ?? p.id}`}>
+              <h3 className="pp-card__name">{p.name}</h3>
+            </Link>
+            {/* Ana səhifədəki kartla eyni nişan. Təsdiqlənməyən psixoloq üçün heç
+                nə yazılmır — «təsdiqlənməyib» etiketi mütəxəssisin nüfuzuna
+                zərbə vurardı. */}
+            {p.verified && (
+              <span className="pp-card__verified" title={t("pub.verifiedPsy")} aria-label={t("pub.verifiedPsy")}>
+                <ShieldIcon />
+              </span>
+            )}
+          </div>
           <p className="pp-card__title">{p.title}</p>
         </div>
       </div>
@@ -193,6 +210,13 @@ function PsyCard({ p }: { p: Item }) {
         }
 
         .pp-card__head-body { min-width: 0; }
+        .pp-card__name-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+        .pp-card__verified {
+          display: inline-flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+          width: 18px; height: 18px;
+          color: var(--fanus-primary);
+        }
         .pp-card__name {
           font-size: 17px; line-height: 1.25; margin: 0; font-weight: 700;
           color: var(--fanus-ink); transition: color .2s ease;

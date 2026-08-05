@@ -1178,7 +1178,7 @@ export const en: typeof az = {
   regPage: {
     rolePatient: "Get support",
     rolePatientDesc: "I am looking for psychological support",
-    rolePsy: "Psychologist",
+    rolePsy: "Become a psychologist",
     rolePsyDesc: "I want to see patients through the platform",
     patientTitle: "Sign up",
     patientSub: "Create your account in a few seconds",
@@ -1207,6 +1207,8 @@ export const en: typeof az = {
     nextCta: "Next",
     checking: "Checking...",
     stepPersonal: "Personal",
+    stepContact: "Contact",
+    stepAccount: "Account",
     stepEducation: "Education",
     stepProfessional: "Professional",
     stepCertificate: "Certificates",

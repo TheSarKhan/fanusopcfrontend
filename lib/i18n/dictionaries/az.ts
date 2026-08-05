@@ -1221,7 +1221,7 @@ export const az = {
   regPage: {
     rolePatient: "Dəstək al",
     rolePatientDesc: "Psixoloji dəstək almaq istəyirəm",
-    rolePsy: "Psixoloq",
+    rolePsy: "Psixoloq ol",
     rolePsyDesc: "Platforma üzərindən pasiyent qəbul etmək istəyirəm",
     patientTitle: "Qeydiyyat",
     patientSub: "Bir neçə saniyəyə hesabınızı yaradın",
@@ -1250,6 +1250,8 @@ export const az = {
     nextCta: "Növbəti",
     checking: "Yoxlanılır...",
     stepPersonal: "Şəxsi",
+    stepContact: "Əlaqə",
+    stepAccount: "Hesab",
     stepEducation: "Təhsil",
     stepProfessional: "Peşəkar",
     stepCertificate: "Sertifikat",

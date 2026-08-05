@@ -144,9 +144,12 @@ function ChipToggle({ options, selected, onChange, allowCustom = false, customPl
   );
 }
 
-/* ─── Patient form ─── */
+/* ─── Patient form (3 steps) ─── */
+const PATIENT_STEP_KEYS: MessageKey[] = ["regPage.stepPersonal", "regPage.stepContact", "regPage.stepAccount"];
+
 function PatientForm({ onBack }: { onBack: () => void }) {
   const { t } = useT();
+  const [step, setStep] = useState(0);
   // Testdən gələn ziyarətçi üçün: qeydiyyat → e-poçt təsdiqi → giriş yolunda
   // hədəf itməsin deyə `next` uğur ekranındakı giriş linkinə ötürülür.
   const nextParam = useSearchParams().get("next");
@@ -160,6 +163,24 @@ function PatientForm({ onBack }: { onBack: () => void }) {
   const [success, setSuccess] = useState(false);
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [k]: e.target.value }));
+
+  // Sahələrin özü `required`-dir, yəni brauzer boş buraxmağa imkan vermir —
+  // burada yalnız e-poçtun tutulub-tutulmadığı yoxlanılır. Bu, addım 1-də olur ki,
+  // istifadəçi üç mərhələni doldurub sonda «bu e-poçt artıq var» görməsin.
+  const next = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (step === 0) {
+      setLoading(true);
+      try {
+        const res = await checkEmail(form.email);
+        if (res.taken) { setError(t("regPage.errEmailTaken")); return; }
+      } catch {
+        // Şəbəkə xətası — son göndərişdə onsuz da üzə çıxacaq, addımı bloklamırıq.
+      } finally { setLoading(false); }
+    }
+    setStep(s => s + 1);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,68 +212,105 @@ function PatientForm({ onBack }: { onBack: () => void }) {
     </div>
   );
 
+  const errorBox = error && (
+    <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>{error}</div>
+  );
+
   return (
-    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Field label={t("auth.firstName")} required><input className="auth-input" value={form.firstName} onChange={set("firstName")} required /></Field>
-        <Field label={t("auth.lastName")} required><input className="auth-input" value={form.lastName} onChange={set("lastName")} required /></Field>
-      </div>
-      <Field label={t("auth.email")} required><input type="email" className="auth-input" value={form.email} onChange={set("email")} required /></Field>
-      <Field label={t("regPage.phoneOptional")}><input type="tel" className="auth-input" value={form.phone} onChange={set("phone")} /></Field>
+    <>
+      <StepIndicator steps={PATIENT_STEP_KEYS} current={step} />
 
-      <div style={{ background: "#F9FAFB", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div>
-          <strong style={{ fontSize: 13, color: "var(--oxford)" }}>{t("emergency.sectionTitle")}</strong>
-          <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>{t("emergency.note")}</div>
-        </div>
-        <Field label={t("emergency.contactName")}>
-          <input className="auth-input" value={form.emergencyContactName} onChange={set("emergencyContactName")} placeholder={t("emergency.contactNamePh")} />
-        </Field>
-        <Field label={t("emergency.contactPhone")}>
-          <input type="tel" className="auth-input" value={form.emergencyContactPhone} onChange={set("emergencyContactPhone")} placeholder={t("emergency.contactPhonePh")} />
-        </Field>
-        <Field label={t("emergency.contactRelation")}>
-          <input className="auth-input" value={form.emergencyContactRelation} onChange={set("emergencyContactRelation")} placeholder={t("emergency.contactRelationPh")} />
-        </Field>
-        <Field label={t("emergency.address")}>
-          <input className="auth-input" value={form.residentialAddress} onChange={set("residentialAddress")} placeholder={t("emergency.addressPh")} />
-        </Field>
-      </div>
+      {/* STEP 0 — Şəxsi məlumat */}
+      {step === 0 && (
+        <form onSubmit={next} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <Field label={t("auth.firstName")} required><input className="auth-input" value={form.firstName} onChange={set("firstName")} required style={{ minWidth: 0, width: "100%" }} /></Field>
+            <Field label={t("auth.lastName")} required><input className="auth-input" value={form.lastName} onChange={set("lastName")} required style={{ minWidth: 0, width: "100%" }} /></Field>
+          </div>
+          <Field label={t("auth.email")} required><input type="email" className="auth-input" value={form.email} onChange={set("email")} required /></Field>
+          <Field label={t("regPage.phoneOptional")}><input type="tel" className="auth-input" value={form.phone} onChange={set("phone")} /></Field>
 
-      <Field label={t("auth.password")} required>
-        <div className="auth-input-wrap">
-          <input type={showPass ? "text" : "password"} className="auth-input" value={form.password} onChange={set("password")} required />
-          <button type="button" className="auth-eye" onClick={() => setShowPass(v => !v)}><EyeIcon open={showPass} /></button>
-        </div>
-      </Field>
-      <Field label={t("regPage.confirmPassword")} required>
-        <div className="auth-input-wrap">
-          <input type={showConfirm ? "text" : "password"} className="auth-input" value={form.confirmPassword} onChange={set("confirmPassword")} required />
-          <button type="button" className="auth-eye" onClick={() => setShowConfirm(v => !v)}><EyeIcon open={showConfirm} /></button>
-        </div>
-      </Field>
-      {/* İstifadə qaydalarının qəbulu — qeydiyyat üçün məcburi razılıqlar */}
-      <div style={{ background: "#F9FAFB", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
-        <strong style={{ fontSize: 13, color: "var(--oxford)" }}>{t("regPage.consentsTitle")}</strong>
-        <ConsentRow checked={consents.terms} onChange={v => setConsents(c => ({ ...c, terms: v }))}
-          label={t("regPage.patientConsentTerms")} />
-        <ConsentRow checked={consents.health} onChange={v => setConsents(c => ({ ...c, health: v }))}
-          label={t("regPage.patientConsentHealth")} />
-        <ConsentRow checked={consents.marketing} onChange={v => setConsents(c => ({ ...c, marketing: v }))}
-          label={t("regPage.patientConsentMarketing")} />
-        <Link href="/terms" target="_blank" style={{ fontSize: 12.5, fontWeight: 700, color: "#1051B7", textDecoration: "none" }}>
-          {t("regPage.readTermsLink")} →
-        </Link>
-      </div>
+          {errorBox}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button type="button" onClick={onBack} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← {t("regPage.backStep")}</button>
+            <button type="submit" disabled={loading} className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 10, flex: 1 }}>
+              {loading ? t("regPage.checking") : `${t("regPage.nextCta")} →`}
+            </button>
+          </div>
+        </form>
+      )}
 
-      {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", fontSize: 13.5, color: "#B91C1C" }}>{error}</div>}
-      <div style={{ display: "flex", gap: 10 }}>
-        <button type="button" onClick={onBack} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← {t("regPage.backStep")}</button>
-        <button type="submit" disabled={loading} className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 10, flex: 1 }}>
-          {loading ? t("regPage.registering") : t("auth.registerCta")}
-        </button>
-      </div>
-    </form>
+      {/* STEP 1 — Fövqəladə əlaqə (tamamilə opsional) */}
+      {step === 1 && (
+        <form onSubmit={next} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ background: "#F9FAFB", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <strong style={{ fontSize: 13, color: "var(--oxford)" }}>{t("emergency.sectionTitle")}</strong>
+              <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>{t("emergency.note")}</div>
+            </div>
+            <Field label={t("emergency.contactName")}>
+              <input className="auth-input" value={form.emergencyContactName} onChange={set("emergencyContactName")} placeholder={t("emergency.contactNamePh")} />
+            </Field>
+            <Field label={t("emergency.contactPhone")}>
+              <input type="tel" className="auth-input" value={form.emergencyContactPhone} onChange={set("emergencyContactPhone")} placeholder={t("emergency.contactPhonePh")} />
+            </Field>
+            <Field label={t("emergency.contactRelation")}>
+              <input className="auth-input" value={form.emergencyContactRelation} onChange={set("emergencyContactRelation")} placeholder={t("emergency.contactRelationPh")} />
+            </Field>
+            <Field label={t("emergency.address")}>
+              <input className="auth-input" value={form.residentialAddress} onChange={set("residentialAddress")} placeholder={t("emergency.addressPh")} />
+            </Field>
+          </div>
+
+          {errorBox}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button type="button" onClick={() => setStep(0)} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← {t("regPage.backStep")}</button>
+            <button type="submit" className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 10, flex: 1 }}>
+              {t("regPage.nextCta")} →
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* STEP 2 — Parol və razılıqlar */}
+      {step === 2 && (
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <Field label={t("auth.password")} required>
+            <div className="auth-input-wrap">
+              <input type={showPass ? "text" : "password"} className="auth-input" value={form.password} onChange={set("password")} required />
+              <button type="button" className="auth-eye" onClick={() => setShowPass(v => !v)}><EyeIcon open={showPass} /></button>
+            </div>
+          </Field>
+          <Field label={t("regPage.confirmPassword")} required>
+            <div className="auth-input-wrap">
+              <input type={showConfirm ? "text" : "password"} className="auth-input" value={form.confirmPassword} onChange={set("confirmPassword")} required />
+              <button type="button" className="auth-eye" onClick={() => setShowConfirm(v => !v)}><EyeIcon open={showConfirm} /></button>
+            </div>
+          </Field>
+          {/* İstifadə qaydalarının qəbulu — qeydiyyat üçün məcburi razılıqlar */}
+          <div style={{ background: "#F9FAFB", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+            <strong style={{ fontSize: 13, color: "var(--oxford)" }}>{t("regPage.consentsTitle")}</strong>
+            <ConsentRow checked={consents.terms} onChange={v => setConsents(c => ({ ...c, terms: v }))}
+              label={t("regPage.patientConsentTerms")} />
+            <ConsentRow checked={consents.health} onChange={v => setConsents(c => ({ ...c, health: v }))}
+              label={t("regPage.patientConsentHealth")} />
+            <ConsentRow checked={consents.marketing} onChange={v => setConsents(c => ({ ...c, marketing: v }))}
+              label={t("regPage.patientConsentMarketing")} />
+            <Link href="/terms" target="_blank" style={{ fontSize: 12.5, fontWeight: 700, color: "#1051B7", textDecoration: "none" }}>
+              {t("regPage.readTermsLink")} →
+            </Link>
+          </div>
+
+          {errorBox}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button type="button" onClick={() => setStep(1)} className="btn btn-ghost" style={{ height: 50, borderRadius: 10, paddingLeft: 20, paddingRight: 20 }}>← {t("regPage.backStep")}</button>
+            <button type="submit" disabled={loading} className="btn btn-primary" style={{ height: 50, fontSize: 15, borderRadius: 10, flex: 1 }}>
+              {loading ? t("regPage.registering") : t("auth.registerCta")}
+            </button>
+          </div>
+        </form>
+      )}
+    </>
   );
 }
 

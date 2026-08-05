@@ -1201,7 +1201,7 @@ export const tr: typeof az = {
   regPage: {
     rolePatient: "Destek al",
     rolePatientDesc: "Psikolojik destek almak istiyorum",
-    rolePsy: "Psikolog",
+    rolePsy: "Psikolog ol",
     rolePsyDesc: "Platform üzerinden danışan kabul etmek istiyorum",
     patientTitle: "Kayıt",
     patientSub: "Hesabınızı birkaç saniyede oluşturun",
@@ -1230,6 +1230,8 @@ export const tr: typeof az = {
     nextCta: "İleri",
     checking: "Kontrol ediliyor...",
     stepPersonal: "Kişisel",
+    stepContact: "İletişim",
+    stepAccount: "Hesap",
     stepEducation: "Eğitim",
     stepProfessional: "Mesleki",
     stepCertificate: "Sertifika",

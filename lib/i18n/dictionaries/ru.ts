@@ -1181,7 +1181,7 @@ export const ru: typeof az = {
   regPage: {
     rolePatient: "Получить поддержку",
     rolePatientDesc: "Я хочу получить психологическую поддержку",
-    rolePsy: "Психолог",
+    rolePsy: "Стать психологом",
     rolePsyDesc: "Я хочу принимать пациентов через платформу",
     patientTitle: "Регистрация",
     patientSub: "Создайте аккаунт за несколько секунд",
@@ -1210,6 +1210,8 @@ export const ru: typeof az = {
     nextCta: "Далее",
     checking: "Проверка...",
     stepPersonal: "Личные",
+    stepContact: "Контакт",
+    stepAccount: "Аккаунт",
     stepEducation: "Образование",
     stepProfessional: "Профессия",
     stepCertificate: "Сертификаты",

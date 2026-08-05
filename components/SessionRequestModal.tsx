@@ -10,6 +10,8 @@ import type { MessageKey } from "@/lib/i18n/messages";
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** «15 dəqiqəlik ödənişsiz tanışlıq» yolu (V141). */
+  intro?: boolean;
 }
 
 const ROLE_LABEL: Record<string, MessageKey> = {
@@ -20,7 +22,7 @@ const ROLE_LABEL: Record<string, MessageKey> = {
 };
 
 /** "Bizə Müraciət Edin" — psixoloqsuz sürətli müraciət modalı (Sayt BRD §8.2, SAYT-FR-19). */
-export default function SessionRequestModal({ open, onClose }: Props) {
+export default function SessionRequestModal({ open, onClose, intro }: Props) {
   const { t } = useT();
   const overlayRef = useRef<HTMLDivElement>(null);
   const [formKey, setFormKey] = useState(0);
@@ -115,7 +117,7 @@ export default function SessionRequestModal({ open, onClose }: Props) {
           {role === undefined || role === "PATIENT" ? (
             <p style={{ margin: 0, fontSize: 13.5, color: "#52718F" }}>{t("common.loading")}</p>
           ) : role === null ? (
-            <QuickRequestForm key={formKey} onDone={onClose} />
+            <QuickRequestForm intro={intro} key={formKey} onDone={onClose} />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "#0B1A35" }}>

@@ -34,7 +34,11 @@ const BUDGET_OPTIONS: { value: string; key: MessageKey }[] = [
 // psixoloq təyinatı → seans). Operator hovuz/claim/çevirmə axını ilə uyğundur.
 const NEXT_STEPS: MessageKey[] = ["quickReq.step1", "quickReq.step2", "quickReq.step3"];
 
-export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
+/**
+ * @param intro «15 dəqiqəlik ödənişsiz tanışlıq» yolundan açılıbsa true — müraciət
+ *        operator hovuzunda nişanla görünür ki, pulsuz görüş olduğu dərhal bilinsin.
+ */
+export default function QuickRequestForm({ onDone, intro }: { onDone?: () => void; intro?: boolean }) {
   const { t } = useT();
   const [form, setForm] = useState(INITIAL);
   const [sending, setSending] = useState(false);
@@ -78,6 +82,7 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
         preferredTime: form.preferredTime || undefined,
         notes: form.notes.trim() || undefined,
         budget: form.budget || undefined,
+        intro: intro || undefined,
       });
       setCrisisDetected(!!res?.crisisDetected);
       setSuccess(true);
@@ -141,6 +146,16 @@ export default function QuickRequestForm({ onDone }: { onDone?: () => void }) {
 
         <p style={{ margin: "0 0 24px", fontSize: 12.5, color: "#6B7280", lineHeight: 1.5 }}>
           {t("quickReq.emailNote")}
+        </p>
+
+        {/* Birbaşa əlaqə qaydası — məhz burada yazılır, çünki müraciət göndərildikdən
+            sonrakı an ən çox oxunan andır. Şərtlər səhifəsində və FAQ-da da var. */}
+        <p style={{
+          margin: "0 0 24px", fontSize: 12.5, color: "#6B7280", lineHeight: 1.55,
+          background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "12px 14px",
+          textAlign: "left",
+        }}>
+          {t("quickReq.contactRule")}
         </p>
         {crisisDetected && (
           <div style={{

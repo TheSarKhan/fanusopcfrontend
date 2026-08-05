@@ -4525,6 +4525,8 @@ export interface SessionRequest {
   budget: string | null;
   priority: boolean;
   crisisDetected: boolean;
+  /** 15 dəqiqəlik pulsuz tanışlıq müraciəti (V141). */
+  intro?: boolean;
   status: "NEW" | "IN_REVIEW" | "SCHEDULED" | "CANCELLED" | "CONVERTED";
   assignedPsychologistId: number | null;
   assignedPsychologistName: string | null;
@@ -4563,6 +4565,8 @@ export async function submitSessionRequest(data: {
   preferredTime?: string;
   notes?: string;
   budget?: string;
+  /** «15 dəqiqəlik ödənişsiz tanışlıq» düyməsindən gəlirsə true (V141). */
+  intro?: boolean;
 }): Promise<SessionRequest> {
   const res = await trackedFetch(`${BASE}/session-requests`, {
     method: "POST",

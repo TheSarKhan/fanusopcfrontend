@@ -60,7 +60,7 @@ export default function Hero() {
                 onClick={() => setModalOpen(true)}
                 className="fanus-btn fanus-btn-ghost fanus-btn-lg fanus-hero__ghost"
               >
-                {t("pub.heroApplyCta")}
+                {t("pub.heroIntroCta")}
               </button>
             </div>
 
@@ -71,7 +71,8 @@ export default function Hero() {
         </div>
       </div>
 
-      <SessionRequestModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      {/* Bu düymə pulsuz tanışlıq yoludur — müraciət operatora nişanlı gedir. */}
+      <SessionRequestModal open={modalOpen} onClose={() => setModalOpen(false)} intro />
 
       <style>{`
         /* ══════════ Tam-ekran video hero (mobil-first) ══════════ */

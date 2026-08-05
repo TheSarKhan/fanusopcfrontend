@@ -141,6 +141,8 @@ export default function SessionRequestsPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span className="fx-row__title">{req.name}</span>
               {req.priority ? <Status tone="wait">Prioritet</Status> : null}
+              {/* Pulsuz tanışlıq — operator ilk baxışda görsün ki, ödəniş gözlənilmir. */}
+              {req.intro ? <Status tone="positive">Pulsuz tanışlıq</Status> : null}
             </div>
             {tab === "POOL" && req.claimedByName ? (
               <div className="fx-row__meta">{req.claimedByName} baxır</div>

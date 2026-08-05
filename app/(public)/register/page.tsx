@@ -10,6 +10,7 @@ import TopicPicker, { TOPIC_AZ_LABELS } from "@/components/TopicPicker";
 import DatePicker from "@/components/DatePicker";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import AuthPanelVideo from "@/components/AuthPanelVideo";
 import type { MessageKey } from "@/lib/i18n/messages";
 
 /* ─── Eye toggle ─── */
@@ -858,8 +859,8 @@ export default function RegisterPage() {
       </div>
 
       <div className="auth-panel">
+        <AuthPanelVideo />
         <div className="auth-panel-content">
-          <Image src="/images/logos/logo-white.png" alt="Fanus" width={110} height={36} style={{ objectFit: "contain" }} />
           <h2 className="auth-panel-title" style={{ fontFamily: "var(--serif)" }}>{t(panelData.titleKey)}</h2>
           <p className="auth-panel-sub">{t(panelData.subKey)}</p>
           <div className="auth-panel-trust">

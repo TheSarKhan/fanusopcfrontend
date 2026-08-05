@@ -8,6 +8,7 @@ import { buildPanelUrl } from "@/lib/auth";
 import { holdOverlay } from "@/lib/loadingOverlay";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import AuthPanelVideo from "@/components/AuthPanelVideo";
 import type { MessageKey } from "@/lib/i18n/messages";
 
 function MailIcon() {
@@ -291,22 +292,10 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* ── Decorative panel ── */}
+      {/* ── Video panel ── */}
       <div className="auth-panel">
+        <AuthPanelVideo />
         <div className="auth-panel-content">
-          <span className="auth-logo auth-logo--light">
-            <span className="auth-logo__mark">
-              <Image src="/images/logos/logo-mark-white.png" alt="Fanus" width={1035} height={1856} />
-            </span>
-            <span className="auth-logo__text">
-              <span className="auth-logo__name">FANUS</span>
-              <span className="auth-logo__sub">
-                <span>Online</span>
-                <span>Psychology</span>
-                <span>Center</span>
-              </span>
-            </span>
-          </span>
           <h2 className="auth-panel-title">
             {t("authPage.panelTitle1")}<br />{t("authPage.panelTitle2")}
           </h2>

@@ -12,8 +12,10 @@ import { useEffect, useRef } from "react";
  * Üstündəki `scrim` mətnin oxunması üçündür: video açıq tonludur, ağ başlıq və
  * kartlar onun üzərində birbaşa oxunmazdı.
  *
- * Mənbə: Pexels #7199178 (Pexels lisenziyası — kommersiya istifadəsi sərbəst,
- * atribut tələb olunmur). 4K portretdən kəsilib 810×1080-ə sıxılıb: 33 MB → 782 KB.
+ * Mənbə: Pexels #8513143 — onlayn seans (qulaqlıq + noutbukda video zəng), bu
+ * platformanın əsl iş formatını göstərir. Pexels lisenziyası kommersiya
+ * istifadəsinə açıqdır, atribut tələb etmir. 4K portretdən kəsilib 676×1080-ə
+ * sıxılıb: 20 MB → 645 KB.
  */
 export default function AuthPanelVideo() {
   const ref = useRef<HTMLVideoElement>(null);

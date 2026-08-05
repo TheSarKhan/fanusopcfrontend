@@ -9906,6 +9906,10 @@
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover;
+  /* Kadr yuxarıdan tutulur. Video portretdir, panel isə ondan enlidir — `cover`
+   * hündürlüyü kəsir və mərkəzdən kəsəndə insanın başı kadrdan çıxırdı.
+   * 6% həm 1440-da (panel 0.80), həm 1920-də (0.89) başı tam saxlayır. */
+  object-position: center 6%;
   z-index: 0;
   pointer-events: none;
 }

@@ -443,7 +443,7 @@ export const en: typeof az = {
   psyList: {
     eyebrow: "Our team",
     title: "Our therapists",
-    lead: "Each is certified, has at least 5 years of experience, and follows the Fanus code of ethics.",
+    lead: "Each is certified, experienced, and follows the Fanus code of ethics.",
     seeAll: "See all",
     yearsExp: "yr experience",
     profile: "Profile",

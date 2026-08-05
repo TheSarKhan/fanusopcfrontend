@@ -444,7 +444,7 @@ export const tr: typeof az = {
   psyList: {
     eyebrow: "Ekibimiz",
     title: "Psikologlarımız",
-    lead: "Her biri sertifikalı, en az 5 yıllık deneyime sahip ve Fanus etik kurallarına bağlı uzmanlardır.",
+    lead: "Her biri sertifikalı, deneyimli ve Fanus etik kurallarına bağlı uzmanlardır.",
     seeAll: "Tümüne bak",
     yearsExp: "yıl deneyim",
     profile: "Profil",

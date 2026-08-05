@@ -451,7 +451,7 @@ export const az = {
   psyList: {
     eyebrow: "Komandamız",
     title: "Psixoloqlarımız",
-    lead: "Hər biri sertifikatlı, ən az 5 illik təcrübəyə malik və Fanus etika kodeksinə bağlı mütəxəssislərdir.",
+    lead: "Hər biri sertifikatlı, təcrübəli və Fanus etika kodeksinə bağlı mütəxəssislərdir.",
     seeAll: "Hamısına bax",
     yearsExp: "il təcrübə",
     profile: "Profil",

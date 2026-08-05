@@ -1255,7 +1255,7 @@ export const az = {
     stepCertificate: "Sertifikat",
     addChip: "Əlavə et",
     otherPh: "Başqa...",
-    photoLabel: "Profil şəkli (məcburi)",
+    photoLabel: "Profil şəkli",
     photoChange: "Şəkli dəyiş",
     photoPick: "Şəkil seç və düzəlt",
     photoHintFormat: "JPG/PNG",

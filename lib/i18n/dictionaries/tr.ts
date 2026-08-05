@@ -1235,7 +1235,7 @@ export const tr: typeof az = {
     stepCertificate: "Sertifika",
     addChip: "Ekle",
     otherPh: "Diğer...",
-    photoLabel: "Profil fotoğrafı (zorunlu)",
+    photoLabel: "Profil fotoğrafı",
     photoChange: "Fotoğrafı değiştir",
     photoPick: "Fotoğraf seç ve düzenle",
     photoHintFormat: "JPG/PNG",

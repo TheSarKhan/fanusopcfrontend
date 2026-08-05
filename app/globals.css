@@ -9955,6 +9955,8 @@
 
 /* Auth form elements */
 .auth-label { display: block; font-size: 13px; font-weight: 600; color: var(--oxford); margin-bottom: 6px; }
+/* Məcburi sahə nişanı — qeydiyyatda etiketin sonunda. */
+.auth-req { color: #DC2626; margin-left: 3px; font-weight: 700; }
 .auth-input {
   width: 100%; height: 48px; padding: 0 14px;
   border: 1.5px solid #DDE6F0; border-radius: 10px;

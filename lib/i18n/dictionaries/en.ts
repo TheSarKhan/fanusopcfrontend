@@ -1212,7 +1212,7 @@ export const en: typeof az = {
     stepCertificate: "Certificates",
     addChip: "Add",
     otherPh: "Other...",
-    photoLabel: "Profile photo (required)",
+    photoLabel: "Profile photo",
     photoChange: "Change photo",
     photoPick: "Pick and crop a photo",
     photoHintFormat: "JPG/PNG",

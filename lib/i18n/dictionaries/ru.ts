@@ -1215,7 +1215,7 @@ export const ru: typeof az = {
     stepCertificate: "Сертификаты",
     addChip: "Добавить",
     otherPh: "Другое...",
-    photoLabel: "Фото профиля (обязательно)",
+    photoLabel: "Фото профиля",
     photoChange: "Заменить фото",
     photoPick: "Выбрать и обрезать фото",
     photoHintFormat: "JPG/PNG",

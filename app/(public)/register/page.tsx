@@ -46,10 +46,18 @@ const SESSION_TYPES = ["Fərdi seans", "Cütlük terapiyası", "Qrup terapiyası
 const LANGUAGE_OPTIONS = ["Azərbaycan dili", "Rus dili", "İngilis dili", "Türk dili", "Alman dili", "Fransız dili"];
 const DEGREE_OPTIONS = ["Bakalavr", "Magistr", "PhD / Doktor", "Rezident", "Digər"];
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+/**
+ * `required` yalnız görünüş üçündür — ulduz `aria-hidden`-dir, çünki məcburiliyi
+ * ekran oxuyucusuna input-un öz `required` atributu çatdırır; ulduzu da oxusa,
+ * eyni məlumat iki dəfə deyilərdi.
+ */
+function Field({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="auth-label">{label}</label>
+      <label className="auth-label">
+        {label}
+        {required && <span className="auth-req" aria-hidden>*</span>}
+      </label>
       {children}
       {hint && <div style={{ fontSize: 11, color: "var(--oxford-60)", marginTop: 4 }}>{hint}</div>}
     </div>
@@ -186,10 +194,10 @@ function PatientForm({ onBack }: { onBack: () => void }) {
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Field label={t("auth.firstName")}><input className="auth-input" value={form.firstName} onChange={set("firstName")} required /></Field>
-        <Field label={t("auth.lastName")}><input className="auth-input" value={form.lastName} onChange={set("lastName")} required /></Field>
+        <Field label={t("auth.firstName")} required><input className="auth-input" value={form.firstName} onChange={set("firstName")} required /></Field>
+        <Field label={t("auth.lastName")} required><input className="auth-input" value={form.lastName} onChange={set("lastName")} required /></Field>
       </div>
-      <Field label={t("auth.email")}><input type="email" className="auth-input" value={form.email} onChange={set("email")} required /></Field>
+      <Field label={t("auth.email")} required><input type="email" className="auth-input" value={form.email} onChange={set("email")} required /></Field>
       <Field label={t("regPage.phoneOptional")}><input type="tel" className="auth-input" value={form.phone} onChange={set("phone")} /></Field>
 
       <div style={{ background: "#F9FAFB", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -211,13 +219,13 @@ function PatientForm({ onBack }: { onBack: () => void }) {
         </Field>
       </div>
 
-      <Field label={t("auth.password")}>
+      <Field label={t("auth.password")} required>
         <div className="auth-input-wrap">
           <input type={showPass ? "text" : "password"} className="auth-input" value={form.password} onChange={set("password")} required />
           <button type="button" className="auth-eye" onClick={() => setShowPass(v => !v)}><EyeIcon open={showPass} /></button>
         </div>
       </Field>
-      <Field label={t("regPage.confirmPassword")}>
+      <Field label={t("regPage.confirmPassword")} required>
         <div className="auth-input-wrap">
           <input type={showConfirm ? "text" : "password"} className="auth-input" value={form.confirmPassword} onChange={set("confirmPassword")} required />
           <button type="button" className="auth-eye" onClick={() => setShowConfirm(v => !v)}><EyeIcon open={showConfirm} /></button>
@@ -454,7 +462,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
       {/* STEP 0 — Personal */}
       {step === 0 && (
         <form onSubmit={next} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Field label={t("regPage.photoLabel")}>
+          <Field label={t("regPage.photoLabel")} required>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ width: 80, height: 80, borderRadius: 10, background: "#F0F4FA", overflow: "hidden", border: "2px solid #E5E7EB", flexShrink: 0 }}>
                 {photoPreview ? (
@@ -487,18 +495,18 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
           </Field>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Field label={t("auth.firstName")}><input className="auth-input" value={personal.firstName} onChange={setP("firstName")} required style={{ minWidth: 0, width: "100%" }} /></Field>
-            <Field label={t("auth.lastName")}><input className="auth-input" value={personal.lastName} onChange={setP("lastName")} required style={{ minWidth: 0, width: "100%" }} /></Field>
+            <Field label={t("auth.firstName")} required><input className="auth-input" value={personal.firstName} onChange={setP("firstName")} required style={{ minWidth: 0, width: "100%" }} /></Field>
+            <Field label={t("auth.lastName")} required><input className="auth-input" value={personal.lastName} onChange={setP("lastName")} required style={{ minWidth: 0, width: "100%" }} /></Field>
           </div>
-          <Field label={t("auth.email")}><input type="email" className="auth-input" value={personal.email} onChange={setP("email")} required style={{ minWidth: 0, width: "100%" }} /></Field>
+          <Field label={t("auth.email")} required><input type="email" className="auth-input" value={personal.email} onChange={setP("email")} required style={{ minWidth: 0, width: "100%" }} /></Field>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Field label={t("auth.phone")}><input type="tel" className="auth-input" value={personal.phone} onChange={setP("phone")} placeholder="+994 50 000 00 00" required style={{ minWidth: 0, width: "100%" }} /></Field>
-            <Field label={t("regPage.birthDate")}><DatePicker value={personal.birthDate} onChange={v => setPersonal(p => ({ ...p, birthDate: v }))} theme="light" style={{ minWidth: 0, width: "100%" }} ariaLabel={t("regPage.birthDate")} /></Field>
+            <Field label={t("auth.phone")} required><input type="tel" className="auth-input" value={personal.phone} onChange={setP("phone")} placeholder="+994 50 000 00 00" required style={{ minWidth: 0, width: "100%" }} /></Field>
+            <Field label={t("regPage.birthDate")} required><DatePicker value={personal.birthDate} onChange={v => setPersonal(p => ({ ...p, birthDate: v }))} theme="light" style={{ minWidth: 0, width: "100%" }} ariaLabel={t("regPage.birthDate")} /></Field>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <Field label={t("regPage.gender")}>
+            <Field label={t("regPage.gender")} required>
               <select className="auth-select" value={personal.gender} onChange={setP("gender")} required style={{ minWidth: 0, width: "100%" }}>
                 <option value="">{t("regPage.select")}</option>
                 <option value="FEMALE">{t("regPage.genderFemale")}</option>
@@ -506,18 +514,18 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
                 <option value="OTHER">{t("regPage.genderOther")}</option>
               </select>
             </Field>
-            <Field label={t("regPage.finId")}>
+            <Field label={t("regPage.finId")} required>
               <input className="auth-input" value={personal.finId} onChange={setP("finId")} placeholder={t("regPage.finPh")} required maxLength={7} style={{ minWidth: 0, width: "100%" }} />
             </Field>
           </div>
 
-          <Field label={t("auth.password")}>
+          <Field label={t("auth.password")} required>
             <div className="auth-input-wrap">
               <input type={showPass ? "text" : "password"} className="auth-input" value={personal.password} onChange={setP("password")} required />
               <button type="button" className="auth-eye" onClick={() => setShowPass(v => !v)}><EyeIcon open={showPass} /></button>
             </div>
           </Field>
-          <Field label={t("regPage.confirmPassword")}>
+          <Field label={t("regPage.confirmPassword")} required>
             <div className="auth-input-wrap">
               <input type={showConfirm ? "text" : "password"} className="auth-input" value={personal.confirmPassword} onChange={setP("confirmPassword")} required />
               <button type="button" className="auth-eye" onClick={() => setShowConfirm(v => !v)}><EyeIcon open={showConfirm} /></button>
@@ -549,17 +557,17 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
                   <button type="button" onClick={() => removeEducation(i)} style={{ fontSize: 12, color: "#991B1B", background: "transparent", border: "none", cursor: "pointer" }}>{t("regPage.deleteRow")}</button>
                 )}
               </div>
-              <Field label={t("regPage.eduInstitution")}>
+              <Field label={t("regPage.eduInstitution")} required>
                 <input className="auth-input" value={ed.institution} onChange={(e) => updateEducation(i, "institution", e.target.value)} placeholder={t("regPage.eduInstitutionPh")} required />
               </Field>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 130px", gap: 10, marginTop: 10 }}>
-                <Field label={t("regPage.eduDegree")}>
+                <Field label={t("regPage.eduDegree")} required>
                   <select className="auth-select" value={ed.degree} onChange={(e) => updateEducation(i, "degree", e.target.value)} required>
                     <option value="">{t("regPage.select")}</option>
                     {DEGREE_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </Field>
-                <Field label={t("regPage.eduYear")}>
+                <Field label={t("regPage.eduYear")} required>
                   <select className="auth-select" value={ed.graduationYear} onChange={(e) => updateEducation(i, "graduationYear", e.target.value)} required>
                     <option value="">{t("regPage.yearPh")}</option>
                     {graduationYearOptions.map(y => <option key={y} value={y}>{y}</option>)}
@@ -574,7 +582,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
             {t("regPage.eduAdd")}
           </button>
 
-          <Field label={t("regPage.diploma")} hint={t("regPage.diplomaHint")}>
+          <Field label={t("regPage.diploma")} hint={t("regPage.diplomaHint")} required>
             <label className="auth-file-label">
               <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }}
                 onChange={e => setDiplomaFile(e.target.files?.[0] ?? null)} />
@@ -602,13 +610,13 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
       {/* STEP 2 — Professional */}
       {step === 2 && (
         <form onSubmit={next} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <Field label={t("regPage.proTitle")} hint={t("regPage.proTitleHint")}>
+          <Field label={t("regPage.proTitle")} hint={t("regPage.proTitleHint")} required>
             <input className="auth-input" value={professional.title}
               onChange={e => setProfessional(p => ({ ...p, title: e.target.value }))}
               placeholder={t("regPage.proTitlePh")} required />
           </Field>
 
-          <Field label={t("regPage.experience")}>
+          <Field label={t("regPage.experience")} required>
             <select className="auth-select" value={professional.experienceYears}
               onChange={e => setProfessional(p => ({ ...p, experienceYears: e.target.value }))} required>
               <option value="">{t("regPage.select")}</option>
@@ -622,13 +630,13 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
               placeholder="0" />
           </Field>
 
-          <Field label={t("regPage.langs")} hint={t("regPage.langsHint")}>
+          <Field label={t("regPage.langs")} hint={t("regPage.langsHint")} required>
             <ChipToggle options={LANGUAGE_OPTIONS} selected={professional.languages}
               onChange={v => setProfessional(p => ({ ...p, languages: v }))}
               allowCustom customPlaceholder={t("regPage.langsCustomPh")} />
           </Field>
 
-          <Field label={t("regPage.specs")} hint={t("regPage.specsHint")}>
+          <Field label={t("regPage.specs")} hint={t("regPage.specsHint")} required>
             <TopicPicker value={professional.topics}
               onChange={v => setProfessional(p => ({ ...p, topics: v }))} />
           </Field>
@@ -638,7 +646,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
               onChange={v => setProfessional(p => ({ ...p, sessionTypes: v }))} />
           </Field>
 
-          <Field label={t("regPage.bioLabel", { n: professional.bio.length })} hint={t("regPage.bioHint")}>
+          <Field label={t("regPage.bioLabel", { n: professional.bio.length })} hint={t("regPage.bioHint")} required>
             <textarea className="auth-textarea" rows={5} value={professional.bio}
               onChange={e => setProfessional(p => ({ ...p, bio: e.target.value }))}
               placeholder={t("regPage.bioPh")} required />

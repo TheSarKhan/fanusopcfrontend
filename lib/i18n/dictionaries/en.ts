@@ -1186,7 +1186,7 @@ export const en: typeof az = {
     psySub: "Create your profile — it goes live once our team has reviewed it",
     panelPatientTitle: "Take the first step today",
     panelPatientSub: "After you sign up our operator contacts you and suggests a psychologist that fits your needs.",
-    panelPatientTrust1: "The first introductory meeting is free",
+    panelPatientTrust1: "The first 15-minute session is free",
     panelPatientTrust2: "Your data is never shared with third parties",
     panelPatientTrust3: "We find the right psychologist for you",
     panelPsyTitle: "Join the Fanus team",

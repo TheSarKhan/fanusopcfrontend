@@ -1229,7 +1229,7 @@ export const az = {
     psySub: "Profilinizi yaradın — komandamız yoxladıqdan sonra aktivləşəcək",
     panelPatientTitle: "İlk addımı bu gün atın",
     panelPatientSub: "Qeydiyyatdan sonra operatorumuz sizinlə əlaqə saxlayır və ehtiyacınıza uyğun psixoloqu təklif edir.",
-    panelPatientTrust1: "İlk tanışlıq görüşü pulsuzdur",
+    panelPatientTrust1: "15 dəqiqəlik ilk seans ödənişsizdir",
     panelPatientTrust2: "Məlumatlarınız üçüncü tərəflə paylaşılmır",
     panelPatientTrust3: "Uyğun psixoloqu sizin əvəzinizə biz seçirik",
     panelPsyTitle: "Fanus komandasına qoşulun",

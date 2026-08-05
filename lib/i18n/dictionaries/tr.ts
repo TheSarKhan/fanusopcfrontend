@@ -1209,7 +1209,7 @@ export const tr: typeof az = {
     psySub: "Profilinizi oluşturun — ekibimiz inceledikten sonra etkinleşecek",
     panelPatientTitle: "İlk adımı bugün atın",
     panelPatientSub: "Kaydolduktan sonra operatörümüz sizinle iletişime geçer ve ihtiyacınıza uygun psikoloğu önerir.",
-    panelPatientTrust1: "İlk tanışma görüşmesi ücretsizdir",
+    panelPatientTrust1: "İlk 15 dakikalık seans ücretsizdir",
     panelPatientTrust2: "Bilgileriniz üçüncü taraflarla paylaşılmaz",
     panelPatientTrust3: "Size uygun psikoloğu biz seçiyoruz",
     panelPsyTitle: "Fanus ekibine katılın",

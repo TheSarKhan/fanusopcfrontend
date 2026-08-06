@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import PanelAuthGuard from "@/components/PanelAuthGuard";
 import PanelIcon from "@/components/PanelIcon";
 import PlanTickIcon from "@/components/PlanTickIcon";
+import { azFormatDate } from "@/lib/datetime";
 import PanelShell, { type PanelNavItem } from "@/components/PanelShell";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { getStoredUser } from "@/lib/auth";
@@ -60,10 +61,15 @@ function ModuleLock({ enabled, children }: { enabled: Set<string> | null; childr
 function PlanBadge({ plan }: { plan: MyPlan }) {
   const { t } = useT();
   const color = plan.tikColor || "var(--brand)";
+  const label = plan.assigned ? t("psyPlan.named", { name: plan.name ?? "" }) : t("psyPlan.none");
+  // Kursu üstünə gətirəndə müddət də görünsün; tam izah profildəki plan kartındadır.
+  const hint = plan.expiresAt
+    ? `${label} · ${t("planCard.validUntil", { date: azFormatDate(plan.expiresAt) })}`
+    : label;
   return (
     <Link
       href="/psycholog/profile"
-      title={plan.assigned ? t("psyPlan.named", { name: plan.name ?? "" }) : t("psyPlan.none")}
+      title={hint}
       style={{
         display: "flex", alignItems: "center", gap: 9,
         margin: "0 14px 6px", padding: "6px 0", textDecoration: "none",
@@ -77,7 +83,7 @@ function PlanBadge({ plan }: { plan: MyPlan }) {
         minWidth: 0, fontSize: 12.5, fontWeight: 700, color: "var(--oxford)",
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>
-        {plan.assigned ? t("psyPlan.named", { name: plan.name ?? "" }) : t("psyPlan.none")}
+        {label}
       </span>
     </Link>
   );

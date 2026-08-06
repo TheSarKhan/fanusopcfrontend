@@ -881,16 +881,18 @@ function PsyActions({ row, onChanged }: { row: AdminPsychologistRow; onChanged: 
 function PsyPlanTab({ row, onChanged }: { row: AdminPsychologistRow; onChanged: () => void }) {
   const [plans, setPlans] = useState<PsychologistPlan[] | null>(null);
   const [planId, setPlanId] = useState<number | null>(row.planId ?? null);
+  // Tarix boş sətir kimi saxlanılır ki, <input type="date"> idarə olunan qalsın.
+  const [expiresAt, setExpiresAt] = useState<string>(row.planExpiresAt ?? "");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => { adminApi.getPsychologistPlans().then(setPlans).catch(() => setPlans([])); }, []);
 
   const current = plans?.find((p) => p.id === planId) ?? null;
-  const dirty = planId !== (row.planId ?? null);
+  const dirty = planId !== (row.planId ?? null) || expiresAt !== (row.planExpiresAt ?? "");
 
   const save = async () => {
     setBusy(true);
-    try { await adminApi.assignPsychologistPlan(row.id, planId); toast("Plan təyin olundu", "success"); onChanged(); }
+    try { await adminApi.assignPsychologistPlan(row.id, planId, expiresAt || null); toast("Plan təyin olundu", "success"); onChanged(); }
     catch (e) { toast((e as Error).message, "error"); }
     finally { setBusy(false); }
   };
@@ -903,6 +905,14 @@ function PsyPlanTab({ row, onChanged }: { row: AdminPsychologistRow; onChanged: 
           {plans?.map((p) => <option key={p.id} value={p.id}>{p.name}{p.active ? "" : " (deaktiv)"}</option>)}
         </Select>
       </Field>
+
+      {planId !== null && (
+        <div style={{ marginTop: 12 }}>
+          <Field label="Etibarlıdır (bitmə tarixi)" help="Boş buraxılsa plan müddətsizdir. Tarix psixoloqun öz profilində görünür; modulları avtomatik bağlamır.">
+            <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+          </Field>
+        </div>
+      )}
 
       {current && (
         <div style={{ marginTop: 12 }}>

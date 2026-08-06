@@ -8,6 +8,7 @@ import ProfileShell, {
   Spinner, IconTrash,
 } from "@/components/ProfileShell";
 import GoogleCalendarCard from "@/components/GoogleCalendarCard";
+import PsyPlanCard from "@/components/PsyPlanCard";
 import { psychologistApi, type Psychologist, type PackageDto, type PackageReq } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -90,6 +91,9 @@ export default function PsychologProfilePage() {
       extras={
         me ? (
           <>
+            {/* Plan ən üstdə: sidebar-dakı nişandan bura gəlinir, cavab dərhal
+                görünməlidir — «bu nişan nədir, nə vaxta qədərdir». */}
+            <PsyPlanCard />
             <PricingCard editable={editable} minutes={minutes} />
             <StatsSourceCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
           </>

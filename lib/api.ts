@@ -1571,6 +1571,8 @@ export interface AdminPsychologistRow {
   createdAt: string;
   planId?: number | null;
   planName?: string | null;
+  /** Planın bitmə tarixi (V144); null → müddətsiz. */
+  planExpiresAt?: string | null;
   verified?: boolean;
 }
 // Psixoloq planı — modul aç/bağla şablonu.
@@ -1667,7 +1669,9 @@ export const adminApi = {
   createPsychologistPlan: (data: PsychologistPlanReq) => authedRequest<PsychologistPlan>("POST", "/admin/psychologist-plans", data),
   updatePsychologistPlan: (id: number, data: PsychologistPlanReq) => authedRequest<PsychologistPlan>("PUT", `/admin/psychologist-plans/${id}`, data),
   deletePsychologistPlan: (id: number) => authedRequest<void>("DELETE", `/admin/psychologist-plans/${id}`),
-  assignPsychologistPlan: (psyId: number, planId: number | null) => authedRequest<void>("PUT", `/admin/psychologists/${psyId}/plan`, { planId }),
+  /** @param expiresAt ISO gün ("2026-12-31") və ya null → müddətsiz. Plan götürüləndə backend tarixi də təmizləyir. */
+  assignPsychologistPlan: (psyId: number, planId: number | null, expiresAt?: string | null) =>
+    authedRequest<void>("PUT", `/admin/psychologists/${psyId}/plan`, { planId, expiresAt: expiresAt ?? null }),
   getPsyPriceHistory: (psyId: number) => authedRequest<PriceChangeLogItem[]>("GET", `/admin/psychologists/${psyId}/price-history`),
 
   // Stats
@@ -3079,6 +3083,12 @@ export interface MyPlan {
   name?: string | null;
   tikColor?: string | null;
   moduleCount: number;
+  /** Açıq modulların açarları — profildəki xidmət siyahısı üçün (V144). */
+  modules?: string[];
+  /** Planın bitmə tarixi (ISO gün); null → müddətsiz. */
+  expiresAt?: string | null;
+  /** Bitməyə qalan gün; tarix yoxdursa null, keçibsə mənfi. Backend hesablayır. */
+  daysLeft?: number | null;
 }
 
 export const psychologistApi = {

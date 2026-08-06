@@ -1451,7 +1451,7 @@ export interface TakeTest { testId: number; assignmentId?: number | null; title:
 export type SubmitAnswer = { questionId: number; selectedOptionId: number }
 export interface AnswerResult { questionId: number; questionText: string; selectedOptionId: number; selectedLabel: string; pointsAwarded: number; displayOrder: number }
 export interface TestResult { resultId: number; assignmentId: number; totalScore: number; maxScore: number; percentage: number; scaleId?: number | null; scaleLabel?: string | null; /** Psixoloqun bu nəticə zolağı üçün yazdığı izah. */ scaleDescription?: string | null; respondentName?: string | null; submittedAt: string; answers: AnswerResult[] }
-export interface TestAssignment { id: number; testId: number; testTitle: string; patientId?: number | null; patientName?: string | null; status: string; publicToken?: string | null; assignedAt: string; completedAt?: string | null; hasResult: boolean; submissionCount: number; note?: string | null }
+export interface TestAssignment { id: number; /** Test silinibsə null (V143) — ad snapshot-dan gəlir. */ testId: number | null; testTitle: string | null; patientId?: number | null; patientName?: string | null; status: string; publicToken?: string | null; assignedAt: string; completedAt?: string | null; hasResult: boolean; submissionCount: number; note?: string | null }
 export interface TestResultRow { resultId: number; assignmentId: number; respondentName?: string | null; publicLink: boolean; totalScore: number; maxScore: number; percentage: number; scaleLabel?: string | null; submittedAt: string }
 export interface StatsLabelCount { label: string; count: number }
 export interface TestStatsSummary { total: number; avgScore: number; avgPercent: number; maxScore: number; topScore: number; scaleCounts: StatsLabelCount[]; buckets: StatsLabelCount[] }
@@ -1485,7 +1485,8 @@ export interface PublicSubmitResponse {
 export interface PublicTestResult {
   /** Nəticənin öz id-si — detal səhifəsinə keçid üçün (V136). */
   id: number;
-  testId: number;
+  /** Test silinibsə null (V143). */
+  testId: number | null;
   testTitle?: string | null;
   totalScore: number;
   maxScore: number;

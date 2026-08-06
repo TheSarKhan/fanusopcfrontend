@@ -53,6 +53,17 @@ export default function Navbar() {
     const cached = getStoredUser();
     if (cached?.role) setPanelUrl(buildPanelUrl(cached.role));
 
+    // Heç vaxt giriş etməmiş ziyarətçi üçün yoxlamağa sessiya yoxdur: sorğu
+    // göndərsək /me 401 verir, o da refresh cəhdi doğurur və o da 401 —
+    // brauzerin konsolunda iki qırmızı sətir qalır, halbuki heç nə sınmayıb.
+    // `storeUser` girişdə yazılır, çıxışda silinir, ona görə onun olmaması
+    // «bu brauzerdə sessiya yoxdur» deməkdir.
+    //
+    // Panel guard-da bu qısayol İŞLƏMƏZ: localStorage origin-ə bağlıdır, yəni
+    // khansoft.az-da giriş edən istifadəçi üçün patient.khansoft.az-da cache boş
+    // olur — orada yoxlama mütləq getməlidir.
+    if (!cached) { setPanelUrl(null); return; }
+
     // …then STRICTLY verify the session. verifyMe (unlike tryGetMe) never falls
     // back to the cached identity — so an expired session reliably resolves to
     // null and "Hesabım" disappears in favour of Daxil ol / Qeydiyyat. We also

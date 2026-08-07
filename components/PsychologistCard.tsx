@@ -109,9 +109,7 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
             <StarIcon />{p.rating}
             {p.ratingCount != null && p.ratingCount > 0 && <span className="pc-meta-sub"> ({p.ratingCount})</span>}
           </span>
-        ) : (
-          <span className="pc-meta-item"><span className="pc-dot" />{t("pub.newBadge")}</span>
-        )}
+        ) : null}
         <span className="pc-meta-item"><ClockIcon />{p.exp} {t("psyList.yearsExp")}</span>
         <span className="pc-meta-item"><HourIcon />{t("psyList.minutes", { n: p.sessionMinutes })}</span>
       </div>
@@ -123,8 +121,6 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
           ))}
         </div>
       )}
-
-      <div className="pc-divider" />
 
       <div className="pc-actions">
         <Link href={`/psychologists/${p.slug}`} className="pc-btn pc-btn--ghost">
@@ -140,8 +136,8 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
           background: white;
           border: 1px solid var(--fanus-line);
           border-radius: 18px;
-          padding: 20px;
-          display: flex; flex-direction: column; gap: 14px;
+          padding: 16px;
+          display: flex; flex-direction: column; gap: 10px;
           transition: border-color .2s ease, box-shadow .2s ease;
         }
         .pc-card:hover {
@@ -157,13 +153,13 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
 
         .pc-avatar {
           flex-shrink: 0;
-          width: 64px; height: 64px; border-radius: 50%;
+          width: 56px; height: 56px; border-radius: 50%;
           overflow: hidden;
           display: flex; align-items: center; justify-content: center;
           background: var(--fanus-primary-50);
           color: var(--fanus-primary);
           font-family: var(--font-poppins), sans-serif;
-          font-size: 20px; font-weight: 700;
+          font-size: 18px; font-weight: 700;
         }
         .pc-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
 
@@ -181,7 +177,7 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
         }
 
         .pc-tags-scroll {
-          margin: 0 -20px; padding: 0 20px;
+          margin: 0 -16px; padding: 0 16px;
           overflow-x: auto; scrollbar-width: none;
         }
         .pc-tags-scroll::-webkit-scrollbar { display: none; }
@@ -205,8 +201,6 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
         .pc-meta-item--rating { color: var(--fanus-ink); font-weight: 700; }
         .pc-meta-item--rating svg { color: #C97D2E; }
         .pc-meta-sub { color: var(--fanus-ink-3); font-weight: 500; }
-        .pc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--fanus-accent); flex-shrink: 0; }
-
         .pc-langs { display: flex; flex-wrap: wrap; gap: 8px; }
         .pc-lang-pill {
           font-size: 12px; font-weight: 500; color: var(--fanus-ink-2);

@@ -9,8 +9,10 @@ import ProfileShell, {
 } from "@/components/ProfileShell";
 import GoogleCalendarCard from "@/components/GoogleCalendarCard";
 import PsyPlanCard from "@/components/PsyPlanCard";
-import { psychologistApi, type Psychologist, type PackageDto, type PackageReq } from "@/lib/api";
+import ProfileShareButtons from "@/components/ProfileShareButtons";
+import { psychologistApi, type Psychologist, type PackageDto, type PackageReq, type PsyEducationItem } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
+import { appUrl } from "@/lib/appUrl";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
 
@@ -96,6 +98,7 @@ export default function PsychologProfilePage() {
             <PsyPlanCard />
             <PricingCard editable={editable} minutes={minutes} />
             <StatsSourceCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
+            <EducationsCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
           </>
         ) : undefined
       }
@@ -604,6 +607,114 @@ function StatsSourceCard({
   );
 }
 
+/* ─── Təhsil siyahısı — hər sətrin öz diplomu (V145) ─────────────────────── */
+
+function EducationsCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Partial<Psychologist>) => void }) {
+  const { t } = useT();
+  const [rows, setRows] = useState<PsyEducationItem[]>(() =>
+    me.educations && me.educations.length > 0
+      ? me.educations.map(e => ({ ...e }))
+      : [{ institution: "", degree: "", graduationYear: "" }]
+  );
+  const [saving, setSaving] = useState(false);
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+
+  const update = (i: number, k: "institution" | "degree" | "graduationYear", v: string) =>
+    setRows(prev => prev.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
+  const addRow = () => setRows(prev => [...prev, { institution: "", degree: "", graduationYear: "" }]);
+  const removeRow = (i: number) => setRows(prev => prev.filter((_, idx) => idx !== i));
+
+  const uploadDiploma = async (i: number, file: File) => {
+    setUploadingIdx(i);
+    try {
+      const url = await psychologistApi.uploadFile(file);
+      setRows(prev => prev.map((r, idx) => idx === i ? { ...r, diplomaUrl: url } : r));
+    } catch (e) {
+      toast((e as Error).message || t("prof.eduErrDiploma"), "error");
+    } finally {
+      setUploadingIdx(null);
+    }
+  };
+
+  const save = async () => {
+    const clean = rows.filter(r => r.institution.trim());
+    if (clean.length === 0) { toast(t("prof.eduErrMin"), "error"); return; }
+    setSaving(true);
+    try {
+      const updated = await psychologistApi.updateFullProfile({ educations: clean });
+      onSaved({ educations: updated.educations });
+      setRows(updated.educations.length > 0 ? updated.educations.map(e => ({ ...e })) : clean);
+      toast(t("prof.eduSavedToast"));
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section style={cardStyle}>
+      <h2 style={sectionH2}>{t("prof.eduTitle")}</h2>
+      <p style={sectionSub}>{t("prof.eduSub")}</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ border: `1px solid ${PC.border2}`, borderRadius: 10, padding: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <strong style={{ fontSize: 12.5, color: PC.ink }}>{t("prof.eduRowLabel", { n: i + 1 })}</strong>
+              {rows.length > 1 && (
+                <button type="button" onClick={() => removeRow(i)}
+                  style={{ fontSize: 12, color: "#B91C1C", background: "none", border: "none", cursor: "pointer" }}>
+                  {t("prof.eduDelete")}
+                </button>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div>
+                <label style={labelStyle}>{t("prof.eduInstitutionLabel")}</label>
+                <input style={inputStyle} value={r.institution}
+                  onChange={e => update(i, "institution", e.target.value)}
+                  placeholder={t("prof.eduInstitutionPh")} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 8 }}>
+                <div>
+                  <label style={labelStyle}>{t("prof.eduDegreeLabel")}</label>
+                  <input style={inputStyle} value={r.degree ?? ""}
+                    onChange={e => update(i, "degree", e.target.value)}
+                    placeholder={t("prof.eduDegreePh")} />
+                </div>
+                <div>
+                  <label style={labelStyle}>{t("prof.eduYearLabel")}</label>
+                  <input style={inputStyle} value={r.graduationYear ?? ""}
+                    onChange={e => update(i, "graduationYear", e.target.value)}
+                    placeholder={t("prof.eduYearPh")} />
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
+                <label style={{ ...btnGhost, cursor: "pointer" }}>
+                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadDiploma(i, f); e.target.value = ""; }} />
+                  {uploadingIdx === i ? t("prof.eduDiplomaUploading") : r.diplomaUrl ? t("prof.eduDiplomaChange") : t("prof.eduDiplomaUpload")}
+                </label>
+                {r.diplomaUrl && (
+                  <a href={r.diplomaUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: "var(--brand, #1051B7)" }}>
+                    {t("prof.eduDiplomaView")}
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+        <button type="button" onClick={addRow} style={btnGhost}>{t("prof.eduAdd")}</button>
+        <button type="button" onClick={save} disabled={saving} style={{ ...btnDark, marginLeft: "auto" }}>
+          {saving ? t("prof.eduSaving") : t("prof.eduSave")}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 /* ─── İctimai profil önizləməsi (yan sütun) ──────────────────────────────── */
 
 function PublicPreviewCard({ me, minutes }: { me: Psychologist; minutes: number }) {
@@ -633,6 +744,11 @@ function PublicPreviewCard({ me, minutes }: { me: Psychologist; minutes: number 
           <div style={{ fontSize: 12, color: PC.soft, marginTop: 2 }}>{me.title}</div>
         </div>
       </div>
+      {me.slug && (
+        <div style={{ marginTop: 14 }}>
+          <ProfileShareButtons url={appUrl(`/psychologists/${me.slug}`)} name={me.name} />
+        </div>
+      )}
       <div style={{ ...rowSplit, alignItems: "flex-start", marginTop: 14 }}>
         <span style={{ ...rowKey, flex: "0 0 auto" }}>{t("prof.pvSpecs")}</span>
         <span style={{ ...rowVal, textAlign: "right" }}>

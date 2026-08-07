@@ -6,7 +6,7 @@ import { useBooking } from "@/context/BookingContext";
 import { bookAppointment } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
-const WHATSAPP_NUMBER = "994502017164";
+const WHATSAPP_NUMBER = "994993585888";
 
 type Step = "choice" | "form" | "success";
 

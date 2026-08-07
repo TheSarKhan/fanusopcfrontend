@@ -388,6 +388,41 @@ export interface Psychologist {
   topics?: string[];
   /** «Fanus təsdiqli» nişanı (V140) — yalnız true olanda göstərilir. */
   verified?: boolean;
+  /** Bir neçə təhsil qeydi (V145) — university/degree/graduationYear-ı əvəz edir.
+   *  diplomaUrl yalnız admin kontekstində dolur, public cavabda həmişə boşdur. */
+  educations?: { id?: number; institution: string; degree?: string; graduationYear?: string; diplomaUrl?: string }[];
+}
+
+/** Psixoloqun öz profilini idarə etdiyi tam görünüş (GET/PUT /psychologist/me/profile). */
+export interface PsyEducationItem {
+  id?: number;
+  institution: string;
+  degree?: string;
+  graduationYear?: string;
+  diplomaUrl?: string;
+}
+export interface PsyCertificateItem {
+  id?: number;
+  title: string;
+  issuer?: string;
+  year?: string;
+  type: "CERTIFICATE" | "SEMINAR";
+}
+export interface PsyFullProfile {
+  id: number; userId?: number | null;
+  name: string; firstName?: string; lastName?: string;
+  title?: string; email?: string; phone?: string; photoUrl?: string;
+  bio?: string; languages?: string; sessionTypes?: string;
+  specializations: string[]; topics: string[];
+  educations: PsyEducationItem[]; certificates: PsyCertificateItem[];
+  accentColor?: string; bgColor?: string;
+  statsSource?: string; fanusSessionCount?: number; priorExperienceSessions?: number;
+}
+export interface PsySelfProfileUpdate {
+  firstName?: string; lastName?: string; title?: string; phone?: string;
+  bio?: string; languages?: string; sessionTypes?: string;
+  specializations?: string[]; topics?: string[];
+  educations?: PsyEducationItem[]; certificates?: PsyCertificateItem[];
 }
 
 // Modul A — public/pasiyent kartda göstərilən paket xülasəsi. Qiymət sahələri
@@ -1050,7 +1085,10 @@ export const registerPsychologist = (
   data: PsychologistRegistrationData,
   diplomaFile?: File | null,
   certificateFiles?: File[],
-  photoFile?: File | null
+  photoFile?: File | null,
+  /** educations ilə EYNİ sırada — sətrin diplomu yoxdursa həmin indeksdə undefined/null
+   *  saxla, boş plesholder göndərilir ki, backend-də indeks uyğunluğu qorunsun. */
+  educationDiplomaFiles?: (File | null | undefined)[]
 ) => {
   const form = new FormData();
   form.append("email", data.email);
@@ -1070,6 +1108,12 @@ export const registerPsychologist = (
   data.sessionTypes.forEach(s => form.append("sessionTypes", s));
   form.append("educationsJson", JSON.stringify(data.educations));
   form.append("certificatesJson", JSON.stringify(data.certificates));
+  if (educationDiplomaFiles) {
+    data.educations.forEach((_, i) => {
+      const f = educationDiplomaFiles[i];
+      form.append("educationDiplomaFiles", f ?? new Blob([]), f?.name ?? "");
+    });
+  }
   if (data.bio) form.append("bio", data.bio);
   if (data.motivation) form.append("motivation", data.motivation);
   form.append("consentEthics", String(data.consentEthics));
@@ -3357,6 +3401,11 @@ export const psychologistApi = {
     const data = await authedMultipartRequest<{ url: string }>("POST", "/psychologist/upload", form);
     return data.url;
   },
+
+  // Təhsil/sertifikat siyahılarını yeniləmək (V145) — `me()` artıq tam siyahını
+  // (diplomaUrl daxil) qaytarır, ona görə ayrıca GET lazım deyil.
+  updateFullProfile: (data: PsySelfProfileUpdate) =>
+    authedRequest<PsyFullProfile>("PUT", "/psychologist/me/profile", data),
 
   // Google Calendar integration
   googleStatus: () => authedRequest<GoogleCalendarStatus>("GET", "/psychologist/google/status"),

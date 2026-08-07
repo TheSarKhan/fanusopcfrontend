@@ -1,12 +1,18 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Profile photo cropper — square viewport (rectangular).
  *
  * Pick a file → drag/zoom inside a square viewport → "Tətbiq et" produces a
  * cropped square PNG File via canvas. No external dependency.
+ *
+ * The zoom slider's minimum is the image's own cover-fit scale (computed on
+ * load from its natural size), not a fixed constant — a fixed min like 0.3
+ * sits well ABOVE the cover-fit scale of typical large photos (e.g. a 3000px
+ * phone photo needs ~0.1 to cover a 320px viewport), so users could zoom in
+ * but never zoom back out past that fixed floor to the original framing.
  */
 export default function PhotoCropper({
   initialFile,
@@ -22,6 +28,7 @@ export default function PhotoCropper({
   outputSize?: number;
 }) {
   const [src, setSrc] = useState<string | null>(null);
+  const [baseScale, setBaseScale] = useState(1);
   const [zoom, setZoom] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [imgDims, setImgDims] = useState({ w: 0, h: 0 });
@@ -38,15 +45,40 @@ export default function PhotoCropper({
     return () => URL.revokeObjectURL(url);
   }, [initialFile]);
 
+  // Şəkil zoom-dan asılı olaraq kvadrat viewport-u örtəndə, boşluq görünməsin
+  // deyə sürüşdürmə məsafəsini məhdudlaşdırır.
+  const maxOffsetAt = useCallback((z: number, dims: { w: number; h: number }) => ({
+    mx: Math.max(0, (dims.w * z - size) / 2),
+    my: Math.max(0, (dims.h * z - size) / 2),
+  }), [size]);
+
+  const clamp = (o: { x: number; y: number }, mx: number, my: number) => ({
+    x: Math.min(mx, Math.max(-mx, o.x)),
+    y: Math.min(my, Math.max(-my, o.y)),
+  });
+
   const onLoad = () => {
     if (!imgRef.current) return;
     const w = imgRef.current.naturalWidth;
     const h = imgRef.current.naturalHeight;
     setImgDims({ w, h });
-    // Cover the square viewport initially: scale so smaller side == size
-    const baseScale = size / Math.min(w, h);
-    setZoom(baseScale);
+    // Viewport-u ilk açılışda tam örtsün: kiçik tərəf == size.
+    const cover = size / Math.min(w, h);
+    setBaseScale(cover);
+    setZoom(cover);
     setPos({ x: 0, y: 0 });
+  };
+
+  const changeZoom = (z: number) => {
+    const clampedZoom = Math.max(baseScale, Math.min(baseScale * 5, z));
+    const { mx, my } = maxOffsetAt(clampedZoom, imgDims);
+    setZoom(clampedZoom);
+    setPos((p) => clamp(p, mx, my));
+  };
+
+  const onWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    changeZoom(zoom - e.deltaY * (baseScale * 0.0015));
   };
 
   // Pointer drag
@@ -57,7 +89,8 @@ export default function PhotoCropper({
   };
   const onPointerMove = (e: React.PointerEvent) => {
     if (!dragging) return;
-    setPos({ x: dragStart.ox + (e.clientX - dragStart.x), y: dragStart.oy + (e.clientY - dragStart.y) });
+    const { mx, my } = maxOffsetAt(zoom, imgDims);
+    setPos(clamp({ x: dragStart.ox + (e.clientX - dragStart.x), y: dragStart.oy + (e.clientY - dragStart.y) }, mx, my));
   };
   const onPointerUp = () => setDragging(false);
 
@@ -113,6 +146,7 @@ export default function PhotoCropper({
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
+          onWheel={onWheel}
           style={{
             position: "relative",
             width: size,
@@ -151,11 +185,11 @@ export default function PhotoCropper({
           <span style={{ fontSize: 12, color: "#52718F" }}>Zoom</span>
           <input
             type="range"
-            min={0.3}
-            max={3}
-            step={0.01}
+            min={baseScale}
+            max={baseScale * 5}
+            step={(baseScale * 5 - baseScale) / 200 || 0.001}
             value={zoom}
-            onChange={(e) => setZoom(parseFloat(e.target.value))}
+            onChange={(e) => changeZoom(parseFloat(e.target.value))}
             style={{ flex: 1 }}
           />
         </div>

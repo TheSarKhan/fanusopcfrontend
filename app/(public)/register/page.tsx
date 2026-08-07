@@ -322,7 +322,7 @@ const YEARS = Array.from({ length: 60 }, (_, i) => String(new Date().getFullYear
  *  məntiqi ziddiyyətini (məs. doğum ili = bitirmə ili) qabaqcadan əngəlləyir. */
 const MIN_GRADUATION_AGE = 18;
 
-type EducationRow = { institution: string; degree: string; graduationYear: string };
+type EducationRow = { institution: string; degree: string; graduationYear: string; diplomaFile: File | null };
 type CertificateRow = { title: string; issuer: string; year: string; type: "CERTIFICATE" | "SEMINAR" };
 
 function PsychologistForm({ onBack }: { onBack: () => void }) {
@@ -345,7 +345,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
   const [photoForCrop, setPhotoForCrop] = useState<File | null>(null);
 
   const [educations, setEducations] = useState<EducationRow[]>([
-    { institution: "", degree: "", graduationYear: "" }
+    { institution: "", degree: "", graduationYear: "", diplomaFile: null }
   ]);
   const [diplomaFile, setDiplomaFile] = useState<File | null>(null);
 
@@ -379,10 +379,12 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
     setPhotoFile(file); setPhotoPreview(preview); setPhotoForCrop(null);
   };
 
-  const addEducation = () => setEducations(prev => [...prev, { institution: "", degree: "", graduationYear: "" }]);
+  const addEducation = () => setEducations(prev => [...prev, { institution: "", degree: "", graduationYear: "", diplomaFile: null }]);
   const removeEducation = (i: number) => setEducations(prev => prev.filter((_, idx) => idx !== i));
-  const updateEducation = (i: number, k: keyof EducationRow, v: string) =>
+  const updateEducation = (i: number, k: keyof Omit<EducationRow, "diplomaFile">, v: string) =>
     setEducations(prev => prev.map((row, idx) => idx === i ? { ...row, [k]: v } : row));
+  const updateEducationDiploma = (i: number, file: File | null) =>
+    setEducations(prev => prev.map((row, idx) => idx === i ? { ...row, diplomaFile: file } : row));
 
   const addCertificate = (type: "CERTIFICATE" | "SEMINAR") =>
     setCertificates(prev => [...prev, { title: "", issuer: "", year: "", type }]);
@@ -482,6 +484,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
         educations: educations
           .filter(ed => ed.institution.trim())
           .map(ed => ({ institution: ed.institution.trim(), degree: ed.degree.trim() || undefined, graduationYear: ed.graduationYear || undefined })),
+        // eyni filter data.educations ilə eyni sırada qalsın — backend indeksə görə uyğunlaşdırır.
         certificates: certificates
           .filter(c => c.title.trim())
           .map(c => ({ title: c.title.trim(), issuer: c.issuer.trim() || undefined, year: c.year || undefined, type: c.type })),
@@ -491,7 +494,10 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
         consentGdpr: consents.gdpr,
         consentTerms: consents.terms,
       };
-      await registerPsychologist(data, diplomaFile, certificateFiles, photoFile);
+      const educationDiplomaFiles = educations
+        .filter(ed => ed.institution.trim())
+        .map(ed => ed.diplomaFile);
+      await registerPsychologist(data, diplomaFile, certificateFiles, photoFile, educationDiplomaFiles);
       setSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("regPage.registerFailed"));
@@ -560,7 +566,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <Field label={t("auth.phone")} required><input type="tel" className="auth-input" value={personal.phone} onChange={setP("phone")} placeholder="+994 50 000 00 00" required style={{ minWidth: 0, width: "100%" }} /></Field>
-            <Field label={t("regPage.birthDate")} required><DatePicker value={personal.birthDate} onChange={v => setPersonal(p => ({ ...p, birthDate: v }))} theme="light" style={{ minWidth: 0, width: "100%" }} ariaLabel={t("regPage.birthDate")} /></Field>
+            <Field label={t("regPage.birthDate")} required><DatePicker value={personal.birthDate} onChange={v => setPersonal(p => ({ ...p, birthDate: v }))} theme="light" yearNav style={{ minWidth: 0, width: "100%" }} ariaLabel={t("regPage.birthDate")} /></Field>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -630,6 +636,20 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
                     <option value="">{t("regPage.yearPh")}</option>
                     {graduationYearOptions.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
+                </Field>
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <Field label={t("regPage.eduDiplomaOptional")}>
+                  <label className="auth-file-label">
+                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }}
+                      onChange={(e) => updateEducationDiploma(i, e.target.files?.[0] ?? null)} />
+                    <div className="auth-file-box" style={{ padding: "9px 14px", fontSize: 12.5 }}>
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                      {ed.diplomaFile ? ed.diplomaFile.name : t("regPage.diplomaUpload")}
+                    </div>
+                  </label>
                 </Field>
               </div>
             </div>

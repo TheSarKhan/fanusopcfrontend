@@ -20,7 +20,7 @@ import {
 
 type ModuleNavItem = PanelNavItem & { key: PsychologModuleKey };
 
-const WHATSAPP_SUPPORT = "https://wa.me/994502017164?text=" +
+const WHATSAPP_SUPPORT = "https://wa.me/994993585888?text=" +
   encodeURIComponent("Salam, panel modullarım üçün planımı dəyişmək istəyirəm.");
 
 /** Kilidli modul route-una birbaşa URL ilə girildikdə — yönləndirmə əvəzinə izah ekranı.

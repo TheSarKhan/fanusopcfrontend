@@ -5,7 +5,7 @@ import { useScrollReveal } from "@/lib/useScrollReveal";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
 
-const WHATSAPP_NUMBER = "994502017164";
+const WHATSAPP_NUMBER = "994993585888";
 
 const contactItems: { icon: React.ReactNode; labelKey?: MessageKey; label?: string; value?: string; valueKey?: MessageKey; href?: string; external?: boolean }[] = [
   {
@@ -15,8 +15,8 @@ const contactItems: { icon: React.ReactNode; labelKey?: MessageKey; label?: stri
       </svg>
     ),
     labelKey: "auth.email",
-    value: "salam@fanus.az",
-    href: "mailto:salam@fanus.az",
+    value: "fanus.opc@gmail.com",
+    href: "mailto:fanus.opc@gmail.com",
   },
   {
     icon: (
@@ -25,8 +25,8 @@ const contactItems: { icon: React.ReactNode; labelKey?: MessageKey; label?: stri
       </svg>
     ),
     labelKey: "auth.phone",
-    value: "+994 12 200 00 00",
-    href: "tel:+994122000000",
+    value: "+994 99 358 58 88",
+    href: "tel:+994993585888",
   },
   {
     icon: (
@@ -35,8 +35,19 @@ const contactItems: { icon: React.ReactNode; labelKey?: MessageKey; label?: stri
       </svg>
     ),
     label: "WhatsApp",
-    value: "+994 50 201 71 64",
+    value: "+994 99 358 58 88",
     href: `https://wa.me/${WHATSAPP_NUMBER}`,
+    external: true,
+  },
+  {
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="5" /><path d="M16 11.37a4 4 0 11-7.914 1.174A4 4 0 0116 11.37z" /><path d="M17.5 6.5h.01" />
+      </svg>
+    ),
+    label: "Instagram",
+    value: "@fanus_opc",
+    href: "https://www.instagram.com/fanus_opc?igsh=anQ5eXpkZGo2amdt",
     external: true,
   },
   {

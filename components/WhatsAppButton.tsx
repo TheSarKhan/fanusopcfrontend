@@ -3,7 +3,7 @@
 /** Daim görünən WhatsApp dəstək düyməsi (Sayt BRD SAYT-FR-23).
  *  Publik saytda (SiteChrome) + pasiyent və psixoloq panellərində göstərilir —
  *  istifadəçi harada çətinlik çəksə dərhal dəstək ala bilsin. */
-const WHATSAPP_NUMBER = "994502017164";
+const WHATSAPP_NUMBER = "994993585888";
 
 /** @param side düymənin küncü — publik saytda sol alt (default), panellərdə sağ alt. */
 export default function WhatsAppButton({ side = "left" }: { side?: "left" | "right" }) {

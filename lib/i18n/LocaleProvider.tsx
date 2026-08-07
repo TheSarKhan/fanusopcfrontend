@@ -20,15 +20,13 @@ interface LocaleContextValue {
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
 function detectInitialLocale(): Locale {
-  // 1) explicit cookie wins
+  // Explicit cookie wins; otherwise always default to DEFAULT_LOCALE (az) —
+  // we deliberately do NOT fall back to the browser's Accept-Language, since
+  // that made the site open in Turkish/English for visitors whose OS/browser
+  // language wasn't Azerbaijani even though our audience is Azerbaijan-based.
   const fromCookie = readCookie(COOKIE_NAME);
   if (fromCookie && (SUPPORTED_LOCALES as readonly string[]).includes(fromCookie)) {
     return fromCookie as Locale;
-  }
-  // 2) Accept-Language fallback (browser only — SSR pass uses default)
-  if (typeof navigator !== "undefined") {
-    const lang = (navigator.language || "").toLowerCase().split("-")[0];
-    if ((SUPPORTED_LOCALES as readonly string[]).includes(lang)) return lang as Locale;
   }
   return DEFAULT_LOCALE;
 }

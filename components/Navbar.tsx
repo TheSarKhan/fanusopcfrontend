@@ -1,13 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { buildPanelUrl, getStoredUser, clearUser } from "@/lib/auth";
 import { verifyMe } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import LanguageSwitcher from "./LanguageSwitcher";
+
+// Xidmətlər səhifəsindəki kartların id-ləri ilə üst-üstə düşür (bax: app/xidmetler/ServicesPage.tsx)
+// ki, dropdown-dan klikləndikdə həmin xidmətə scroll etsin.
+const SERVICE_KEYS: ("p1" | "p2" | "p3" | "p4" | "p5" | "p6")[] = ["p1", "p2", "p3", "p4", "p5", "p6"];
 
 export default function Navbar() {
   const { t } = useT();
@@ -15,6 +20,8 @@ export default function Navbar() {
   const isHome = pathname === "/";
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [svcOpen, setSvcOpen] = useState(false);
+  const svcRef = useRef<HTMLDivElement>(null);
   // undefined = sessiya hələ yoxlanılmayıb (server render + hidrasiyaya qədər),
   // null = giriş edilməyib, string = panel ünvanı. Üç vəziyyət lazımdır: SiteChrome
   // artıq serverdə render olunduğu üçün, iki vəziyyətlə giriş etmiş istifadəçi bir an
@@ -27,12 +34,20 @@ export default function Navbar() {
   const light = isHome && !scrolled && !open;
 
   const navLinks = [
-    { label: t("nav.services"),      href: "/xidmetler" },
     { label: t("nav.psychologists"), href: "/psychologists" },
     { label: t("nav.tests"),         href: "/tests" },
     { label: t("nav.blog"),          href: "/blog" },
     { label: t("nav.contact"),       href: "/contact" },
   ];
+
+  useEffect(() => {
+    if (!svcOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (svcRef.current && !svcRef.current.contains(e.target as Node)) setSvcOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [svcOpen]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -101,6 +116,36 @@ export default function Navbar() {
         </Link>
 
         <nav className="fanus-nav__links" aria-label="Əsas naviqasiya">
+          <div className="fanus-nav__dropdown" ref={svcRef}>
+            <button
+              type="button"
+              className="fanus-nav__link fanus-nav__dropdown-trigger"
+              aria-expanded={svcOpen}
+              onClick={() => setSvcOpen((o) => !o)}
+            >
+              <span>{t("nav.services")}</span>
+              <svg
+                className={`fanus-nav__chevron ${svcOpen ? "is-open" : ""}`}
+                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+              <span className="fanus-nav__glow" aria-hidden="true" />
+            </button>
+            {svcOpen && (
+              <div className="fanus-nav__dropdown-menu">
+                <Link href="/xidmetler" className="fanus-nav__dropdown-item fanus-nav__dropdown-item--all" onClick={() => setSvcOpen(false)}>
+                  {t("nav.servicesAll")}
+                </Link>
+                {SERVICE_KEYS.map((key) => (
+                  <Link key={key} href={`/xidmetler#${key}`} className="fanus-nav__dropdown-item" onClick={() => setSvcOpen(false)}>
+                    {t(`svcPrograms.${key}Title` as MessageKey)}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
           {navLinks.map((l) => (
             <Link key={l.href} href={l.href} className="fanus-nav__link">
               <span>{l.label}</span>
@@ -144,6 +189,33 @@ export default function Navbar() {
 
       {open && (
         <div className="fanus-nav__mobile">
+          <button
+            type="button"
+            className="fanus-nav__link fanus-nav__dropdown-trigger fanus-nav__dropdown-trigger--mobile"
+            aria-expanded={svcOpen}
+            onClick={() => setSvcOpen((o) => !o)}
+          >
+            <span>{t("nav.services")}</span>
+            <svg
+              className={`fanus-nav__chevron ${svcOpen ? "is-open" : ""}`}
+              width="12" height="12" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          {svcOpen && (
+            <div className="fanus-nav__dropdown-menu fanus-nav__dropdown-menu--mobile">
+              <Link href="/xidmetler" className="fanus-nav__dropdown-item fanus-nav__dropdown-item--all" onClick={() => { setSvcOpen(false); setOpen(false); }}>
+                {t("nav.servicesAll")}
+              </Link>
+              {SERVICE_KEYS.map((key) => (
+                <Link key={key} href={`/xidmetler#${key}`} className="fanus-nav__dropdown-item" onClick={() => { setSvcOpen(false); setOpen(false); }}>
+                  {t(`svcPrograms.${key}Title` as MessageKey)}
+                </Link>
+              ))}
+            </div>
+          )}
           {navLinks.map((l) => (
             <Link key={l.href} href={l.href} className="fanus-nav__link" onClick={() => setOpen(false)}>
               {l.label}
@@ -267,6 +339,8 @@ export default function Navbar() {
           position: relative; padding: 10px 16px;
           font-size: 14px; font-weight: 500; color: var(--fanus-ink-2);
           border-radius: 999px; transition: color .2s;
+          background: transparent; border: none; cursor: pointer;
+          font-family: inherit;
         }
         .fanus-nav__link:hover { color: var(--fanus-primary); }
         .fanus-nav__glow {
@@ -275,6 +349,36 @@ export default function Navbar() {
           transition: opacity .2s; z-index: -1;
         }
         .fanus-nav__link:hover .fanus-nav__glow { opacity: 1; }
+
+        /* ── Services dropdown ── */
+        .fanus-nav__dropdown { position: relative; }
+        .fanus-nav__dropdown-trigger { display: inline-flex; align-items: center; gap: 5px; }
+        .fanus-nav__chevron { transition: transform .2s ease; flex-shrink: 0; }
+        .fanus-nav__chevron.is-open { transform: rotate(180deg); }
+        .fanus-nav__dropdown-menu {
+          position: absolute; top: calc(100% + 10px); left: 0;
+          min-width: 240px; background: #fff;
+          border: 1px solid var(--fanus-line); border-radius: 16px;
+          box-shadow: 0 20px 44px rgba(10,26,51,.14);
+          padding: 8px; display: flex; flex-direction: column; gap: 2px;
+          z-index: 60;
+        }
+        .fanus-nav__dropdown-item {
+          padding: 10px 14px; border-radius: 10px;
+          font-size: 13.5px; font-weight: 500; color: var(--fanus-ink-2);
+          transition: background .15s, color .15s;
+        }
+        .fanus-nav__dropdown-item:hover { background: var(--fanus-primary-50); color: var(--fanus-primary); }
+        .fanus-nav__dropdown-item--all {
+          font-weight: 700; color: var(--fanus-primary);
+          border-bottom: 1px solid var(--fanus-line); border-radius: 10px 10px 0 0;
+          margin-bottom: 4px; padding-bottom: 12px;
+        }
+        .fanus-nav__dropdown-menu--mobile {
+          position: static; box-shadow: none; border: none;
+          background: var(--fanus-primary-50); margin: 2px 0 6px; padding: 6px;
+        }
+        .fanus-nav__dropdown-trigger--mobile { width: 100%; justify-content: space-between; }
 
         /* ── CTA ── */
         .fanus-nav__cta { display: flex; gap: 10px; align-items: center; }

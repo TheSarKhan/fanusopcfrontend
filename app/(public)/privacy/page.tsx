@@ -107,7 +107,7 @@ const SECTIONS: { h: string; p: string[] }[] = [
   {
     h: "Əlaqə",
     p: [
-      "Məxfiliklə bağlı sual və müraciətlər üçün Fanusun rəsmi dəstək kanalından istifadə edin: salam@fanus.az və ya saytdakı əlaqə forması. Bu siyasətə Azərbaycan Respublikasının qanunvericiliyi tətbiq olunur.",
+      "Məxfiliklə bağlı sual və müraciətlər üçün Fanusun rəsmi dəstək kanalından istifadə edin: fanus.opc@gmail.com və ya saytdakı əlaqə forması. Bu siyasətə Azərbaycan Respublikasının qanunvericiliyi tətbiq olunur.",
     ],
   },
 ];

@@ -61,6 +61,13 @@ export interface DatePickerProps {
   style?: React.CSSProperties;
   /** Popup (təqvim) z-index. Modal içindəki istifadə üçün modal z-index-dən yüksək seçin. */
   popupZIndex?: number;
+  /**
+   * Başlıqdakı "Ay İl" mətninə klikləməklə il seçici açılsın (uzaq keçmişə —
+   * məs. doğum tarixinə — sürətli keçid üçün). Yalnız sırf tarix seçilən
+   * sahələrdə (doğum tarixi və s.) aç — bron/planlaşdırma seçicilərində
+   * (min=bugün olanlarda) mənasızdır, default false.
+   */
+  yearNav?: boolean;
 }
 
 /* ─── Köməkçi funksiyalar ─────────────────────────────────────────────────── */
@@ -173,6 +180,7 @@ export default function DatePicker({
   className,
   style,
   popupZIndex = 9999,
+  yearNav = false,
 }: DatePickerProps) {
   const autoId = useId();
   const fieldId = id ?? `dp-${autoId}`;
@@ -186,6 +194,7 @@ export default function DatePicker({
   const popupRef = useRef<HTMLDivElement | null>(null);
 
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"days" | "years">("days");
   const [mounted, setMounted] = useState(false);
   const [text, setText] = useState(() => formatDisplay(value, withTime));
   const [focused, setFocused] = useState(false);
@@ -216,6 +225,7 @@ export default function DatePicker({
     if (!open) return;
     const p = selected ?? minP ?? nowParts();
     setView({ y: p.y, mo: p.mo });
+    setMode("days");
   }, [open, selected, minP]);
 
   /* — Mövqe hesablanması (portal, position:fixed) — */
@@ -333,6 +343,14 @@ export default function DatePicker({
     });
   };
 
+  // 12 illik səhifə, seçilmiş (və ya baxılan) ilin ondalığına görə mərkəzləşir.
+  const [yearsPageStart, setYearsPageStart] = useState(() => Math.floor(view.y / 12) * 12);
+  useEffect(() => {
+    if (mode === "years") setYearsPageStart(Math.floor(view.y / 12) * 12);
+  }, [mode, view.y]);
+  const stepYearsPage = (delta: number) => setYearsPageStart(s => s + delta * 12);
+  const pickYear = (y: number) => { setView(v => ({ ...v, y })); setMode("days"); };
+
   const clear = () => { onChange(""); setText(""); };
 
   /* — Sahə (tetik) hadisələri — */
@@ -448,67 +466,110 @@ export default function DatePicker({
           }}
         >
           <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 14 }}>
-            {/* Başlıq: ay naviqasiyası */}
+            {/* Başlıq: ay/il naviqasiyası (illər rejimində — ondalıq naviqasiyası) */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <button type="button" title="Əvvəlki ay"
-                onClick={() => stepMonth(-1)} style={navBtn(pal)}>
+              <button type="button" title={mode === "years" ? "Əvvəlki illər" : "Əvvəlki ay"}
+                onClick={() => mode === "years" ? stepYearsPage(-1) : stepMonth(-1)} style={navBtn(pal)}>
                 <IconChevronLeft />
               </button>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: pal.text, letterSpacing: 0.2 }}>
-                {AZ_MONTHS[view.mo - 1]} {view.y}
-              </div>
-              <button type="button" title="Növbəti ay"
-                onClick={() => stepMonth(1)} style={navBtn(pal)}>
+              {yearNav ? (
+                <button type="button"
+                  onClick={() => setMode(m => m === "days" ? "years" : "days")}
+                  title={mode === "years" ? "Təqvimə qayıt" : "İl seçmək üçün klikləyin"}
+                  style={{
+                    background: "transparent", border: "none", cursor: "pointer",
+                    fontSize: 13.5, fontWeight: 700, color: pal.text, letterSpacing: 0.2,
+                    padding: "4px 8px", borderRadius: 7,
+                  }}
+                >
+                  {mode === "years" ? `${yearsPageStart}–${yearsPageStart + 11}` : `${AZ_MONTHS[view.mo - 1]} ${view.y}`}
+                </button>
+              ) : (
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: pal.text, letterSpacing: 0.2 }}>
+                  {AZ_MONTHS[view.mo - 1]} {view.y}
+                </div>
+              )}
+              <button type="button" title={mode === "years" ? "Növbəti illər" : "Növbəti ay"}
+                onClick={() => mode === "years" ? stepYearsPage(1) : stepMonth(1)} style={navBtn(pal)}>
                 <IconChevronRight />
               </button>
             </div>
 
-            {/* Həftə günləri */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
-              {AZ_WEEKDAYS.map((w, i) => (
-                <div key={w} style={{
-                  textAlign: "center", fontSize: 11, fontWeight: 600,
-                  color: i === 6 ? pal.accent : pal.textDim,
-                  padding: "4px 0",
-                }}>{w}</div>
-              ))}
-            </div>
+            {mode === "years" ? (
+              /* İl seçici — 12 illik grid */
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const y = yearsPageStart + i;
+                  const isSel = y === view.y;
+                  const isThisYear = y === nowParts().y;
+                  return (
+                    <button key={y} type="button"
+                      onClick={() => pickYear(y)}
+                      className={dayClass}
+                      style={{
+                        padding: "10px 0", border: "none", borderRadius: 9,
+                        background: isSel ? undefined : "transparent",
+                        backgroundImage: isSel ? pal.accentGrad : "none",
+                        color: isSel ? pal.onAccent : pal.text,
+                        fontSize: 13, fontWeight: isSel ? 700 : 500,
+                        cursor: "pointer",
+                        boxShadow: isThisYear && !isSel ? `inset 0 0 0 1.5px ${pal.todayRing}` : "none",
+                        transition: "background .12s, color .12s",
+                      }}
+                    >{y}</button>
+                  );
+                })}
+              </div>
+            ) : (
+              <>
+                {/* Həftə günləri */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
+                  {AZ_WEEKDAYS.map((w, i) => (
+                    <div key={w} style={{
+                      textAlign: "center", fontSize: 11, fontWeight: 600,
+                      color: i === 6 ? pal.accent : pal.textDim,
+                      padding: "4px 0",
+                    }}>{w}</div>
+                  ))}
+                </div>
 
-            {/* Günlər */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
-              {Array.from({ length: firstWeekdayMon(view.y, view.mo) }).map((_, i) => (
-                <div key={`b${i}`} />
-              ))}
-              {Array.from({ length: daysInMonth(view.y, view.mo) }).map((_, i) => {
-                const d = i + 1;
-                const isSel = !!selected && selected.y === view.y && selected.mo === view.mo && selected.d === d;
-                const isToday = isSameDayAsToday(view.y, view.mo, d);
-                const disabledDay = isDayDisabled(view.y, view.mo, d);
-                const weekendSun = (firstWeekdayMon(view.y, view.mo) + i) % 7 === 6;
-                return (
-                  <button key={d} type="button"
-                    disabled={disabledDay}
-                    onClick={() => pickDay(d)}
-                    className={dayClass}
-                    style={{
-                      aspectRatio: "1 / 1",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      border: "none", borderRadius: 9,
-                      background: isSel ? undefined : "transparent",
-                      backgroundImage: isSel ? pal.accentGrad : "none",
-                      color: disabledDay ? pal.textFaint
-                        : isSel ? pal.onAccent
-                        : weekendSun ? pal.accent : pal.text,
-                      opacity: disabledDay ? 0.35 : 1,
-                      fontSize: 13, fontWeight: isSel ? 700 : 500,
-                      cursor: disabledDay ? "not-allowed" : "pointer",
-                      boxShadow: isToday && !isSel ? `inset 0 0 0 1.5px ${pal.todayRing}` : "none",
-                      transition: "background .12s, color .12s",
-                    }}
-                  >{d}</button>
-                );
-              })}
-            </div>
+                {/* Günlər */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
+                  {Array.from({ length: firstWeekdayMon(view.y, view.mo) }).map((_, i) => (
+                    <div key={`b${i}`} />
+                  ))}
+                  {Array.from({ length: daysInMonth(view.y, view.mo) }).map((_, i) => {
+                    const d = i + 1;
+                    const isSel = !!selected && selected.y === view.y && selected.mo === view.mo && selected.d === d;
+                    const isToday = isSameDayAsToday(view.y, view.mo, d);
+                    const disabledDay = isDayDisabled(view.y, view.mo, d);
+                    const weekendSun = (firstWeekdayMon(view.y, view.mo) + i) % 7 === 6;
+                    return (
+                      <button key={d} type="button"
+                        disabled={disabledDay}
+                        onClick={() => pickDay(d)}
+                        className={dayClass}
+                        style={{
+                          aspectRatio: "1 / 1",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          border: "none", borderRadius: 9,
+                          background: isSel ? undefined : "transparent",
+                          backgroundImage: isSel ? pal.accentGrad : "none",
+                          color: disabledDay ? pal.textFaint
+                            : isSel ? pal.onAccent
+                            : weekendSun ? pal.accent : pal.text,
+                          opacity: disabledDay ? 0.35 : 1,
+                          fontSize: 13, fontWeight: isSel ? 700 : 500,
+                          cursor: disabledDay ? "not-allowed" : "pointer",
+                          boxShadow: isToday && !isSel ? `inset 0 0 0 1.5px ${pal.todayRing}` : "none",
+                          transition: "background .12s, color .12s",
+                        }}
+                      >{d}</button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Vaxt sətri + Hazır (yalnız withTime) — sürüşən gövdədən kənarda */}

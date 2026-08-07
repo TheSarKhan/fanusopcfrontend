@@ -38,6 +38,17 @@ const NEXT_STEPS: MessageKey[] = ["quickReq.step1", "quickReq.step2", "quickReq.
  * @param intro «15 dəqiqəlik ödənişsiz tanışlıq» yolundan açılıbsa true — müraciət
  *        operator hovuzunda nişanla görünür ki, pulsuz görüş olduğu dərhal bilinsin.
  */
+/** Etiketin sonundakı " *" işarəsini qırmızı rəngdə ayrıca render edir (məcburi sahələri vurğulamaq üçün). */
+function FieldLabel({ text }: { text: string }) {
+  const trimmed = text.trim();
+  if (!trimmed.endsWith("*")) return <label style={labelStyle}>{text}</label>;
+  return (
+    <label style={labelStyle}>
+      {trimmed.slice(0, -1).trimEnd()} <span style={{ color: "#DC2626" }}>*</span>
+    </label>
+  );
+}
+
 export default function QuickRequestForm({ onDone, intro }: { onDone?: () => void; intro?: boolean }) {
   const { t } = useT();
   const [form, setForm] = useState(INITIAL);
@@ -200,14 +211,14 @@ export default function QuickRequestForm({ onDone, intro }: { onDone?: () => voi
 
       {/* Name */}
       <div style={{ marginBottom: 14 }}>
-        <label style={labelStyle}>{t("quickReq.labelName")}</label>
+        <FieldLabel text={t("quickReq.labelName")} />
         <input type="text" value={form.name} onChange={set("name")}
           placeholder={t("quickReq.phName")} style={inputStyle} />
       </div>
 
       {/* Phone */}
       <div style={{ marginBottom: 14 }}>
-        <label style={labelStyle}>{t("quickReq.labelPhone")}</label>
+        <FieldLabel text={t("quickReq.labelPhone")} />
         <input type="tel" inputMode="tel" value={form.phone} onChange={setPhone}
           placeholder="+994 50 000 00 00" maxLength={20} style={inputStyle} />
       </div>
@@ -215,12 +226,12 @@ export default function QuickRequestForm({ onDone, intro }: { onDone?: () => voi
       {/* Email + Age */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 12, marginBottom: 14 }}>
         <div>
-          <label style={labelStyle}>{t("quickReq.labelEmail")}</label>
+          <FieldLabel text={t("quickReq.labelEmail")} />
           <input type="email" value={form.email} onChange={set("email")}
             placeholder="example@email.com" style={inputStyle} />
         </div>
         <div>
-          <label style={labelStyle}>{t("quickReq.labelAge")}</label>
+          <FieldLabel text={t("quickReq.labelAge")} />
           <input type="number" value={form.age} onChange={set("age")}
             min={5} max={120} placeholder="25" style={inputStyle} />
         </div>
@@ -228,7 +239,7 @@ export default function QuickRequestForm({ onDone, intro }: { onDone?: () => voi
 
       {/* Budget (Sayt BRD §8.2 — məcburi) */}
       <div style={{ marginBottom: 14 }}>
-        <label style={labelStyle}>{t("quickReq.labelBudget")}</label>
+        <FieldLabel text={t("quickReq.labelBudget")} />
         <select value={form.budget} onChange={set("budget")} style={inputStyle}>
           <option value="">{t("quickReq.budgetPh")}</option>
           {BUDGET_OPTIONS.map(b => <option key={b.value} value={b.value}>{t(b.key)}</option>)}
@@ -237,7 +248,7 @@ export default function QuickRequestForm({ onDone, intro }: { onDone?: () => voi
 
       {/* Reason */}
       <div style={{ marginBottom: 14 }}>
-        <label style={labelStyle}>{t("quickReq.labelReason")}</label>
+        <FieldLabel text={t("quickReq.labelReason")} />
         <textarea value={form.reason} onChange={set("reason")} rows={4}
           placeholder={t("quickReq.phReason")}
           style={{ ...inputStyle, resize: "vertical" }} />
@@ -246,7 +257,7 @@ export default function QuickRequestForm({ onDone, intro }: { onDone?: () => voi
       {/* Preferred date + time */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 140px", gap: 12, marginBottom: 14 }}>
         <div>
-          <label style={labelStyle}>{t("quickReq.labelDate")}</label>
+          <FieldLabel text={t("quickReq.labelDate")} />
           <DatePicker
             value={form.preferredDate}
             onChange={val => setForm(prev => ({ ...prev, preferredDate: val }))}
@@ -256,7 +267,7 @@ export default function QuickRequestForm({ onDone, intro }: { onDone?: () => voi
           />
         </div>
         <div>
-          <label style={labelStyle}>{t("quickReq.labelTime")}</label>
+          <FieldLabel text={t("quickReq.labelTime")} />
           <TimePicker
             value={form.preferredTime}
             onChange={val => setForm(prev => ({ ...prev, preferredTime: val }))}
@@ -269,7 +280,7 @@ export default function QuickRequestForm({ onDone, intro }: { onDone?: () => voi
 
       {/* Notes */}
       <div style={{ marginBottom: 22 }}>
-        <label style={labelStyle}>{t("quickReq.labelNotes")}</label>
+        <FieldLabel text={t("quickReq.labelNotes")} />
         <textarea value={form.notes} onChange={set("notes")} rows={2}
           placeholder={t("quickReq.phNotes")}
           style={{ ...inputStyle, resize: "vertical" }} />

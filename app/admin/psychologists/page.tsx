@@ -549,9 +549,10 @@ function PsyOverview({ row, profile, loading }: { row: AdminPsychologistRow; pro
             <InfoRow label="Təcrübə" value={profile.experience || "—"} />
             <InfoRow label="Dillər" value={profile.languages || "—"} />
             <InfoRow label="Seans növləri" value={profile.sessionTypes || "—"} />
-            <InfoRow label="Universitet" value={profile.university || "—"} />
-            <InfoRow label="Dərəcə" value={[profile.degree, profile.graduationYear].filter(Boolean).join(", ") || "—"} />
             <InfoRow label="Sıra" value={String(profile.displayOrder)} />
+            <div style={{ gridColumn: "1 / -1" }}>
+              <InfoRow label="Təhsil" value={<ProfileEducationList educations={profile.educations} fallback={profile.university ? { institution: profile.university, degree: profile.degree ?? "", graduationYear: profile.graduationYear ?? "" } : null} />} />
+            </div>
           </>
         )}
       </div>
@@ -1246,20 +1247,54 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+/** Təsdiqlənmiş psixoloqun tam təhsil siyahısı (V145) — diplom faylı varsa baxış linki daxil.
+ *  `EducationList` (aşağıda) hələ TƏSDİQ GÖZLƏYƏN müraciətin JSON snapshot-unu göstərir. */
+function ProfileEducationList({ educations, fallback }: {
+  educations?: { id: number; institution: string; degree?: string; graduationYear?: string; diplomaUrl?: string }[];
+  fallback?: { institution: string; degree: string; graduationYear: string } | null;
+}) {
+  const rows = educations && educations.length > 0 ? educations : (fallback?.institution ? [{ id: 0, ...fallback }] : []);
+  if (rows.length === 0) return <span className="fx-subtitle">Təhsil qeyd edilməyib.</span>;
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {rows.map((r, i) => (
+        <div key={r.id || i} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, minWidth: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{r.institution}</div>
+            <div className="fx-subtitle">{[r.degree, r.graduationYear].filter(Boolean).join(", ") || "—"}</div>
+          </div>
+          {"diplomaUrl" in r && r.diplomaUrl && (
+            <a href={r.diplomaUrl} target="_blank" rel="noopener noreferrer" className="fx-subtitle" style={{ flexShrink: 0, color: "var(--accent, #1051B7)" }}>
+              Diplomu gör
+            </a>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function EducationList({ json, fallback }: {
   json?: string;
   fallback?: { institution: string; degree: string; graduationYear: string } | null;
 }) {
-  let rows: { institution: string; degree?: string; graduationYear?: string }[] = [];
+  let rows: { institution: string; degree?: string; graduationYear?: string; diplomaUrl?: string }[] = [];
   if (json) { try { rows = JSON.parse(json); } catch { /* ignore */ } }
   if (rows.length === 0 && fallback?.institution) rows = [fallback];
   if (rows.length === 0) return <div className="fx-subtitle">Təhsil qeyd edilməyib.</div>;
   return (
     <div style={{ display: "grid", gap: 8 }}>
       {rows.map((r, i) => (
-        <div key={i} style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{r.institution}</div>
-          <div className="fx-subtitle">{[r.degree, r.graduationYear].filter(Boolean).join(", ") || "—"}</div>
+        <div key={i} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, minWidth: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{r.institution}</div>
+            <div className="fx-subtitle">{[r.degree, r.graduationYear].filter(Boolean).join(", ") || "—"}</div>
+          </div>
+          {r.diplomaUrl && (
+            <a href={r.diplomaUrl} target="_blank" rel="noopener noreferrer" className="fx-subtitle" style={{ flexShrink: 0, color: "var(--accent, #1051B7)" }}>
+              Diplomu gör
+            </a>
+          )}
         </div>
       ))}
     </div>

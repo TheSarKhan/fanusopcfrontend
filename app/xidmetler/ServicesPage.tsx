@@ -64,7 +64,7 @@ function ServicesPrograms() {
       <div className="fanus-container">
         <div className="svc-prog__grid">
           {PROGRAMS.map((p) => (
-            <article key={p.key} className="svc-card">
+            <article key={p.key} id={p.key} className="svc-card">
               <div className="svc-card__icon"><PgmIcon name={p.icon} /></div>
               <h3 className="svc-card__title">{t(`svcPrograms.${p.key}Title` as MessageKey)}</h3>
               <div className="svc-card__tag">{t(`svcPrograms.${p.key}Tag` as MessageKey)}</div>
@@ -98,6 +98,7 @@ function ServicesPrograms() {
           border-radius: 22px; padding: 28px;
           display: flex; flex-direction: column; gap: 14px;
           transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+          scroll-margin-top: 104px;
         }
         .svc-card:hover {
           transform: translateY(-4px);

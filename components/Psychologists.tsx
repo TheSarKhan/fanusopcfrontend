@@ -42,7 +42,7 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
         slug: String(p.id),
         name: p.name,
         title: p.title,
-        specs: (p.specializations || []).slice(0, 4),
+        specs: p.specializations || [],
         exp: parseInt(p.experience ?? "5", 10) || 5,
         rating: p.rating ?? "—",
         sessions: p.sessionsCount ?? "0",
@@ -144,17 +144,16 @@ function PsyCard({ p }: { p: CardItem }) {
 
       {p.specs.length > 0 && (
         <div className="pp-card__tags">
-          {p.specs.slice(0, 2).map((s, i) => (
+          {p.specs.map((s, i) => (
             <span key={i} className="pp-tag">{s}</span>
           ))}
-          {p.specs.length > 2 && (
-            <span className="pp-tag pp-tag--ghost">+{p.specs.length - 2}</span>
-          )}
         </div>
       )}
 
+      <div className="pp-card__langs">
+        <GlobeIcon /> <span>{p.lang}</span>
+      </div>
       <ul className="pp-card__meta">
-        <li><GlobeIcon /> {p.lang}</li>
         <li><ClockIcon /> {p.exp} {t("psyList.yearsExp")}</li>
         <li><HourIcon /> {t("psyList.minutes", { n: p.sessionMinutes })}</li>
       </ul>
@@ -241,7 +240,7 @@ function PsyCard({ p }: { p: CardItem }) {
         .pp-card__rating-sub { color: var(--fanus-ink-3); }
 
         .pp-card__tags {
-          display: flex; flex-wrap: nowrap; overflow: hidden; gap: 6px;
+          display: flex; flex-wrap: wrap; gap: 6px;
         }
         .pp-tag {
           flex-shrink: 0;
@@ -250,14 +249,16 @@ function PsyCard({ p }: { p: CardItem }) {
           background: var(--fanus-primary-50);
           color: var(--fanus-primary);
         }
-        .pp-tag--ghost {
-          background: var(--fanus-bg) !important;
-          color: var(--fanus-ink-3) !important;
+
+        .pp-card__langs {
+          display: flex; align-items: flex-start; gap: 6px;
+          font-size: 12px; color: var(--fanus-ink-3); line-height: 1.5;
         }
+        .pp-card__langs svg { flex-shrink: 0; color: var(--fanus-primary); margin-top: 2px; }
 
         .pp-card__meta {
           list-style: none; padding: 0; margin: 0;
-          display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 10px;
+          display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 10px;
         }
         .pp-card__meta li {
           display: inline-flex; align-items: center; gap: 6px;

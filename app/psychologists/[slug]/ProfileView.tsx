@@ -15,9 +15,11 @@ import {
 import BookingCta from "./BookingCta";
 import Breadcrumb from "@/components/Breadcrumb";
 import ViewTracker from "@/components/ViewTracker";
+import ProfileShareButtons from "@/components/ProfileShareButtons";
 import { displayCategory } from "@/lib/blog";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { formatDateLong, formatRelative } from "@/lib/i18n/dateNames";
+import { appUrl } from "@/lib/appUrl";
 import type { MessageKey } from "@/lib/i18n/messages";
 
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
@@ -94,9 +96,13 @@ export default function ProfileView({
 
   const hasPhoto = !!psychologist.photoUrl?.trim();
   const initials = getInitials(psychologist.name);
-  const educations = (psychologist.university || psychologist.degree || psychologist.graduationYear)
-    ? [{ institution: psychologist.university ?? "", degree: psychologist.degree ?? "", graduationYear: psychologist.graduationYear ?? "" }]
-    : [];
+  // Bir neçə təhsil qeydi (V145) — köhnə tək university/degree/graduationYear
+  // sahələri yalnız `educations` boşdursa (çox köhnə/korlanmış məlumat) ehtiyat kimi işlədilir.
+  const educations = psychologist.educations && psychologist.educations.length > 0
+    ? psychologist.educations
+    : (psychologist.university || psychologist.degree || psychologist.graduationYear)
+      ? [{ id: 0, institution: psychologist.university ?? "", degree: psychologist.degree ?? "", graduationYear: psychologist.graduationYear ?? "" }]
+      : [];
   const sessionMinutes = psychologist.defaultSessionMinutes ?? 50;
   const accent = psychologist.accentColor || "#082F6D";
   const trustItems = [t("psyProfile.trustVerified"), t("psyProfile.trustPrivacy"), t("psyProfile.trustOnline")];
@@ -137,6 +143,9 @@ export default function ProfileView({
                   )}
                 </div>
                 <div style={{ fontSize: 15, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 16 }}>{psychologist.title}</div>
+                <div style={{ marginBottom: 18 }}>
+                  <ProfileShareButtons url={appUrl(`/psychologists/${psychologist.slug}`)} name={psychologist.name} />
+                </div>
                 <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 18 }}>
                   {(() => {
                     const hasRating = !!psychologist.rating && (psychologist.ratingCount ?? 0) > 0;

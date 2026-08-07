@@ -50,11 +50,11 @@ export default function Footer() {
           <p className="fanus-ftr__tag">{t("footer2.tag")}</p>
 
           <div className="fanus-ftr__contact">
-            <a href="tel:+994121234567" className="fanus-ftr__contact-row">
-              <PhoneIcon /> +994 12 123 45 67
+            <a href="tel:+994993585888" className="fanus-ftr__contact-row">
+              <PhoneIcon /> +994 99 358 58 88
             </a>
-            <a href="mailto:salam@fanus.az" className="fanus-ftr__contact-row">
-              <MailIcon /> salam@fanus.az
+            <a href="mailto:fanus.opc@gmail.com" className="fanus-ftr__contact-row">
+              <MailIcon /> fanus.opc@gmail.com
             </a>
             <div className="fanus-ftr__contact-row">
               <PinIcon /> {t("pub.location")}
@@ -62,8 +62,8 @@ export default function Footer() {
           </div>
 
           <div className="fanus-ftr__socials">
-            {SOCIALS.map(({ label, Icon }) => (
-              <a key={label} href="#" className="fanus-ftr__social" aria-label={label}><Icon /></a>
+            {SOCIALS.map(({ label, Icon, href }) => (
+              <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="fanus-ftr__social" aria-label={label}><Icon /></a>
             ))}
           </div>
         </div>
@@ -226,14 +226,8 @@ function AlertIcon() { return <svg width="16" height="16" fill="none" stroke="cu
 function PhoneIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 4h4l2 5-3 2a12 12 0 005 5l2-3 5 2v4a2 2 0 01-2 2A17 17 0 013 6a2 2 0 012-2z" /></svg>; }
 function MailIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>; }
 function PinIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s7-6 7-12a7 7 0 00-14 0c0 6 7 12 7 12z" /><circle cx="12" cy="9" r="2.5" /></svg>; }
-function SendIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M21 3L3 10l7 3 3 7 8-17z" /><path d="M10 13l7-7" /></svg>; }
 function InstagramIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4.2" /><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none" /></svg>; }
-function LinkedInIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" /><line x1="7.5" y1="10.5" x2="7.5" y2="16.5" /><circle cx="7.5" cy="7" r="0.6" fill="currentColor" stroke="none" /><path d="M11.5 16.5v-6" /><path d="M11.5 13c0-1.7 1-2.8 2.3-2.8 1.4 0 2.2 1.1 2.2 2.8v3.5" /></svg>; }
-function YoutubeIcon() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="4" /><path d="M10.3 9.3l5 2.7-5 2.7z" fill="currentColor" stroke="none" /></svg>; }
 
 const SOCIALS = [
-  { label: "Instagram", Icon: InstagramIcon },
-  { label: "LinkedIn",  Icon: LinkedInIcon },
-  { label: "YouTube",   Icon: YoutubeIcon },
-  { label: "Telegram",  Icon: SendIcon },
+  { label: "Instagram", Icon: InstagramIcon, href: "https://www.instagram.com/fanus_opc?igsh=anQ5eXpkZGo2amdt" },
 ];

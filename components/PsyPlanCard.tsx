@@ -38,7 +38,7 @@ const MODULE_LABEL_KEYS: Record<string, MessageKey> = {
 /** Bitməsinə bu qədər gün qalanda xəbərdarlıq rəngi işə düşür. */
 const WARN_DAYS = 14;
 
-const RENEW_WHATSAPP = "https://wa.me/994502017164?text=";
+const RENEW_WHATSAPP = "https://wa.me/994993585888?text=";
 
 export default function PsyPlanCard() {
   const { t } = useT();

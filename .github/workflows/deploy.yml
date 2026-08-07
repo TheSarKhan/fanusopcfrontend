@@ -1,12 +1,18 @@
-name: Deploy frontend (khansoft.az)
+name: Deploy frontend (fanusopc.com + khansoft.az staging)
 
 # master-ə hər push-da serverdə `deploy.sh` işə düşür: git pull → npm ci →
-# build → systemctl restart fanus-frontend. Frontend /var/www/fanusopcfrontend-də
-# systemd servis kimi (Node, port 3000) işləyir; nginx khansoft.az + panel
-# subdomenlərini ona proxy edir.
+# build → systemctl restart. PROD (/var/www/fanusopcfrontend, port 3000,
+# fanusopc.com + panellər) həmişə yenilənir. Uğurlu olsa, STAGING
+# (/var/www/fanusopcfrontend-staging, port 3002, khansoft.az) da eyni koddan
+# yenilənir — best-effort, uğursuz olsa belə bu job "uğursuz" sayılmır.
 on:
   push:
     branches: [master]
+    # Workflow fayllarına/sənədlərə edilən dəyişikliklər kodu dəyişmir —
+    # bunlar deploy tetiklməməlidir (bax fanusopcbackend/deploy.yml, 07.08.2026).
+    paths-ignore:
+      - '.github/workflows/**'
+      - '**.md'
   workflow_dispatch: {}
 
 # Eyni anda iki deploy getməsin; işləyəni yarıda kəsmə (build tam bitsin).
@@ -29,5 +35,16 @@ jobs:
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          echo ">> PROD deploy edilir..."
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$USER@$HOST" \
             'bash /var/www/fanusopcfrontend/deploy.sh'
+
+          echo ">> STAGING deploy edilir (best-effort, uğursuz olsa job qırılmır)..."
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$USER@$HOST" \
+            'if [ -d /var/www/fanusopcfrontend-staging ]; then
+               SERVICE=fanus-frontend-staging PORT=3002 HOSTHDR=khansoft.az \
+                 bash /var/www/fanusopcfrontend-staging/deploy.sh
+             else
+               echo "ℹ️ staging qovluğu yoxdur — ötürülür"
+             fi' || echo "⚠️ STAGING deploy uğursuz oldu (prod bundan asılı deyil)"

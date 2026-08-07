@@ -1,61 +1,36 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import Deco from "@/components/Deco";
 import Breadcrumb from "@/components/Breadcrumb";
 import SessionRequestModal from "@/components/SessionRequestModal";
+import PsychologistCard, { toPsyCardItem, type PsyCardItem } from "@/components/PsychologistCard";
 import type { Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
-interface Item {
-  id: number;
-  slug: string;
-  name: string;
-  title: string;
-  bio?: string;
-  photoUrl?: string;
-  /** «Fanus təsdiqli» nişanı (V140) — admin açıb-bağlayır. */
-  verified?: boolean;
-}
-
-const FALLBACK_BASE: Omit<Item, "slug">[] = [
-  { id: 1, name: "Aysel Məmmədova", title: "Klinik psixoloq",      bio: "Narahatlıq, panik atak və OKD sahəsində 8 illik təcrübə. Koqnitiv-davranış terapiyası üzərində ixtisaslaşıb." },
-  { id: 2, name: "Rəşad Quliyev",   title: "Travma terapevti",     bio: "Travma və TSSP mövzusunda 11 il təcrübə. EMDR metodundan istifadə edərək təhlükəsiz, addım-addım proses təklif edir." },
-  { id: 3, name: "Lalə Hüseynova",  title: "Ailə terapevti",       bio: "Cütlük və ailə münasibətləri üzrə 6 illik təcrübə. Ünsiyyət və etibarın bərpası mövzusunda dəstək verir." },
-  { id: 4, name: "Elnur Səfərov",   title: "Klinik psixoloq",      bio: "Depressiya və tükənmişlik (burnout) sahəsində 9 il təcrübə. Real həyat vərdişlərinə əsaslanan yanaşma tətbiq edir." },
-  { id: 5, name: "Nigar Kazımova",  title: "Uşaq psixoloqu",       bio: "Yeniyetmələr və valideyn-övlad münasibətləri üzrə 7 illik təcrübə. Ailələrlə yaxın əməkdaşlıqda çalışır." },
-  { id: 6, name: "Tural Babayev",   title: "Asılılıq mütəxəssisi", bio: "Asılılıq və impuls-nəzarəti sahəsində 10 il təcrübə. Davamlı bərpa planı və dəstək sistemi qurur." },
-  { id: 7, name: "Səbinə Əliyeva",  title: "Klinik psixoloq",      bio: "Narahatlıq və stress idarəetməsi üzrə 5 illik təcrübə. Praktik, addım-addım metodlarla işləyir." },
-  { id: 8, name: "Cavid Rəhimli",   title: "Travma terapevti",     bio: "Travma, yas və EMDR üzrə 12 illik təcrübə. Ağır həyat hadisələrindən sonra bərpa prosesinə dəstək olur." },
-  { id: 9, name: "Günel Həsənli",   title: "Cütlük terapevti",     bio: "Cütlük terapiyası və boşanma prosesi üzrə 8 illik təcrübə. Hər iki tərəfin eşidildiyi mühit yaradır." },
+const FALLBACK_BASE: Omit<PsyCardItem, "slug">[] = [
+  { id: 1, name: "Aysel Məmmədova", title: "Klinik psixoloq",      specs: ["Narahatlıq", "OKD", "Panik"],           exp: 8,  rating: "4.9", sessions: "210", lang: "AZ, RU", sessionMinutes: 50 },
+  { id: 2, name: "Rəşad Quliyev",   title: "Travma terapevti",     specs: ["Travma", "TSSP", "EMDR"],               exp: 11, rating: "4.8", sessions: "315", lang: "AZ, EN", sessionMinutes: 50 },
+  { id: 3, name: "Lalə Hüseynova",  title: "Ailə terapevti",       specs: ["Münasibətlər", "Ailə"],                 exp: 6,  rating: "4.7", sessions: "140", lang: "AZ",     sessionMinutes: 50 },
+  { id: 4, name: "Elnur Səfərov",   title: "Klinik psixoloq",      specs: ["Depressiya", "Burnout"],                exp: 9,  rating: "4.9", sessions: "260", lang: "AZ, RU", sessionMinutes: 50 },
+  { id: 5, name: "Nigar Kazımova",  title: "Uşaq psixoloqu",       specs: ["Yeniyetmə", "Valideyn"],                exp: 7,  rating: "4.8", sessions: "180", lang: "AZ",     sessionMinutes: 50 },
+  { id: 6, name: "Tural Babayev",   title: "Asılılıq mütəxəssisi", specs: ["Asılılıq", "İmpuls"],                   exp: 10, rating: "4.7", sessions: "240", lang: "AZ, RU", sessionMinutes: 50 },
+  { id: 7, name: "Səbinə Əliyeva",  title: "Klinik psixoloq",      specs: ["Narahatlıq", "Stress"],                 exp: 5,  rating: "4.6", sessions: "95",  lang: "AZ",     sessionMinutes: 50 },
+  { id: 8, name: "Cavid Rəhimli",   title: "Travma terapevti",     specs: ["Travma", "Yas", "EMDR"],                exp: 12, rating: "4.9", sessions: "340", lang: "AZ, EN", sessionMinutes: 50 },
+  { id: 9, name: "Günel Həsənli",   title: "Cütlük terapevti",     specs: ["Cütlük", "Boşanma"],                    exp: 8,  rating: "4.7", sessions: "175", lang: "AZ, RU", sessionMinutes: 50 },
 ];
-const FALLBACK: Item[] = withSlugs(FALLBACK_BASE);
-
-function ShieldIcon({ size = 16 }: { size?: number }) {
-  return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></svg>;
-}
-
-function getInitials(name: string) {
-  return name.split(" ").filter(w => w.length > 1).map(w => w[0]).slice(0, 2).join("");
-}
+const FALLBACK: PsyCardItem[] = withSlugs(FALLBACK_BASE);
 
 export default function PsychologistsPage({ psychologists }: { psychologists?: Psychologist[] }) {
   const { t } = useT();
   const [modalOpen, setModalOpen] = useState(false);
 
-  const items: Item[] = useMemo(() => {
+  const items: PsyCardItem[] = useMemo(() => {
     if (!psychologists || psychologists.length === 0) return FALLBACK;
-    const mapped = psychologists.map((p) => ({
-      id: p.id,
-      name: p.name,
-      title: p.title,
-      bio: p.bio,
-      photoUrl: p.photoUrl?.trim() || undefined,
-      verified: p.verified,
-    }));
-    return withSlugs(mapped);
+    const slugs = withSlugs(psychologists.map((p) => ({ id: p.id, name: p.name })));
+    const slugById = new Map(slugs.map((s) => [s.id, s.slug]));
+    return psychologists.map((p) => toPsyCardItem(p, slugById.get(p.id) ?? String(p.id)));
   }, [psychologists]);
 
   return (
@@ -108,7 +83,7 @@ function PsycHero({ onApply }: { onApply: () => void }) {
   );
 }
 
-function PsycList({ items }: { items: Item[] }) {
+function PsycList({ items }: { items: PsyCardItem[] }) {
   const { t } = useT();
   return (
     <section className="pp-list" id="list">
@@ -121,7 +96,7 @@ function PsycList({ items }: { items: Item[] }) {
         </div>
 
         <div className="pp-grid">
-          {items.map((p) => <PsyCard key={p.id} p={p} />)}
+          {items.map((p) => <PsychologistCard key={p.id} p={p} />)}
         </div>
       </div>
 
@@ -140,110 +115,3 @@ function PsycList({ items }: { items: Item[] }) {
     </section>
   );
 }
-
-function PsyCard({ p }: { p: Item }) {
-  const { t } = useT();
-  const initials = getInitials(p.name);
-
-  return (
-    <article className="pp-card">
-      <div className="pp-card__head">
-        <Link href={`/psychologists/${p.slug ?? p.id}`} className="pp-card__photo" aria-label={t("pub.profileAria", { name: p.name })}>
-          {p.photoUrl ? (
-            <img src={p.photoUrl} alt={p.name} />
-          ) : (
-            <span className="pp-card__initials">{initials}</span>
-          )}
-        </Link>
-        <div className="pp-card__head-body">
-          <div className="pp-card__name-row">
-            <Link href={`/psychologists/${p.slug ?? p.id}`}>
-              <h3 className="pp-card__name">{p.name}</h3>
-            </Link>
-            {/* Ana səhifədəki kartla eyni nişan. Təsdiqlənməyən psixoloq üçün heç
-                nə yazılmır — «təsdiqlənməyib» etiketi mütəxəssisin nüfuzuna
-                zərbə vurardı. */}
-            {p.verified && (
-              <span className="pp-card__verified" title={t("pub.verifiedPsy")} aria-label={t("pub.verifiedPsy")}>
-                <ShieldIcon />
-              </span>
-            )}
-          </div>
-          <p className="pp-card__title">{p.title}</p>
-        </div>
-      </div>
-
-      {p.bio && <p className="pp-card__bio">{p.bio}</p>}
-
-      <Link href={`/psychologists/${p.slug ?? p.id}`} className="pp-btn pp-btn--ghost">
-        {t("psyList.profile")}
-      </Link>
-
-      <style>{`
-        .pp-card {
-          background: white;
-          border: 1px solid var(--fanus-line);
-          border-radius: 20px;
-          padding: 24px;
-          display: flex; flex-direction: column; gap: 16px;
-          transition: border-color .2s ease, box-shadow .2s ease;
-        }
-        .pp-card:hover {
-          border-color: var(--fanus-primary-200);
-          box-shadow: 0 12px 30px rgba(16,81,183,.08);
-        }
-
-        .pp-card__head { display: flex; gap: 14px; align-items: center; }
-
-        .pp-card__photo {
-          flex-shrink: 0;
-          width: 68px; height: 68px; border-radius: 50%;
-          overflow: hidden;
-          display: flex; align-items: center; justify-content: center;
-          background: var(--fanus-primary-50);
-          box-shadow: 0 0 0 4px var(--fanus-primary-50);
-        }
-        .pp-card__photo img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
-        .pp-card__initials {
-          font-family: var(--font-poppins), sans-serif;
-          font-size: 22px; font-weight: 600; color: var(--fanus-primary);
-        }
-
-        .pp-card__head-body { min-width: 0; }
-        .pp-card__name-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
-        .pp-card__verified {
-          display: inline-flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-          width: 18px; height: 18px;
-          color: var(--fanus-primary);
-        }
-        .pp-card__name {
-          font-size: 17px; line-height: 1.25; margin: 0; font-weight: 700;
-          color: var(--fanus-ink); transition: color .2s ease;
-        }
-        .pp-card__head-body a:hover .pp-card__name { color: var(--fanus-primary); }
-        .pp-card__title { font-size: 13.5px; font-weight: 600; color: var(--fanus-primary); margin: 3px 0 0; }
-
-        .pp-card__bio {
-          font-size: 14px; line-height: 1.6; color: var(--fanus-ink-2);
-          margin: 0;
-          display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-
-        .pp-btn {
-          align-self: flex-start; margin-top: auto;
-          display: inline-flex; align-items: center; justify-content: center;
-          height: 38px; padding: 0 18px; border-radius: 999px;
-          font-size: 13.5px; font-weight: 600;
-          font-family: inherit; cursor: pointer;
-          text-decoration: none; border: 1px solid var(--fanus-line);
-          background: var(--fanus-bg); color: var(--fanus-ink);
-          transition: border-color .2s, color .2s, background .2s;
-        }
-        .pp-btn:hover { background: white; border-color: var(--fanus-primary-300); color: var(--fanus-primary); }
-      `}</style>
-    </article>
-  );
-}
-

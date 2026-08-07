@@ -1,27 +1,11 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import type { Psychologist } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import PsychologistCard, { toPsyCardItem, type PsyCardItem } from "@/components/PsychologistCard";
 
-interface CardItem {
-  id: number;
-  slug: string;
-  name: string;
-  title: string;
-  specs: string[];
-  exp: number;
-  rating: string;
-  sessions: string;
-  lang: string;
-  sessionMinutes: number;
-  photoUrl?: string;
-  statsSource?: "FANUS_PLATFORM" | "PRIOR_EXPERIENCE";
-  displayedSessionCount?: number;
-  verified?: boolean;
-}
-
-const FALLBACK: CardItem[] = [
+const FALLBACK: PsyCardItem[] = [
   { id: 1, slug: "aysel-memmedova", name: "Aysel Məmmədova", title: "Klinik psixoloq",      specs: ["Narahatlıq", "OKD", "Panik"],  exp: 8,  rating: "4.9", sessions: "210", lang: "AZ, RU",      sessionMinutes: 50 },
   { id: 2, slug: "resad-quliyev",   name: "Rəşad Quliyev",   title: "Travma terapevti",     specs: ["Travma", "TSSP"],              exp: 11, rating: "4.8", sessions: "315", lang: "AZ, EN",      sessionMinutes: 50 },
   { id: 3, slug: "lale-huseynova",  name: "Lalə Hüseynova",  title: "Ailə terapevti",       specs: ["Münasibətlər", "Ailə"],        exp: 6,  rating: "4.7", sessions: "140", lang: "AZ",           sessionMinutes: 50 },
@@ -30,29 +14,10 @@ const FALLBACK: CardItem[] = [
   { id: 6, slug: "tural-babayev",   name: "Tural Babayev",   title: "Asılılıq mütəxəssisi", specs: ["Asılılıq", "İmpuls"],          exp: 10, rating: "4.7", sessions: "240", lang: "AZ, RU",      sessionMinutes: 50 },
 ];
 
-function getInitials(name: string) {
-  return name.split(" ").filter(w => w.length > 1).map(w => w[0]).slice(0, 2).join("");
-}
-
 export default function Psychologists({ psychologists }: { psychologists?: Psychologist[] }) {
   const { t } = useT();
-  const data: CardItem[] = (psychologists && psychologists.length > 0)
-    ? psychologists.slice(0, 6).map((p) => ({
-        id: p.id,
-        slug: String(p.id),
-        name: p.name,
-        title: p.title,
-        specs: p.specializations || [],
-        exp: parseInt(p.experience ?? "5", 10) || 5,
-        rating: p.rating ?? "—",
-        sessions: p.sessionsCount ?? "0",
-        lang: (p.languages || "AZ").split(",").map((l) => l.trim()).filter(Boolean).join(", ") || "AZ",
-        sessionMinutes: p.defaultSessionMinutes ?? 50,
-        photoUrl: p.photoUrl?.trim() || undefined,
-        statsSource: p.statsSource,
-        displayedSessionCount: p.displayedSessionCount,
-        verified: p.verified,
-      }))
+  const data: PsyCardItem[] = (psychologists && psychologists.length > 0)
+    ? psychologists.slice(0, 6).map((p) => toPsyCardItem(p, String(p.id)))
     : FALLBACK;
 
   return (
@@ -64,7 +29,7 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
         </div>
 
         <div className="fanus-psyc__grid">
-          {data.map((p) => <PsyCard key={p.id} p={p} />)}
+          {data.map((p) => <PsychologistCard key={p.id} p={p} />)}
         </div>
 
         <div className="fanus-psyc__foot">
@@ -93,238 +58,3 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
     </section>
   );
 }
-
-function PsyCard({ p }: { p: CardItem }) {
-  const { t } = useT();
-  const initials = getInitials(p.name);
-  const ratingNum = parseFloat(p.rating);
-  const filledStars = isFinite(ratingNum) ? Math.round(ratingNum) : 0;
-  const hasSessions = p.sessions && p.sessions !== "0" && p.sessions !== "—";
-  const sessionLabel = p.displayedSessionCount != null && p.displayedSessionCount > 0
-    ? (p.statsSource === "FANUS_PLATFORM"
-        ? `${t("psyStats.fanusSessions")}: ${p.displayedSessionCount}`
-        : `${t("psyStats.priorSessions")}: ${p.displayedSessionCount}`)
-    : (hasSessions ? t("psyList.sessionsCount", { count: p.sessions }) : null);
-
-  return (
-    <article className="pp-card">
-      <Link href={`/psychologists/${p.slug}`} className="pp-card__head" aria-label={t("pub.profileAria", { name: p.name })}>
-        <div className="pp-card__photo">
-          {p.photoUrl ? (
-             
-            <img src={p.photoUrl} alt={p.name} />
-          ) : (
-            <span className="pp-card__initials">{initials}</span>
-          )}
-        </div>
-
-        <div className="pp-card__head-body">
-          <div className="pp-card__name-row">
-            <h3 className="pp-card__name">{p.name}</h3>
-            {/* Nişan yalnız admin təsdiqləyəndə görünür (V140). Təsdiqlənməyən
-                psixoloq üçün heç nə yazılmır — «təsdiqlənməyib» etiketi mütəxəssisin
-                nüfuzuna zərbə vurardı. */}
-            {p.verified && (
-              <span className="pp-card__verified" title={t("pub.verifiedPsy")} aria-label={t("pub.verifiedPsy")}>
-                <ShieldIcon />
-              </span>
-            )}
-          </div>
-          <p className="pp-card__title">{p.title}</p>
-          <div className="pp-card__rating">
-            {filledStars > 0 ? (
-              <><Stars value={filledStars} label={t("pub.starsAria", { n: filledStars })} /><strong>{p.rating}</strong></>
-            ) : (
-              <strong style={{ color: "var(--oxford-60)", fontWeight: 700 }}>{t("pub.newBadge")}</strong>
-            )}
-            {sessionLabel && <span className="pp-card__rating-sub">{sessionLabel}</span>}
-          </div>
-        </div>
-      </Link>
-
-      {p.specs.length > 0 && (
-        <div className="pp-card__tags">
-          {p.specs.map((s, i) => (
-            <span key={i} className="pp-tag">{s}</span>
-          ))}
-        </div>
-      )}
-
-      <div className="pp-card__langs">
-        <GlobeIcon /> <span>{p.lang}</span>
-      </div>
-      <ul className="pp-card__meta">
-        <li><ClockIcon /> {p.exp} {t("psyList.yearsExp")}</li>
-        <li><HourIcon /> {t("psyList.minutes", { n: p.sessionMinutes })}</li>
-      </ul>
-
-      <div className="pp-card__foot">
-        <Link href={`/psychologists/${p.slug}`} className="pp-btn pp-btn--ghost">
-          {t("psyList.profile")}
-        </Link>
-        <Link href={`/book/${p.slug}`} className="pp-btn pp-btn--primary">
-          {t("psyList.bookCta")}
-        </Link>
-      </div>
-
-      <style>{`
-        .pp-card {
-          position: relative;
-          background: white;
-          border: 1px solid var(--fanus-line);
-          border-radius: 22px;
-          padding: 22px 22px 18px;
-          display: flex; flex-direction: column; gap: 14px;
-          overflow: hidden;
-          transition: border-color .2s ease, box-shadow .2s ease;
-        }
-        .pp-card:hover {
-          border-color: var(--fanus-primary-200);
-          box-shadow: 0 12px 30px rgba(16,81,183,.08);
-        }
-
-        .pp-card__head {
-          display: flex; gap: 14px; align-items: flex-start;
-          text-decoration: none; color: inherit;
-          position: relative; z-index: 1;
-        }
-        .pp-card__head:hover .pp-card__name { color: var(--fanus-primary); }
-
-        .pp-card__photo {
-          position: relative; flex-shrink: 0;
-          width: 76px; height: 76px; border-radius: 18px;
-          overflow: hidden;
-          display: flex; align-items: center; justify-content: center;
-          background: var(--fanus-primary-50);
-          box-shadow: 0 6px 18px rgba(16,81,183,.10);
-        }
-        .pp-card__photo img {
-          width: 100%; height: 100%; object-fit: cover; object-position: top;
-          display: block;
-        }
-        .pp-card__initials {
-          font-family: var(--font-poppins), sans-serif;
-          font-size: 28px; font-weight: 600; color: var(--fanus-primary);
-        }
-
-        .pp-card__head-body { flex: 1; min-width: 0; }
-        .pp-card__name-row {
-          display: flex; align-items: center; gap: 6px;
-          margin: 2px 0 4px;
-        }
-        .pp-card__verified {
-          display: inline-flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-          width: 18px; height: 18px;
-          color: var(--fanus-primary);
-        }
-        .pp-card__name {
-          font-size: 17px; line-height: 1.2;
-          margin: 0; font-weight: 700;
-          color: var(--fanus-ink);
-          transition: color .2s ease;
-          overflow: hidden; text-overflow: ellipsis;
-          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-          min-width: 0;
-        }
-        .pp-card__title {
-          font-size: 13px; color: var(--fanus-ink-3);
-          margin: 0 0 8px;
-          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .pp-card__rating {
-          display: inline-flex; align-items: center; gap: 8px;
-          font-size: 12.5px; color: var(--fanus-ink-3);
-        }
-        .pp-card__rating strong { color: var(--fanus-ink); font-weight: 700; }
-        .pp-card__rating-sub { color: var(--fanus-ink-3); }
-
-        .pp-card__tags {
-          display: flex; flex-wrap: wrap; gap: 6px;
-        }
-        .pp-tag {
-          flex-shrink: 0;
-          font-size: 11.5px; padding: 4px 10px; border-radius: 999px;
-          font-weight: 600; letter-spacing: .01em; white-space: nowrap;
-          background: var(--fanus-primary-50);
-          color: var(--fanus-primary);
-        }
-
-        .pp-card__langs {
-          display: flex; align-items: flex-start; gap: 6px;
-          font-size: 12px; color: var(--fanus-ink-3); line-height: 1.5;
-        }
-        .pp-card__langs svg { flex-shrink: 0; color: var(--fanus-primary); margin-top: 2px; }
-
-        .pp-card__meta {
-          list-style: none; padding: 0; margin: 0;
-          display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 10px;
-        }
-        .pp-card__meta li {
-          display: inline-flex; align-items: center; gap: 6px;
-          font-size: 12px; color: var(--fanus-ink-3);
-        }
-        .pp-card__meta li :first-child { color: var(--fanus-primary); flex-shrink: 0; }
-
-        .pp-card__foot {
-          margin-top: auto; display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 8px; padding-top: 14px;
-          border-top: 1px dashed var(--fanus-line);
-          position: relative; z-index: 1;
-        }
-        .pp-btn {
-          display: inline-flex; align-items: center; justify-content: center;
-          gap: 6px;
-          height: 40px; padding: 0 16px; border-radius: 12px;
-          font-size: 13px; font-weight: 600;
-          font-family: inherit; cursor: pointer;
-          text-decoration: none;
-          border: 1px solid transparent;
-          transition: transform .2s ease, box-shadow .2s ease, background .2s ease, color .2s ease;
-          white-space: nowrap;
-        }
-        .pp-btn--ghost {
-          background: var(--fanus-bg);
-          color: var(--fanus-ink);
-          border-color: var(--fanus-line);
-        }
-        .pp-btn--ghost:hover {
-          background: white;
-          border-color: var(--fanus-primary-300);
-          color: var(--fanus-primary);
-        }
-        .pp-btn--primary {
-          background: var(--fanus-primary);
-          color: white;
-        }
-        .pp-btn--primary:hover {
-          background: var(--fanus-primary-600, #0B3F90);
-          transform: translateY(-1px);
-          box-shadow: 0 8px 18px rgba(16,81,183,.22);
-        }
-
-        @media (max-width: 420px) {
-          .pp-card__foot { grid-template-columns: 1fr; }
-        }
-      `}</style>
-    </article>
-  );
-}
-
-function Stars({ value, label }: { value: number; label: string }) {
-  return (
-    <span style={{ display: "inline-flex", gap: 1 }} aria-label={label}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <svg key={n} width="12" height="12" viewBox="0 0 24 24" fill={n <= value ? "#C97D2E" : "#E4ECFA"}>
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-        </svg>
-      ))}
-    </span>
-  );
-}
-
-function GlobeIcon() { return <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18" /></svg>; }
-function ClockIcon() { return <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>; }
-function HourIcon() { return <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 22h14M5 2h14M17 22v-4.18a2 2 0 00-.59-1.41L13 13l3.41-3.41A2 2 0 0017 8.18V4M7 22v-4.18a2 2 0 01.59-1.41L11 13 7.59 9.59A2 2 0 017 8.18V4" /></svg>; }
-function ShieldIcon({ size = 16 }: { size?: number }) { return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></svg>; }

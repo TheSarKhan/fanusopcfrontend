@@ -1250,7 +1250,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 /** Təsdiqlənmiş psixoloqun tam təhsil siyahısı (V145) — diplom faylı varsa baxış linki daxil.
  *  `EducationList` (aşağıda) hələ TƏSDİQ GÖZLƏYƏN müraciətin JSON snapshot-unu göstərir. */
 function ProfileEducationList({ educations, fallback }: {
-  educations?: { id: number; institution: string; degree?: string; graduationYear?: string; diplomaUrl?: string }[];
+  educations?: { id?: number; institution: string; degree?: string; graduationYear?: string; diplomaUrl?: string }[];
   fallback?: { institution: string; degree: string; graduationYear: string } | null;
 }) {
   const rows = educations && educations.length > 0 ? educations : (fallback?.institution ? [{ id: 0, ...fallback }] : []);

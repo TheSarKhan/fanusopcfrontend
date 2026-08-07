@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Psychologist } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import PsychologistCard, { toPsyCardItem, type PsyCardItem } from "@/components/PsychologistCard";
+import HorizontalCardRail from "@/components/HorizontalCardRail";
 
 const FALLBACK: PsyCardItem[] = [
   { id: 1, slug: "aysel-memmedova", name: "Aysel Məmmədova", title: "Klinik psixoloq",      specs: ["Narahatlıq", "OKD", "Panik"],  exp: 8,  rating: "4.9", sessions: "210", lang: "AZ, RU",      sessionMinutes: 50 },
@@ -28,9 +29,9 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
           <p className="fanus-psyc__lead">{t("psyList.lead")}</p>
         </div>
 
-        <div className="fanus-psyc__grid">
+        <HorizontalCardRail className="fanus-psyc__grid">
           {data.map((p) => <PsychologistCard key={p.id} p={p} />)}
-        </div>
+        </HorizontalCardRail>
 
         <div className="fanus-psyc__foot">
           <Link href="/psychologists" className="fanus-btn fanus-btn-ghost">
@@ -50,9 +51,13 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
           margin: 0;
         }
         .fanus-psyc__lead { margin: 12px auto 0; max-width: 540px; font-size: 17px; color: var(--fanus-ink-3); }
-        .fanus-psyc__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
-        @media (max-width: 980px) { .fanus-psyc__grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 640px) { .fanus-psyc__grid { grid-template-columns: 1fr; } }
+        .fanus-psyc__grid { display: flex; gap: 22px; overflow-x: auto; padding: 2px 2px 18px; scroll-snap-type: x proximity; }
+        .fanus-psyc__grid > .pc-card { flex: 0 0 min(380px, calc(100vw - 48px)); scroll-snap-align: start; }
+        .card-rail { scrollbar-width: thin; scrollbar-color: var(--fanus-primary-200) transparent; cursor: grab; touch-action: pan-x; user-select: none; }
+        .card-rail--dragging { cursor: grabbing; scroll-snap-type: none; }
+        .card-rail--dragging a { pointer-events: none; }
+        .card-rail::-webkit-scrollbar { height: 7px; }
+        .card-rail::-webkit-scrollbar-thumb { background: var(--fanus-primary-200); border-radius: 999px; }
         .fanus-psyc__foot { display: flex; justify-content: center; margin-top: 40px; }
       `}</style>
     </section>

@@ -5,6 +5,7 @@ import Deco from "@/components/Deco";
 import Breadcrumb from "@/components/Breadcrumb";
 import SessionRequestModal from "@/components/SessionRequestModal";
 import PsychologistCard, { toPsyCardItem, type PsyCardItem } from "@/components/PsychologistCard";
+import HorizontalCardRail from "@/components/HorizontalCardRail";
 import type { Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -95,9 +96,9 @@ function PsycList({ items }: { items: PsyCardItem[] }) {
           <span className="pp-list__count">{t("pub.specialistCount", { n: items.length })}</span>
         </div>
 
-        <div className="pp-grid">
+        <HorizontalCardRail className="pp-grid">
           {items.map((p) => <PsychologistCard key={p.id} p={p} />)}
-        </div>
+        </HorizontalCardRail>
       </div>
 
       <style>{`
@@ -107,10 +108,13 @@ function PsycList({ items }: { items: PsyCardItem[] }) {
         .pp-list__count { font-size: 14px; color: var(--fanus-ink-3); }
         .pp-list__count strong { color: var(--fanus-ink); font-weight: 700; }
 
-        .pp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
-
-        @media (max-width: 980px) { .pp-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 640px) { .pp-grid { grid-template-columns: 1fr; } }
+        .pp-grid { display: flex; gap: 22px; overflow-x: auto; padding: 2px 2px 18px; scroll-snap-type: x proximity; }
+        .pp-grid > .pc-card { flex: 0 0 min(380px, calc(100vw - 48px)); scroll-snap-align: start; }
+        .card-rail { scrollbar-width: thin; scrollbar-color: var(--fanus-primary-200) transparent; cursor: grab; touch-action: pan-x; user-select: none; }
+        .card-rail--dragging { cursor: grabbing; scroll-snap-type: none; }
+        .card-rail--dragging a { pointer-events: none; }
+        .card-rail::-webkit-scrollbar { height: 7px; }
+        .card-rail::-webkit-scrollbar-thumb { background: var(--fanus-primary-200); border-radius: 999px; }
       `}</style>
     </section>
   );

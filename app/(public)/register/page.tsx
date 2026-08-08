@@ -12,6 +12,7 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import AuthPanelVideo from "@/components/AuthPanelVideo";
 import type { MessageKey } from "@/lib/i18n/messages";
+import { LANGUAGE_OPTIONS, SESSION_TYPE_OPTIONS } from "@/lib/profileOptions";
 
 /* ─── Eye toggle ─── */
 function EyeIcon({ open }: { open: boolean }) {
@@ -42,8 +43,6 @@ const PANEL: Record<"patient" | "psychologist", { titleKey: MessageKey; subKey: 
   },
 };
 
-const SESSION_TYPES = ["Fərdi seans", "Cütlük terapiyası", "Qrup terapiyası", "Uşaq terapiyası"];
-const LANGUAGE_OPTIONS = ["Azərbaycan dili", "Rus dili", "İngilis dili", "Türk dili", "Alman dili", "Fransız dili"];
 const DEGREE_OPTIONS = ["Bakalavr", "Magistr", "PhD / Doktor", "Rezident", "Digər"];
 
 /**
@@ -720,7 +719,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
           </Field>
 
           <Field label={t("regPage.sessionTypes")}>
-            <ChipToggle options={SESSION_TYPES} selected={professional.sessionTypes}
+            <ChipToggle options={SESSION_TYPE_OPTIONS} selected={professional.sessionTypes}
               onChange={v => setProfessional(p => ({ ...p, sessionTypes: v }))} />
           </Field>
 

@@ -9,6 +9,7 @@ import {
 import ProfileShareButtons from "@/components/ProfileShareButtons";
 import { TOPIC_CODES, TOPIC_AZ_LABELS, topicKey } from "@/components/TopicPicker";
 import { FlagAZ, FlagRU, FlagEN, FlagTR, FlagDE, FlagFR } from "@/components/FlagIcons";
+import { LANGUAGE_OPTIONS, SESSION_TYPE_OPTIONS } from "@/lib/profileOptions";
 import { psychologistApi, type Psychologist, type PsyEducationItem, type PsyContactLinkItem, type PsyContactPlatform } from "@/lib/api";
 import { appUrl } from "@/lib/appUrl";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -28,9 +29,10 @@ function initialsOf(name?: string | null): string {
   return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
 }
 
-/* Dillər — sərbəst mətn yox, pill seçimi (bax İxtisaslar/mövzular pilləri).
- * `languages` backend-də tək string sahədir, ona görə seçim vergüllə birləşdirilir. */
-const LANGUAGE_OPTIONS = ["Azərbaycan dili", "Rus dili", "İngilis dili", "Türk dili", "Alman dili", "Fransız dili"];
+/** Vergüllə saxlanan sahələr üçün ümumi parse (languages, sessionTypes). */
+function parseCsv(s: string): string[] {
+  return s.split(",").map(x => x.trim()).filter(Boolean);
+}
 const LANGUAGE_FLAGS: Record<string, () => ReactElement> = {
   "Azərbaycan dili": FlagAZ,
   "Rus dili": FlagRU,
@@ -39,10 +41,6 @@ const LANGUAGE_FLAGS: Record<string, () => ReactElement> = {
   "Alman dili": FlagDE,
   "Fransız dili": FlagFR,
 };
-
-function parseLanguages(s: string): string[] {
-  return s.split(",").map(x => x.trim()).filter(Boolean);
-}
 
 export default function PsychologPublicProfilePage() {
   const { t } = useT();
@@ -98,8 +96,8 @@ function PublicProfileCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Par
   const { t } = useT();
   const [title, setTitle] = useState(me.title ?? "");
   const [bio, setBio] = useState(me.bio ?? "");
-  const [languages, setLanguages] = useState<string[]>(() => parseLanguages(me.languages ?? ""));
-  const [sessionTypes, setSessionTypes] = useState(me.sessionTypes ?? "");
+  const [languages, setLanguages] = useState<string[]>(() => parseCsv(me.languages ?? ""));
+  const [sessionTypes, setSessionTypes] = useState<string[]>(() => parseCsv(me.sessionTypes ?? ""));
   const [topics, setTopics] = useState<string[]>(me.topics ?? []);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
@@ -107,8 +105,8 @@ function PublicProfileCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Par
   const dirty =
     title.trim() !== (me.title ?? "") ||
     bio.trim() !== (me.bio ?? "") ||
-    JSON.stringify(languages) !== JSON.stringify(parseLanguages(me.languages ?? "")) ||
-    sessionTypes.trim() !== (me.sessionTypes ?? "") ||
+    JSON.stringify(languages) !== JSON.stringify(parseCsv(me.languages ?? "")) ||
+    JSON.stringify(sessionTypes) !== JSON.stringify(parseCsv(me.sessionTypes ?? "")) ||
     JSON.stringify(topics) !== JSON.stringify(me.topics ?? []);
 
   const toggleTopic = (code: string) => {
@@ -129,6 +127,15 @@ function PublicProfileCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Par
     });
   };
 
+  const toggleSessionType = (st: string) => {
+    setSessionTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(st)) next.delete(st); else next.add(st);
+      // Sıra sabit qalsın deyə SESSION_TYPE_OPTIONS sırası ilə qaytarılır, sonra əlavə (custom) növlər.
+      return [...SESSION_TYPE_OPTIONS.filter(s => next.has(s)), ...[...next].filter(s => !SESSION_TYPE_OPTIONS.includes(s))];
+    });
+  };
+
   const save = async () => {
     if (topics.length === 0) { setErr(t("prof.pubErrSpecs")); return; }
     setErr("");
@@ -142,7 +149,7 @@ function PublicProfileCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Par
         title: title.trim(),
         bio: bio.trim(),
         languages: languages.join(", "),
-        sessionTypes: sessionTypes.trim(),
+        sessionTypes: sessionTypes.join(", "),
         topics,
         specializations,
       });
@@ -211,10 +218,29 @@ function PublicProfileCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Par
           </div>
         </div>
 
-        <label style={{ display: "block" }}>
+        <div>
           <span style={labelStyle}>{t("prof.pubSessionTypes")}</span>
-          <input style={inputStyle} value={sessionTypes} onChange={e => setSessionTypes(e.target.value)} placeholder={t("prof.pubSessionTypesPh")} />
-        </label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+            {[...SESSION_TYPE_OPTIONS, ...sessionTypes.filter(s => !SESSION_TYPE_OPTIONS.includes(s))].map(st => {
+              const on = sessionTypes.includes(st);
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => toggleSessionType(st)}
+                  aria-pressed={on}
+                  style={{
+                    fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 20,
+                    border: on ? `1px solid ${PC.ink}` : `1px solid ${PC.border2}`,
+                    background: on ? PC.panel : "#fff", color: on ? PC.ink : PC.soft, cursor: "pointer",
+                  }}
+                >
+                  {st}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <div>
           <span style={labelStyle}>{t("prof.pubSpecs")}</span>

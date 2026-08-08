@@ -4,7 +4,7 @@
 
 type FlagProps = { width?: number; height?: number };
 
-export function FlagAZ({ width = 20, height = 14 }: FlagProps) {
+export function FlagAZ({ width = 20, height = 14 }: FlagProps = {}) {
   return (
     <svg width={width} height={height} viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
       <rect width="30" height="20" fill="#0092BC" />
@@ -17,7 +17,7 @@ export function FlagAZ({ width = 20, height = 14 }: FlagProps) {
   );
 }
 
-export function FlagRU({ width = 20, height = 14 }: FlagProps) {
+export function FlagRU({ width = 20, height = 14 }: FlagProps = {}) {
   return (
     <svg width={width} height={height} viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
       <rect width="30" height="20" fill="#fff" />
@@ -27,7 +27,7 @@ export function FlagRU({ width = 20, height = 14 }: FlagProps) {
   );
 }
 
-export function FlagEN({ width = 20, height = 14 }: FlagProps) {
+export function FlagEN({ width = 20, height = 14 }: FlagProps = {}) {
   return (
     <svg width={width} height={height} viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
       <rect width="60" height="40" fill="#012169" />
@@ -39,7 +39,7 @@ export function FlagEN({ width = 20, height = 14 }: FlagProps) {
   );
 }
 
-export function FlagTR({ width = 20, height = 14 }: FlagProps) {
+export function FlagTR({ width = 20, height = 14 }: FlagProps = {}) {
   return (
     <svg width={width} height={height} viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
       <rect width="30" height="20" fill="#E30A17" />
@@ -50,7 +50,7 @@ export function FlagTR({ width = 20, height = 14 }: FlagProps) {
   );
 }
 
-export function FlagDE({ width = 20, height = 14 }: FlagProps) {
+export function FlagDE({ width = 20, height = 14 }: FlagProps = {}) {
   return (
     <svg width={width} height={height} viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
       <rect width="30" height="6.67" fill="#000" />
@@ -60,7 +60,7 @@ export function FlagDE({ width = 20, height = 14 }: FlagProps) {
   );
 }
 
-export function FlagFR({ width = 20, height = 14 }: FlagProps) {
+export function FlagFR({ width = 20, height = 14 }: FlagProps = {}) {
   return (
     <svg width={width} height={height} viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
       <rect width="10" height="20" fill="#0055A4" />

@@ -391,6 +391,11 @@ export interface Psychologist {
   /** Bir neçə təhsil qeydi (V145) — university/degree/graduationYear-ı əvəz edir.
    *  diplomaUrl yalnız admin kontekstində dolur, public cavabda həmişə boşdur. */
   educations?: { id?: number; institution: string; degree?: string; graduationYear?: string; diplomaUrl?: string }[];
+  /** Psixoloqun özü əlavə etdiyi sosial media/əlaqə linkləri (V147) — publikdə görünür. */
+  contactLinks?: { id?: number; platform: PsyContactPlatform; url: string }[];
+  /** Landing page seçimi (V148) — admin "Saytda görünüş" tabından təyin edir. */
+  featured?: boolean;
+  featuredOrder?: number | null;
 }
 
 /** Psixoloqun öz profilini idarə etdiyi tam görünüş (GET/PUT /psychologist/me/profile). */
@@ -408,6 +413,13 @@ export interface PsyCertificateItem {
   year?: string;
   type: "CERTIFICATE" | "SEMINAR";
 }
+export type PsyContactPlatform =
+  "FACEBOOK" | "INSTAGRAM" | "LINKEDIN" | "WHATSAPP" | "YOUTUBE" | "TIKTOK" | "WEBSITE" | "OTHER";
+export interface PsyContactLinkItem {
+  id?: number;
+  platform: PsyContactPlatform;
+  url: string;
+}
 export interface PsyFullProfile {
   id: number; userId?: number | null;
   name: string; firstName?: string; lastName?: string;
@@ -415,6 +427,7 @@ export interface PsyFullProfile {
   bio?: string; languages?: string; sessionTypes?: string;
   specializations: string[]; topics: string[];
   educations: PsyEducationItem[]; certificates: PsyCertificateItem[];
+  contactLinks: PsyContactLinkItem[];
   accentColor?: string; bgColor?: string;
   statsSource?: string; fanusSessionCount?: number; priorExperienceSessions?: number;
 }
@@ -423,6 +436,7 @@ export interface PsySelfProfileUpdate {
   bio?: string; languages?: string; sessionTypes?: string;
   specializations?: string[]; topics?: string[];
   educations?: PsyEducationItem[]; certificates?: PsyCertificateItem[];
+  contactLinks?: PsyContactLinkItem[];
 }
 
 // Modul A — public/pasiyent kartda göstərilən paket xülasəsi. Qiymət sahələri
@@ -800,6 +814,11 @@ export interface PsychologistApplication {
 // ─── Public API ───────────────────────────────────────────────────────────────
 export const getPsychologists = async (): Promise<Psychologist[]> => {
   const list = await get<Psychologist[]>("/psychologists", { next: { revalidate: 30, tags: ["psychologists"] } });
+  return withSlugs(list);
+};
+/** Landing page (V148) — admin seçdiyi ≤6 psixoloq, seçdiyi sırada. */
+export const getFeaturedPsychologists = async (): Promise<Psychologist[]> => {
+  const list = await get<Psychologist[]>("/psychologists/featured", { next: { revalidate: 30, tags: ["psychologists"] } });
   return withSlugs(list);
 };
 export const getStats = () => get<Stat[]>("/stats");
@@ -1618,6 +1637,9 @@ export interface AdminPsychologistRow {
   /** Planın bitmə tarixi (V144); null → müddətsiz. */
   planExpiresAt?: string | null;
   verified?: boolean;
+  /** Landing page seçimi (V148). */
+  featured?: boolean;
+  featuredOrder?: number | null;
 }
 // Psixoloq planı — modul aç/bağla şablonu.
 export interface PsychologistPlan {
@@ -1628,6 +1650,8 @@ export interface PsychologistPlan {
   active: boolean;
   displayOrder: number;
   assignedCount: number;
+  /** Bu plana təyin olunmuş psixoloqun reytinq balına əlavə faiz bonusu (məs. 10 = +10%). */
+  rankingBonusPct: number;
 }
 export interface PsychologistPlanReq {
   name: string;
@@ -1635,6 +1659,7 @@ export interface PsychologistPlanReq {
   tikColor?: string;
   active?: boolean;
   displayOrder?: number;
+  rankingBonusPct?: number;
 }
 export interface PagedPsychologistsResponse {
   content: AdminPsychologistRow[];
@@ -1697,6 +1722,18 @@ export const adminApi = {
   setPsychologistVerified: (id: number, verified: boolean) =>
     authedRequest<Psychologist>("PATCH", `/admin/psychologists/${id}/verified`, { verified })
       .then(p => { revalidatePsychologistsCache(); return p; }),
+  // V148 — landing seçimi ("Saytda görünüş" tabı) + public siyahının sıralama rejimi
+  getFeaturedPsychologists: () => authedRequest<AdminPsychologistRow[]>("GET", "/admin/psychologists/featured"),
+  setFeaturedPsychologists: (ids: number[]) =>
+    authedRequest<AdminPsychologistRow[]>("PUT", "/admin/psychologists/featured", { ids })
+      .then(r => { revalidatePsychologistsCache(); return r; }),
+  getPsychologistSortMode: () => authedRequest<{ mode: "MANUAL" | "ALGORITHM" }>("GET", "/admin/psychologists/sort-mode"),
+  setPsychologistSortMode: (mode: "MANUAL" | "ALGORITHM") =>
+    authedRequest<{ mode: string }>("PUT", "/admin/psychologists/sort-mode", { mode })
+      .then(r => { revalidatePsychologistsCache(); return r; }),
+  reorderPsychologists: (ids: number[]) =>
+    authedRequest<void>("PUT", "/admin/psychologists/reorder", { ids })
+      .then(r => { revalidatePsychologistsCache(); return r; }),
   // Modul C — Fanus/Adi tip + Fanus qiymət/paket idarəsi (ayrıca endpointlər;
   // PsychologistRequest pozisional record-a toxunulmur)
   setPsyType: (psyId: number, type: "FANUS" | "NORMAL") =>

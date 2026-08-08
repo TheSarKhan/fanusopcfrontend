@@ -18,7 +18,7 @@ const FALLBACK: PsyCardItem[] = [
 export default function Psychologists({ psychologists }: { psychologists?: Psychologist[] }) {
   const { t } = useT();
   const data: PsyCardItem[] = (psychologists && psychologists.length > 0)
-    ? psychologists.slice(0, 6).map((p) => toPsyCardItem(p, String(p.id)))
+    ? psychologists.map((p) => toPsyCardItem(p, String(p.id)))
     : FALLBACK;
 
   return (

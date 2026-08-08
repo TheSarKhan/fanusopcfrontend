@@ -6,7 +6,7 @@ import Testimonials from "@/components/Testimonials";
 import Articles from "@/components/Articles";
 import FAQ from "@/components/FAQ";
 import {
-  getPsychologists,
+  getFeaturedPsychologists,
   getBlogPosts,
   getFaqs,
   getTestimonials,
@@ -14,7 +14,7 @@ import {
 
 export default async function HomePage() {
   const [psychologists, blogPosts, faqs, testimonials] = await Promise.all([
-    getPsychologists().catch(() => []),
+    getFeaturedPsychologists().catch(() => []),
     getBlogPosts().catch(() => []),
     getFaqs().catch(() => []),
     getTestimonials().catch(() => []),

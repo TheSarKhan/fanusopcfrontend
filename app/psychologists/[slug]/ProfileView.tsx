@@ -87,6 +87,28 @@ function BookIcon({ size = 22 }: { size?: number }) {
   );
 }
 
+function ContactPlatformIcon({ platform, size = 16 }: { platform: string; size?: number }) {
+  const p = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  switch (platform) {
+    case "FACEBOOK":
+      return <svg {...p}><path d="M14 9h3V5.5h-3C11.8 5.5 10 7.3 10 9.5V12H7.5v3.5H10V22h3.5v-6.5H16l.7-3.5h-3.2V9.5c0-.3.3-.5.5-.5z" /></svg>;
+    case "INSTAGRAM":
+      return <svg {...p}><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" /></svg>;
+    case "LINKEDIN":
+      return <svg {...p}><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M8 10.5V17M8 7.2v.1M12 17v-4c0-1.4 1-2.5 2.5-2.5S17 11.6 17 13v4" /></svg>;
+    case "WHATSAPP":
+      return <svg {...p}><path d="M4 20l1.4-4A8 8 0 1 1 9 19.6L4 20z" /><path d="M8.5 9.5c0 3.5 2.5 6 6 6" strokeDasharray="0" /></svg>;
+    case "YOUTUBE":
+      return <svg {...p}><rect x="2.5" y="5.5" width="19" height="13" rx="4" /><path d="M10.5 9.5l5 2.5-5 2.5z" fill="currentColor" stroke="none" /></svg>;
+    case "TIKTOK":
+      return <svg {...p}><path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5" /><path d="M14 3c.5 2.5 2.2 4 4.5 4.3" /></svg>;
+    case "WEBSITE":
+      return <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.4 2.5 3.7 5.7 3.7 9s-1.3 6.5-3.7 9c-2.4-2.5-3.7-5.7-3.7-9S9.6 5.5 12 3z" /></svg>;
+    default:
+      return <svg {...p}><path d="M9 15l6-6" /><path d="M10 5.5l1-1a4 4 0 0 1 5.5 5.5l-1 1M14 18.5l-1 1a4 4 0 0 1-5.5-5.5l1-1" /></svg>;
+  }
+}
+
 const layoutCss = `
   .ppx-grid { display: grid; grid-template-columns: minmax(0,1fr) 350px; grid-template-areas: "hero book" "body book"; gap: 22px; align-items: start; }
   .ppx-hero { grid-area: hero; }
@@ -184,8 +206,19 @@ export default function ProfileView({
                   )}
                 </div>
                 <div style={{ fontSize: 15, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 16 }}>{psychologist.title}</div>
-                <div style={{ marginBottom: 18 }}>
+                <div style={{ marginBottom: 18, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
                   <ProfileShareButtons url={appUrl(`/psychologists/${psychologist.slug}`)} name={psychologist.name} />
+                  {psychologist.contactLinks && psychologist.contactLinks.length > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {psychologist.contactLinks.map((c) => (
+                        <a key={c.id ?? c.url} href={c.url} target="_blank" rel="noopener noreferrer"
+                          title={t(`psyProfile.social${c.platform.charAt(0)}${c.platform.slice(1).toLowerCase()}` as MessageKey)}
+                          style={{ width: 32, height: 32, borderRadius: "50%", background: "#fff", border: "1px solid #D6E2F7", color: "var(--brand)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                          <ContactPlatformIcon platform={c.platform} size={15} />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 18 }}>
                   {(() => {

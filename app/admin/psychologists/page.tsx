@@ -4,7 +4,7 @@
 //  FAZA 1: Müraciətlər tabı — server pagination + filtr, review Modal, fayl
 //  preview/download, təsdiq/rədd. Digər iki tab sonrakı fazalarda qurulur.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   adminApi,
   type PsychologistApplication,
@@ -54,7 +54,7 @@ import {
 } from "@/components/ui";
 
 // ── Tiplər / sabitlər ────────────────────────────────────────────
-type MainTab = "applications" | "psychologists" | "plans";
+type MainTab = "applications" | "psychologists" | "display" | "plans";
 type AppFilter = "all" | "PENDING" | "APPROVED" | "REJECTED";
 
 const APP_FILTERS: { key: AppFilter; label: string }[] = [
@@ -204,6 +204,7 @@ export default function PsychologistsPage() {
   const mainTabs: TabItem<MainTab>[] = [
     { key: "psychologists", label: "Psixoloqlar" },
     { key: "applications", label: "Müraciətlər", count: counts.pending || undefined },
+    { key: "display", label: "Saytda görünüş" },
     { key: "plans", label: "Planlar" },
   ];
 
@@ -270,6 +271,9 @@ export default function PsychologistsPage() {
 
       {/* ── Psixoloqlar ── */}
       {mainTab === "psychologists" && <PsychologistsTab onPreview={setPreview} />}
+
+      {/* ── Saytda görünüş ── */}
+      {mainTab === "display" && <DisplayTab />}
 
       {/* ── Planlar ── */}
       {mainTab === "plans" && <PlansTab />}
@@ -353,6 +357,7 @@ const PLAN_MODULES: { key: string; label: string }[] = [
   { key: "community", label: "İcma" },
   { key: "resources", label: "Resurslar" },
   { key: "reviews", label: "Rəylər" },
+  { key: "contactLinks", label: "Əlaqə/sosial media linkləri (ictimai profil)" },
 ];
 const PLAN_MODULE_LABELS: Record<string, string> = Object.fromEntries(PLAN_MODULES.map((m) => [m.key, m.label]));
 
@@ -941,6 +946,357 @@ function PsyPlanTab({ row, onChanged }: { row: AdminPsychologistRow; onChanged: 
 }
 
 // ════════════════════════════════════════════════════════════════
+//  Saytda görünüş tabı (V148) — landing seçimi + sıralama rejimi
+// ════════════════════════════════════════════════════════════════
+
+/** 6-nöqtəli grip ikonası — sürüklə-sırala tutacağı (bax GripIcon, psycholog/calendar). */
+function GripDots() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <circle cx="9" cy="5" r="1.7" /><circle cx="15" cy="5" r="1.7" />
+      <circle cx="9" cy="12" r="1.7" /><circle cx="15" cy="12" r="1.7" />
+      <circle cx="9" cy="19" r="1.7" /><circle cx="15" cy="19" r="1.7" />
+    </svg>
+  );
+}
+
+/** Native HTML5 drag-and-drop ilə sıralanan sətir siyahısı — item-lar arası ID əsaslı sıra dəyişir. */
+function ReorderableList<T extends { id: number }>({
+  items, onReorder, renderRow, draggable = true,
+}: {
+  items: T[];
+  onReorder: (ids: number[]) => void;
+  renderRow: (item: T) => ReactNode;
+  draggable?: boolean;
+}) {
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [overId, setOverId] = useState<number | null>(null);
+
+  const onDrop = (targetId: number) => {
+    if (draggingId === null || draggingId === targetId) { setDraggingId(null); setOverId(null); return; }
+    const from = items.findIndex((it) => it.id === draggingId);
+    const to = items.findIndex((it) => it.id === targetId);
+    if (from === -1 || to === -1) { setDraggingId(null); setOverId(null); return; }
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setDraggingId(null); setOverId(null);
+    onReorder(next.map((it) => it.id));
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      {items.map((item) => (
+        <div
+          key={item.id}
+          draggable={draggable}
+          onDragStart={() => setDraggingId(item.id)}
+          onDragOver={(e) => { if (draggable) { e.preventDefault(); setOverId(item.id); } }}
+          onDragEnd={() => { setDraggingId(null); setOverId(null); }}
+          onDrop={(e) => { e.preventDefault(); onDrop(item.id); }}
+          style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "8px 4px",
+            borderBottom: "1px solid var(--hairline)",
+            background: overId === item.id ? "var(--surface-2)" : "transparent",
+            opacity: draggingId === item.id ? 0.5 : 1,
+          }}
+        >
+          {draggable && (
+            <span style={{ color: "var(--oxford-40)", cursor: "grab", flexShrink: 0, display: "flex" }} aria-hidden>
+              <GripDots />
+            </span>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>{renderRow(item)}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DisplayTab() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <FeaturedPickerCard />
+      <SortModeCard />
+    </div>
+  );
+}
+
+/** Bölmə 1 — landing page üçün ≤6 psixoloq seçimi + sırası. */
+function FeaturedPickerCard() {
+  const [selected, setSelected] = useState<AdminPsychologistRow[] | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [q, setQ] = useState("");
+  const dq = useDebounce(q, 300);
+  const [results, setResults] = useState<AdminPsychologistRow[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const load = useCallback(() => {
+    adminApi.getFeaturedPsychologists().then(setSelected).catch(() => setSelected([]));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!dq.trim()) { setResults([]); return; }
+    setSearching(true);
+    adminApi.getPsychologistsPaged({ q: dq, status: "active", size: 8, sort: "name", dir: "asc" })
+      .then((res) => setResults(res.content))
+      .catch(() => setResults([]))
+      .finally(() => setSearching(false));
+  }, [dq]);
+
+  const selectedIds = new Set((selected ?? []).map((p) => p.id));
+  const dirty = selected !== null;
+
+  const reorderLocal = (ids: number[]) => {
+    setSelected((prev) => {
+      if (!prev) return prev;
+      const byId = new Map(prev.map((p) => [p.id, p]));
+      return ids.map((id) => byId.get(id)!).filter(Boolean);
+    });
+  };
+
+  const add = (p: AdminPsychologistRow) => {
+    setSelected((prev) => {
+      const list = prev ?? [];
+      if (list.length >= 6 || list.some((x) => x.id === p.id)) return list;
+      return [...list, p];
+    });
+    setQ("");
+  };
+
+  const remove = (id: number) => {
+    setSelected((prev) => (prev ?? []).filter((x) => x.id !== id));
+  };
+
+  const save = async () => {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      const saved = await adminApi.setFeaturedPsychologists(selected.map((p) => p.id));
+      setSelected(saved);
+      toast("Landing seçimi yadda saxlanıldı", "success");
+    } catch (e) { toast((e as Error).message, "error"); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Card>
+      <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--hairline)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ fontWeight: 700 }}>Ön səhifə — 6 psixoloq</div>
+          <div className="fx-subtitle">Landing page-də görünəcək psixoloqlar və sırası. Seçilməyəndə bu bölmə boş qalır.</div>
+        </div>
+        <Button variant="primary" size="sm" disabled={saving || !dirty} onClick={save}>
+          {saving ? "Saxlanır…" : "Saxla"}
+        </Button>
+      </div>
+      <CardPad>
+        {selected === null ? (
+          <div className="fx-subtitle" style={{ textAlign: "center", padding: 16 }}>Yüklənir…</div>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span className="fx-label" style={{ marginBottom: 0 }}>Seçilmiş ({selected.length}/6)</span>
+            </div>
+            {selected.length === 0 ? (
+              <EmptyBlock boxed title="Hələ seçim yoxdur" body="Aşağıdan axtarıb əlavə edin — landing page bu siyahını göstərəcək." />
+            ) : (
+              <ReorderableList
+                items={selected}
+                onReorder={reorderLocal}
+                renderRow={(p) => (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <Avatar name={p.name} src={p.photoUrl} size="sm" />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div className="fx-row__title">{p.name}</div>
+                      <div className="fx-subtitle">{p.title}</div>
+                    </div>
+                    {!p.active && <Status tone="muted">Deaktiv</Status>}
+                    <IconButton aria-label="Siyahıdan sil" onClick={() => remove(p.id)}>
+                      <PanelIcon name="x" size={15} />
+                    </IconButton>
+                  </div>
+                )}
+              />
+            )}
+
+            <div style={{ marginTop: 18 }}>
+              <span className="fx-label">Psixoloq əlavə et</span>
+              <SearchInput
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={selected.length >= 6 ? "Maksimum 6 psixoloq seçilib" : "Ad üzrə axtar"}
+                aria-label="Psixoloq axtar"
+                autoComplete="off"
+                disabled={selected.length >= 6}
+              />
+              {dq.trim() && selected.length < 6 && (
+                <div style={{ marginTop: 8, border: "1px solid var(--hairline)", borderRadius: 10, overflow: "hidden" }}>
+                  {searching ? (
+                    <div className="fx-subtitle" style={{ padding: 10 }}>Axtarılır…</div>
+                  ) : results.filter((r) => !selectedIds.has(r.id)).length === 0 ? (
+                    <div className="fx-subtitle" style={{ padding: 10 }}>Nəticə tapılmadı</div>
+                  ) : (
+                    results.filter((r) => !selectedIds.has(r.id)).map((r) => (
+                      <div
+                        key={r.id}
+                        onClick={() => add(r)}
+                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", cursor: "pointer", borderBottom: "1px solid var(--hairline)" }}
+                      >
+                        <Avatar name={r.name} src={r.photoUrl} size="sm" />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div className="fx-row__title">{r.name}</div>
+                          <div className="fx-subtitle">{r.title}</div>
+                        </div>
+                        <IconButton aria-label="Əlavə et" onClick={(e) => { e.stopPropagation(); add(r); }}>
+                          <PanelIcon name="plus" size={15} />
+                        </IconButton>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </CardPad>
+    </Card>
+  );
+}
+
+const SORT_MODE_ITEMS = [
+  { key: "MANUAL" as const, label: "Əl ilə" },
+  { key: "ALGORITHM" as const, label: "Alqoritm" },
+];
+
+/** Bölmə 2 — /psychologists (tam siyahı) sıralama rejimi: əl ilə və ya alqoritm. */
+function SortModeCard() {
+  const [mode, setMode] = useState<"MANUAL" | "ALGORITHM" | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
+  // Əl ilə rejim — tam (səhifələnməmiş) siyahı, çünki reorder bütün id-ləri əhatə etməlidir.
+  const [order, setOrder] = useState<Psychologist[] | null>(null);
+  // Alqoritm rejimi — yalnız önizləmə, backend-in real `ranking_score DESC` sırası ilə.
+  const [algoPreview, setAlgoPreview] = useState<AdminPsychologistRow[] | null>(null);
+
+  useEffect(() => {
+    adminApi.getPsychologistSortMode().then((r) => setMode(r.mode)).catch(() => setMode("ALGORITHM"));
+  }, []);
+
+  useEffect(() => {
+    if (mode === "MANUAL" && order === null) {
+      adminApi.getPsychologists()
+        .then((list) => setOrder([...list].sort((a, b) => a.displayOrder - b.displayOrder)))
+        .catch(() => setOrder([]));
+    }
+    if (mode === "ALGORITHM" && algoPreview === null) {
+      adminApi.getPsychologistsPaged({ sort: "rankingScore", dir: "desc", size: 100 })
+        .then((res) => setAlgoPreview(res.content))
+        .catch(() => setAlgoPreview([]));
+    }
+  }, [mode, order, algoPreview]);
+
+  const changeMode = async (next: "MANUAL" | "ALGORITHM") => {
+    try {
+      await adminApi.setPsychologistSortMode(next);
+      setMode(next);
+      toast(next === "MANUAL" ? "Sıralama əl ilə rejiminə keçdi" : "Sıralama alqoritm rejiminə keçdi", "success");
+    } catch (e) { toast((e as Error).message, "error"); }
+  };
+
+  const reorderLocal = (ids: number[]) => {
+    setOrder((prev) => {
+      if (!prev) return prev;
+      const byId = new Map(prev.map((p) => [p.id, p]));
+      return ids.map((id) => byId.get(id)!).filter(Boolean);
+    });
+  };
+
+  const saveOrder = async () => {
+    if (!order) return;
+    setSavingOrder(true);
+    try {
+      await adminApi.reorderPsychologists(order.map((p) => p.id));
+      toast("Sıra yadda saxlanıldı", "success");
+    } catch (e) { toast((e as Error).message, "error"); }
+    finally { setSavingOrder(false); }
+  };
+
+  return (
+    <Card>
+      <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--hairline)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ fontWeight: 700 }}>Psixoloqlar siyahısının sıralama rejimi</div>
+          <div className="fx-subtitle">/psychologists səhifəsində bütün psixoloqların göstərilmə sırasını idarə edir.</div>
+        </div>
+        {mode !== null && (
+          <Segmented items={SORT_MODE_ITEMS} value={mode} onChange={changeMode} />
+        )}
+      </div>
+      <CardPad>
+        {mode === null ? (
+          <div className="fx-subtitle" style={{ textAlign: "center", padding: 16 }}>Yüklənir…</div>
+        ) : mode === "MANUAL" ? (
+          order === null ? (
+            <div className="fx-subtitle" style={{ textAlign: "center", padding: 16 }}>Yüklənir…</div>
+          ) : (
+            <>
+              <Banner tone="info" title="Əl ilə sıralama">Sətirləri sürüşdürüb sıranı dəyişin, sonra saxlayın.</Banner>
+              <div style={{ marginTop: 12 }}>
+                <ReorderableList
+                  items={order}
+                  onReorder={reorderLocal}
+                  renderRow={(p) => (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <Avatar name={p.name} src={p.photoUrl} size="sm" />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div className="fx-row__title">{p.name}</div>
+                        <div className="fx-subtitle">{p.title}</div>
+                      </div>
+                      {!p.active && <Status tone="muted">Deaktiv</Status>}
+                    </div>
+                  )}
+                />
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <Button variant="primary" disabled={savingOrder} onClick={saveOrder}>
+                  {savingOrder ? "Saxlanır…" : "Sıranı saxla"}
+                </Button>
+              </div>
+            </>
+          )
+        ) : algoPreview === null ? (
+          <div className="fx-subtitle" style={{ textAlign: "center", padding: 16 }}>Yüklənir…</div>
+        ) : (
+          <>
+            <Banner tone="info" title="Alqoritm sıralaması">
+              Sıra avtomatik hesablanır — tamamlanmış seans sayı və reytinq əsasında. Əl ilə dəyişdirmək üçün yuxarıdan «Əl ilə» rejiminə keçin (əvvəlki əl-ilə sıranız qorunub saxlanılır).
+            </Banner>
+            <div style={{ marginTop: 12 }}>
+              <ReorderableList
+                items={algoPreview}
+                onReorder={() => {}}
+                draggable={false}
+                renderRow={(p) => (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <Avatar name={p.name} src={p.photoUrl} size="sm" />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div className="fx-row__title">{p.name}</div>
+                      <div className="fx-subtitle">{p.title}</div>
+                    </div>
+                    <Status tone="neutral">{p.rating} ★ · {p.ratingCount} rəy</Status>
+                  </div>
+                )}
+              />
+            </div>
+          </>
+        )}
+      </CardPad>
+    </Card>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
 //  Planlar tabı
 // ════════════════════════════════════════════════════════════════
 function PlansTab() {
@@ -977,7 +1333,10 @@ function PlansTab() {
                   <div style={{ fontWeight: 700, flex: 1, minWidth: 0 }}>{pl.name}</div>
                   {!pl.active && <Status tone="muted">Deaktiv</Status>}
                 </div>
-                <div className="fx-subtitle" style={{ marginBottom: 10 }}>{pl.assignedCount} psixoloq təyin olunub</div>
+                <div className="fx-subtitle" style={{ marginBottom: 10 }}>
+                  <div>{pl.assignedCount} psixoloq təyin olunub</div>
+                  {pl.rankingBonusPct > 0 && <div>Reytinq bonusu: +{pl.rankingBonusPct}%</div>}
+                </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
                   {PLAN_MODULES.map((m) => {
                     const on = pl.enabledModules.includes(m.key);
@@ -1006,6 +1365,7 @@ function PlanEditor({ plan, onClose, onSaved }: { plan: PsychologistPlan | null;
   const [modules, setModules] = useState<string[]>(plan?.enabledModules ?? []);
   const [tikColor, setTikColor] = useState(plan?.tikColor ?? "#3A74D6");
   const [active, setActive] = useState(plan?.active ?? true);
+  const [rankingBonusPct, setRankingBonusPct] = useState(String(plan?.rankingBonusPct ?? 0));
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -1016,7 +1376,8 @@ function PlanEditor({ plan, onClose, onSaved }: { plan: PsychologistPlan | null;
     if (!name.trim()) { toast("Ad məcburidir", "error"); return; }
     setBusy(true);
     try {
-      const data: PsychologistPlanReq = { name: name.trim(), enabledModules: modules, tikColor, active };
+      const bonus = Math.max(0, Math.min(100, Number(rankingBonusPct) || 0));
+      const data: PsychologistPlanReq = { name: name.trim(), enabledModules: modules, tikColor, active, rankingBonusPct: bonus };
       if (plan) await adminApi.updatePsychologistPlan(plan.id, data);
       else await adminApi.createPsychologistPlan(data);
       toast("Plan saxlanıldı", "success");
@@ -1078,6 +1439,9 @@ function PlanEditor({ plan, onClose, onSaved }: { plan: PsychologistPlan | null;
               })}
             </div>
           </div>
+          <Field label="Reytinq bonusu (%)" help="Bu plana təyin olunmuş psixoloqun sıralama balına əlavə faiz bonusu — axtarışda daha yuxarıda görünməsini təmin edir. 0 = bonus yoxdur.">
+            <Input type="number" min={0} max={100} step={1} value={rankingBonusPct} onChange={(e) => setRankingBonusPct(e.target.value)} style={{ maxWidth: 120 }} />
+          </Field>
           <Switch label="Plan aktivdir" checked={active} onChange={(e) => setActive(e.target.checked)} />
         </div>
       </Modal>

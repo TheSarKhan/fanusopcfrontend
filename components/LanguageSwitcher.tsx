@@ -5,57 +5,7 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 import type { Locale } from "@/lib/i18n/messages";
 import { meApi } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
-
-/* ── Inline SVG flags (emoji unreliable on Windows) ── */
-function FlagAZ() {
-  return (
-    <svg width="20" height="14" viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
-      <rect width="30" height="20" fill="#0092BC" />
-      <rect y="6.67" width="30" height="6.66" fill="#EF3340" />
-      <rect y="13.33" width="30" height="6.67" fill="#00B050" />
-      <circle cx="14" cy="10" r="3.4" fill="white" />
-      <circle cx="15.1" cy="10" r="2.7" fill="#EF3340" />
-      <polygon points="19,10 18.55,10.38 18.73,10.91 18.22,10.64 17.82,11 17.91,10.45 17.45,10.12 18,10.06 18.2,9.55 18.46,10.04" fill="white" />
-    </svg>
-  );
-}
-
-function FlagRU() {
-  return (
-    <svg width="20" height="14" viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
-      <rect width="30" height="20" fill="#fff" />
-      <rect y="6.67" width="30" height="6.66" fill="#0039A6" />
-      <rect y="13.33" width="30" height="6.67" fill="#D52B1E" />
-    </svg>
-  );
-}
-
-function FlagEN() {
-  return (
-    <svg width="20" height="14" viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
-      <rect width="60" height="40" fill="#012169" />
-      {/* White saltire (wide) */}
-      <path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" strokeWidth="12" />
-      {/* Red saltire (narrow) */}
-      <path d="M0,0 L60,40 M60,0 L0,40" stroke="#C8102E" strokeWidth="7" />
-      {/* White cross */}
-      <path d="M30,0 V40 M0,20 H60" stroke="#fff" strokeWidth="16" />
-      {/* Red cross */}
-      <path d="M30,0 V40 M0,20 H60" stroke="#C8102E" strokeWidth="10" />
-    </svg>
-  );
-}
-
-function FlagTR() {
-  return (
-    <svg width="20" height="14" viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
-      <rect width="30" height="20" fill="#E30A17" />
-      <circle cx="11.5" cy="10" r="4.2" fill="#fff" />
-      <circle cx="13" cy="10" r="3.35" fill="#E30A17" />
-      <polygon points="19.6,10 16.85,10.93 18.55,8.6 18.55,11.4 16.85,9.07" fill="#fff" />
-    </svg>
-  );
-}
+import { FlagAZ, FlagRU, FlagEN, FlagTR } from "@/components/FlagIcons";
 
 const FLAGS: Record<Locale, () => React.ReactElement> = {
   az: FlagAZ,

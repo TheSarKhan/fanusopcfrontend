@@ -1,21 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import ProfileShell, {
-  PC, cardStyle, sideCardStyle, sectionH2, sectionSub, labelStyle, inputStyle,
-  rowSplit, rowKey, rowVal, btnDark, btnGhost, btnIdle,
+  PC, cardStyle, sectionH2, sectionSub, labelStyle, inputStyle,
+  btnDark, btnGhost, btnIdle,
   ModalScrim, modalBoxStyle, ConfirmDialog, type ConfirmSpec,
-  Spinner, IconTrash,
+  Spinner, IconTrash, IconChevron,
 } from "@/components/ProfileShell";
 import GoogleCalendarCard from "@/components/GoogleCalendarCard";
 import PsyPlanCard from "@/components/PsyPlanCard";
-import ProfileShareButtons from "@/components/ProfileShareButtons";
-import { TOPIC_CODES, TOPIC_AZ_LABELS, topicKey } from "@/components/TopicPicker";
-import { psychologistApi, type Psychologist, type PackageDto, type PackageReq, type PsyEducationItem } from "@/lib/api";
+import { psychologistApi, type Psychologist, type PackageDto, type PackageReq } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
-import { appUrl } from "@/lib/appUrl";
 import { useT } from "@/lib/i18n/LocaleProvider";
-import type { MessageKey } from "@/lib/i18n/messages";
 import { toast } from "@/components/Toast";
 
 function CalendarIcon() {
@@ -72,9 +69,13 @@ function LockIcon() {
   );
 }
 
-function initialsOf(name?: string | null): string {
-  if (!name) return "?";
-  return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase() || "?";
+function GlobeIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.4 2.5 3.7 5.7 3.7 9s-1.3 6.5-3.7 9c-2.4-2.5-3.7-5.7-3.7-9S9.6 5.5 12 3z" />
+    </svg>
+  );
 }
 
 export default function PsychologProfilePage() {
@@ -98,10 +99,8 @@ export default function PsychologProfilePage() {
             {/* Plan ən üstdə: sidebar-dakı nişandan bura gəlinir, cavab dərhal
                 görünməlidir — «bu nişan nədir, nə vaxta qədərdir». */}
             <PsyPlanCard />
+            <PublicProfileCta />
             <PricingCard editable={editable} minutes={minutes} />
-            <PublicProfileCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
-            <StatsSourceCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
-            <EducationsCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
           </>
         ) : undefined
       }
@@ -123,14 +122,37 @@ export default function PsychologProfilePage() {
         { href: "/psycholog/notifications", label: t("prof.qlNotifications"), icon: <BellIcon /> },
       ]}
       sideBottom={
-        me ? (
-          <>
-            <GoogleCalendarCard />
-            <PublicPreviewCard me={me} minutes={minutes} />
-          </>
-        ) : undefined
+        me ? <GoogleCalendarCard /> : undefined
       }
     />
+  );
+}
+
+/* ─── Saytda görünən profilə keçid — ayrı səhifədə redaktə olunur ────────
+   Bio, ixtisas, təhsil, əlaqə linkləri kimi "ictimai profil" məzmunu bura
+   qarışdırılmır — hesab/təhlükəsizlik sahələrindən aydın ayrılır. */
+
+function PublicProfileCta() {
+  const { t } = useT();
+  return (
+    <Link href="/psycholog/profile/public" style={{ textDecoration: "none" }}>
+      <section style={{
+        ...cardStyle, display: "flex", alignItems: "center", gap: 16, cursor: "pointer",
+      }}>
+        <span style={{
+          width: 44, height: 44, borderRadius: 12, background: PC.panel,
+          border: `1px solid ${PC.border}`, color: PC.ink, display: "inline-flex",
+          alignItems: "center", justifyContent: "center", flex: "none",
+        }}>
+          <GlobeIcon />
+        </span>
+        <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+          <h2 style={sectionH2}>{t("prof.publicCtaTitle")}</h2>
+          <p style={sectionSub}>{t("prof.publicCtaSub")}</p>
+        </div>
+        <span style={{ color: PC.faint, flex: "none" }}><IconChevron size={16} /></span>
+      </section>
+    </Link>
   );
 }
 
@@ -450,468 +472,6 @@ function PricingCard({ editable, minutes }: { editable: boolean; minutes: number
       )}
 
       <ConfirmDialog spec={confirmSpec} onClose={() => setConfirmSpec(null)} />
-    </section>
-  );
-}
-
-/* ─── İctimai profil məlumatı — bio, ünvan, dillər, ixtisaslar ──────────── */
-
-function PublicProfileCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Partial<Psychologist>) => void }) {
-  const { t } = useT();
-  const [title, setTitle] = useState(me.title ?? "");
-  const [bio, setBio] = useState(me.bio ?? "");
-  const [languages, setLanguages] = useState(me.languages ?? "");
-  const [sessionTypes, setSessionTypes] = useState(me.sessionTypes ?? "");
-  const [topics, setTopics] = useState<string[]>(me.topics ?? []);
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState("");
-
-  const dirty =
-    title.trim() !== (me.title ?? "") ||
-    bio.trim() !== (me.bio ?? "") ||
-    languages.trim() !== (me.languages ?? "") ||
-    sessionTypes.trim() !== (me.sessionTypes ?? "") ||
-    JSON.stringify(topics) !== JSON.stringify(me.topics ?? []);
-
-  const toggleTopic = (code: string) => {
-    setTopics(prev => {
-      const next = new Set(prev);
-      if (next.has(code)) next.delete(code); else next.add(code);
-      // Sıra sabit qalsın deyə TOPIC_CODES sırası ilə qaytarılır.
-      return TOPIC_CODES.filter(c => next.has(c));
-    });
-  };
-
-  const save = async () => {
-    if (topics.length === 0) { setErr(t("prof.pubErrSpecs")); return; }
-    setErr("");
-    setSaving(true);
-    try {
-      // İctimai kartdakı "ixtisas" pilləri mövzu seçimindən törəyir (qeydiyyatdakı
-      // eyni məntiq) — ayrıca sərbəst mətn sahəsi psixoloqlar arasında uyğunsuz
-      // adlandırmaya (məs. "Depresiya" vs "Depressiya") gətirərdi.
-      const specializations = topics.map(c => TOPIC_AZ_LABELS[c]).filter(Boolean);
-      const updated = await psychologistApi.updateFullProfile({
-        title: title.trim(),
-        bio: bio.trim(),
-        languages: languages.trim(),
-        sessionTypes: sessionTypes.trim(),
-        topics,
-        specializations,
-      });
-      onSaved({
-        title: updated.title,
-        bio: updated.bio,
-        languages: updated.languages,
-        sessionTypes: updated.sessionTypes,
-        topics: updated.topics,
-        specializations: updated.specializations,
-      });
-      toast(t("prof.pubSavedToast"));
-    } catch (e) {
-      toast((e as Error).message, "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <section style={cardStyle}>
-      <h2 style={sectionH2}>{t("prof.pubTitle")}</h2>
-      <p style={sectionSub}>{t("prof.pubSub")}</p>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 16 }}>
-        <label style={{ display: "block" }}>
-          <span style={labelStyle}>{t("prof.pubProfTitle")}</span>
-          <input style={inputStyle} value={title} onChange={e => setTitle(e.target.value)} placeholder={t("prof.pubProfTitlePh")} />
-        </label>
-
-        <label style={{ display: "block" }}>
-          <span style={labelStyle}>{t("prof.pubBio")}</span>
-          <textarea
-            value={bio}
-            onChange={e => setBio(e.target.value)}
-            placeholder={t("prof.pubBioPh")}
-            rows={5}
-            style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6, fontFamily: "inherit" }}
-          />
-        </label>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
-          <label style={{ display: "block" }}>
-            <span style={labelStyle}>{t("prof.pubLanguages")}</span>
-            <input style={inputStyle} value={languages} onChange={e => setLanguages(e.target.value)} placeholder={t("prof.pubLanguagesPh")} />
-          </label>
-          <label style={{ display: "block" }}>
-            <span style={labelStyle}>{t("prof.pubSessionTypes")}</span>
-            <input style={inputStyle} value={sessionTypes} onChange={e => setSessionTypes(e.target.value)} placeholder={t("prof.pubSessionTypesPh")} />
-          </label>
-        </div>
-
-        <div>
-          <span style={labelStyle}>{t("prof.pubSpecs")}</span>
-          <div style={{ fontSize: 12, color: PC.faint, lineHeight: 1.5, marginBottom: 8 }}>{t("prof.pubSpecsHint")}</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {TOPIC_CODES.map(code => {
-              const on = topics.includes(code);
-              return (
-                <button
-                  key={code}
-                  type="button"
-                  onClick={() => toggleTopic(code)}
-                  aria-pressed={on}
-                  style={{
-                    fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 20,
-                    border: on ? `1px solid ${PC.ink}` : `1px solid ${PC.border2}`,
-                    background: on ? PC.panel : "#fff", color: on ? PC.ink : PC.soft, cursor: "pointer",
-                  }}
-                >
-                  {t(`topic.${topicKey(code)}` as MessageKey)}
-                </button>
-              );
-            })}
-          </div>
-          {err && <div style={{ fontSize: 12, fontWeight: 500, color: "#B91C1C", marginTop: 8 }}>{err}</div>}
-        </div>
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18, paddingTop: 16, borderTop: `1px solid ${PC.hair}` }}>
-        {saving ? (
-          <span style={{ ...btnIdle, padding: "9px 16px" }}><Spinner />{t("prof.saving")}</span>
-        ) : dirty ? (
-          <button type="button" onClick={save} style={btnDark}>{t("prof.save")}</button>
-        ) : null}
-      </div>
-    </section>
-  );
-}
-
-/* ─── Statistika mənbəyi (Modul D) — kliklə seçilir və dərhal saxlanır ───── */
-
-type StatsSource = "FANUS_PLATFORM" | "PRIOR_EXPERIENCE";
-
-function StatsSourceCard({
-  me, onSaved,
-}: {
-  me: Psychologist;
-  onSaved: (p: Partial<Psychologist>) => void;
-}) {
-  const { t } = useT();
-  const [selected, setSelected] = useState<StatsSource>(me.statsSource ?? "FANUS_PLATFORM");
-  const [saving, setSaving] = useState(false);
-
-  // Əvvəlki təcrübə sayı — psixoloq özü redaktə edə bilir.
-  const [priorInput, setPriorInput] = useState(String(me.priorExperienceSessions ?? 0));
-  const [savingPrior, setSavingPrior] = useState(false);
-  const priorDirty = priorInput.trim() !== ""
-    && Number(priorInput) !== (me.priorExperienceSessions ?? 0);
-
-  const choose = async (value: StatsSource) => {
-    if (value === selected || saving) return;
-    setSaving(true);
-    const prev = selected;
-    setSelected(value);
-    try {
-      const res = await psychologistApi.updateStatsSource(value);
-      onSaved({
-        statsSource: res.statsSource,
-        fanusSessionCount: res.fanusSessionCount,
-        priorExperienceSessions: res.priorExperienceSessions,
-        displayedSessionCount: res.displayedSessionCount,
-      });
-      toast(t("prof.srcSavedToast"));
-    } catch (e) {
-      setSelected(prev);
-      toast((e as Error).message, "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const savePrior = async () => {
-    const n = parseInt(priorInput, 10);
-    if (!Number.isFinite(n) || n < 0) return;
-    setSavingPrior(true);
-    try {
-      const res = await psychologistApi.updateStatsSource(selected, n);
-      onSaved({
-        statsSource: res.statsSource,
-        fanusSessionCount: res.fanusSessionCount,
-        priorExperienceSessions: res.priorExperienceSessions,
-        displayedSessionCount: res.displayedSessionCount,
-      });
-      setPriorInput(String(res.priorExperienceSessions ?? n));
-      toast(t("prof.srcPriorSavedToast"));
-    } catch (e) {
-      toast((e as Error).message, "error");
-    } finally {
-      setSavingPrior(false);
-    }
-  };
-
-  const options: { value: StatsSource; label: string; note: string; count: number }[] = [
-    { value: "FANUS_PLATFORM", label: t("prof.srcFanus"), note: t("prof.srcFanusNote"), count: me.fanusSessionCount ?? 0 },
-    { value: "PRIOR_EXPERIENCE", label: t("prof.srcPrior"), note: t("prof.srcPriorNote"), count: me.priorExperienceSessions ?? 0 },
-  ];
-
-  return (
-    <section style={cardStyle}>
-      <h2 style={sectionH2}>{t("prof.srcTitle")}</h2>
-      <p style={{ ...sectionSub, maxWidth: "70ch" }}>{t("prof.srcSub")}</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12, marginTop: 16 }}>
-        {options.map(opt => {
-          const active = selected === opt.value;
-          const isPrior = opt.value === "PRIOR_EXPERIENCE";
-          return (
-            /* div + role="button" — kartın içində redaktə inputu olduğu üçün
-               nested button/input qadağasına düşməmək üçün button işlədilmir. */
-            <div
-              key={opt.value}
-              role="button"
-              tabIndex={0}
-              onClick={() => choose(opt.value)}
-              onKeyDown={e => {
-                if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(opt.value); }
-              }}
-              style={{
-                textAlign: "left", background: "#fff",
-                border: active ? `1px solid ${PC.ink}` : `1px solid ${PC.border2}`,
-                borderRadius: 10, padding: "15px 16px", cursor: saving ? "default" : "pointer",
-                display: "flex", gap: 12, alignItems: "flex-start",
-              }}
-            >
-              <span style={{ flex: "0 0 auto", marginTop: 2 }}>
-                {active ? (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={PC.ink} strokeWidth="1.5" aria-hidden>
-                    <circle cx="8" cy="8" r="6.2" />
-                    <circle cx="8" cy="8" r="3" fill={PC.ink} stroke="none" />
-                  </svg>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke={PC.border3} strokeWidth="1.5" aria-hidden>
-                    <circle cx="8" cy="8" r="6.2" />
-                  </svg>
-                )}
-              </span>
-              <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: PC.ink }}>{opt.label}</div>
-                <div style={{ fontSize: 19, fontWeight: 600, letterSpacing: "-0.02em", marginTop: 8, color: PC.ink }}>
-                  {opt.count}
-                </div>
-                <div style={{ fontSize: 12, color: PC.soft, lineHeight: 1.5, marginTop: 6 }}>{opt.note}</div>
-
-                {isPrior && (
-                  /* Redaktə sahəsi — klik seçimi işə salmasın deyə propagation dayandırılır. */
-                  <div
-                    onClick={e => e.stopPropagation()}
-                    onKeyDown={e => e.stopPropagation()}
-                    style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${PC.hair}` }}
-                  >
-                    <span style={labelStyle}>{t("prof.srcPriorCountLabel")}</span>
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={priorInput}
-                        onChange={e => setPriorInput(e.target.value.replace(/[^0-9]/g, ""))}
-                        style={{ ...inputStyle, maxWidth: 120 }}
-                      />
-                      {savingPrior ? (
-                        <span style={{ ...btnIdle, fontSize: 12.5, padding: "8px 13px" }}>
-                          <Spinner />{t("prof.saving")}
-                        </span>
-                      ) : priorDirty ? (
-                        <button type="button" onClick={savePrior} style={{ ...btnDark, fontSize: 12.5, padding: "8px 14px" }}>
-                          {t("prof.save")}
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                )}
-
-                {active && (
-                  <div style={{ fontSize: 11.5, fontWeight: 600, color: PC.ink, marginTop: 8 }}>
-                    {t("prof.srcSelected")}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-/* ─── Təhsil siyahısı — hər sətrin öz diplomu (V145) ─────────────────────── */
-
-function EducationsCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Partial<Psychologist>) => void }) {
-  const { t } = useT();
-  const [rows, setRows] = useState<PsyEducationItem[]>(() =>
-    me.educations && me.educations.length > 0
-      ? me.educations.map(e => ({ ...e }))
-      : [{ institution: "", degree: "", graduationYear: "" }]
-  );
-  const [saving, setSaving] = useState(false);
-  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
-
-  const update = (i: number, k: "institution" | "degree" | "graduationYear", v: string) =>
-    setRows(prev => prev.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
-  const addRow = () => setRows(prev => [...prev, { institution: "", degree: "", graduationYear: "" }]);
-  const removeRow = (i: number) => setRows(prev => prev.filter((_, idx) => idx !== i));
-
-  const uploadDiploma = async (i: number, file: File) => {
-    setUploadingIdx(i);
-    try {
-      const url = await psychologistApi.uploadFile(file);
-      setRows(prev => prev.map((r, idx) => idx === i ? { ...r, diplomaUrl: url } : r));
-    } catch (e) {
-      toast((e as Error).message || t("prof.eduErrDiploma"), "error");
-    } finally {
-      setUploadingIdx(null);
-    }
-  };
-
-  const save = async () => {
-    const clean = rows.filter(r => r.institution.trim());
-    if (clean.length === 0) { toast(t("prof.eduErrMin"), "error"); return; }
-    setSaving(true);
-    try {
-      const updated = await psychologistApi.updateFullProfile({ educations: clean });
-      onSaved({ educations: updated.educations });
-      setRows(updated.educations.length > 0 ? updated.educations.map(e => ({ ...e })) : clean);
-      toast(t("prof.eduSavedToast"));
-    } catch (e) {
-      toast((e as Error).message, "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <section style={cardStyle}>
-      <h2 style={sectionH2}>{t("prof.eduTitle")}</h2>
-      <p style={sectionSub}>{t("prof.eduSub")}</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
-        {rows.map((r, i) => (
-          <div key={i} style={{ border: `1px solid ${PC.border2}`, borderRadius: 10, padding: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <strong style={{ fontSize: 12.5, color: PC.ink }}>{t("prof.eduRowLabel", { n: i + 1 })}</strong>
-              {rows.length > 1 && (
-                <button type="button" onClick={() => removeRow(i)}
-                  style={{ fontSize: 12, color: "#B91C1C", background: "none", border: "none", cursor: "pointer" }}>
-                  {t("prof.eduDelete")}
-                </button>
-              )}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div>
-                <label style={labelStyle}>{t("prof.eduInstitutionLabel")}</label>
-                <input style={inputStyle} value={r.institution}
-                  onChange={e => update(i, "institution", e.target.value)}
-                  placeholder={t("prof.eduInstitutionPh")} />
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 8 }}>
-                <div>
-                  <label style={labelStyle}>{t("prof.eduDegreeLabel")}</label>
-                  <input style={inputStyle} value={r.degree ?? ""}
-                    onChange={e => update(i, "degree", e.target.value)}
-                    placeholder={t("prof.eduDegreePh")} />
-                </div>
-                <div>
-                  <label style={labelStyle}>{t("prof.eduYearLabel")}</label>
-                  <input style={inputStyle} value={r.graduationYear ?? ""}
-                    onChange={e => update(i, "graduationYear", e.target.value)}
-                    placeholder={t("prof.eduYearPh")} />
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
-                <label style={{ ...btnGhost, cursor: "pointer" }}>
-                  <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }}
-                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadDiploma(i, f); e.target.value = ""; }} />
-                  {uploadingIdx === i ? t("prof.eduDiplomaUploading") : r.diplomaUrl ? t("prof.eduDiplomaChange") : t("prof.eduDiplomaUpload")}
-                </label>
-                {r.diplomaUrl && (
-                  <a href={r.diplomaUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12.5, color: "var(--brand, #1051B7)" }}>
-                    {t("prof.eduDiplomaView")}
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-        <button type="button" onClick={addRow} style={btnGhost}>{t("prof.eduAdd")}</button>
-        <button type="button" onClick={save} disabled={saving} style={{ ...btnDark, marginLeft: "auto" }}>
-          {saving ? t("prof.eduSaving") : t("prof.eduSave")}
-        </button>
-      </div>
-    </section>
-  );
-}
-
-/* ─── İctimai profil önizləməsi (yan sütun) ──────────────────────────────── */
-
-function PublicPreviewCard({ me, minutes }: { me: Psychologist; minutes: number }) {
-  const { t } = useT();
-  return (
-    <section style={sideCardStyle}>
-      <h2 style={sectionH2}>{t("prof.pvTitle")}</h2>
-      <p style={sectionSub}>{t("prof.pvSub")}</p>
-      <div style={{
-        display: "flex", alignItems: "center", gap: 12, marginTop: 16,
-        paddingTop: 14, borderTop: `1px solid ${PC.hair}`,
-      }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: "50%", border: `1px solid ${PC.border}`,
-          background: PC.bg, overflow: "hidden", display: "flex", alignItems: "center",
-          justifyContent: "center", fontSize: 14, fontWeight: 600, color: PC.mut, flex: "0 0 auto",
-        }}>
-          {me.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={me.photoUrl} alt={me.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (
-            <span>{initialsOf(me.name)}</span>
-          )}
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 600, color: PC.ink }}>{me.name}</div>
-          <div style={{ fontSize: 12, color: PC.soft, marginTop: 2 }}>{me.title}</div>
-        </div>
-      </div>
-      {me.slug && (
-        <div style={{ marginTop: 14 }}>
-          <ProfileShareButtons url={appUrl(`/psychologists/${me.slug}`)} name={me.name} />
-        </div>
-      )}
-      <div style={{ ...rowSplit, alignItems: "flex-start", marginTop: 14 }}>
-        <span style={{ ...rowKey, flex: "0 0 auto" }}>{t("prof.pvSpecs")}</span>
-        <span style={{ ...rowVal, textAlign: "right" }}>
-          {me.specializations?.slice(0, 4).join(", ") || "—"}
-        </span>
-      </div>
-      <div style={{ ...rowSplit, alignItems: "flex-start" }}>
-        <span style={rowKey}>{t("prof.pvLangs")}</span>
-        <span style={{ ...rowVal, textAlign: "right" }}>{me.languages || "—"}</span>
-      </div>
-      <div style={rowSplit}>
-        <span style={rowKey}>{t("prof.pvExp")}</span>
-        <span style={rowVal}>{me.experience || "—"}</span>
-      </div>
-      <div style={rowSplit}>
-        <span style={rowKey}>{t("prof.pvDuration")}</span>
-        <span style={rowVal}>{t("prof.pvMinutes", { n: minutes })}</span>
-      </div>
-      <div style={{ ...rowSplit, padding: "11px 0 0" }}>
-        <span style={rowKey}>{t("prof.pvShownCount")}</span>
-        <span style={rowVal}>{t("prof.pvSessions", { n: me.displayedSessionCount ?? 0 })}</span>
-      </div>
-      <div style={{
-        fontSize: 11.5, color: PC.faint, lineHeight: 1.55, marginTop: 14,
-        paddingTop: 13, borderTop: `1px solid ${PC.hair}`,
-      }}>
-        {t("prof.pvAdminNote")}
-      </div>
     </section>
   );
 }

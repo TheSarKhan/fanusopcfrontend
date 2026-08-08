@@ -38,6 +38,14 @@ jobs:
           USER: ${{ secrets.DEPLOY_USER }}
         run: |
           set -uo pipefail
+          # GitHub Actions `run:` addımlarını defolt `bash -e {0}` ilə işə salır —
+          # yuxarıdakı `set -uo pipefail` bunu SÖNDÜRMÜR (yalnız əlavə edir).
+          # `wait` çağırışları qəsdən sıfırdan fərqli qaytara bilər (exit kodunu
+          # özümüz yoxlayırıq) — miras `-e` aktiv qalsa, ilk uğursuz `wait`-də
+          # skript SƏSSİZCƏ ölür, heç bir log çap olunmur (08.08.2026-da baş verdi:
+          # "Process completed with exit code 1", heç bir izah yox). Ona görə
+          # açıq şəkildə söndürülür.
+          set +e
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519

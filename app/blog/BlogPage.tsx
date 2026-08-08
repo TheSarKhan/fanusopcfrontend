@@ -122,7 +122,6 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
         activeFilterLabel={activeFilterLabel}
         onReset={resetFilters}
       />
-      <ArtNewsletter />
     </div>
   );
 }
@@ -409,57 +408,6 @@ function ClockIcon() {
       <circle cx="12" cy="12" r="9" />
       <polyline points="12 7 12 12 15 14" />
     </svg>
-  );
-}
-
-function ArtNewsletter() {
-  const { t } = useT();
-  return (
-    <section className="ap-news">
-      <Deco type="circles-mix" style={{ top: 30, right: "6%", width: 220, opacity: .55 }} />
-      <Deco type="target" style={{ bottom: 30, left: "8%", width: 130, opacity: .55 }} anim="drift" />
-      <div className="fanus-container">
-        <div className="ap-news__head">
-          <h2>{t("blogPage.newsletterTitle")} <span className="fanus-serif-accent">{t("blogPage.newsletterTitleAccent")}</span></h2>
-          <p>{t("blogPage.newsletterText")}</p>
-          <form className="ap-news__form" onSubmit={(e) => { e.preventDefault(); alert(t("blogPage.newsletterThanks")); }}>
-            <input type="email" placeholder={t("pub.emailPlaceholder")} required />
-            <button type="submit" className="fanus-btn fanus-btn-primary">
-              {t("blogPage.newsletterCta")} <Arrow />
-            </button>
-          </form>
-        </div>
-      </div>
-      <style>{`
-        .ap-news {
-          padding: 90px 0;
-          background: linear-gradient(180deg, var(--fanus-bg) 0%, var(--fanus-primary-50) 100%);
-          position: relative; overflow: hidden;
-        }
-        .ap-news > .fanus-container { position: relative; z-index: 1; }
-        .ap-news__head { text-align: center; max-width: 760px; margin: 0 auto; }
-        .ap-news__head .fanus-eyebrow { justify-content: center; }
-        .ap-news__head h2 {
-          font-family: var(--font-poppins), system-ui, sans-serif;
-          font-size: clamp(30px, 3.6vw, 48px); font-weight: 700;
-          letter-spacing: -0.025em; line-height: 1.1; color: var(--fanus-ink);
-          margin: 16px 0 14px;
-        }
-        .ap-news__head p { font-size: 17px; color: var(--fanus-ink-3); margin: 0; }
-        .ap-news__form {
-          display: flex; gap: 8px;
-          max-width: 480px; margin: 28px auto 0;
-          flex-wrap: wrap; justify-content: center;
-        }
-        .ap-news__form input {
-          flex: 1; min-width: 240px;
-          padding: 14px 22px; border-radius: 999px;
-          border: 1px solid var(--fanus-line); background: white;
-          font-family: inherit; font-size: 14px; color: var(--fanus-ink);
-        }
-        .ap-news__form input:focus { outline: none; border-color: var(--fanus-primary); }
-      `}</style>
-    </section>
   );
 }
 

@@ -953,15 +953,23 @@ function CancelModal({ payment, onClose, onDone }: { payment: PaymentItem; onClo
 function MarkPaidModal({ payment, onClose, onDone }: { payment: PaymentItem; onClose: () => void; onDone: (p: PaymentItem, method: string) => void }) {
   const [method, setMethod] = useState<string>(PAYMENT_METHOD_OPTIONS[0]);
   const [busy, setBusy] = useState(false);
+  // `busy` yalnız re-render-dən sonra effektiv olur — sürətli ardıcıl klikləri
+  // kəsmək üçün sinxron ref lazımdır (backend-də də V146 unikal indeks var).
+  const submitting = useRef(false);
 
   const submit = async () => {
-    if (busy) return;
+    if (submitting.current) return;
+    submitting.current = true;
     setBusy(true);
     try {
       const updated = await operatorApi.markPaymentPaid(payment.id, method);
       if (isPendingApproval(updated)) { uiToast("Təsdiq tələbi Admin-ə göndərildi — təsdiqdən sonra ödəniş icra olunacaq", "info"); onClose(); return; }
       onDone(updated, method);
-    } catch (e) { uiToast((e as Error).message, "error"); setBusy(false); }
+    } catch (e) {
+      uiToast((e as Error).message, "error");
+      submitting.current = false;
+      setBusy(false);
+    }
   };
 
   return (

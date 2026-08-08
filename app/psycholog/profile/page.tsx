@@ -15,6 +15,7 @@ import { psychologistApi, type Psychologist, type PackageDto, type PackageReq, t
 import { formatAzn } from "@/lib/money";
 import { appUrl } from "@/lib/appUrl";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { toast } from "@/components/Toast";
 
 function CalendarIcon() {

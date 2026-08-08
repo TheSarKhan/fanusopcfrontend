@@ -10,6 +10,7 @@ import ProfileShell, {
 import GoogleCalendarCard from "@/components/GoogleCalendarCard";
 import PsyPlanCard from "@/components/PsyPlanCard";
 import ProfileShareButtons from "@/components/ProfileShareButtons";
+import { TOPIC_CODES, TOPIC_AZ_LABELS, topicKey } from "@/components/TopicPicker";
 import { psychologistApi, type Psychologist, type PackageDto, type PackageReq, type PsyEducationItem } from "@/lib/api";
 import { formatAzn } from "@/lib/money";
 import { appUrl } from "@/lib/appUrl";
@@ -97,6 +98,7 @@ export default function PsychologProfilePage() {
                 görünməlidir — «bu nişan nədir, nə vaxta qədərdir». */}
             <PsyPlanCard />
             <PricingCard editable={editable} minutes={minutes} />
+            <PublicProfileCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
             <StatsSourceCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
             <EducationsCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
           </>
@@ -447,6 +449,138 @@ function PricingCard({ editable, minutes }: { editable: boolean; minutes: number
       )}
 
       <ConfirmDialog spec={confirmSpec} onClose={() => setConfirmSpec(null)} />
+    </section>
+  );
+}
+
+/* ─── İctimai profil məlumatı — bio, ünvan, dillər, ixtisaslar ──────────── */
+
+function PublicProfileCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Partial<Psychologist>) => void }) {
+  const { t } = useT();
+  const [title, setTitle] = useState(me.title ?? "");
+  const [bio, setBio] = useState(me.bio ?? "");
+  const [languages, setLanguages] = useState(me.languages ?? "");
+  const [sessionTypes, setSessionTypes] = useState(me.sessionTypes ?? "");
+  const [topics, setTopics] = useState<string[]>(me.topics ?? []);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  const dirty =
+    title.trim() !== (me.title ?? "") ||
+    bio.trim() !== (me.bio ?? "") ||
+    languages.trim() !== (me.languages ?? "") ||
+    sessionTypes.trim() !== (me.sessionTypes ?? "") ||
+    JSON.stringify(topics) !== JSON.stringify(me.topics ?? []);
+
+  const toggleTopic = (code: string) => {
+    setTopics(prev => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code); else next.add(code);
+      // Sıra sabit qalsın deyə TOPIC_CODES sırası ilə qaytarılır.
+      return TOPIC_CODES.filter(c => next.has(c));
+    });
+  };
+
+  const save = async () => {
+    if (topics.length === 0) { setErr(t("prof.pubErrSpecs")); return; }
+    setErr("");
+    setSaving(true);
+    try {
+      // İctimai kartdakı "ixtisas" pilləri mövzu seçimindən törəyir (qeydiyyatdakı
+      // eyni məntiq) — ayrıca sərbəst mətn sahəsi psixoloqlar arasında uyğunsuz
+      // adlandırmaya (məs. "Depresiya" vs "Depressiya") gətirərdi.
+      const specializations = topics.map(c => TOPIC_AZ_LABELS[c]).filter(Boolean);
+      const updated = await psychologistApi.updateFullProfile({
+        title: title.trim(),
+        bio: bio.trim(),
+        languages: languages.trim(),
+        sessionTypes: sessionTypes.trim(),
+        topics,
+        specializations,
+      });
+      onSaved({
+        title: updated.title,
+        bio: updated.bio,
+        languages: updated.languages,
+        sessionTypes: updated.sessionTypes,
+        topics: updated.topics,
+        specializations: updated.specializations,
+      });
+      toast(t("prof.pubSavedToast"));
+    } catch (e) {
+      toast((e as Error).message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section style={cardStyle}>
+      <h2 style={sectionH2}>{t("prof.pubTitle")}</h2>
+      <p style={sectionSub}>{t("prof.pubSub")}</p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 16 }}>
+        <label style={{ display: "block" }}>
+          <span style={labelStyle}>{t("prof.pubProfTitle")}</span>
+          <input style={inputStyle} value={title} onChange={e => setTitle(e.target.value)} placeholder={t("prof.pubProfTitlePh")} />
+        </label>
+
+        <label style={{ display: "block" }}>
+          <span style={labelStyle}>{t("prof.pubBio")}</span>
+          <textarea
+            value={bio}
+            onChange={e => setBio(e.target.value)}
+            placeholder={t("prof.pubBioPh")}
+            rows={5}
+            style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6, fontFamily: "inherit" }}
+          />
+        </label>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+          <label style={{ display: "block" }}>
+            <span style={labelStyle}>{t("prof.pubLanguages")}</span>
+            <input style={inputStyle} value={languages} onChange={e => setLanguages(e.target.value)} placeholder={t("prof.pubLanguagesPh")} />
+          </label>
+          <label style={{ display: "block" }}>
+            <span style={labelStyle}>{t("prof.pubSessionTypes")}</span>
+            <input style={inputStyle} value={sessionTypes} onChange={e => setSessionTypes(e.target.value)} placeholder={t("prof.pubSessionTypesPh")} />
+          </label>
+        </div>
+
+        <div>
+          <span style={labelStyle}>{t("prof.pubSpecs")}</span>
+          <div style={{ fontSize: 12, color: PC.faint, lineHeight: 1.5, marginBottom: 8 }}>{t("prof.pubSpecsHint")}</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {TOPIC_CODES.map(code => {
+              const on = topics.includes(code);
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => toggleTopic(code)}
+                  aria-pressed={on}
+                  style={{
+                    fontSize: 12.5, fontWeight: 600, padding: "6px 12px", borderRadius: 20,
+                    border: on ? `1px solid ${PC.ink}` : `1px solid ${PC.border2}`,
+                    background: on ? PC.panel : "#fff", color: on ? PC.ink : PC.soft, cursor: "pointer",
+                  }}
+                >
+                  {t(`topic.${topicKey(code)}` as MessageKey)}
+                </button>
+              );
+            })}
+          </div>
+          {err && <div style={{ fontSize: 12, fontWeight: 500, color: "#B91C1C", marginTop: 8 }}>{err}</div>}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18, paddingTop: 16, borderTop: `1px solid ${PC.hair}` }}>
+        {saving ? (
+          <span style={{ ...btnIdle, padding: "9px 16px" }}><Spinner />{t("prof.saving")}</span>
+        ) : dirty ? (
+          <button type="button" onClick={save} style={btnDark}>{t("prof.save")}</button>
+        ) : null}
+      </div>
     </section>
   );
 }

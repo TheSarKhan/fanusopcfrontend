@@ -109,7 +109,7 @@ function PsycList({ items }: { items: PsyCardItem[] }) {
         .pp-list__count strong { color: var(--fanus-ink); font-weight: 700; }
 
         .pp-grid { display: flex; gap: 22px; overflow-x: auto; padding: 2px 2px 18px; scroll-snap-type: x proximity; }
-        .pp-grid > .pc-card { flex: 0 0 min(380px, calc(100vw - 48px)); scroll-snap-align: start; }
+        .pp-grid > .pc-card { flex: 0 0 min(300px, calc(100vw - 48px)); min-width: 0; scroll-snap-align: start; }
         .card-rail { scrollbar-width: thin; scrollbar-color: var(--fanus-primary-200) transparent; cursor: grab; touch-action: pan-x; user-select: none; }
         .card-rail--dragging { cursor: grabbing; scroll-snap-type: none; }
         .card-rail--dragging a { pointer-events: none; }

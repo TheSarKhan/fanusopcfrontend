@@ -2763,11 +2763,14 @@ export const patientApi = {
   canReview: (psychologistId: number) =>
     authedRequest<{ canReview: boolean }>("GET", `/patient/reviews/can-review/${psychologistId}`),
   submitReview: (psychologistId: number, data: ReviewPayload) =>
-    authedRequest<MyReview>("POST", `/patient/psychologists/${psychologistId}/reviews`, data),
+    authedRequest<MyReview>("POST", `/patient/psychologists/${psychologistId}/reviews`, data)
+      .then(r => { revalidatePsychologistsCache(); return r; }),
   updateReview: (reviewId: number, data: ReviewPayload) =>
-    authedRequest<MyReview>("PUT", `/patient/reviews/${reviewId}`, data),
+    authedRequest<MyReview>("PUT", `/patient/reviews/${reviewId}`, data)
+      .then(r => { revalidatePsychologistsCache(); return r; }),
   deleteReview: (reviewId: number) =>
-    authedRequest<void>("DELETE", `/patient/reviews/${reviewId}`),
+    authedRequest<void>("DELETE", `/patient/reviews/${reviewId}`)
+      .then(r => { revalidatePsychologistsCache(); return r; }),
 
   // ─── Modul F: psixoloji testlər ──────────────────────────────────────────
   /** Saytda anonim doldurulmuş testin nəticəsini hesaba bağla və göstər. */
@@ -4549,7 +4552,8 @@ export const operatorApi = {
     authedRequest<{ count?: number }>("GET", "/operator/review-deletion-requests/count-pending")
       .then(r => r?.count ?? 0),
   approveReviewDeletion: (id: number, note?: string) =>
-    authedRequest<ReviewDeletionRequestItem>("POST", `/operator/review-deletion-requests/${id}/approve`, { note }),
+    authedRequest<ReviewDeletionRequestItem>("POST", `/operator/review-deletion-requests/${id}/approve`, { note })
+      .then(r => { revalidatePsychologistsCache(); return r; }),
   rejectReviewDeletion: (id: number, note?: string) =>
     authedRequest<ReviewDeletionRequestItem>("POST", `/operator/review-deletion-requests/${id}/reject`, { note }),
 

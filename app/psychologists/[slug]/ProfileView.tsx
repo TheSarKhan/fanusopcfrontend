@@ -46,6 +46,47 @@ function StarRow({ value, size = 13, label }: { value: number; size?: number; la
   );
 }
 
+/** Təhsil sətrindəki ikon dərəcə növünə görə seçilir (DEGREE_OPTIONS,
+ *  bax app/(public)/register/page.tsx) — sadə diamond kontur artıq "<>" kimi
+ *  qarışıq görünürdü, ona görə tam qrafik papaq + dərəcəyə görə fərqli nişan. */
+function DegreeIcon({ degree, size = 22 }: { degree?: string; size?: number }) {
+  const d = (degree || "").toLowerCase();
+  if (d.includes("magistr")) return <CapIcon badge="dot" size={size} />;
+  if (d.includes("phd") || d.includes("doktor")) return <CapIcon badge="star" size={size} />;
+  if (d.includes("bakalavr")) return <CapIcon size={size} />;
+  return <BookIcon size={size} />;
+}
+
+function CapIcon({ badge, size = 22 }: { badge?: "dot" | "star"; size?: number }) {
+  const badgeSize = Math.round(size * 0.32);
+  const off = -Math.round(size * 0.05) - 1;
+  return (
+    <span style={{ position: "relative", display: "inline-flex" }}>
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 10L12 5 2 10l10 5 10-5z" />
+        <path d="M6 12v5c0 1 2.5 3 6 3s6-2 6-3v-5" />
+      </svg>
+      {badge === "dot" && (
+        <span style={{ position: "absolute", top: off, right: off, width: badgeSize, height: badgeSize, borderRadius: "50%", background: "var(--accent, #F5B946)", border: "1.5px solid #fff" }} />
+      )}
+      {badge === "star" && (
+        <svg width={badgeSize + 3} height={badgeSize + 3} viewBox="0 0 24 24" fill="var(--accent, #F5B946)" style={{ position: "absolute", top: off - 2, right: off - 2 }}>
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
+function BookIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  );
+}
+
 const layoutCss = `
   .ppx-grid { display: grid; grid-template-columns: minmax(0,1fr) 350px; grid-template-areas: "hero book" "body book"; gap: 22px; align-items: start; }
   .ppx-hero { grid-area: hero; }
@@ -226,7 +267,7 @@ export default function ProfileView({
             {/* Haqqımda */}
             {psychologist.bio && (
               <Block icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg>} title={t("psyProfile.about")}>
-                <p style={{ margin: 0, fontSize: 14.5, color: "var(--oxford)", lineHeight: 1.7, fontWeight: 500 }}>{psychologist.bio}</p>
+                <p style={{ margin: 0, fontSize: 14.5, color: "var(--oxford)", lineHeight: 1.7, fontWeight: 500, overflowWrap: "anywhere" }}>{psychologist.bio}</p>
               </Block>
             )}
 
@@ -253,7 +294,7 @@ export default function ProfileView({
                     {educations.map((e, i) => (
                       <div key={i} style={{ display: "flex", gap: 12 }}>
                         <span style={{ width: 36, height: 36, borderRadius: 10, background: "var(--brand-50)", border: "1px solid var(--brand-100)", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none", color: "var(--brand)" }}>
-                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10L12 5 2 10l10 5 10-5z" /></svg>
+                          <DegreeIcon degree={e.degree} size={17} />
                         </span>
                         <div>
                           {e.degree && <div style={{ fontSize: 14, fontWeight: 700 }}>{e.degree}</div>}

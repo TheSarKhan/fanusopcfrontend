@@ -52,7 +52,7 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
         }
         .fanus-psyc__lead { margin: 12px auto 0; max-width: 540px; font-size: 17px; color: var(--fanus-ink-3); }
         .fanus-psyc__grid { display: flex; gap: 22px; overflow-x: auto; padding: 2px 2px 18px; scroll-snap-type: x proximity; }
-        .fanus-psyc__grid > .pc-card { flex: 0 0 min(380px, calc(100vw - 48px)); scroll-snap-align: start; }
+        .fanus-psyc__grid > .pc-card { flex: 0 0 min(300px, calc(100vw - 48px)); min-width: 0; scroll-snap-align: start; }
         .card-rail { scrollbar-width: thin; scrollbar-color: var(--fanus-primary-200) transparent; cursor: grab; touch-action: pan-x; user-select: none; }
         .card-rail--dragging { cursor: grabbing; scroll-snap-type: none; }
         .card-rail--dragging a { pointer-events: none; }

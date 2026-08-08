@@ -2,9 +2,16 @@ name: Deploy frontend (fanusopc.com + khansoft.az staging)
 
 # master-ə hər push-da serverdə `deploy.sh` işə düşür: git pull → npm ci →
 # build → systemctl restart. PROD (/var/www/fanusopcfrontend, port 3000,
-# fanusopc.com + panellər) həmişə yenilənir. Uğurlu olsa, STAGING
-# (/var/www/fanusopcfrontend-staging, port 3002, khansoft.az) da eyni koddan
-# yenilənir — best-effort, uğursuz olsa belə bu job "uğursuz" sayılmır.
+# fanusopc.com + panellər) və STAGING (/var/www/fanusopcfrontend-staging,
+# port 3002, khansoft.az) PARALEL yenilənir (hər qovluğun öz kilidi var,
+# server 4 nüvə + kifayət qədər RAM ilə ikisini eyni anda daşıyır).
+#
+# 07.08.2026: əvvəl STAGING prod bitəndən SONRA başlayırdı — hər ikisi tam
+# `npm run build` apardığı üçün (~5 dəq/ədəd) cəmi deploy vaxtı 5 dəq-dən
+# 10-11 dəq-ə qalxdı. Paralelə keçirilib, indi ~5-6 dəq-dir.
+#
+# PROD uğursuz olsa job "uğursuz"dur. STAGING uğursuz olsa yalnız xəbərdarlıq —
+# prod bunun girovu deyil.
 on:
   push:
     branches: [master]
@@ -30,21 +37,45 @@ jobs:
           HOST: ${{ secrets.DEPLOY_HOST }}
           USER: ${{ secrets.DEPLOY_USER }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          echo ">> PROD deploy edilir..."
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$USER@$HOST" \
-            'bash /var/www/fanusopcfrontend/deploy.sh'
+          echo ">> PROD + STAGING paralel deploy edilir..."
 
-          echo ">> STAGING deploy edilir (best-effort, uğursuz olsa job qırılmır)..."
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$USER@$HOST" \
+            'bash /var/www/fanusopcfrontend/deploy.sh' \
+            > /tmp/prod-deploy.log 2>&1 &
+          PROD_PID=$!
+
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$USER@$HOST" \
             'if [ -d /var/www/fanusopcfrontend-staging ]; then
                SERVICE=fanus-frontend-staging PORT=3002 HOSTHDR=khansoft.az \
                  bash /var/www/fanusopcfrontend-staging/deploy.sh
              else
                echo "ℹ️ staging qovluğu yoxdur — ötürülür"
-             fi' || echo "⚠️ STAGING deploy uğursuz oldu (prod bundan asılı deyil)"
+             fi' \
+            > /tmp/staging-deploy.log 2>&1 &
+          STAGING_PID=$!
+
+          wait "$PROD_PID";    PROD_EXIT=$?
+          wait "$STAGING_PID"; STAGING_EXIT=$?
+
+          echo "════ PROD log ════"
+          cat /tmp/prod-deploy.log
+          echo "════ STAGING log ════"
+          cat /tmp/staging-deploy.log
+
+          if [ "$PROD_EXIT" -ne 0 ]; then
+            echo "❌ PROD deploy uğursuz oldu (exit $PROD_EXIT)"
+            exit 1
+          fi
+          echo "✅ PROD deploy uğurlu"
+
+          if [ "$STAGING_EXIT" -ne 0 ]; then
+            echo "⚠️ STAGING deploy uğursuz oldu (exit $STAGING_EXIT) — prod bundan asılı deyil"
+          else
+            echo "✅ STAGING deploy uğurlu"
+          fi

@@ -19,7 +19,7 @@ import { useT } from "@/lib/i18n/LocaleProvider";
  *  klikləndikdə hamısı açılır (taqlar/dillər itmir, sadəcə defolt görünüş
  *  yığcamdır, istəyən "+N"-ə klikləyib hamısını görür, "Daha az göstər"ə
  *  klikləyib geri yığır). */
-const TAG_CAP = 3;
+const TAG_CAP = 4;
 const LANG_CAP = 3;
 
 export interface PsyCardItem {

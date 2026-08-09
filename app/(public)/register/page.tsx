@@ -411,7 +411,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
       const invalid = valid.find(e => Number(e.graduationYear) - birthYear < MIN_GRADUATION_AGE);
       if (invalid) return t("regPage.errGradYear", { year: invalid.graduationYear });
     }
-    if (!diplomaFile) return t("regPage.errDiploma");
+    if (valid.some(e => !e.diplomaFile)) return t("regPage.errEduDiploma");
     return null;
   };
   const validateStep2 = () => {
@@ -638,7 +638,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
                 </Field>
               </div>
               <div style={{ marginTop: 10 }}>
-                <Field label={t("regPage.eduDiplomaOptional")}>
+                <Field label={t("regPage.eduDiploma")} required>
                   <label className="auth-file-label">
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }}
                       onChange={(e) => updateEducationDiploma(i, e.target.files?.[0] ?? null)} />
@@ -659,7 +659,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
             {t("regPage.eduAdd")}
           </button>
 
-          <Field label={t("regPage.diploma")} hint={t("regPage.diplomaHint")} required>
+          <Field label={t("regPage.diploma")} hint={t("regPage.diplomaHint")}>
             <label className="auth-file-label">
               <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }}
                 onChange={e => setDiplomaFile(e.target.files?.[0] ?? null)} />

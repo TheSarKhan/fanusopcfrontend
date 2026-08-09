@@ -1022,139 +1022,133 @@ function DisplayTab() {
   );
 }
 
-/** Bölmə 1 — landing page üçün ≤6 psixoloq seçimi + sırası. */
+/** Bölmə 1 — landing page üçün ≤6 psixoloq seçimi + sırası. Hər klik dərhal saxlanır (Saxla düyməsi yoxdur). */
 function FeaturedPickerCard() {
   const [selected, setSelected] = useState<AdminPsychologistRow[] | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [all, setAll] = useState<AdminPsychologistRow[] | null>(null);
+  const [pendingIds, setPendingIds] = useState<Set<number>>(new Set());
   const [q, setQ] = useState("");
-  const dq = useDebounce(q, 300);
-  const [results, setResults] = useState<AdminPsychologistRow[]>([]);
-  const [searching, setSearching] = useState(false);
 
   const load = useCallback(() => {
     adminApi.getFeaturedPsychologists().then(setSelected).catch(() => setSelected([]));
+    adminApi.getPsychologistsPaged({ status: "active", size: 100, sort: "name", dir: "asc" })
+      .then((res) => setAll(res.content))
+      .catch(() => setAll([]));
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    if (!dq.trim()) { setResults([]); return; }
-    setSearching(true);
-    adminApi.getPsychologistsPaged({ q: dq, status: "active", size: 8, sort: "name", dir: "asc" })
-      .then((res) => setResults(res.content))
-      .catch(() => setResults([]))
-      .finally(() => setSearching(false));
-  }, [dq]);
-
   const selectedIds = new Set((selected ?? []).map((p) => p.id));
-  const dirty = selected !== null;
 
-  const reorderLocal = (ids: number[]) => {
+  const withPending = async (id: number, fn: () => Promise<void>) => {
+    setPendingIds((prev) => new Set(prev).add(id));
+    try { await fn(); }
+    catch (e) { toast((e as Error).message, "error"); }
+    finally { setPendingIds((prev) => { const n = new Set(prev); n.delete(id); return n; }); }
+  };
+
+  const persist = async (ids: number[]) => {
+    const saved = await adminApi.setFeaturedPsychologists(ids);
+    setSelected(saved);
+  };
+
+  const add = (p: AdminPsychologistRow) => {
+    if (!selected || selected.length >= 6 || selected.some((x) => x.id === p.id)) return;
+    withPending(p.id, () => persist([...selected.map((x) => x.id), p.id]));
+  };
+
+  const remove = (id: number) => {
+    if (!selected) return;
+    withPending(id, () => persist(selected.filter((x) => x.id !== id).map((x) => x.id)));
+  };
+
+  const reorderAndSave = (ids: number[]) => {
+    // optimistic — sürüklə buraxılan kimi göründüyü kimi qalsın, sonra backend təsdiqi ilə üstələnsin
     setSelected((prev) => {
       if (!prev) return prev;
       const byId = new Map(prev.map((p) => [p.id, p]));
       return ids.map((id) => byId.get(id)!).filter(Boolean);
     });
+    persist(ids).catch((e) => { toast((e as Error).message, "error"); load(); });
   };
 
-  const add = (p: AdminPsychologistRow) => {
-    setSelected((prev) => {
-      const list = prev ?? [];
-      if (list.length >= 6 || list.some((x) => x.id === p.id)) return list;
-      return [...list, p];
-    });
-    setQ("");
-  };
-
-  const remove = (id: number) => {
-    setSelected((prev) => (prev ?? []).filter((x) => x.id !== id));
-  };
-
-  const save = async () => {
-    if (!selected) return;
-    setSaving(true);
-    try {
-      const saved = await adminApi.setFeaturedPsychologists(selected.map((p) => p.id));
-      setSelected(saved);
-      toast("Landing seçimi yadda saxlanıldı", "success");
-    } catch (e) { toast((e as Error).message, "error"); }
-    finally { setSaving(false); }
-  };
+  const qLower = q.trim().toLowerCase();
+  const rest = (all ?? [])
+    .filter((p) => !selectedIds.has(p.id))
+    .filter((p) => !qLower || p.name.toLowerCase().includes(qLower));
 
   return (
     <Card>
-      <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--hairline)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <div style={{ fontWeight: 700 }}>Ön səhifə — 6 psixoloq</div>
-          <div className="fx-subtitle">Landing page-də görünəcək psixoloqlar və sırası. Seçilməyəndə bu bölmə boş qalır.</div>
-        </div>
-        <Button variant="primary" size="sm" disabled={saving || !dirty} onClick={save}>
-          {saving ? "Saxlanır…" : "Saxla"}
-        </Button>
+      <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--hairline)" }}>
+        <div style={{ fontWeight: 700 }}>Ön səhifə — 6 psixoloq</div>
+        <div className="fx-subtitle">Landing page-də görünəcək psixoloqlar və sırası. Seçilməyəndə bu bölmə boş qalır. Hər dəyişiklik dərhal saxlanır.</div>
       </div>
       <CardPad>
-        {selected === null ? (
+        {selected === null || all === null ? (
           <div className="fx-subtitle" style={{ textAlign: "center", padding: 16 }}>Yüklənir…</div>
         ) : (
           <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <SearchInput
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Ad üzrə axtar"
+              aria-label="Psixoloq axtar"
+              autoComplete="off"
+            />
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "14px 0 6px" }}>
               <span className="fx-label" style={{ marginBottom: 0 }}>Seçilmiş ({selected.length}/6)</span>
             </div>
-            {selected.length === 0 ? (
-              <EmptyBlock boxed title="Hələ seçim yoxdur" body="Aşağıdan axtarıb əlavə edin — landing page bu siyahını göstərəcək." />
-            ) : (
-              <ReorderableList
-                items={selected}
-                onReorder={reorderLocal}
-                renderRow={(p) => (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                    <Avatar name={p.name} src={p.photoUrl} size="sm" />
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div className="fx-row__title">{p.name}</div>
-                      <div className="fx-subtitle">{p.title}</div>
-                    </div>
-                    {!p.active && <Status tone="muted">Deaktiv</Status>}
-                    <IconButton aria-label="Siyahıdan sil" onClick={() => remove(p.id)}>
-                      <PanelIcon name="x" size={15} />
-                    </IconButton>
-                  </div>
-                )}
-              />
-            )}
 
-            <div style={{ marginTop: 18 }}>
-              <span className="fx-label">Psixoloq əlavə et</span>
-              <SearchInput
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={selected.length >= 6 ? "Maksimum 6 psixoloq seçilib" : "Ad üzrə axtar"}
-                aria-label="Psixoloq axtar"
-                autoComplete="off"
-                disabled={selected.length >= 6}
-              />
-              {dq.trim() && selected.length < 6 && (
-                <div style={{ marginTop: 8, border: "1px solid var(--hairline)", borderRadius: 10, overflow: "hidden" }}>
-                  {searching ? (
-                    <div className="fx-subtitle" style={{ padding: 10 }}>Axtarılır…</div>
-                  ) : results.filter((r) => !selectedIds.has(r.id)).length === 0 ? (
-                    <div className="fx-subtitle" style={{ padding: 10 }}>Nəticə tapılmadı</div>
-                  ) : (
-                    results.filter((r) => !selectedIds.has(r.id)).map((r) => (
-                      <div
-                        key={r.id}
-                        onClick={() => add(r)}
-                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", cursor: "pointer", borderBottom: "1px solid var(--hairline)" }}
-                      >
-                        <Avatar name={r.name} src={r.photoUrl} size="sm" />
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div className="fx-row__title">{r.name}</div>
-                          <div className="fx-subtitle">{r.title}</div>
-                        </div>
-                        <IconButton aria-label="Əlavə et" onClick={(e) => { e.stopPropagation(); add(r); }}>
-                          <PanelIcon name="plus" size={15} />
-                        </IconButton>
+            <div style={{ border: "1px solid var(--hairline)", borderRadius: 10, overflow: "hidden", maxHeight: 420, overflowY: "auto" }}>
+              {selected.length === 0 ? (
+                <div className="fx-subtitle" style={{ padding: "12px 10px" }}>Hələ seçim yoxdur — aşağıdan psixoloqun yanındakı + düyməsinə klikləyin.</div>
+              ) : (
+                <ReorderableList
+                  items={selected}
+                  onReorder={reorderAndSave}
+                  renderRow={(p) => (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, opacity: pendingIds.has(p.id) ? 0.5 : 1 }}>
+                      <Avatar name={p.name} src={p.photoUrl} size="sm" />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div className="fx-row__title">{p.name}</div>
+                        <div className="fx-subtitle">{p.title}</div>
                       </div>
-                    ))
+                      {!p.active && <Status tone="muted">Deaktiv</Status>}
+                      <IconButton aria-label="Siyahıdan sil" disabled={pendingIds.has(p.id)} onClick={() => remove(p.id)}>
+                        <PanelIcon name="x" size={15} />
+                      </IconButton>
+                    </div>
                   )}
+                />
+              )}
+
+              {rest.length > 0 && (
+                <div style={{ padding: "8px 10px", borderTop: selected.length > 0 ? "1px solid var(--hairline)" : undefined, background: "var(--surface-2)" }}>
+                  <span className="fx-subtitle">Digər psixoloqlar</span>
+                </div>
+              )}
+              {rest.map((r) => (
+                <div
+                  key={r.id}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderTop: "1px solid var(--hairline)", opacity: pendingIds.has(r.id) ? 0.5 : 1 }}
+                >
+                  <Avatar name={r.name} src={r.photoUrl} size="sm" />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="fx-row__title">{r.name}</div>
+                    <div className="fx-subtitle">{r.title}</div>
+                  </div>
+                  <IconButton
+                    aria-label="Əlavə et"
+                    disabled={selected.length >= 6 || pendingIds.has(r.id)}
+                    onClick={() => add(r)}
+                  >
+                    <PanelIcon name="plus" size={15} />
+                  </IconButton>
+                </div>
+              ))}
+              {selected.length === 0 && rest.length === 0 && (
+                <div className="fx-subtitle" style={{ padding: "12px 10px" }}>
+                  {qLower ? "Nəticə tapılmadı" : "Aktiv psixoloq yoxdur"}
                 </div>
               )}
             </div>

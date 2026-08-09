@@ -10,25 +10,12 @@ import type { Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
-const FALLBACK_BASE: Omit<PsyCardItem, "slug">[] = [
-  { id: 1, name: "Aysel Məmmədova", title: "Klinik psixoloq",      specs: ["Narahatlıq", "OKD", "Panik"],           exp: 8,  rating: "4.9", sessions: "210", lang: "AZ, RU", sessionMinutes: 50 },
-  { id: 2, name: "Rəşad Quliyev",   title: "Travma terapevti",     specs: ["Travma", "TSSP", "EMDR"],               exp: 11, rating: "4.8", sessions: "315", lang: "AZ, EN", sessionMinutes: 50 },
-  { id: 3, name: "Lalə Hüseynova",  title: "Ailə terapevti",       specs: ["Münasibətlər", "Ailə"],                 exp: 6,  rating: "4.7", sessions: "140", lang: "AZ",     sessionMinutes: 50 },
-  { id: 4, name: "Elnur Səfərov",   title: "Klinik psixoloq",      specs: ["Depressiya", "Burnout"],                exp: 9,  rating: "4.9", sessions: "260", lang: "AZ, RU", sessionMinutes: 50 },
-  { id: 5, name: "Nigar Kazımova",  title: "Uşaq psixoloqu",       specs: ["Yeniyetmə", "Valideyn"],                exp: 7,  rating: "4.8", sessions: "180", lang: "AZ",     sessionMinutes: 50 },
-  { id: 6, name: "Tural Babayev",   title: "Asılılıq mütəxəssisi", specs: ["Asılılıq", "İmpuls"],                   exp: 10, rating: "4.7", sessions: "240", lang: "AZ, RU", sessionMinutes: 50 },
-  { id: 7, name: "Səbinə Əliyeva",  title: "Klinik psixoloq",      specs: ["Narahatlıq", "Stress"],                 exp: 5,  rating: "4.6", sessions: "95",  lang: "AZ",     sessionMinutes: 50 },
-  { id: 8, name: "Cavid Rəhimli",   title: "Travma terapevti",     specs: ["Travma", "Yas", "EMDR"],                exp: 12, rating: "4.9", sessions: "340", lang: "AZ, EN", sessionMinutes: 50 },
-  { id: 9, name: "Günel Həsənli",   title: "Cütlük terapevti",     specs: ["Cütlük", "Boşanma"],                    exp: 8,  rating: "4.7", sessions: "175", lang: "AZ, RU", sessionMinutes: 50 },
-];
-const FALLBACK: PsyCardItem[] = withSlugs(FALLBACK_BASE);
-
 export default function PsychologistsPage({ psychologists }: { psychologists?: Psychologist[] }) {
   const { t } = useT();
   const [modalOpen, setModalOpen] = useState(false);
 
   const items: PsyCardItem[] = useMemo(() => {
-    if (!psychologists || psychologists.length === 0) return FALLBACK;
+    if (!psychologists || psychologists.length === 0) return [];
     const slugs = withSlugs(psychologists.map((p) => ({ id: p.id, name: p.name })));
     const slugById = new Map(slugs.map((s) => [s.id, s.slug]));
     return psychologists.map((p) => toPsyCardItem(p, slugById.get(p.id) ?? String(p.id)));
@@ -96,9 +83,13 @@ function PsycList({ items }: { items: PsyCardItem[] }) {
           <span className="pp-list__count">{t("pub.specialistCount", { n: items.length })}</span>
         </div>
 
-        <HorizontalCardRail className="pp-grid">
-          {items.map((p) => <PsychologistCard key={p.id} p={p} />)}
-        </HorizontalCardRail>
+        {items.length > 0 ? (
+          <HorizontalCardRail className="pp-grid">
+            {items.map((p) => <PsychologistCard key={p.id} p={p} />)}
+          </HorizontalCardRail>
+        ) : (
+          <p className="pp-list__empty">{t("pub.noPsychologists")}</p>
+        )}
       </div>
 
       <style>{`
@@ -107,6 +98,7 @@ function PsycList({ items }: { items: PsyCardItem[] }) {
         .pp-list__head { margin-bottom: 28px; }
         .pp-list__count { font-size: 14px; color: var(--fanus-ink-3); }
         .pp-list__count strong { color: var(--fanus-ink); font-weight: 700; }
+        .pp-list__empty { padding: 40px 0; text-align: center; color: var(--fanus-ink-3); font-size: 15px; }
 
         .pp-grid { display: flex; gap: 22px; overflow-x: auto; padding: 2px 2px 18px; scroll-snap-type: x proximity; }
         .pp-grid > .pc-card { flex: 0 0 min(300px, calc(100vw - 48px)); min-width: 0; scroll-snap-align: start; }

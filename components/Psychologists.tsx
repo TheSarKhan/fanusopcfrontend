@@ -6,20 +6,10 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 import PsychologistCard, { toPsyCardItem, type PsyCardItem } from "@/components/PsychologistCard";
 import HorizontalCardRail from "@/components/HorizontalCardRail";
 
-const FALLBACK: PsyCardItem[] = [
-  { id: 1, slug: "aysel-memmedova", name: "Aysel Məmmədova", title: "Klinik psixoloq",      specs: ["Narahatlıq", "OKD", "Panik"],  exp: 8,  rating: "4.9", sessions: "210", lang: "AZ, RU",      sessionMinutes: 50 },
-  { id: 2, slug: "resad-quliyev",   name: "Rəşad Quliyev",   title: "Travma terapevti",     specs: ["Travma", "TSSP"],              exp: 11, rating: "4.8", sessions: "315", lang: "AZ, EN",      sessionMinutes: 50 },
-  { id: 3, slug: "lale-huseynova",  name: "Lalə Hüseynova",  title: "Ailə terapevti",       specs: ["Münasibətlər", "Ailə"],        exp: 6,  rating: "4.7", sessions: "140", lang: "AZ",           sessionMinutes: 50 },
-  { id: 4, slug: "elnur-seferov",   name: "Elnur Səfərov",   title: "Klinik psixoloq",      specs: ["Depressiya", "Burnout"],       exp: 9,  rating: "4.9", sessions: "260", lang: "AZ, RU",      sessionMinutes: 50 },
-  { id: 5, slug: "nigar-kazimova",  name: "Nigar Kazımova",  title: "Uşaq psixoloqu",       specs: ["Yeniyetmə", "Valideyn"],       exp: 7,  rating: "4.8", sessions: "180", lang: "AZ",           sessionMinutes: 50 },
-  { id: 6, slug: "tural-babayev",   name: "Tural Babayev",   title: "Asılılıq mütəxəssisi", specs: ["Asılılıq", "İmpuls"],          exp: 10, rating: "4.7", sessions: "240", lang: "AZ, RU",      sessionMinutes: 50 },
-];
-
 export default function Psychologists({ psychologists }: { psychologists?: Psychologist[] }) {
   const { t } = useT();
-  const data: PsyCardItem[] = (psychologists && psychologists.length > 0)
-    ? psychologists.map((p) => toPsyCardItem(p, String(p.id)))
-    : FALLBACK;
+  if (!psychologists || psychologists.length === 0) return null;
+  const data: PsyCardItem[] = psychologists.map((p) => toPsyCardItem(p, String(p.id)));
 
   return (
     <section className="fanus-psyc" id="psychologists">

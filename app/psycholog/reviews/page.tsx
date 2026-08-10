@@ -6,10 +6,10 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
 import PageHeader from "@/components/PageHeader";
 
-const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING:  { label: "Moderasiyada", color: "#92400E", bg: "#FEF3C7" },
-  APPROVED: { label: "Yayımlanıb",       color: "#065F46", bg: "#D1FAE5" },
-  REJECTED: { label: "Rədd",         color: "#991B1B", bg: "#FEE2E2" },
+const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
+  PENDING:  { color: "#92400E", bg: "#FEF3C7" },
+  APPROVED: { color: "#065F46", bg: "#D1FAE5" },
+  REJECTED: { color: "#991B1B", bg: "#FEE2E2" },
 };
 
 const PAGE_SIZE = 30;
@@ -21,8 +21,9 @@ function fmt(iso?: string | null) {
 }
 
 function Stars({ value, size = 14 }: { value: number; size?: number }) {
+  const { t } = useT();
   return (
-    <span style={{ display: "inline-flex", gap: 2 }} aria-label={`${value} ulduz`}>
+    <span style={{ display: "inline-flex", gap: 2 }} aria-label={t("psyReviewsMgmt.starsAriaLabel", { value })}>
       {[1, 2, 3, 4, 5].map((n) => (
         <svg key={n} width={size} height={size} viewBox="0 0 24 24"
              fill={n <= value ? "#C97D2E" : "#E4ECFA"}>
@@ -45,6 +46,12 @@ export default function PsychologReviewsPage() {
   const [deleteFor, setDeleteFor] = useState<PsychologistReceivedReview | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [deletionRequests, setDeletionRequests] = useState<ReviewDeletionRequestItem[]>([]);
+
+  const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
+    PENDING:  { label: t("psyReviewsMgmt.statusPending"), ...STATUS_STYLE.PENDING },
+    APPROVED: { label: t("psyReviewsMgmt.statusApproved"), ...STATUS_STYLE.APPROVED },
+    REJECTED: { label: t("psyReviewsMgmt.statusRejected"), ...STATUS_STYLE.REJECTED },
+  };
 
   const load = () => {
     setLoading(true);
@@ -104,7 +111,7 @@ export default function PsychologReviewsPage() {
   }, [items]);
 
   const removeReply = async (id: number) => {
-    if (!confirm("Cavabı silmək istədiyinizə əminsiniz?")) return;
+    if (!confirm(t("psyReviewsMgmt.deleteReplyConfirm"))) return;
     setBusyId(id);
     try {
       await psychologistApi.deleteReviewReply(id);
@@ -134,7 +141,7 @@ export default function PsychologReviewsPage() {
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         {(["APPROVED", "PENDING", "ALL"] as const).map((f) => {
           const active = filter === f;
-          const label = f === "APPROVED" ? "Yayımlanıb" : f === "PENDING" ? "Moderasiyada" : "Hamısı";
+          const label = f === "APPROVED" ? t("psyReviewsMgmt.statusApproved") : f === "PENDING" ? t("psyReviewsMgmt.statusPending") : t("psyList.filterAll");
           return (
             <button key={f} onClick={() => setFilter(f)}
               style={{
@@ -152,13 +159,13 @@ export default function PsychologReviewsPage() {
 
       {loading ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "#52718F" }}>
-          Yüklənir…
+          {t("psyReviewsMgmt.loading")}
         </div>
       ) : visible.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 14, padding: 60, textAlign: "center", color: "#52718F", border: "1px dashed #DDE6F0" }}>
           {filter === "APPROVED"
-            ? "Hələ public rəy yoxdur — pasiyentlər yazan kimi burada dərc olunacaq."
-            : "Bu kateqoriyada rəy yoxdur."}
+            ? t("psyReviewsMgmt.emptyApproved")
+            : t("psyReviewsMgmt.emptyOther")}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -185,10 +192,10 @@ export default function PsychologReviewsPage() {
                   const dr = deletionByReview.get(r.id);
                   if (!dr) return null;
                   const drBadge = dr.status === "PENDING"
-                    ? { label: "Silmə tələbi: Gözləmədə", bg: "#FEF3C7", color: "#92400E" }
+                    ? { label: t("psyReviewsMgmt.deletionStatusPending"), bg: "#FEF3C7", color: "#92400E" }
                     : dr.status === "APPROVED"
-                      ? { label: "Silmə tələbi: Təsdiqləndi (rəy silindi)", bg: "#D1FAE5", color: "#065F46" }
-                      : { label: "Silmə tələbi: Rədd edildi", bg: "#FEE2E2", color: "#991B1B" };
+                      ? { label: t("psyReviewsMgmt.deletionStatusApproved"), bg: "#D1FAE5", color: "#065F46" }
+                      : { label: t("psyReviewsMgmt.deletionStatusRejected"), bg: "#FEE2E2", color: "#991B1B" };
                   return (
                     <div style={{ marginTop: 10 }}>
                       <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, color: drBadge.color, background: drBadge.bg }}>
@@ -204,7 +211,7 @@ export default function PsychologReviewsPage() {
                 {r.reply && (
                   <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--brand-50)", borderLeft: "3px solid var(--brand)", borderRadius: "0 8px 8px 0" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                      <strong style={{ fontSize: 12, color: "var(--brand)" }}>Sizin cavabınız</strong>
+                      <strong style={{ fontSize: 12, color: "var(--brand)" }}>{t("psyReviewsMgmt.yourReplyLabel")}</strong>
                       <span style={{ fontSize: 11, color: "#52718F" }}>{fmt(r.replyAt ?? null)}</span>
                     </div>
                     <p style={{ fontSize: 13, color: "#374151", margin: 0, whiteSpace: "pre-wrap" }}>{r.reply}</p>
@@ -218,17 +225,17 @@ export default function PsychologReviewsPage() {
                     <>
                       <button onClick={() => setReplyFor(r)} disabled={busy}
                         style={{ padding: "5px 10px", fontSize: 12, border: "1px solid var(--brand-200)", color: "var(--brand)", background: "#fff", borderRadius: 6, cursor: "pointer" }}>
-                        Redaktə et
+                        {t("psyReviewsMgmt.editReply")}
                       </button>
                       <button onClick={() => removeReply(r.id)} disabled={busy}
                         style={{ padding: "5px 10px", fontSize: 12, border: "1px solid #FECACA", color: "#991B1B", background: "#fff", borderRadius: 6, cursor: busy ? "wait" : "pointer" }}>
-                        Sil
+                        {t("psyReviewsMgmt.deleteReplyBtn")}
                       </button>
                     </>
                   ) : (
                     <button onClick={() => setReplyFor(r)}
                       style={{ padding: "7px 14px", fontSize: 13, fontWeight: 600, border: "1px solid var(--brand-200)", color: "var(--brand)", background: "var(--brand-50)", borderRadius: 8, cursor: "pointer" }}>
-                      Cavab yaz
+                      {t("psyReviewsMgmt.writeReply")}
                     </button>
                   )}
                   {(() => {
@@ -242,7 +249,7 @@ export default function PsychologReviewsPage() {
                     return (
                       <button onClick={() => setDeleteFor(r)}
                         style={{ padding: "7px 14px", fontSize: 13, fontWeight: 600, border: "1px solid #FECACA", color: "#991B1B", background: "#FEF2F2", borderRadius: 8, cursor: "pointer" }}>
-                        {dr ? "Yenidən silmə tələbi göndər" : "Silmə tələbi göndər"}
+                        {dr ? t("psyReviewsMgmt.deletionRequestResend") : t("psyReviewsMgmt.deletionRequestSend")}
                       </button>
                     );
                   })()}
@@ -257,7 +264,7 @@ export default function PsychologReviewsPage() {
         <div style={{ textAlign: "center", marginTop: 16 }}>
           <button type="button" onClick={loadMore} disabled={loadingMore}
             style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
-            {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
+            {loadingMore ? t("psyReviewsMgmt.loading") : t("psyReviewsMgmt.loadMore", { count: Math.min(PAGE_SIZE, totalElements - items.length) })}
           </button>
         </div>
       )}
@@ -293,11 +300,12 @@ function DeletionRequestModal({ review, onClose, onSaved }: {
   onClose: () => void;
   onSaved: (dr: ReviewDeletionRequestItem) => void;
 }) {
+  const { t } = useT();
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
-    if (reason.trim().length < 5) { toast("Səbəbi qısaca izah edin (ən azı 5 simvol)", "error"); return; }
+    if (reason.trim().length < 5) { toast(t("psyReviewsMgmt.deletionReasonTooShort"), "error"); return; }
     setBusy(true);
     try {
       const dr = await psychologistApi.requestReviewDeletion(review.id, reason.trim());
@@ -315,10 +323,10 @@ function DeletionRequestModal({ review, onClose, onSaved }: {
         style={{ background: "#fff", borderRadius: 16, width: "min(560px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
         <div style={{ padding: "16px 22px", borderBottom: "1px solid #EFF2F7" }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: 0 }}>
-            Rəy üçün silmə tələbi
+            {t("psyReviewsMgmt.deletionModalTitle")}
           </h2>
           <p style={{ fontSize: 12, color: "#52718F", marginTop: 4 }}>
-            Tələbiniz Operatora göndərilir — rəy yalnız Operator təsdiqindən sonra silinir.
+            {t("psyReviewsMgmt.deletionModalDesc")}
           </p>
         </div>
         <div style={{ padding: 22 }}>
@@ -330,22 +338,22 @@ function DeletionRequestModal({ review, onClose, onSaved }: {
             <p style={{ fontSize: 13, color: "#374151", margin: 0, whiteSpace: "pre-wrap" }}>{review.comment}</p>
           </div>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
-            Silinmə səbəbi
+            {t("psyReviewsMgmt.deletionReasonLabel")}
           </label>
           <textarea
             rows={4} value={reason} maxLength={2000}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Rəyin niyə uyğunsuz olduğunu izah edin…"
+            placeholder={t("psyReviewsMgmt.deletionReasonPlaceholder")}
             style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", lineHeight: 1.55, resize: "vertical" }}
           />
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
             <button onClick={onClose} disabled={busy}
               style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: busy ? "wait" : "pointer" }}>
-              Bağla
+              {t("psyReviewsMgmt.close")}
             </button>
             <button onClick={submit} disabled={busy}
               style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "#991B1B", color: "#fff", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>
-              {busy ? "Göndərilir…" : "Tələbi göndər"}
+              {busy ? t("psyReviewsMgmt.submitting") : t("psyReviewsMgmt.deletionSubmit")}
             </button>
           </div>
         </div>
@@ -369,11 +377,12 @@ function ReplyModal({ review, onClose, onSaved }: {
   onClose: () => void;
   onSaved: (r: PsychologistReceivedReview) => void;
 }) {
+  const { t } = useT();
   const [text, setText] = useState(review.reply ?? "");
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
-    if (text.trim().length < 2) { toast("Cavab mətnini yazın", "error"); return; }
+    if (text.trim().length < 2) { toast(t("psyReviewsMgmt.replyTextRequired"), "error"); return; }
     setBusy(true);
     try {
       const updated = await psychologistApi.replyToReview(review.id, text.trim());
@@ -391,10 +400,10 @@ function ReplyModal({ review, onClose, onSaved }: {
         style={{ background: "#fff", borderRadius: 16, width: "min(560px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
         <div style={{ padding: "16px 22px", borderBottom: "1px solid #EFF2F7" }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: 0 }}>
-            {review.reply ? "Cavabı redaktə et" : "Pasiyentə cavab yaz"}
+            {review.reply ? t("psyReviewsMgmt.replyModalEditTitle") : t("psyReviewsMgmt.replyModalNewTitle")}
           </h2>
           <p style={{ fontSize: 12, color: "#52718F", marginTop: 4 }}>
-            Cavabınız public profildə rəylə birlikdə görünəcək. Peşəkar dildə yazın.
+            {t("psyReviewsMgmt.replyModalDesc")}
           </p>
         </div>
         <div style={{ padding: 22 }}>
@@ -406,12 +415,12 @@ function ReplyModal({ review, onClose, onSaved }: {
             <p style={{ fontSize: 13, color: "#374151", margin: 0, whiteSpace: "pre-wrap" }}>{review.comment}</p>
           </div>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
-            Cavabınız
+            {t("psyReviewsMgmt.replyLabel")}
           </label>
           <textarea
             rows={5} value={text} maxLength={2000}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Pasiyentə təşəkkür edin və ya əlavə kontekst paylaşın…"
+            placeholder={t("psyReviewsMgmt.replyPlaceholder")}
             style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", lineHeight: 1.55, resize: "vertical" }}
           />
           <div style={{ fontSize: 11, color: "#8AAABF", textAlign: "right", marginTop: 4 }}>
@@ -420,11 +429,11 @@ function ReplyModal({ review, onClose, onSaved }: {
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
             <button onClick={onClose} disabled={busy}
               style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: busy ? "wait" : "pointer" }}>
-              Bağla
+              {t("psyReviewsMgmt.close")}
             </button>
             <button onClick={submit} disabled={busy}
               style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "linear-gradient(135deg,#1a1040,var(--brand))", color: "#fff", cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>
-              {busy ? "Saxlanılır…" : "Saxla"}
+              {busy ? t("psyReviewsMgmt.saving") : t("psyReviewsMgmt.save")}
             </button>
           </div>
         </div>

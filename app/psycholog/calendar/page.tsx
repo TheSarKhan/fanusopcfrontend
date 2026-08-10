@@ -9,8 +9,8 @@ import { statusMeta } from "@/lib/appointmentStatus";
 import { toast } from "@/components/Toast";
 import PageHeader from "@/components/PageHeader";
 
-const DAYS_AZ = ["B.e", "Ç.a", "Ç", "C.a", "C", "Ş", "B"]; // Mon..Sun — yalnız kompakt 7-günlük zolaq başlıqları üçün
-const DAYS_AZ_FULL = ["Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə", "Bazar"]; // Mon..Sun — mətn/etiketlərdə
+// Mon..Sun day-name labels are sourced via t("psyCalendarMgmt.dayShort*"/"dayFull*")
+// in the components below — see dayShortLabels / dayFullLabels.
 
 // Google Calendar inteqrasiyası — header-dəki "Sinxronlaşdır" düyməsi + status banner.
 const SHOW_GOOGLE_INTEGRATION = true;
@@ -58,8 +58,8 @@ function pad2(n: number) { return String(n).padStart(2, "0"); }
 
 function fmtHM(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
 
-function fmtFullDateTime(d: Date) {
-  const dayLabel = DAYS_AZ_FULL[(d.getDay() + 6) % 7];
+function fmtFullDateTime(d: Date, dayNamesFull: string[]) {
+  const dayLabel = dayNamesFull[(d.getDay() + 6) % 7];
   return `${dayLabel}, ${fmtDay(d)}, ${fmtHM(d)}`;
 }
 
@@ -142,6 +142,11 @@ function layoutEvents(events: Omit<PositionedEvent, "laneIndex" | "laneCount">[]
 
 export default function PsychologCalendarPage() {
   const { t } = useT();
+  const dayShortLabels = [
+    t("psyCalendarMgmt.dayShortMon"), t("psyCalendarMgmt.dayShortTue"), t("psyCalendarMgmt.dayShortWed"),
+    t("psyCalendarMgmt.dayShortThu"), t("psyCalendarMgmt.dayShortFri"), t("psyCalendarMgmt.dayShortSat"),
+    t("psyCalendarMgmt.dayShortSun"),
+  ];
   const [items, setItems] = useState<AppointmentDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
@@ -204,7 +209,7 @@ export default function PsychologCalendarPage() {
     const g = params.get("google");
     if (!g) return;
     if (g === "error") {
-      toast(params.get("reason") || "Google bağlantısı alınmadı", "error");
+      toast(params.get("reason") || t("psyCalendarMgmt.googleConnectFailed"), "error");
     }
     params.delete("google");
     params.delete("reason");
@@ -459,7 +464,7 @@ export default function PsychologCalendarPage() {
   };
 
   const handleGoogleDisconnect = async () => {
-    if (!window.confirm("Google Calendar bağlantısı kəsilsin? Mövcud hadisələr Google Calendar-da qalacaq, yeni seanslar daha sinxronlaşmayacaq.")) return;
+    if (!window.confirm(t("psyCalendarMgmt.disconnectConfirm"))) return;
     setGLoading(true);
     try {
       await psychologistApi.googleDisconnect();
@@ -476,25 +481,25 @@ export default function PsychologCalendarPage() {
     <div>
       <PageHeader
         title={t("staff.psyCalendarTitle")}
-        subtitle="Gələcək təsdiqli/təyin edilmiş seansı sürükləyib başqa saata buraxaraq yenidən təklif edə bilərsiniz (15 dəq addımlarla)."
+        subtitle={t("psyCalendarMgmt.subtitle")}
         actions={
           <>
           <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--oxford)" }}>
             {fmtDay(weekDays[0])} – {fmtDay(weekDays[6])}.{weekDays[6].getFullYear()}
           </span>
           <div style={{ display: "inline-flex", alignItems: "center", border: "1px solid var(--oxford-10)", borderRadius: 10, background: "#fff", overflow: "hidden" }}>
-            <button onClick={() => setWeekStart(addDays(weekStart, -7))} style={navBtnStyle(true)} title="Əvvəlki həftə" aria-label="Əvvəlki həftə"><ChevronLeft /></button>
-            <button onClick={() => setWeekStart(startOfWeek(new Date()))} style={{ ...navBtnStyle(true), width: "auto", padding: "0 12px", height: 34, fontSize: 12.5, fontWeight: 600, color: "var(--oxford)", borderLeft: "1px solid var(--oxford-10)", borderRight: "1px solid var(--oxford-10)" }}>Bu həftə</button>
-            <button onClick={() => setWeekStart(addDays(weekStart, 7))} style={navBtnStyle(true)} title="Növbəti həftə" aria-label="Növbəti həftə"><ChevronRight /></button>
+            <button onClick={() => setWeekStart(addDays(weekStart, -7))} style={navBtnStyle(true)} title={t("psyCalendarMgmt.prevWeek")} aria-label={t("psyCalendarMgmt.prevWeek")}><ChevronLeft /></button>
+            <button onClick={() => setWeekStart(startOfWeek(new Date()))} style={{ ...navBtnStyle(true), width: "auto", padding: "0 12px", height: 34, fontSize: 12.5, fontWeight: 600, color: "var(--oxford)", borderLeft: "1px solid var(--oxford-10)", borderRight: "1px solid var(--oxford-10)" }}>{t("psyCalendarMgmt.thisWeek")}</button>
+            <button onClick={() => setWeekStart(addDays(weekStart, 7))} style={navBtnStyle(true)} title={t("psyCalendarMgmt.nextWeek")} aria-label={t("psyCalendarMgmt.nextWeek")}><ChevronRight /></button>
           </div>
-          <button onClick={() => setRefreshNonce(x => x + 1)} style={navBtnStyle(false)} title="Yenilə" aria-label="Yenilə"><RefreshIcon /></button>
+          <button onClick={() => setRefreshNonce(x => x + 1)} style={navBtnStyle(false)} title={t("psyCalendarMgmt.refresh")} aria-label={t("psyCalendarMgmt.refresh")}><RefreshIcon /></button>
           {SHOW_GOOGLE_INTEGRATION && (
             <button
               onClick={gStatus?.connected ? handleGoogleResync : handleGoogleConnect}
               disabled={gConnecting || gLoading || (gStatus != null && !gStatus.configured)}
               title={gStatus != null && !gStatus.configured
-                ? "İnteqrasiya hələ konfiqurasiya olunmayıb"
-                : gStatus?.connected ? "Google Calendar hadisələrini yenilə" : "Google Calendar hesabınızı qoşun"}
+                ? t("psyCalendarMgmt.notConfiguredTitle")
+                : gStatus?.connected ? t("psyCalendarMgmt.refreshGoogleEvents") : t("psyCalendarMgmt.connectGoogleAccount")}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 background: "#fff", color: "var(--oxford)",
@@ -505,8 +510,8 @@ export default function PsychologCalendarPage() {
               }}>
               <GoogleIcon size={15} />
               {gStatus?.connected
-                ? (gLoading ? "Sinxronlaşdırılır…" : "Sinxronlaşdır")
-                : (gConnecting ? "Yönləndirilir…" : "Google Calendar ilə sinxronlaşdır")}
+                ? (gLoading ? t("psyCalendarMgmt.syncing") : t("psyCalendarMgmt.sync"))
+                : (gConnecting ? t("psyCalendarMgmt.redirecting") : t("psyCalendarMgmt.syncWithGoogle"))}
             </button>
           )}
           </>
@@ -549,7 +554,7 @@ export default function PsychologCalendarPage() {
                 const isToday = isoDay(d) === isoDay(new Date());
                 return (
                   <div key={i} style={{ textAlign: "center", fontSize: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                    <div style={{ fontWeight: 700, color: isToday ? "var(--brand)" : "var(--oxford)" }}>{DAYS_AZ[i]}</div>
+                    <div style={{ fontWeight: 700, color: isToday ? "var(--brand)" : "var(--oxford)" }}>{dayShortLabels[i]}</div>
                     <div style={{
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
                       minWidth: 34, height: 22, padding: "0 8px", borderRadius: 999,
@@ -740,7 +745,7 @@ export default function PsychologCalendarPage() {
                             draggable={draggable}
                             onDragStart={e => handleDragStart(a, e)}
                             onDragEnd={handleDragEnd}
-                            title={`${a.patientName ?? "—"}, ${fmtHM(ev.start)}–${fmtHM(ev.end)}, ${statusLabel(a.status)}${hasConflict ? "\nGoogle Calendar ilə zaman üst-üstə düşür" : ""}${draggable ? "\nSürükləyib başqa vaxta burax" : ""}`}
+                            title={`${a.patientName ?? "—"}, ${fmtHM(ev.start)}–${fmtHM(ev.end)}, ${statusLabel(a.status)}${hasConflict ? `\n${t("psyCalendarMgmt.eventTooltipConflict")}` : ""}${draggable ? `\n${t("psyCalendarMgmt.eventTooltipDraggable")}` : ""}`}
                             style={{
                               position: "absolute",
                               top,
@@ -809,16 +814,16 @@ export default function PsychologCalendarPage() {
 
             {/* Legend */}
             <div style={{ display: "flex", gap: 14, marginTop: 14, paddingTop: 12, borderTop: "1px solid #EFF2F7", fontSize: 11.5, color: "var(--oxford-60)", flexWrap: "wrap" }}>
-              <Legend label="Gözləmədə" bg="#FEF3C7" fg="#92400E" dashed />
-              <Legend label="Təyin edilib" bg="#DBEAFE" fg="#1E40AF" />
-              <Legend label="Təsdiqlənib" bg="#D1FAE5" fg="#065F46" />
-              <Legend label="Tamamlanıb" bg="#E5E7EB" fg="#374151" />
-              <Legend label="Ləğv olunub" bg="#FEE2E2" fg="#991B1B" />
+              <Legend label={t("psyCalendarMgmt.legendPending")} bg="#FEF3C7" fg="#92400E" dashed />
+              <Legend label={t("psyCalendarMgmt.legendAssigned")} bg="#DBEAFE" fg="#1E40AF" />
+              <Legend label={t("psyCalendarMgmt.legendConfirmed")} bg="#D1FAE5" fg="#065F46" />
+              <Legend label={t("psyCalendarMgmt.legendCompleted")} bg="#E5E7EB" fg="#374151" />
+              <Legend label={t("psyCalendarMgmt.legendCancelled")} bg="#FEE2E2" fg="#991B1B" />
               {SHOW_GOOGLE_INTEGRATION && gStatus?.connected && gShown && (
-                <Legend label="Google hadisəsi" bg="rgba(66,133,244,0.10)" fg="#4285F4" />
+                <Legend label={t("psyCalendarMgmt.legendGoogleEvent")} bg="rgba(66,133,244,0.10)" fg="#4285F4" />
               )}
               {SHOW_GOOGLE_INTEGRATION && conflictIds.size > 0 && (
-                <Legend label="Konflikt" bg="#FEE2E2" fg="#DC2626" />
+                <Legend label={t("psyCalendarMgmt.legendConflict")} bg="#FEE2E2" fg="#DC2626" />
               )}
             </div>
           </div>
@@ -877,6 +882,7 @@ function GoogleStatusBanner({
   onToggleShown: () => void;
   onShowConflicts: () => void;
 }) {
+  const { t } = useT();
   const baseCard: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
     padding: "10px 14px",
@@ -903,7 +909,7 @@ function GoogleStatusBanner({
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, color: "#1A2535" }}>Google Calendar</div>
-          <div style={{ fontSize: 11.5, marginTop: 2 }}>Status yoxlanılır…</div>
+          <div style={{ fontSize: 11.5, marginTop: 2 }}>{t("psyCalendarMgmt.statusChecking")}</div>
         </div>
       </div>
     );
@@ -926,12 +932,12 @@ function GoogleStatusBanner({
           <GoogleIcon size={16} />
         </div>
         <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ fontWeight: 700 }}>Google Calendar inteqrasiyası hələ konfiqurasiya olunmayıb</div>
+          <div style={{ fontWeight: 700 }}>{t("psyCalendarMgmt.notConfiguredHeading")}</div>
           <div style={{ fontSize: 11.5, marginTop: 2 }}>
-            Bu xidmətdən istifadə etmək üçün admin komandası backend-də{" "}
+            {t("psyCalendarMgmt.notConfiguredPrefix")}
             <code style={{ fontSize: 11 }}>GOOGLE_CLIENT_ID</code>,{" "}
-            <code style={{ fontSize: 11 }}>GOOGLE_CLIENT_SECRET</code> və{" "}
-            <code style={{ fontSize: 11 }}>GOOGLE_REDIRECT_URI</code> dəyərlərini qurmalıdır.
+            <code style={{ fontSize: 11 }}>GOOGLE_CLIENT_SECRET</code>{t("psyCalendarMgmt.notConfiguredAnd")}
+            <code style={{ fontSize: 11 }}>GOOGLE_REDIRECT_URI</code>{t("psyCalendarMgmt.notConfiguredSuffix")}
           </div>
         </div>
       </div>
@@ -955,9 +961,9 @@ function GoogleStatusBanner({
           <GoogleIcon size={16} />
         </div>
         <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ fontWeight: 700, color: "#1E3A8A" }}>Google Calendar bağlı deyil</div>
+          <div style={{ fontWeight: 700, color: "#1E3A8A" }}>{t("psyCalendarMgmt.notConnectedTitle")}</div>
           <div style={{ color: "#3B5BA5", fontSize: 11.5, marginTop: 2 }}>
-            Şəxsi cədvəlinizi qoşduğunuz halda Fanus randevuları ilə konfliktlər avtomatik göstəriləcək.
+            {t("psyCalendarMgmt.notConnectedDesc")}
           </div>
         </div>
         <button onClick={onConnect} disabled={connecting} style={{
@@ -967,7 +973,7 @@ function GoogleStatusBanner({
           cursor: connecting ? "wait" : "pointer", opacity: connecting ? 0.7 : 1,
           display: "inline-flex", alignItems: "center", gap: 6,
         }}>
-          <GoogleIcon size={13} /> {connecting ? "Yönləndirilir…" : "Google ilə qoşul"}
+          <GoogleIcon size={13} /> {connecting ? t("psyCalendarMgmt.redirecting") : t("psyCalendarMgmt.connectWithGoogle")}
         </button>
       </div>
     );
@@ -993,21 +999,21 @@ function GoogleStatusBanner({
       </div>
       <div style={{ flex: 1, minWidth: 200 }}>
         <div style={{ fontWeight: 700 }}>
-          {status.email || "Google Calendar qoşulub"}
+          {status.email || t("psyCalendarMgmt.googleConnectedFallback")}
         </div>
         <div style={{ fontSize: 11.5, marginTop: 2, opacity: 0.85, display: "flex", flexWrap: "wrap", gap: 8 }}>
           <span>
             {loading
-              ? "Yüklənir…"
+              ? t("psyCalendarMgmt.loadingEllipsis")
               : eventCount > 0
-                ? `Bu həftədə ${eventCount} hadisə`
-                : "Bu həftədə hadisə yoxdur"}
+                ? t("psyCalendarMgmt.eventsThisWeek", { count: eventCount })
+                : t("psyCalendarMgmt.noEventsThisWeek")}
           </span>
           {conflictCount > 0 && (
-            <strong style={{ color: "#B45309" }}>{conflictCount} konflikt</strong>
+            <strong style={{ color: "#B45309" }}>{t("psyCalendarMgmt.conflictCountLabel", { count: conflictCount })}</strong>
           )}
           {status.lastSyncAt && (
-            <span>son sinxron {azFormatDateTime(status.lastSyncAt)}</span>
+            <span>{t("psyCalendarMgmt.lastSyncLabel", { time: azFormatDateTime(status.lastSyncAt) })}</span>
           )}
         </div>
       </div>
@@ -1022,7 +1028,7 @@ function GoogleStatusBanner({
           onChange={onToggleShown}
           style={{ accentColor: "#4285F4", width: 14, height: 14 }}
         />
-        Göstər
+        {t("psyCalendarMgmt.show")}
       </label>
       {conflictCount > 0 && (
         <button onClick={onShowConflicts} style={{
@@ -1033,7 +1039,7 @@ function GoogleStatusBanner({
           fontWeight: 700, fontSize: 12,
           cursor: "pointer",
         }}>
-          Konfliktləri həll et
+          {t("psyCalendarMgmt.resolveConflicts")}
         </button>
       )}
       <button onClick={onResync} disabled={loading} style={{
@@ -1044,9 +1050,9 @@ function GoogleStatusBanner({
         fontWeight: 600, fontSize: 12,
         cursor: loading ? "wait" : "pointer", opacity: loading ? 0.7 : 1,
       }}>
-        {loading ? "Yüklənir…" : "Yenilə"}
+        {loading ? t("psyCalendarMgmt.loadingEllipsis") : t("psyCalendarMgmt.refresh")}
       </button>
-      <button onClick={onChangeAccount} disabled={connecting || loading} title="Başqa Google hesabı ilə qoşul" style={{
+      <button onClick={onChangeAccount} disabled={connecting || loading} title={t("psyCalendarMgmt.changeGoogleAccountTitle")} style={{
         padding: "7px 12px", borderRadius: 8,
         border: conflictCount > 0 ? "1px solid #FDE68A" : "1px solid #A7F3D0",
         background: "#fff",
@@ -1054,9 +1060,9 @@ function GoogleStatusBanner({
         fontWeight: 600, fontSize: 12,
         cursor: connecting ? "wait" : "pointer", opacity: connecting || loading ? 0.7 : 1,
       }}>
-        {connecting ? "Yönləndirilir…" : "Hesabı dəyiş"}
+        {connecting ? t("psyCalendarMgmt.redirecting") : t("psyCalendarMgmt.changeAccount")}
       </button>
-      <button onClick={onDisconnect} disabled={connecting || loading} title="Google Calendar bağlantısını kəs" style={{
+      <button onClick={onDisconnect} disabled={connecting || loading} title={t("psyCalendarMgmt.disconnectGoogleTitle")} style={{
         padding: "7px 12px", borderRadius: 8,
         border: "1px solid #FECACA",
         background: "#fff",
@@ -1064,7 +1070,7 @@ function GoogleStatusBanner({
         fontWeight: 600, fontSize: 12,
         cursor: loading ? "wait" : "pointer", opacity: connecting || loading ? 0.7 : 1,
       }}>
-        Bağlantını kəs
+        {t("psyCalendarMgmt.disconnect")}
       </button>
     </div>
   );
@@ -1134,6 +1140,12 @@ function DragProposalModal({
   onClose: () => void;
   onSubmitted: () => void;
 }) {
+  const { t } = useT();
+  const dayFullLabels = [
+    t("psyCalendarMgmt.dayFullMon"), t("psyCalendarMgmt.dayFullTue"), t("psyCalendarMgmt.dayFullWed"),
+    t("psyCalendarMgmt.dayFullThu"), t("psyCalendarMgmt.dayFullFri"), t("psyCalendarMgmt.dayFullSat"),
+    t("psyCalendarMgmt.dayFullSun"),
+  ];
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [start, setStart] = useState<Date>(newStart);
@@ -1150,11 +1162,11 @@ function DragProposalModal({
 
   const submit = async () => {
     if (start.getTime() < openedAt.getTime()) {
-      toast("Keçmiş vaxta təklif göndərmək olmaz — başqa vaxt seçin.", "error");
+      toast(t("psyCalendarMgmt.pastTimeError"), "error");
       return;
     }
     if (originalStart && start.getTime() === originalStart.getTime()) {
-      toast("Yeni vaxt köhnə vaxtla eynidir — başqa vaxt seçin.", "error");
+      toast(t("psyCalendarMgmt.sameTimeError"), "error");
       return;
     }
     setSubmitting(true);
@@ -1178,16 +1190,16 @@ function DragProposalModal({
       <div onClick={e => e.stopPropagation()}
         style={{ background: "#fff", borderRadius: 16, padding: 0, maxWidth: 520, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", overflow: "hidden" }}>
         <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9" }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: 0 }}>Yenidən təklif</h3>
+          <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: 0 }}>{t("psyCalendarMgmt.rescheduleTitle")}</h3>
           <p style={{ fontSize: 12, color: "#52718F", marginTop: 4 }}>
-            {appointment.patientName ?? "Pasient"} üçün yeni saat təklif edirsiniz. Pasiyent təsdiq etməlidir.
+            {t("psyCalendarMgmt.rescheduleDesc", { name: appointment.patientName ?? t("psyCalendarMgmt.patientFallback") })}
           </p>
         </div>
         <div style={{ padding: 22 }}>
           {editable && (
             <>
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
-                Yeni vaxt
+                {t("psyCalendarMgmt.newTimeLabel")}
               </label>
               <input
                 type="datetime-local"
@@ -1199,24 +1211,24 @@ function DragProposalModal({
             </>
           )}
           <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
-            <Row label="Köhnə saat" value={originalStart ? `${fmtFullDateTime(originalStart)}–${fmtHM(new Date(originalStart.getTime() + duration))}` : "—"} muted />
-            <Row label="Yeni təklif" value={`${fmtFullDateTime(start)}–${fmtHM(newEnd)}`} highlight />
+            <Row label={t("psyCalendarMgmt.oldTimeLabel")} value={originalStart ? `${fmtFullDateTime(originalStart, dayFullLabels)}–${fmtHM(new Date(originalStart.getTime() + duration))}` : "—"} muted />
+            <Row label={t("psyCalendarMgmt.newProposalLabel")} value={`${fmtFullDateTime(start, dayFullLabels)}–${fmtHM(newEnd)}`} highlight />
           </div>
 
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>
-            Səbəb (məcburi deyil)
+            {t("psyCalendarMgmt.reasonLabel")}
           </label>
           <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)}
-            placeholder="Məsələn: O saatda işim çıxdı, bu zaman daha rahat olarsa…"
+            placeholder={t("psyCalendarMgmt.reasonPlaceholder")}
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box", resize: "vertical" }} />
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>
-              Ləğv
+              {t("psyCalendarMgmt.cancel")}
             </button>
             <button onClick={submit} disabled={submitting}
               style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: submitting ? "wait" : "pointer", opacity: submitting ? 0.7 : 1 }}>
-              {submitting ? "Göndərilir…" : "Təklif göndər"}
+              {submitting ? t("psyCalendarMgmt.sending") : t("psyCalendarMgmt.sendProposal")}
             </button>
           </div>
         </div>
@@ -1241,6 +1253,12 @@ function ConflictModal({
   onClose: () => void;
   onPropose: (a: AppointmentDetail) => void;
 }) {
+  const { t } = useT();
+  const dayFullLabels = [
+    t("psyCalendarMgmt.dayFullMon"), t("psyCalendarMgmt.dayFullTue"), t("psyCalendarMgmt.dayFullWed"),
+    t("psyCalendarMgmt.dayFullThu"), t("psyCalendarMgmt.dayFullFri"), t("psyCalendarMgmt.dayFullSat"),
+    t("psyCalendarMgmt.dayFullSun"),
+  ];
   const [now] = useState(() => new Date());
 
   return (
@@ -1251,21 +1269,19 @@ function ConflictModal({
         <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
           <div>
             <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: 0 }}>
-              Cədvəl konfliktləri{pairs.length > 0 ? ` (${pairs.length})` : ""}
+              {t("psyCalendarMgmt.conflictsTitle")}{pairs.length > 0 ? ` (${pairs.length})` : ""}
             </h3>
             <p style={{ fontSize: 12, color: "#52718F", margin: "4px 0 0" }}>
-              Fanus seansları şəxsi Google Calendar hadisələrinizlə üst-üstə düşür.
-              Seansa yeni vaxt təklif edin (pasiyent təsdiqləməlidir) və ya şəxsi
-              hadisənizi Google Calendar-da başqa vaxta köçürün.
+              {t("psyCalendarMgmt.conflictsDesc")}
             </p>
           </div>
-          <button onClick={onClose} aria-label="Bağla" style={{ border: 0, background: "transparent", color: "#52718F", fontSize: 20, cursor: "pointer", padding: 0, lineHeight: 1 }}>×</button>
+          <button onClick={onClose} aria-label={t("psyCalendarMgmt.close")} style={{ border: 0, background: "transparent", color: "#52718F", fontSize: 20, cursor: "pointer", padding: 0, lineHeight: 1 }}>×</button>
         </div>
 
         <div style={{ padding: 20, overflowY: "auto" }}>
           {pairs.length === 0 ? (
             <div style={{ textAlign: "center", padding: 24, fontSize: 13.5, color: "#52718F", fontWeight: 600 }}>
-              Aktiv konflikt qalmayıb
+              {t("psyCalendarMgmt.noActiveConflicts")}
             </div>
           ) : pairs.map(p => {
             const a = p.appointment;
@@ -1275,10 +1291,10 @@ function ConflictModal({
               <div key={a.id} style={{ border: "1px solid #FECACA", borderLeft: "3px solid #DC2626", borderRadius: 12, padding: "13px 15px", marginBottom: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                   <span style={{ fontSize: 13.5, fontWeight: 700, color: "#1A2535" }}>
-                    {fmtFullDateTime(p.start)}–{fmtHM(p.end)}
+                    {fmtFullDateTime(p.start, dayFullLabels)}–{fmtHM(p.end)}
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 600, color: "#1A2535" }}>
-                    {a.patientName ?? "Pasiyent"}
+                    {a.patientName ?? t("psyCalendarMgmt.patientFallback")}
                   </span>
                   <span style={{ background: colors.bg, color: colors.fg, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>
                     {statusLabel(a.status)}
@@ -1297,7 +1313,7 @@ function ConflictModal({
                     {ev.htmlLink && (
                       <a href={ev.htmlLink} target="_blank" rel="noopener noreferrer"
                         style={{ fontSize: 12, fontWeight: 700, color: "#1E3A8A", textDecoration: "underline", whiteSpace: "nowrap" }}>
-                        Google-da aç
+                        {t("psyCalendarMgmt.openInGoogle")}
                       </a>
                     )}
                   </div>
@@ -1310,13 +1326,13 @@ function ConflictModal({
                       background: "var(--brand)", color: "#fff",
                       fontWeight: 600, fontSize: 12.5, fontFamily: "inherit", cursor: "pointer",
                     }}>
-                      Yeni vaxt təklif et
+                      {t("psyCalendarMgmt.proposeNewTime")}
                     </button>
                   ) : (
                     <span style={{ fontSize: 11.5, color: "#9CA3AF", fontWeight: 600, alignSelf: "center" }}>
                       {p.start.getTime() <= now.getTime()
-                        ? "Seansın vaxtı keçib — vaxt təklifi mümkün deyil"
-                        : "Bu statusda vaxt təklifi mümkün deyil"}
+                        ? t("psyCalendarMgmt.pastSessionNoProposal")
+                        : t("psyCalendarMgmt.statusNoProposal")}
                     </span>
                   )}
                 </div>

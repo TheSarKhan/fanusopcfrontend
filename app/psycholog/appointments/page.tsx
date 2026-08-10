@@ -28,13 +28,14 @@ import CancelModal from "@/components/CancelModal";
 import RescheduleComposeModal from "@/components/RescheduleComposeModal";
 import PsyReferralsView from "@/components/PsyReferralsView";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { azOrdinal } from "@/lib/datetime";
 import {
-  MONTHS_AZ, pad2, fmtTime, isSameDay, relativeDayLabel, timeUntil,
+  pad2, fmtTime, isSameDay, relativeDayLabel, timeUntil,
   initialsOf, avatarColor, NO_SHOW_REPORT_WINDOW_MS, PSY_APPT_STYLE,
   IClock, IMsg, ICal, IAlert, IRefresh, ICheck, IUser, IX, IOpen, ILayers,
   StatusText, SessionMeta, MetaItem, Empty, PsyJoinButton, gcalHrefFor,
-  RowMenu, type MenuItem, DisputeModal, OutcomeModal,
+  RowMenu, type MenuItem, DisputeModal, OutcomeModal, type Translate,
 } from "./shared";
 
 const ACTIVE_STATUSES = new Set(["ASSIGNED", "CONFIRMED", "CANCEL_REQUESTED"]);
@@ -157,7 +158,7 @@ export default function PsychologistAppointmentsPage() {
     const pkgs: PackageGroup[] = Array.from(byPkg.entries()).map(([id, appts]) => ({
       id,
       patientId: appts[0].patientId ?? null,
-      patientName: appts[0].patientName ?? "Pasiyent",
+      patientName: appts[0].patientName ?? t("psyApptCore.patientFallback"),
       sessions: [...appts].sort((x, y) =>
         new Date(x.startAt ?? x.createdAt).getTime() - new Date(y.startAt ?? y.createdAt).getTime()),
     }));
@@ -171,7 +172,7 @@ export default function PsychologistAppointmentsPage() {
     return Array.from(byPatient.values())
       .map(e => ({ ...e, packages: [...e.packages].sort((a, b) => a.id - b.id) })) // alış sırası ilə
       .sort((a, b) => a.patientName.localeCompare(b.patientName, "az"));
-  }, [items]);
+  }, [items, t]);
 
   const packagesTotal = useMemo(
     () => packagePatients.reduce((n, p) => n + p.packages.length, 0),
@@ -230,11 +231,11 @@ export default function PsychologistAppointmentsPage() {
           <>
             <Link href="/psycholog/appointments/history" className="pa-btn pa-btn--ghost pa-btn--auto">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v5h5" /><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" /><path d="M12 7v5l4 2" /></svg>
-              Tarixçə
+              {t("psyApptCore.historyLink")}
             </Link>
             <Link href="/psycholog/calendar" className="pa-btn pa-btn--primary pa-btn--auto">
               <ICal s={17} c="#fff" />
-              Təqvim
+              {t("psyApptCore.calendarLink")}
             </Link>
           </>
         }
@@ -251,10 +252,10 @@ export default function PsychologistAppointmentsPage() {
           {/* Seanslar / Paketlər / Yönləndirmələr tab seçimi */}
           <div role="tablist" className="gor-tabs" style={{ display: "inline-flex", maxWidth: "100%", overflowX: "auto", gap: 4, background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 5 }}>
             {([
-              ["sessions", "Seanslar", agendaList.length + patientRequests.length, false],
-              ["packages", "Paketlər", packagesTotal, false],
+              ["sessions", t("psyApptCore.tabSessions"), agendaList.length + patientRequests.length, false],
+              ["packages", t("psyApptCore.tabPackages"), packagesTotal, false],
               // Yönləndirmələr müvəqqəti gizlədilib (REFERRALS_ENABLED).
-              ...(REFERRALS_ENABLED ? [["referrals", "Yönləndirmələr", referralPending, referralPending > 0]] : []),
+              ...(REFERRALS_ENABLED ? [["referrals", t("psyApptCore.tabReferrals"), referralPending, referralPending > 0]] : []),
             ] as [TabKey, string, number, boolean][]).map(([key, label, count, warn]) => {
               const active = tab === key;
               return (
@@ -288,7 +289,7 @@ export default function PsychologistAppointmentsPage() {
               )}
 
               {agendaList.length === 0 ? (
-                <Empty msg="Yaxınlaşan seans yoxdur." />
+                <Empty msg={t("psyApptCore.emptyUpcoming")} />
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(330px, 100%), 1fr))", gap: 12 }}>
                   {agendaList.map(a => (
@@ -311,7 +312,7 @@ export default function PsychologistAppointmentsPage() {
           {tab === "packages" && (
             <div style={{ marginTop: 22 }}>
               {packagePatients.length === 0 ? (
-                <Empty msg="Paketli pasiyent yoxdur." />
+                <Empty msg={t("psyApptCore.emptyPackages")} />
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(380px, 100%), 1fr))", gap: 16, alignItems: "start" }}>
                   {packagePatients.map(pp => (
@@ -409,31 +410,32 @@ type Handlers = {
    tipoqrafiya ilə oxunur, status və paket sadə mətn sətirləridir. */
 
 /** Sol sütun üçün qısa gün etiketi: "Bu gün" · "Sabah" · "12 Avq". */
-function shortDayLabel(d: Date, now: Date) {
+function shortDayLabel(d: Date, now: Date, t: Translate) {
   const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
-  if (isSameDay(d, now)) return "Bu gün";
-  if (isSameDay(d, tomorrow)) return "Sabah";
-  return `${pad2(d.getDate())} ${MONTHS_AZ[d.getMonth()]}`;
+  if (isSameDay(d, now)) return t("psyApptCore.today");
+  if (isSameDay(d, tomorrow)) return t("psyApptCore.tomorrow");
+  return `${pad2(d.getDate())} ${t(`months.m${d.getMonth() + 1}` as MessageKey)}`;
 }
 
 function NextHero({ appt, now, client, busyId, h }: {
   appt: AppointmentDetail | null; now: Date; client: ClientSummary | null;
   busyId: number | null; h: Handlers;
 }) {
+  const { t } = useT();
   if (!appt || !appt.startAt) {
     return (
       <section style={{ marginBottom: 26 }}>
-        <h2 className="pa-sec">Növbəti seans</h2>
+        <h2 className="pa-sec">{t("psyApptCore.nextSessionHeading")}</h2>
         <div className="pa-next pa-next--empty">
           <ICal s={20} c="#9DB0CC" />
-          Yaxınlaşan təsdiqli seans yoxdur.
+          {t("psyApptCore.noConfirmedUpcoming")}
         </div>
       </section>
     );
   }
   const start = new Date(appt.startAt);
   const end = appt.endAt ? new Date(appt.endAt) : null;
-  const cd = timeUntil(start, now);
+  const cd = timeUntil(start, now, t);
   const av = avatarColor(appt.patientId ?? appt.patientName);
   const sessionNumber = client ? client.completedSessions + 1 : null;
   const minutes = end ? Math.round((end.getTime() - start.getTime()) / 60_000) : null;
@@ -442,13 +444,13 @@ function NextHero({ appt, now, client, busyId, h }: {
 
   return (
     <section style={{ marginBottom: 26 }}>
-      <h2 className="pa-sec">Növbəti seans</h2>
+      <h2 className="pa-sec">{t("psyApptCore.nextSessionHeading")}</h2>
       <div className="pa-next">
         {/* Nə vaxt */}
         <div className="pa-next__when">
-          <div className="pa-next__day">{shortDayLabel(start, now)}</div>
+          <div className="pa-next__day">{shortDayLabel(start, now, t)}</div>
           <div className="pa-next__time">{fmtTime(start)}</div>
-          {end && <div className="pa-next__end">{fmtTime(end)}-dək</div>}
+          {end && <div className="pa-next__end">{t("psyApptCore.untilTime", { time: fmtTime(end) })}</div>}
         </div>
 
         {/* Kim */}
@@ -458,16 +460,16 @@ function NextHero({ appt, now, client, busyId, h }: {
           </span>
           <div className="pa-next__who">
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span className="pa-next__name">{appt.patientName ?? "Pasiyent"}</span>
+              <span className="pa-next__name">{appt.patientName ?? t("psyApptCore.patientFallback")}</span>
               <StatusText status={appt.status} />
             </div>
             <SessionMeta
               a={appt}
               extra={
                 <>
-                  <MetaItem icon={<ICal s={13} c="#9DB0CC" />}>{relativeDayLabel(start, now)}</MetaItem>
-                  {sessionNumber ? <MetaItem icon={<ILayers />}>{azOrdinal(sessionNumber)} seans</MetaItem> : null}
-                  {minutes ? <MetaItem icon={<IClock s={13} c="#9DB0CC" />}>{minutes} dəqiqə</MetaItem> : null}
+                  <MetaItem icon={<ICal s={13} c="#9DB0CC" />}>{relativeDayLabel(start, now, t)}</MetaItem>
+                  {sessionNumber ? <MetaItem icon={<ILayers />}>{t("psyApptCore.sessionOrdinal", { ordinal: azOrdinal(sessionNumber) })}</MetaItem> : null}
+                  {minutes ? <MetaItem icon={<IClock s={13} c="#9DB0CC" />}>{t("psyApptCore.minutesLabel", { minutes })}</MetaItem> : null}
                 </>
               }
             />
@@ -488,11 +490,12 @@ function NextHero({ appt, now, client, busyId, h }: {
 
 /* Status-a görə əsas düymə — kartın aşağı sağ hissəsində ("Qoşul" yeri). */
 function PrimaryAction({ a, busy, h }: { a: AppointmentDetail; busy: boolean; h: Handlers }) {
+  const { t } = useT();
   if (a.status === "ASSIGNED") {
     return (
       <button type="button" className="pa-btn pa-btn--primary" disabled={busy}
         onClick={() => h.onAction(a.id, () => psychologistApi.confirm(a.id))}>
-        <ICheck s={15} c="#fff" />{busy ? "…" : "Təsdiqlə"}
+        <ICheck s={15} c="#fff" />{busy ? "…" : t("psyApptCore.confirmCta")}
       </button>
     );
   }
@@ -500,7 +503,7 @@ function PrimaryAction({ a, busy, h }: { a: AppointmentDetail; busy: boolean; h:
     return (
       <button type="button" className="pa-btn pa-btn--primary" disabled={busy}
         onClick={() => h.onAction(a.id, () => psychologistApi.confirmSession(a.id))}>
-        <ICheck s={15} c="#fff" />{busy ? "…" : "Baş tutdu"}
+        <ICheck s={15} c="#fff" />{busy ? "…" : t("psyApptCore.sessionHappenedCta")}
       </button>
     );
   }
@@ -514,26 +517,26 @@ function PrimaryAction({ a, busy, h }: { a: AppointmentDetail; busy: boolean; h:
      2) seansdan sonrakı işlər (qeyd, baş tutmadı)
      3) kontekst (pasiyent 360°, təqvimə əlavə)
      4) dağıdıcı (ləğv / rədd) — RowMenu bunları ayırıcı xəttdən sonra göstərir. */
-function buildMenu(a: AppointmentDetail, h: Handlers, now: Date): MenuItem[] {
+function buildMenu(a: AppointmentDetail, h: Handlers, now: Date, t: Translate): MenuItem[] {
   const ico = "#5C6B85";
   const m: MenuItem[] = [];
   const endMs = a.endAt ? new Date(a.endAt).getTime() : null;
   const expired = endMs != null && endMs < now.getTime();
   const reportableNoShow = endMs != null && expired && now.getTime() - endMs < NO_SHOW_REPORT_WINDOW_MS;
-  const noShowItem: MenuItem = { label: "Baş tutmadı", onClick: () => h.onDispute(a), icon: <IAlert s={15} c={ico} /> };
+  const noShowItem: MenuItem = { label: t("psyApptCore.menuNoShow"), onClick: () => h.onDispute(a), icon: <IAlert s={15} c={ico} /> };
   const noteItem = (label: string): MenuItem => ({ label, onClick: () => h.onAddOutcome(a), icon: <IMsg s={15} c={ico} /> });
 
   // 1) Seansı idarə et
   if (a.status === "ASSIGNED" || a.status === "CONFIRMED") {
-    m.push({ label: "Vaxt dəyişikliyi tələb et", onClick: () => h.onPropose(a), icon: <IClock s={15} c={ico} /> });
+    m.push({ label: t("psyApptCore.menuRequestReschedule"), onClick: () => h.onPropose(a), icon: <IClock s={15} c={ico} /> });
   }
 
   // 2) Seansdan sonra
   if (a.status === "AWAITING_CONFIRMATION") {
-    m.push(noteItem("Nəticə əlavə et"));
+    m.push(noteItem(t("psyApptCore.menuAddOutcome")));
     m.push(noShowItem);
   } else if (a.status === "CONFIRMED" && expired) {
-    m.push(noteItem("Seans qeydi"));
+    m.push(noteItem(t("psyApptCore.menuSessionNote")));
     m.push(noShowItem);
   } else if (a.status === "COMPLETED" && reportableNoShow) {
     // Avtomatik tamamlanmış, lakin əslində baş tutmamış seansı operatora bildir.
@@ -541,17 +544,17 @@ function buildMenu(a: AppointmentDetail, h: Handlers, now: Date): MenuItem[] {
   }
 
   // 3) Kontekst
-  if (a.patientId) m.push({ label: "Pasiyent 360°", href: `/psycholog/clients/${a.patientId}`, icon: <IUser s={15} c={ico} /> });
-  const gcal = gcalHrefFor(a);
+  if (a.patientId) m.push({ label: t("psyApptCore.patient360"), href: `/psycholog/clients/${a.patientId}`, icon: <IUser s={15} c={ico} /> });
+  const gcal = gcalHrefFor(a, t);
   if (gcal && (a.status === "ASSIGNED" || a.status === "CONFIRMED")) {
-    m.push({ label: "Google Calendar-a əlavə et", href: gcal, icon: <ICal s={15} c={ico} /> });
+    m.push({ label: t("psyApptCore.menuAddToGcal"), href: gcal, icon: <ICal s={15} c={ico} /> });
   }
 
   // 4) Dağıdıcı
   if (a.status === "ASSIGNED") {
-    m.push({ label: "Rədd et", onClick: () => h.onReject(a), danger: true, icon: <IX s={15} /> });
+    m.push({ label: t("psyApptCore.menuReject"), onClick: () => h.onReject(a), danger: true, icon: <IX s={15} /> });
   } else if (a.status === "CONFIRMED" && !expired) {
-    m.push({ label: "Ləğv et", onClick: () => h.onCancel(a), danger: true, icon: <IX s={15} /> });
+    m.push({ label: t("psyApptCore.menuCancel"), onClick: () => h.onCancel(a), danger: true, icon: <IX s={15} /> });
   }
   return m;
 }
@@ -572,14 +575,15 @@ function SessionCard({
   onOpen: () => void;
   h: Handlers;
 }) {
+  const { t } = useT();
   const start = a.startAt ? new Date(a.startAt) : null;
   const end = a.endAt ? new Date(a.endAt) : null;
-  const tu = start ? timeUntil(start, now) : null;
+  const tu = start ? timeUntil(start, now, t) : null;
   const isToday = start ? isSameDay(start, now) : false;
   const av = avatarColor(a.patientId ?? a.patientName);
   const busy = busyId === a.id;
   const sessionNumber = client ? client.completedSessions + 1 : null;
-  const menu = buildMenu(a, h, now);
+  const menu = buildMenu(a, h, now, t);
   const cancelRequested = a.status === "CANCEL_REQUESTED";
   const disputed = a.status === "DISPUTED";
   const awaiting = a.status === "AWAITING_CONFIRMATION";
@@ -593,7 +597,7 @@ function SessionCard({
       {/* Nə vaxt — kartın başlığı */}
       <div className="pa-card__head">
         <div style={{ minWidth: 0 }}>
-          <div className="pa-card__day">{start ? relativeDayLabel(start, now) : "Vaxt təyin edilməyib"}</div>
+          <div className="pa-card__day">{start ? relativeDayLabel(start, now, t) : t("psyApptCore.timeNotSet")}</div>
           {start && (
             <div className="pa-card__time">
               {fmtTime(start)}{end ? ` – ${fmtTime(end)}` : ""}
@@ -616,8 +620,8 @@ function SessionCard({
       <div className="pa-card__who">
         <span className="pa-card__av" style={{ background: av }}>{initialsOf(a.patientName)}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="pa-card__name">{a.patientName ?? "Pasiyent"}</div>
-          {sessionNumber != null && <div className="pa-card__nth">{azOrdinal(sessionNumber)} seans</div>}
+          <div className="pa-card__name">{a.patientName ?? t("psyApptCore.patientFallback")}</div>
+          {sessionNumber != null && <div className="pa-card__nth">{t("psyApptCore.sessionOrdinal", { ordinal: azOrdinal(sessionNumber) })}</div>}
         </div>
       </div>
 
@@ -629,17 +633,17 @@ function SessionCard({
       )}
 
       {cancelRequested && (
-        <div className="pa-card__note">Pasient ləğv istəyib — operator təsdiqi gözlənilir.</div>
+        <div className="pa-card__note">{t("psyApptCore.cancelRequestedNote")}</div>
       )}
       {disputed && (
-        <div className="pa-card__note" style={{ color: "#B4413F" }}>Operator həll edir — qərar gözlənilir.</div>
+        <div className="pa-card__note" style={{ color: "#B4413F" }}>{t("psyApptCore.disputedNote")}</div>
       )}
 
       {/* Nə etməli */}
       <div className="pa-card__foot">
         <button type="button" onClick={onOpen} className="pa-btn pa-btn--ghost" style={{ flex: 1 }}>
           <IOpen />
-          Ətraflı
+          {t("psyApptCore.detailsBtn")}
         </button>
         {!cancelRequested && !disputed && (
           <div style={{ flex: 1.5, minWidth: 0 }}>
@@ -664,13 +668,14 @@ function SessionDetailModal({
   h: Handlers;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const start = a.startAt ? new Date(a.startAt) : null;
-  const tu = start ? timeUntil(start, now) : null;
+  const tu = start ? timeUntil(start, now, t) : null;
   const busy = busyId === a.id;
   const sessionNumber = client ? client.completedSessions + 1 : null;
   const av = avatarColor(a.patientId ?? a.patientName);
   // Menyu elementləri detalda açıq düymələr kimi göstərilir.
-  const menu = buildMenu(a, h, now).map(it => ({
+  const menu = buildMenu(a, h, now, t).map(it => ({
     ...it,
     onClick: it.onClick ? () => { onClose(); it.onClick!(); } : undefined,
   }));
@@ -689,11 +694,11 @@ function SessionDetailModal({
             {initialsOf(a.patientName)}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{a.patientName ?? "Pasiyent"}</div>
-            {sessionNumber != null && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1 }}>{azOrdinal(sessionNumber)} seans</div>}
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)" }}>{a.patientName ?? t("psyApptCore.patientFallback")}</div>
+            {sessionNumber != null && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 1 }}>{t("psyApptCore.sessionOrdinal", { ordinal: azOrdinal(sessionNumber) })}</div>}
           </div>
           <span style={{ flex: "none" }}><StatusText status={a.status} /></span>
-          <button type="button" aria-label="Bağla" onClick={onClose}
+          <button type="button" aria-label={t("psyApptCore.closeAria")} onClick={onClose}
             style={{ width: 32, height: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "transparent", color: "var(--oxford-60)", border: "none", borderRadius: 8, cursor: "pointer", flex: "none" }}>
             <IX s={16} />
           </button>
@@ -702,12 +707,12 @@ function SessionDetailModal({
         <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Vaxt */}
           <div>
-            <div style={labelStyle}>Vaxt</div>
+            <div style={labelStyle}>{t("psyApptCore.timeLabel")}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>
                 {start
-                  ? `${pad2(start.getDate())} ${MONTHS_AZ[start.getMonth()]} ${start.getFullYear()}, ${fmtTime(start)}${a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}`
-                  : "Vaxt təyin edilməyib"}
+                  ? `${pad2(start.getDate())} ${t(`months.m${start.getMonth() + 1}` as MessageKey)} ${start.getFullYear()}, ${fmtTime(start)}${a.endAt ? ` – ${fmtTime(new Date(a.endAt))}` : ""}`
+                  : t("psyApptCore.timeNotSet")}
               </span>
               {tu && !tu.expired && (
                 <span style={{ fontSize: 13, fontWeight: 600, color: tu.urgent ? "#B45309" : "var(--oxford-60)" }}>{tu.text}</span>
@@ -718,7 +723,7 @@ function SessionDetailModal({
           {/* Seans növü / paket — sadə sətirlər */}
           {(a.patientPackageId != null || a.sessionKind === "INTRO") && (
             <div>
-              <div style={labelStyle}>Seans</div>
+              <div style={labelStyle}>{t("psyApptCore.sessionLabel")}</div>
               <SessionMeta a={a} />
             </div>
           )}
@@ -726,7 +731,7 @@ function SessionDetailModal({
           {/* Pasientin mövzusu */}
           {a.note && (
             <div>
-              <div style={labelStyle}>Pasientin mövzusu</div>
+              <div style={labelStyle}>{t("psyApptCore.patientTopicLabel")}</div>
               <div style={{ fontSize: 13.5, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 13px", lineHeight: 1.5 }}>
                 «{a.note}»
               </div>
@@ -736,18 +741,18 @@ function SessionDetailModal({
           {/* Pasiyent konteksti — qeyd sayı, son klinik qeyd, əhval */}
           {(client || note) && (
             <div>
-              <div style={labelStyle}>Pasiyent konteksti</div>
+              <div style={labelStyle}>{t("psyApptCore.patientContextLabel")}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 7, background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 10, padding: "10px 13px" }}>
                 {client && (
                   <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 10 }}>
-                    <span>{client.completedSessions} tamamlanmış seans</span>
-                    {client.noteCount > 0 && <span>{client.noteCount} klinik qeyd</span>}
-                    {note?.moodScore ? <span>son əhval {note.moodScore}/10</span> : null}
+                    <span>{t("psyApptCore.completedSessionsCount", { count: client.completedSessions })}</span>
+                    {client.noteCount > 0 && <span>{t("psyApptCore.clinicalNotesCount", { count: client.noteCount })}</span>}
+                    {note?.moodScore ? <span>{t("psyApptCore.lastMoodLabel", { score: note.moodScore })}</span> : null}
                   </div>
                 )}
                 {note?.body && (
                   <div style={{ fontSize: 13, color: "var(--oxford)", fontWeight: 500, lineHeight: 1.5 }}>
-                    Son qeyd: <span style={{ fontStyle: "italic" }}>«{note.body.slice(0, 160)}{note.body.length > 160 ? "…" : ""}»</span>
+                    {t("psyApptCore.lastNotePrefix")} <span style={{ fontStyle: "italic" }}>«{note.body.slice(0, 160)}{note.body.length > 160 ? "…" : ""}»</span>
                   </div>
                 )}
               </div>
@@ -757,11 +762,11 @@ function SessionDetailModal({
           {/* Görüş linki */}
           {(a.status === "ASSIGNED" || a.status === "CONFIRMED") && (
             <div>
-              <div style={labelStyle}>Görüş</div>
+              <div style={labelStyle}>{t("psyApptCore.meetingLabel")}</div>
               <PsyJoinButton a={a} />
               {!a.meetingLink && (
                 <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 500, marginTop: 6 }}>
-                  Görüş linki operator tərəfindən seans vaxtından əvvəl təyin ediləcək.
+                  {t("psyApptCore.meetingLinkPending")}
                 </div>
               )}
             </div>
@@ -809,6 +814,7 @@ type PatientPackageGroup = { key: string; patientId: number | null; patientName:
 function PatientPackagesCard({ group, now, busyId, h }: {
   group: PatientPackageGroup; now: Date; busyId: number | null; h: Handlers;
 }) {
+  const { t } = useT();
   const av = avatarColor(group.patientId ?? group.patientName);
   return (
     <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 22, display: "flex", flexDirection: "column" }}>
@@ -817,12 +823,12 @@ function PatientPackagesCard({ group, now, busyId, h }: {
         <span style={{ width: 42, height: 42, borderRadius: 12, background: av, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flex: "none" }}>{initialsOf(group.patientName)}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 15.5, fontWeight: 700, color: "var(--oxford)" }}>{group.patientName}</div>
-          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 1 }}>{group.packages.length} paket</div>
+          <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 1 }}>{t("psyApptCore.packageCount", { count: group.packages.length })}</div>
         </div>
         {group.patientId != null && (
           <Link href={`/psycholog/clients/${group.patientId}`} className="gor-link" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, textDecoration: "none", flex: "none" }}>
             <IUser s={14} />
-            Pasiyent 360°
+            {t("psyApptCore.patient360")}
           </Link>
         )}
       </div>
@@ -841,10 +847,11 @@ function PatientPackagesCard({ group, now, busyId, h }: {
 function PackageBlock({ pkg, ordinal, now, busyId, h }: {
   pkg: PackageGroup; ordinal: number | null; now: Date; busyId: number | null; h: Handlers;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const sessions = pkg.sessions;
   const total = sessions[0]?.packageTotal ?? sessions.length;
-  const name = sessions[0]?.packageName || `${total} seanslıq proqram`;
+  const name = sessions[0]?.packageName || t("psyApptCore.packageProgramFallback", { total });
   const completed = sessions.filter(s => s.status === "COMPLETED").length;
   const planned = sessions.filter(s => s.status !== "COMPLETED" && s.status !== "CANCELLED" && s.status !== "REJECTED").length;
   const completedPct = total ? (completed / total) * 100 : 0;
@@ -853,21 +860,21 @@ function PackageBlock({ pkg, ordinal, now, busyId, h }: {
   const remaining = Math.max(0, total - sessions.length);
   const upcoming = sessions.find(s => notEndedYet(s, now.getTime())
     && (s.status === "CONFIRMED" || s.status === "ASSIGNED" || s.status === "AWAITING_CONFIRMATION"));
-  const fmtDM = (iso?: string | null) => { if (!iso) return "—"; const d = new Date(iso); return `${d.getDate()} ${MONTHS_AZ[d.getMonth()]}`; };
+  const fmtDM = (iso?: string | null) => { if (!iso) return "—"; const d = new Date(iso); return `${d.getDate()} ${t(`months.m${d.getMonth() + 1}` as MessageKey)}`; };
 
   return (
     <div style={{ background: "#FBFCFE", border: "1px solid #EDF1F8", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column" }}>
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 16, fontWeight: 600, color: "var(--oxford)", letterSpacing: "-.01em" }}>{name}</div>
         {ordinal != null && (
-          <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--oxford-60)", marginTop: 2 }}>{azOrdinal(ordinal)} alış</div>
+          <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--oxford-60)", marginTop: 2 }}>{t("psyApptCore.purchaseOrdinal", { ordinal: azOrdinal(ordinal) })}</div>
         )}
       </div>
 
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
           <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--oxford)" }}>
-            {completed}/{total} tamamlanıb
+            {t("psyApptCore.completedOfTotal", { completed, total })}
           </span>
           <span style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)" }}>{Math.round(completedPct)}%</span>
         </div>
@@ -879,16 +886,16 @@ function PackageBlock({ pkg, ordinal, now, busyId, h }: {
 
       <div style={{ display: "flex", gap: 18, flexWrap: "wrap", padding: "11px 0", borderTop: "1px solid #EDF1F8", borderBottom: "1px solid #EDF1F8" }}>
         <div>
-          <div style={pkgStatLab}>Növbəti</div>
+          <div style={pkgStatLab}>{t("psyApptCore.nextLabel")}</div>
           <div style={pkgStatVal}>{upcoming && upcoming.startAt ? `${fmtDM(upcoming.startAt)}, ${fmtTime(new Date(upcoming.startAt))}` : "—"}</div>
           {upcoming && <div style={{ marginTop: 3 }}><StatusText status={upcoming.status} size={12.5} /></div>}
         </div>
-        <div><div style={pkgStatLab}>Planlanmamış</div><div style={pkgStatVal}>{remaining}</div></div>
+        <div><div style={pkgStatLab}>{t("psyApptCore.unplannedLabel")}</div><div style={pkgStatVal}>{remaining}</div></div>
       </div>
 
       <button type="button" onClick={() => setOpen(o => !o)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", background: "none", border: "none", padding: "12px 0 0", cursor: "pointer", fontFamily: "inherit", marginTop: "auto" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 700, color: "var(--brand)" }}>
-          {open ? "Seansları gizlət" : "Seansları gör"}
+          {open ? t("psyApptCore.hideSessions") : t("psyApptCore.showSessions")}
         </span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .2s" }}><path d="M6 9l6 6 6-6" /></svg>
       </button>
@@ -910,8 +917,8 @@ function PackageBlock({ pkg, ordinal, now, busyId, h }: {
               <div key={`rem-${i}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderTop: "1px solid #F4F7FB", flexWrap: "wrap" }}>
                 <span style={{ width: 22, textAlign: "center", color: "#9DB0CC", fontSize: 12.5, fontWeight: 600, flex: "none", fontFeatureSettings: '"tnum"' }}>{activeCount + i + 1}</span>
                 <div style={{ width: 150, flex: "none" }}><span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>—</span></div>
-                <span style={{ flex: 1, minWidth: 60, fontSize: 12.5, color: "#9DB0CC", fontWeight: 500 }}>planlaşmayıb</span>
-                <span style={{ fontSize: 12.5, fontWeight: 500, color: "var(--oxford-60)" }}>Qalıb</span>
+                <span style={{ flex: 1, minWidth: 60, fontSize: 12.5, color: "#9DB0CC", fontWeight: 500 }}>{t("psyApptCore.notScheduled")}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 500, color: "var(--oxford-60)" }}>{t("psyApptCore.remainingLabel")}</span>
               </div>
             ));
           })()}
@@ -924,15 +931,16 @@ function PackageBlock({ pkg, ordinal, now, busyId, h }: {
 function PackageSessionRow({ a, index, now, busyId, h }: {
   a: AppointmentDetail; index: number | null; now: Date; busyId: number | null; h: Handlers;
 }) {
+  const { t } = useT();
   const start = a.startAt ? new Date(a.startAt) : null;
   const busy = busyId === a.id;
-  const menu = buildMenu(a, h, now);
+  const menu = buildMenu(a, h, now, t);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderTop: "1px solid #F4F7FB", flexWrap: "wrap" }}>
       <span style={{ width: 22, textAlign: "center", color: "var(--oxford-60)", fontSize: 12.5, fontWeight: 600, flex: "none", fontFeatureSettings: '"tnum"' }}>{index ?? "—"}</span>
       <div style={{ width: 150, flex: "none" }}>
         {start
-          ? <><span style={{ fontSize: 13, fontWeight: 600 }}>{start.getDate()} {MONTHS_AZ[start.getMonth()]}</span> <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>{fmtTime(start)}</span></>
+          ? <><span style={{ fontSize: 13, fontWeight: 600 }}>{start.getDate()} {t(`months.m${start.getMonth() + 1}` as MessageKey)}</span> <span style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500 }}>{fmtTime(start)}</span></>
           : <span style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford-60)" }}>—</span>}
       </div>
       <span style={{ flex: 1, minWidth: 50 }} />
@@ -941,7 +949,7 @@ function PackageSessionRow({ a, index, now, busyId, h }: {
         <button type="button" className="gor-accept" disabled={busy}
           onClick={() => h.onAction(a.id, () => psychologistApi.confirm(a.id))}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 8, padding: "7px 12px", fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", cursor: busy ? "wait" : "pointer", flex: "none", opacity: busy ? 0.7 : 1 }}>
-          <ICheck s={13} c="#fff" />{busy ? "…" : "Təsdiqlə"}
+          <ICheck s={13} c="#fff" />{busy ? "…" : t("psyApptCore.confirmCta")}
         </button>
       )}
       {menu.length > 0 && <RowMenu items={menu} size={28} />}
@@ -957,12 +965,13 @@ function PatientRescheduleRequestCard({
   proposal: RescheduleProposal;
   onDecided: (p: RescheduleProposal) => void;
 }) {
+  const { t } = useT();
   const [busyOption, setBusyOption] = useState<number | null>(null);
   const [rejecting, setRejecting] = useState(false);
 
   const fmtOpt = (startIso: string, endIso: string) => {
     const s = new Date(startIso), e = new Date(endIso);
-    return `${pad2(s.getDate())} ${MONTHS_AZ[s.getMonth()]}, ${fmtTime(s)}–${fmtTime(e)}`;
+    return `${pad2(s.getDate())} ${t(`months.m${s.getMonth() + 1}` as MessageKey)}, ${fmtTime(s)}–${fmtTime(e)}`;
   };
 
   const accept = async (idx: number) => {
@@ -972,13 +981,13 @@ function PatientRescheduleRequestCard({
       onDecided(updated);
     } catch (e) {
       toast(isSlotConflict(e)
-        ? (e as Error).message + " Digər variantlardan birini seçə bilərsiniz."
+        ? (e as Error).message + " " + t("psyApptCore.otherOptionsHint")
         : (e as Error).message, "error");
     } finally { setBusyOption(null); }
   };
 
   const reject = async () => {
-    if (!confirm("İstəyi rədd etmək istəyirsiniz? Randevu köhnə vaxtında qalacaq.")) return;
+    if (!confirm(t("psyApptCore.confirmRejectRequest"))) return;
     setRejecting(true);
     try {
       const updated = await psychologistApi.rejectPatientReschedule(proposal.id);
@@ -994,10 +1003,12 @@ function PatientRescheduleRequestCard({
       <div style={{ display: "flex", alignItems: "flex-start", gap: 11, marginBottom: 14 }}>
         <IRefresh s={18} c="#B45309" />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--oxford)", letterSpacing: "-.01em" }}>{proposal.patientName ?? "Pasiyent"} vaxt dəyişikliyi istəyir</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--oxford)", letterSpacing: "-.01em" }}>
+            {t("psyApptCore.patientRequestsReschedule", { name: proposal.patientName ?? t("psyApptCore.patientFallback") })}
+          </div>
           {proposal.originalStartAt && (
             <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 500, marginTop: 2 }}>
-              Hazırkı vaxt: {fmtOpt(proposal.originalStartAt, proposal.originalEndAt ?? proposal.originalStartAt)}
+              {t("psyApptCore.currentTimeLabel")} {fmtOpt(proposal.originalStartAt, proposal.originalEndAt ?? proposal.originalStartAt)}
             </div>
           )}
         </div>
@@ -1024,7 +1035,7 @@ function PatientRescheduleRequestCard({
           >
             <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: "var(--oxford)" }}>{fmtOpt(opt.startAt, opt.endAt)}</span>
             <span className="gor-accept" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--brand)", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 12.5, fontWeight: 600 }}>
-              {busyOption === opt.index ? "…" : <><ICheck s={13} c="#fff" />Qəbul et</>}
+              {busyOption === opt.index ? "…" : <><ICheck s={13} c="#fff" />{t("psyApptCore.acceptCta")}</>}
             </span>
           </button>
         ))}
@@ -1036,7 +1047,7 @@ function PatientRescheduleRequestCard({
         onClick={reject}
         style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", color: "#991B1B", border: "1px solid #F3D6D6", borderRadius: 9, padding: "9px 15px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: busy ? "default" : "pointer" }}
       >
-        {rejecting ? "Göndərilir…" : "İmtina et"}
+        {rejecting ? t("psyApptCore.sendingEllipsis") : t("psyApptCore.declineCta")}
       </button>
     </div>
   );

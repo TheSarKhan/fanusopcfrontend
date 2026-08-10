@@ -7,19 +7,27 @@ import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
 import RescheduleComposeModal from "@/components/RescheduleComposeModal";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
+import { formatDateShort } from "@/lib/i18n/dateNames";
 import { azFormatDateTime } from "@/lib/datetime";
 import { toast } from "@/components/Toast";
 import PageHeader from "@/components/PageHeader";
 
-const WEEKDAYS_AZ = [
-  { iso: 1, label: "Bazar ertəsi", short: "B.e" },
-  { iso: 2, label: "Çərşənbə axşamı", short: "Ç.a" },
-  { iso: 3, label: "Çərşənbə", short: "Ç" },
-  { iso: 4, label: "Cümə axşamı", short: "C.a" },
-  { iso: 5, label: "Cümə", short: "C" },
-  { iso: 6, label: "Şənbə", short: "Ş" },
-  { iso: 7, label: "Bazar", short: "B" },
-];
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
+const DAY_ISOS = [1, 2, 3, 4, 5, 6, 7] as const;
+
+function getWeekdays(t: Translate) {
+  return [
+    { iso: 1, label: t("psyAvailMgmt.weekdayMonday"), short: t("psyAvailMgmt.weekdayMondayShort") },
+    { iso: 2, label: t("psyAvailMgmt.weekdayTuesday"), short: t("psyAvailMgmt.weekdayTuesdayShort") },
+    { iso: 3, label: t("psyAvailMgmt.weekdayWednesday"), short: t("psyAvailMgmt.weekdayWednesdayShort") },
+    { iso: 4, label: t("psyAvailMgmt.weekdayThursday"), short: t("psyAvailMgmt.weekdayThursdayShort") },
+    { iso: 5, label: t("psyAvailMgmt.weekdayFriday"), short: t("psyAvailMgmt.weekdayFridayShort") },
+    { iso: 6, label: t("psyAvailMgmt.weekdaySaturday"), short: t("psyAvailMgmt.weekdaySaturdayShort") },
+    { iso: 7, label: t("psyAvailMgmt.weekdaySunday"), short: t("psyAvailMgmt.weekdaySundayShort") },
+  ];
+}
 
 function trimSeconds(t: string) {
   return t?.length >= 5 ? t.slice(0, 5) : t;
@@ -35,24 +43,18 @@ function rangesOverlap(aStart: string, aEnd: string, bStart: string, bEnd: strin
   return aStart < bEnd && bStart < aEnd;
 }
 
-function fmtHours(min: number): string {
-  if (min <= 0) return "0 saat";
+function fmtHours(t: Translate, min: number): string {
+  if (min <= 0) return t("psyAvailMgmt.durationZero");
   const h = Math.floor(min / 60);
   const m = min % 60;
-  if (h === 0) return `${m} dəq`;
-  if (m === 0) return `${h} saat`;
-  return `${h} saat ${m} dəq`;
+  if (h === 0) return t("psyAvailMgmt.durationMinutes", { m });
+  if (m === 0) return t("psyAvailMgmt.durationHours", { h });
+  return t("psyAvailMgmt.durationHoursMinutes", { h, m });
 }
 
 function todayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function fmtDate(iso: string): string {
-  const months = ["Yan","Fev","Mart","Apr","May","İyun","İyul","Avq","Sen","Okt","Noy","Dek"];
-  const d = new Date(iso + "T00:00:00");
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 export default function PsychologistAvailabilityPage() {
@@ -102,7 +104,7 @@ export default function PsychologistAvailabilityPage() {
   }, [slots]);
 
   const stats = useMemo(() => {
-    const activeDays = WEEKDAYS_AZ.filter(d => slotsByDay[d.iso].some(s => s.active)).length;
+    const activeDays = DAY_ISOS.filter(iso => slotsByDay[iso].some(s => s.active)).length;
     const totalMinutes = slots
       .filter(s => s.active)
       .reduce((sum, s) => sum + diffMinutes(trimSeconds(s.startTime), trimSeconds(s.endTime)), 0);
@@ -112,7 +114,7 @@ export default function PsychologistAvailabilityPage() {
 
   const saveSessionMinutes = async () => {
     if (sessionMinutes < 15 || sessionMinutes > 240) {
-      toast("Sessiya müddəti 15–240 dəqiqə aralığında olmalıdır", "error");
+      toast(t("psyAvailMgmt.validationSessionMinutesRange"), "error");
       return;
     }
     setSavingMinutes(true);
@@ -134,7 +136,7 @@ export default function PsychologistAvailabilityPage() {
   };
 
   const deleteSlot = async (id: number) => {
-    if (!confirm("Bu vaxt aralığını silmək istəyirsiniz?")) return;
+    if (!confirm(t("psyAvailMgmt.confirmDeleteSlot"))) return;
     try {
       await psychologistApi.deleteSlot(id);
       setSlots(prev => prev.filter(s => s.id !== id));
@@ -159,7 +161,7 @@ export default function PsychologistAvailabilityPage() {
   };
 
   const deleteOverride = async (id: number) => {
-    if (!confirm("Bu istisnanı silmək istəyirsiniz?")) return;
+    if (!confirm(t("psyAvailMgmt.confirmDeleteOverride"))) return;
     try {
       await psychologistApi.deleteOverride(id);
       setOverrides(prev => prev.filter(o => o.id !== id));
@@ -172,7 +174,7 @@ export default function PsychologistAvailabilityPage() {
   };
 
   const cancelVacation = async (id: number) => {
-    if (!confirm("Məzuniyyəti ləğv edirsiniz?")) return;
+    if (!confirm(t("psyAvailMgmt.confirmCancelVacation"))) return;
     try {
       await psychologistApi.cancelVacation(id);
       setVacations(prev => prev.filter(v => v.id !== id));
@@ -184,25 +186,27 @@ export default function PsychologistAvailabilityPage() {
   if (loading) {
     return (
       <div style={{ background: "#fff", padding: 60, borderRadius: 14, textAlign: "center", color: "var(--oxford-60)" }}>
-        Yüklənir…
+        {t("psyAvailMgmt.loading")}
       </div>
     );
   }
+
+  const weekdays = getWeekdays(t);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Header */}
       <PageHeader
         title={t("staff.psyAvailTitle")}
-        subtitle="Həftəlik iş vaxtları, tarix istisnaları və məzuniyyət — bir səhifədə."
+        subtitle={t("psyAvailMgmt.pageSubtitle")}
       />
 
       {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(190px, 100%), 1fr))", gap: 13 }}>
-        <StatCell label="Aktiv günlər"      value={`${stats.activeDays}/7`}              tone="brand" />
-        <StatCell label="Həftəlik iş saatı" value={fmtHours(stats.totalMinutes)}         tone="good"  />
-        <StatCell label="Seans müddəti"     value={`${savedMinutes} dəq`}                tone="muted" />
-        <StatCell label="Aktiv məzuniyyət"  value={stats.activeVacations}                tone={stats.activeVacations > 0 ? "warn" : "muted"} />
+        <StatCell label={t("psyAvailMgmt.statActiveDays")}      value={`${stats.activeDays}/7`}                                        tone="brand" />
+        <StatCell label={t("psyAvailMgmt.statWeeklyHours")}     value={fmtHours(t, stats.totalMinutes)}                                tone="good"  />
+        <StatCell label={t("psyAvailMgmt.statSessionDuration")} value={t("psyAvailMgmt.durationMinutes", { m: savedMinutes })}          tone="muted" />
+        <StatCell label={t("psyAvailMgmt.statActiveVacation")}  value={stats.activeVacations}                                          tone={stats.activeVacations > 0 ? "warn" : "muted"} />
       </div>
 
       {/* Session minutes card */}
@@ -218,20 +222,20 @@ export default function PsychologistAvailabilityPage() {
       <section style={cardStyle}>
         <div style={cardHeadStyle}>
           <div>
-            <h2 style={cardTitleStyle}>Həftəlik cədvəl</h2>
+            <h2 style={cardTitleStyle}>{t("psyAvailMgmt.weeklyScheduleTitle")}</h2>
             <p style={cardSubStyle}>
-              Hər gün üçün açıq vaxt aralıqlarını qurun. Pasiyentlər bu pəncərələrdə {savedMinutes} dəqiqəlik slotlara rezerv edə biləcəklər.
+              {t("psyAvailMgmt.weeklyScheduleDesc", { n: savedMinutes })}
             </p>
           </div>
           <button onClick={() => setSlotModal({ day: null })} style={primaryBtn}>
-            <IconPlus /> Vaxt əlavə et
+            <IconPlus /> {t("psyAvailMgmt.addTimeRange")}
           </button>
         </div>
 
         <div className="psy-week-grid" style={{
           display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 11,
         }}>
-          {WEEKDAYS_AZ.map(d => (
+          {weekdays.map(d => (
             <DayColumn key={d.iso}
               day={d}
               slots={slotsByDay[d.iso] ?? []}
@@ -296,14 +300,15 @@ function SessionMinutesCard({ sessionMinutes, savedMinutes, savingMinutes, setSe
   sessionMinutes: number; savedMinutes: number; savingMinutes: boolean;
   setSessionMinutes: (m: number) => void; save: () => void;
 }) {
+  const { t } = useT();
   const dirty = sessionMinutes !== savedMinutes;
   return (
     <section style={cardStyle}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
         <div style={{ minWidth: 240, flex: 1 }}>
-          <h2 style={cardTitleStyle}>Bir seansın müddəti</h2>
+          <h2 style={cardTitleStyle}>{t("psyAvailMgmt.sessionCardTitle")}</h2>
           <p style={{ ...cardSubStyle, maxWidth: 430 }}>
-            Açıq aralıqlar bu müddətə görə slotlara bölünür. Məsələn 09:00–12:00 + 50 dəq → 09:00, 09:50, 10:40 slotları.
+            {t("psyAvailMgmt.sessionCardDesc")}
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -330,7 +335,7 @@ function SessionMinutesCard({ sessionMinutes, savedMinutes, savingMinutes, setSe
             <input type="number" min={15} max={240} step={5} value={sessionMinutes}
               onChange={e => setSessionMinutes(Number(e.target.value) || 0)}
               style={{ width: 46, padding: 0, border: "none", outline: "none", fontSize: 14, fontWeight: 700, textAlign: "right", color: "var(--oxford)", fontFamily: "inherit" }} />
-            <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>dəq</span>
+            <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>{t("psyAvailMgmt.minutesUnit")}</span>
           </div>
           <button onClick={save} disabled={savingMinutes || !dirty}
             style={{
@@ -342,7 +347,7 @@ function SessionMinutesCard({ sessionMinutes, savedMinutes, savingMinutes, setSe
               cursor: savingMinutes || !dirty ? "default" : "pointer",
               fontFamily: "inherit",
             }}>
-            {savingMinutes ? "Saxlanılır…" : dirty ? "Saxla" : "Saxlanılıb"}
+            {savingMinutes ? t("psyAvailMgmt.savingEllipsis") : dirty ? t("psyAvailMgmt.saveButton") : t("psyAvailMgmt.savedButton")}
           </button>
         </div>
       </div>
@@ -359,6 +364,7 @@ function DayColumn({ day, slots, onAdd, onDelete, onToggle }: {
   onDelete: (id: number) => void;
   onToggle: (s: TimeSlot) => void;
 }) {
+  const { t } = useT();
   const minutes = slots
     .filter(s => s.active)
     .reduce((sum, s) => sum + diffMinutes(trimSeconds(s.startTime), trimSeconds(s.endTime)), 0);
@@ -387,13 +393,13 @@ function DayColumn({ day, slots, onAdd, onDelete, onToggle }: {
       </div>
 
       <div style={{ fontSize: 10.5, fontWeight: 600, color: minutes > 0 ? "var(--oxford-60)" : "#A9B8CC", marginBottom: 10 }}>
-        {minutes > 0 ? fmtHours(minutes) : "Boş"}
+        {minutes > 0 ? fmtHours(t, minutes) : t("psyAvailMgmt.emptyDay")}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 7, flex: 1 }}>
         {empty ? (
           <div style={{ fontSize: 11, color: "#A9B8CC", fontWeight: 500, textAlign: "center", padding: "14px 0" }}>
-            Vaxt aralığı yoxdur
+            {t("psyAvailMgmt.noTimeRanges")}
           </div>
         ) : (
           slots.map(s => (
@@ -412,13 +418,14 @@ function DayColumn({ day, slots, onAdd, onDelete, onToggle }: {
         }}
         onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--brand)"; e.currentTarget.style.color = "var(--brand)"; }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = "#C7D3E6"; e.currentTarget.style.color = "var(--oxford-60)"; }}>
-        <IconPlus /> Vaxt
+        <IconPlus /> {t("psyAvailMgmt.addTimeShort")}
       </button>
     </div>
   );
 }
 
 function SlotPill({ slot, onDelete, onToggle }: { slot: TimeSlot; onDelete: () => void; onToggle: () => void }) {
+  const { t } = useT();
   const start = trimSeconds(slot.startTime);
   const end = trimSeconds(slot.endTime);
   const minutes = diffMinutes(start, end);
@@ -433,17 +440,17 @@ function SlotPill({ slot, onDelete, onToggle }: { slot: TimeSlot; onDelete: () =
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, marginBottom: 3 }}>
         <span style={{ fontSize: 12.5, fontWeight: 700, color: active ? "var(--brand-700)" : "#9CA3AF" }}>{start}–{end}</span>
         <div style={{ display: "flex", gap: 3, flex: "none" }}>
-          <button onClick={onToggle} title={active ? "Deaktiv et" : "Aktivləşdir"}
+          <button onClick={onToggle} title={active ? t("psyAvailMgmt.deactivate") : t("psyAvailMgmt.activate")}
             style={pillBtn(active ? "var(--brand)" : "#9CA3AF")}>
             {active ? <IconEye /> : <IconEyeOff />}
           </button>
-          <button onClick={onDelete} title="Sil"
+          <button onClick={onDelete} title={t("psyAvailMgmt.deleteAction")}
             style={pillBtn("#C08A8A")}>
             <IconTrash />
           </button>
         </div>
       </div>
-      <span style={{ fontSize: 10.5, fontWeight: 600, color: active ? "var(--brand)" : "#9CA3AF" }}>{fmtHours(minutes)}</span>
+      <span style={{ fontSize: 10.5, fontWeight: 600, color: active ? "var(--brand)" : "#9CA3AF" }}>{fmtHours(t, minutes)}</span>
     </div>
   );
 }
@@ -455,23 +462,24 @@ function OverridesCard({ overrides, onAdd, onDelete }: {
   onAdd: () => void;
   onDelete: (id: number) => void;
 }) {
+  const { t } = useT();
   return (
     <section style={cardStyle}>
       <div style={cardHeadStyle}>
         <div>
-          <h2 style={cardTitleStyle}>Tarix istisnaları</h2>
-          <p style={cardSubStyle}>Konkret gün üçün cədvəli ləğv edin və ya əlavə açıq vaxt əlavə edin.</p>
+          <h2 style={cardTitleStyle}>{t("psyAvailMgmt.overridesTitle")}</h2>
+          <p style={cardSubStyle}>{t("psyAvailMgmt.overridesDesc")}</p>
         </div>
         <button onClick={onAdd} style={ghostBtn}>
-          <IconPlus /> Əlavə et
+          <IconPlus /> {t("psyAvailMgmt.addAction")}
         </button>
       </div>
 
       {overrides.length === 0 ? (
         <EmptyState
           icon={<IconCalendarOff />}
-          title="İstisna yoxdur"
-          body="Bayram günü, dəyişdirilmiş cədvəl və ya birdəfəlik əlavə saat üçün istisna əlavə edə bilərsiniz."
+          title={t("psyAvailMgmt.overridesEmptyTitle")}
+          body={t("psyAvailMgmt.overridesEmptyBody")}
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
@@ -491,10 +499,10 @@ function OverridesCard({ overrides, onAdd, onDelete }: {
                     background: block ? "#FEE2E2" : "#D1FAE5",
                     color: block ? "#991B1B" : "#065F46",
                   }}>
-                    {block ? "BAĞLI" : "ƏLAVƏ VAXT"}
+                    {block ? t("psyAvailMgmt.overrideBadgeBlock") : t("psyAvailMgmt.overrideBadgeExtra")}
                   </span>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>
-                    {fmtDate(o.overrideDate)}
+                    {formatDateShort(t, o.overrideDate)}
                     {o.startTime && o.endTime && (
                       <span style={{ fontWeight: 600, color: "var(--oxford-60)" }}>
                         {`, ${trimSeconds(o.startTime)}–${trimSeconds(o.endTime)}`}
@@ -505,7 +513,7 @@ function OverridesCard({ overrides, onAdd, onDelete }: {
                     <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 2 }}>{o.note}</div>
                   )}
                 </div>
-                <button onClick={() => onDelete(o.id)} style={smallDangerBtn}>Sil</button>
+                <button onClick={() => onDelete(o.id)} style={smallDangerBtn}>{t("psyAvailMgmt.deleteAction")}</button>
               </div>
             );
           })}
@@ -522,26 +530,27 @@ function VacationsCard({ vacations, onAdd, onCancel }: {
   onAdd: () => void;
   onCancel: (id: number) => void;
 }) {
+  const { t } = useT();
   const today = todayIso();
   return (
     <section style={cardStyle}>
       <div style={cardHeadStyle}>
         <div>
-          <h2 style={cardTitleStyle}>Məzuniyyət</h2>
+          <h2 style={cardTitleStyle}>{t("psyAvailMgmt.vacationsTitle")}</h2>
           <p style={cardSubStyle}>
-            Bu dövrdə yeni rezervasiyalar bağlanır və mövcud randevular operator komandasına ötürülür.
+            {t("psyAvailMgmt.vacationsDesc")}
           </p>
         </div>
         <button onClick={onAdd} style={ghostBtn}>
-          <IconPlus /> Əlavə et
+          <IconPlus /> {t("psyAvailMgmt.addAction")}
         </button>
       </div>
 
       {vacations.length === 0 ? (
         <EmptyState
           icon={<IconPalm />}
-          title="Aktiv məzuniyyət yoxdur"
-          body="İstirahət, konfrans və ya sağlamlıq səbəbi ilə bu modulu istifadə edə bilərsiniz."
+          title={t("psyAvailMgmt.vacationsEmptyTitle")}
+          body={t("psyAvailMgmt.vacationsEmptyBody")}
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
@@ -569,10 +578,10 @@ function VacationsCard({ vacations, onAdd, onCancel }: {
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3, flexWrap: "wrap" }}>
-                    {isOngoing && <Pill bg="var(--brand-100)" fg="var(--brand-700)">Davam edir</Pill>}
-                    {isUpcoming && <Pill bg="#FEF3C7" fg="#92400E">Yaxınlaşan</Pill>}
+                    {isOngoing && <Pill bg="var(--brand-100)" fg="var(--brand-700)">{t("psyAvailMgmt.vacationOngoing")}</Pill>}
+                    {isUpcoming && <Pill bg="#FEF3C7" fg="#92400E">{t("psyAvailMgmt.vacationUpcoming")}</Pill>}
                     <span style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)" }}>
-                      {fmtDate(v.startDate)} → {fmtDate(v.endDate)}
+                      {formatDateShort(t, v.startDate)} → {formatDateShort(t, v.endDate)}
                     </span>
                   </div>
                   {v.reason && (
@@ -581,17 +590,17 @@ function VacationsCard({ vacations, onAdd, onCancel }: {
                   <div style={{ display: "flex", gap: 7, marginTop: 9, flexWrap: "wrap" }}>
                     {v.affectedAppointments > 0 ? (
                       <Pill bg="#FEE2E2" fg="#991B1B">
-                        {v.affectedAppointments} randevu təsirlənib
+                        {t("psyAvailMgmt.vacationAffectedAppointments", { n: v.affectedAppointments })}
                       </Pill>
                     ) : (
-                      <Pill bg="#D1FAE5" fg="#065F46">münaqişə yoxdur</Pill>
+                      <Pill bg="#D1FAE5" fg="#065F46">{t("psyAvailMgmt.vacationNoConflicts")}</Pill>
                     )}
                     {v.notifyPatients && (
-                      <Pill bg="var(--brand-100)" fg="var(--brand-700)">pasiyentlərə bildiriş</Pill>
+                      <Pill bg="var(--brand-100)" fg="var(--brand-700)">{t("psyAvailMgmt.vacationNotifyPatients")}</Pill>
                     )}
                   </div>
                 </div>
-                <button onClick={() => onCancel(v.id)} style={smallDangerBtn}>Ləğv et</button>
+                <button onClick={() => onCancel(v.id)} style={smallDangerBtn}>{t("psyAvailMgmt.cancelVacationAction")}</button>
               </div>
             );
           })}
@@ -609,6 +618,8 @@ function AddSlotModal({ initialDay, existingSlots, onClose, onCreated }: {
   onClose: () => void;
   onCreated: (created: TimeSlot[]) => void;
 }) {
+  const { t } = useT();
+  const weekdays = getWeekdays(t);
   const [days, setDays] = useState<number[]>(initialDay != null ? [initialDay] : [1]);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("12:00");
@@ -622,8 +633,8 @@ function AddSlotModal({ initialDay, existingSlots, onClose, onCreated }: {
   const clearDays = () => setDays([]);
 
   const submit = async () => {
-    if (days.length === 0) { toast("Ən azı bir gün seçin", "error"); return; }
-    if (start >= end) { toast("Başlama vaxtı bitişdən əvvəl olmalıdır", "error"); return; }
+    if (days.length === 0) { toast(t("psyAvailMgmt.validationSelectDay"), "error"); return; }
+    if (start >= end) { toast(t("psyAvailMgmt.validationStartBeforeEnd"), "error"); return; }
 
     const conflictDay = days.find(day =>
       existingSlots.some(s =>
@@ -631,8 +642,8 @@ function AddSlotModal({ initialDay, existingSlots, onClose, onCreated }: {
       )
     );
     if (conflictDay != null) {
-      const dayLabel = WEEKDAYS_AZ.find(d => d.iso === conflictDay)?.label ?? "";
-      toast(`${dayLabel} günü üçün bu vaxt aralığı artıq mövcud olan bir vaxt aralığı ilə üst-üstə düşür`, "error");
+      const dayLabel = weekdays.find(d => d.iso === conflictDay)?.label ?? "";
+      toast(t("psyAvailMgmt.validationSlotOverlap", { day: dayLabel }), "error");
       return;
     }
 
@@ -651,17 +662,17 @@ function AddSlotModal({ initialDay, existingSlots, onClose, onCreated }: {
   };
 
   return (
-    <Modal onClose={onClose} title="Vaxt aralığı əlavə et"
-      subtitle="Bir və ya bir neçə günə eyni vaxt aralığını tətbiq edin">
-      <Section label="Günlər" right={
+    <Modal onClose={onClose} title={t("psyAvailMgmt.addSlotModalTitle")}
+      subtitle={t("psyAvailMgmt.addSlotModalSubtitle")}>
+      <Section label={t("psyAvailMgmt.daysLabel")} right={
         <div style={{ display: "flex", gap: 4 }}>
-          <button onClick={selectWeekdays} style={miniBtn}>İş günləri</button>
-          <button onClick={selectAll} style={miniBtn}>Hamısı</button>
-          <button onClick={clearDays} style={miniBtn}>Təmizlə</button>
+          <button onClick={selectWeekdays} style={miniBtn}>{t("psyAvailMgmt.weekdaysOnly")}</button>
+          <button onClick={selectAll} style={miniBtn}>{t("psyAvailMgmt.allDays")}</button>
+          <button onClick={clearDays} style={miniBtn}>{t("psyAvailMgmt.clearDays")}</button>
         </div>
       }>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
-          {WEEKDAYS_AZ.map(d => {
+          {weekdays.map(d => {
             const active = days.includes(d.iso);
             return (
               <button key={d.iso} onClick={() => toggleDay(d.iso)}
@@ -683,10 +694,10 @@ function AddSlotModal({ initialDay, existingSlots, onClose, onCreated }: {
       </Section>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Section label="Başlama">
+        <Section label={t("psyAvailMgmt.startLabel")}>
           <TimePicker value={start} onChange={setStart} theme="light" size="sm" />
         </Section>
-        <Section label="Bitiş">
+        <Section label={t("psyAvailMgmt.endLabel")}>
           <TimePicker value={end} onChange={setEnd} theme="light" size="sm" />
         </Section>
       </div>
@@ -698,13 +709,18 @@ function AddSlotModal({ initialDay, existingSlots, onClose, onCreated }: {
           fontSize: 11.5, color: "var(--brand-700)",
           display: "flex", flexWrap: "wrap", gap: 10,
         }}>
-          <span>Müddət: <b>{fmtHours(diffMinutes(start, end))}</b></span>
-          {days.length > 1 && <span>Cəmi: <b>{fmtHours(diffMinutes(start, end) * days.length)}</b> ({days.length} gün)</span>}
+          <span>{t("psyAvailMgmt.durationColonLabel")} <b>{fmtHours(t, diffMinutes(start, end))}</b></span>
+          {days.length > 1 && (
+            <span>
+              {t("psyAvailMgmt.totalColonLabel")} <b>{fmtHours(t, diffMinutes(start, end) * days.length)}</b>{" "}
+              {t("psyAvailMgmt.totalDaysCountSuffix", { n: days.length })}
+            </span>
+          )}
         </div>
       )}
 
       <ModalActions onCancel={onClose} onSubmit={submit} submitDisabled={saving || days.length === 0}
-        submitLabel={saving ? "Saxlanılır…" : "Saxla"} />
+        submitLabel={saving ? t("psyAvailMgmt.savingEllipsis") : t("psyAvailMgmt.saveButton")} />
     </Modal>
   );
 }
@@ -715,6 +731,7 @@ function AddOverrideModal({ onClose, onCreated }: {
   onClose: () => void;
   onCreated: (created: TimeSlotOverride) => void;
 }) {
+  const { t } = useT();
   const [date, setDate] = useState("");
   const [type, setType] = useState<"BLOCK" | "EXTRA">("BLOCK");
   const [start, setStart] = useState("");
@@ -723,11 +740,11 @@ function AddOverrideModal({ onClose, onCreated }: {
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
-    if (!date) { toast("Tarix seçin", "error"); return; }
+    if (!date) { toast(t("psyAvailMgmt.validationSelectDate"), "error"); return; }
     if (type === "EXTRA" && (!start || !end)) {
-      toast("Əlavə vaxt üçün başlama və bitiş tələb olunur", "error"); return;
+      toast(t("psyAvailMgmt.validationExtraTimeRequired"), "error"); return;
     }
-    if (start && end && start >= end) { toast("Bitiş başlamadan sonra olmalıdır", "error"); return; }
+    if (start && end && start >= end) { toast(t("psyAvailMgmt.validationEndAfterStart"), "error"); return; }
     setSaving(true);
     try {
       const data: { overrideDate: string; overrideType: "BLOCK" | "EXTRA"; startTime?: string; endTime?: string; note?: string } = {
@@ -742,43 +759,43 @@ function AddOverrideModal({ onClose, onCreated }: {
   };
 
   return (
-    <Modal onClose={onClose} title="Tarix istisnası" subtitle="Birdəfəlik dəyişiklik üçün konkret günü qurun">
-      <Section label="Tarix">
+    <Modal onClose={onClose} title={t("psyAvailMgmt.addOverrideModalTitle")} subtitle={t("psyAvailMgmt.addOverrideModalSubtitle")}>
+      <Section label={t("psyAvailMgmt.dateLabel")}>
         <DatePicker value={date} min={todayIso()} onChange={setDate} theme="light" size="sm" style={{ width: "100%" }} />
       </Section>
 
-      <Section label="Tip">
+      <Section label={t("psyAvailMgmt.typeLabel")}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <TypeCard active={type === "BLOCK"} onClick={() => setType("BLOCK")}
-            color="#DC2626" title="Bağlı"
-            hint="Bütün gün və ya seçilmiş saatlar rezervasiyaya bağlanır" />
+            color="#DC2626" title={t("psyAvailMgmt.typeBlockTitle")}
+            hint={t("psyAvailMgmt.typeBlockHint")} />
           <TypeCard active={type === "EXTRA"} onClick={() => setType("EXTRA")}
-            color="#10B981" title="Əlavə vaxt"
-            hint="Normal cədvəldən kənar əlavə açıq saat" />
+            color="#10B981" title={t("psyAvailMgmt.typeExtraTitle")}
+            hint={t("psyAvailMgmt.typeExtraHint")} />
         </div>
       </Section>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <Section label={
           <>
-            Başlama {type === "BLOCK" && <span style={{ fontWeight: 400, color: "var(--oxford-60)" }}>(boş = bütün gün)</span>}
+            {t("psyAvailMgmt.startLabel")} {type === "BLOCK" && <span style={{ fontWeight: 400, color: "var(--oxford-60)" }}>{t("psyAvailMgmt.startAllDayHint")}</span>}
           </>
         }>
           <TimePicker value={start} onChange={setStart} theme="light" size="sm" clearable />
         </Section>
-        <Section label="Bitiş">
+        <Section label={t("psyAvailMgmt.endLabel")}>
           <TimePicker value={end} onChange={setEnd} theme="light" size="sm" clearable />
         </Section>
       </div>
 
-      <Section label="Qeyd (məcburi deyil)">
+      <Section label={t("psyAvailMgmt.noteLabel")}>
         <input type="text" value={note} onChange={e => setNote(e.target.value)}
-          placeholder="Məs. konfrans iştirakı"
+          placeholder={t("psyAvailMgmt.notePlaceholder")}
           style={{ ...timeInputStyle, width: "100%" }} />
       </Section>
 
       <ModalActions onCancel={onClose} onSubmit={submit} submitDisabled={saving}
-        submitLabel={saving ? "Saxlanılır…" : "Saxla"} />
+        submitLabel={saving ? t("psyAvailMgmt.savingEllipsis") : t("psyAvailMgmt.saveButton")} />
     </Modal>
   );
 }
@@ -810,6 +827,7 @@ function AddVacationModal({ onClose, onCreated }: {
   onClose: () => void;
   onCreated: (created: Vacation) => void;
 }) {
+  const { t } = useT();
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [reason, setReason] = useState("");
@@ -822,8 +840,8 @@ function AddVacationModal({ onClose, onCreated }: {
   const [resolvedIds, setResolvedIds] = useState<Set<number>>(new Set());
 
   const submit = async () => {
-    if (!start || !end) { toast("Tarixləri seçin", "error"); return; }
-    if (end < start) { toast("Bitiş başlanğıcdan sonra olmalıdır", "error"); return; }
+    if (!start || !end) { toast(t("psyAvailMgmt.validationSelectDates"), "error"); return; }
+    if (end < start) { toast(t("psyAvailMgmt.validationEndAfterStartDate"), "error"); return; }
     setSaving(true);
     try {
       const result = await psychologistApi.createVacation({
@@ -854,8 +872,8 @@ function AddVacationModal({ onClose, onCreated }: {
     const open = conflicts.filter(c => !resolvedIds.has(c.id));
     return (
       <>
-        <Modal onClose={onClose} title="Bu tarixlərdə randevularınız var"
-          subtitle="Məzuniyyət yalnız bütün konfliktlər həll olunandan sonra aktivləşəcək">
+        <Modal onClose={onClose} title={t("psyAvailMgmt.conflictsModalTitle")}
+          subtitle={t("psyAvailMgmt.conflictsModalSubtitle")}>
           <div style={{ display: "grid", gap: 10 }}>
             {conflicts.map(a => {
               const resolved = resolvedIds.has(a.id);
@@ -868,7 +886,7 @@ function AddVacationModal({ onClose, onCreated }: {
                 }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)" }}>
-                      {a.patientName ?? "Pasient"}
+                      {a.patientName ?? t("psyAvailMgmt.patientFallback")}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--oxford-60)", display: "flex", flexWrap: "wrap", gap: 8 }}>
                       <span>{a.startAt ? azFormatDateTime(a.startAt) : "—"}</span>
@@ -876,16 +894,16 @@ function AddVacationModal({ onClose, onCreated }: {
                     </div>
                   </div>
                   {resolved ? (
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>✓ operatora ötürüldü</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>✓ {t("psyAvailMgmt.resolvedHandoff")}</span>
                   ) : (
                     <div style={{ display: "flex", gap: 6 }}>
                       <button type="button" onClick={() => setProposeFor(a)}
                         style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--brand-100)", background: "var(--brand-50)", color: "var(--brand-700)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                        Yeni vaxt təklif et
+                        {t("psyAvailMgmt.proposeNewTime")}
                       </button>
                       <button type="button" onClick={() => handoff(a)} disabled={handingOffId === a.id}
                         style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #E5E7EB", background: "#fff", color: "#1A2535", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                        {handingOffId === a.id ? "…" : "Operatora ötür"}
+                        {handingOffId === a.id ? "…" : t("psyAvailMgmt.handoffToOperatorAction")}
                       </button>
                     </div>
                   )}
@@ -895,13 +913,12 @@ function AddVacationModal({ onClose, onCreated }: {
           </div>
 
           <p style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 12 }}>
-            Qeyd: «Yeni vaxt təklif et» pasiyentin qəbuluna qədər randevunu aktiv saxlayır —
-            təklif qəbul olunandan sonra «Yenidən cəhd et» düyməsi ilə məzuniyyəti aktivləşdirin.
+            {t("psyAvailMgmt.conflictNote")}
           </p>
 
           <ModalActions onCancel={onClose} onSubmit={submit} submitDisabled={saving}
-            submitLabel={saving ? "Yoxlanılır…"
-              : open.length > 0 ? `Yenidən cəhd et (${open.length} konflikt)` : "Yenidən cəhd et"} />
+            submitLabel={saving ? t("psyAvailMgmt.checkingEllipsis")
+              : open.length > 0 ? t("psyAvailMgmt.retryActionWithCount", { n: open.length }) : t("psyAvailMgmt.retryAction")} />
         </Modal>
         {proposeFor && (
           <RescheduleComposeModal
@@ -915,20 +932,20 @@ function AddVacationModal({ onClose, onCreated }: {
   }
 
   return (
-    <Modal onClose={onClose} title="Məzuniyyət əlavə et"
-      subtitle="Bu dövrdə bağlı qalacaqsız — mövcud randevular operator komandasına ötürüləcək">
+    <Modal onClose={onClose} title={t("psyAvailMgmt.vacationModalTitle")}
+      subtitle={t("psyAvailMgmt.vacationModalSubtitle")}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Section label="Başlanğıc">
+        <Section label={t("psyAvailMgmt.startDateLabel")}>
           <DatePicker value={start} min={todayIso()} onChange={setStart} theme="light" size="sm" style={{ width: "100%" }} />
         </Section>
-        <Section label="Bitiş">
+        <Section label={t("psyAvailMgmt.endLabel")}>
           <DatePicker value={end} min={start || todayIso()} onChange={setEnd} theme="light" size="sm" style={{ width: "100%" }} />
         </Section>
       </div>
 
-      <Section label="Səbəb (məcburi deyil)">
+      <Section label={t("psyAvailMgmt.reasonLabel")}>
         <input type="text" value={reason} onChange={e => setReason(e.target.value)}
-          placeholder="Məs. illik məzuniyyət, konfrans, sağlamlıq…" maxLength={255}
+          placeholder={t("psyAvailMgmt.reasonPlaceholder")} maxLength={255}
           style={{ ...timeInputStyle, width: "100%" }} />
       </Section>
 
@@ -942,16 +959,16 @@ function AddVacationModal({ onClose, onCreated }: {
           style={{ width: 16, height: 16, accentColor: "var(--brand)", cursor: "pointer" }} />
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford)" }}>
-            Təsirlənən pasiyentlərə bildiriş göndər
+            {t("psyAvailMgmt.notifyPatientsLabel")}
           </div>
           <div style={{ fontSize: 11, color: "var(--oxford-60)" }}>
-            Sənin məzuniyyət dövrünə düşən randevuları olan pasiyentlər avtomatik bildiriş alacaq.
+            {t("psyAvailMgmt.notifyPatientsHint")}
           </div>
         </div>
       </label>
 
       <ModalActions onCancel={onClose} onSubmit={submit} submitDisabled={saving}
-        submitLabel={saving ? "Əlavə olunur…" : "Əlavə et"} />
+        submitLabel={saving ? t("psyAvailMgmt.addingEllipsis") : t("psyAvailMgmt.addAction")} />
     </Modal>
   );
 }
@@ -964,6 +981,7 @@ function Modal({ onClose, title, subtitle, children }: {
   subtitle?: string;
   children: React.ReactNode;
 }) {
+  const { t } = useT();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -999,7 +1017,7 @@ function Modal({ onClose, title, subtitle, children }: {
               border: "1px solid var(--oxford-10)", background: "#fff",
               color: "var(--oxford-60)", fontSize: 16, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
-            }} title="Bağla (Esc)">×</button>
+            }} title={t("psyAvailMgmt.closeEsc")}>×</button>
         </div>
         <div style={{ overflow: "auto", padding: 22, display: "flex", flexDirection: "column", gap: 14 }}>
           {children}
@@ -1028,6 +1046,7 @@ function Section({ label, right, children }: {
 function ModalActions({ onCancel, onSubmit, submitDisabled, submitLabel }: {
   onCancel: () => void; onSubmit: () => void; submitDisabled: boolean; submitLabel: string;
 }) {
+  const { t } = useT();
   return (
     <div style={{
       display: "flex", justifyContent: "flex-end", gap: 8,
@@ -1037,7 +1056,7 @@ function ModalActions({ onCancel, onSubmit, submitDisabled, submitLabel }: {
         style={{
           padding: "9px 16px", borderRadius: 8, border: "1px solid var(--oxford-10)",
           background: "#fff", color: "var(--oxford)", fontSize: 13, fontWeight: 600, cursor: "pointer",
-        }}>Ləğv</button>
+        }}>{t("psyAvailMgmt.cancelAction")}</button>
       <button onClick={onSubmit} disabled={submitDisabled}
         style={{
           padding: "9px 22px", borderRadius: 8, border: "none",

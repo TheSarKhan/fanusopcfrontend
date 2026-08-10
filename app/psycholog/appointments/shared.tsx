@@ -15,21 +15,21 @@ import { toast } from "@/components/Toast";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
 
-export const WEEKDAYS_AZ = ["Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə", "Bazar"];
-export const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
+/** Shared t() shape — plain functions below take it as a trailing param since
+ *  they are exported and may be called from files outside this module. */
+export type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 export function pad2(n: number) { return String(n).padStart(2, "0"); }
 export function fmtTime(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
 export function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
-export function relativeDayLabel(d: Date, now: Date) {
+export function relativeDayLabel(d: Date, now: Date, t: Translate) {
   const today = new Date(now);
   const tomorrow = new Date(now); tomorrow.setDate(today.getDate() + 1);
-  if (isSameDay(d, today)) return "Bu gün";
-  if (isSameDay(d, tomorrow)) return "Sabah";
-  const isoDow = (d.getDay() + 6) % 7;
-  return `${WEEKDAYS_AZ[isoDow]}, ${pad2(d.getDate())} ${MONTHS_AZ[d.getMonth()]}`;
+  if (isSameDay(d, today)) return t("psyApptCore.today");
+  if (isSameDay(d, tomorrow)) return t("psyApptCore.tomorrow");
+  return `${t(`days.d${d.getDay()}` as MessageKey)}, ${pad2(d.getDate())} ${t(`months.m${d.getMonth() + 1}` as MessageKey)}`;
 }
 
 export interface CountdownInfo {
@@ -37,18 +37,23 @@ export interface CountdownInfo {
   expired: boolean;
   urgent: boolean;
 }
-export function timeUntil(target: Date, now: Date): CountdownInfo {
+export function timeUntil(target: Date, now: Date, t: Translate): CountdownInfo {
   const ms = target.getTime() - now.getTime();
-  if (ms < 0) return { expired: true, urgent: false, text: "İndi başladı" };
+  if (ms < 0) return { expired: true, urgent: false, text: t("psyApptCore.timeUntilNow") };
   const minutes = Math.floor(ms / 60_000);
-  if (minutes < 60) return { expired: false, urgent: minutes <= 15, text: `${minutes} dəq qaldı` };
+  if (minutes < 60) return { expired: false, urgent: minutes <= 15, text: t("psyApptCore.timeUntilMinutes", { minutes }) };
   const hours = Math.floor(minutes / 60);
   if (hours < 24) {
     const remMin = minutes % 60;
-    return { expired: false, urgent: false, text: `${hours} saat${remMin > 0 ? ` ${remMin} dəq` : ""} qaldı` };
+    return {
+      expired: false, urgent: false,
+      text: remMin > 0
+        ? t("psyApptCore.timeUntilHoursMinutes", { hours, minutes: remMin })
+        : t("psyApptCore.timeUntilHoursOnly", { hours }),
+    };
   }
   const days = Math.floor(hours / 24);
-  return { expired: false, urgent: false, text: `${days} gün qaldı` };
+  return { expired: false, urgent: false, text: t("psyApptCore.timeUntilDays", { days }) };
 }
 
 export function initialsOf(name?: string | null) {
@@ -291,17 +296,19 @@ export function PsyJoinButton({ a }: { a: AppointmentDetail }) {
 }
 
 /* Google Calendar hadisə linki — kart menyusu və detal pəncərəsi üçün. */
-export function gcalHrefFor(a: AppointmentDetail): string | null {
+export function gcalHrefFor(a: AppointmentDetail, t: Translate): string | null {
   if (!a.startAt || !a.endAt) return null;
   return googleCalendarUrl({
     uid: String(a.id),
-    title: `Fanus seansı${a.patientName ? ` — ${a.patientName}` : ""}`,
+    title: a.patientName
+      ? t("psyApptCore.gcalEventTitleWithPatient", { name: a.patientName })
+      : t("psyApptCore.gcalEventTitle"),
     description: [
-      a.patientName ? `Pasient: ${a.patientName}` : null,
-      a.note ? `Qeyd: ${a.note}` : null,
+      a.patientName ? t("psyApptCore.gcalPatientLine", { name: a.patientName }) : null,
+      a.note ? t("psyApptCore.gcalNoteLine", { note: a.note }) : null,
       appUrl("/psycholog/appointments"),
     ].filter(Boolean).join("\n"),
-    location: "Onlayn (Fanus)",
+    location: t("psyApptCore.gcalLocation"),
     start: new Date(a.startAt),
     end: new Date(a.endAt),
     url: appUrl("/psycholog/appointments"),

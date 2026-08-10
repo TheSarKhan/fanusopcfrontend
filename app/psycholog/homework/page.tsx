@@ -16,14 +16,16 @@ import PageHeader from "@/components/PageHeader";
 const PRIORITY_COLOR: Record<HomeworkPriority, string> = {
   LOW: "#10B981", MEDIUM: "#F59E0B", HIGH: "#DC2626",
 };
-const PRIORITY_LABEL: Record<HomeworkPriority, string> = {
-  LOW: "Aşağı", MEDIUM: "Orta", HIGH: "Yüksək",
-};
-const STATUS_TONE: Record<HomeworkStatus, { label: string; color: string; bg: string }> = {
-  PENDING:     { label: "Gözləyir",   color: "#92400E", bg: "#FEF3C7" },
-  IN_PROGRESS: { label: "Davam edir", color: "#1E40AF", bg: "#DBEAFE" },
-  COMPLETED:   { label: "Tamamlandı", color: "#065F46", bg: "#D1FAE5" },
-};
+function priorityLabel(t: (k: string) => string, p: HomeworkPriority): string {
+  if (p === "LOW") return t("psyHwMgmt.priorityLow");
+  if (p === "MEDIUM") return t("psyHwMgmt.priorityMedium");
+  return t("psyHwMgmt.priorityHigh");
+}
+function statusTone(t: (k: string) => string, s: HomeworkStatus): { label: string; color: string; bg: string } {
+  if (s === "PENDING") return { label: t("psyHwMgmt.statusPending"), color: "#92400E", bg: "#FEF3C7" };
+  if (s === "IN_PROGRESS") return { label: t("psyHwMgmt.statusInProgress"), color: "#1E40AF", bg: "#DBEAFE" };
+  return { label: t("psyHwMgmt.statusCompleted"), color: "#065F46", bg: "#D1FAE5" };
+}
 
 function isOverdue(h: Homework): boolean {
   if (h.status === "COMPLETED" || !h.dueDate) return false;
@@ -32,18 +34,18 @@ function isOverdue(h: Homework): boolean {
 function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase();
 }
-function formatTimeAgo(iso?: string | null): string {
+function formatTimeAgo(t: (k: string, vars?: Record<string, string | number>) => string, iso?: string | null): string {
   if (!iso) return "—";
   const ms = Date.now() - new Date(iso).getTime();
   const min = Math.round(ms / 60000);
-  if (min < 1) return "indi";
-  if (min < 60) return `${min} dəq əvvəl`;
+  if (min < 1) return t("psyHwMgmt.timeAgoNow");
+  if (min < 60) return t("psyHwMgmt.timeAgoMinutes", { min });
   const h = Math.round(min / 60);
-  if (h < 24) return `${h} saat əvvəl`;
+  if (h < 24) return t("psyHwMgmt.timeAgoHours", { h });
   const d = Math.round(h / 24);
-  if (d < 30) return `${d} gün əvvəl`;
+  if (d < 30) return t("psyHwMgmt.timeAgoDays", { d });
   const mo = Math.round(d / 30);
-  return `${mo} ay əvvəl`;
+  return t("psyHwMgmt.timeAgoMonths", { mo });
 }
 
 interface PatientBucket {
@@ -212,7 +214,7 @@ export default function PsychologHomeworkPage() {
   };
 
   const remove = async (id: number) => {
-    if (!confirm("Tapşırığı silmək istəyirsiniz? Bütün alt-tapşırıqlar və fayllar da silinəcək.")) return;
+    if (!confirm(t("psyHwMgmt.deleteConfirm"))) return;
     try {
       await psychologistApi.deleteHomework(id);
       setItems(prev => prev.filter(x => x.id !== id));
@@ -228,26 +230,26 @@ export default function PsychologHomeworkPage() {
     <div>
       <PageHeader
         title={t("staff.psyHomeworkTitle")}
-        subtitle="Pasiyent əsaslı iş otağı. Sol panelden pasiyent seçin və ya yeni tapşırıq əlavə edin."
+        subtitle={t("psyHwMgmt.subtitle")}
         actions={
           <>
             <button onClick={() => setShowLabelManager(true)}
-              style={ghostBtn()}>Etiketləri idarə et</button>
+              style={ghostBtn()}>{t("psyHwMgmt.manageTagsTitle")}</button>
             <button onClick={() => openNewForm()}
-              style={primaryBtn()}>+ Yeni tapşırıq</button>
+              style={primaryBtn()}>{t("psyHwMgmt.newTaskCta")}</button>
           </>
         }
       />
 
       {/* Top stat strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(160px, 100%), 1fr))", gap: 10, marginBottom: 14 }}>
-        <StatCell label="Aktiv pasiyent" value={counts.activePatients} tone="brand" />
-        <StatCell label="Cəmi tapşırıq"   value={counts.total}          tone="brand" />
-        <StatCell label="Gözləyir"        value={counts.pending}        tone="warn" />
-        <StatCell label="Davam edir"      value={counts.inProgress}     tone="info" />
-        <StatCell label="Tamamlandı"      value={counts.completed}      tone="good" />
-        <StatCell label="Gecikən"         value={counts.overdue}        tone="danger" highlight={counts.overdue > 0} />
-        <StatCell label="Orta tamamlama"  value={counts.avgCompletion}  tone="muted" suffix="%" />
+        <StatCell label={t("psyHwMgmt.statActivePatients")} value={counts.activePatients} tone="brand" />
+        <StatCell label={t("psyHwMgmt.statTotal")}          value={counts.total}          tone="brand" />
+        <StatCell label={t("psyHwMgmt.statPending")}        value={counts.pending}        tone="warn" />
+        <StatCell label={t("psyHwMgmt.statInProgress")}     value={counts.inProgress}     tone="info" />
+        <StatCell label={t("psyHwMgmt.statCompleted")}      value={counts.completed}      tone="good" />
+        <StatCell label={t("psyHwMgmt.statOverdue")}        value={counts.overdue}        tone="danger" highlight={counts.overdue > 0} />
+        <StatCell label={t("psyHwMgmt.statAvgCompletion")}  value={counts.avgCompletion}  tone="muted" suffix="%" />
       </div>
 
       <HomeworkCreateModal
@@ -266,7 +268,7 @@ export default function PsychologHomeworkPage() {
       )}
 
       {loading ? (
-        <div style={{ background: "#fff", padding: 40, borderRadius: 14, textAlign: "center", color: "var(--oxford-60)" }}>Yüklənir…</div>
+        <div style={{ background: "#fff", padding: 40, borderRadius: 14, textAlign: "center", color: "var(--oxford-60)" }}>{t("psyHwMgmt.loading")}</div>
       ) : (
         <div className="psy-hw-layout" style={{
           display: "grid",
@@ -326,6 +328,7 @@ function PatientSidebar({
   selectedId: number | null;
   onSelect: (id: number) => void;
 }) {
+  const { t } = useT();
   const [query, setQuery] = useState("");
   const filtered = query.trim()
     ? patients.filter(p => p.patientName.toLowerCase().includes(query.toLowerCase()))
@@ -339,7 +342,7 @@ function PatientSidebar({
     }}>
       <div style={{ padding: "4px 6px 10px" }}>
         <input value={query} onChange={e => setQuery(e.target.value)}
-          placeholder="Pasiyent axtar…"
+          placeholder={t("psyHwMgmt.searchPatientPlaceholder")}
           style={{
             width: "100%", padding: "8px 10px", borderRadius: 8,
             border: "1px solid var(--oxford-10)", fontSize: 12.5, boxSizing: "border-box",
@@ -347,7 +350,7 @@ function PatientSidebar({
       </div>
       {filtered.length === 0 ? (
         <div style={{ padding: 20, textAlign: "center", color: "var(--oxford-60)", fontSize: 12 }}>
-          Pasiyent tapılmadı
+          {t("psyHwMgmt.patientNotFound")}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 2, maxHeight: "70vh", overflow: "auto" }}>
@@ -367,6 +370,7 @@ function PatientRow({ p, active, onClick }: {
   active: boolean;
   onClick: () => void;
 }) {
+  const { t } = useT();
   const hue = p.completionRate >= 70 ? "#10B981" : p.completionRate >= 30 ? "#F59E0B" : "#DC2626";
   return (
     <button onClick={onClick} style={{
@@ -383,11 +387,11 @@ function PatientRow({ p, active, onClick }: {
           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
         }}>{p.patientName}</div>
         <div style={{ fontSize: 10.5, color: "var(--oxford-60)", marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {p.total === 0 ? "Hələ tapşırıq yox" : (
+          {p.total === 0 ? t("psyHwMgmt.noTasksYetShort") : (
             <>
-              <span>{p.completed}/{p.total} bitib</span>
+              <span>{t("psyHwMgmt.completedFraction", { completed: p.completed, total: p.total })}</span>
               <span>{p.completionRate}%</span>
-              {p.lastActivityAt && <span>{formatTimeAgo(new Date(p.lastActivityAt).toISOString())}</span>}
+              {p.lastActivityAt && <span>{formatTimeAgo(t, new Date(p.lastActivityAt).toISOString())}</span>}
             </>
           )}
         </div>
@@ -400,7 +404,7 @@ function PatientRow({ p, active, onClick }: {
         )}
       </div>
       {p.overdue > 0 && (
-        <span title={`${p.overdue} gecikən tapşırıq`} style={{
+        <span title={t("psyHwMgmt.overdueTaskCount", { count: p.overdue })} style={{
           fontSize: 10, fontWeight: 700, padding: "2px 7px",
           background: "#FEE2E2", color: "#991B1B", borderRadius: 999,
         }}>{p.overdue}</span>
@@ -434,6 +438,7 @@ function PatientWorkspace({
   onRemoveHomework: (id: number) => void;
   onNewHomework: () => void;
 }) {
+  const { t } = useT();
   const ring = makeRing(bucket.completionRate);
   const visible = bucket.homeworks.filter(h => {
     if (subTab === "pending") return h.status === "PENDING";
@@ -466,15 +471,15 @@ function PatientWorkspace({
         <div style={{ flex: 1, minWidth: 0 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>{bucket.patientName}</h2>
           <div style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 4, display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <span><b style={{ color: "var(--oxford)" }}>{bucket.total}</b> cəmi</span>
-            <span><b style={{ color: "#92400E" }}>{bucket.pending}</b> gözləyir</span>
-            {bucket.inProgress > 0 && <span><b style={{ color: "#1E40AF" }}>{bucket.inProgress}</b> davam edir</span>}
-            <span><b style={{ color: "#065F46" }}>{bucket.completed}</b> bitib</span>
-            {bucket.overdue > 0 && <span><b style={{ color: "#991B1B" }}>{bucket.overdue}</b> gecikən</span>}
-            {bucket.lastActivityAt && <span>Son aktivlik: {formatTimeAgo(new Date(bucket.lastActivityAt).toISOString())}</span>}
+            <span><b style={{ color: "var(--oxford)" }}>{bucket.total}</b> {t("psyHwMgmt.summaryTotal")}</span>
+            <span><b style={{ color: "#92400E" }}>{bucket.pending}</b> {t("psyHwMgmt.summaryPending")}</span>
+            {bucket.inProgress > 0 && <span><b style={{ color: "#1E40AF" }}>{bucket.inProgress}</b> {t("psyHwMgmt.summaryInProgress")}</span>}
+            <span><b style={{ color: "#065F46" }}>{bucket.completed}</b> {t("psyHwMgmt.summaryCompleted")}</span>
+            {bucket.overdue > 0 && <span><b style={{ color: "#991B1B" }}>{bucket.overdue}</b> {t("psyHwMgmt.summaryOverdue")}</span>}
+            {bucket.lastActivityAt && <span>{t("psyHwMgmt.lastActivityLabel", { time: formatTimeAgo(t, new Date(bucket.lastActivityAt).toISOString()) })}</span>}
           </div>
         </div>
-        <button onClick={onNewHomework} style={primaryBtn()}>+ Yeni tapşırıq</button>
+        <button onClick={onNewHomework} style={primaryBtn()}>{t("psyHwMgmt.newTaskCta")}</button>
       </div>
 
       {/* Tab strip */}
@@ -482,10 +487,10 @@ function PatientWorkspace({
         display: "flex", gap: 6, background: "#fff", padding: 6,
         borderRadius: 10, border: "1px solid var(--oxford-10)", width: "fit-content",
       }}>
-        <TabBtn label={`Gözləyir (${bucket.pending})`} active={subTab === "pending"} onClick={() => onSubTab("pending")} />
-        <TabBtn label={`Davam edir (${bucket.inProgress})`} active={subTab === "inprogress"} onClick={() => onSubTab("inprogress")} />
-        <TabBtn label={`Tamamlandı (${bucket.completed})`} active={subTab === "completed"} onClick={() => onSubTab("completed")} />
-        <TabBtn label={`Bütün (${bucket.total})`} active={subTab === "all"} onClick={() => onSubTab("all")} />
+        <TabBtn label={t("psyHwMgmt.tabPendingLabel", { count: bucket.pending })} active={subTab === "pending"} onClick={() => onSubTab("pending")} />
+        <TabBtn label={t("psyHwMgmt.tabInProgressLabel", { count: bucket.inProgress })} active={subTab === "inprogress"} onClick={() => onSubTab("inprogress")} />
+        <TabBtn label={t("psyHwMgmt.tabCompletedLabel", { count: bucket.completed })} active={subTab === "completed"} onClick={() => onSubTab("completed")} />
+        <TabBtn label={t("psyHwMgmt.tabAllLabel", { count: bucket.total })} active={subTab === "all"} onClick={() => onSubTab("all")} />
       </div>
 
       {/* Tasks list */}
@@ -495,8 +500,8 @@ function PatientWorkspace({
           color: "var(--oxford-60)", border: "1px dashed var(--oxford-10)",
         }}>
           {bucket.total === 0
-            ? "Bu pasiyent üçün hələ tapşırıq yoxdur. Yuxarıdakı düymə ilə əlavə edin."
-            : "Bu tabda tapşırıq yoxdur."}
+            ? t("psyHwMgmt.emptyPatientTasks")
+            : t("psyHwMgmt.emptyTabTasks")}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -542,6 +547,7 @@ function OverviewPanel({
   needsAttention: PatientBucket[];
   onPick: (id: number) => void;
 }) {
+  const { t } = useT();
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{
@@ -549,13 +555,13 @@ function OverviewPanel({
         border: "1px solid var(--oxford-10)",
         textAlign: "center", color: "var(--oxford-60)",
       }}>
-        Sol paneldən pasiyent seçin və ya aşağıdakı diqqət bölməsindən birbaşa keçid edin.
+        {t("psyHwMgmt.overviewHint")}
       </div>
 
       {needsAttention.length > 0 && (
         <div style={{ background: "#fff", borderRadius: 14, padding: 18, border: "1px solid var(--oxford-10)" }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)", marginBottom: 10 }}>
-            Diqqət tələb edir
+            {t("psyHwMgmt.needsAttentionHeading")}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {needsAttention.map(b => (
@@ -569,8 +575,8 @@ function OverviewPanel({
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "var(--oxford)" }}>{b.patientName}</div>
                   <div style={{ fontSize: 11, color: "var(--oxford-60)", display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {b.overdue > 0 && <span>{b.overdue} gecikən tapşırıq</span>}
-                    {(b.daysSinceActivity ?? 0) > 14 && <span>{b.daysSinceActivity} gündür aktivlik yoxdur</span>}
+                    {b.overdue > 0 && <span>{t("psyHwMgmt.overdueTaskCount", { count: b.overdue })}</span>}
+                    {(b.daysSinceActivity ?? 0) > 14 && <span>{t("psyHwMgmt.daysSinceActivity", { days: b.daysSinceActivity ?? 0 })}</span>}
                   </div>
                 </div>
                 <span style={{ fontSize: 14, color: "var(--brand)" }}>›</span>
@@ -582,10 +588,10 @@ function OverviewPanel({
 
       <div style={{ background: "#fff", borderRadius: 14, padding: 18, border: "1px solid var(--oxford-10)" }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford)", marginBottom: 10 }}>
-          Son aktivlik
+          {t("psyHwMgmt.recentActivityHeading")}
         </div>
         {recentEvents.length === 0 ? (
-          <div style={{ fontSize: 12, color: "var(--oxford-60)" }}>Hələ aktivlik yoxdur</div>
+          <div style={{ fontSize: 12, color: "var(--oxford-60)" }}>{t("psyHwMgmt.noActivityYet")}</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {recentEvents.map(ev => (
@@ -602,11 +608,11 @@ function OverviewPanel({
                   <b>{ev.patientName}</b>
                   {" "}
                   <span style={{ color: "var(--oxford-60)" }}>
-                    {ev.kind === "completed" ? "tamamladı" : "yeni tapşırıq aldı"}
+                    {ev.kind === "completed" ? t("psyHwMgmt.eventCompleted") : t("psyHwMgmt.eventCreated")}
                   </span>
                   <span style={{ color: "var(--oxford)" }}>{` — ${ev.title}`}</span>
                   <div style={{ fontSize: 10.5, color: "var(--oxford-60)", marginTop: 2 }}>
-                    {formatTimeAgo(new Date(ev.ts).toISOString())}
+                    {formatTimeAgo(t, new Date(ev.ts).toISOString())}
                   </div>
                 </div>
               </div>
@@ -625,8 +631,9 @@ function PsyHomeworkRow({ h, onOpen, onDelete }: {
   onOpen: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useT();
   const overdue = isOverdue(h);
-  const status = STATUS_TONE[h.status];
+  const status = statusTone(t, h.status);
   const progress = h.checklistTotal > 0
     ? Math.round((h.checklistCompleted / h.checklistTotal) * 100)
     : 0;
@@ -652,34 +659,34 @@ function PsyHomeworkRow({ h, onOpen, onDelete }: {
               padding: "2px 8px", borderRadius: 999,
               background: PRIORITY_COLOR[h.priority], color: "#fff",
               fontSize: 11, fontWeight: 700,
-            }}>{PRIORITY_LABEL[h.priority]}</span>
+            }}>{priorityLabel(t, h.priority)}</span>
             {overdue && (
               <span style={{
                 padding: "2px 8px", borderRadius: 999,
                 background: "#FEE2E2", color: "#991B1B", fontSize: 11, fontWeight: 700,
-              }}>Gecikib</span>
+              }}>{t("psyHwMgmt.overdueBadge")}</span>
             )}
             {h.labels.map(l => <HomeworkLabelChip key={l.id} label={l.label} color={l.color} size="xs" />)}
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, color: "var(--oxford)", marginBottom: 4 }}>{h.title}</div>
           <div style={{ fontSize: 11.5, color: "var(--oxford-60)", display: "flex", gap: 12, flexWrap: "wrap" }}>
-            {h.dueDate && <span>Son tarix: {azFormatDate(h.dueDate)}</span>}
-            <span>Yaradılıb {formatTimeAgo(h.createdAt)}</span>
+            {h.dueDate && <span>{t("psyHwMgmt.dueDateLabel", { date: azFormatDate(h.dueDate) })}</span>}
+            <span>{t("psyHwMgmt.createdAgo", { time: formatTimeAgo(t, h.createdAt) })}</span>
             {h.completedAt && (
-              <span>Statusu dəyişib {formatTimeAgo(h.completedAt)}</span>
+              <span>{t("psyHwMgmt.statusChangedAgo", { time: formatTimeAgo(t, h.completedAt) })}</span>
             )}
           </div>
         </div>
         <button onClick={e => { e.stopPropagation(); onDelete(); }}
           style={{ fontSize: 11, color: "#991B1B", background: "transparent", border: "1px solid #FECACA", padding: "4px 10px", borderRadius: 6, cursor: "pointer" }}>
-          Sil
+          {t("psyHwMgmt.deleteBtn")}
         </button>
       </div>
 
       {h.checklistTotal > 0 && (
         <div style={{ marginTop: 10 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--oxford-60)", marginBottom: 4 }}>
-            <span>Alt-tapşırıq gedişatı</span>
+            <span>{t("psyHwMgmt.subtaskProgress")}</span>
             <span style={{ display: "inline-flex", gap: 8, fontWeight: 600, color: "var(--brand-700)" }}>
               <span>{h.checklistCompleted}/{h.checklistTotal}</span>
               <span>{progress}%</span>
@@ -697,16 +704,16 @@ function PsyHomeworkRow({ h, onOpen, onDelete }: {
       }}>
         {h.attachments.length > 0 && (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-            <PaperclipIcon /> {h.attachments.length} fayl
+            <PaperclipIcon /> {t("psyHwMgmt.attachmentCount", { count: h.attachments.length })}
           </span>
         )}
         {h.commentCount > 0 && (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-            <CommentIcon /> {h.commentCount} şərh
+            <CommentIcon /> {t("psyHwMgmt.commentCount", { count: h.commentCount })}
           </span>
         )}
         {h.completionNote && (
-          <span style={{ color: "var(--brand-700)" }}>Pasiyent qeydi var</span>
+          <span style={{ color: "var(--brand-700)" }}>{t("psyHwMgmt.patientNoteExists")}</span>
         )}
       </div>
     </div>
@@ -752,6 +759,7 @@ function LabelManagerModal({
   onClose: () => void;
   onChange: (labels: HomeworkLabel[]) => void;
 }) {
+  const { t } = useT();
   const [newLabel, setNewLabel] = useState("");
   const [newColor, setNewColor] = useState<HomeworkLabelColor>("blue");
   const [busy, setBusy] = useState(false);
@@ -769,7 +777,7 @@ function LabelManagerModal({
   };
 
   const remove = async (l: HomeworkLabel) => {
-    if (!confirm(`"${l.label}" etiketi silinsin?\n(Tapşırıqlardan da silinəcək.)`)) return;
+    if (!confirm(t("psyHwMgmt.deleteTagConfirm", { label: l.label }))) return;
     try {
       await psychologistApi.homeworkLabelDelete(l.id);
       onChange(labels.filter(x => x.id !== l.id));
@@ -795,14 +803,14 @@ function LabelManagerModal({
         boxShadow: "0 30px 60px rgba(0,0,0,0.25)", overflow: "hidden",
       }}>
         <div style={{ padding: "16px 22px", borderBottom: "1px solid var(--oxford-10)" }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Etiketləri idarə et</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>{t("psyHwMgmt.manageTagsTitle")}</h3>
         </div>
 
         <div style={{ padding: 22, maxHeight: "60vh", overflow: "auto" }}>
           <div style={{ marginBottom: 16 }}>
             <input value={newLabel} onChange={e => setNewLabel(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") create(); }}
-              placeholder="Yeni etiket adı"
+              placeholder={t("psyHwMgmt.newTagPlaceholder")}
               style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid var(--oxford-10)", fontSize: 13, marginBottom: 8, boxSizing: "border-box" }} />
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
               {LABEL_COLOR_LIST.map(c => (
@@ -820,12 +828,12 @@ function LabelManagerModal({
                 padding: "8px 16px", borderRadius: 8, border: "none",
                 background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 600,
                 cursor: busy || !newLabel.trim() ? "not-allowed" : "pointer", opacity: !newLabel.trim() ? 0.6 : 1,
-              }}>+ Yarat</button>
+              }}>{t("psyHwMgmt.createTagBtn")}</button>
           </div>
 
           {labels.length === 0 ? (
             <div style={{ fontSize: 12, color: "var(--oxford-60)", textAlign: "center", padding: "12px 0" }}>
-              Hələ etiket yoxdur
+              {t("psyHwMgmt.noTagsYet")}
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -858,7 +866,7 @@ function LabelManagerModal({
         </div>
 
         <div style={{ padding: "12px 22px", borderTop: "1px solid var(--oxford-10)", display: "flex", justifyContent: "flex-end" }}>
-          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--oxford-10)", background: "#fff", fontSize: 13, cursor: "pointer" }}>Bağla</button>
+          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--oxford-10)", background: "#fff", fontSize: 13, cursor: "pointer" }}>{t("psyHwMgmt.closeBtn")}</button>
         </div>
       </div>
     </div>

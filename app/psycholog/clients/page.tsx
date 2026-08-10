@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { psychologistApi, type ClientSummary, type PatientTag } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import {
   Avatar,
   Banner,
@@ -28,22 +29,28 @@ const ACTIVE_DAYS = 30;
 const DORMANT_DAYS = 90;
 const PAGE_SIZE = 30;
 
-/** Avto-işarələr. Rəng yalnız məna daşıyanda — rozet yoxdur, mətndir. */
-const FLAG_META: Record<string, { label: string; tone: StatusTone }> = {
-  HIGH_NO_SHOW:     { label: "Yüksək gəlmədi",  tone: "risk" },
-  HIGH_LATE_CANCEL: { label: "Yüksək geç ləğv", tone: "wait" },
-  HIGH_REJECT:      { label: "Çox rədd alıb",   tone: "wait" },
-  MANUAL:           { label: "Manual işarə",    tone: "wait" },
-};
+type TFn = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 type Filter = "ALL" | "ACTIVE" | "DORMANT" | "FLAGGED";
 type SortKey = "LAST" | "TOTAL" | "NAME" | "NOTES";
 type ViewMode = "grid" | "list";
 
-const VIEW_ITEMS = [
-  { key: "grid" as const, label: "Şəbəkə" },
-  { key: "list" as const, label: "Siyahı" },
-];
+/** Avto-işarələr. Rəng yalnız məna daşıyanda — rozet yoxdur, mətndir. */
+function flagMeta(t: TFn): Record<string, { label: string; tone: StatusTone }> {
+  return {
+    HIGH_NO_SHOW:     { label: t("psyClientsExtra.flagHighNoShow"),     tone: "risk" },
+    HIGH_LATE_CANCEL: { label: t("psyClientsExtra.flagHighLateCancel"), tone: "wait" },
+    HIGH_REJECT:      { label: t("psyClientsExtra.flagHighReject"),     tone: "wait" },
+    MANUAL:           { label: t("psyClientsExtra.flagManual"),         tone: "wait" },
+  };
+}
+
+function viewItems(t: TFn) {
+  return [
+    { key: "grid" as const, label: t("psyClientsExtra.viewGrid") },
+    { key: "list" as const, label: t("psyClientsExtra.viewList") },
+  ];
+}
 
 function daysSince(iso?: string | null): number | null {
   if (!iso) return null;
@@ -54,12 +61,12 @@ function daysSince(iso?: string | null): number | null {
  * Son seans vəziyyəti — mətndir, rozet deyil.
  * Yalnız passivlik diqqət tələb edir; təzə seans neytral qalır.
  */
-function lastSession(days: number | null): { text: string; tone: StatusTone } {
-  if (days === null) return { text: "Heç seans olmayıb", tone: "muted" };
-  if (days === 0) return { text: "Son seans bu gün", tone: "neutral" };
-  if (days <= ACTIVE_DAYS) return { text: `Son seans ${days} gün öncə`, tone: "neutral" };
-  if (days <= DORMANT_DAYS) return { text: `Son seans ${days} gün öncə`, tone: "wait" };
-  return { text: `${days} gündür passivdir`, tone: "risk" };
+function lastSession(days: number | null, t: TFn): { text: string; tone: StatusTone } {
+  if (days === null) return { text: t("psyClientsExtra.lastSessionNone"), tone: "muted" };
+  if (days === 0) return { text: t("psyClientsExtra.lastSessionToday"), tone: "neutral" };
+  if (days <= ACTIVE_DAYS) return { text: t("psyClientsExtra.lastSessionDaysAgo", { days }), tone: "neutral" };
+  if (days <= DORMANT_DAYS) return { text: t("psyClientsExtra.lastSessionDaysAgo", { days }), tone: "wait" };
+  return { text: t("psyClientsExtra.lastSessionDormantDays", { days }), tone: "risk" };
 }
 
 function csvEscape(v: string | number | null | undefined): string {
@@ -69,12 +76,12 @@ function csvEscape(v: string | number | null | undefined): string {
   return s;
 }
 
-function exportClientsCsv(clients: ClientSummary[], tagsByPatient: Record<number, PatientTag[]>) {
+function exportClientsCsv(clients: ClientSummary[], tagsByPatient: Record<number, PatientTag[]>, t: TFn) {
   const headers = [
-    "Ad", "E-poçt", "Telefon",
-    "Cəmi seans", "Tamamlanmış seans", "Gəlmədi",
-    "Son seans tarixi", "Son seans (gün öncə)",
-    "Qeyd sayı", "Avto-flag", "Etiketlər",
+    t("psyClientsExtra.csvHeaderName"), t("psyClientsExtra.csvHeaderEmail"), t("psyClientsExtra.csvHeaderPhone"),
+    t("psyClientsExtra.csvHeaderTotalSessions"), t("psyClientsExtra.csvHeaderCompletedSessions"), t("psyClientsExtra.csvHeaderNoShow"),
+    t("psyClientsExtra.csvHeaderLastSessionDate"), t("psyClientsExtra.csvHeaderLastSessionDaysAgo"),
+    t("psyClientsExtra.csvHeaderNoteCount"), t("psyClientsExtra.csvHeaderAutoFlag"), t("psyClientsExtra.csvHeaderTags"),
   ];
   const rows = clients.map(c => {
     const days = daysSince(c.lastAppointmentAt);
@@ -163,10 +170,10 @@ export default function PsychologClientsPage() {
         setTotalElements(res.totalElements);
         setPage(0);
       })
-      .catch(e => { if (!cancelled) setError((e as Error).message || "Pasiyentlər yüklənmədi"); })
+      .catch(e => { if (!cancelled) setError((e as Error).message || t("psyClientsExtra.loadErrorTitle")); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [debouncedSearch, reloadNonce]);
+  }, [debouncedSearch, reloadNonce, t]);
 
   const loadMore = () => {
     setLoadingMore(true);
@@ -177,7 +184,7 @@ export default function PsychologClientsPage() {
         setTotalElements(res.totalElements);
         setPage(res.page);
       })
-      .catch(e => setError((e as Error).message || "Pasiyentlər yüklənmədi"))
+      .catch(e => setError((e as Error).message || t("psyClientsExtra.loadErrorTitle")))
       .finally(() => setLoadingMore(false));
   };
 
@@ -254,12 +261,14 @@ export default function PsychologClientsPage() {
 
   const filterTabs: TabItem<Filter>[] = [
     { key: "ALL",     label: t("staff.psyClientsFilterAll"), count: counters.all },
-    { key: "ACTIVE",  label: `${t("staff.psyClientsFilterActive")} (${ACTIVE_DAYS} gün)`, count: counters.active },
-    { key: "DORMANT", label: `${t("staff.psyClientsFilterDormant")} (${DORMANT_DAYS}+ gün)`, count: counters.dormant },
+    { key: "ACTIVE",  label: t("psyClientsExtra.filterActiveWithDays", { days: ACTIVE_DAYS }), count: counters.active },
+    { key: "DORMANT", label: t("psyClientsExtra.filterDormantWithDays", { days: DORMANT_DAYS }), count: counters.dormant },
     { key: "FLAGGED", label: t("staff.psyClientsFilterFlagged"), count: counters.flagged },
   ];
 
   const clearFilters = () => { setFilter("ALL"); setTagFilter(null); setSearch(""); };
+
+  const flagMetaMap = useMemo(() => flagMeta(t), [t]);
 
   return (
     <div>
@@ -268,13 +277,13 @@ export default function PsychologClientsPage() {
         sub={t("staff.psyClientsSub")}
         actions={
           <>
-            <Segmented items={VIEW_ITEMS} value={view} onChange={setView} />
+            <Segmented items={viewItems(t)} value={view} onChange={setView} />
             <Button
               variant="ghost"
               icon={<IconDownload />}
-              onClick={() => exportClientsCsv(visible, tagsByPatient)}
+              onClick={() => exportClientsCsv(visible, tagsByPatient, t)}
               disabled={visible.length === 0}
-              title="Filterlənmiş siyahını CSV faylı olaraq endir"
+              title={t("psyClientsExtra.csvExportTitle")}
             >
               CSV
             </Button>
@@ -289,20 +298,20 @@ export default function PsychologClientsPage() {
           <SearchInput
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={`${t("common.search")} — "/" ilə keçin`}
+            placeholder={t("psyClientsExtra.searchPlaceholder")}
           />
         </div>
-        <label className="fx-help" htmlFor="clients-sort">Sıralama</label>
+        <label className="fx-help" htmlFor="clients-sort">{t("psyClientsExtra.sortLabel")}</label>
         <Select
           id="clients-sort"
           className="fx-select--inline"
           value={sort}
           onChange={e => setSort(e.target.value as SortKey)}
         >
-          <option value="LAST">Son seans</option>
-          <option value="TOTAL">Cəmi seans</option>
-          <option value="NAME">Əlifba</option>
-          <option value="NOTES">Qeyd sayı</option>
+          <option value="LAST">{t("psyClientsExtra.sortLast")}</option>
+          <option value="TOTAL">{t("psyClientsExtra.sortTotal")}</option>
+          <option value="NAME">{t("psyClientsExtra.sortName")}</option>
+          <option value="NOTES">{t("psyClientsExtra.sortNotes")}</option>
         </Select>
       </div>
 
@@ -310,7 +319,7 @@ export default function PsychologClientsPage() {
       {allTagLabels.length > 0 && (
         <div className="fx-toolbar" style={{ overflowX: "auto", paddingBottom: 4 }}>
           <ToggleChip active={tagFilter === null} onClick={() => setTagFilter(null)}>
-            Bütün etiketlər
+            {t("psyClientsExtra.allTags")}
           </ToggleChip>
           {allTagLabels.map(([label, count]) => (
             <ToggleChip
@@ -326,9 +335,9 @@ export default function PsychologClientsPage() {
 
       {hasFilters && (
         <p className="fx-help" style={{ marginBottom: 14 }}>
-          {resultCount} nəticə göstərilir.{" "}
+          {t("psyClientsExtra.resultsShown", { count: resultCount })}{" "}
           <button type="button" className="fx-link" onClick={clearFilters}>
-            Filtrləri təmizlə
+            {t("psyClientsExtra.clearFilters")}
           </button>
         </p>
       )}
@@ -337,14 +346,14 @@ export default function PsychologClientsPage() {
       {!loading && filter === "ALL" && !tagFilter && attention.length > 0 && (
         <Card tone="attention" style={{ marginBottom: 16 }}>
           <div className="fx-card__head fx-card__head--plain">
-            <h2 className="fx-card-title">Diqqət tələb edənlər</h2>
+            <h2 className="fx-card-title">{t("psyClientsExtra.attentionTitle")}</h2>
             <button type="button" className="fx-link" onClick={() => setFilter("FLAGGED")}>
-              Hamısını gör ({counters.flagged})
+              {t("psyClientsExtra.viewAllCount", { count: counters.flagged })}
             </button>
           </div>
           <CardBody>
             {attention.map(c => {
-              const flag = c.autoFlag ? FLAG_META[c.autoFlag] : null;
+              const flag = c.autoFlag ? flagMetaMap[c.autoFlag] : null;
               const days = daysSince(c.lastAppointmentAt);
               return (
                 <Link
@@ -355,7 +364,11 @@ export default function PsychologClientsPage() {
                   <Row
                     lead={<Avatar name={c.name} size="sm" />}
                     title={c.name}
-                    meta={`${c.totalSessions} seans${days !== null ? `, son seans ${days} gün öncə` : ""}`}
+                    meta={
+                      days !== null
+                        ? t("psyClientsExtra.attentionCardMeta", { count: c.totalSessions, days })
+                        : t("psyClientsExtra.attentionCardMetaNoLast", { count: c.totalSessions })
+                    }
                     status={flag ? <Status tone={flag.tone}>{flag.label}</Status> : undefined}
                   />
                 </Link>
@@ -368,11 +381,11 @@ export default function PsychologClientsPage() {
       {/* Yükləmə xətası — səhifə yüklənmədiyi üçün toast deyil, yerində qutu + təkrar cəhd. */}
       {error && (
         <div style={{ marginBottom: 16 }}>
-          <Banner tone="error" title="Pasiyentlər yüklənmədi">
+          <Banner tone="error" title={t("psyClientsExtra.loadErrorTitle")}>
             {error}
             <div style={{ marginTop: 10 }}>
               <Button variant="ghost" size="sm" onClick={() => setReloadNonce(n => n + 1)}>
-                Yenidən cəhd et
+                {t("psyClientsExtra.retry")}
               </Button>
             </div>
           </Banner>
@@ -384,22 +397,22 @@ export default function PsychologClientsPage() {
       ) : visible.length === 0 ? (
         <EmptyBlock
           boxed
-          title={hasFilters ? "Bu filtrlərə uyğun pasiyent tapılmadı" : t("staff.psyClientsEmpty")}
+          title={hasFilters ? t("psyClientsExtra.emptyFilteredTitle") : t("staff.psyClientsEmpty")}
           body={
             hasFilters
-              ? "Axtarış sözünü qısaldın və ya seçilmiş filtrləri götürün."
-              : "İlk seansınız keçiriləndən sonra pasiyentləriniz burada siyahılanacaq."
+              ? t("psyClientsExtra.emptyFilteredBody")
+              : t("psyClientsExtra.emptyNoClientsBody")
           }
-          actions={hasFilters ? <Button variant="ghost" onClick={clearFilters}>Filtrləri təmizlə</Button> : undefined}
+          actions={hasFilters ? <Button variant="ghost" onClick={clearFilters}>{t("psyClientsExtra.clearFilters")}</Button> : undefined}
         />
       ) : view === "grid" ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))", gap: 12 }}>
-          {visible.map(c => <ClientGridCard key={c.patientId} c={c} tags={tagsByPatient[c.patientId] ?? []} />)}
+          {visible.map(c => <ClientGridCard key={c.patientId} c={c} tags={tagsByPatient[c.patientId] ?? []} t={t} flagMetaMap={flagMetaMap} />)}
         </div>
       ) : (
         <Card>
           <CardBody style={{ paddingTop: 4 }}>
-            {visible.map(c => <ClientListRow key={c.patientId} c={c} tags={tagsByPatient[c.patientId] ?? []} />)}
+            {visible.map(c => <ClientListRow key={c.patientId} c={c} tags={tagsByPatient[c.patientId] ?? []} t={t} flagMetaMap={flagMetaMap} />)}
           </CardBody>
         </Card>
       )}
@@ -408,8 +421,8 @@ export default function PsychologClientsPage() {
         <div style={{ textAlign: "center", marginTop: 20 }}>
           <Button variant="ghost" onClick={loadMore} disabled={loadingMore}>
             {loadingMore
-              ? "Yüklənir…"
-              : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - clients.length)})`}
+              ? t("psyClientsExtra.loadingMore")
+              : t("psyClientsExtra.loadMoreCount", { count: Math.min(PAGE_SIZE, totalElements - clients.length) })}
           </Button>
         </div>
       )}
@@ -418,22 +431,22 @@ export default function PsychologClientsPage() {
 }
 
 /** Etiketlər — silinə bilməyən, sadəcə oxunan siyahı. */
-function TagLine({ tags, max }: { tags: PatientTag[]; max: number }) {
+function TagLine({ tags, max, t }: { tags: PatientTag[]; max: number; t: TFn }) {
   if (tags.length === 0) return null;
   const shown = tags.slice(0, max).map(tg => tg.label).join(", ");
   const more = tags.length - max;
   return (
     <span>
-      Etiketlər: {shown}
-      {more > 0 ? ` və daha ${more}` : ""}
+      {t("psyClientsExtra.tagsLabel", { tags: shown })}
+      {more > 0 ? ` ${t("psyClientsExtra.andMore", { count: more })}` : ""}
     </span>
   );
 }
 
-function ClientListRow({ c, tags }: { c: ClientSummary; tags: PatientTag[] }) {
+function ClientListRow({ c, tags, t, flagMetaMap }: { c: ClientSummary; tags: PatientTag[]; t: TFn; flagMetaMap: Record<string, { label: string; tone: StatusTone }> }) {
   const days = daysSince(c.lastAppointmentAt);
-  const last = lastSession(days);
-  const flag = c.autoFlag ? FLAG_META[c.autoFlag] : null;
+  const last = lastSession(days, t);
+  const flag = c.autoFlag ? flagMetaMap[c.autoFlag] : null;
 
   return (
     <Link
@@ -446,13 +459,13 @@ function ClientListRow({ c, tags }: { c: ClientSummary; tags: PatientTag[] }) {
         meta={
           // Rozet çipləri yerinə oxunan sətirlər.
           <>
-            <div>{c.email || c.phone || "Əlaqə məlumatı yoxdur"}</div>
+            <div>{c.email || c.phone || t("psyClientsExtra.noContactInfo")}</div>
             <div>
-              {c.totalSessions} seans, {c.completedSessions} tamamlanıb
-              {c.noteCount > 0 ? `, ${c.noteCount} qeyd` : ""}
-              {c.noShowCount > 0 ? `, ${c.noShowCount} gəlmədi` : ""}
+              {t("psyClientsExtra.sessionsCompletedSummary", { total: c.totalSessions, completed: c.completedSessions })}
+              {c.noteCount > 0 ? `, ${t("psyClientsExtra.noteCountInline", { count: c.noteCount })}` : ""}
+              {c.noShowCount > 0 ? `, ${t("psyClientsExtra.noShowCount", { count: c.noShowCount })}` : ""}
             </div>
-            <TagLine tags={tags} max={3} />
+            <TagLine tags={tags} max={3} t={t} />
           </>
         }
         status={
@@ -463,10 +476,10 @@ function ClientListRow({ c, tags }: { c: ClientSummary; tags: PatientTag[] }) {
   );
 }
 
-function ClientGridCard({ c, tags }: { c: ClientSummary; tags: PatientTag[] }) {
+function ClientGridCard({ c, tags, t, flagMetaMap }: { c: ClientSummary; tags: PatientTag[]; t: TFn; flagMetaMap: Record<string, { label: string; tone: StatusTone }> }) {
   const days = daysSince(c.lastAppointmentAt);
-  const last = lastSession(days);
-  const flag = c.autoFlag ? FLAG_META[c.autoFlag] : null;
+  const last = lastSession(days, t);
+  const flag = c.autoFlag ? flagMetaMap[c.autoFlag] : null;
   const completionPct = c.totalSessions > 0
     ? Math.round((c.completedSessions / c.totalSessions) * 100)
     : 0;
@@ -482,7 +495,7 @@ function ClientGridCard({ c, tags }: { c: ClientSummary; tags: PatientTag[] }) {
             <Avatar name={c.name} size="lg" />
             <div style={{ minWidth: 0 }}>
               <div className="fx-row__title">{c.name}</div>
-              <div className="fx-row__meta">{c.email || c.phone || "Əlaqə məlumatı yoxdur"}</div>
+              <div className="fx-row__meta">{c.email || c.phone || t("psyClientsExtra.noContactInfo")}</div>
             </div>
           </div>
 
@@ -490,14 +503,14 @@ function ClientGridCard({ c, tags }: { c: ClientSummary; tags: PatientTag[] }) {
 
           {/* Rəqəmlər — çip deyil, "dəyər + etiket". */}
           <div style={{ display: "flex", gap: 18 }}>
-            <MiniStat value={c.totalSessions} label="Seans" />
-            <MiniStat value={`${completionPct}%`} label="Tamamlanma" />
-            <MiniStat value={c.noteCount} label="Qeyd" />
+            <MiniStat value={c.totalSessions} label={t("psyClientsExtra.statSessions")} />
+            <MiniStat value={`${completionPct}%`} label={t("psyClientsExtra.statCompletion")} />
+            <MiniStat value={c.noteCount} label={t("psyClientsExtra.statNotes")} />
           </div>
 
           <div className="fx-row__meta" style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 3 }}>
-            <TagLine tags={tags} max={4} />
-            {c.noShowCount > 0 ? <span>{c.noShowCount} gəlmədi</span> : null}
+            <TagLine tags={tags} max={4} t={t} />
+            {c.noShowCount > 0 ? <span>{t("psyClientsExtra.noShowCount", { count: c.noShowCount })}</span> : null}
             {flag ? (
               <Status tone={flag.tone}>{flag.label}</Status>
             ) : (

@@ -20,6 +20,8 @@ import { FEATURE_GOALS } from "@/lib/features";
 import { azFormatDate, azFormatDateTime, azFormatTime } from "@/lib/datetime";
 import { toast } from "@/components/Toast";
 import { confirmDialog } from "@/components/ConfirmDialog";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import {
   Avatar,
   Button,
@@ -38,24 +40,26 @@ import {
   type TabItem,
 } from "@/components/ui";
 
-const TAG_COLORS: { value: PatientTagColor; label: string; swatch: string }[] = [
-  { value: "brand",   label: "Mavi",     swatch: "var(--brand)" },
-  { value: "good",    label: "Yaşıl",    swatch: "#10B981" },
-  { value: "warn",    label: "Sarı",     swatch: "#F59E0B" },
-  { value: "danger",  label: "Qırmızı",  swatch: "#EF4444" },
-  { value: "neutral", label: "Boz",      swatch: "#6B7280" },
-  { value: "purple",  label: "Bənövşəyi", swatch: "#8B5CF6" },
-  { value: "teal",    label: "Firuzəyi",  swatch: "#14B8A6" },
+type TFn = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
+const TAG_COLORS: { value: PatientTagColor; labelKey: MessageKey; swatch: string }[] = [
+  { value: "brand",   labelKey: "psyClient360.tagBlue",   swatch: "var(--brand)" },
+  { value: "good",    labelKey: "psyClient360.tagGreen",  swatch: "#10B981" },
+  { value: "warn",    labelKey: "psyClient360.tagYellow", swatch: "#F59E0B" },
+  { value: "danger",  labelKey: "psyClient360.tagRed",    swatch: "#EF4444" },
+  { value: "neutral", labelKey: "psyClient360.tagGray",   swatch: "#6B7280" },
+  { value: "purple",  labelKey: "psyClient360.tagPurple", swatch: "#8B5CF6" },
+  { value: "teal",    labelKey: "psyClient360.tagTeal",   swatch: "#14B8A6" },
 ];
 
-const TAG_PRESETS = [
-  "Yüksək risk", "Aşağı risk",
-  "Anksiyete", "Depressiya", "Travma", "Münasibətlər",
-  "İlk müraciət", "Uzun müddətli",
-  "Daimi pasiyent", "VIP",
+const TAG_PRESET_KEYS: MessageKey[] = [
+  "psyClient360.quickTagHighRisk", "psyClient360.quickTagLowRisk",
+  "psyClient360.quickTagAnxiety", "psyClient360.quickTagDepression", "psyClient360.quickTagTrauma", "psyClient360.quickTagRelationships",
+  "psyClient360.quickTagFirstVisit", "psyClient360.quickTagLongTerm",
+  "psyClient360.quickTagRegular", "psyClient360.quickTagVip",
 ];
 
-const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
+function monthName(t: TFn, monthIdx0: number) { return t(`months.m${monthIdx0 + 1}` as MessageKey); }
 function pad2(n: number) { return String(n).padStart(2, "0"); }
 function fmtTime(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
 function fmtDateTime(iso?: string | null) {
@@ -63,10 +67,10 @@ function fmtDateTime(iso?: string | null) {
   const d = new Date(iso);
   return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()} ${fmtTime(d)}`;
 }
-function fmtShort(iso?: string | null) {
+function fmtShort(iso: string | null | undefined, t: TFn) {
   if (!iso) return "—";
   const d = new Date(iso);
-  return `${pad2(d.getDate())} ${MONTHS_AZ[d.getMonth()]} ${d.getFullYear()}`;
+  return `${pad2(d.getDate())} ${monthName(t, d.getMonth())} ${d.getFullYear()}`;
 }
 function daysBetween(iso?: string | null) {
   if (!iso) return null;
@@ -74,12 +78,12 @@ function daysBetween(iso?: string | null) {
   return Math.abs(Math.floor(ms / (1000 * 60 * 60 * 24)));
 }
 /** İnsani nisbi gün etiketi — "Bu gün" / "Dünən" / "N gün əvvəl". */
-function agoLabel(iso?: string | null): string {
+function agoLabel(iso: string | null | undefined, t: TFn): string {
   const n = daysBetween(iso);
   if (n == null) return "";
-  if (n === 0) return "Bu gün";
-  if (n === 1) return "Dünən";
-  return `${n} gün əvvəl`;
+  if (n === 0) return t("psyClient360.agoToday");
+  if (n === 1) return t("psyClient360.agoYesterday");
+  return t("psyClient360.agoDaysAgo", { days: n });
 }
 function initialsOf(name?: string | null) {
   if (!name) return "?";
@@ -112,16 +116,16 @@ const TAG_TINTS: Record<string, { bg: string; color: string; border: string }> =
   teal:    { bg: "#CCFBF1", color: "#115E59", border: "#99F6E4" },
 };
 
-const STATUS: Record<string, { label: string; color: string; bg: string; accent: string }> = {
-  PENDING:               { label: "Yeni",          color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
-  ASSIGNED:              { label: "Təyin edilib",  color: "var(--brand-700)", bg: "var(--brand-50)", accent: "var(--brand)" },
-  CONFIRMED:             { label: "Təsdiqli",      color: "#065F46",          bg: "#D1FAE5",         accent: "#10B981" },
-  AWAITING_CONFIRMATION: { label: "Təsdiq gözl.",  color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
-  DISPUTED:              { label: "Mübahisəli",    color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
-  COMPLETED:             { label: "Tamamlandı",    color: "#374151",          bg: "#F3F4F6",         accent: "#9CA3AF" },
-  CANCELLED:             { label: "Ləğv",          color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
-  CANCEL_REQUESTED:      { label: "Ləğv gözlənir", color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
-  REJECTED:              { label: "Rədd",          color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
+const STATUS: Record<string, { labelKey: MessageKey; color: string; bg: string; accent: string }> = {
+  PENDING:               { labelKey: "psyClient360.statusPending",               color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
+  ASSIGNED:              { labelKey: "psyClient360.statusAssigned",              color: "var(--brand-700)", bg: "var(--brand-50)", accent: "var(--brand)" },
+  CONFIRMED:             { labelKey: "psyClient360.statusConfirmed",             color: "#065F46",          bg: "#D1FAE5",         accent: "#10B981" },
+  AWAITING_CONFIRMATION: { labelKey: "psyClient360.statusAwaitingConfirmation",  color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
+  DISPUTED:              { labelKey: "psyClient360.statusDisputed",              color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
+  COMPLETED:             { labelKey: "psyClient360.statusCompleted",             color: "#374151",          bg: "#F3F4F6",         accent: "#9CA3AF" },
+  CANCELLED:             { labelKey: "psyClient360.statusCancelled",             color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
+  CANCEL_REQUESTED:      { labelKey: "psyClient360.statusCancelRequested",       color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
+  REJECTED:              { labelKey: "psyClient360.statusRejected",              color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
 };
 
 /**
@@ -155,69 +159,54 @@ function sortRows<T>(rows: T[], columns: Column<T>[], sort: SortState): T[] {
   });
 }
 
-const FLAG_META: Record<string, { label: string; tone: string }> = {
-  HIGH_NO_SHOW:     { label: "Yüksək gəlmədi",      tone: "danger" },
-  HIGH_LATE_CANCEL: { label: "Yüksək geç ləğv",      tone: "warn" },
-  HIGH_REJECT:      { label: "Çox rədd alıb",        tone: "warn" },
-  MANUAL:           { label: "Manual işarə",         tone: "warn" },
+const FLAG_META: Record<string, { labelKey: MessageKey; tone: string }> = {
+  HIGH_NO_SHOW:     { labelKey: "psyClient360.flagHighNoShow",     tone: "danger" },
+  HIGH_LATE_CANCEL: { labelKey: "psyClient360.flagHighLateCancel", tone: "warn" },
+  HIGH_REJECT:      { labelKey: "psyClient360.flagHighReject",     tone: "warn" },
+  MANUAL:           { labelKey: "psyClient360.flagManual",         tone: "warn" },
 };
 
-const NOTE_TEMPLATES: { key: string; label: string; title: string; body: string }[] = [
+const NOTE_TEMPLATES: { key: string; labelKey: MessageKey; titleKey: MessageKey; bodyKey: MessageKey }[] = [
   {
     key: "intake",
-    label: "İlk qiymətləndirmə",
-    title: "İlk qiymətləndirmə",
-    body:
-      "Müraciət səbəbi:\n\nSimptomların başlanğıcı və müddəti:\n\nÖnəmli həyat hadisələri:\n\nDəstək sistemi (ailə / dost):\n\nƏvvəlki terapiya təcrübəsi:\n\nİlk təəssürat və hipotez:\n\nRazılaşdırılmış hədəflər:",
+    labelKey: "psyClient360.noteTemplateIntakeLabel",
+    titleKey: "psyClient360.noteTemplateIntakeLabel",
+    bodyKey: "psyClient360.noteTemplateIntakeBody",
   },
   {
     key: "progress",
-    label: "Gedişat qeydi",
-    title: "Seans qeydi",
-    body:
-      "Hal-hazırkı vəziyyət:\n\nBu seansda işlənən mövzu:\n\nİstifadə olunan texnika:\n\nPasiyent reaksiyası / inkişaf:\n\nEv tapşırığı:\n\nNövbəti seans üçün plan:",
+    labelKey: "psyClient360.noteTemplateProgressLabel",
+    titleKey: "psyClient360.noteTemplateProgressTitle",
+    bodyKey: "psyClient360.noteTemplateProgressBody",
   },
   {
     key: "closure",
-    label: "Sonlanma notu",
-    title: "Terapiya sonlanması",
-    body:
-      "Ümumi nəticə və qazanımlar:\n\nQalan risklər / diqqət olunmalı sahələr:\n\nPasiyentin öz qiymətləndirməsi:\n\nGələcək tövsiyələr:\n\nİstinad üçün resurslar:",
+    labelKey: "psyClient360.noteTemplateClosureLabel",
+    titleKey: "psyClient360.noteTemplateClosureTitle",
+    bodyKey: "psyClient360.noteTemplateClosureBody",
   },
 ];
 
-const REASON_LABELS: Record<string, string> = {
-  PATIENT_BUSY: "Məşğul oldu",
-  PATIENT_HEALTH: "Xəstələndi",
-  PATIENT_FORGOT: "Unutdu",
-  PATIENT_NOT_NEEDED: "Lazım deyildi",
-  PATIENT_TECHNICAL: "Texniki problem",
-  PATIENT_TIME_CONFLICT: "Vaxt uyğun deyildi",
-  PATIENT_OTHER: "Digər",
-  PSY_HEALTH: "Psixoloq xəstələndi",
-  PSY_EMERGENCY: "Psixoloq təcili",
-  PSY_TECHNICAL: "Texniki problem",
-  PSY_INCOMPATIBLE: "Profil uyğun deyildi",
-  PSY_OTHER: "Digər",
-  OPERATOR_PATIENT_REQUEST: "Pasient telefonla bildirdi",
-  OPERATOR_PSY_UNAVAILABLE: "Psixoloq mövcud deyildi",
-  OPERATOR_DISPUTE_RESOLUTION: "Mübahisə həlli",
-  OPERATOR_NO_SHOW_BOTH: "İkisi də gəlmədi",
-  OPERATOR_PATIENT_BLOCKED: "Pasient bloklandı",
-  OPERATOR_OTHER: "Digər",
-};
+/** Ləğv səbəbi kodu → mətn. Mövcud `cancelReason` lüğət bölməsini bu fayldakı eyni kodlar üçün təkrar istifadə edir. */
+function reasonLabel(t: TFn, code?: string | null): string {
+  if (!code) return "";
+  const key = `cancelReason.${code}` as MessageKey;
+  const translated = t(key);
+  return translated === key ? code : translated;
+}
 
 type Tab = "overview" | "history" | "packages" | "notes" | "goals";
 
 
-const GOAL_STATUS_META: Record<PatientGoalStatus, { label: string; bg: string; fg: string; border: string }> = {
-  OPEN:        { label: "Açıq",       bg: "var(--brand-50)", fg: "var(--brand-700)", border: "var(--brand-100)" },
-  IN_PROGRESS: { label: "Davam edir", bg: "#FEF3C7",         fg: "#92400E",         border: "#FDE68A" },
-  ACHIEVED:    { label: "Çatdı",      bg: "#D1FAE5",         fg: "#065F46",         border: "#A7F3D0" },
-  ABANDONED:   { label: "Tərk edilib", bg: "#F3F4F6",        fg: "#374151",         border: "#E5E7EB" },
+const GOAL_STATUS_META: Record<PatientGoalStatus, { labelKey: MessageKey; bg: string; fg: string; border: string }> = {
+  OPEN:        { labelKey: "psyClient360.goalStatusOpen",       bg: "var(--brand-50)", fg: "var(--brand-700)", border: "var(--brand-100)" },
+  IN_PROGRESS: { labelKey: "psyClient360.goalStatusInProgress", bg: "#FEF3C7",         fg: "#92400E",         border: "#FDE68A" },
+  ACHIEVED:    { labelKey: "psyClient360.goalStatusAchieved",   bg: "#D1FAE5",         fg: "#065F46",         border: "#A7F3D0" },
+  ABANDONED:   { labelKey: "psyClient360.goalStatusAbandoned",  bg: "#F3F4F6",        fg: "#374151",         border: "#E5E7EB" },
 };
 
 export default function PatientDetailPage() {
+  const { t } = useT();
   const params = useParams<{ patientId: string }>();
   const patientId = Number(params.patientId);
 
@@ -311,7 +300,7 @@ export default function PatientDetailPage() {
   };
 
   const save = async () => {
-    if (!body.trim()) { toast("Qeyd mətni boş ola bilməz", "error"); return; }
+    if (!body.trim()) { toast(t("psyClient360.noteBodyRequired"), "error"); return; }
     setSaving(true);
     try {
       const payload = {
@@ -333,7 +322,7 @@ export default function PatientDetailPage() {
   };
 
   const remove = async (id: number) => {
-    if (!(await confirmDialog({ title: "Qeydi sil", message: "Bu qeydi silmək istəyirsiniz?", confirmLabel: "Sil", danger: true }))) return;
+    if (!(await confirmDialog({ title: t("psyClient360.noteDeleteConfirmTitle"), message: t("psyClient360.noteDeleteConfirmMessage"), confirmLabel: t("psyClient360.deleteLabel"), danger: true }))) return;
     try {
       await psychologistApi.deleteNote(id);
       setNotes(prev => prev.filter(n => n.id !== id));
@@ -406,21 +395,22 @@ export default function PatientDetailPage() {
   const applyTemplate = (key: string) => {
     if (key.startsWith("custom:")) {
       const id = Number(key.slice("custom:".length));
-      const tpl = customTemplates.find(t => t.id === id);
+      const tpl = customTemplates.find(ct => ct.id === id);
       if (!tpl) return;
       if (!title.trim()) setTitle(tpl.name);
       setBody(prev => prev.trim() ? prev + "\n\n" + tpl.body : tpl.body);
       return;
     }
-    const tpl = NOTE_TEMPLATES.find(t => t.key === key);
+    const tpl = NOTE_TEMPLATES.find(nt => nt.key === key);
     if (!tpl) return;
-    if (!title.trim()) setTitle(tpl.title);
-    setBody(prev => prev.trim() ? prev + "\n\n" + tpl.body : tpl.body);
+    if (!title.trim()) setTitle(t(tpl.titleKey));
+    const tplBodyText = t(tpl.bodyKey);
+    setBody(prev => prev.trim() ? prev + "\n\n" + tplBodyText : tplBodyText);
   };
 
   const saveTemplate = async () => {
     if (!tplName.trim() || !tplBody.trim()) {
-      toast("Ad və mətn lazımdır", "error");
+      toast(t("psyClient360.templateNameBodyRequired"), "error");
       return;
     }
     setTplSaving(true);
@@ -436,7 +426,7 @@ export default function PatientDetailPage() {
   };
 
   const deleteTemplate = async (id: number) => {
-    if (!(await confirmDialog({ title: "Şablonu sil", message: "Bu şablonu silmək istəyirsiniz?", confirmLabel: "Sil", danger: true }))) return;
+    if (!(await confirmDialog({ title: t("psyClient360.templateDeleteConfirmTitle"), message: t("psyClient360.templateDeleteConfirmMessage"), confirmLabel: t("psyClient360.deleteLabel"), danger: true }))) return;
     try {
       await psychologistApi.deleteTemplate(id);
       setCustomTemplates(prev => prev.filter(t => t.id !== id));
@@ -496,7 +486,7 @@ export default function PatientDetailPage() {
 
       <Link href="/psycholog/clients" className="fx-link" style={{ display: "inline-flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
         <svg className="fx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 18l-6-6 6-6" /></svg>
-        Pasiyentlərə qayıt
+        {t("psyClient360.backToPatients")}
       </Link>
 
       {loading ? (
@@ -504,8 +494,8 @@ export default function PatientDetailPage() {
       ) : !client ? (
         <EmptyBlock
           boxed
-          title="Pasiyent tapılmadı"
-          body="Bu pasiyent silinmiş ola bilər və ya sizin siyahınızda deyil. Pasiyentlər səhifəsindən yenidən seçin."
+          title={t("psyClient360.patientNotFoundTitle")}
+          body={t("psyClient360.patientNotFoundBody")}
         />
       ) : (
         <>
@@ -530,9 +520,9 @@ export default function PatientDetailPage() {
                 </div>
                 {/* Rozet çipləri yerinə vəziyyət mətni — diqqət tələb edən hallar rənglənir. */}
                 <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                  {client.noShowCount > 0 && <Status tone="wait">{client.noShowCount} gəlmədi</Status>}
-                  {client.lateCancelCount > 0 && <Status tone="wait">{client.lateCancelCount} geç ləğv</Status>}
-                  {flag && <Status tone={flag.tone === "danger" ? "risk" : "wait"}>{flag.label}</Status>}
+                  {client.noShowCount > 0 && <Status tone="wait">{t("psyClient360.noShowCountLabel", { count: client.noShowCount })}</Status>}
+                  {client.lateCancelCount > 0 && <Status tone="wait">{t("psyClient360.lateCancelCountLabel", { count: client.lateCancelCount })}</Status>}
+                  {flag && <Status tone={flag.tone === "danger" ? "risk" : "wait"}>{t(flag.labelKey)}</Status>}
                 </div>
               </div>
               <Button
@@ -542,18 +532,18 @@ export default function PatientDetailPage() {
                   <svg className="fx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M12 5v14M5 12h14" /></svg>
                 }
               >
-                Qeyd əlavə et
+                {t("psyClient360.addNoteButton")}
               </Button>
             </div>
 
             <Stats style={{ marginTop: 18, marginBottom: 0 }}>
-              <Stat size="sm" value={String(client.totalSessions)} label="Seans" />
-              <Stat size="sm" value={String(client.completedSessions)} label="Tamamlanan" />
+              <Stat size="sm" value={String(client.totalSessions)} label={t("psyClient360.statSessions")} />
+              <Stat size="sm" value={String(client.completedSessions)} label={t("psyClient360.statCompleted")} />
               {client.lastAppointmentAt && (
-                <Stat size="sm" value={fmtShort(client.lastAppointmentAt)} label="Son seans" />
+                <Stat size="sm" value={fmtShort(client.lastAppointmentAt, t)} label={t("psyClient360.lastSessionLabel")} />
               )}
               {moodFromNotes !== null && (
-                <Stat size="sm" value={`${moodFromNotes}/10`} label="Əhval-ruhiyyə" />
+                <Stat size="sm" value={`${moodFromNotes}/10`} label={t("psyClient360.statMood")} />
               )}
             </Stats>
 
@@ -561,25 +551,25 @@ export default function PatientDetailPage() {
             <div className="fx-hairline" style={{ marginTop: 16 }} />
             <div style={{ paddingTop: 14, position: "relative" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span className="fx-label">Etiketlər</span>
+              <span className="fx-label">{t("psyClient360.tagsLabel")}</span>
               {tags.length === 0 && !tagPickerOpen && (
-                <span className="fx-help">hələ etiket yoxdur</span>
+                <span className="fx-help">{t("psyClient360.noTagsYet")}</span>
               )}
-              {tags.map(t => {
+              {tags.map(tg => {
                 // Etiket rəngini psixoloq özü seçir — bu status işarəsi deyil,
                 // psixoloqun öz təsnifatıdır, ona görə rəng saxlanılır.
-                const tt = TAG_TINTS[t.color] ?? TAG_TINTS.neutral;
+                const tt = TAG_TINTS[tg.color] ?? TAG_TINTS.neutral;
                 return (
-                  <span key={t.id} className="fx-tag" style={{ background: tt.bg, color: tt.color, borderColor: tt.border }}>
-                    {t.label}
-                    <button type="button" onClick={() => removeTag(t.id)} aria-label={`${t.label} sil`}>
+                  <span key={tg.id} className="fx-tag" style={{ background: tt.bg, color: tt.color, borderColor: tt.border }}>
+                    {tg.label}
+                    <button type="button" onClick={() => removeTag(tg.id)} aria-label={t("psyClient360.removeTagAria", { label: tg.label })}>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
                     </button>
                   </span>
                 );
               })}
               {!tagPickerOpen && (
-                <Button variant="ghost" size="sm" onClick={() => setTagPickerOpen(true)}>Etiket əlavə et</Button>
+                <Button variant="ghost" size="sm" onClick={() => setTagPickerOpen(true)}>{t("psyClient360.addTagButton")}</Button>
               )}
             </div>
 
@@ -592,33 +582,33 @@ export default function PatientDetailPage() {
                     if (e.key === "Enter") { e.preventDefault(); addTag(tagDraft); }
                     if (e.key === "Escape") { setTagPickerOpen(false); setTagDraft(""); }
                   }}
-                  placeholder="Etiket adı…"
+                  placeholder={t("psyClient360.tagNamePlaceholder")}
                   autoFocus
                   maxLength={40}
                   style={{ marginBottom: 12 }}
                 />
-                <div className="fx-label" style={{ marginBottom: 8 }}>Rəng</div>
+                <div className="fx-label" style={{ marginBottom: 8 }}>{t("psyClient360.colorLabel")}</div>
                 <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                   {TAG_COLORS.map(c => {
                     const sel = tagColor === c.value;
                     return (
-                      <button key={c.value} type="button" title={c.label} onClick={() => setTagColor(c.value)}
+                      <button key={c.value} type="button" title={t(c.labelKey)} onClick={() => setTagColor(c.value)}
                         style={{ width: 26, height: 26, borderRadius: 8, background: c.swatch, border: `2px solid ${sel ? "var(--oxford)" : "transparent"}`, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: sel ? 1 : 0 }} aria-hidden><path d="M20 6L9 17l-5-5" /></svg>
                       </button>
                     );
                   })}
                 </div>
-                <div className="fx-label" style={{ marginBottom: 8 }}>Hazır</div>
+                <div className="fx-label" style={{ marginBottom: 8 }}>{t("psyClient360.readyLabel")}</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 15 }}>
-                  {TAG_PRESETS.filter(p => !tags.some(t => t.label.toLowerCase() === p.toLowerCase())).map(p => (
+                  {TAG_PRESET_KEYS.map(k => t(k)).filter(p => !tags.some(tg => tg.label.toLowerCase() === p.toLowerCase())).map(p => (
                     <Button key={p} variant="ghost" size="sm" onClick={() => addTag(p)} disabled={tagSaving}>{p}</Button>
                   ))}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <Button variant="ghost" block onClick={() => { setTagPickerOpen(false); setTagDraft(""); }}>Ləğv</Button>
+                  <Button variant="ghost" block onClick={() => { setTagPickerOpen(false); setTagDraft(""); }}>{t("psyClient360.cancelLabel")}</Button>
                   <Button variant="primary" block onClick={() => addTag(tagDraft)} disabled={tagSaving || !tagDraft.trim()}>
-                    {tagSaving ? "Əlavə olunur…" : "Əlavə et"}
+                    {tagSaving ? t("psyClient360.addTagSaving") : t("psyClient360.addTagSubmit")}
                   </Button>
                 </div>
               </div>
@@ -631,11 +621,11 @@ export default function PatientDetailPage() {
           <div style={{ overflowX: "auto", marginBottom: 18 }}>
             <Tabs
               items={[
-                { key: "overview", label: "İcmal" },
-                { key: "history", label: "Seanslar", count: singleAppts.length },
-                { key: "packages", label: "Paketlər", count: packageGroups.length },
-                { key: "notes", label: "Klinik qeydlər", count: notes.length },
-                ...(FEATURE_GOALS ? [{ key: "goals" as Tab, label: "Hədəflər", count: goals.length }] : []),
+                { key: "overview", label: t("psyClient360.tabOverview") },
+                { key: "history", label: t("psyClient360.tabSessions"), count: singleAppts.length },
+                { key: "packages", label: t("psyClient360.tabPackages"), count: packageGroups.length },
+                { key: "notes", label: t("psyClient360.tabNotes"), count: notes.length },
+                ...(FEATURE_GOALS ? [{ key: "goals" as Tab, label: t("psyClient360.tabGoals"), count: goals.length }] : []),
               ] as TabItem<Tab>[]}
               value={tab}
               onChange={setTab}
@@ -648,29 +638,29 @@ export default function PatientDetailPage() {
 
           {/* KPI zolağı */}
           <div className="m360-kpi">
-            <OverviewKpi label="İştirak" tint="brand"
+            <OverviewKpi label={t("psyClient360.kpiAttendance")} tint="brand"
               icon={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></>}
               value={completionPct != null ? `${completionPct}%` : "—"}
-              sub={`${client.completedSessions}/${client.totalSessions} tamamlanan`} />
-            <OverviewKpi label="Orta əhval" tint="gold" trend={moodTrend?.delta}
+              sub={t("psyClient360.kpiAttendanceSub", { completed: client.completedSessions, total: client.totalSessions })} />
+            <OverviewKpi label={t("psyClient360.kpiAvgMood")} tint="gold" trend={moodTrend?.delta}
               icon={<><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><path d="M9 9h.01M15 9h.01" /></>}
               value={moodFromNotes != null ? `${moodFromNotes}/10` : "—"}
-              sub={moodTrend ? (moodTrend.delta > 0 ? `↑ +${moodTrend.delta} son qeyd` : moodTrend.delta < 0 ? `↓ ${moodTrend.delta} son qeyd` : "dəyişməz") : "trend üçün az qeyd"} />
-            <OverviewKpi label="Ümumi seans" tint="sage"
+              sub={moodTrend ? (moodTrend.delta > 0 ? t("psyClient360.kpiMoodTrendUp", { delta: moodTrend.delta }) : moodTrend.delta < 0 ? t("psyClient360.kpiMoodTrendDown", { delta: moodTrend.delta }) : t("psyClient360.kpiMoodTrendFlat")) : t("psyClient360.kpiMoodTrendInsufficient")} />
+            <OverviewKpi label={t("psyClient360.kpiTotalSessions")} tint="sage"
               icon={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>}
               value={String(client.totalSessions)}
-              sub={client.noShowCount > 0 ? `${client.noShowCount} gəlmədi` : "tam iştirak"} />
-            <OverviewKpi label="Son seans" tint="neutral"
+              sub={client.noShowCount > 0 ? t("psyClient360.noShowCountLabel", { count: client.noShowCount }) : t("psyClient360.fullAttendance")} />
+            <OverviewKpi label={t("psyClient360.lastSessionLabel")} tint="neutral"
               icon={<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>}
-              value={client.lastAppointmentAt ? agoLabel(client.lastAppointmentAt) : "—"}
-              sub={client.lastAppointmentAt ? fmtShort(client.lastAppointmentAt) : "hələ yoxdur"} />
+              value={client.lastAppointmentAt ? agoLabel(client.lastAppointmentAt, t) : "—"}
+              sub={client.lastAppointmentAt ? fmtShort(client.lastAppointmentAt, t) : t("psyClient360.noLastSessionYet")} />
           </div>
 
           {/* Əsas (son fəaliyyət) + yan sütun (növbəti / ilk müraciət / böhran) */}
           <div className={overviewHasSide ? "m360-main" : undefined} style={{ marginBottom: 14 }}>
             {/* Əsas: son fəaliyyət lenti */}
             <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 18 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 16 }}>Son fəaliyyət</div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 16 }}>{t("psyClient360.recentActivityHeader")}</div>
               {recentActivity.length > 0 ? (
                 <div>
                   {recentActivity.map((it, i) => (
@@ -679,7 +669,7 @@ export default function PatientDetailPage() {
                 </div>
               ) : (
                 <div style={{ padding: "20px 0", textAlign: "center", fontSize: 13, color: "var(--oxford-60)" }}>
-                  Hələ fəaliyyət yoxdur — seans keçirildikcə və qeyd əlavə etdikcə burada görünəcək.
+                  {t("psyClient360.recentActivityEmpty")}
                 </div>
               )}
             </div>
@@ -689,21 +679,21 @@ export default function PatientDetailPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {upcoming && upcoming.startAt && (
                   <div style={{ background: "linear-gradient(180deg,#F4F8FF,#fff)", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #DCE8FB", padding: 18 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--brand-700)", marginBottom: 12 }}>Növbəti seans</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--brand-700)", marginBottom: 12 }}>{t("psyClient360.nextSessionHeader")}</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--brand)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none" }}>
                         <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
                       </span>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{fmtShort(upcoming.startAt)}</div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{fmtShort(upcoming.startAt, t)}</div>
                         <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 8 }}>
                           <span>{fmtTime(new Date(upcoming.startAt))}</span>
-                          <span>{agoLabel(upcoming.startAt)}</span>
+                          <span>{agoLabel(upcoming.startAt, t)}</span>
                         </div>
                       </div>
                     </div>
                     <Link href="/psycholog/calendar" className="m360-link" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--brand)", textDecoration: "none", marginTop: 12 }}>
-                      Cədvələ keç<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                      {t("psyClient360.goToCalendarLink")}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 12h14M13 6l6 6-6 6" /></svg>
                     </Link>
                   </div>
                 )}
@@ -711,7 +701,7 @@ export default function PatientDetailPage() {
                   <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 18 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)" }}>İlk müraciət konteksti</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)" }}>{t("psyClient360.firstContactContextLabel")}</span>
                     </div>
                     <p style={{ margin: 0, fontSize: 13, color: "var(--oxford)", fontStyle: "italic", fontWeight: 500, lineHeight: 1.55 }}>«{firstNote.note}»</p>
                   </div>
@@ -734,8 +724,8 @@ export default function PatientDetailPage() {
             <div style={{ animation: "m360Fade .2s ease" }}>
               {packageGroups.length === 0 ? (
                 <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "32px 24px", textAlign: "center" }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Bu pasiyentin paketi yoxdur</div>
-                  <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>Paket alındıqda proqram və seansları burada görünəcək.</p>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>{t("psyClient360.packagesEmptyTitle")}</div>
+                  <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>{t("psyClient360.packagesEmptyBody")}</p>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -751,7 +741,7 @@ export default function PatientDetailPage() {
               onCreate={() => { setGoalModalGoal(null); setGoalModalOpen(true); }}
               onEdit={(g) => { setGoalModalGoal(g); setGoalModalOpen(true); }}
               onDelete={async (id) => {
-                if (!(await confirmDialog({ title: "Hədəfi sil", message: "Bu hədəfi silmək istəyirsiniz?", confirmLabel: "Sil", danger: true }))) return;
+                if (!(await confirmDialog({ title: t("psyClient360.goalDeleteConfirmTitle"), message: t("psyClient360.goalDeleteConfirmMessage"), confirmLabel: t("psyClient360.deleteLabel"), danger: true }))) return;
                 try {
                   await psychologistApi.deleteGoal(id);
                   setGoals(prev => prev.filter(g => g.id !== id));
@@ -803,20 +793,20 @@ export default function PatientDetailPage() {
           style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div onClick={e => e.stopPropagation()}
             style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 540, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: "0 0 4px" }}>Yeni şablon</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: "0 0 4px" }}>{t("psyClient360.newTemplateTitle")}</h3>
             <p style={{ fontSize: 12, color: "#52718F", margin: "0 0 16px" }}>
-              Tez-tez istifadə etdiyiniz qeyd strukturunu şablon olaraq saxlayın
+              {t("psyClient360.newTemplateSubtitle")}
             </p>
-            <input value={tplName} onChange={e => setTplName(e.target.value)} placeholder="Şablon adı (məs. Anksiyete qiymətləndirməsi)"
+            <input value={tplName} onChange={e => setTplName(e.target.value)} placeholder={t("psyClient360.templateNamePlaceholder")}
               style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 10, boxSizing: "border-box" }} />
-            <textarea rows={8} value={tplBody} onChange={e => setTplBody(e.target.value)} placeholder="Şablon mətni — başlıqlar, sual çərçivəsi, vs."
+            <textarea rows={8} value={tplBody} onChange={e => setTplBody(e.target.value)} placeholder={t("psyClient360.templateBodyPlaceholder")}
               style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, marginBottom: 10, boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" }} />
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button onClick={() => setShowTemplateModal(false)}
-                style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>Ləğv</button>
+                style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, background: "#fff", fontSize: 13, cursor: "pointer" }}>{t("psyClient360.cancelLabel")}</button>
               <button onClick={saveTemplate} disabled={tplSaving}
                 style={{ padding: "8px 18px", border: "none", borderRadius: 8, background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: tplSaving ? "wait" : "pointer" }}>
-                {tplSaving ? "Saxlanılır…" : "Şablonu saxla"}
+                {tplSaving ? t("psyClient360.savingLabel") : t("psyClient360.templateSaveLabel")}
               </button>
             </div>
           </div>
@@ -836,6 +826,7 @@ function GoalsSection({
   onEdit: (g: PatientGoal) => void;
   onDelete: (id: number) => void;
 }) {
+  const { t } = useT();
   const grouped = useMemo(() => {
     const open = goals.filter(g => g.status === "OPEN" || g.status === "IN_PROGRESS");
     const done = goals.filter(g => g.status === "ACHIEVED");
@@ -846,30 +837,30 @@ function GoalsSection({
   return (
     <div style={{ animation: "m360Fade .2s ease" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>Terapiya hədəfləri</span>
+        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{t("psyClient360.goalsSectionTitle")}</span>
         <button onClick={onCreate} className="m360-primary"
           style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 15px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M12 5v14M5 12h14" /></svg>Yeni hədəf
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M12 5v14M5 12h14" /></svg>{t("psyClient360.newGoalButton")}
         </button>
       </div>
 
       {goals.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "32px 24px", textAlign: "center" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Hələ hədəf əlavə edilməyib</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>{t("psyClient360.goalsEmptyTitle")}</div>
           <div style={{ fontSize: 13, color: "var(--oxford-60)", maxWidth: 460, margin: "0 auto", lineHeight: 1.5 }}>
-            Hədəf əlavə edərək pasiyentin inkişafını ölçə bilərsiniz: «anksiyetə hücumlarını azaltmaq», «gündəlik rituallar yaratmaq» və s.
+            {t("psyClient360.goalsEmptyBody")}
           </div>
         </div>
       ) : (
         <>
           {grouped.open.length > 0 && (
-            <GoalList title="Aktiv" goals={grouped.open} onEdit={onEdit} onDelete={onDelete} />
+            <GoalList title={t("psyClient360.goalGroupActive")} goals={grouped.open} onEdit={onEdit} onDelete={onDelete} />
           )}
           {grouped.done.length > 0 && (
-            <GoalList title="Çatdı" goals={grouped.done} onEdit={onEdit} onDelete={onDelete} />
+            <GoalList title={t("psyClient360.goalStatusAchieved")} goals={grouped.done} onEdit={onEdit} onDelete={onDelete} />
           )}
           {grouped.abandoned.length > 0 && (
-            <GoalList title="Tərk edilib" goals={grouped.abandoned} onEdit={onEdit} onDelete={onDelete} />
+            <GoalList title={t("psyClient360.goalStatusAbandoned")} goals={grouped.abandoned} onEdit={onEdit} onDelete={onDelete} />
           )}
         </>
       )}
@@ -894,6 +885,7 @@ function GoalList({
 }
 
 function GoalCard({ g, onEdit, onDelete }: { g: PatientGoal; onEdit: () => void; onDelete: () => void }) {
+  const { t } = useT();
   const [now] = useState(() => Date.now());
   const meta = GOAL_STATUS_META[g.status];
   const overdue = g.targetDate && g.status !== "ACHIEVED" && g.status !== "ABANDONED"
@@ -904,7 +896,7 @@ function GoalCard({ g, onEdit, onDelete }: { g: PatientGoal; onEdit: () => void;
     <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 17, opacity: achieved ? 0.85 : 1 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 9, marginBottom: 8 }}>
         <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--oxford)" }}>{g.title}</div>
-        <span style={{ background: meta.bg, color: meta.fg, border: `1px solid ${meta.border}`, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, flex: "none" }}>{meta.label}</span>
+        <span style={{ background: meta.bg, color: meta.fg, border: `1px solid ${meta.border}`, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, flex: "none" }}>{t(meta.labelKey)}</span>
       </div>
       {g.description && <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, lineHeight: 1.5, marginBottom: 13 }}>{g.description}</div>}
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
@@ -916,17 +908,17 @@ function GoalCard({ g, onEdit, onDelete }: { g: PatientGoal; onEdit: () => void;
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <span style={{ fontSize: 12, fontWeight: overdue ? 700 : 600, color: overdue ? "#991B1B" : "var(--oxford-60)", display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
           {g.achievedAt
-            ? <span>Tamamlandı: {fmtShort(g.achievedAt)}</span>
+            ? <span>{t("psyClient360.goalAchievedOn", { date: fmtShort(g.achievedAt, t) })}</span>
             : g.targetDate ? (
               <>
-                <span>Hədəf: {fmtShort(g.targetDate)}</span>
-                {overdue && <span>gecikib</span>}
+                <span>{t("psyClient360.goalTargetOn", { date: fmtShort(g.targetDate, t) })}</span>
+                {overdue && <span>{t("psyClient360.goalOverdue")}</span>}
               </>
             ) : "—"}
         </span>
         <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={onEdit} className="m360-ghost" style={{ ...miniBtn, color: "#082F6D", border: "1px solid #D6E2F7" }}>Redaktə</button>
-          <button onClick={onDelete} className="m360-soft" style={{ ...miniBtn, color: "#991B1B", border: "1px solid #F3D6D6" }}>Sil</button>
+          <button onClick={onEdit} className="m360-ghost" style={{ ...miniBtn, color: "#082F6D", border: "1px solid #D6E2F7" }}>{t("psyClient360.goalEditButton")}</button>
+          <button onClick={onDelete} className="m360-soft" style={{ ...miniBtn, color: "#991B1B", border: "1px solid #F3D6D6" }}>{t("psyClient360.deleteLabel")}</button>
         </div>
       </div>
     </div>
@@ -943,6 +935,7 @@ function GoalModal({
   onClose: () => void;
   onSaved: (g: PatientGoal) => void;
 }) {
+  const { t } = useT();
   const [title, setTitle] = useState(goal?.title ?? "");
   const [description, setDescription] = useState(goal?.description ?? "");
   const [targetDate, setTargetDate] = useState(goal?.targetDate ?? "");
@@ -951,7 +944,7 @@ function GoalModal({
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
-    if (!title.trim()) { toast("Başlıq tələb olunur", "error"); return; }
+    if (!title.trim()) { toast(t("psyClient360.goalTitleRequiredToast"), "error"); return; }
     setSaving(true);
     try {
       const payload: PatientGoalPayload = {
@@ -980,45 +973,45 @@ function GoalModal({
         style={{ width: "100%", maxWidth: 440, background: "#fff", borderRadius: 16, boxShadow: "0 20px 60px rgba(8,47,109,.3)", overflow: "hidden", animation: "m360Sheet .22s ease" }}>
         <div style={{ background: "linear-gradient(135deg,#F2F6FD,#E4ECFA)", borderBottom: "1px solid #D6E2F7", padding: "18px 20px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#082F6D" }}>{goal ? "Hədəfi redaktə et" : "Yeni hədəf"}</div>
-            <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 2 }}>Pasient üçün terapiya hədəfi {goal ? "yeniləyin" : "yaradın"}.</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#082F6D" }}>{goal ? t("psyClient360.editGoalTitle") : t("psyClient360.newGoalButton")}</div>
+            <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 500, marginTop: 2 }}>{goal ? t("psyClient360.goalModalSubtitleEdit") : t("psyClient360.goalModalSubtitleCreate")}</div>
           </div>
           <button onClick={onClose} style={{ width: 30, height: 30, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,.7)", border: "none", borderRadius: 8, cursor: "pointer", flex: "none" }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>
         <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 13 }}>
-          <label><span style={mLabel}>Başlıq *</span>
-            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Məs. Anksiyetə hücumlarını azaltmaq" style={mInput} />
+          <label><span style={mLabel}>{t("psyClient360.goalTitleFieldLabel")}</span>
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t("psyClient360.goalTitlePlaceholder")} style={mInput} />
           </label>
-          <label><span style={mLabel}>Təsvir</span>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="İstifadə olunan strategiya, ölçü meyarları…" style={{ ...mInput, fontWeight: 500, fontSize: 13.5, resize: "vertical", lineHeight: 1.5 }} />
+          <label><span style={mLabel}>{t("psyClient360.goalDescFieldLabel")}</span>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder={t("psyClient360.goalDescPlaceholder")} style={{ ...mInput, fontWeight: 500, fontSize: 13.5, resize: "vertical", lineHeight: 1.5 }} />
           </label>
           <div style={{ display: "flex", gap: 12 }}>
-            <label style={{ flex: 1 }}><span style={mLabel}>Hədəf tarixi</span>
+            <label style={{ flex: 1 }}><span style={mLabel}>{t("psyClient360.goalTargetDateLabel")}</span>
               <DatePicker value={targetDate ?? ""} onChange={setTargetDate} theme="light" size="sm" style={{ width: "100%" }} />
             </label>
-            <label style={{ flex: 1 }}><span style={mLabel}>Status</span>
+            <label style={{ flex: 1 }}><span style={mLabel}>{t("psyClient360.statusFieldLabel")}</span>
               <div style={{ position: "relative" }}>
                 <select value={status} onChange={e => setStatus(e.target.value as PatientGoalStatus)} style={{ ...mInput, fontSize: 13.5, appearance: "none", WebkitAppearance: "none", paddingRight: 34, cursor: "pointer" }}>
-                  <option value="OPEN">Açıq</option>
-                  <option value="IN_PROGRESS">Davam edir</option>
-                  <option value="ACHIEVED">Çatdı</option>
-                  <option value="ABANDONED">Tərk edilib</option>
+                  <option value="OPEN">{t("psyClient360.goalStatusOpen")}</option>
+                  <option value="IN_PROGRESS">{t("psyClient360.goalStatusInProgress")}</option>
+                  <option value="ACHIEVED">{t("psyClient360.goalStatusAchieved")}</option>
+                  <option value="ABANDONED">{t("psyClient360.goalStatusAbandoned")}</option>
                 </select>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} aria-hidden><path d="M6 9l6 6 6-6" /></svg>
               </div>
             </label>
           </div>
           {status !== "ACHIEVED" && (
-            <label><span style={mLabel}>İrəliləyiş: <strong style={{ color: "#082F6D" }}>{progressPct}%</strong></span>
+            <label><span style={mLabel}>{t("psyClient360.progressFieldLabel")} <strong style={{ color: "#082F6D" }}>{progressPct}%</strong></span>
               <input type="range" min={0} max={100} step={5} value={progressPct} onChange={e => setProgressPct(Number(e.target.value))} style={{ width: "100%", accentColor: "var(--brand)" }} />
             </label>
           )}
         </div>
         <div style={{ display: "flex", gap: 10, padding: "16px 20px", borderTop: "1px solid #F0F4FA" }}>
-          <button onClick={onClose} style={{ flex: 1, background: "#fff", color: "#082F6D", border: "1px solid #D6E2F7", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Bağla</button>
-          <button onClick={save} disabled={saving} className="m360-primary" style={{ flex: 1, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>{saving ? "Saxlanılır…" : (goal ? "Yenilə" : "Yarat")}</button>
+          <button onClick={onClose} style={{ flex: 1, background: "#fff", color: "#082F6D", border: "1px solid #D6E2F7", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>{t("psyClient360.close")}</button>
+          <button onClick={save} disabled={saving} className="m360-primary" style={{ flex: 1, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: 12, fontSize: 14, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>{saving ? t("psyClient360.savingLabel") : (goal ? t("psyClient360.updateLabel") : t("psyClient360.createLabel"))}</button>
         </div>
       </div>
     </div>
@@ -1032,61 +1025,61 @@ const apptTs = (a: AppointmentDetail) => new Date(a.startAt ?? a.endAt ?? a.crea
 const SESSIONS_PAGE_SIZE = 8;
 
 /** Seansın tək sətirlik xülasəsi (cədvəl "Qeyd" sütunu üçün). */
-function sessionSummary(a: AppointmentDetail): string {
+function sessionSummary(a: AppointmentDetail, t: TFn): string {
   if (a.note) return a.note;
   if (a.status === "CANCELLED") {
-    const r = a.cancelReasonCode ? REASON_LABELS[a.cancelReasonCode] ?? a.cancelReasonCode : null;
-    return `Ləğv${r ? `, ${r}` : ""}`;
+    const r = reasonLabel(t, a.cancelReasonCode);
+    return `${t("psyClient360.statusCancelled")}${r ? `, ${r}` : ""}`;
   }
-  if (a.status === "DISPUTED" && a.disputeReason) return `Mübahisə: ${a.disputeReason}`;
+  if (a.status === "DISPUTED" && a.disputeReason) return `${t("psyClient360.disputeLabel")} ${a.disputeReason}`;
   const op = cleanOperatorNote(a.operatorNote);
-  if (op) return `Operator: ${op}`;
+  if (op) return `${t("psyClient360.operatorLabel")} ${op}`;
   return "—";
 }
 
 /** Seansın nişanları — rəngli rozet yox, sadə vəziyyət mətnləri. */
-function sessionMarks(a: AppointmentDetail): { label: string; tone: StatusTone }[] {
+function sessionMarks(a: AppointmentDetail, t: TFn): { label: string; tone: StatusTone }[] {
   const marks: { label: string; tone: StatusTone }[] = [];
-  if (a.cancelReasonCode && a.cancelReasonCode.includes("NO_SHOW")) marks.push({ label: "Gəlmədi", tone: "risk" });
-  if (a.lateCancel) marks.push({ label: "Geç ləğv", tone: "wait" });
+  if (a.cancelReasonCode && a.cancelReasonCode.includes("NO_SHOW")) marks.push({ label: t("psyClient360.noShowBadge"), tone: "risk" });
+  if (a.lateCancel) marks.push({ label: t("psyClient360.lateCancelBadge"), tone: "wait" });
   if (a.status === "COMPLETED" && a.patientConfirmedAt && a.psychologistConfirmedAt && !a.autoConfirmedAt) {
-    marks.push({ label: "Qarşılıqlı təsdiq", tone: "positive" });
+    marks.push({ label: t("psyClient360.mutualConfirmBadge"), tone: "positive" });
   }
   return marks;
 }
 
 /** Seans cədvəlinin sütunları — «Qeydə bax» detal popup-unu açır. */
-function sessionColumns(onView: (a: AppointmentDetail) => void): Column<AppointmentDetail>[] {
+function sessionColumns(onView: (a: AppointmentDetail) => void, t: TFn): Column<AppointmentDetail>[] {
   const whenOf = (a: AppointmentDetail) => a.startAt ?? a.requestedStartAt ?? a.createdAt;
   return [
     {
       key: "date",
-      header: "Tarix",
+      header: t("psyClient360.colDate"),
       sortable: true,
       sortValue: a => new Date(whenOf(a)).getTime(),
       cell: a => <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{azFormatDate(whenOf(a))}</span>,
     },
     {
       key: "time",
-      header: "Vaxt",
+      header: t("psyClient360.colTime"),
       sortable: true,
       sortValue: a => new Date(whenOf(a)).getTime(),
       cell: a => <span className="fx-num" style={{ whiteSpace: "nowrap" }}>{azFormatTime(whenOf(a))}</span>,
     },
     {
       key: "status",
-      header: "Status",
+      header: t("psyClient360.colStatus"),
       sortable: true,
-      sortValue: a => (STATUS[a.status] ?? STATUS.ASSIGNED).label,
+      sortValue: a => t((STATUS[a.status] ?? STATUS.ASSIGNED).labelKey),
       cell: a => (
-        <Status tone={STATUS_TONE[a.status] ?? "neutral"}>{(STATUS[a.status] ?? STATUS.ASSIGNED).label}</Status>
+        <Status tone={STATUS_TONE[a.status] ?? "neutral"}>{t((STATUS[a.status] ?? STATUS.ASSIGNED).labelKey)}</Status>
       ),
     },
     {
       key: "marks",
-      header: "Nişan",
+      header: t("psyClient360.colMarks"),
       cell: a => {
-        const marks = sessionMarks(a);
+        const marks = sessionMarks(a, t);
         if (marks.length === 0) return <span style={{ color: "var(--oxford-60)" }}>—</span>;
         // Ayrı sətirlər — çip və ya "·" ayırıcısı işlədilmir.
         return (
@@ -1098,10 +1091,10 @@ function sessionColumns(onView: (a: AppointmentDetail) => void): Column<Appointm
     },
     {
       key: "note",
-      header: "Qeyd",
+      header: t("psyClient360.colNote"),
       cell: a =>
-        sessionSummary(a) !== "—" ? (
-          <Button variant="ghost" size="sm" onClick={() => onView(a)}>Qeydə bax</Button>
+        sessionSummary(a, t) !== "—" ? (
+          <Button variant="ghost" size="sm" onClick={() => onView(a)}>{t("psyClient360.viewNoteButton")}</Button>
         ) : (
           <span style={{ color: "var(--oxford-60)" }}>—</span>
         ),
@@ -1110,12 +1103,13 @@ function sessionColumns(onView: (a: AppointmentDetail) => void): Column<Appointm
 }
 
 function SessionsSection({ items }: { items: AppointmentDetail[] }) {
+  const { t } = useT();
   // Pagination komponenti 1-dən başlayır.
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<SortState>({ key: "date", dir: "desc" });
   const [detailAppt, setDetailAppt] = useState<AppointmentDetail | null>(null);
 
-  const columns = useMemo(() => sessionColumns(setDetailAppt), []);
+  const columns = useMemo(() => sessionColumns(setDetailAppt, t), [t]);
   const sorted = useMemo(() => sortRows(items, columns, sort), [items, columns, sort]);
 
   const pageCount = Math.max(1, Math.ceil(sorted.length / SESSIONS_PAGE_SIZE));
@@ -1134,11 +1128,11 @@ function SessionsSection({ items }: { items: AppointmentDetail[] }) {
             sort={sort}
             onSortChange={next => { setSort(next); setPage(1); }}
             empty={{
-              title: "Tək seans yoxdur",
-              body: "Bu pasiyent ilə paketdən kənar seans təyin olunduqda burada görünəcək.",
+              title: t("psyClient360.sessionsEmptyTitle"),
+              body: t("psyClient360.sessionsEmptyBody"),
             }}
             pagination={{ page: safePage, pageCount, onChange: setPage }}
-            totalLabel={`Cəmi ${sorted.length} seans`}
+            totalLabel={t("psyClient360.sessionsTotalLabel", { count: sorted.length })}
           />
         </CardBody>
       </Card>
@@ -1150,6 +1144,7 @@ function SessionsSection({ items }: { items: AppointmentDetail[] }) {
 
 /** Seans qeydi / detalları — popup (uzun qeyd cədvəldə yer tutmasın deyə). */
 function SessionDetailModal({ a, onClose }: { a: AppointmentDetail; onClose: () => void }) {
+  const { t } = useT();
   const st = STATUS[a.status] ?? STATUS.ASSIGNED;
   const when = a.startAt ?? a.requestedStartAt ?? a.createdAt;
   const d = new Date(when);
@@ -1158,14 +1153,14 @@ function SessionDetailModal({ a, onClose }: { a: AppointmentDetail; onClose: () 
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "min(540px, 100%)", maxHeight: "88vh", overflow: "auto", boxShadow: "0 24px 70px rgba(8,47,109,.28)", animation: "m360Sheet .22s ease" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "20px 22px 14px", borderBottom: "1px solid #F0F4FA" }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 8 }}>Seans qeydi</div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--oxford-60)", marginBottom: 8 }}>{t("psyClient360.sessionDetailHeader")}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{fmtShort(when)}</span>
+              <span style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{fmtShort(when, t)}</span>
               <span style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600, fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>{fmtTime(d)}</span>
-              <span style={{ background: st.bg, color: st.color, fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>{st.label}</span>
+              <span style={{ background: st.bg, color: st.color, fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>{t(st.labelKey)}</span>
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Bağla"
+          <button type="button" onClick={onClose} aria-label={t("psyClient360.close")}
             style={{ width: 34, height: 34, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F2F6FD", border: "none", borderRadius: 9, color: "var(--oxford-60)", cursor: "pointer" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
@@ -1233,6 +1228,7 @@ type ActivityItem =
 
 /** Son fəaliyyət lentinin bir sətri (seans və ya klinik qeyd). */
 function ActivityRow({ item, last }: { item: ActivityItem; last: boolean }) {
+  const { t } = useT();
   const tints: Record<string, { bg: string; fg: string }> = {
     brand: { bg: "var(--brand-100)", fg: "var(--brand)" },
     sage:  { bg: "#DCFCE7", fg: "#15803D" },
@@ -1248,15 +1244,15 @@ function ActivityRow({ item, last }: { item: ActivityItem; last: boolean }) {
     icon = done
       ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="M22 4 12 14.01l-3-3" /></>
       : <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>;
-    title = `Seans, ${stx.label}`;
+    title = t("psyClient360.activitySessionTitle", { status: t(stx.labelKey) });
     sub = a.note ? `«${a.note.length > 90 ? a.note.slice(0, 90) + "…" : a.note}»` : null;
     italic = true;
-    dateStr = `${fmtShort(when)}, ${fmtTime(new Date(when))}`;
+    dateStr = `${fmtShort(when, t)}, ${fmtTime(new Date(when))}`;
   } else {
     const n = item.note;
     tint = "gold";
     icon = <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></>;
-    title = n.title || "Klinik qeyd";
+    title = n.title || t("psyClient360.clinicalNoteFallbackTitle");
     const preview = n.body.replace(/\s+/g, " ").trim();
     sub = preview ? (preview.length > 90 ? preview.slice(0, 90) + "…" : preview) : null;
     dateStr = fmtDateTime(n.createdAt);
@@ -1290,14 +1286,15 @@ function FactStat({ label, value, danger }: { label: string; value: string; dang
 
 /** Seansın əlavə nişanları (geç ləğv / təsdiq tipi). */
 function SessionBadges({ a }: { a: AppointmentDetail }) {
+  const { t } = useT();
   const done = a.status === "COMPLETED";
   const noShow = !!a.cancelReasonCode && a.cancelReasonCode.includes("NO_SHOW");
   return (
     <>
-      {noShow && <span style={miniPill("#FEE2E2", "#991B1B")}>Gəlmədi</span>}
-      {a.lateCancel && <span style={miniPill("#FEF3C7", "#92400E")}>Geç ləğv</span>}
+      {noShow && <span style={miniPill("#FEE2E2", "#991B1B")}>{t("psyClient360.noShowBadge")}</span>}
+      {a.lateCancel && <span style={miniPill("#FEF3C7", "#92400E")}>{t("psyClient360.lateCancelBadge")}</span>}
       {done && a.patientConfirmedAt && a.psychologistConfirmedAt && !a.autoConfirmedAt && (
-        <span style={miniPill("#D1FAE5", "#065F46")}>Qarşılıqlı təsdiq</span>
+        <span style={miniPill("#D1FAE5", "#065F46")}>{t("psyClient360.mutualConfirmBadge")}</span>
       )}
     </>
   );
@@ -1312,9 +1309,10 @@ function cleanOperatorNote(note?: string | null): string {
 
 /** Seansa aid mətn detalları (qeyd / ləğv / mübahisə / operator notu) — paket sətri və timeline üçün ortaq. */
 function SessionDetail({ a }: { a: AppointmentDetail }) {
-  const cancelledBy = a.cancelledBy === "PATIENT" ? "Pasient ləğv etdi"
-    : a.cancelledBy === "PSYCHOLOGIST" ? "Psixoloq ləğv etdi"
-    : a.cancelledBy === "OPERATOR" ? "Operator ləğv etdi" : "Ləğv edildi";
+  const { t } = useT();
+  const cancelledBy = a.cancelledBy === "PATIENT" ? t("psyClient360.cancelledByPatient")
+    : a.cancelledBy === "PSYCHOLOGIST" ? t("psyClient360.cancelledByPsychologist")
+    : a.cancelledBy === "OPERATOR" ? t("psyClient360.cancelledByOperator") : t("psyClient360.cancelledByUnknown");
   return (
     <>
       {a.note && (
@@ -1322,8 +1320,8 @@ function SessionDetail({ a }: { a: AppointmentDetail }) {
       )}
       {a.status === "CANCELLED" && (
         <div style={{ fontSize: 12, color: "#991B1B", fontWeight: 600, marginTop: 6, display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <span>Ləğv: {cancelledBy}</span>
-          {a.cancelReasonCode && <span>«{REASON_LABELS[a.cancelReasonCode] ?? a.cancelReasonCode}»</span>}
+          <span>{t("psyClient360.cancelledPrefix", { who: cancelledBy })}</span>
+          {a.cancelReasonCode && <span>«{reasonLabel(t, a.cancelReasonCode)}»</span>}
           {a.cancelledAt && <span>{fmtDateTime(a.cancelledAt)}</span>}
         </div>
       )}
@@ -1331,12 +1329,12 @@ function SessionDetail({ a }: { a: AppointmentDetail }) {
         <div style={{ fontSize: 12, color: "var(--oxford-60)", fontStyle: "italic", fontWeight: 500, marginTop: 4 }}>«{a.cancelReasonText}»</div>
       )}
       {a.status === "DISPUTED" && a.disputeReason && (
-        <div style={{ fontSize: 12.5, color: "#991B1B", fontWeight: 600, marginTop: 6 }}><strong>Mübahisə:</strong> «{a.disputeReason}»</div>
+        <div style={{ fontSize: 12.5, color: "#991B1B", fontWeight: 600, marginTop: 6 }}><strong>{t("psyClient360.disputeLabel")}</strong> «{a.disputeReason}»</div>
       )}
       {cleanOperatorNote(a.operatorNote) && (
         <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginTop: 6, display: "flex", alignItems: "flex-start", gap: 6 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8AAABF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 1 }} aria-hidden><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg>
-          <span><strong style={{ color: "var(--oxford)" }}>Operator:</strong> {cleanOperatorNote(a.operatorNote)}</span>
+          <span><strong style={{ color: "var(--oxford)" }}>{t("psyClient360.operatorLabel")}</strong> {cleanOperatorNote(a.operatorNote)}</span>
         </div>
       )}
     </>
@@ -1345,15 +1343,16 @@ function SessionDetail({ a }: { a: AppointmentDetail }) {
 
 /** Paket = vahid proqram kartı: ad + sayğac + gedişat + stat + nömrəli seans sətirləri (+ qalan yerlər). */
 function PackageProgramCard({ appts }: { appts: AppointmentDetail[] }) {
-  const name = appts[0]?.packageName || "Paket";
+  const { t } = useT();
+  const name = appts[0]?.packageName || t("psyClient360.packageBadge");
   const total = appts[0]?.packageTotal ?? appts.length;
   const completed = appts.filter(a => a.status === "COMPLETED").length;
   const cancelled = appts.filter(a => a.status === "CANCELLED").length;
   const pct = total ? Math.round((completed / total) * 100) : 0;
   const remaining = Math.max(0, total - appts.length);
   const dated = appts.filter(a => a.startAt);
-  const rangeFrom = dated.length ? fmtShort(dated[0].startAt) : "—";
-  const rangeTo = dated.length ? fmtShort(dated[dated.length - 1].startAt) : "—";
+  const rangeFrom = dated.length ? fmtShort(dated[0].startAt, t) : "—";
+  const rangeTo = dated.length ? fmtShort(dated[dated.length - 1].startAt, t) : "—";
 
   return (
     <div style={{ background: "linear-gradient(180deg,#F8FBFF,#fff 120px)", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #E4ECFA", padding: 20 }}>
@@ -1363,7 +1362,7 @@ function PackageProgramCard({ appts }: { appts: AppointmentDetail[] }) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.27 6.96L12 12.01l8.73-5.05" />
             </svg>
-            Paket
+            {t("psyClient360.packageBadge")}
           </span>
           <div style={{ fontSize: 17, fontWeight: 800, color: "var(--oxford)" }}>{name}</div>
         </div>
@@ -1374,7 +1373,7 @@ function PackageProgramCard({ appts }: { appts: AppointmentDetail[] }) {
 
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 7 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: "#082F6D" }}>Gedişat</span>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: "#082F6D" }}>{t("psyClient360.progressHeaderLabel")}</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--oxford-60)" }}>{pct}%</span>
         </div>
         <div style={{ height: 9, background: "#E4ECFA", borderRadius: 999, overflow: "hidden" }}>
@@ -1383,9 +1382,9 @@ function PackageProgramCard({ appts }: { appts: AppointmentDetail[] }) {
       </div>
 
       <div style={{ display: "flex", gap: 18, flexWrap: "wrap", padding: "11px 0", borderTop: "1px solid #EDF1F8", borderBottom: "1px solid #EDF1F8", marginBottom: 14 }}>
-        <FactStat label="Aralıq" value={`${rangeFrom} – ${rangeTo}`} />
-        <FactStat label="Seans" value={String(total)} />
-        {cancelled > 0 && <FactStat label="Ləğv" value={String(cancelled)} danger />}
+        <FactStat label={t("psyClient360.factRangeLabel")} value={`${rangeFrom} – ${rangeTo}`} />
+        <FactStat label={t("psyClient360.statSessions")} value={String(total)} />
+        {cancelled > 0 && <FactStat label={t("psyClient360.statusCancelled")} value={String(cancelled)} danger />}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column" }}>
@@ -1401,6 +1400,7 @@ function PackageProgramCard({ appts }: { appts: AppointmentDetail[] }) {
 }
 
 function PackageSessionRow({ a, index, last }: { a: AppointmentDetail; index: number; last: boolean }) {
+  const { t } = useT();
   const st = STATUS[a.status] ?? STATUS.ASSIGNED;
   const when = a.startAt ?? a.requestedStartAt;
   const d = when ? new Date(when) : null;
@@ -1409,12 +1409,12 @@ function PackageSessionRow({ a, index, last }: { a: AppointmentDetail; index: nu
     <div style={{ display: "flex", alignItems: "flex-start", gap: 13, padding: "10px 0", borderBottom: last ? "none" : "1px solid #F4F7FB" }}>
       <span style={{ width: 22, height: 22, borderRadius: 7, background: st.bg, color: st.color, fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none", marginTop: 1 }}>{index}</span>
       <div style={{ width: 96, flex: "none" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: isCancelled ? "#991B1B" : "var(--oxford)" }}>{d ? `${pad2(d.getDate())} ${MONTHS_AZ[d.getMonth()]}` : "—"}</div>
-        <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>{d ? fmtTime(d) : "planlaşmayıb"}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: isCancelled ? "#991B1B" : "var(--oxford)" }}>{d ? `${pad2(d.getDate())} ${monthName(t, d.getMonth())}` : "—"}</div>
+        <div style={{ fontSize: 11.5, color: "var(--oxford-60)", fontWeight: 600 }}>{d ? fmtTime(d) : t("psyClient360.notScheduledLabel")}</div>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ ...miniPill(st.bg, st.color), fontSize: 11 }}>{st.label}</span>
+          <span style={{ ...miniPill(st.bg, st.color), fontSize: 11 }}>{t(st.labelKey)}</span>
           <SessionBadges a={a} />
         </div>
         <SessionDetail a={a} />
@@ -1424,15 +1424,16 @@ function PackageSessionRow({ a, index, last }: { a: AppointmentDetail; index: nu
 }
 
 function PackageRemainingRow({ index, last }: { index: number; last: boolean }) {
+  const { t } = useT();
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 13, padding: "10px 0", borderBottom: last ? "none" : "1px solid #F4F7FB" }}>
       <span style={{ width: 22, height: 22, borderRadius: 7, background: "#fff", border: "1.5px solid #D6E2F7", color: "#9DB0CC", fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "none", marginTop: 1 }}>{index}</span>
       <div style={{ width: 96, flex: "none" }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--oxford-60)" }}>—</div>
-        <div style={{ fontSize: 11.5, color: "#9DB0CC", fontWeight: 600 }}>planlaşmayıb</div>
+        <div style={{ fontSize: 11.5, color: "#9DB0CC", fontWeight: 600 }}>{t("psyClient360.notScheduledLabel")}</div>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <span style={miniPill("#F2F6FD", "#082F6D")}>Qalıb</span>
+        <span style={miniPill("#F2F6FD", "#082F6D")}>{t("psyClient360.remainingBadge")}</span>
       </div>
     </div>
   );
@@ -1443,49 +1444,51 @@ function PackageRemainingRow({ index, last }: { index: number; last: boolean }) 
 const NOTES_PAGE_SIZE = 10;
 
 /** Klinik qeyd cədvəlinin sütunları — əməliyyat düymələri `actions` ilə verilir. */
-const NOTE_COLUMNS: Column<ClientNote>[] = [
-  {
-    key: "createdAt",
-    header: "Tarix",
-    sortable: true,
-    sortValue: n => new Date(n.createdAt).getTime(),
-    cell: n => {
-      const edited = !!n.updatedAt && n.updatedAt !== n.createdAt;
-      return (
-        <div>
-          <div style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{azFormatDateTime(n.createdAt)}</div>
-          {edited && <div className="fx-row__meta" style={{ marginTop: 2 }}>düzəldildi</div>}
-        </div>
-      );
+function noteColumns(t: TFn): Column<ClientNote>[] {
+  return [
+    {
+      key: "createdAt",
+      header: t("psyClient360.colDate"),
+      sortable: true,
+      sortValue: n => new Date(n.createdAt).getTime(),
+      cell: n => {
+        const edited = !!n.updatedAt && n.updatedAt !== n.createdAt;
+        return (
+          <div>
+            <div style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{azFormatDateTime(n.createdAt)}</div>
+            {edited && <div className="fx-row__meta" style={{ marginTop: 2 }}>{t("psyClient360.editedLabel")}</div>}
+          </div>
+        );
+      },
     },
-  },
-  {
-    key: "note",
-    header: "Qeyd",
-    cell: n => {
-      const preview = n.body.replace(/\s+/g, " ").trim();
-      return (
-        <div style={{ minWidth: 220 }}>
-          {n.title && <div style={{ fontWeight: 700, marginBottom: 2 }}>{n.title}</div>}
-          <span className="fx-row__meta">
-            {preview ? (preview.length > 72 ? preview.slice(0, 72) + "…" : preview) : "—"}
-          </span>
-        </div>
-      );
+    {
+      key: "note",
+      header: t("psyClient360.colNote"),
+      cell: n => {
+        const preview = n.body.replace(/\s+/g, " ").trim();
+        return (
+          <div style={{ minWidth: 220 }}>
+            {n.title && <div style={{ fontWeight: 700, marginBottom: 2 }}>{n.title}</div>}
+            <span className="fx-row__meta">
+              {preview ? (preview.length > 72 ? preview.slice(0, 72) + "…" : preview) : "—"}
+            </span>
+          </div>
+        );
+      },
     },
-  },
-  {
-    key: "mood",
-    header: "Əhval",
-    numeric: true,
-    sortable: true,
-    sortValue: n => (typeof n.moodScore === "number" ? n.moodScore : -1),
-    cell: n =>
-      typeof n.moodScore === "number"
-        ? <strong style={{ fontWeight: 800 }}>{n.moodScore}/10</strong>
-        : <span style={{ color: "var(--oxford-60)" }}>—</span>,
-  },
-];
+    {
+      key: "mood",
+      header: t("psyClient360.moodColHeader"),
+      numeric: true,
+      sortable: true,
+      sortValue: n => (typeof n.moodScore === "number" ? n.moodScore : -1),
+      cell: n =>
+        typeof n.moodScore === "number"
+          ? <strong style={{ fontWeight: 800 }}>{n.moodScore}/10</strong>
+          : <span style={{ color: "var(--oxford-60)" }}>—</span>,
+    },
+  ];
+}
 
 function NotesSection(props: {
   notes: ClientNote[];
@@ -1512,12 +1515,14 @@ function NotesSection(props: {
           showForm, editing, title, body, mood, saving,
           setTitle, setBody, setMood, onSave, onCancel, onEdit, onDelete, onAddNew, onApplyTemplate,
           customTemplates, onCreateTemplate, onDeleteCustomTemplate } = props;
+  const { t } = useT();
   const [viewNote, setViewNote] = useState<ClientNote | null>(null);
   // Pagination komponenti 1-dən başlayır.
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<SortState>({ key: "createdAt", dir: "desc" });
 
-  const sortedNotes = useMemo(() => sortRows(filteredNotes, NOTE_COLUMNS, sort), [filteredNotes, sort]);
+  const columns = useMemo(() => noteColumns(t), [t]);
+  const sortedNotes = useMemo(() => sortRows(filteredNotes, columns, sort), [filteredNotes, columns, sort]);
 
   // Axtarış dəyişəndə səhifə əvvələ qayıdır.
   useEffect(() => { setPage(1); }, [search]);
@@ -1530,17 +1535,17 @@ function NotesSection(props: {
     <div style={{ animation: "m360Fade .2s ease" }}>
       <div style={{ display: "flex", gap: 10, alignItems: "center", background: "#F2F6FD", border: "1px solid #D9E6FA", borderRadius: 11, padding: "12px 14px", marginBottom: 14 }}>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }} aria-hidden><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-        <span style={{ fontSize: 12.5, color: "#082F6D", fontWeight: 600, lineHeight: 1.45 }}>Bütün qeydlər AES-256-GCM ilə şifrələnir. Yalnız siz oxuya bilərsiniz.</span>
+        <span style={{ fontSize: 12.5, color: "#082F6D", fontWeight: 600, lineHeight: 1.45 }}>{t("psyClient360.encryptionBannerText")}</span>
       </div>
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 14 }}>
         <button onClick={onAddNew} className="m360-primary" style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 15px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M12 5v14M5 12h14" /></svg>Yeni qeyd
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M12 5v14M5 12h14" /></svg>{t("psyClient360.newNoteButton")}
         </button>
         {notes.length > 0 && (
           <div style={{ position: "relative", flex: 1, minWidth: 180, maxWidth: 300 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9DB0CC" strokeWidth="2" strokeLinecap="round" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} aria-hidden><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Qeydləri axtar…" style={{ width: "100%", border: "1px solid #D6E2F7", borderRadius: 10, padding: "9px 12px 9px 36px", fontSize: 13.5, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", boxSizing: "border-box" }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("psyClient360.noteSearchPlaceholder")} style={{ width: "100%", border: "1px solid #D6E2F7", borderRadius: 10, padding: "9px 12px 9px 36px", fontSize: 13.5, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", boxSizing: "border-box" }} />
           </div>
         )}
       </div>
@@ -1550,8 +1555,8 @@ function NotesSection(props: {
           <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "min(620px, 100%)", height: "min(640px, 90vh)", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 70px rgba(8,47,109,.28)", animation: "m360Sheet .22s ease" }}>
             {/* Başlıq — sabit */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "18px 22px 14px", borderBottom: "1px solid #F0F4FA", flex: "none" }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{editing ? "Qeydi düzəlt" : "Yeni klinik qeyd"}</h3>
-              <button type="button" onClick={onCancel} aria-label="Bağla"
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{editing ? t("psyClient360.editNoteTitle") : t("psyClient360.newNoteModalTitle")}</h3>
+              <button type="button" onClick={onCancel} aria-label={t("psyClient360.close")}
                 style={{ width: 34, height: 34, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F2F6FD", border: "none", borderRadius: 9, color: "var(--oxford-60)", cursor: "pointer" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
               </button>
@@ -1561,39 +1566,39 @@ function NotesSection(props: {
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: 18 }}>
               {!editing && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14, flex: "none" }}>
-                  {NOTE_TEMPLATES.map(t => (
-                    <button key={t.key} type="button" onClick={() => onApplyTemplate(t.key)}
-                      style={{ background: "#E4ECFA", color: "#082F6D", fontSize: 12, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: "none", fontFamily: "inherit", cursor: "pointer" }}>{t.label}</button>
+                  {NOTE_TEMPLATES.map(nt => (
+                    <button key={nt.key} type="button" onClick={() => onApplyTemplate(nt.key)}
+                      style={{ background: "#E4ECFA", color: "#082F6D", fontSize: 12, fontWeight: 600, padding: "6px 11px", borderRadius: 999, border: "none", fontFamily: "inherit", cursor: "pointer" }}>{t(nt.labelKey)}</button>
                   ))}
                   {customTemplates.map(tpl => (
                     <span key={tpl.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#E4ECFA", color: "#082F6D", fontSize: 12, fontWeight: 600, padding: "6px 11px", borderRadius: 999 }}>
                       <button type="button" onClick={() => onApplyTemplate(`custom:${tpl.id}`)} style={{ background: "none", border: "none", color: "inherit", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", padding: 0 }}>{tpl.name}</button>
-                      <button type="button" onClick={() => onDeleteCustomTemplate(tpl.id)} title="Şablonu sil" style={{ width: 15, height: 15, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(8,47,109,.12)", border: "none", borderRadius: "50%", color: "#082F6D", cursor: "pointer", padding: 0 }}>
+                      <button type="button" onClick={() => onDeleteCustomTemplate(tpl.id)} title={t("psyClient360.templateDeleteConfirmTitle")} style={{ width: 15, height: 15, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(8,47,109,.12)", border: "none", borderRadius: "50%", color: "#082F6D", cursor: "pointer", padding: 0 }}>
                         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
                       </button>
                     </span>
                   ))}
                   <button type="button" onClick={onCreateTemplate} className="m360-ghost"
-                    style={{ background: "#fff", color: "var(--oxford-60)", border: "1.5px dashed #C7D3E6", borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>+ Yeni şablon</button>
+                    style={{ background: "#fff", color: "var(--oxford-60)", border: "1.5px dashed #C7D3E6", borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>{t("psyClient360.newTemplateChipButton")}</button>
                 </div>
               )}
-              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Başlıq (məcburi deyil)"
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t("psyClient360.noteTitlePlaceholder")}
                 style={{ width: "100%", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 13px", fontSize: 14.5, fontWeight: 700, color: "var(--oxford)", fontFamily: "inherit", marginBottom: 11, boxSizing: "border-box", flex: "none" }} />
-              <textarea value={body} onChange={e => setBody(e.target.value)} placeholder="Seans qeydləri burada saxlanır — yalnız siz görə bilərsiniz."
+              <textarea value={body} onChange={e => setBody(e.target.value)} placeholder={t("psyClient360.noteBodyPlaceholder")}
                 style={{ width: "100%", flex: 1, minHeight: 150, border: "1px solid #D6E2F7", borderRadius: 10, padding: "12px 13px", fontSize: 13.5, fontWeight: 500, color: "var(--oxford)", fontFamily: "inherit", resize: "none", lineHeight: 1.6, boxSizing: "border-box" }} />
             </div>
 
             {/* Alt panel — sabit (əhval + düymələr həmişə görünür) */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "14px 18px", borderTop: "1px solid #F0F4FA", flex: "none" }}>
               <label style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford-60)" }}>Əhval-ruhiyyə (1–10)</span>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--oxford-60)" }}>{t("psyClient360.moodFieldLabel")}</span>
                 <input type="number" min={1} max={10} value={mood}
                   onChange={e => { const v = e.target.value; setMood(v === "" ? "" : Math.max(1, Math.min(10, Number(v)))); }}
                   style={{ width: 64, border: "1px solid #D6E2F7", borderRadius: 9, padding: "8px 10px", fontSize: 14, fontWeight: 700, color: "var(--oxford)", fontFamily: "inherit" }} />
               </label>
               <div style={{ display: "flex", gap: 9 }}>
-                <button onClick={onCancel} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 16px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
-                <button onClick={onSave} disabled={saving} className="m360-primary" style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "wait" : "pointer" }}>{saving ? "Saxlanılır…" : (editing ? "Yenilə" : "Saxla")}</button>
+                <button onClick={onCancel} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 16px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>{t("psyClient360.cancelLabel")}</button>
+                <button onClick={onSave} disabled={saving} className="m360-primary" style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: saving ? "wait" : "pointer" }}>{saving ? t("psyClient360.savingLabel") : (editing ? t("psyClient360.updateLabel") : t("psyClient360.saveLabel"))}</button>
               </div>
             </div>
           </div>
@@ -1604,32 +1609,32 @@ function NotesSection(props: {
         <CardBody style={{ paddingTop: 18 }}>
           <DataTable
             rows={pageNotes}
-            columns={NOTE_COLUMNS}
+            columns={columns}
             rowKey={n => n.id}
             mobile="cards"
             sort={sort}
             onSortChange={next => { setSort(next); setPage(1); }}
-            actionsHeader="Əməliyyat"
+            actionsHeader={t("psyClient360.actionsHeader")}
             actions={n => (
               <>
-                <Button variant="ghost" size="sm" onClick={() => setViewNote(n)}>Bax</Button>
-                <Button variant="ghost" size="sm" onClick={() => onEdit(n)}>Düzəlt</Button>
-                <Button variant="dangerGhost" size="sm" onClick={() => onDelete(n.id)}>Sil</Button>
+                <Button variant="ghost" size="sm" onClick={() => setViewNote(n)}>{t("psyClient360.viewButtonLabel")}</Button>
+                <Button variant="ghost" size="sm" onClick={() => onEdit(n)}>{t("psyClient360.editLabel")}</Button>
+                <Button variant="dangerGhost" size="sm" onClick={() => onDelete(n.id)}>{t("psyClient360.deleteLabel")}</Button>
               </>
             )}
             empty={
               search.trim()
                 ? {
-                    title: `«${search}» üzrə uyğun qeyd tapılmadı`,
-                    body: "Axtarış sözünü dəyişin və ya axtarışı təmizləyin.",
+                    title: t("psyClient360.noSearchResultsTitle", { search }),
+                    body: t("psyClient360.noSearchResultsBody"),
                   }
                 : {
-                    title: "Hələ klinik qeyd yoxdur",
-                    body: "Bu pasiyent üçün ilk qeydinizi yazın.",
+                    title: t("psyClient360.noNotesTitle"),
+                    body: t("psyClient360.noNotesBody"),
                   }
             }
             pagination={{ page: safePage, pageCount, onChange: setPage }}
-            totalLabel={`Cəmi ${sortedNotes.length} qeyd`}
+            totalLabel={t("psyClient360.notesTotalLabel", { count: sortedNotes.length })}
           />
         </CardBody>
       </Card>
@@ -1641,28 +1646,29 @@ function NotesSection(props: {
 
 /** Klinik qeydin tam mətni — popup (cədvəl sətrindən "Bax"). */
 function NoteViewModal({ n, onClose, onEdit }: { n: ClientNote; onClose: () => void; onEdit: (n: ClientNote) => void }) {
+  const { t } = useT();
   const edited = !!n.updatedAt && n.updatedAt !== n.createdAt;
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(8,47,109,.45)", backdropFilter: "blur(4px)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "m360Fade .18s ease" }}>
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "min(600px, 100%)", maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 70px rgba(8,47,109,.28)", animation: "m360Sheet .22s ease" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, padding: "18px 22px 14px", borderBottom: "1px solid #F0F4FA", flex: "none" }}>
           <div>
-            <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{n.title || "Klinik qeyd"}</h3>
+            <h3 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{n.title || t("psyClient360.clinicalNoteFallbackTitle")}</h3>
             <div style={{ fontSize: 12.5, color: "var(--oxford-60)", fontWeight: 600, display: "flex", flexWrap: "wrap", gap: 8 }}>
               <span>{fmtDateTime(n.createdAt)}</span>
-              {edited && <span>düzəldildi {fmtDateTime(n.updatedAt!)}</span>}
-              {typeof n.moodScore === "number" && <span>əhval-ruhiyyə {n.moodScore}/10</span>}
+              {edited && <span>{t("psyClient360.editedAt", { date: fmtDateTime(n.updatedAt!) })}</span>}
+              {typeof n.moodScore === "number" && <span>{t("psyClient360.moodScoreLabel", { score: n.moodScore })}</span>}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Bağla"
+          <button type="button" onClick={onClose} aria-label={t("psyClient360.close")}
             style={{ width: 34, height: 34, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F2F6FD", border: "none", borderRadius: 9, color: "var(--oxford-60)", cursor: "pointer" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>
         <div style={{ padding: "18px 22px", overflow: "auto", flex: 1, minHeight: 0, fontSize: 14, color: "var(--oxford)", fontWeight: 500, lineHeight: 1.7, whiteSpace: "pre-line" }}>{n.body}</div>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 9, padding: "14px 22px", borderTop: "1px solid #F0F4FA", flex: "none" }}>
-          <button type="button" onClick={onClose} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 16px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Bağla</button>
-          <button type="button" onClick={() => onEdit(n)} className="m360-primary" style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>Düzəlt</button>
+          <button type="button" onClick={onClose} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "9px 16px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>{t("psyClient360.close")}</button>
+          <button type="button" onClick={() => onEdit(n)} className="m360-primary" style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>{t("psyClient360.editLabel")}</button>
         </div>
       </div>
     </div>
@@ -1672,6 +1678,7 @@ function NoteViewModal({ n, onClose, onEdit }: { n: ClientNote; onClose: () => v
 /* ─── Mood trend chart (mini SVG) ────────────────────────────────────────── */
 
 function MoodTrendChart({ points }: { points: { date: string; score: number }[] }) {
+  const { t } = useT();
   const W = 720, H = 140, P = 28;
   const minScore = 1, maxScore = 10;
   const xs = points.map((_p, i) => P + (i * (W - P * 2)) / Math.max(1, points.length - 1));
@@ -1681,15 +1688,15 @@ function MoodTrendChart({ points }: { points: { date: string; score: number }[] 
   const last = points[points.length - 1];
   const first = points[0];
   const delta = last.score - first.score;
-  const trendLabel = delta > 0.5 ? `↑ +${delta.toFixed(1)} yaxşılaşma`
-                   : delta < -0.5 ? `↓ ${delta.toFixed(1)} azalma`
-                   : "stabil";
+  const trendLabel = delta > 0.5 ? t("psyClient360.moodTrendImproving", { delta: delta.toFixed(1) })
+                   : delta < -0.5 ? t("psyClient360.moodTrendDeclining", { delta: delta.toFixed(1) })
+                   : t("psyClient360.moodTrendStable");
   const trendTone = delta > 0.5 ? "good" : delta < -0.5 ? "warn" : "neutral";
 
   return (
     <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 18, marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>Əhval-ruhiyyə tendensiyası</span>
+        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)" }}>{t("psyClient360.moodTrendTitle")}</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: trendTone === "good" ? "#D1FAE5" : trendTone === "warn" ? "#FEF3C7" : "#F3F4F6", color: trendTone === "good" ? "#065F46" : trendTone === "warn" ? "#92400E" : "#374151", fontSize: 12, fontWeight: 700, padding: "4px 11px", borderRadius: 999 }}>{trendLabel}</span>
       </div>
       <div style={{ position: "relative" }}>
@@ -1723,7 +1730,7 @@ function MoodTrendChart({ points }: { points: { date: string; score: number }[] 
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, fontSize: 11.5, color: "#9DB0CC", fontWeight: 600 }}>
         <span>{azFormatDate(first.date)}</span>
-        <span>{points.length} qeyd</span>
+        <span>{t("psyClient360.moodPointsCount", { count: points.length })}</span>
         <span>{azFormatDate(last.date)}</span>
       </div>
     </div>

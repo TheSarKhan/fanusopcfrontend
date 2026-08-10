@@ -13,6 +13,7 @@ import {
 import AssignTestModal from "@/components/AssignTestModal";
 import { toast } from "@/components/Toast";
 import { azFormatDateTime } from "@/lib/datetime";
+import { useT } from "@/lib/i18n/LocaleProvider";
 import {
   Avatar,
   Button,
@@ -75,6 +76,7 @@ function Kpi({ icon, iconBg, iconColor, label, value }: { icon: React.ReactNode;
 }
 
 export default function PsyTestStatsPage() {
+  const { t } = useT();
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
   const router = useRouter();
@@ -109,16 +111,16 @@ export default function PsyTestStatsPage() {
 
   // initial: test info + aggregate summary + clients
   useEffect(() => {
-    if (!Number.isFinite(id)) { setError("Yanlış test nömrəsi"); setLoading(false); return; }
+    if (!Number.isFinite(id)) { setError(t("psyTestMgmt.invalidId")); setLoading(false); return; }
     Promise.all([
       psychologistApi.previewTest(id),
       psychologistApi.testStatsSummary(id).catch(() => null),
       psychologistApi.clients().catch(() => [] as ClientSummary[]),
     ])
-      .then(([t, s, cs]) => { setTest(t); setSummary(s); setClients(cs); setError(null); })
+      .then(([tst, s, cs]) => { setTest(tst); setSummary(s); setClients(cs); setError(null); })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, t]);
 
   // backend-paged table
   useEffect(() => {
@@ -127,9 +129,9 @@ export default function PsyTestStatsPage() {
     setTableError(null);
     psychologistApi.testResultsPaged(id, { page, size, q: debounced })
       .then((p) => { setRows(p.content); setTotal(p.totalElements); })
-      .catch((e) => setTableError((e as Error).message || "Nəticələr yüklənmədi"))
+      .catch((e) => setTableError((e as Error).message || t("psyTestMgmt.resultsLoadFailed")))
       .finally(() => setTableLoading(false));
-  }, [id, page, size, debounced, tableNonce]);
+  }, [id, page, size, debounced, tableNonce, t]);
 
   const reloadStats = () => {
     psychologistApi.testStatsSummary(id).then(setSummary).catch(() => {});
@@ -164,7 +166,7 @@ export default function PsyTestStatsPage() {
   const copyLink = async () => {
     if (!link) return;
     try { await navigator.clipboard.writeText(link.url); setCopied(true); setTimeout(() => setCopied(false), 1800); }
-    catch { toast("Kopyalamaq alınmadı", "error"); }
+    catch { toast(t("psyTestMgmt.copyFailed"), "error"); }
   };
   const openDetail = async (resultId: number) => {
     setDetailBusy(resultId);
@@ -173,7 +175,7 @@ export default function PsyTestStatsPage() {
     finally { setDetailBusy(null); }
   };
   const onDelete = async (resultId: number) => {
-    if (!confirm("Bu nəticəni silmək istəyirsiniz?")) return;
+    if (!confirm(t("psyTestMgmt.confirmDeleteResult"))) return;
     try { await psychologistApi.deleteTestResult(resultId); reloadStats(); }
     catch (e) { toast((e as Error).message, "error"); }
   };
@@ -185,9 +187,9 @@ export default function PsyTestStatsPage() {
   const columns: Column<TestResultRow>[] = useMemo(() => [
     {
       key: "respondent",
-      header: "İştirakçı",
+      header: t("psyTestMgmt.colRespondent"),
       cell: (r) => {
-        const name = r.respondentName?.trim() || "Anonim";
+        const name = r.respondentName?.trim() || t("psyTestMgmt.anonymous");
         return (
           <div style={{ display: "inline-flex", alignItems: "center", gap: 10, minWidth: 0 }}>
             <Avatar name={name} size="sm" />
@@ -198,18 +200,18 @@ export default function PsyTestStatsPage() {
     },
     {
       key: "submittedAt",
-      header: "Tarix",
+      header: t("psyTestMgmt.colDate"),
       cell: (r) => <span className="fx-num" style={{ whiteSpace: "nowrap" }}>{fmtDateTime(r.submittedAt)}</span>,
     },
     {
       key: "source",
-      header: "Mənbə",
+      header: t("psyTestMgmt.colSource"),
       hideOnMobile: true,
-      cell: (r) => <Status tone="muted">{r.publicLink ? "Publik link" : "Təyinat"}</Status>,
+      cell: (r) => <Status tone="muted">{r.publicLink ? t("psyTestMgmt.sourcePublicLink") : t("psyTestMgmt.sourceAssignment")}</Status>,
     },
     {
       key: "score",
-      header: "Bal",
+      header: t("psyTestMgmt.colScore"),
       numeric: true,
       cell: (r) => (
         <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>
@@ -219,31 +221,34 @@ export default function PsyTestStatsPage() {
     },
     {
       key: "scale",
-      header: "Nəticə",
+      header: t("psyTestMgmt.colResult"),
       cell: (r) => (r.scaleLabel ? <Status>{r.scaleLabel}</Status> : <span className="fx-muted">—</span>),
     },
     {
       key: "status",
-      header: "Status",
+      header: t("psyTestMgmt.colStatus"),
       hideOnMobile: true,
-      cell: () => <Status>Tam yoxlanılıb</Status>,
+      cell: () => <Status>{t("psyTestMgmt.statusFullyReviewed")}</Status>,
     },
-  ], []);
+  ], [t]);
 
   const exportCsv = async () => {
     const all = await psychologistApi.testResults(id).catch(() => rows);
     const cell = (v: string | number) => { const s = String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-    const lines = [["Ad", "Mənbə", "Bal", "Maksimal", "Faiz", "Nəticə", "Tarix"].join(",")];
+    const lines = [[
+      t("psyTestMgmt.csvHeaderName"), t("psyTestMgmt.csvHeaderSource"), t("psyTestMgmt.csvHeaderScore"),
+      t("psyTestMgmt.csvHeaderMax"), t("psyTestMgmt.csvHeaderPercent"), t("psyTestMgmt.csvHeaderResult"), t("psyTestMgmt.csvHeaderDate"),
+    ].join(",")];
     all.forEach((r) => lines.push([
-      cell(r.respondentName?.trim() || "Anonim"),
-      r.publicLink ? "Publik link" : "Təyinat",
+      cell(r.respondentName?.trim() || t("psyTestMgmt.anonymous")),
+      r.publicLink ? t("psyTestMgmt.sourcePublicLink") : t("psyTestMgmt.sourceAssignment"),
       r.totalScore, r.maxScore, Math.round(r.percentage),
       cell(r.scaleLabel ?? ""), cell(fmtDateTime(r.submittedAt)),
     ].join(",")));
     const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${(test?.title ?? "netice").replace(/[\\/:*?"<>|]+/g, "_")}.csv`;
+    a.download = `${(test?.title ?? t("psyTestMgmt.resultsFilenameFallback")).replace(/[\\/:*?"<>|]+/g, "_")}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -253,45 +258,45 @@ export default function PsyTestStatsPage() {
   return (
     <div className="panel-page">
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
-        <button type="button" onClick={() => router.push("/psycholog/tests")} aria-label="Geri"
+        <button type="button" onClick={() => router.push("/psycholog/tests")} aria-label={t("psyTestMgmt.backAria")}
           style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid #EEF2F7", background: "#fff", color: "#52718F", cursor: "pointer", fontSize: 18, lineHeight: 1, flexShrink: 0 }}>←</button>
-        <h1 style={{ flex: 1, minWidth: 180, fontSize: 20, fontWeight: 700, color: "#1A2535", margin: 0 }}>{test?.title ?? "Statistika"}</h1>
+        <h1 style={{ flex: 1, minWidth: 180, fontSize: 20, fontWeight: 700, color: "#1A2535", margin: 0 }}>{test?.title ?? t("psyTestMgmt.statsTitleFallback")}</h1>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button type="button" onClick={() => router.push(`/psycholog/tests/manage/${id}/edit`)} style={{ ...hbtn, border: "1px solid #E5E7EB", background: "#fff", color: "#374151" }}><IconEdit /> Redaktə et</button>
-          <button type="button" onClick={onShare} style={{ ...hbtn, border: "1px solid #E5E7EB", background: "#fff", color: "#374151" }}><IconShare /> Paylaş</button>
-          <button type="button" onClick={exportCsv} style={{ ...hbtn, border: "none", background: "#16A34A", color: "#fff" }}><IconDownload /> Excel ixracı</button>
+          <button type="button" onClick={() => router.push(`/psycholog/tests/manage/${id}/edit`)} style={{ ...hbtn, border: "1px solid #E5E7EB", background: "#fff", color: "#374151" }}><IconEdit /> {t("psyTestMgmt.editBtn")}</button>
+          <button type="button" onClick={onShare} style={{ ...hbtn, border: "1px solid #E5E7EB", background: "#fff", color: "#374151" }}><IconShare /> {t("psyTestMgmt.shareBtn")}</button>
+          <button type="button" onClick={exportCsv} style={{ ...hbtn, border: "none", background: "#16A34A", color: "#fff" }}><IconDownload /> {t("psyTestMgmt.exportBtn")}</button>
         </div>
       </div>
 
       {loading ? (
-        <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "#52718F" }}>Yüklənir…</div>
+        <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "#52718F" }}>{t("psyTestMgmt.loading")}</div>
       ) : error || !test ? (
-        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 18, borderRadius: 14, fontSize: 13 }}>{error ?? "Test tapılmadı."}</div>
+        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 18, borderRadius: 14, fontSize: 13 }}>{error ?? t("psyTestMgmt.notFound")}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           {/* KPI */}
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-            <Kpi icon={<IconUsers />} iconBg="#EEF4F9" iconColor="#3B6FA5" label="İştirakçılar" value={summary?.total ?? 0} />
-            <Kpi icon={<IconTrend />} iconBg="#DCFCE7" iconColor="#16A34A" label="Ort. bal" value={<>{(summary?.avgScore ?? 0).toFixed(1)} <span style={{ fontSize: 13, color: "#8AAABF", fontWeight: 600 }}>/ {maxScore}</span></>} />
-            <Kpi icon={<IconPercent />} iconBg="#FEF3C7" iconColor="#B45309" label="Ort. faiz" value={`${summary?.avgPercent ?? 0}%`} />
-            <Kpi icon={<IconAward />} iconBg="#EDE9FE" iconColor="#7C3AED" label="Ən yüksək bal" value={<>{summary?.topScore ?? 0} <span style={{ fontSize: 13, color: "#8AAABF", fontWeight: 600 }}>/ {maxScore}</span></>} />
+            <Kpi icon={<IconUsers />} iconBg="#EEF4F9" iconColor="#3B6FA5" label={t("psyTestMgmt.kpiParticipants")} value={summary?.total ?? 0} />
+            <Kpi icon={<IconTrend />} iconBg="#DCFCE7" iconColor="#16A34A" label={t("psyTestMgmt.kpiAvgScore")} value={<>{(summary?.avgScore ?? 0).toFixed(1)} <span style={{ fontSize: 13, color: "#8AAABF", fontWeight: 600 }}>/ {maxScore}</span></>} />
+            <Kpi icon={<IconPercent />} iconBg="#FEF3C7" iconColor="#B45309" label={t("psyTestMgmt.kpiAvgPercent")} value={`${summary?.avgPercent ?? 0}%`} />
+            <Kpi icon={<IconAward />} iconBg="#EDE9FE" iconColor="#7C3AED" label={t("psyTestMgmt.kpiTopScore")} value={<>{summary?.topScore ?? 0} <span style={{ fontSize: 13, color: "#8AAABF", fontWeight: 600 }}>/ {maxScore}</span></>} />
           </div>
 
           {/* Pie (zolaq) + bar (bal aralıqları) */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 18 }}>
             <div style={{ background: "#fff", border: "1px solid #EEF2F7", borderRadius: 16, padding: 20 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#1A2535" }}>Nəticə zolaqları</div>
-              <div style={{ fontSize: 12, color: "#52718F", margin: "2px 0 16px" }}>İştirakçıların ən çox düşdüyü nəticə zolağı</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#1A2535" }}>{t("psyTestMgmt.scaleBandsTitle")}</div>
+              <div style={{ fontSize: 12, color: "#52718F", margin: "2px 0 16px" }}>{t("psyTestMgmt.scaleBandsSub")}</div>
               {pieGroups.length === 0 ? (
-                <div style={{ color: "#52718F", fontSize: 13, padding: "16px 0" }}>Hələ cavab yoxdur.</div>
-              ) : (<ScalePie groups={pieGroups} />)}
+                <div style={{ color: "#52718F", fontSize: 13, padding: "16px 0" }}>{t("psyTestMgmt.noAnswersYet")}</div>
+              ) : (<ScalePie groups={pieGroups} peopleUnit={t("psyTestMgmt.peopleUnit")} />)}
             </div>
 
             <div style={{ background: "#fff", border: "1px solid #EEF2F7", borderRadius: 16, padding: 20 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#1A2535" }}>Bal paylanması</div>
-              <div style={{ fontSize: 12, color: "#52718F", margin: "2px 0 16px" }}>İştirakçıların topladığı bal aralıqlarına görə</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#1A2535" }}>{t("psyTestMgmt.scoreDistTitle")}</div>
+              <div style={{ fontSize: 12, color: "#52718F", margin: "2px 0 16px" }}>{t("psyTestMgmt.scoreDistSub")}</div>
               {bars.length === 0 || (summary?.total ?? 0) === 0 ? (
-                <div style={{ color: "#52718F", fontSize: 13, padding: "16px 0" }}>Hələ cavab yoxdur.</div>
+                <div style={{ color: "#52718F", fontSize: 13, padding: "16px 0" }}>{t("psyTestMgmt.noAnswersYet")}</div>
               ) : (
                 <>
                   <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 150 }}>
@@ -314,12 +319,12 @@ export default function PsyTestStatsPage() {
           <div style={{ background: "#fff", border: "1px solid #EEF2F7", borderRadius: 16, overflow: "hidden" }}>
             <div style={{ padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", borderBottom: "1px solid #EEF2F7" }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "#1A2535" }}>
-                Bütün iştirakçılar
+                {t("psyTestMgmt.allParticipants")}
               </div>
               <div style={{ minWidth: 200 }}>
                 <SearchInput
-                  aria-label="İştirakçı axtar"
-                  placeholder="Ad ilə axtar…"
+                  aria-label={t("psyTestMgmt.searchParticipantsAria")}
+                  placeholder={t("psyTestMgmt.searchByNamePlaceholder")}
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(0); }}
                 />
@@ -338,12 +343,12 @@ export default function PsyTestStatsPage() {
               onRetry={() => setTableNonce((n) => n + 1)}
               minWidth={720}
               empty={{
-                title: debounced ? "Axtarışa uyğun nəticə tapılmadı" : "Hələ nəticə yoxdur",
+                title: debounced ? t("psyTestMgmt.emptySearchTitle") : t("psyTestMgmt.emptyNoResultsTitle"),
                 body: debounced
-                  ? "Başqa ad yazın və ya axtarışı təmizləyin."
-                  : "Testi paylaşdıqdan və ya pasiyentə təyin etdikdən sonra iştirakçı nəticələri burada siyahılanacaq.",
+                  ? t("psyTestMgmt.emptySearchBody")
+                  : t("psyTestMgmt.emptyNoResultsBody"),
               }}
-              actionsHeader="Əməliyyat"
+              actionsHeader={t("psyTestMgmt.actionsHeader")}
               actions={(r) => (
                 <>
                   <Button
@@ -353,9 +358,9 @@ export default function PsyTestStatsPage() {
                     disabled={detailBusy === r.resultId}
                     onClick={() => openDetail(r.resultId)}
                   >
-                    {detailBusy === r.resultId ? "…" : "Bax"}
+                    {detailBusy === r.resultId ? "…" : t("psyTestMgmt.viewBtn")}
                   </Button>
-                  <IconButton aria-label="Nəticəni sil" onClick={() => onDelete(r.resultId)}>
+                  <IconButton aria-label={t("psyTestMgmt.deleteResultAria")} onClick={() => onDelete(r.resultId)}>
                     <IconTrash />
                   </IconButton>
                 </>
@@ -387,7 +392,7 @@ export default function PsyTestStatsPage() {
   );
 }
 
-function ScalePie({ groups }: { groups: { label: string; color: string; count: number }[] }) {
+function ScalePie({ groups, peopleUnit }: { groups: { label: string; color: string; count: number }[]; peopleUnit: string }) {
   const total = groups.reduce((s, g) => s + g.count, 0);
   let acc = 0;
   const stops = groups.map((g) => {
@@ -401,7 +406,7 @@ function ScalePie({ groups }: { groups: { label: string; color: string; count: n
       <div style={{ position: "relative", width: 150, height: 150, borderRadius: 999, flexShrink: 0, background: total ? `conic-gradient(${stops})` : "#F1F5F9" }}>
         <div style={{ position: "absolute", inset: 34, background: "#fff", borderRadius: 999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
           <span style={{ fontSize: 24, fontWeight: 800, color: "#1A2535", lineHeight: 1 }}>{total}</span>
-          <span style={{ fontSize: 11, color: "#8AAABF" }}>nəfər</span>
+          <span style={{ fontSize: 11, color: "#8AAABF" }}>{peopleUnit}</span>
         </div>
       </div>
       <div style={{ flex: 1, minWidth: 160, display: "flex", flexDirection: "column", gap: 9 }}>
@@ -418,28 +423,29 @@ function ScalePie({ groups }: { groups: { label: string; color: string; count: n
 }
 
 function SharePopup({ link, busy, copied, onCopy, onAssign, onClose }: { link: { url: string; token: string } | null; busy: boolean; copied: boolean; onCopy: () => void; onAssign: () => void; onClose: () => void }) {
+  const { t } = useT();
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,28,46,0.5)", zIndex: 70, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "min(460px, 100%)", padding: 24, boxShadow: "0 18px 50px rgba(10,26,51,0.28)", textAlign: "center" }}>
         <div style={{ width: 52, height: 52, borderRadius: 999, background: "#D1FAE5", color: "#065F46", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
         </div>
-        <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: "0 0 6px" }}>Publik link</h3>
-        <p style={{ fontSize: 13, color: "#52718F", lineHeight: 1.6, margin: "0 0 16px" }}>Bu link testin özünə aiddir — bir neçə pasiyent məlumatlarını yazaraq işləyə bilər.</p>
+        <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: "0 0 6px" }}>{t("psyTestMgmt.shareModalTitle")}</h3>
+        <p style={{ fontSize: 13, color: "#52718F", lineHeight: 1.6, margin: "0 0 16px" }}>{t("psyTestMgmt.shareModalDesc")}</p>
         <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 16 }}>
-          <input readOnly value={busy ? "Yüklənir…" : link?.url ?? ""} onFocus={(e) => e.currentTarget.select()}
+          <input readOnly value={busy ? t("psyTestMgmt.loading") : link?.url ?? ""} onFocus={(e) => e.currentTarget.select()}
             style={{ flex: 1, minWidth: 0, padding: "9px 10px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 12.5, color: "#374151", background: "#F8FAFC" }} />
           <button type="button" onClick={onCopy} disabled={!link}
             style={{ padding: "9px 14px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--brand)", cursor: link ? "pointer" : "default", whiteSpace: "nowrap", opacity: link ? 1 : 0.6 }}>
-            {copied ? "Kopyalandı" : "Kopyala"}
+            {copied ? t("psyTestMgmt.copied") : t("psyTestMgmt.copyBtn")}
           </button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 14px", color: "#9AAFC4", fontSize: 12 }}>
-          <span style={{ flex: 1, height: 1, background: "#EEF2F7" }} /> və ya <span style={{ flex: 1, height: 1, background: "#EEF2F7" }} />
+          <span style={{ flex: 1, height: 1, background: "#EEF2F7" }} /> {t("psyTestMgmt.or")} <span style={{ flex: 1, height: 1, background: "#EEF2F7" }} />
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" onClick={onAssign} style={{ flex: 1, padding: "9px 12px", border: "1px solid var(--brand-200)", borderRadius: 9, fontSize: 13, fontWeight: 600, background: "var(--brand-50)", color: "var(--brand)", cursor: "pointer" }}>Pasiyentə təyin et</button>
-          <button type="button" onClick={onClose} style={{ padding: "9px 16px", border: "1px solid #E5E7EB", borderRadius: 9, fontSize: 13, fontWeight: 600, background: "#fff", color: "#374151", cursor: "pointer" }}>Bağla</button>
+          <button type="button" onClick={onAssign} style={{ flex: 1, padding: "9px 12px", border: "1px solid var(--brand-200)", borderRadius: 9, fontSize: 13, fontWeight: 600, background: "var(--brand-50)", color: "var(--brand)", cursor: "pointer" }}>{t("psyTestMgmt.assignToPatientBtn")}</button>
+          <button type="button" onClick={onClose} style={{ padding: "9px 16px", border: "1px solid #E5E7EB", borderRadius: 9, fontSize: 13, fontWeight: 600, background: "#fff", color: "#374151", cursor: "pointer" }}>{t("psyTestMgmt.closeBtn")}</button>
         </div>
       </div>
     </div>
@@ -447,6 +453,7 @@ function SharePopup({ link, busy, copied, onCopy, onAssign, onClose }: { link: {
 }
 
 function ResultDetailModal({ result, onClose }: { result: TestResult; onClose: () => void }) {
+  const { t } = useT();
   const answers = [...result.answers].sort((a, b) => a.displayOrder - b.displayOrder);
   const pct = Math.round(result.percentage);
   return (
@@ -454,14 +461,14 @@ function ResultDetailModal({ result, onClose }: { result: TestResult; onClose: (
       <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "min(640px, 100%)", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 18px 50px rgba(10,26,51,0.28)" }}>
         <div style={{ padding: "16px 22px", borderBottom: "1px solid #EFF2F7", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
           <div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: 0 }}>{result.respondentName?.trim() || "Anonim"}</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A2535", margin: 0 }}>{result.respondentName?.trim() || t("psyTestMgmt.anonymous")}</h2>
             <p style={{ fontSize: 12.5, color: "#52718F", margin: "4px 0 0", display: "flex", flexWrap: "wrap", gap: 10 }}>
-              <span>Bal: <b style={{ color: "#1A2535" }}>{result.totalScore} / {result.maxScore}</b></span>
+              <span>{t("psyTestMgmt.scoreLabel")} <b style={{ color: "#1A2535" }}>{result.totalScore} / {result.maxScore}</b></span>
               <span>{pct}%</span>
               {result.scaleLabel ? <b style={{ color: "#065F46" }}>{result.scaleLabel}</b> : null}
             </p>
           </div>
-          <button onClick={onClose} aria-label="Bağla" style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid #EEF2F7", background: "#fff", color: "#52718F", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
+          <button onClick={onClose} aria-label={t("psyTestMgmt.closeBtn")} style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid #EEF2F7", background: "#fff", color: "#52718F", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
         </div>
         <div style={{ padding: 22, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
           {answers.map((a, i) => (
@@ -469,7 +476,7 @@ function ResultDetailModal({ result, onClose }: { result: TestResult; onClose: (
               <div style={{ fontSize: 13.5, fontWeight: 600, color: "#1A2535", marginBottom: 6 }}>{i + 1}. {a.questionText}</div>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
                 <span style={{ fontSize: 13, color: "#374151" }}>{a.selectedLabel}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-700)", background: "var(--brand-50)", padding: "2px 10px", borderRadius: 999, whiteSpace: "nowrap" }}>{a.pointsAwarded} bal</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--brand-700)", background: "var(--brand-50)", padding: "2px 10px", borderRadius: 999, whiteSpace: "nowrap" }}>{t("psyTestMgmt.pointsAwarded", { points: a.pointsAwarded })}</span>
               </div>
             </div>
           ))}

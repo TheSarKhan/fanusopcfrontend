@@ -12,6 +12,8 @@ import { psychologistApi, type AppointmentDetail } from "@/lib/api";
 import { googleCalendarUrl } from "@/lib/calendar";
 import { appUrl } from "@/lib/appUrl";
 import { toast } from "@/components/Toast";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 export const WEEKDAYS_AZ = ["Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə", "Bazar"];
 export const MONTHS_AZ = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun", "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
@@ -63,16 +65,30 @@ export function avatarColor(seed: string | number | null | undefined) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-export const STATUS: Record<string, { label: string; color: string; bg: string; accent: string }> = {
-  PENDING:               { label: "Yeni",            color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
-  ASSIGNED:              { label: "Sizə təyin",      color: "var(--brand-700)", bg: "var(--brand-50)", accent: "var(--brand)" },
-  CONFIRMED:             { label: "Təsdiqli",        color: "#065F46",          bg: "#D1FAE5",         accent: "#10B981" },
-  AWAITING_CONFIRMATION: { label: "Təsdiq gözlənir", color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
-  DISPUTED:              { label: "Mübahisəli",      color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
-  COMPLETED:             { label: "Tamamlandı",      color: "#374151",          bg: "#F3F4F6",         accent: "#9CA3AF" },
-  CANCELLED:             { label: "Ləğv",            color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
-  CANCEL_REQUESTED:      { label: "Ləğv gözlənir",   color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
-  REJECTED:              { label: "Rədd",            color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
+export const STATUS: Record<string, { color: string; bg: string; accent: string }> = {
+  PENDING:               { color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
+  ASSIGNED:              { color: "var(--brand-700)", bg: "var(--brand-50)", accent: "var(--brand)" },
+  CONFIRMED:             { color: "#065F46",          bg: "#D1FAE5",         accent: "#10B981" },
+  AWAITING_CONFIRMATION: { color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
+  DISPUTED:              { color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
+  COMPLETED:             { color: "#374151",          bg: "#F3F4F6",         accent: "#9CA3AF" },
+  CANCELLED:             { color: "#991B1B",          bg: "#FEE2E2",         accent: "#EF4444" },
+  CANCEL_REQUESTED:      { color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
+  REJECTED:              { color: "#92400E",          bg: "#FEF3C7",         accent: "#F59E0B" },
+};
+
+/* Status mətni t() açarları — STATUS obyektindən ayrı saxlanılır ki, rəng
+   məlumatı ilə tərcümə açarı qarışmasın. */
+const STATUS_LABEL_KEY: Record<string, MessageKey> = {
+  PENDING: "psyApptExtra.statusPending",
+  ASSIGNED: "psyApptExtra.statusAssigned",
+  CONFIRMED: "psyApptExtra.statusConfirmed",
+  AWAITING_CONFIRMATION: "psyApptExtra.statusAwaitingConfirmation",
+  DISPUTED: "psyApptExtra.statusDisputed",
+  COMPLETED: "psyApptExtra.statusCompleted",
+  CANCELLED: "psyApptExtra.statusCancelled",
+  CANCEL_REQUESTED: "psyApptExtra.statusCancelRequested",
+  REJECTED: "psyApptExtra.statusRejected",
 };
 
 // Option B-də keçmiş seans avtomatik "Tamamlandı" olur. Seans əslində baş tutmadısa,
@@ -208,10 +224,11 @@ const STATUS_TONE: Record<string, string> = {
   CANCELLED: "pa-status--rose",
 };
 export function StatusText({ status, size }: { status: string; size?: number }) {
-  const s = STATUS[status] ?? STATUS.ASSIGNED;
+  const { t } = useT();
+  const labelKey = STATUS_LABEL_KEY[status] ?? STATUS_LABEL_KEY.ASSIGNED;
   return (
     <span className={`pa-status ${STATUS_TONE[status] ?? ""}`.trim()} style={size ? { fontSize: size } : undefined}>
-      {s.label}
+      {t(labelKey)}
     </span>
   );
 }
@@ -224,17 +241,18 @@ export function MetaItem({ icon, children }: { icon: React.ReactNode; children: 
 }
 
 export function SessionMeta({ a, extra }: { a: AppointmentDetail; extra?: React.ReactNode }) {
+  const { t } = useT();
   const items: React.ReactNode[] = [];
   if (extra) items.push(extra);
   if (a.sessionKind === "INTRO") {
-    items.push(<MetaItem icon={<ISpark />}>Pulsuz tanışlıq görüşü</MetaItem>);
+    items.push(<MetaItem icon={<ISpark />}>{t("psyApptExtra.introSession")}</MetaItem>);
   }
   if (a.patientPackageId != null) {
-    items.push(<MetaItem icon={<IBox />}><b>{a.packageName ?? "Seans paketi"}</b></MetaItem>);
+    items.push(<MetaItem icon={<IBox />}><b>{a.packageName ?? t("psyApptExtra.packageFallback")}</b></MetaItem>);
     // Paket gedişatı = KEÇİRİLMİŞ seans / alınmış seans (packageRemaining yalnız
     // planlaşdırılmamış rezerv balansıdır, "qalıb" mənasını vermir).
     if (a.packageCompleted != null && a.packageTotal != null) {
-      items.push(<MetaItem icon={<ICheck s={13} c="#9DB0CC" />}>{a.packageCompleted}/{a.packageTotal} seans keçirilib</MetaItem>);
+      items.push(<MetaItem icon={<ICheck s={13} c="#9DB0CC" />}>{t("psyApptExtra.packageProgress", { completed: a.packageCompleted, total: a.packageTotal })}</MetaItem>);
     }
   }
   if (!items.length) return null;
@@ -254,19 +272,20 @@ export function Empty({ msg }: { msg: string }) {
 /* Qoşulma düyməsi — link operator tərəfindən təyin edilibsə aktiv (brand),
    edilməyibsə boz/deaktiv. Pasient tərəfindəki SessionJoinButton ilə eyni dizayn. */
 export function PsyJoinButton({ a }: { a: AppointmentDetail }) {
+  const { t } = useT();
   const link = a.meetingLink;
   if (link) {
     return (
       <a href={link} target="_blank" rel="noopener noreferrer" className="pa-btn pa-btn--primary">
         <IVideo />
-        Seansa qoşul
+        {t("psyApptExtra.joinSession")}
       </a>
     );
   }
   return (
-    <span title="Görüş linkini operator təyin edəcək" className="pa-btn pa-btn--muted">
+    <span title={t("psyApptExtra.joinLinkPending")} className="pa-btn pa-btn--muted">
       <IVideo />
-      Seansa qoşul
+      {t("psyApptExtra.joinSession")}
     </span>
   );
 }
@@ -298,6 +317,7 @@ export type MenuItem = { label: string; onClick?: () => void; href?: string; dan
  *  olanlar (ləğv/rədd/baş tutmadı) ayırıcı xəttdən sonra ən altda — beləliklə
  *  siyahı hansı statusda olursa-olsun eyni əzələ yaddaşı ilə işləyir. */
 export function RowMenu({ items, size = 32 }: { items: MenuItem[]; size?: number }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -315,7 +335,7 @@ export function RowMenu({ items, size = 32 }: { items: MenuItem[]; size?: number
 
   return (
     <div style={{ position: "relative", flex: "none" }}>
-      <button type="button" className="pa-menu-btn" aria-label="Digər əməliyyatlar"
+      <button type="button" className="pa-menu-btn" aria-label={t("psyApptExtra.moreActions")}
         aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(o => !o)}
         style={{ width: size, height: size }} data-open={open ? "1" : undefined}>
         <IDots s={17} />
@@ -352,6 +372,7 @@ export function DisputeModal({
   onClose: () => void;
   onDone: (updated: AppointmentDetail) => void;
 }) {
+  const { t } = useT();
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -372,27 +393,27 @@ export function DisputeModal({
       <div onClick={e => e.stopPropagation()}
         style={{ background: "#fff", borderRadius: 16, width: "min(480px, 100%)", boxShadow: "0 12px 40px rgba(0,0,0,0.18)" }}>
         <div style={{ padding: "18px 22px", borderBottom: "1px solid var(--brand-100)" }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>Seans baş tutmadı</h2>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>{t("psyApptExtra.disputeTitle")}</h2>
           <p style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 4 }}>
-            Operator komandamız müraciətinizə baxıb həll edəcək.
+            {t("psyApptExtra.disputeSub")}
           </p>
         </div>
         <div style={{ padding: 22 }}>
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
-            Səbəb (məcburi deyil)
+            {t("psyApptExtra.disputeReasonLabel")}
           </label>
           <textarea
             rows={4} value={reason} onChange={e => setReason(e.target.value)}
-            placeholder="Məsələn: pasient qoşulmadı, texniki problem…"
+            placeholder={t("psyApptExtra.disputeReasonPlaceholder")}
             style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12 }} />
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>
-              Bağla
+              {t("psyApptExtra.close")}
             </button>
             <button onClick={submit} disabled={saving}
               style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "#DC2626", color: "#fff", cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1 }}>
-              {saving ? "Göndərilir…" : "Operator'a bildir"}
+              {saving ? t("psyApptExtra.disputeSubmitting") : t("psyApptExtra.disputeSubmit")}
             </button>
           </div>
         </div>
@@ -410,6 +431,7 @@ export function OutcomeModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useT();
   const [loading, setLoading] = useState(true);
   const [existingId, setExistingId] = useState<number | null>(null);
   const [body, setBody] = useState("");
@@ -433,8 +455,8 @@ export function OutcomeModal({
   }, [appointment.id]);
 
   const submit = async () => {
-    if (!body.trim()) { toast("Qeyd mətni boş ola bilməz", "error"); return; }
-    if (!appointment.patientId) { toast("Pasient ID tapılmadı", "error"); return; }
+    if (!body.trim()) { toast(t("psyApptExtra.outcomeBodyRequired"), "error"); return; }
+    if (!appointment.patientId) { toast(t("psyApptExtra.outcomePatientIdMissing"), "error"); return; }
     setSaving(true);
     try {
       if (existingId != null) {
@@ -469,28 +491,28 @@ export function OutcomeModal({
         style={{ background: "#fff", borderRadius: 16, padding: 0, maxWidth: 540, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", overflow: "hidden" }}>
         <div style={{ padding: "20px 24px", borderBottom: "1px solid #F1F5F9" }}>
           <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--oxford)", margin: 0 }}>
-            {existingId != null ? "Seans qeydini redaktə et" : "Seans qeydi"}
+            {existingId != null ? t("psyApptExtra.outcomeEditTitle") : t("psyApptExtra.outcomeNewTitle")}
           </h3>
           <p style={{ fontSize: 12, color: "var(--oxford-60)", marginTop: 4 }}>
-            {appointment.patientName ?? "Pasient"} ilə seans haqqında qısa qeyd — pasient bunu görmür, AES-256 ilə şifrələnir.
+            {t("psyApptExtra.outcomeSub", { name: appointment.patientName ?? t("psyApptExtra.outcomePatientFallback") })}
           </p>
         </div>
         <div style={{ padding: 22 }}>
           {loading ? (
-            <div style={{ textAlign: "center", padding: "24px 0", fontSize: 13, color: "var(--oxford-60)" }}>Yüklənir…</div>
+            <div style={{ textAlign: "center", padding: "24px 0", fontSize: 13, color: "var(--oxford-60)" }}>{t("psyApptExtra.loading")}</div>
           ) : (
             <>
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
-                Seansın nəticəsi
+                {t("psyApptExtra.outcomeResultLabel")}
               </label>
               <textarea
                 rows={6} value={body} onChange={e => setBody(e.target.value)}
-                placeholder="İşlənən mövzu, pasiyent reaksiyası, gələcək plan…"
+                placeholder={t("psyApptExtra.outcomeResultPlaceholder")}
                 autoFocus
                 style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #E5E7EB", fontSize: 13, fontFamily: "inherit", marginBottom: 12, boxSizing: "border-box", resize: "vertical" }} />
 
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--oxford)", marginBottom: 6 }}>
-                Əhval-ruhiyyə qiymətləndirməsi (1–10, məcburi deyil)
+                {t("psyApptExtra.outcomeMoodLabel")}
               </label>
               <input type="number" min={1} max={10} value={mood}
                 onChange={e => { const v = e.target.value; setMood(v === "" ? "" : Math.max(1, Math.min(10, Number(v)))); }}
@@ -500,11 +522,11 @@ export function OutcomeModal({
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={onClose} style={{ padding: "8px 14px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}>
-              Ləğv
+              {t("psyApptExtra.cancel")}
             </button>
             <button onClick={submit} disabled={saving || loading}
               style={{ padding: "8px 18px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, background: "var(--brand)", color: "#fff", cursor: (saving || loading) ? "wait" : "pointer", opacity: (saving || loading) ? 0.7 : 1 }}>
-              {saving ? "Saxlanılır…" : existingId != null ? "Yenilə" : "Qeydi saxla"}
+              {saving ? t("psyApptExtra.outcomeSaving") : existingId != null ? t("psyApptExtra.outcomeUpdate") : t("psyApptExtra.outcomeSave")}
             </button>
           </div>
         </div>

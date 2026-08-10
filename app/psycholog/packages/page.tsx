@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { STATUS_PT } from "./shared";
+import { statusPt } from "./shared";
 import { useEffect, useState } from "react";
 import {
   psychologistApi,
@@ -19,6 +19,7 @@ import { formatAzn } from "@/lib/money";
 import PageHeader from "@/components/PageHeader";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "@/components/Toast";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 /* ═══ Page ════════════════════════════════════════════════════════════════ */
 
@@ -28,6 +29,8 @@ function pct(value: number | null | undefined) {
 }
 
 export default function PsychologPackagesPage() {
+  const { t } = useT();
+  const STATUS_PT = statusPt(t);
   const [catalog, setCatalog] = useState<PackageDto[]>([]);
   const [statsById, setStatsById] = useState<Record<number, PackageStats>>({});
   const [statsReady, setStatsReady] = useState(true);
@@ -84,7 +87,7 @@ export default function PsychologPackagesPage() {
       const res = await psychologistApi.updateMyPricing(price);
       setIndivPrice(res.individualPrice ?? null);
       setPriceEditing(false);
-      toast("Tək seans qiyməti yeniləndi", "success");
+      toast(t("psyPkgMgmt.priceUpdatedToast"), "success");
     } catch (e) { toast((e as Error).message, "error"); }
     finally { setPriceBusy(false); }
   };
@@ -107,7 +110,7 @@ export default function PsychologPackagesPage() {
     finally { setBusy(false); }
   };
   const remove = async (p: PackageDto) => {
-    if (!(await confirmDialog({ title: "Paketi sil", message: `«${p.name}» paketini silmək istəyirsiniz?`, confirmLabel: "Sil", danger: true }))) return;
+    if (!(await confirmDialog({ title: t("psyPkgMgmt.deletePackageTitle"), message: t("psyPkgMgmt.deletePackageMessage", { name: p.name }), confirmLabel: t("psyPkgMgmt.deleteCta"), danger: true }))) return;
     try { await psychologistApi.deleteMyPackage(p.id); load(); }
     catch (e) { toast((e as Error).message, "error"); }
   };
@@ -116,24 +119,24 @@ export default function PsychologPackagesPage() {
 
   // Xüsusi satış cədvəli — paket kartları ilə eyni məlumatı, sətir formasında.
   const customColumns: Column<CustomPackageSale>[] = [
-    { key: "patient", header: "Pasiyent", cell: r => r.patientName },
-    { key: "name", header: "Paket", cell: r => r.packageName },
+    { key: "patient", header: t("psyPkgMgmt.patientColHeader"), cell: r => r.patientName },
+    { key: "name", header: t("psyPkgMgmt.packageColHeader"), cell: r => r.packageName },
     {
       key: "progress",
-      header: "Gedişat",
-      cell: r => `${r.completed}/${r.total} keçirilib`,
+      header: t("psyPkgMgmt.progressColHeader"),
+      cell: r => t("psyPkgMgmt.progressCell", { completed: r.completed, total: r.total }),
     },
     {
       // Psixoloqa satış qiyməti deyil, platforma payı çıxıldıqdan sonra ona
       // qalan məbləğ göstərilir — panelin qalanı ilə eyni məntiq.
       key: "price",
-      header: "Qazancınız",
+      header: t("psyPkgMgmt.earningsColHeader"),
       numeric: true,
       cell: r => (r.netAmount != null ? formatAzn(r.netAmount) : "—"),
     },
     {
       key: "status",
-      header: "Vəziyyət",
+      header: t("psyPkgMgmt.statusLabel"),
       // Vahid mənbə: STATUS_PT (packages/shared) — əvvəl əl ilə yazılmış zəncir
       // EXPIRED-i əhatə etmirdi və "EXPIRED" ingiliscə görünürdü.
       cell: r => (
@@ -144,7 +147,7 @@ export default function PsychologPackagesPage() {
     },
     {
       key: "purchasedAt",
-      header: "Satılıb",
+      header: t("psyPkgMgmt.soldLabel"),
       cell: r => azFormatDate(r.purchasedAt),
       hideOnMobile: true,
     },
@@ -154,18 +157,18 @@ export default function PsychologPackagesPage() {
   const earningColumns: Column<PsychologistEarningRow>[] = [
     {
       key: "patient",
-      header: "Pasiyent",
+      header: t("psyPkgMgmt.patientColHeader"),
       cell: r => r.patientName ?? "—",
     },
     {
       key: "kind",
-      header: "Nəyə görə",
-      cell: r => (r.kind === "PACKAGE" ? (r.packageName ?? "Paket") : "Tək seans"),
+      header: t("psyPkgMgmt.reasonColHeader"),
+      cell: r => (r.kind === "PACKAGE" ? (r.packageName ?? t("psyPkgMgmt.packageLabel")) : t("psyPkgMgmt.singleSessionLabel")),
       hideOnMobile: true,
     },
     {
       key: "date",
-      header: "Tarix",
+      header: t("psyPkgMgmt.dateColHeader"),
       cell: r => azFormatDate(r.paidAt ?? r.createdAt),
       sortable: true,
       sortValue: r => r.paidAt ?? r.createdAt,
@@ -173,7 +176,7 @@ export default function PsychologPackagesPage() {
     },
     {
       key: "amount",
-      header: "Pasiyent ödəyib",
+      header: t("psyPkgMgmt.patientPaidColHeader"),
       numeric: true,
       sortable: true,
       sortValue: r => r.amount,
@@ -181,13 +184,13 @@ export default function PsychologPackagesPage() {
     },
     {
       key: "commission",
-      header: "Platforma payı",
+      header: t("psyPkgMgmt.platformShare"),
       numeric: true,
       cell: r => formatAzn(r.commissionAmount),
     },
     {
       key: "net",
-      header: "Qazancınız",
+      header: t("psyPkgMgmt.earningsColHeader"),
       numeric: true,
       sortable: true,
       sortValue: r => r.net,
@@ -195,7 +198,7 @@ export default function PsychologPackagesPage() {
     },
     {
       key: "status",
-      header: "Vəziyyət",
+      header: t("psyPkgMgmt.statusLabel"),
       cell: r => <PaymentStatus value={r.status} />,
       hideOnMobile: true,
     },
@@ -213,20 +216,20 @@ export default function PsychologPackagesPage() {
 
       {/* Header */}
       <PageHeader
-        title="Qiymətlər & Paketlər"
-        subtitle="Paket təklifləriniz, satış və istifadə statistikası"
+        title={t("psyPkgMgmt.pageTitle")}
+        subtitle={t("psyPkgMgmt.pageSubtitle")}
         actions={(
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {earnings && (
               <button onClick={() => setShareOpen(true)} className="pk-icobtn"
                 style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fff", color: "var(--oxford)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "11px 17px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
-                <IDollar s={16} />Platforma payı
+                <IDollar s={16} />{t("psyPkgMgmt.platformShare")}
               </button>
             )}
             {!isFanus && (
               <button onClick={() => setNewOpen(true)}
                 style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 17px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", boxShadow: "0 4px 14px rgba(16,81,183,.25)" }}>
-                <IPlus />Yeni paket
+                <IPlus />{t("psyPkgMgmt.newPackageCta")}
               </button>
             )}
           </div>
@@ -237,8 +240,7 @@ export default function PsychologPackagesPage() {
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#F2F6FD", border: "1px solid #D6E2F7", borderRadius: 12, padding: "13px 16px", marginBottom: 20 }}>
           <span style={{ color: "#1051B7", flex: "none", marginTop: 1 }}><IDollar s={16} c="#1051B7" /></span>
           <span style={{ fontSize: 13, fontWeight: 500, color: "var(--oxford)", lineHeight: 1.5 }}>
-            FANUS psixoloqu olduğunuz üçün qiymət və paketlər mərkəzi idarə olunur — özünüz redaktə edə bilmirsiniz.
-            Dəyişiklik üçün operator və ya admin ilə əlaqə saxlayın. Aşağıda yalnız statistikanı görürsünüz.
+            {t("psyPkgMgmt.fanusNotice")}
           </span>
         </div>
       )}
@@ -251,16 +253,16 @@ export default function PsychologPackagesPage() {
               <IDollar s={19} c="#1051B7" />
             </span>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 3 }}>Tək seans qiyməti</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 3 }}>{t("psyPkgMgmt.singlePriceLabel")}</div>
               <div style={{ fontSize: 21, fontWeight: 800, color: "var(--oxford)", lineHeight: 1 }}>
                 {indivPrice != null
                   ? formatAzn(indivPrice)
-                  : <span style={{ fontSize: 14, fontWeight: 600, color: "#9DB0CC" }}>Təyin edilməyib</span>}
+                  : <span style={{ fontSize: 14, fontWeight: 600, color: "#9DB0CC" }}>{t("psyPkgMgmt.notSetLabel")}</span>}
               </div>
             </div>
           </div>
           {!priceEditing && !isFanus && (
-            <button onClick={() => setPriceEditing(true)} title="Redaktə" className="pk-icobtn"
+            <button onClick={() => setPriceEditing(true)} title={t("psyPkgMgmt.edit")} className="pk-icobtn"
               style={{ width: 34, height: 34, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, cursor: "pointer", flex: "none" }}>
               <IEdit />
             </button>
@@ -281,15 +283,15 @@ export default function PsychologPackagesPage() {
 
       {/* Summary stat strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(180px, 100%), 1fr))", gap: 13, marginBottom: 20 }}>
-        <StatCard bg="#E4ECFA" color="#1051B7" icon={<ICube s={19} />} value={String(catalog.length)} label="Cəmi paket" />
-        <StatCard bg="#E4ECFA" color="#1051B7" icon={<ICart s={19} />} value={statsReady ? String(sold) : "—"} label="Satılıb" />
-        <StatCard bg="#D1FAE5" color="#065F46" icon={<ICheckCircle s={19} c="#065F46" />} value={statsReady ? String(active) : "—"} label="Davam edən" />
-        <StatCard bg="#E4ECFA" color="#082F6D" icon={<IDollar s={19} c="#082F6D" />} value={statsReady ? formatAzn(revenue) : "—"} label="Qazancınız" valueColor="#082F6D" />
+        <StatCard bg="#E4ECFA" color="#1051B7" icon={<ICube s={19} />} value={String(catalog.length)} label={t("psyPkgMgmt.totalPackagesLabel")} />
+        <StatCard bg="#E4ECFA" color="#1051B7" icon={<ICart s={19} />} value={statsReady ? String(sold) : "—"} label={t("psyPkgMgmt.soldLabel")} />
+        <StatCard bg="#D1FAE5" color="#065F46" icon={<ICheckCircle s={19} c="#065F46" />} value={statsReady ? String(active) : "—"} label={t("psyPkgMgmt.ongoingLabel")} />
+        <StatCard bg="#E4ECFA" color="#082F6D" icon={<IDollar s={19} c="#082F6D" />} value={statsReady ? formatAzn(revenue) : "—"} label={t("psyPkgMgmt.earningsColHeader")} valueColor="#082F6D" />
       </div>
 
       {!statsReady && !loading && (
         <div style={{ fontSize: 12.5, fontWeight: 600, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 10, padding: "10px 13px", marginBottom: 16 }}>
-          Statistika hələ hazır deyil — backend yenilənməsindən sonra satış/istifadə rəqəmləri görünəcək. Paketləri indidən idarə edə bilərsiniz.
+          {t("psyPkgMgmt.statsNotReadyNotice")}
         </div>
       )}
 
@@ -304,8 +306,8 @@ export default function PsychologPackagesPage() {
         <div style={{ marginBottom: 18 }}>
           <Tabs
             items={[
-              { key: "catalog", label: "Paketlər", count: catalog.length },
-              { key: "custom", label: "Xüsusi satılan paketlər", count: customSales.length },
+              { key: "catalog", label: t("psyPkgMgmt.catalogTabLabel"), count: catalog.length },
+              { key: "custom", label: t("psyPkgMgmt.customTabLabel"), count: customSales.length },
             ]}
             value={tab}
             onChange={setTab}
@@ -318,16 +320,16 @@ export default function PsychologPackagesPage() {
           rows={customSales}
           columns={customColumns}
           rowKey={r => r.id}
-          empty={{ title: "Xüsusi satış yoxdur" }}
+          empty={{ title: t("psyPkgMgmt.noCustomSalesTitle") }}
         />
       ) : loading ? (
-        <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #EDF1F8", padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>Yüklənir…</div>
+        <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #EDF1F8", padding: 40, textAlign: "center", color: "var(--oxford-60)" }}>{t("psyPkgMgmt.loadingLabel")}</div>
       ) : catalog.length === 0 ? (
         <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #EDF1F8", boxShadow: "0 2px 12px rgba(0,0,0,.06)", padding: "44px 24px", textAlign: "center" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>Hələ paket təklifiniz yoxdur</div>
-          <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: "0 0 16px" }}>{isFanus ? "Paketləriniz operator/admin tərəfindən əlavə ediləndə burada görünəcək." : "İlk paketinizi yaradın — pasiyentlərə endirimli seans dəstləri təklif edin."}</p>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", marginBottom: 6 }}>{t("psyPkgMgmt.noPackagesTitle")}</div>
+          <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: "0 0 16px" }}>{isFanus ? t("psyPkgMgmt.noPackagesFanusBody") : t("psyPkgMgmt.noPackagesBody")}</p>
           {!isFanus && (
-            <button onClick={() => setNewOpen(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 18px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}><IPlus />İlk paketi yarat</button>
+            <button onClick={() => setNewOpen(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 18px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}><IPlus />{t("psyPkgMgmt.createFirstPackageCta")}</button>
           )}
         </div>
       ) : (
@@ -350,6 +352,7 @@ function PlatformShareModal({ data, columns, onClose }: {
   columns: Column<PsychologistEarningRow>[];
   onClose: () => void;
 }) {
+  const { t } = useT();
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(8,47,109,.45)", backdropFilter: "blur(4px)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "pkFade .18s ease" }}>
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "min(880px, 100%)", maxHeight: "88vh", overflow: "auto", boxShadow: "0 24px 70px rgba(8,47,109,.28)" }}>
@@ -358,12 +361,12 @@ function PlatformShareModal({ data, columns, onClose }: {
             <IDollar s={19} c="#1051B7" />
           </span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>Platforma payı</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{t("psyPkgMgmt.platformShare")}</div>
             <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--oxford-60)", marginTop: 2 }}>
-              Pasiyentin ödədiyi qiymət dəyişmir — pay yalnız sizə keçən məbləğdən tutulur.
+              {t("psyPkgMgmt.platformShareSubtitle")}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Bağla"
+          <button type="button" onClick={onClose} aria-label={t("psyPkgMgmt.close")}
             style={{ width: 34, height: 34, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F2F6FD", border: "none", borderRadius: 9, color: "var(--oxford-60)", cursor: "pointer" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
@@ -371,25 +374,25 @@ function PlatformShareModal({ data, columns, onClose }: {
 
         <div style={{ padding: "18px 22px 22px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(160px, 100%), 1fr))", gap: 13, marginBottom: 16 }}>
-            <MiniStat label="Pasiyentlərin ödədiyi" value={formatAzn(data.grossTotal)} />
-            <MiniStat label="Platforma payı" value={formatAzn(data.commissionTotal)} />
-            <MiniStat label="Qazancınız" value={formatAzn(data.netTotal)} color="#082F6D" />
-            <MiniStat label="Ödənilməmiş qalıq" value={formatAzn(data.balance)} />
+            <MiniStat label={t("psyPkgMgmt.grossTotalLabel")} value={formatAzn(data.grossTotal)} />
+            <MiniStat label={t("psyPkgMgmt.platformShare")} value={formatAzn(data.commissionTotal)} />
+            <MiniStat label={t("psyPkgMgmt.earningsColHeader")} value={formatAzn(data.netTotal)} color="#082F6D" />
+            <MiniStat label={t("psyPkgMgmt.balanceLabel")} value={formatAzn(data.balance)} />
           </div>
 
           <div style={{ display: "grid", gap: 6, background: "#F6FAFF", border: "1px solid #E9F1FC", borderRadius: 12, padding: "13px 16px", fontSize: 12.5, fontWeight: 500, color: "var(--oxford-60)", lineHeight: 1.6, marginBottom: 18 }}>
-            <div>Pasiyent sizi özü seçəndə tutulan pay: <b style={{ color: "var(--oxford)" }}>{pct(data.directCommissionPercent)}</b></div>
-            <div>Fanus sizi təyin edəndə tutulan pay: <b style={{ color: "var(--oxford)" }}>{pct(data.currentCommissionPercent)}</b></div>
-            <div>Faiz ödəniş təsdiqlənən anda möhürlənir — qayda sonradan dəyişsə, keçmiş ödənişlər toxunulmaz qalır.</div>
-            <div>Cəmlərə yalnız təsdiqlənmiş ödənişlər daxildir. Artıq ödənilib: <b style={{ color: "var(--oxford)" }}>{formatAzn(data.paidOut)}</b></div>
+            <div>{t("psyPkgMgmt.directCommissionLabel")} <b style={{ color: "var(--oxford)" }}>{pct(data.directCommissionPercent)}</b></div>
+            <div>{t("psyPkgMgmt.fanusCommissionLabel")} <b style={{ color: "var(--oxford)" }}>{pct(data.currentCommissionPercent)}</b></div>
+            <div>{t("psyPkgMgmt.commissionLockedNotice")}</div>
+            <div>{t("psyPkgMgmt.paidOutLabel")} <b style={{ color: "var(--oxford)" }}>{formatAzn(data.paidOut)}</b></div>
           </div>
 
-          <SectionTitle>Ödəniş sətirləri</SectionTitle>
+          <SectionTitle>{t("psyPkgMgmt.paymentRowsTitle")}</SectionTitle>
           <DataTable
             rows={data.rows}
             columns={columns}
             rowKey={r => r.paymentId}
-            empty={{ title: "Hələ ödəniş yoxdur", body: "Seanslarınız ödənildikcə burada görünəcək." }}
+            empty={{ title: t("psyPkgMgmt.noPaymentsTitle"), body: t("psyPkgMgmt.noPaymentsBody") }}
           />
         </div>
       </div>
@@ -433,6 +436,7 @@ function PackageCard({ pkg, stats, busy, onUpdate, onDelete, onToggleActive, rea
   /** FANUS psixoloq — statistikanı görür, redaktə/sil/aktiv-et əlçatan deyil. */
   readOnly?: boolean;
 }) {
+  const { t } = useT();
   const [editing, setEditing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const deaktiv = !pkg.active;
@@ -453,31 +457,31 @@ function PackageCard({ pkg, stats, busy, onUpdate, onDelete, onToggleActive, rea
             <div style={{ fontSize: 16, fontWeight: 800, color: deaktiv ? "var(--oxford-60)" : "var(--oxford)", lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pkg.name}</div>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 3, fontSize: 11.5, fontWeight: 700, color: deaktiv ? "#9AA7BD" : "#059669" }}>
               {deaktiv ? <IPause s={12} c="#9AA7BD" /> : <ICheckCircle s={12} c="#059669" />}
-              {deaktiv ? "Deaktiv" : "Aktiv"}
+              {deaktiv ? t("psyPkgMgmt.inactiveLabel") : t("psyPkgMgmt.activeStatusLabel")}
             </span>
           </div>
         </div>
         {readOnly ? null : deaktiv ? (
           <div style={{ position: "relative", flex: "none" }}>
-            <button onClick={() => setMenuOpen(o => !o)} aria-label="Əməliyyatlar" className="pk-icobtn"
+            <button onClick={() => setMenuOpen(o => !o)} aria-label={t("psyPkgMgmt.actionsLabel")} className="pk-icobtn"
               style={{ width: 34, height: 34, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, cursor: "pointer" }}><IDots /></button>
             {menuOpen && (
               <>
                 <div onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 19 }} aria-hidden />
                 <div style={{ position: "absolute", right: 0, top: 40, zIndex: 20, width: 180, background: "#fff", border: "1px solid #E1E9F5", borderRadius: 11, boxShadow: "0 12px 40px rgba(8,47,109,.18)", padding: 6, animation: "pkFade .16s ease" }}>
-                  <MenuBtn onClick={() => { setMenuOpen(false); onToggleActive(pkg); }} icon={<ICheckCircle s={15} c="#5C6B85" />}>Aktiv et</MenuBtn>
-                  <MenuBtn onClick={() => { setMenuOpen(false); setEditing(true); }} icon={<IEdit s={15} c="#5C6B85" />}>Redaktə</MenuBtn>
+                  <MenuBtn onClick={() => { setMenuOpen(false); onToggleActive(pkg); }} icon={<ICheckCircle s={15} c="#5C6B85" />}>{t("psyPkgMgmt.activateCta")}</MenuBtn>
+                  <MenuBtn onClick={() => { setMenuOpen(false); setEditing(true); }} icon={<IEdit s={15} c="#5C6B85" />}>{t("psyPkgMgmt.edit")}</MenuBtn>
                   <div style={{ height: 1, background: "#F0F4FA", margin: "4px 6px" }} />
-                  <MenuBtn danger onClick={() => { setMenuOpen(false); onDelete(pkg); }} icon={<ITrash s={15} c="#991B1B" />}>Sil</MenuBtn>
+                  <MenuBtn danger onClick={() => { setMenuOpen(false); onDelete(pkg); }} icon={<ITrash s={15} c="#991B1B" />}>{t("psyPkgMgmt.deleteCta")}</MenuBtn>
                 </div>
               </>
             )}
           </div>
         ) : (
           <div style={{ display: "flex", gap: 7, flex: "none" }}>
-            <button onClick={() => setEditing(true)} title="Redaktə" className="pk-icobtn"
+            <button onClick={() => setEditing(true)} title={t("psyPkgMgmt.edit")} className="pk-icobtn"
               style={{ width: 34, height: 34, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, cursor: "pointer" }}><IEdit /></button>
-            <button onClick={() => onDelete(pkg)} title="Sil" className="pk-del"
+            <button onClick={() => onDelete(pkg)} title={t("psyPkgMgmt.deleteCta")} className="pk-del"
               style={{ width: 34, height: 34, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#fff", color: "#991B1B", border: "1px solid #F3D6D6", borderRadius: 9, cursor: "pointer" }}><ITrash /></button>
           </div>
         )}
@@ -493,25 +497,25 @@ function PackageCard({ pkg, stats, busy, onUpdate, onDelete, onToggleActive, rea
       {/* təklif zolağı — qiymət hero, seans sayı dəstəkləyici */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#F6FAFF", border: "1px solid #E9F1FC", borderRadius: 12, padding: "13px 16px", marginBottom: 16 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#9AA7BD", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 3 }}>Paket qiyməti</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#9AA7BD", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 3 }}>{t("psyPkgMgmt.packagePriceLabel")}</div>
           <div style={{ fontSize: 23, fontWeight: 800, color: "var(--oxford)", lineHeight: 1, letterSpacing: "-.01em", whiteSpace: "nowrap" }}>{formatAzn(pkg.packagePrice)}</div>
         </div>
         <div style={{ textAlign: "right", flex: "none" }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, fontWeight: 800, color: "var(--oxford)", whiteSpace: "nowrap" }}>
-            <ICalendar s={14} c="#1051B7" />{pkg.sessionCount} seans
+            <ICalendar s={14} c="#1051B7" />{t("psyPkgMgmt.sessionsCount", { count: pkg.sessionCount })}
           </div>
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)", marginTop: 3, whiteSpace: "nowrap" }}>≈ {formatAzn(pkg.perSessionPrice)} / seans</div>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--oxford-60)", marginTop: 3, whiteSpace: "nowrap" }}>{t("psyPkgMgmt.perSessionPrice", { price: formatAzn(pkg.perSessionPrice) })}</div>
         </div>
       </div>
 
       {/* satış statistikası */}
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
         <div style={{ flex: 1, minWidth: 180, display: "flex", gap: 16, flexWrap: "wrap" }}>
-          <Stat label="Satılıb" value={s ? String(s.sold) : "—"} />
-          <Stat label="Davam edən" value={s ? String(s.active) : "—"} color="#059669" />
-          <Stat label="Tamamlanıb" value={s ? String(s.completed) : "—"} />
-          {(!s || s.cancelled > 0) && <Stat label="Ləğv" value={s ? String(s.cancelled) : "—"} color="#991B1B" />}
-          <Stat label="Qazancınız" value={s ? formatAzn(s.revenue) : "—"} color="#1051B7" />
+          <Stat label={t("psyPkgMgmt.soldLabel")} value={s ? String(s.sold) : "—"} />
+          <Stat label={t("psyPkgMgmt.ongoingLabel")} value={s ? String(s.active) : "—"} color="#059669" />
+          <Stat label={t("psyPkgMgmt.completedLabel")} value={s ? String(s.completed) : "—"} />
+          {(!s || s.cancelled > 0) && <Stat label={t("psyPkgMgmt.cancelledStatLabel")} value={s ? String(s.cancelled) : "—"} color="#991B1B" />}
+          <Stat label={t("psyPkgMgmt.earningsColHeader")} value={s ? formatAzn(s.revenue) : "—"} color="#1051B7" />
         </div>
         <CompletionRing pct={s?.completionPct ?? 0} />
       </div>
@@ -519,14 +523,14 @@ function PackageCard({ pkg, stats, busy, onUpdate, onDelete, onToggleActive, rea
       {/* patient list link */}
       {patientCount === 0 ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#9DB0CC", borderTop: "1px solid #EDF1F8", paddingTop: 14 }}>
-          <IUsers s={16} c="#9DB0CC" />Hələ bu paketi alan yoxdur
+          <IUsers s={16} c="#9DB0CC" />{t("psyPkgMgmt.noPatientsYet")}
         </div>
       ) : (
         <Link href={`/psycholog/packages/${pkg.id}/patients`}
           style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", textDecoration: "none", borderTop: "1px solid #EDF1F8", paddingTop: 14 }}
           className="pk-patients-link">
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "#082F6D" }}>
-            <IUsers s={16} c="#082F6D" />Bu paketi alan pasiyentlər ({patientCount})
+            <IUsers s={16} c="#082F6D" />{t("psyPkgMgmt.patientsLinkLabel", { count: patientCount })}
           </span>
           <svg className="pk-arrow" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5C6B85" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
         </Link>
@@ -545,6 +549,7 @@ function Stat({ label, value, color }: { label: string; value: string; color?: s
 }
 
 function CompletionRing({ pct }: { pct: number }) {
+  const { t } = useT();
   const r = 25, c = 2 * Math.PI * r;
   const v = Math.max(0, Math.min(100, pct));
   const offset = c * (1 - v / 100);
@@ -556,7 +561,7 @@ function CompletionRing({ pct }: { pct: number }) {
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <span style={{ fontSize: 14, fontWeight: 800, color: "#065F46", lineHeight: 1 }}>{v}%</span>
-        <span style={{ fontSize: 8, fontWeight: 600, color: "#8AAABF" }}>tamam.</span>
+        <span style={{ fontSize: 8, fontWeight: 600, color: "#8AAABF" }}>{t("psyPkgMgmt.completedAbbrev")}</span>
       </div>
     </div>
   );
@@ -569,12 +574,13 @@ function IndivPriceForm({ current, busy, onSave, onCancel }: {
   onSave: (price: number) => void;
   onCancel: () => void;
 }) {
+  const { t } = useT();
   const [val, setVal] = useState(current != null ? String(current) : "");
   const [err, setErr] = useState<string | null>(null);
 
   const submit = () => {
     const n = Number(val);
-    if (!val.trim() || !Number.isFinite(n) || n < 0) { setErr("Düzgün qiymət daxil edin (0 və ya daha böyük)"); return; }
+    if (!val.trim() || !Number.isFinite(n) || n < 0) { setErr(t("psyPkgMgmt.invalidPriceMessage")); return; }
     onSave(n);
   };
 
@@ -588,14 +594,14 @@ function IndivPriceForm({ current, busy, onSave, onCancel }: {
     <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
       <div style={{ flex: "0 0 180px" }}>
         <label>
-          <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 5 }}>Yeni qiymət (₼)</span>
-          <input type="number" min={0} step="0.01" value={val} onChange={e => { setVal(e.target.value); setErr(null); }} placeholder="Məs. 80" style={field} />
+          <span style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 5 }}>{t("psyPkgMgmt.newPriceLabel")}</span>
+          <input type="number" min={0} step="0.01" value={val} onChange={e => { setVal(e.target.value); setErr(null); }} placeholder={t("psyPkgMgmt.pricePlaceholderExample")} style={field} />
         </label>
         {err && <div style={{ fontSize: 11.5, color: "#991B1B", marginTop: 5 }}>{err}</div>}
       </div>
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end", paddingBottom: 0, marginTop: 22 }}>
-        <button onClick={submit} disabled={busy} style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer" }}>Saxla</button>
-        <button onClick={onCancel} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
+        <button onClick={submit} disabled={busy} style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer" }}>{t("psyPkgMgmt.saveCta")}</button>
+        <button onClick={onCancel} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: 9, padding: "10px 16px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>{t("psyPkgMgmt.cancelCta")}</button>
       </div>
     </div>
   );
@@ -608,6 +614,7 @@ function PackageFormModal({ initial, busy, onSave, onClose }: {
   onSave: (req: PackageReq) => void;
   onClose: () => void;
 }) {
+  const { t } = useT();
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(8,47,109,.45)", backdropFilter: "blur(4px)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, animation: "pkFade .18s ease" }}>
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "min(520px, 100%)", maxHeight: "88vh", overflow: "auto", boxShadow: "0 24px 70px rgba(8,47,109,.28)" }}>
@@ -616,10 +623,10 @@ function PackageFormModal({ initial, busy, onSave, onClose }: {
             <ICube s={19} />
           </span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--oxford-60)" }}>{initial ? "Paket" : "Yeni paket"}</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{initial ? "Paketi redaktə et" : "Paket təklifi yarat"}</div>
+            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--oxford-60)" }}>{initial ? t("psyPkgMgmt.packageLabel") : t("psyPkgMgmt.newPackageCta")}</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--oxford)" }}>{initial ? t("psyPkgMgmt.editPackageModalTitle") : t("psyPkgMgmt.createPackageModalTitle")}</div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Bağla"
+          <button type="button" onClick={onClose} aria-label={t("psyPkgMgmt.close")}
             style={{ width: 34, height: 34, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#F2F6FD", border: "none", borderRadius: 9, color: "var(--oxford-60)", cursor: "pointer" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
@@ -640,6 +647,7 @@ function PackageForm({ initial, onSave, onCancel, busy, compact }: {
   busy?: boolean;
   compact?: boolean;
 }) {
+  const { t } = useT();
   const [name, setName] = useState(initial?.name ?? "");
   const [sessions, setSessions] = useState(initial ? String(initial.sessionCount) : "");
   const [price, setPrice] = useState(initial ? String(initial.packagePrice) : "");
@@ -647,9 +655,9 @@ function PackageForm({ initial, onSave, onCancel, busy, compact }: {
 
   const submit = () => {
     const sc = Number(sessions), pp = Number(price);
-    if (!name.trim()) { toast("Ad lazımdır", "error"); return; }
-    if (!Number.isFinite(sc) || sc < 1) { toast("Seans sayı düzgün deyil", "error"); return; }
-    if (!Number.isFinite(pp) || pp < 0) { toast("Qiymət düzgün deyil", "error"); return; }
+    if (!name.trim()) { toast(t("psyPkgMgmt.nameRequiredError"), "error"); return; }
+    if (!Number.isFinite(sc) || sc < 1) { toast(t("psyPkgMgmt.invalidSessionCountError"), "error"); return; }
+    if (!Number.isFinite(pp) || pp < 0) { toast(t("psyPkgMgmt.invalidPriceError"), "error"); return; }
     onSave({ name: name.trim(), sessionCount: sc, packagePrice: pp, active });
   };
 
@@ -663,19 +671,19 @@ function PackageForm({ initial, onSave, onCancel, busy, compact }: {
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: compact ? 11 : 12, marginBottom: 12 }}>
-        <label><span style={lab}>Ad</span><input value={name} onChange={e => setName(e.target.value)} placeholder="Məs. 10 seanslıq proqram" style={field} /></label>
-        <label><span style={lab}>Seans</span><input type="number" min={1} value={sessions} onChange={e => setSessions(e.target.value)} placeholder="10" style={field} /></label>
-        <label><span style={lab}>Qiymət (₼)</span><input type="number" min={0} step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder="450" style={field} /></label>
+        <label><span style={lab}>{t("psyPkgMgmt.nameLabel")}</span><input value={name} onChange={e => setName(e.target.value)} placeholder={t("psyPkgMgmt.namePlaceholderExample")} style={field} /></label>
+        <label><span style={lab}>{t("psyPkgMgmt.sessionsLabel")}</span><input type="number" min={1} value={sessions} onChange={e => setSessions(e.target.value)} placeholder={t("psyPkgMgmt.sessionsPlaceholderExample")} style={field} /></label>
+        <label><span style={lab}>{t("psyPkgMgmt.priceLabel")}</span><input type="number" min={0} step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder={t("psyPkgMgmt.pricePlaceholderExample2")} style={field} /></label>
       </div>
       {initial && (
         <label style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 12, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--oxford)" }}>
           <input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} style={{ width: 16, height: 16, accentColor: "var(--brand)" }} />
-          Aktiv (satışda göstərilsin)
+          {t("psyPkgMgmt.activeCheckboxLabel")}
         </label>
       )}
       <div style={{ display: "flex", gap: compact ? 9 : 10 }}>
-        <button onClick={submit} disabled={busy} style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: compact ? 9 : 10, padding: compact ? "10px 16px" : "11px 18px", fontSize: compact ? 13.5 : 14, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer" }}>{initial ? "Saxla" : "Əlavə et"}</button>
-        <button onClick={onCancel} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: compact ? 9 : 10, padding: compact ? "10px 16px" : "11px 18px", fontSize: compact ? 13.5 : 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>Ləğv</button>
+        <button onClick={submit} disabled={busy} style={{ background: "var(--brand)", color: "#fff", border: "none", borderRadius: compact ? 9 : 10, padding: compact ? "10px 16px" : "11px 18px", fontSize: compact ? 13.5 : 14, fontWeight: 700, fontFamily: "inherit", cursor: busy ? "wait" : "pointer" }}>{initial ? t("psyPkgMgmt.saveCta") : t("psyPkgMgmt.addCta")}</button>
+        <button onClick={onCancel} style={{ background: "#fff", color: "var(--oxford-60)", border: "1px solid #D6E2F7", borderRadius: compact ? 9 : 10, padding: compact ? "10px 16px" : "11px 18px", fontSize: compact ? 13.5 : 14, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>{t("psyPkgMgmt.cancelCta")}</button>
       </div>
     </>
   );

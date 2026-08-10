@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import PsychResourceTabs from "@/components/PsychResourceTabs";
 import PageHeader from "@/components/PageHeader";
 import AssignTestModal from "@/components/AssignTestModal";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import {
   psychologistApi,
   type ClientSummary,
@@ -31,23 +33,25 @@ function toPublicUrl(url: string): string {
   }
 }
 
-const SHARE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  PRIVATE:  { label: "Şəxsi",            color: "#374151", bg: "#F3F4F6" },
-  PENDING:  { label: "Təsdiq gözləyir",  color: "#92400E", bg: "#FEF3C7" },
-  APPROVED: { label: "Paylaşılıb",       color: "#065F46", bg: "#D1FAE5" },
-  REJECTED: { label: "Rədd edildi",      color: "#991B1B", bg: "#FEE2E2" },
+const SHARE_BADGE: Record<string, { labelKey: MessageKey; color: string; bg: string }> = {
+  PRIVATE:  { labelKey: "psyTests.shareStatusPrivate",  color: "#374151", bg: "#F3F4F6" },
+  PENDING:  { labelKey: "psyTests.shareStatusPending",  color: "#92400E", bg: "#FEF3C7" },
+  APPROVED: { labelKey: "psyTests.shareStatusApproved", color: "#065F46", bg: "#D1FAE5" },
+  REJECTED: { labelKey: "psyTests.shareStatusRejected", color: "#991B1B", bg: "#FEE2E2" },
 };
 
 function ShareStatusBadge({ status }: { status: string }) {
+  const { t } = useT();
   const b = SHARE_BADGE[status] ?? SHARE_BADGE.PRIVATE;
   return (
     <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, color: b.color, background: b.bg }}>
-      {b.label}
+      {t(b.labelKey)}
     </span>
   );
 }
 
 export default function PsychologTestsPage() {
+  const { t } = useT();
   const [tests, setTests] = useState<PsyTestSummary[]>([]);
   const [myTests, setMyTests] = useState<PsyTestSummary[]>([]);
   const [assignments, setAssignments] = useState<TestAssignment[]>([]);
@@ -81,7 +85,7 @@ export default function PsychologTestsPage() {
   };
   useEffect(load, []);
 
-  const systemTests = useMemo(() => tests.filter((t) => !t.mine), [tests]);
+  const systemTests = useMemo(() => tests.filter((test) => !test.mine), [tests]);
   const totalSubs = useMemo(() => assignments.reduce((s, a) => s + a.submissionCount, 0), [assignments]);
 
   // "Paylaş" → create a public link (a single link many patients can fill in) and
@@ -100,10 +104,10 @@ export default function PsychologTestsPage() {
   };
 
   const deleteMyTest = async (test: PsyTestSummary) => {
-    if (!confirm(`"${test.title}" testini silmək istəyirsiniz?`)) return;
+    if (!confirm(t("psyTests.deleteConfirm", { title: test.title }))) return;
     try {
       await psychologistApi.deleteMyTest(test.id);
-      setMyTests((prev) => prev.filter((t) => t.id !== test.id));
+      setMyTests((prev) => prev.filter((mt) => mt.id !== test.id));
       load();
     } catch (e) {
       alert((e as Error).message);
@@ -115,7 +119,7 @@ export default function PsychologTestsPage() {
     try {
       const full = await psychologistApi.myTest(test.id);
       const payload: PsyTestReq = {
-        title: `${full.title} (kopya)`,
+        title: t("psyTests.copySuffix", { title: full.title }),
         description: full.description ?? undefined,
         instructions: full.instructions ?? undefined,
         scoreBasis: full.scoreBasis,
@@ -154,7 +158,7 @@ export default function PsychologTestsPage() {
   const renderTestCard = (test: PsyTestSummary, mine: boolean) => {
     const draft = test.status === "DRAFT";
     const menuOpen = openMenu === test.id;
-    const letter = (test.title?.trim()?.[0] ?? "T").toUpperCase();
+    const letter = (test.title?.trim()?.[0] ?? t("psyTests.untitledLetter")).toUpperCase();
     return (
       <div key={test.id} style={{ position: "relative", background: "#fff", borderRadius: 16, padding: 18, border: "1px solid #EEF2F7", display: "flex", flexDirection: "column", gap: 14 }}>
         {/* Header: avatar + title + kebab */}
@@ -163,13 +167,13 @@ export default function PsychologTestsPage() {
             {letter}
           </div>
           <h3 style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: "#1A2535", margin: 0, lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-            {test.title?.trim() || "Adsız qaralama"}
+            {test.title?.trim() || t("psyTests.untitledDraft")}
           </h3>
           {mine && (
             <div style={{ position: "relative", flexShrink: 0 }}>
               <button
                 type="button"
-                aria-label="Menyu"
+                aria-label={t("psyTests.menuAria")}
                 onClick={() => setOpenMenu(menuOpen ? null : test.id)}
                 style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid #EEF2F7", background: menuOpen ? "#F1F5F9" : "#fff", color: "#52718F", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
               >
@@ -180,15 +184,15 @@ export default function PsychologTestsPage() {
                   <div onClick={() => setOpenMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
                   <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 41, background: "#fff", border: "1px solid #EEF2F7", borderRadius: 12, boxShadow: "0 12px 32px rgba(10,26,51,0.16)", padding: 6, width: 200, display: "flex", flexDirection: "column", gap: 2 }}>
                     <MenuItem icon={<IconEdit />} onClick={() => { setOpenMenu(null); router.push(`/psycholog/tests/manage/${test.id}/edit`); }}>
-                      {draft ? "Davam et" : "Redaktə et"}
+                      {draft ? t("psyTests.continueEdit") : t("psyTests.editAction")}
                     </MenuItem>
-                    {!draft && <MenuItem icon={<IconCopy />} onClick={() => { setOpenMenu(null); duplicate(test); }}>Köçür</MenuItem>}
+                    {!draft && <MenuItem icon={<IconCopy />} onClick={() => { setOpenMenu(null); duplicate(test); }}>{t("psyTests.duplicateAction")}</MenuItem>}
                     {!draft && (
                       <MenuItem icon={<IconShareSm />} onClick={() => { setOpenMenu(null); onShare(test); }}>
-                        {shareBusy === test.id ? "Paylaşılır…" : "Paylaş"}
+                        {shareBusy === test.id ? t("psyTests.sharing") : t("psyTests.shareAction")}
                       </MenuItem>
                     )}
-                    <MenuItem danger icon={<IconTrashSm />} onClick={() => { setOpenMenu(null); deleteMyTest(test); }}>Sil</MenuItem>
+                    <MenuItem danger icon={<IconTrashSm />} onClick={() => { setOpenMenu(null); deleteMyTest(test); }}>{t("psyTests.deleteAction")}</MenuItem>
                   </div>
                 </>
               )}
@@ -199,40 +203,40 @@ export default function PsychologTestsPage() {
         {/* Status chip */}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           {draft ? (
-            <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, color: "#92400E", background: "#FEF3C7" }}>Qaralama</span>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, color: "#92400E", background: "#FEF3C7" }}>{t("psyTests.draftStatus")}</span>
           ) : mine ? (
             <ShareStatusBadge status={test.shareStatus} />
           ) : (
-            <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, color: "#065F46", background: "#D1FAE5" }}>Aktiv</span>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, color: "#065F46", background: "#D1FAE5" }}>{t("psyTests.activeStatus")}</span>
           )}
         </div>
 
         {/* Meta */}
         <div style={{ display: "flex", gap: 16, fontSize: 12.5, color: "#52718F", alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><IconDoc /> {test.questionCount} sual</span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><IconBands /> {test.scaleCount} zolaq</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><IconDoc /> {t("psyTests.questionCount", { count: test.questionCount })}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><IconBands /> {t("psyTests.scaleCount", { count: test.scaleCount })}</span>
         </div>
 
         {/* Primary actions → internal pages */}
         {draft ? (
           <div style={{ display: "flex", gap: 8 }}>
             <a href={`/psycholog/tests/manage/${test.id}/edit`} style={{ flex: 1, textAlign: "center", padding: "10px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700, background: "var(--brand)", color: "#fff", textDecoration: "none" }}>
-              Davam et
+              {t("psyTests.continueEdit")}
             </a>
             <button type="button" onClick={() => router.push(`/psycholog/tests/manage/${test.id}/preview`)}
               style={{ padding: "10px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600, border: "1px solid var(--brand-200)", background: "#fff", color: "var(--brand)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <IconEye /> Bax
+              <IconEye /> {t("psyTests.viewAction")}
             </button>
           </div>
         ) : (
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" onClick={() => router.push(`/psycholog/tests/manage/${test.id}/stats`)}
               style={{ flex: 1, padding: "10px 12px", borderRadius: 10, fontSize: 13, fontWeight: 700, border: "none", background: "var(--brand)", color: "#fff", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <IconChart /> Statistika
+              <IconChart /> {t("psyTests.statsAction")}
             </button>
             <button type="button" onClick={() => router.push(`/psycholog/tests/manage/${test.id}/preview`)}
               style={{ padding: "10px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600, border: "1px solid var(--brand-200)", background: "#fff", color: "var(--brand)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <IconEye /> Bax
+              <IconEye /> {t("psyTests.viewAction")}
             </button>
           </div>
         )}
@@ -247,45 +251,45 @@ export default function PsychologTestsPage() {
       </div>
 
       <PageHeader
-        title="Psixoloji testlər"
-        subtitle="Psixoloji testləri yaradın, önizləyin və statistikaya baxın."
+        title={t("psyTests.pageTitle")}
+        subtitle={t("psyTests.pageSubtitle")}
         actions={
           <button
             type="button"
             onClick={() => router.push("/psycholog/tests/manage/new")}
             style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 10, background: "var(--brand)", color: "#fff", fontSize: 13, fontWeight: 700, border: "none", cursor: "pointer" }}
           >
-            + Yeni test yarat
+            {t("psyTests.createCta")}
           </button>
         }
       />
 
       {/* ── KPI row ─────────────────────────────────────────────────────────── */}
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 22 }}>
-        <KpiCard label="Mənim testlərim" value={myTests.length} />
-        <KpiCard label="Sistem testləri" value={systemTests.length} />
-        <KpiCard label="Təyinatlar" value={assignments.length} />
-        <KpiCard label="Ümumi cavablar" value={totalSubs} accent="var(--brand)" />
+        <KpiCard label={t("psyTests.mineLabel")} value={myTests.length} />
+        <KpiCard label={t("psyTests.systemLabel")} value={systemTests.length} />
+        <KpiCard label={t("psyTests.kpiAssignments")} value={assignments.length} />
+        <KpiCard label={t("psyTests.kpiTotalSubmissions")} value={totalSubs} accent="var(--brand)" />
       </div>
 
       {/* ── Tabs ────────────────────────────────────────────────────────────── */}
       <div style={{ display: "flex", gap: 18, borderBottom: "1px solid #EEF2F7", marginBottom: 18 }}>
-        <TabButton active={tab === "mine"} onClick={() => setTab("mine")} label="Mənim testlərim" count={myTests.length} />
-        <TabButton active={tab === "system"} onClick={() => setTab("system")} label="Sistem testləri" count={systemTests.length} />
+        <TabButton active={tab === "mine"} onClick={() => setTab("mine")} label={t("psyTests.mineLabel")} count={myTests.length} />
+        <TabButton active={tab === "system"} onClick={() => setTab("system")} label={t("psyTests.systemLabel")} count={systemTests.length} />
       </div>
 
       {loading ? (
-        <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "#52718F" }}>Yüklənir…</div>
+        <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "#52718F" }}>{t("psyTests.loading")}</div>
       ) : tab === "mine" ? (
         myTests.length === 0 ? (
-          <div style={emptyStyle}>Hələ öz testiniz yoxdur. Yuxarıdakı “+ Yeni test yarat” ilə başlayın.</div>
+          <div style={emptyStyle}>{t("psyTests.emptyMine")}</div>
         ) : (
-          <div style={gridStyle}>{myTests.map((t) => renderTestCard(t, true))}</div>
+          <div style={gridStyle}>{myTests.map((test) => renderTestCard(test, true))}</div>
         )
       ) : systemTests.length === 0 ? (
-        <div style={emptyStyle}>Hələ sizə təqdim olunan sistem testi yoxdur.</div>
+        <div style={emptyStyle}>{t("psyTests.emptySystem")}</div>
       ) : (
-        <div style={gridStyle}>{systemTests.map((t) => renderTestCard(t, false))}</div>
+        <div style={gridStyle}>{systemTests.map((test) => renderTestCard(test, false))}</div>
       )}
 
       {share && (
@@ -293,9 +297,9 @@ export default function PsychologTestsPage() {
           share={share}
           onClose={() => setShare(null)}
           onAssign={() => {
-            const t = { id: share.testId, title: share.testTitle };
+            const target = { id: share.testId, title: share.testTitle };
             setShare(null);
-            setAssignTarget(t);
+            setAssignTarget(target);
           }}
         />
       )}
@@ -321,6 +325,7 @@ function SharePopup({
   onClose: () => void;
   onAssign: () => void;
 }) {
+  const { t } = useT();
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -328,7 +333,7 @@ function SharePopup({
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      alert("Kopyalamaq alınmadı");
+      alert(t("psyTests.copyFailed"));
     }
   };
   return (
@@ -337,9 +342,9 @@ function SharePopup({
         <div style={{ width: 52, height: 52, borderRadius: 999, background: "#D1FAE5", color: "#065F46", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
         </div>
-        <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: "0 0 6px" }}>Link yaradıldı</h3>
+        <h3 style={{ fontSize: 17, fontWeight: 700, color: "#1A2535", margin: "0 0 6px" }}>{t("psyTests.linkCreatedTitle")}</h3>
         <p style={{ fontSize: 13, color: "#52718F", lineHeight: 1.6, margin: "0 0 16px" }}>
-          Bu linki paylaşın — bir neçə pasiyent öz məlumatlarını yazaraq testi işləyə bilər.
+          {t("psyTests.linkCreatedBody")}
         </p>
 
         <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 16 }}>
@@ -347,22 +352,22 @@ function SharePopup({
             style={{ flex: 1, minWidth: 0, padding: "9px 10px", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 12.5, color: "#374151", background: "#F8FAFC" }} />
           <button type="button" onClick={copy}
             style={{ padding: "9px 14px", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--brand)", cursor: "pointer", whiteSpace: "nowrap" }}>
-            {copied ? "Kopyalandı" : "Kopyala"}
+            {copied ? t("psyTests.copied") : t("psyTests.copy")}
           </button>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 14px", color: "#9AAFC4", fontSize: 12 }}>
-          <span style={{ flex: 1, height: 1, background: "#EEF2F7" }} /> və ya <span style={{ flex: 1, height: 1, background: "#EEF2F7" }} />
+          <span style={{ flex: 1, height: 1, background: "#EEF2F7" }} /> {t("psyTests.or")} <span style={{ flex: 1, height: 1, background: "#EEF2F7" }} />
         </div>
 
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" onClick={onAssign}
             style={{ flex: 1, padding: "9px 12px", border: "1px solid var(--brand-200)", borderRadius: 9, fontSize: 13, fontWeight: 600, background: "var(--brand-50)", color: "var(--brand)", cursor: "pointer" }}>
-            Pasiyentə təyin et
+            {t("psyTests.assignToPatient")}
           </button>
           <button type="button" onClick={onClose}
             style={{ padding: "9px 16px", border: "1px solid #E5E7EB", borderRadius: 9, fontSize: 13, fontWeight: 600, background: "#fff", color: "#374151", cursor: "pointer" }}>
-            Bağla
+            {t("psyTests.close")}
           </button>
         </div>
       </div>

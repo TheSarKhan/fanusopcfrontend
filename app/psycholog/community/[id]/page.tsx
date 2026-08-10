@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import { toast } from "@/components/Toast";
 import EmptyState from "@/components/EmptyState";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 function fmtDate(d?: string | null) {
   if (!d) return "";
@@ -27,6 +28,7 @@ function initials(name: string) {
 }
 
 export default function CommunityProfilePage() {
+  const { t } = useT();
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
 
@@ -62,7 +64,7 @@ export default function CommunityProfilePage() {
         setStatus({ ...status, following: true, followerCount: status.followerCount + 1 });
       }
     } catch (e) {
-      toast("Əməliyyat alınmadı: " + (e as Error).message, "error");
+      toast(t("psyCommunity.opFailedPrefix") + (e as Error).message, "error");
     } finally {
       setBusy(false);
     }
@@ -71,21 +73,21 @@ export default function CommunityProfilePage() {
   const stats = useMemo(() => {
     if (!peer) return [];
     return [
-      { label: "Reytinq", value: peer.rating || "—" },
-      { label: "Seanslar", value: String(peer.displayedSessionCount ?? peer.sessionsCount ?? "—") },
-      { label: "Təcrübə", value: peer.experience || "—" },
-      { label: "İzləyici", value: String(status?.followerCount ?? 0) },
+      { label: t("psyCommunity.statRating"), value: peer.rating || "—" },
+      { label: t("psyCommunity.statSessions"), value: String(peer.displayedSessionCount ?? peer.sessionsCount ?? "—") },
+      { label: t("psyCommunity.statExperience"), value: peer.experience || "—" },
+      { label: t("psyCommunity.statFollowers"), value: String(status?.followerCount ?? 0) },
     ];
-  }, [peer, status]);
+  }, [peer, status, t]);
 
   return (
     <div className="pcom-profile">
-      <Link href="/psycholog/community" className="pcli-back">← İcmaya qayıt</Link>
+      <Link href="/psycholog/community" className="pcli-back">{t("psyCommunity.backToCommunity")}</Link>
 
       {loading ? (
         <div className="ui-skeleton" style={{ height: 220, borderRadius: 16 }} />
       ) : !peer ? (
-        <EmptyState title="Psixoloq tapılmadı" sub="Bu profil mövcud deyil və ya silinib." />
+        <EmptyState title={t("psyCommunity.notFoundTitle")} sub={t("psyCommunity.notFoundSub")} />
       ) : (
         <>
           {/* ── Header ─────────────────────────────────────────────── */}
@@ -111,7 +113,7 @@ export default function CommunityProfilePage() {
             </div>
             <button onClick={toggleFollow} disabled={busy}
               className={`pcom-follow-btn pcom-follow-btn--lg${status?.following ? " is-following" : ""}`}>
-              {busy ? "…" : status?.following ? "İzlənir" : "İzlə"}
+              {busy ? t("psyCommunity.busyEllipsis") : status?.following ? t("psyCommunity.following") : t("psyCommunity.followCtaShort")}
             </button>
           </div>
 
@@ -128,16 +130,16 @@ export default function CommunityProfilePage() {
           {/* ── Bio ────────────────────────────────────────────────── */}
           {peer.bio && (
             <div className="pcom-prof-card">
-              <div className="pcom-section-title">Haqqında</div>
+              <div className="pcom-section-title">{t("psyCommunity.aboutTitle")}</div>
               <p className="pcom-prof-bio">{peer.bio}</p>
             </div>
           )}
 
           {/* ── Articles ───────────────────────────────────────────── */}
           <div className="pcom-prof-card">
-            <div className="pcom-section-title">Məqalələr <span className="pcom-count">{posts.length}</span></div>
+            <div className="pcom-section-title">{t("psyCommunity.articlesTitle")} <span className="pcom-count">{posts.length}</span></div>
             {posts.length === 0 ? (
-              <div className="pcom-muted-note">Bu psixoloq hələ məqalə paylaşmayıb.</div>
+              <div className="pcom-muted-note">{t("psyCommunity.noArticles")}</div>
             ) : (
               <div className="pcom-prof-articles">
                 {posts.map(p => (
@@ -148,7 +150,7 @@ export default function CommunityProfilePage() {
                           {p.category}
                         </span>
                       )}
-                      <div className="pcom-art-row__title">{p.title || "Başlıqsız"}</div>
+                      <div className="pcom-art-row__title">{p.title || t("psyCommunity.untitled")}</div>
                       <p className="pcom-art-row__ex">{p.excerpt || stripHtml(p.content).slice(0, 140)}</p>
                     </div>
                     <span className="pcom-art-row__date">{fmtDate(p.publishedDate || p.createdAt)}</span>

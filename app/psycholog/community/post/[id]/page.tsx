@@ -13,6 +13,7 @@ import {
 import { toast } from "@/components/Toast";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import EmptyState from "@/components/EmptyState";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
 
@@ -30,6 +31,7 @@ function initials(name?: string | null) {
 /* ─── page ────────────────────────────────────────────────────────────────── */
 
 export default function CommunityArticleReaderPage() {
+  const { t } = useT();
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
 
@@ -69,7 +71,7 @@ export default function CommunityArticleReaderPage() {
         : await psychologistApi.likePost(id);
       setData(updated);
     } catch (e) {
-      toast("Əməliyyat alınmadı: " + (e as Error).message, "error");
+      toast(t("psyCommunity.opFailedPrefix") + (e as Error).message, "error");
     } finally {
       setLiking(false);
     }
@@ -88,7 +90,7 @@ export default function CommunityArticleReaderPage() {
 
   return (
     <div className="pread">
-      <Link href="/psycholog/community" className="pcli-back">← İcmaya qayıt</Link>
+      <Link href="/psycholog/community" className="pcli-back">{t("psyCommunity.backToCommunity")}</Link>
 
       {loading ? (
         <>
@@ -96,7 +98,7 @@ export default function CommunityArticleReaderPage() {
           <div className="ui-skeleton" style={{ height: 200, borderRadius: 16 }} />
         </>
       ) : notFound || !post ? (
-        <EmptyState title="Məqalə tapılmadı" sub="Bu məqalə mövcud deyil və ya artıq dərc olunmur." />
+        <EmptyState title={t("psyCommunity.articleNotFoundTitle")} sub={t("psyCommunity.articleNotFoundSub")} />
       ) : (
         <>
           {/* ── Article ─────────────────────────────────────────────── */}
@@ -134,14 +136,14 @@ export default function CommunityArticleReaderPage() {
                   <span className="pread-author">
                     <span className="pread-author__avatar pread-author__avatar--ph">{initials(post.authorName)}</span>
                     <span className="pread-author__txt">
-                      <span className="pread-author__name">{post.authorName || "Psixoloq"}</span>
+                      <span className="pread-author__name">{post.authorName || t("psyCommunity.roleFallback")}</span>
                     </span>
                   </span>
                 )}
                 {/* Ayırıcı işarə yoxdur — .pread-meta flex boşluğu elementləri ayırır */}
                 <span className="pread-meta__date">{fmtDateTime(post.publishedDate || post.createdAt)}</span>
                 {post.readTimeMinutes > 0 && (
-                  <span className="pread-meta__read">{post.readTimeMinutes} dəq oxu</span>
+                  <span className="pread-meta__read">{t("psyCommunity.readTime", { count: post.readTimeMinutes })}</span>
                 )}
               </div>
 
@@ -153,7 +155,7 @@ export default function CommunityArticleReaderPage() {
               {/* attachments */}
               {post.attachments && post.attachments.length > 0 && (
                 <div className="pread-attach">
-                  <div className="pcom-section-title">Əlavələr</div>
+                  <div className="pcom-section-title">{t("psyCommunity.attachmentsTitle")}</div>
                   <div className="pread-attach__list">
                     {post.attachments.map(a => (
                       <a key={a.id} href={a.fileUrl} target="_blank" rel="noopener noreferrer" className="pread-attach__item">
@@ -184,19 +186,19 @@ export default function CommunityArticleReaderPage() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
-                <span>{data?.commentCount ?? 0} şərh</span>
+                <span>{t("psyCommunity.commentsInline", { count: data?.commentCount ?? 0 })}</span>
               </span>
             </div>
           </article>
 
           {/* ── Comments ────────────────────────────────────────────── */}
           <section className="pcmt">
-            <div className="pcom-section-title">Şərhlər <span className="pcom-count">{data?.commentCount ?? 0}</span></div>
+            <div className="pcom-section-title">{t("psyCommunity.commentsTitle")} <span className="pcom-count">{data?.commentCount ?? 0}</span></div>
 
             <CommentComposer postId={id} onPosted={refreshComments} />
 
             {comments.length === 0 ? (
-              <div className="pcmt-empty">Hələ şərh yoxdur. İlk fikri siz bildirin.</div>
+              <div className="pcmt-empty">{t("psyCommunity.commentsEmpty")}</div>
             ) : (
               <div className="pcmt-list">
                 {comments.map(c => (
@@ -217,6 +219,7 @@ function CommentComposer({ postId, parentId, onPosted, autoFocus, placeholder, o
   postId: number; parentId?: number; onPosted: () => void | Promise<void>;
   autoFocus?: boolean; placeholder?: string; onCancel?: () => void;
 }) {
+  const { t } = useT();
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLTextAreaElement | null>(null);
@@ -233,7 +236,7 @@ function CommentComposer({ postId, parentId, onPosted, autoFocus, placeholder, o
       await onPosted();
       onCancel?.();
     } catch (e) {
-      toast("Şərh göndərilmədi: " + (e as Error).message, "error");
+      toast(t("psyCommunity.commentSendFailed") + (e as Error).message, "error");
     } finally {
       setBusy(false);
     }
@@ -245,17 +248,17 @@ function CommentComposer({ postId, parentId, onPosted, autoFocus, placeholder, o
         ref={ref}
         value={body}
         onChange={e => setBody(e.target.value)}
-        placeholder={placeholder || "Şərhinizi yazın…"}
+        placeholder={placeholder || t("psyCommunity.commentPlaceholder")}
         rows={parentId ? 2 : 3}
         maxLength={4000}
         className="pcmt-input"
       />
       <div className="pcmt-composer__row">
         {onCancel && (
-          <button type="button" className="pcmt-btn pcmt-btn--ghost" onClick={onCancel} disabled={busy}>Ləğv et</button>
+          <button type="button" className="pcmt-btn pcmt-btn--ghost" onClick={onCancel} disabled={busy}>{t("psyCommunity.cancel")}</button>
         )}
         <button type="button" className="pcmt-btn pcmt-btn--primary" onClick={submit} disabled={busy || !body.trim()}>
-          {busy ? "Göndərilir…" : parentId ? "Cavab yaz" : "Şərh yaz"}
+          {busy ? t("psyCommunity.posting") : parentId ? t("psyCommunity.postReply") : t("psyCommunity.postComment")}
         </button>
       </div>
     </div>
@@ -267,6 +270,7 @@ function CommentComposer({ postId, parentId, onPosted, autoFocus, placeholder, o
 function CommentNode({ c, postId, onChanged, depth }: {
   c: ArticleComment; postId: number; onChanged: () => void | Promise<void>; depth: number;
 }) {
+  const { t } = useT();
   const [editing, setEditing] = useState(false);
   const [replying, setReplying] = useState(false);
   const [draft, setDraft] = useState(c.body ?? "");
@@ -281,7 +285,7 @@ function CommentNode({ c, postId, onChanged, depth }: {
       setEditing(false);
       await onChanged();
     } catch (e) {
-      toast("Yadda saxlanmadı: " + (e as Error).message, "error");
+      toast(t("psyCommunity.saveFailed") + (e as Error).message, "error");
     } finally {
       setBusy(false);
     }
@@ -289,9 +293,9 @@ function CommentNode({ c, postId, onChanged, depth }: {
 
   const remove = async () => {
     const ok = await confirmDialog({
-      title: "Şərhi sil",
-      message: "Bu şərhi silmək istədiyinizə əminsiniz?",
-      confirmLabel: "Sil",
+      title: t("psyCommunity.deleteCommentTitle"),
+      message: t("psyCommunity.deleteCommentConfirm"),
+      confirmLabel: t("psyCommunity.delete"),
       danger: true,
     });
     if (!ok) return;
@@ -299,7 +303,7 @@ function CommentNode({ c, postId, onChanged, depth }: {
       await psychologistApi.deleteComment(c.id);
       await onChanged();
     } catch (e) {
-      toast("Silinmədi: " + (e as Error).message, "error");
+      toast(t("psyCommunity.deleteFailed") + (e as Error).message, "error");
     }
   };
 
@@ -317,22 +321,22 @@ function CommentNode({ c, postId, onChanged, depth }: {
         <div className="pcmt-main">
           <div className="pcmt-bubble">
             <div className="pcmt-head">
-              <span className="pcmt-name">{c.deleted ? "Silinmiş şərh" : (c.authorName || "Psixoloq")}</span>
+              <span className="pcmt-name">{c.deleted ? t("psyCommunity.commentDeletedName") : (c.authorName || t("psyCommunity.roleFallback"))}</span>
               <span className="pcmt-time" style={{ display: "inline-flex", flexWrap: "wrap", gap: 8 }}>
                 <span>{fmtDateTime(c.createdAt)}</span>
-                {c.editedAt && !c.deleted && <span>redaktə olunub</span>}
+                {c.editedAt && !c.deleted && <span>{t("psyCommunity.commentEdited")}</span>}
               </span>
             </div>
 
             {c.deleted ? (
-              <p className="pcmt-text pcmt-text--deleted">Bu şərh silinib.</p>
+              <p className="pcmt-text pcmt-text--deleted">{t("psyCommunity.commentDeletedText")}</p>
             ) : editing ? (
               <div className="pcmt-composer pcmt-composer--reply">
                 <textarea className="pcmt-input" rows={2} value={draft} maxLength={4000}
                   onChange={e => setDraft(e.target.value)} />
                 <div className="pcmt-composer__row">
-                  <button className="pcmt-btn pcmt-btn--ghost" onClick={() => { setEditing(false); setDraft(c.body ?? ""); }} disabled={busy}>Ləğv et</button>
-                  <button className="pcmt-btn pcmt-btn--primary" onClick={saveEdit} disabled={busy || !draft.trim()}>Yadda saxla</button>
+                  <button className="pcmt-btn pcmt-btn--ghost" onClick={() => { setEditing(false); setDraft(c.body ?? ""); }} disabled={busy}>{t("psyCommunity.cancel")}</button>
+                  <button className="pcmt-btn pcmt-btn--primary" onClick={saveEdit} disabled={busy || !draft.trim()}>{t("psyCommunity.save")}</button>
                 </div>
               </div>
             ) : (
@@ -343,12 +347,12 @@ function CommentNode({ c, postId, onChanged, depth }: {
           {!c.deleted && !editing && (
             <div className="pcmt-actions">
               {depth === 0 && (
-                <button className="pcmt-link" onClick={() => setReplying(r => !r)}>Cavab ver</button>
+                <button className="pcmt-link" onClick={() => setReplying(r => !r)}>{t("psyCommunity.reply")}</button>
               )}
               {c.mine && (
                 <>
-                  <button className="pcmt-link" onClick={() => { setEditing(true); setDraft(c.body ?? ""); }}>Redaktə</button>
-                  <button className="pcmt-link pcmt-link--danger" onClick={remove}>Sil</button>
+                  <button className="pcmt-link" onClick={() => { setEditing(true); setDraft(c.body ?? ""); }}>{t("psyCommunity.edit")}</button>
+                  <button className="pcmt-link pcmt-link--danger" onClick={remove}>{t("psyCommunity.delete")}</button>
                 </>
               )}
             </div>
@@ -359,7 +363,7 @@ function CommentNode({ c, postId, onChanged, depth }: {
               postId={postId}
               parentId={c.id}
               autoFocus
-              placeholder={`${c.authorName || "Psixoloq"}-a cavab…`}
+              placeholder={t("psyCommunity.replyPlaceholder", { name: c.authorName || t("psyCommunity.roleFallback") })}
               onPosted={onChanged}
               onCancel={() => setReplying(false)}
             />

@@ -12,6 +12,7 @@ import {
 import { toast } from "@/components/Toast";
 import EmptyState from "@/components/EmptyState";
 import PageHeader from "@/components/PageHeader";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
 
@@ -32,6 +33,7 @@ const FEED_PAGE_SIZE = 20;
 /* ─── page (full-width feed + üfüqi tövsiyə karuseli) ───────────────────────── */
 
 export default function PsychologCommunityPage() {
+  const { t } = useT();
   const [meId, setMeId] = useState<number | null>(null);
   const [feed, setFeed] = useState<BlogPost[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
@@ -87,7 +89,7 @@ export default function PsychologCommunityPage() {
       ]);
       loadFeed();
     } catch (e) {
-      toast("Əməliyyat alınmadı: " + (e as Error).message, "error");
+      toast(t("psyCommunity.opFailedPrefix") + (e as Error).message, "error");
     } finally {
       setBusyId(null);
     }
@@ -103,8 +105,8 @@ export default function PsychologCommunityPage() {
   return (
     <div className="pcom-page">
       <PageHeader
-        title="İcma"
-        subtitle="Həmkarlarınızı izləyin, profillərinə baxın və yeni məqalələrindən xəbərdar olun."
+        title={t("psyCommunity.title")}
+        subtitle={t("psyCommunity.subtitle")}
       />
 
       {/* ── Tövsiyə karuseli ──────────────────────────────────────────── */}
@@ -121,8 +123,10 @@ export default function PsychologCommunityPage() {
       {/* ── Feed (tam en) ─────────────────────────────────────────────── */}
       <main className="pcom-main">
         <div className="pcom-section-title">
-          İzlədiklərinizin məqalələri
-          {following.length > 0 && <span className="pcom-count">{following.length} izlənir</span>}
+          {t("psyCommunity.followingFeedTitle")}
+          {following.length > 0 && (
+            <span className="pcom-count">{t("psyCommunity.followingCount", { count: following.length })}</span>
+          )}
         </div>
 
         {feedLoading ? (
@@ -139,8 +143,8 @@ export default function PsychologCommunityPage() {
           </div>
         ) : feed.length === 0 ? (
           <EmptyState
-            title="Feed hələ boşdur"
-            sub="İzlədiyiniz psixoloqlar məqalə paylaşanda burada görünəcək. Yuxarıdakı tövsiyələrdən başlayın."
+            title={t("psyCommunity.feedEmptyTitle")}
+            sub={t("psyCommunity.feedEmptySub")}
           />
         ) : (
           <>
@@ -151,7 +155,9 @@ export default function PsychologCommunityPage() {
               <div style={{ textAlign: "center", marginTop: 16 }}>
                 <button type="button" onClick={loadMoreFeed} disabled={feedLoadingMore}
                   style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: feedLoadingMore ? "wait" : "pointer", opacity: feedLoadingMore ? 0.7 : 1 }}>
-                  {feedLoadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(FEED_PAGE_SIZE, feedTotal - feed.length)})`}
+                  {feedLoadingMore
+                    ? t("psyCommunity.loadingMore")
+                    : t("psyCommunity.loadMore", { count: Math.min(FEED_PAGE_SIZE, feedTotal - feed.length) })}
                 </button>
               </div>
             )}
@@ -167,6 +173,7 @@ export default function PsychologCommunityPage() {
 function RecommendCarousel({ items, busyId, onFollow }: {
   items: Psychologist[]; busyId: number | null; onFollow: (p: Psychologist) => void;
 }) {
+  const { t } = useT();
   const trackRef = useRef<HTMLDivElement | null>(null);
 
   const scrollBy = (dir: 1 | -1) => {
@@ -178,12 +185,12 @@ function RecommendCarousel({ items, busyId, onFollow }: {
   return (
     <section className="pcom-carousel">
       <div className="pcom-carousel__head">
-        <div className="pcom-section-title">Tanıya biləcəyiniz psixoloqlar</div>
+        <div className="pcom-section-title">{t("psyCommunity.discoverTitle")}</div>
         <div className="pcom-carousel__nav">
-          <button type="button" aria-label="Geri" onClick={() => scrollBy(-1)} className="pcom-carousel__arrow">
+          <button type="button" aria-label={t("psyCommunity.navBack")} onClick={() => scrollBy(-1)} className="pcom-carousel__arrow">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
           </button>
-          <button type="button" aria-label="İrəli" onClick={() => scrollBy(1)} className="pcom-carousel__arrow">
+          <button type="button" aria-label={t("psyCommunity.navForward")} onClick={() => scrollBy(1)} className="pcom-carousel__arrow">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
           </button>
         </div>
@@ -199,6 +206,7 @@ function RecommendCarousel({ items, busyId, onFollow }: {
 }
 
 function PsyCard({ p, busy, onFollow }: { p: Psychologist; busy: boolean; onFollow: () => void }) {
+  const { t } = useT();
   const sessions = p.displayedSessionCount ?? p.sessionsCount ?? null;
   const specs = (p.specializations || []).slice(0, 2);
   return (
@@ -229,13 +237,15 @@ function PsyCard({ p, busy, onFollow }: { p: Psychologist; busy: boolean; onFoll
                 {p.rating}
               </span>
             )}
-            {sessions != null && <span className="pcom-pcard__sessions">{sessions} seans</span>}
+            {sessions != null && (
+              <span className="pcom-pcard__sessions">{t("psyCommunity.sessionsCount", { count: sessions })}</span>
+            )}
           </div>
         )}
       </Link>
 
       <button onClick={onFollow} disabled={busy} className="pcom-follow-btn pcom-pcard__follow">
-        {busy ? "…" : "+ İzlə"}
+        {busy ? t("psyCommunity.busyEllipsis") : t("psyCommunity.followCta")}
       </button>
     </div>
   );
@@ -264,6 +274,7 @@ function RecommendCarouselSkeleton() {
 /* ─── Feed card ──────────────────────────────────────────────────────────── */
 
 function FeedCard({ p }: { p: BlogPost }) {
+  const { t } = useT();
   const excerpt = p.excerpt || stripHtml(p.content).slice(0, 160);
   return (
     <Link href={`/psycholog/community/post/${p.id}`} className="pcom-feedcard pcom-feedcard--link">
@@ -280,10 +291,10 @@ function FeedCard({ p }: { p: BlogPost }) {
             {p.category}
           </span>
         )}
-        <h3>{p.title || "Başlıqsız"}</h3>
+        <h3>{p.title || t("psyCommunity.untitled")}</h3>
         {excerpt && <p>{excerpt}</p>}
         <div className="pcom-feedcard__foot">
-          <span>{p.authorName || "Psixoloq"}</span>
+          <span>{p.authorName || t("psyCommunity.roleFallback")}</span>
           <span>{fmtDate(p.publishedDate || p.createdAt)}</span>
         </div>
       </div>

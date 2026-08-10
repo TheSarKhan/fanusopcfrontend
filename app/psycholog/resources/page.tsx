@@ -4,9 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { psychologistApi, type Paged, type PsychResource, type PsychResourceReq } from "@/lib/api";
 import PsychResourceTabs from "@/components/PsychResourceTabs";
 import PageHeader from "@/components/PageHeader";
+import { useT } from "@/lib/i18n/LocaleProvider";
+
+type TFn = ReturnType<typeof useT>["t"];
 
 /* ─── kateqoriyalar (sabit dəst) ──────────────────────────────────────────── */
 
+// Bu dəyərlər backend-dəki `category` sahəsi ilə eynidir (filter/müqayisə üçün) —
+// göstərilən mətni tərcümə etmək üçün `catLabel()`-dən istifadə edin, dəyəri özünü yox.
 const CATEGORIES = ["Protokol", "Şablon", "Tədqiqat", "Məqalə", "Digər"] as const;
 type Category = (typeof CATEGORIES)[number];
 
@@ -18,6 +23,15 @@ const CAT_STYLE: Record<string, { color: string; bg: string }> = {
   "Digər":     { color: "#475569", bg: "#f1f5f9" },
 };
 const catStyle = (c: string) => CAT_STYLE[c] ?? CAT_STYLE["Digər"];
+
+const CAT_KEY: Record<string, string> = {
+  "Protokol": "psyResources.catProtocol",
+  "Şablon":   "psyResources.catTemplate",
+  "Tədqiqat": "psyResources.catResearch",
+  "Məqalə":   "psyResources.catArticle",
+  "Digər":    "psyResources.catOther",
+};
+const catLabel = (t: TFn, c: string) => t((CAT_KEY[c] ?? CAT_KEY["Digər"]) as Parameters<TFn>[0]);
 
 function fmtDate(d?: string | null) {
   if (!d) return "";
@@ -36,6 +50,7 @@ const EMPTY_PAGE: Paged<PsychResource> = { content: [], totalElements: 0, totalP
 /* ─── page ────────────────────────────────────────────────────────────────── */
 
 export default function PsychologResourcesPage() {
+  const { t } = useT();
   const [items, setItems] = useState<PsychResource[]>([]);   // shared library (approved)
   const [itemsTotal, setItemsTotal] = useState(0);
   const [itemsPage, setItemsPage] = useState(0);
@@ -147,7 +162,7 @@ export default function PsychologResourcesPage() {
   };
 
   const requestShare = async (r: PsychResource) => {
-    if (!window.confirm(`"${r.title}" resursunu digər psixoloqlarla paylaşmaq üçün admin təsdiqinə göndərək?`)) return;
+    if (!window.confirm(t("psyResources.shareConfirm", { title: r.title }))) return;
     try {
       const updated = await psychologistApi.requestShareResource(r.id);
       setMine(prev => prev.map(x => x.id === r.id ? updated : x));
@@ -165,19 +180,19 @@ export default function PsychologResourcesPage() {
 
       {/* Header */}
       <PageHeader
-        title="Bilik bazası"
-        subtitle="Həmkarlarınızla protokol, şablon və materialları paylaşın. Yeni resurs əvvəlcə şəxsidir; paylaşmaq üçün admin təsdiqinə göndərin."
+        title={t("psyResources.title")}
+        subtitle={t("psyResources.subtitle")}
         actions={
           <button onClick={() => setEditing("new")} style={primaryBtn}>
-            <IconPlus /> Resurs əlavə et
+            <IconPlus /> {t("psyResources.addResource")}
           </button>
         }
       />
 
       {/* View switcher */}
       <div style={{ display: "flex", gap: 6, background: "#fff", padding: 6, borderRadius: 10, border: "1px solid var(--oxford-10)", width: "fit-content" }}>
-        <ViewTab active={tab === "library"} onClick={() => setTab("library")}>Paylaşılan kitabxana ({itemsTotal})</ViewTab>
-        <ViewTab active={tab === "mine"} onClick={() => setTab("mine")}>Mənim resurslarım ({mineTotal})</ViewTab>
+        <ViewTab active={tab === "library"} onClick={() => setTab("library")}>{t("psyResources.sharedLibraryTab", { count: itemsTotal })}</ViewTab>
+        <ViewTab active={tab === "mine"} onClick={() => setTab("mine")}>{t("psyResources.myResourcesTab", { count: mineTotal })}</ViewTab>
       </div>
 
       {/* Toolbar */}
@@ -186,14 +201,14 @@ export default function PsychologResourcesPage() {
         background: "#fff", borderRadius: 14, padding: "10px 12px", border: "1px solid var(--oxford-10)",
       }}>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          <FilterChip active={catFilter === "ALL"} onClick={() => setCatFilter("ALL")}>Hamısı</FilterChip>
+          <FilterChip active={catFilter === "ALL"} onClick={() => setCatFilter("ALL")}>{t("psyResources.filterAll")}</FilterChip>
           {CATEGORIES.map(c => (
-            <FilterChip key={c} active={catFilter === c} onClick={() => setCatFilter(c)}>{c}</FilterChip>
+            <FilterChip key={c} active={catFilter === c} onClick={() => setCatFilter(c)}>{catLabel(t, c)}</FilterChip>
           ))}
         </div>
         <div style={{ flex: 1, minWidth: 200 }}>
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Axtar (başlıq / müəllif)…"
+            placeholder={t("psyResources.searchPlaceholder")}
             style={{
               width: "100%", padding: "9px 12px", borderRadius: 10,
               border: "1.5px solid var(--oxford-10)", fontSize: 13,
@@ -216,15 +231,15 @@ export default function PsychologResourcesPage() {
         }}>
           <p style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", margin: "0 0 4px" }}>
             {search.trim() || catFilter !== "ALL"
-              ? "Uyğun resurs tapılmadı"
-              : tab === "mine" ? "Hələ resurs əlavə etməmisiniz" : "Paylaşılan resurs yoxdur"}
+              ? t("psyResources.emptyNoMatch")
+              : tab === "mine" ? t("psyResources.emptyMineTitle") : t("psyResources.emptyLibraryTitle")}
           </p>
           <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: "0 0 18px" }}>
             {tab === "mine"
-              ? "İlk resursunuzu əlavə edin; sonra paylaşım üçün admin təsdiqinə göndərə bilərsiniz."
-              : "Təsdiqlənmiş resurslar burada görünəcək."}
+              ? t("psyResources.emptyMineHint")
+              : t("psyResources.emptyLibraryHint")}
           </p>
-          <button onClick={() => setEditing("new")} style={primaryBtn}><IconPlus /> Resurs əlavə et</button>
+          <button onClick={() => setEditing("new")} style={primaryBtn}><IconPlus /> {t("psyResources.addResource")}</button>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12 }}>
@@ -243,7 +258,7 @@ export default function PsychologResourcesPage() {
         <div style={{ textAlign: "center" }}>
           <button type="button" onClick={activeLoadMore} disabled={activeLoadingMore}
             style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: activeLoadingMore ? "wait" : "pointer", opacity: activeLoadingMore ? 0.7 : 1 }}>
-            {activeLoadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, activeTotal - activeList.length)})`}
+            {activeLoadingMore ? t("psyResources.loadingEllipsis") : t("psyResources.loadMore", { count: Math.min(PAGE_SIZE, activeTotal - activeList.length) })}
           </button>
         </div>
       )}
@@ -286,18 +301,26 @@ function ViewTab({ active, onClick, children }: { active: boolean; onClick: () =
   );
 }
 
-const RES_SHARE: Record<string, { label: string; color: string; bg: string }> = {
-  PRIVATE:  { label: "Şəxsi",           color: "#374151", bg: "#F3F4F6" },
-  PENDING:  { label: "Təsdiq gözləyir", color: "#92400E", bg: "#FEF3C7" },
-  APPROVED: { label: "Paylaşılıb",      color: "#065F46", bg: "#D1FAE5" },
-  REJECTED: { label: "Rədd edildi",     color: "#991B1B", bg: "#FEE2E2" },
+const RES_SHARE_STYLE: Record<string, { color: string; bg: string }> = {
+  PRIVATE:  { color: "#374151", bg: "#F3F4F6" },
+  PENDING:  { color: "#92400E", bg: "#FEF3C7" },
+  APPROVED: { color: "#065F46", bg: "#D1FAE5" },
+  REJECTED: { color: "#991B1B", bg: "#FEE2E2" },
+};
+const RES_SHARE_KEY: Record<string, string> = {
+  PRIVATE:  "psyResources.shareStatusPrivate",
+  PENDING:  "psyResources.shareStatusPending",
+  APPROVED: "psyResources.shareStatusApproved",
+  REJECTED: "psyResources.shareStatusRejected",
 };
 
 function ResShareBadge({ status }: { status: string }) {
-  const b = RES_SHARE[status] ?? RES_SHARE.PRIVATE;
+  const { t } = useT();
+  const b = RES_SHARE_STYLE[status] ?? RES_SHARE_STYLE.PRIVATE;
+  const label = t((RES_SHARE_KEY[status] ?? RES_SHARE_KEY.PRIVATE) as Parameters<TFn>[0]);
   return (
     <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 999, color: b.color, background: b.bg }}>
-      {b.label}
+      {label}
     </span>
   );
 }
@@ -308,6 +331,7 @@ function ResourceCard({ r, onView, onEdit, onDelete, showShare, onRequestShare }
   r: PsychResource; onView: () => void; onEdit: () => void; onDelete: () => void;
   showShare?: boolean; onRequestShare?: () => void;
 }) {
+  const { t } = useT();
   const cs = catStyle(r.category);
   return (
     <div style={{
@@ -333,7 +357,7 @@ function ResourceCard({ r, onView, onEdit, onDelete, showShare, onRequestShare }
           <span style={{
             fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999,
             background: cs.bg, color: cs.color, textTransform: "uppercase", letterSpacing: 0.3,
-          }}>{r.category}</span>
+          }}>{catLabel(t, r.category)}</span>
           {r.fileUrl && <IconPaperclip />}
         </div>
         <h3 style={{
@@ -354,10 +378,10 @@ function ResourceCard({ r, onView, onEdit, onDelete, showShare, onRequestShare }
             <button onClick={onRequestShare} style={{
               fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 7,
               background: "var(--brand-50)", color: "var(--brand-700)", border: "1px solid transparent", cursor: "pointer",
-            }}>Paylaşım üçün göndər</button>
+            }}>{t("psyResources.requestShare")}</button>
           )}
           {r.shareStatus === "REJECTED" && r.adminNote && (
-            <span style={{ fontSize: 11, color: "#991B1B" }}>Səbəb: {r.adminNote}</span>
+            <span style={{ fontSize: 11, color: "#991B1B" }}>{t("psyResources.rejectReason", { reason: r.adminNote })}</span>
           )}
         </div>
       )}
@@ -381,15 +405,15 @@ function ResourceCard({ r, onView, onEdit, onDelete, showShare, onRequestShare }
             display: "inline-flex", gap: 8, minWidth: 0,
           }}>
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {r.authorName || "Psixoloq"}
+              {r.authorName || t("psyResources.defaultAuthor")}
             </span>
             <span style={{ whiteSpace: "nowrap" }}>{fmtDate(r.createdAt)}</span>
           </span>
         </div>
         {r.mine && (
           <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-            <button onClick={onEdit} title="Redaktə et" style={iconBtn("var(--brand-700)", "var(--brand-50)")}><IconEdit /></button>
-            <button onClick={onDelete} title="Sil" style={iconBtn("#DC2626", "#FEE2E2")}><IconTrash /></button>
+            <button onClick={onEdit} title={t("psyResources.edit")} style={iconBtn("var(--brand-700)", "var(--brand-50)")}><IconEdit /></button>
+            <button onClick={onDelete} title={t("psyResources.delete")} style={iconBtn("#DC2626", "#FEE2E2")}><IconTrash /></button>
           </div>
         )}
       </div>
@@ -404,6 +428,7 @@ function ResourceForm({ initial, onClose, onSaved }: {
   onClose: () => void;
   onSaved: (r: PsychResource, isNew: boolean) => void;
 }) {
+  const { t } = useT();
   const isNew = initial === null;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [category, setCategory] = useState<string>(initial?.category ?? CATEGORIES[0]);
@@ -424,14 +449,14 @@ function ResourceForm({ initial, onClose, onSaved }: {
       setFileUrl(url);
       setFileName(file.name);
     } catch (e) {
-      setError("Fayl yüklənmədi: " + (e as Error).message);
+      setError(t("psyResources.uploadFailed", { message: (e as Error).message }));
     } finally {
       setUploading(false);
     }
   };
 
   const save = async () => {
-    if (!title.trim()) { setError("Başlıq mütləqdir."); return; }
+    if (!title.trim()) { setError(t("psyResources.titleRequired")); return; }
     setSaving(true);
     setError(null);
     const payload: PsychResourceReq = {
@@ -448,7 +473,7 @@ function ResourceForm({ initial, onClose, onSaved }: {
         : await psychologistApi.updateResource(initial!.id, payload);
       onSaved(saved, isNew);
     } catch (e) {
-      setError("Yadda saxlanmadı: " + (e as Error).message);
+      setError(t("psyResources.saveFailed", { message: (e as Error).message }));
       setSaving(false);
     }
   };
@@ -456,31 +481,31 @@ function ResourceForm({ initial, onClose, onSaved }: {
   return (
     <Modal onClose={onClose} wide>
       <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--oxford)", margin: "0 0 16px" }}>
-        {isNew ? "Yeni resurs paylaş" : "Resursu redaktə et"}
+        {isNew ? t("psyResources.formTitleNew") : t("psyResources.formTitleEdit")}
       </h3>
 
-      <Field label="Başlıq">
+      <Field label={t("psyResources.fieldTitle")}>
         <input value={title} onChange={e => setTitle(e.target.value)} maxLength={300}
-          placeholder="Məs: Panik atak üçün CBT protokolu" style={inputStyle} autoFocus />
+          placeholder={t("psyResources.titlePlaceholder")} style={inputStyle} autoFocus />
       </Field>
 
-      <Field label="Kateqoriya">
+      <Field label={t("psyResources.fieldCategory")}>
         <select value={category} onChange={e => setCategory(e.target.value)} style={inputStyle}>
-          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          {CATEGORIES.map(c => <option key={c} value={c}>{catLabel(t, c)}</option>)}
         </select>
       </Field>
 
-      <Field label="Qısa təsvir">
+      <Field label={t("psyResources.fieldDescription")}>
         <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} maxLength={5000}
-          placeholder="Bir-iki cümlə ilə nə haqdadır…" style={{ ...inputStyle, resize: "vertical" }} />
+          placeholder={t("psyResources.descPlaceholder")} style={{ ...inputStyle, resize: "vertical" }} />
       </Field>
 
-      <Field label="Məzmun (istəyə bağlı)">
+      <Field label={t("psyResources.fieldContent")}>
         <textarea value={content} onChange={e => setContent(e.target.value)} rows={6}
-          placeholder="Tam mətn / qeydlər…" style={{ ...inputStyle, resize: "vertical" }} />
+          placeholder={t("psyResources.contentPlaceholder")} style={{ ...inputStyle, resize: "vertical" }} />
       </Field>
 
-      <Field label="Fayl (istəyə bağlı)">
+      <Field label={t("psyResources.fieldFile")}>
         <input ref={fileRef} type="file" hidden
           onChange={e => { const f = e.target.files?.[0]; if (f) onPickFile(f); }} />
         {fileUrl ? (
@@ -490,16 +515,16 @@ function ResourceForm({ initial, onClose, onSaved }: {
           }}>
             <IconPaperclip />
             <span style={{ flex: 1, color: "var(--oxford)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {fileName || "Fayl"}
+              {fileName || t("psyResources.fileFallback")}
             </span>
             <button onClick={() => { setFileUrl(null); setFileName(null); }}
               style={{ border: "none", background: "transparent", color: "#DC2626", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
-              Sil
+              {t("psyResources.delete")}
             </button>
           </div>
         ) : (
           <button onClick={() => fileRef.current?.click()} disabled={uploading} style={ghostBtn}>
-            {uploading ? "Yüklənir…" : "Fayl seç"}
+            {uploading ? t("psyResources.loadingEllipsis") : t("psyResources.chooseFile")}
           </button>
         )}
       </Field>
@@ -507,9 +532,9 @@ function ResourceForm({ initial, onClose, onSaved }: {
       {error && <p style={{ color: "#DC2626", fontSize: 12.5, margin: "4px 0 0" }}>{error}</p>}
 
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 18 }}>
-        <button onClick={onClose} style={ghostBtn}>Ləğv et</button>
+        <button onClick={onClose} style={ghostBtn}>{t("psyResources.cancel")}</button>
         <button onClick={save} disabled={saving || uploading} style={{ ...primaryBtn, opacity: saving ? 0.6 : 1 }}>
-          {saving ? "Saxlanılır…" : isNew ? "Paylaş" : "Yadda saxla"}
+          {saving ? t("psyResources.saving") : isNew ? t("psyResources.share") : t("psyResources.saveChanges")}
         </button>
       </div>
     </Modal>
@@ -521,6 +546,7 @@ function ResourceForm({ initial, onClose, onSaved }: {
 function ResourceDetail({ r, onClose, onEdit, onDelete }: {
   r: PsychResource; onClose: () => void; onEdit: () => void; onDelete: () => void;
 }) {
+  const { t } = useT();
   const cs = catStyle(r.category);
   return (
     <Modal onClose={onClose} wide>
@@ -528,14 +554,14 @@ function ResourceDetail({ r, onClose, onEdit, onDelete }: {
         <span style={{
           fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999,
           background: cs.bg, color: cs.color, textTransform: "uppercase", letterSpacing: 0.3,
-        }}>{r.category}</span>
+        }}>{catLabel(t, r.category)}</span>
         <span style={{ fontSize: 11.5, color: "var(--oxford-60)" }}>{fmtDate(r.createdAt)}</span>
       </div>
       <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--oxford)", margin: "0 0 6px", lineHeight: 1.3 }}>
         {r.title}
       </h2>
       <p style={{ fontSize: 12.5, color: "var(--oxford-60)", margin: "0 0 16px" }}>
-        Müəllif: {r.authorName || "Psixoloq"}
+        {t("psyResources.authorLabel", { name: r.authorName || t("psyResources.defaultAuthor") })}
       </p>
 
       {r.description && (
@@ -555,18 +581,18 @@ function ResourceDetail({ r, onClose, onEdit, onDelete }: {
             background: "var(--brand-50)", borderRadius: 10, fontSize: 13, fontWeight: 600,
             color: "var(--brand-700)", textDecoration: "none",
           }}>
-          <IconPaperclip /> {r.fileName || "Faylı aç"}
+          <IconPaperclip /> {r.fileName || t("psyResources.openFile")}
         </a>
       )}
 
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 22 }}>
         {r.mine && (
           <>
-            <button onClick={onDelete} style={{ ...ghostBtn, color: "#DC2626", borderColor: "#FECACA" }}>Sil</button>
-            <button onClick={onEdit} style={ghostBtn}>Redaktə et</button>
+            <button onClick={onDelete} style={{ ...ghostBtn, color: "#DC2626", borderColor: "#FECACA" }}>{t("psyResources.delete")}</button>
+            <button onClick={onEdit} style={ghostBtn}>{t("psyResources.edit")}</button>
           </>
         )}
-        <button onClick={onClose} style={primaryBtn}>Bağla</button>
+        <button onClick={onClose} style={primaryBtn}>{t("psyResources.close")}</button>
       </div>
     </Modal>
   );
@@ -613,18 +639,19 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
 }
 
 function ConfirmModal({ title, onConfirm, onCancel }: { title: string; onConfirm: () => void; onCancel: () => void }) {
+  const { t } = useT();
   return (
     <Modal onClose={onCancel}>
-      <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)", margin: "0 0 6px" }}>Resursu sil</h3>
+      <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)", margin: "0 0 6px" }}>{t("psyResources.deleteConfirmTitle")}</h3>
       <p style={{ fontSize: 13, color: "var(--oxford-60)", lineHeight: 1.55, margin: "0 0 20px" }}>
-        <b>"{title}"</b> silinəcək. Bu əməliyyat geri qaytarıla bilməz.
+        <b>"{title}"</b> {t("psyResources.deleteConfirmBody")}
       </p>
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <button onClick={onCancel} style={ghostBtn}>Ləğv et</button>
+        <button onClick={onCancel} style={ghostBtn}>{t("psyResources.cancel")}</button>
         <button onClick={onConfirm} style={{
           padding: "8px 20px", borderRadius: 8, border: "none",
           background: "#DC2626", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
-        }}>Sil</button>
+        }}>{t("psyResources.delete")}</button>
       </div>
     </Modal>
   );

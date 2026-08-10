@@ -9,6 +9,8 @@ import {
   type AppointmentDetail,
   type PackageDto,
 } from "@/lib/api";
+import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { getStoredUser } from "@/lib/auth";
 import { formatAzn } from "@/lib/money";
 import { azFormatDate } from "@/lib/datetime";
@@ -27,25 +29,30 @@ import {
   type StatusTone,
 } from "@/components/ui";
 
-/** Seans statusu — rəngli nöqtə/rozet yoxdur, mətndir. */
-const STATUS_LABEL: Record<string, { label: string; tone: StatusTone }> = {
-  PENDING:   { label: "Yeni",       tone: "wait" },
-  ASSIGNED:  { label: "Sizə təyin", tone: "neutral" },
-  CONFIRMED: { label: "Təsdiqli",   tone: "neutral" },
-  // Keçmiş seans avtomatik tamamlanır — bütün panellərlə eyni etiket ("Tamamlandı").
-  // Bu, seansın uğurla baş tutduğunu yox, vaxtının keçdiyini bildirir.
-  COMPLETED: { label: "Tamamlandı", tone: "muted" },
-  DISPUTED:  { label: "Mübahisəli", tone: "risk" },
-  CANCELLED: { label: "Ləğv",       tone: "muted" },
-  REJECTED:  { label: "Rədd",       tone: "risk" },
-};
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
-function greet(): string {
+/** Seans statusu — rəngli nöqtə/rozet yoxdur, mətndir. */
+function statusLabel(t: Translate, status: string): { label: string; tone: StatusTone } | null {
+  const map: Record<string, { label: string; tone: StatusTone }> = {
+    PENDING:   { label: t("psyDash.statusPending"),   tone: "wait" },
+    ASSIGNED:  { label: t("psyDash.statusAssigned"),  tone: "neutral" },
+    CONFIRMED: { label: t("psyDash.statusConfirmed"), tone: "neutral" },
+    // Keçmiş seans avtomatik tamamlanır — bütün panellərlə eyni etiket ("Tamamlandı").
+    // Bu, seansın uğurla baş tutduğunu yox, vaxtının keçdiyini bildirir.
+    COMPLETED: { label: t("psyDash.statusCompleted"), tone: "muted" },
+    DISPUTED:  { label: t("psyDash.statusDisputed"),  tone: "risk" },
+    CANCELLED: { label: t("psyDash.statusCancelled"), tone: "muted" },
+    REJECTED:  { label: t("psyDash.statusRejected"),  tone: "risk" },
+  };
+  return map[status] ?? null;
+}
+
+function greet(t: Translate): string {
   const h = new Date().getHours();
-  if (h < 6) return "Xoş gecələr";
-  if (h < 12) return "Sabahınız xeyir";
-  if (h < 18) return "Günortanız xeyir";
-  return "Axşamınız xeyir";
+  if (h < 6) return t("psyDash.greetNight");
+  if (h < 12) return t("psyDash.greetMorning");
+  if (h < 18) return t("psyDash.greetAfternoon");
+  return t("psyDash.greetEvening");
 }
 
 /**
@@ -53,10 +60,12 @@ function greet(): string {
  *
  * Platformada mütəxəssislərə "Dr." deyə xitab ETMİRİK: bu titul yalnız elmi
  * dərəcəsi (PhD) olanlara aiddir. Cinsiyyət boşdursa "bəy" işlədilir (V131 qərarı).
+ * Digər dillərdə bu xitab forması yoxdur — suffiks boşdursa sadəcə ad göstərilir.
  */
-function honorific(firstName: string, gender: string | null): string {
+function honorific(t: Translate, firstName: string, gender: string | null): string {
   const g = (gender ?? "").toUpperCase();
-  return `${firstName} ${g === "FEMALE" ? "xanım" : "bəy"}`;
+  const suffix = g === "FEMALE" ? t("psyDash.honorificFemale") : t("psyDash.honorificMale");
+  return suffix ? `${firstName} ${suffix}` : firstName;
 }
 
 function formatTime(iso?: string | null) {
@@ -65,24 +74,21 @@ function formatTime(iso?: string | null) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-function formatDayShort(iso?: string | null) {
+function formatDayShort(t: Translate, iso?: string | null) {
   if (!iso) return "";
   const d = new Date(iso);
   const today = new Date();
   const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
   const sameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-  if (sameDay(d, today)) return "Bu gün";
-  if (sameDay(d, tomorrow)) return "Sabah";
-  const months = ["Yanvar","Fevral","Mart","Aprel","May","İyun","İyul","Avqust","Sentyabr","Oktyabr","Noyabr","Dekabr"];
-  return `${d.getDate()} ${months[d.getMonth()]}`;
+  if (sameDay(d, today)) return t("common.today");
+  if (sameDay(d, tomorrow)) return t("common.tomorrow");
+  return `${d.getDate()} ${t(`months.m${d.getMonth() + 1}` as MessageKey)}`;
 }
 
-function todayLabel() {
-  const days = ["Bazar", "Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə"];
-  const months = ["Yanvar","Fevral","Mart","Aprel","May","İyun","İyul","Avqust","Sentyabr","Oktyabr","Noyabr","Dekabr"];
+function todayLabel(t: Translate) {
   const d = new Date();
-  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  return `${t(`days.d${d.getDay()}` as MessageKey)}, ${d.getDate()} ${t(`months.m${d.getMonth() + 1}` as MessageKey)} ${d.getFullYear()}`;
 }
 
 function isSameDay(a: Date, b: Date) {
@@ -90,6 +96,7 @@ function isSameDay(a: Date, b: Date) {
 }
 
 export default function PsychologDashboard() {
+  const { t } = useT();
   const user = getStoredUser();
   const [stats, setStats] = useState<PsychologistStats | null>(null);
   const [appointments, setAppointments] = useState<AppointmentDetail[]>([]);
@@ -148,15 +155,15 @@ export default function PsychologDashboard() {
           Əvvəl burada gradient "hero" banner var idi — panelin içində marketinq
           səthi. Onun yerinə sakit başlıq: kim, hansı gün, iki əsas keçid. */}
       <PageHead
-        title={`${greet()}, ${honorific(user?.firstName ?? "Psixoloq", gender)}`}
-        sub={todayLabel()}
+        title={`${greet(t)}, ${honorific(t, user?.firstName ?? t("psyDash.psyFallback"), gender)}`}
+        sub={todayLabel(t)}
         actions={
           <>
             <Link href="/psycholog/calendar" className={buttonClass("primary")}>
-              <IconCalendar /> Cədvəlim
+              <IconCalendar /> {t("psyDash.navCalendar")}
             </Link>
             <Link href="/psycholog/availability" className={buttonClass("ghost")}>
-              <IconClock /> İş vaxtları
+              <IconClock /> {t("psyDash.navAvailability")}
             </Link>
           </>
         }
@@ -171,13 +178,13 @@ export default function PsychologDashboard() {
               sırası vardı (iki səth, eyni məlumat). İndi tək sıra: dəyər + etiket. */}
           <Stats>
             <Stat
-              label="Bu ay seans"
+              label={t("psyDash.statSessionsMonth")}
               value={stats?.thisMonthTotal ?? 0}
-              meta={`${stats?.thisMonthCompleted ?? 0} tamamlandı (${completionRate}%)`}
+              meta={t("psyDash.statSessionsMonthMeta", { completed: stats?.thisMonthCompleted ?? 0, pct: completionRate })}
             />
-            <Stat label="Bu həftə" value={stats?.thisWeekTotal ?? 0} meta="planlaşdırılmış seans" />
-            <Stat label="Yaxınlaşan" value={stats?.upcomingCount ?? 0} meta="növbəti randevular" />
-            <Stat label="Aktiv pasiyent" value={stats?.activeClientsLast90Days ?? 0} meta="son 90 gün" />
+            <Stat label={t("psyDash.statWeek")} value={stats?.thisWeekTotal ?? 0} meta={t("psyDash.statWeekMeta")} />
+            <Stat label={t("psyDash.statUpcoming")} value={stats?.upcomingCount ?? 0} meta={t("psyDash.statUpcomingMeta")} />
+            <Stat label={t("psyDash.statActiveClients")} value={stats?.activeClientsLast90Days ?? 0} meta={t("psyDash.statActiveClientsMeta")} />
           </Stats>
 
           {/* ── Əsas şəbəkə: 2 sütun × 2 sətir ─────────────────────────────────
@@ -187,15 +194,15 @@ export default function PsychologDashboard() {
           <div className="fx-2col fx-2col--even">
             <Card fill>
               <CardHead
-                title="Bu günkü cədvəl"
-                sub={today.length ? `${today.length} seans planlaşdırılıb` : "Bu gün heç bir seans yoxdur"}
-                action={<Link href="/psycholog/appointments" className={linkClass()}>Hamısı</Link>}
+                title={t("psyDash.todayScheduleTitle")}
+                sub={today.length ? t("psyDash.todayScheduleSubCount", { count: today.length }) : t("psyDash.todayScheduleSubEmpty")}
+                action={<Link href="/psycholog/appointments" className={linkClass()}>{t("psyDash.viewAll")}</Link>}
               />
               <CardBody>
                 {today.length === 0 ? (
                   <EmptyBlock
-                    title="Bu gün cədvəliniz boşdur"
-                    body="Sərbəst günü bilik artırmaq üçün istifadə edin və ya açıq vaxtlarınızı yeniləyin."
+                    title={t("psyDash.todayEmptyTitle")}
+                    body={t("psyDash.todayEmptyBody")}
                   />
                 ) : (
                   today.slice(0, 6).map(a => <TodayRow key={a.id} a={a} />)
@@ -205,13 +212,13 @@ export default function PsychologDashboard() {
 
             <Card fill>
               <CardHead
-                title="Yaxınlaşan randevular"
-                sub={upcoming.length ? "Növbəti günlər" : "Boşdur"}
-                action={<Link href="/psycholog/calendar" className={linkClass()}>Cədvəl</Link>}
+                title={t("psyDash.upcomingTitle")}
+                sub={upcoming.length ? t("psyDash.upcomingSubHasItems") : t("psyDash.upcomingSubEmpty")}
+                action={<Link href="/psycholog/calendar" className={linkClass()}>{t("psyDash.calendarLink")}</Link>}
               />
               <CardBody>
                 {upcoming.length === 0 ? (
-                  <EmptyBlock title="Yaxınlaşan seans yoxdur" body="Yeni randevular əlavə olunduqda burada görünəcək." />
+                  <EmptyBlock title={t("psyDash.upcomingEmptyTitle")} body={t("psyDash.upcomingEmptyBody")} />
                 ) : (
                   upcoming.map(a => <UpcomingRow key={a.id} a={a} />)
                 )}
@@ -220,8 +227,8 @@ export default function PsychologDashboard() {
 
             <Card fill>
               <CardHead
-                title="Son 30 gün — gündəlik aktivlik"
-                sub={stats ? `Cəmi ${stats.last30Days.reduce((s, d) => s + d.count, 0)} seans` : "—"}
+                title={t("psyDash.dailyActivityTitle")}
+                sub={stats ? t("psyDash.dailyActivitySub", { count: stats.last30Days.reduce((s, d) => s + d.count, 0) }) : "—"}
               />
               <CardBody>
                 <DailyChart data={stats?.last30Days ?? []} />
@@ -229,7 +236,7 @@ export default function PsychologDashboard() {
             </Card>
 
             <Card fill>
-              <CardHead title="Müraciətin mənbəyi" sub="Sizi kim seçib — pasiyent, yoxsa Fanus" />
+              <CardHead title={t("psyDash.originTitle")} sub={t("psyDash.originSub")} />
               <CardBody>
                 <OriginDonut
                   direct={stats?.originDirectCount ?? 0}
@@ -252,13 +259,15 @@ export default function PsychologDashboard() {
 /* ─── Subcomponents ──────────────────────────────────────────────────────── */
 
 function SessionStatus({ status }: { status: string }) {
-  const s = STATUS_LABEL[status];
+  const { t } = useT();
+  const s = statusLabel(t, status);
   // Naməlum status ingiliscə çıxmasın — vahid mənbədən (lib/appointmentStatus) AZ adı götürülür.
   if (!s) return <Status tone="muted">{statusMeta(status).label}</Status>;
   return <Status tone={s.tone}>{s.label}</Status>;
 }
 
 function TodayRow({ a }: { a: AppointmentDetail }) {
+  const { t } = useT();
   return (
     <Row
       // Vaxt öndədir — bu siyahıda oxunan ilk şey odur.
@@ -270,19 +279,20 @@ function TodayRow({ a }: { a: AppointmentDetail }) {
           {formatTime(a.startAt)}
         </span>
       }
-      title={a.patientName ?? "Pasiyent"}
-      meta={a.endAt ? `${formatTime(a.startAt)} – ${formatTime(a.endAt)}` : "Onlayn seans"}
+      title={a.patientName ?? t("psyDash.patientFallback")}
+      meta={a.endAt ? `${formatTime(a.startAt)} – ${formatTime(a.endAt)}` : t("psyDash.onlineSession")}
       status={<SessionStatus status={a.status} />}
     />
   );
 }
 
 function UpcomingRow({ a }: { a: AppointmentDetail }) {
+  const { t } = useT();
   return (
     <Link href="/psycholog/appointments" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
       <Row
-        title={a.patientName ?? "Pasiyent"}
-        meta={`${formatDayShort(a.startAt)}, ${formatTime(a.startAt)}`}
+        title={a.patientName ?? t("psyDash.patientFallback")}
+        meta={`${formatDayShort(t, a.startAt)}, ${formatTime(a.startAt)}`}
       />
     </Link>
   );
@@ -295,32 +305,33 @@ function PricingSummaryCard({ pricing, packages }: {
   pricing: { individualPrice: number | null; currency: string } | null;
   packages: PackageDto[];
 }) {
+  const { t } = useT();
   const active = packages.filter(p => p.active);
   return (
     <Card>
       <CardHead
-        title="Qiymət və paketlər"
-        sub="Cari təklifləriniz"
-        action={<Link href="/psycholog/profile" className={linkClass()}>Düzəlt</Link>}
+        title={t("psyDash.pricingTitle")}
+        sub={t("psyDash.pricingSub")}
+        action={<Link href="/psycholog/profile" className={linkClass()}>{t("common.edit")}</Link>}
       />
       <CardBody>
         <Row
-          title="Fərdi seans"
+          title={t("psyDash.individualSession")}
           amount={pricing?.individualPrice != null ? formatAzn(pricing.individualPrice) : "—"}
         />
         {active.length === 0 ? (
           <EmptyBlock
-            title="Paket təyin edilməyib"
-            body="Paket təklif etsəniz pasiyentlər bir neçə seansı birlikdə ala bilər. «Qiymətlər & Paketlər» səhifəsindən əlavə edin."
-            actions={<Link href="/psycholog/packages" className={buttonClass("ghost", { size: "sm" })}>Qiymətlər &amp; Paketlər</Link>}
+            title={t("psyDash.packagesEmptyTitle")}
+            body={t("psyDash.packagesEmptyBody")}
+            actions={<Link href="/psycholog/packages" className={buttonClass("ghost", { size: "sm" })}>{t("psyDash.packagesEmptyCta")}</Link>}
           />
         ) : (
           <>
             {active.slice(0, 4).map(p => (
-              <Row key={p.id} title={p.name} meta={`${p.sessionCount} seans`} amount={formatAzn(p.packagePrice)} />
+              <Row key={p.id} title={p.name} meta={t("psyDash.packageSessionCount", { count: p.sessionCount })} amount={formatAzn(p.packagePrice)} />
             ))}
             {active.length > 4 && (
-              <Row title={`+${active.length - 4} paket daha`} />
+              <Row title={t("psyDash.morePackages", { count: active.length - 4 })} />
             )}
           </>
         )}
@@ -330,9 +341,10 @@ function PricingSummaryCard({ pricing, packages }: {
 }
 
 function DailyChart({ data }: { data: { date: string; count: number }[] }) {
+  const { t } = useT();
   const max = Math.max(1, ...data.map(d => d.count));
   if (data.length === 0) {
-    return <EmptyBlock title="Məlumat yoxdur" body="Aktivliyiniz burada görünəcək." />;
+    return <EmptyBlock title={t("psyDash.chartEmptyTitle")} body={t("psyDash.chartEmptyBody")} />;
   }
   // Bar hündürlüyü PİKSEL ilə hesablanır (faiz DEYİL): valideyn konteynerin
   // hündürlüyü qeyri-müəyyən olduğu üçün (row `alignItems: flex-end`) faizli
@@ -347,7 +359,7 @@ function DailyChart({ data }: { data: { date: string; count: number }[] }) {
           return (
             <div
               key={i}
-              title={`${azFormatDate(d.date)}: ${d.count} seans`}
+              title={t("psyDash.chartBarTooltip", { date: azFormatDate(d.date), count: d.count })}
               style={{
                 flex: 1,
                 height: `${barH}px`,
@@ -388,12 +400,13 @@ function shortDate(iso?: string) {
 const ORIGIN_COLORS = { direct: "#1051B7", matched: "#C97D2E" };
 
 function OriginDonut({ direct, matched }: { direct: number; matched: number }) {
+  const { t } = useT();
   const total = direct + matched;
   if (total === 0) {
     return (
       <EmptyBlock
-        title="Hələ məlumat yoxdur"
-        body="İlk seanslarınızdan sonra müraciətlərin nə qədərinin birbaşa sizə gəldiyi burada görünəcək."
+        title={t("psyDash.originEmptyTitle")}
+        body={t("psyDash.originEmptyBody")}
       />
     );
   }
@@ -419,25 +432,25 @@ function OriginDonut({ direct, matched }: { direct: number; matched: number }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 16, flex: 1 }}>
       <div style={{ display: "flex", justifyContent: "center" }}>
         <svg viewBox="0 0 120 120" width="150" height="150" role="img"
-             aria-label={`Birbaşa ${direct}, yönləndirmə ${matched}`}>
-          {seg(dLen, 0, ORIGIN_COLORS.direct, `Birbaşa müraciət: ${direct}`)}
-          {seg(mLen, dLen, ORIGIN_COLORS.matched, `Fanus yönləndirməsi: ${matched}`)}
+             aria-label={t("psyDash.originAriaLabel", { direct, matched })}>
+          {seg(dLen, 0, ORIGIN_COLORS.direct, t("psyDash.originDirectTitle", { direct }))}
+          {seg(mLen, dLen, ORIGIN_COLORS.matched, t("psyDash.originMatchedTitle", { matched }))}
           <text x="60" y="57" textAnchor="middle"
                 style={{ fontSize: 22, fontWeight: 700, fill: "var(--oxford)" }}>
             {total}
           </text>
           <text x="60" y="72" textAnchor="middle"
                 style={{ fontSize: 9, fill: "var(--oxford-60)" }}>
-            seans
+            {t("psyDash.originTotalWord")}
           </text>
         </svg>
       </div>
 
       {/* Birbaşa etiketlər — həm leqend, həm rəqəm. Mətn ink rəngindədir. */}
       <div>
-        <OriginLegendRow color={ORIGIN_COLORS.direct} label="Pasiyentin tələbi"
+        <OriginLegendRow color={ORIGIN_COLORS.direct} label={t("psyDash.originDirectLabel")}
                          value={direct} pct={pct(direct)} />
-        <OriginLegendRow color={ORIGIN_COLORS.matched} label="Fanusun yönləndirməsi"
+        <OriginLegendRow color={ORIGIN_COLORS.matched} label={t("psyDash.originMatchedLabel")}
                          value={matched} pct={pct(matched)} />
       </div>
     </div>

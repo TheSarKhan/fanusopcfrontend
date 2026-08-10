@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { psychologistApi, type PsyTest } from "@/lib/api";
 import { stripLeadingNumber } from "@/lib/testQuestion";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function PsyTestPreviewPage() {
+  const { t } = useT();
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
 
@@ -15,29 +17,29 @@ export default function PsyTestPreviewPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!Number.isFinite(id)) { setError("Yanlış test nömrəsi"); setLoading(false); return; }
+    if (!Number.isFinite(id)) { setError(t("psyTestMgmt.invalidId")); setLoading(false); return; }
     psychologistApi
       .previewTest(id)
-      .then((t) => { setTest(t); setError(null); })
+      .then((tst) => { setTest(tst); setError(null); })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, t]);
 
   const questions = test ? [...test.questions].sort((a, b) => a.displayOrder - b.displayOrder) : [];
 
   return (
     <div style={{ width: "100%", maxWidth: 720, margin: "0 auto" }}>
       <div style={{ marginBottom: 16 }}>
-        <Link href="/psycholog/tests" style={{ fontSize: 13, color: "#52718F", textDecoration: "none" }}>← Psixoloji testlərə qayıt</Link>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1A2535", margin: "8px 0 2px" }}>Önizləmə</h1>
-        <p style={{ fontSize: 12.5, color: "#52718F", margin: 0 }}>İştirakçının gördüyü kimi</p>
+        <Link href="/psycholog/tests" style={{ fontSize: 13, color: "#52718F", textDecoration: "none" }}>{t("psyTestMgmt.backToTests")}</Link>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: "#1A2535", margin: "8px 0 2px" }}>{t("psyTestMgmt.previewTitle")}</h1>
+        <p style={{ fontSize: 12.5, color: "#52718F", margin: 0 }}>{t("psyTestMgmt.previewSub")}</p>
       </div>
 
       {loading ? (
-        <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "#52718F" }}>Yüklənir…</div>
+        <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "#52718F" }}>{t("psyTestMgmt.loading")}</div>
       ) : error || !test ? (
         <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", padding: 18, borderRadius: 14, fontSize: 13 }}>
-          {error ?? "Test tapılmadı."}
+          {error ?? t("psyTestMgmt.notFound")}
         </div>
       ) : (
         <div style={{ background: "#fff", border: "1px solid #EEF2F7", borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", gap: 18 }}>

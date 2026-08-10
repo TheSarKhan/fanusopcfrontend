@@ -6,16 +6,17 @@ import Link from "next/link";
 import "@/app/admin/admin.css";
 import { psychologistApi } from "@/lib/api";
 import PsychTestWizard from "@/components/PsychTestWizard";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function PsyNewTestPage() {
+  const { t } = useT();
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <Link href="/psycholog/tests" style={{ fontSize: 13, color: "#52718F", textDecoration: "none" }}>← Psixoloji testlərə qayıt</Link>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: "8px 0 4px" }}>Yeni test</h1>
+        <Link href="/psycholog/tests" style={{ fontSize: 13, color: "#52718F", textDecoration: "none" }}>{t("psyTestMgmt.backToTests")}</Link>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--oxford)", margin: "8px 0 4px" }}>{t("psyTestMgmt.newTitle")}</h1>
         <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: 0 }}>
-          Addım-addım doldurun — dəyişikliklər avtomatik saxlanılır. Test dərhal öz
-          pasiyentlərinizə təyin oluna bilər; digər psixoloqlara açmaq üçün admin təsdiqi lazımdır.
+          {t("psyTestMgmt.newSub")}
         </p>
       </div>
 

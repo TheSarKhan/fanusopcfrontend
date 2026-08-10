@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { psychologistApi, type BlogPost } from "@/lib/api";
 import { getMainSiteUrl } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
+import { useT } from "@/lib/i18n/LocaleProvider";
+
+type TFn = ReturnType<typeof useT>["t"];
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
 
@@ -21,18 +24,18 @@ function isEdited(p: BlogPost): boolean {
   return new Date(p.updatedAt).getTime() - new Date(p.createdAt).getTime() > 60_000;
 }
 
-function timeAgo(d: string): string {
+function timeAgo(d: string, t: TFn): string {
   const ms = Date.now() - new Date(d).getTime();
   const min = Math.round(ms / 60000);
-  if (min < 1) return "indi";
-  if (min < 60) return `${min} dəq əvvəl`;
+  if (min < 1) return t("psyArticles.timeAgoNow");
+  if (min < 60) return t("psyArticles.timeAgoMinutes", { count: min });
   const h = Math.round(min / 60);
-  if (h < 24) return `${h} saat əvvəl`;
+  if (h < 24) return t("psyArticles.timeAgoHours", { count: h });
   const days = Math.round(h / 24);
-  if (days < 30) return `${days} gün əvvəl`;
+  if (days < 30) return t("psyArticles.timeAgoDays", { count: days });
   const mo = Math.round(days / 30);
-  if (mo < 12) return `${mo} ay əvvəl`;
-  return `${Math.round(mo / 12)} il əvvəl`;
+  if (mo < 12) return t("psyArticles.timeAgoMonths", { count: mo });
+  return t("psyArticles.timeAgoYears", { count: Math.round(mo / 12) });
 }
 
 function stripHtml(html: string) {
@@ -54,6 +57,7 @@ const PAGE_SIZE = 30;
 /* ─── page ────────────────────────────────────────────────────────────────── */
 
 export default function PsychologArticlesPage() {
+  const { t } = useT();
   const [items, setItems] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalElements, setTotalElements] = useState(0);
@@ -170,7 +174,7 @@ export default function PsychologArticlesPage() {
       const updated = await psychologistApi.setArticleStatus(p.id, newStatus);
       setItems(prev => prev.map(x => x.id === p.id ? updated : x));
     } catch (e) {
-      alert("Status dəyişdirilə bilmədi: " + (e as Error).message);
+      alert(t("psyArticles.statusToggleError", { message: (e as Error).message }));
     } finally {
       setTogglingId(null);
     }
@@ -190,20 +194,20 @@ export default function PsychologArticlesPage() {
 
       {/* Header */}
       <PageHeader
-        title="Məqalələrim"
-        subtitle="Yazılarınızı toplayın, qaralamadan yayımlayın və paylaşın."
+        title={t("psyArticles.title")}
+        subtitle={t("psyArticles.subtitle")}
         actions={
           <a href="/psycholog/articles/new" style={primaryBtnLink}>
-            <IconPlus /> Yeni məqalə
+            <IconPlus /> {t("psyArticles.newArticle")}
           </a>
         }
       />
 
       {/* Stat strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(160px, 100%), 1fr))", gap: 10 }}>
-        <StatCell label="Ümumi"      value={totalElements}   tone="brand" />
-        <StatCell label="Yayımlandı" value={stats.published} tone="good" />
-        <StatCell label="Qaralama"   value={stats.draft}     tone="warn" />
+        <StatCell label={t("psyArticles.statTotal")}      value={totalElements}   tone="brand" />
+        <StatCell label={t("psyArticles.statusPublished")} value={stats.published} tone="good" />
+        <StatCell label={t("psyArticles.statusDraft")}   value={stats.draft}     tone="warn" />
       </div>
 
       {/* Toolbar: tabs + search + sort + view toggle */}
@@ -213,15 +217,15 @@ export default function PsychologArticlesPage() {
         border: "1px solid var(--oxford-10)",
       }}>
         <div style={{ display: "flex", gap: 4 }}>
-          <TabBtn active={tab === "ALL"}       count={stats.total}     onClick={() => setTab("ALL")}>Hamısı</TabBtn>
-          <TabBtn active={tab === "PUBLISHED"} count={stats.published} onClick={() => setTab("PUBLISHED")}>Yayımlandı</TabBtn>
-          <TabBtn active={tab === "DRAFT"}     count={stats.draft}     onClick={() => setTab("DRAFT")}>Qaralama</TabBtn>
+          <TabBtn active={tab === "ALL"}       count={stats.total}     onClick={() => setTab("ALL")}>{t("psyArticles.tabAll")}</TabBtn>
+          <TabBtn active={tab === "PUBLISHED"} count={stats.published} onClick={() => setTab("PUBLISHED")}>{t("psyArticles.statusPublished")}</TabBtn>
+          <TabBtn active={tab === "DRAFT"}     count={stats.draft}     onClick={() => setTab("DRAFT")}>{t("psyArticles.statusDraft")}</TabBtn>
         </div>
 
         <div style={{ flex: 1, minWidth: 200, position: "relative" }}>
           <IconSearch />
           <input ref={searchRef} value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Axtar (başlıq / kateqoriya)…"
+            placeholder={t("psyArticles.searchPlaceholder")}
             style={{
               width: "100%", padding: "9px 12px 9px 36px", borderRadius: 10,
               border: "1.5px solid var(--oxford-10)", fontSize: 13,
@@ -236,23 +240,23 @@ export default function PsychologArticlesPage() {
         {categories.length > 0 && (
           <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
             style={selectStyle}>
-            <option value="ALL">Bütün kateqoriyalar</option>
+            <option value="ALL">{t("psyArticles.allCategories")}</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         )}
 
         <select value={sort} onChange={e => setSort(e.target.value as SortMode)}
           style={selectStyle}>
-          <option value="newest">Ən yeni</option>
-          <option value="oldest">Ən köhnə</option>
-          <option value="title">Başlıq A–Z</option>
+          <option value="newest">{t("psyArticles.sortNewest")}</option>
+          <option value="oldest">{t("psyArticles.sortOldest")}</option>
+          <option value="title">{t("psyArticles.sortTitleAz")}</option>
         </select>
 
         <div style={{ display: "flex", gap: 2, padding: 2, background: "var(--oxford-10)", borderRadius: 8 }}>
-          <ViewToggleBtn active={view === "grid"} onClick={() => setView("grid")} title="Şəbəkə görünüşü">
+          <ViewToggleBtn active={view === "grid"} onClick={() => setView("grid")} title={t("psyArticles.viewGridTitle")}>
             <IconGrid />
           </ViewToggleBtn>
-          <ViewToggleBtn active={view === "list"} onClick={() => setView("list")} title="Siyahı görünüşü">
+          <ViewToggleBtn active={view === "list"} onClick={() => setView("list")} title={t("psyArticles.viewListTitle")}>
             <IconList />
           </ViewToggleBtn>
         </div>
@@ -260,11 +264,11 @@ export default function PsychologArticlesPage() {
 
       {/* Hero featured */}
       {!loading && hero && (
-        <HeroArticle p={hero}
+        <HeroArticle p={hero} t={t}
           onEdit={() => window.location.assign(`/psycholog/articles/${hero.id}/edit`)}
           onView={() => window.open(`${getMainSiteUrl()}/blog/${hero.slug}`, "_blank")}
           onToggle={() => toggleStatus(hero)}
-          onDelete={() => setConfirm({ id: hero.id, title: hero.title || "Başlıqsız" })}
+          onDelete={() => setConfirm({ id: hero.id, title: hero.title || t("psyArticles.untitled") })}
           isToggling={togglingId === hero.id} />
       )}
 
@@ -278,6 +282,7 @@ export default function PsychologArticlesPage() {
         // to show. If the hero banner is visible, the user already sees an
         // article on the page — no need for the empty state alongside it.
         <EmptyState
+          t={t}
           filtered={search.trim() !== "" || tab !== "ALL" || categoryFilter !== "ALL"}
           onClear={() => { setSearch(""); setTab("ALL"); setCategoryFilter("ALL"); }}
         />
@@ -288,10 +293,10 @@ export default function PsychologArticlesPage() {
           gap: 12,
         }}>
           {filtered.map(p => (
-            <GridCard key={p.id} p={p}
+            <GridCard key={p.id} p={p} t={t}
               onToggle={() => toggleStatus(p)}
               isToggling={togglingId === p.id}
-              onDelete={() => setConfirm({ id: p.id, title: p.title || "Başlıqsız" })}
+              onDelete={() => setConfirm({ id: p.id, title: p.title || t("psyArticles.untitled") })}
               menuOpen={openMenuId === p.id}
               onMenuToggle={() => setOpenMenuId(openMenuId === p.id ? null : p.id)}
             />
@@ -300,11 +305,11 @@ export default function PsychologArticlesPage() {
       ) : (
         <div style={{ background: "#fff", borderRadius: 14, border: "1px solid var(--oxford-10)", overflow: "hidden" }}>
           {filtered.map((p, idx) => (
-            <ListRow key={p.id} p={p}
+            <ListRow key={p.id} p={p} t={t}
               divider={idx < filtered.length - 1}
               onToggle={() => toggleStatus(p)}
               isToggling={togglingId === p.id}
-              onDelete={() => setConfirm({ id: p.id, title: p.title || "Başlıqsız" })}
+              onDelete={() => setConfirm({ id: p.id, title: p.title || t("psyArticles.untitled") })}
             />
           ))}
         </div>
@@ -314,13 +319,14 @@ export default function PsychologArticlesPage() {
         <div style={{ textAlign: "center", marginTop: 4 }}>
           <button type="button" onClick={loadMore} disabled={loadingMore}
             style={{ background: "#fff", color: "var(--brand)", border: "1px solid #D6E2F7", borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 700, fontFamily: "inherit", cursor: loadingMore ? "wait" : "pointer", opacity: loadingMore ? 0.7 : 1 }}>
-            {loadingMore ? "Yüklənir…" : `Daha çox göstər (+${Math.min(PAGE_SIZE, totalElements - items.length)})`}
+            {loadingMore ? t("psyArticles.loading") : t("psyArticles.loadMoreBtn", { count: Math.min(PAGE_SIZE, totalElements - items.length) })}
           </button>
         </div>
       )}
 
       {confirm && (
         <ConfirmModal
+          t={t}
           title={confirm.title}
           onConfirm={async () => { await deleteArticle(confirm.id); setConfirm(null); }}
           onCancel={() => setConfirm(null)}
@@ -332,8 +338,9 @@ export default function PsychologArticlesPage() {
 
 /* ─── Hero featured banner ────────────────────────────────────────────────── */
 
-function HeroArticle({ p, onEdit, onView, onToggle, onDelete, isToggling }: {
+function HeroArticle({ p, t, onEdit, onView, onToggle, onDelete, isToggling }: {
   p: BlogPost;
+  t: TFn;
   onEdit: () => void;
   onView: () => void;
   onToggle: () => void;
@@ -370,11 +377,11 @@ function HeroArticle({ p, onEdit, onView, onToggle, onDelete, isToggling }: {
             fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase",
             marginBottom: 10,
           }}>
-            <IconSparkle /> Ən son
+            <IconSparkle /> {t("psyArticles.latestBadge")}
             {p.category && <span style={{ opacity: 0.8 }}>{p.category}</span>}
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, lineHeight: 1.25, color: "#fff" }}>
-            {p.title || "Başlıqsız"}
+            {p.title || t("psyArticles.untitled")}
           </h2>
           {p.excerpt && (
             <p style={{
@@ -387,33 +394,33 @@ function HeroArticle({ p, onEdit, onView, onToggle, onDelete, isToggling }: {
 
         <div>
           <div style={{ display: "flex", gap: 12, fontSize: 11.5, color: "rgba(255,255,255,0.85)", marginBottom: 12, flexWrap: "wrap" }}>
-            <span>{p.publishedDate ? fmtDate(p.publishedDate) : (p.createdAt ? timeAgo(p.createdAt) : "—")}</span>
+            <span>{p.publishedDate ? fmtDate(p.publishedDate) : (p.createdAt ? timeAgo(p.createdAt, t) : "—")}</span>
             {/* Son yenilənmə — yalnız yayımdan sonra REDAKTƏ olunubsa göstərilir
                 (əvvəl yalnız yayım tarixi vardı, redaktə izi görünmürdü). */}
-            {isEdited(p) && <span>Yeniləndi: {fmtDate(p.updatedAt!)}</span>}
-            <span>{readTime} dəq oxunma</span>
-            {p.viewCount != null && p.viewCount > 0 && <span>{p.viewCount} baxış</span>}
+            {isEdited(p) && <span>{t("psyArticles.updatedLabel", { date: fmtDate(p.updatedAt!) })}</span>}
+            <span>{t("psyArticles.readTimeLabel", { count: readTime })}</span>
+            {p.viewCount != null && p.viewCount > 0 && <span>{t("psyArticles.viewsLabel", { count: p.viewCount })}</span>}
             <span style={{
               padding: "1px 8px", borderRadius: 999,
               background: published ? "rgba(16, 185, 129, 0.25)" : "rgba(251, 191, 36, 0.25)",
               color: published ? "#A7F3D0" : "#FDE68A",
               fontWeight: 700,
-            }}>{published ? "Yayımlandı" : "Qaralama"}</span>
+            }}>{published ? t("psyArticles.statusPublished") : t("psyArticles.statusDraft")}</span>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={onEdit} style={heroBtn(true)}>
-              <IconEdit /> Redaktə et
+              <IconEdit /> {t("psyArticles.editBtn")}
             </button>
             {published && p.slug && (
               <button onClick={onView} style={heroBtn(false)}>
-                <IconExternal /> Bax
+                <IconExternal /> {t("psyArticles.viewBtn")}
               </button>
             )}
             <button onClick={onToggle} disabled={isToggling} style={heroBtn(false)}>
-              {published ? "Qaralamaya keçir" : "Yayımla"}
+              {published ? t("psyArticles.toDraftBtn") : t("psyArticles.toPublishBtn")}
             </button>
             <button onClick={onDelete} style={heroBtnDanger}>
-              <IconTrash /> Sil
+              <IconTrash /> {t("psyArticles.deleteBtn")}
             </button>
           </div>
         </div>
@@ -424,8 +431,9 @@ function HeroArticle({ p, onEdit, onView, onToggle, onDelete, isToggling }: {
 
 /* ─── Grid card ───────────────────────────────────────────────────────────── */
 
-function GridCard({ p, onToggle, isToggling, onDelete, menuOpen, onMenuToggle }: {
+function GridCard({ p, t, onToggle, isToggling, onDelete, menuOpen, onMenuToggle }: {
   p: BlogPost;
+  t: TFn;
   onToggle: () => void;
   isToggling: boolean;
   onDelete: () => void;
@@ -487,14 +495,14 @@ function GridCard({ p, onToggle, isToggling, onDelete, menuOpen, onMenuToggle }:
             padding: "3px 10px", borderRadius: 999, fontSize: 10.5, fontWeight: 700,
             background: published ? "rgba(16, 185, 129, 0.92)" : "rgba(251, 191, 36, 0.92)",
             color: "#fff", backdropFilter: "blur(4px)",
-          }}>{published ? "Yayımlandı" : "Qaralama"}</span>
+          }}>{published ? t("psyArticles.statusPublished") : t("psyArticles.statusDraft")}</span>
         </div>
         {p.hasPendingDraft && (
           <div style={{
             position: "absolute", bottom: 8, right: 8,
             padding: "2px 8px", borderRadius: 999, fontSize: 10, fontWeight: 700,
             background: "rgba(255,255,255,0.92)", color: "var(--brand-700)",
-          }}>Gözlənilən dəyişiklik</div>
+          }}>{t("psyArticles.pendingChangeBadge")}</div>
         )}
       </div>
 
@@ -508,12 +516,13 @@ function GridCard({ p, onToggle, isToggling, onDelete, menuOpen, onMenuToggle }:
           cursor: "pointer", backdropFilter: "blur(4px)",
           color: "var(--oxford)",
           boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
-        }} title="Daha çox">
+        }} title={t("psyArticles.moreBtn")}>
           <IconKebab />
         </button>
         {menuOpen && (
           <KebabMenu
             p={p}
+            t={t}
             onToggle={onToggle}
             isToggling={isToggling}
             onDelete={onDelete}
@@ -539,7 +548,7 @@ function GridCard({ p, onToggle, isToggling, onDelete, menuOpen, onMenuToggle }:
           fontSize: 14.5, fontWeight: 700, color: "var(--oxford)",
           margin: 0, lineHeight: 1.3, display: "-webkit-box",
           WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-        }}>{p.title || "Başlıqsız"}</h3>
+        }}>{p.title || t("psyArticles.untitled")}</h3>
         {excerpt && (
           <p style={{
             fontSize: 12.5, color: "var(--oxford-60)", margin: 0, lineHeight: 1.5,
@@ -552,11 +561,11 @@ function GridCard({ p, onToggle, isToggling, onDelete, menuOpen, onMenuToggle }:
           display: "flex", alignItems: "center", justifyContent: "space-between",
           fontSize: 11, color: "var(--oxford-60)",
         }}>
-          <span>{p.publishedDate ? fmtDate(p.publishedDate) : (p.createdAt ? timeAgo(p.createdAt) : "")}</span>
+          <span>{p.publishedDate ? fmtDate(p.publishedDate) : (p.createdAt ? timeAgo(p.createdAt, t) : "")}</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
-            <IconClock /> {readTime} dəq
+            <IconClock /> {t("psyArticles.readTimeShort", { count: readTime })}
           </span>
-          {p.viewCount != null && p.viewCount > 0 && <span>{p.viewCount} baxış</span>}
+          {p.viewCount != null && p.viewCount > 0 && <span>{t("psyArticles.viewsLabel", { count: p.viewCount })}</span>}
         </div>
       </a>
     </div>
@@ -565,8 +574,9 @@ function GridCard({ p, onToggle, isToggling, onDelete, menuOpen, onMenuToggle }:
 
 /* ─── List row (compact view) ─────────────────────────────────────────────── */
 
-function ListRow({ p, divider, onToggle, isToggling, onDelete }: {
+function ListRow({ p, t, divider, onToggle, isToggling, onDelete }: {
   p: BlogPost;
+  t: TFn;
   divider: boolean;
   onToggle: () => void;
   isToggling: boolean;
@@ -605,7 +615,7 @@ function ListRow({ p, divider, onToggle, isToggling, onDelete }: {
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 2 }}>
           <span style={{ fontWeight: 700, fontSize: 14, color: "var(--oxford)",
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 380 }}>
-            {p.title || "Başlıqsız"}
+            {p.title || t("psyArticles.untitled")}
           </span>
           {p.category && (
             <span style={{
@@ -617,7 +627,7 @@ function ListRow({ p, divider, onToggle, isToggling, onDelete }: {
             <span style={{
               fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 999,
               background: "var(--brand-50)", color: "var(--brand-700)",
-            }}>Gözlənilən dəyişiklik</span>
+            }}>{t("psyArticles.pendingChangeBadge")}</span>
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 11.5, color: "var(--oxford-60)" }}>
@@ -627,7 +637,7 @@ function ListRow({ p, divider, onToggle, isToggling, onDelete }: {
             }}>{excerpt}</span>
           )}
           <span style={{ whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 3 }}>
-            <IconClock /> {readTime} dəq
+            <IconClock /> {t("psyArticles.readTimeShort", { count: readTime })}
           </span>
           {p.publishedDate && (
             <span style={{ whiteSpace: "nowrap", color: "var(--oxford-60)" }}>{fmtDate(p.publishedDate)}</span>
@@ -642,20 +652,20 @@ function ListRow({ p, divider, onToggle, isToggling, onDelete }: {
           cursor: isToggling ? "wait" : "pointer", opacity: isToggling ? 0.6 : 1,
           whiteSpace: "nowrap",
         }}>
-        {published ? "Yayımlandı" : "Qaralama"}
+        {published ? t("psyArticles.statusPublished") : t("psyArticles.statusDraft")}
       </button>
       <div style={{ display: "flex", gap: 4 }}>
         {p.status === "PUBLISHED" && p.slug && (
           <a href={`${getMainSiteUrl()}/blog/${p.slug}`} target="_blank" rel="noopener noreferrer"
-            title="Bax" style={iconActionStyle("#52718F", "var(--oxford-10)")}>
+            title={t("psyArticles.viewBtn")} style={iconActionStyle("#52718F", "var(--oxford-10)")}>
             <IconExternal />
           </a>
         )}
-        <a href={`/psycholog/articles/${p.id}/edit`} title="Redaktə et"
+        <a href={`/psycholog/articles/${p.id}/edit`} title={t("psyArticles.editBtn")}
           style={iconActionStyle("var(--brand-700)", "var(--brand-50)")}>
           <IconEdit />
         </a>
-        <button onClick={onDelete} title="Sil"
+        <button onClick={onDelete} title={t("psyArticles.deleteBtn")}
           style={{ ...iconActionStyle("#DC2626", "#FEE2E2"), border: "none", cursor: "pointer" }}>
           <IconTrash />
         </button>
@@ -666,8 +676,9 @@ function ListRow({ p, divider, onToggle, isToggling, onDelete }: {
 
 /* ─── Kebab menu ──────────────────────────────────────────────────────────── */
 
-function KebabMenu({ p, onToggle, isToggling, onDelete, onClose }: {
+function KebabMenu({ p, t, onToggle, isToggling, onDelete, onClose }: {
   p: BlogPost;
+  t: TFn;
   onToggle: () => void;
   isToggling: boolean;
   onDelete: () => void;
@@ -683,19 +694,19 @@ function KebabMenu({ p, onToggle, isToggling, onDelete, onClose }: {
       overflow: "hidden", zIndex: 30, minWidth: 180,
     }}>
       <MenuItem onClick={() => { onClose(); window.location.assign(`/psycholog/articles/${p.id}/edit`); }}>
-        <IconEdit /> Redaktə et
+        <IconEdit /> {t("psyArticles.editBtn")}
       </MenuItem>
       {published && p.slug && (
         <MenuItem onClick={() => { onClose(); window.open(`${getMainSiteUrl()}/blog/${p.slug}`, "_blank"); }}>
-          <IconExternal /> Yayımlanmışa bax
+          <IconExternal /> {t("psyArticles.viewPublishedMenuItem")}
         </MenuItem>
       )}
       <MenuItem onClick={() => { onClose(); onToggle(); }} disabled={isToggling}>
-        {published ? <><IconDraft /> Qaralamaya keçir</> : <><IconPublish /> Yayımla</>}
+        {published ? <><IconDraft /> {t("psyArticles.toDraftBtn")}</> : <><IconPublish /> {t("psyArticles.toPublishBtn")}</>}
       </MenuItem>
       <div style={{ height: 1, background: "var(--oxford-10)" }} />
       <MenuItem danger onClick={() => { onClose(); onDelete(); }}>
-        <IconTrash /> Sil
+        <IconTrash /> {t("psyArticles.deleteBtn")}
       </MenuItem>
     </div>
   );
@@ -724,7 +735,7 @@ function MenuItem({ children, onClick, danger, disabled }: {
 
 /* ─── Empty state ─────────────────────────────────────────────────────────── */
 
-function EmptyState({ filtered, onClear }: { filtered: boolean; onClear: () => void }) {
+function EmptyState({ t, filtered, onClear }: { t: TFn; filtered: boolean; onClear: () => void }) {
   return (
     <div style={{
       textAlign: "center", padding: "56px 24px",
@@ -739,17 +750,17 @@ function EmptyState({ filtered, onClear }: { filtered: boolean; onClear: () => v
         <IconBook />
       </div>
       <p style={{ fontSize: 15, fontWeight: 700, color: "var(--oxford)", margin: "0 0 4px" }}>
-        {filtered ? "Filtrlərə uyğun məqalə yoxdur" : "Hələ məqalə yoxdur"}
+        {filtered ? t("psyArticles.emptyFilteredTitle") : t("psyArticles.emptyTitle")}
       </p>
       <p style={{ fontSize: 13, color: "var(--oxford-60)", margin: "0 0 18px" }}>
         {filtered
-          ? "Axtarışı və ya filtrləri sıfırlamaq üçün aşağıdakı düyməyə basın."
-          : "Pasiyentlərə paylaşmaq və biliklərinizi yaymaq üçün ilk məqaləni yazın."}
+          ? t("psyArticles.emptyFilteredBody")
+          : t("psyArticles.emptyBody")}
       </p>
       {filtered ? (
-        <button onClick={onClear} style={ghostBtn}>Filtri təmizlə</button>
+        <button onClick={onClear} style={ghostBtn}>{t("psyArticles.clearFilterBtn")}</button>
       ) : (
-        <a href="/psycholog/articles/new" style={primaryBtnLink}><IconPlus /> İlk məqaləni yaz</a>
+        <a href="/psycholog/articles/new" style={primaryBtnLink}><IconPlus /> {t("psyArticles.firstArticleCta")}</a>
       )}
     </div>
   );
@@ -786,7 +797,7 @@ function SkeletonCard({ mode }: { mode: ViewMode }) {
 
 /* ─── Confirm modal ───────────────────────────────────────────────────────── */
 
-function ConfirmModal({ title, onConfirm, onCancel }: { title: string; onConfirm: () => void; onCancel: () => void }) {
+function ConfirmModal({ t, title, onConfirm, onCancel }: { t: TFn; title: string; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div onClick={onCancel} style={{
       position: "fixed", inset: 0, zIndex: 1000,
@@ -807,20 +818,20 @@ function ConfirmModal({ title, onConfirm, onCancel }: { title: string; onConfirm
           <IconTrash />
         </div>
         <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--oxford)", margin: 0, marginBottom: 6 }}>
-          Məqaləni sil
+          {t("psyArticles.deleteModalTitle")}
         </h3>
         <p style={{ fontSize: 13, color: "var(--oxford-60)", lineHeight: 1.55, margin: 0, marginBottom: 20 }}>
-          <b>"{title}"</b> silinəcək. Bu əməliyyat geri qaytarıla bilməz.
+          <b>"{title}"</b> {t("psyArticles.deleteModalWarning")}
         </p>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button onClick={onCancel} style={{
             padding: "8px 16px", borderRadius: 8, border: "1px solid var(--oxford-10)",
             background: "#fff", color: "var(--oxford)", fontSize: 13, fontWeight: 600, cursor: "pointer",
-          }}>Ləğv et</button>
+          }}>{t("psyArticles.cancelBtn")}</button>
           <button onClick={onConfirm} style={{
             padding: "8px 20px", borderRadius: 8, border: "none",
             background: "#DC2626", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
-          }}>Sil</button>
+          }}>{t("psyArticles.deleteBtn")}</button>
         </div>
       </div>
     </div>

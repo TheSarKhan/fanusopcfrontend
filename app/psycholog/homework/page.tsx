@@ -10,18 +10,19 @@ import HomeworkDetailModal from "@/components/HomeworkDetailModal";
 import HomeworkCreateModal from "@/components/HomeworkCreateModal";
 import HomeworkLabelChip, { LABEL_COLOR_LIST, labelColors } from "@/components/HomeworkLabelChip";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { azFormatDate } from "@/lib/datetime";
 import PageHeader from "@/components/PageHeader";
 
 const PRIORITY_COLOR: Record<HomeworkPriority, string> = {
   LOW: "#10B981", MEDIUM: "#F59E0B", HIGH: "#DC2626",
 };
-function priorityLabel(t: (k: string) => string, p: HomeworkPriority): string {
+function priorityLabel(t: (k: MessageKey) => string, p: HomeworkPriority): string {
   if (p === "LOW") return t("psyHwMgmt.priorityLow");
   if (p === "MEDIUM") return t("psyHwMgmt.priorityMedium");
   return t("psyHwMgmt.priorityHigh");
 }
-function statusTone(t: (k: string) => string, s: HomeworkStatus): { label: string; color: string; bg: string } {
+function statusTone(t: (k: MessageKey) => string, s: HomeworkStatus): { label: string; color: string; bg: string } {
   if (s === "PENDING") return { label: t("psyHwMgmt.statusPending"), color: "#92400E", bg: "#FEF3C7" };
   if (s === "IN_PROGRESS") return { label: t("psyHwMgmt.statusInProgress"), color: "#1E40AF", bg: "#DBEAFE" };
   return { label: t("psyHwMgmt.statusCompleted"), color: "#065F46", bg: "#D1FAE5" };
@@ -34,7 +35,7 @@ function isOverdue(h: Homework): boolean {
 function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join("").toUpperCase();
 }
-function formatTimeAgo(t: (k: string, vars?: Record<string, string | number>) => string, iso?: string | null): string {
+function formatTimeAgo(t: (k: MessageKey, vars?: Record<string, string | number>) => string, iso?: string | null): string {
   if (!iso) return "—";
   const ms = Date.now() - new Date(iso).getTime();
   const min = Math.round(ms / 60000);

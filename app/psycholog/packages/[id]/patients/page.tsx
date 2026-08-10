@@ -17,6 +17,7 @@ import {
 } from "@/components/ui";
 import { statusPt, withPurchaseOrdinal } from "../../shared";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 /** Cədvəl sətri — paket alışı + neçənci alış olduğu. */
 type PatientRow = ReturnType<typeof withPurchaseOrdinal>[number];
@@ -40,7 +41,7 @@ const rowKeyOf = (p: PatientRow) => `${p.patientId}-${p.purchasedAt}-${p.ordinal
 
 /** Sütunlar i18n-li olduğu üçün funksiya kimi qurulur — çağıran komponent öz `t`-sini verir. */
 function buildColumns(
-  t: (key: string, vars?: Record<string, string | number>) => string,
+  t: (key: MessageKey, vars?: Record<string, string | number>) => string,
   STATUS_PT: ReturnType<typeof statusPt>,
 ): Column<PatientRow>[] {
   return [

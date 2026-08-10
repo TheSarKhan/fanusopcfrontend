@@ -1,6 +1,7 @@
 import type { PackagePatient } from "@/lib/api";
+import type { MessageKey } from "@/lib/i18n/messages";
 
-type TFn = (key: string, vars?: Record<string, string | number>) => string;
+type TFn = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 /** Pasiyent paketi statusu — kart və pasiyent siyahısı səhifəsi arasında paylaşılır.
  *  Etiketlər i18n-li olduğu üçün funksiya kimi qurulur — çağıran komponent öz `t`-sini verir. */

@@ -94,7 +94,7 @@ export const az = {
   home: {
     heroEyebrow: "",
     heroTitle: "Psixoloq axtarırsınız?",
-    heroSub: "Sizə uyğun psixoloqu tapırıq, onlayn seans təşkil edirik.",
+    heroSub: "Fanus platforması vasitəsilə müxtəlif sahələr üzrə təsdiqlənmiş psixoloqlara onlayn psixoloji dəstək almaq üçün müraciət edə bilərsiniz!",
     heroCta: "Psixoloq seç",
     heroSecondaryCta: "Necə işləyir",
     statTotalClients: "Dəstək alan",
@@ -582,7 +582,7 @@ export const az = {
     ctaTitle: "İlk görüşünüzü bu gün planlaşdırın.",
     ctaSub: "Pulsuz tanışlıq görüşü.",
     ctaTalkNow: "İndi danış",
-    tag: "Sizə uyğun psixoloqu tapırıq.",
+    tag: "Fanus platforması vasitəsilə müxtəlif sahələr üzrə təsdiqlənmiş psixoloqlara onlayn psixoloji dəstək almaq üçün müraciət edə bilərsiniz!",
     linkAbout: "Haqqımızda",
     columnPlatform: "Platforma",
     columnAccount: "Hesab",

@@ -87,7 +87,7 @@ export const tr: typeof az = {
   home: {
     heroEyebrow: "",
     heroTitle: "Psikolog mu arıyorsunuz?",
-    heroSub: "Size uygun psikoloğu buluyor, online seans düzenliyoruz.",
+    heroSub: "Fanus platformu aracılığıyla farklı alanlarda uzmanlaşmış onaylı psikologlardan çevrimiçi psikolojik destek almak için başvurabilirsiniz!",
     heroCta: "Psikolog seç",
     heroSecondaryCta: "Nasıl işliyor",
     statTotalClients: "Destek alan",
@@ -574,7 +574,7 @@ export const tr: typeof az = {
     ctaTitle: "İlk görüşmenizi bugün planlayın.",
     ctaSub: "Ücretsiz tanışma görüşmesi.",
     ctaTalkNow: "Şimdi konuş",
-    tag: "Size uygun psikoloğu buluyoruz.",
+    tag: "Fanus platformu aracılığıyla farklı alanlarda uzmanlaşmış onaylı psikologlardan çevrimiçi psikolojik destek almak için başvurabilirsiniz!",
     linkAbout: "Hakkımızda",
     columnPlatform: "Platform",
     columnAccount: "Hesap",

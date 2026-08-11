@@ -87,7 +87,7 @@ export const en: typeof az = {
   home: {
     heroEyebrow: "Online psychological support, Azerbaijan",
     heroTitle: "Find the right therapist and start your first session within a day.",
-    heroSub: "Certified psychologists. Our human team — not an algorithm — selects the right specialist for you. The first 15-minute introductory call is free.",
+    heroSub: "Through the Fanus platform, you can reach out to certified psychologists across various fields for online psychological support!",
     heroCta: "Choose a therapist",
     heroSecondaryCta: "How it works",
     statTotalClients: "People supported",
@@ -572,7 +572,7 @@ export const en: typeof az = {
     ctaTitle: "Take the first step today.",
     ctaSub: "Free intro session — no commitment.",
     ctaTalkNow: "Talk now",
-    tag: "Let's find the inner light together.",
+    tag: "Through the Fanus platform, you can reach out to certified psychologists across various fields for online psychological support!",
     linkAbout: "About us",
     columnPlatform: "Platform",
     columnAccount: "Account",

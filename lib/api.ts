@@ -809,6 +809,7 @@ export interface PsychologistApplication {
   status: "PENDING" | "APPROVED" | "REJECTED";
   adminNote?: string; createdAt: string; reviewedAt?: string;
   photoUrl?: string;
+  emailVerified: boolean;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -1156,6 +1157,14 @@ export const registerPsychologist = (
 
 export const verifyEmail = (token: string) =>
   fetch(`${BASE}/auth/verify?token=${token}`, { credentials: "include" })
+    .then(async r => {
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error ?? "Təsdiq uğursuz oldu");
+      return body;
+    });
+
+export const verifyApplicationEmail = (token: string) =>
+  fetch(`${BASE}/auth/verify-application?token=${token}`, { credentials: "include" })
     .then(async r => {
       const body = await r.json();
       if (!r.ok) throw new Error(body.error ?? "Təsdiq uğursuz oldu");

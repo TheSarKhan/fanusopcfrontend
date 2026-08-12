@@ -13,7 +13,6 @@ import {
   type BlogPost, type Psychologist, type PublicReview, type ReviewSummary,
 } from "@/lib/api";
 import BookingCta from "./BookingCta";
-import Breadcrumb from "@/components/Breadcrumb";
 import ViewTracker from "@/components/ViewTracker";
 import ProfileShareButtons from "@/components/ProfileShareButtons";
 import { displayCategory } from "@/lib/blog";
@@ -176,10 +175,6 @@ export default function ProfileView({
       <ViewTracker type="PSYCHOLOGIST" id={psychologist.id} />
       <style>{layoutCss}</style>
       <div className="ppx-app" style={{ width: "100%", padding: "24px 32px 56px", maxWidth: "min(1360px, 94vw)", margin: "0 auto" }}>
-
-        <div style={{ marginBottom: 18 }}>
-          <Breadcrumb bare items={[{ label: t("nav.psychologists"), href: "/psychologists" }, { label: psychologist.name }]} />
-        </div>
 
         <div className="ppx-grid">
 

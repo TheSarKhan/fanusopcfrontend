@@ -287,7 +287,14 @@ export default function PsychologistsPage() {
         actions={detailApp && detailApp.status === "PENDING" ? (
           <>
             <Button variant="dangerGhost" disabled={actionLoading} onClick={() => openReject(detailApp.id, detailApp.firstName)}>Rədd et</Button>
-            <Button variant="primary" disabled={actionLoading} onClick={() => setConfirmApprove(detailApp)}>Təsdiqlə</Button>
+            <Button
+              variant="primary"
+              disabled={actionLoading || !detailApp.emailVerified}
+              title={detailApp.emailVerified ? undefined : "Müraciətçi hələ email ünvanını təsdiqləməyib"}
+              onClick={() => setConfirmApprove(detailApp)}
+            >
+              {detailApp.emailVerified ? "Təsdiqlə" : "Email təsdiqlənməyib"}
+            </Button>
           </>
         ) : (
           <Button variant="ghost" onClick={() => setDetailApp(null)}>Bağla</Button>

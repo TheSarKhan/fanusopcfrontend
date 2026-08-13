@@ -55,7 +55,6 @@ export default function QuickRequestForm({ onDone, intro }: { onDone?: () => voi
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [crisisDetected, setCrisisDetected] = useState(false);
 
   const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(prev => ({ ...prev, [field]: e.target.value }));
@@ -83,7 +82,7 @@ export default function QuickRequestForm({ onDone, intro }: { onDone?: () => voi
     setError("");
     setSending(true);
     try {
-      const res = await submitSessionRequest({
+      await submitSessionRequest({
         name: form.name.trim(),
         phone: form.phone.trim(),
         email: form.email.trim(),
@@ -95,7 +94,6 @@ export default function QuickRequestForm({ onDone, intro }: { onDone?: () => voi
         budget: form.budget || undefined,
         intro: intro || undefined,
       });
-      setCrisisDetected(!!res?.crisisDetected);
       setSuccess(true);
     } catch (err: unknown) {
       // Brauzerin fetch() TypeError-u ("Failed to fetch" və s.) şəbəkə/CORS
@@ -168,21 +166,6 @@ export default function QuickRequestForm({ onDone, intro }: { onDone?: () => voi
         }}>
           {t("quickReq.contactRule")}
         </p>
-        {crisisDetected && (
-          <div style={{
-            background: "#FEF3C7", border: "1px solid #F59E0B",
-            borderRadius: 10, padding: "14px 16px", marginBottom: 24,
-            textAlign: "left",
-          }}>
-            <strong style={{ display: "block", fontSize: 14, color: "#92400E", marginBottom: 6 }}>
-              {t("quickReq.crisisTitle")}
-            </strong>
-            <p style={{ margin: 0, fontSize: 13, color: "#78350F", lineHeight: 1.5 }}>
-              {t("quickReq.crisisP1")} <strong>103</strong> {t("quickReq.crisisP2")}{" "}
-              <strong>*1123</strong> {t("quickReq.crisisP3")}
-            </p>
-          </div>
-        )}
         {onDone && (
           <button
             onClick={onDone}

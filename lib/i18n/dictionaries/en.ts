@@ -1476,10 +1476,6 @@ export const en: typeof az = {
     step3: "The psychologist and session time are confirmed — your session is scheduled.",
     emailNote: "You will get an email as the process moves forward and a psychologist is assigned.",
     contactRule: "Note: contact with the therapist goes through the Fanus team only — personal phone numbers are not exchanged. This keeps the process supervised and makes sure you get the support you need.",
-    crisisTitle: "If you need urgent support",
-    crisisP1: "Your request was flagged as a priority. If you are having thoughts of harming yourself, do not wait — call",
-    crisisP2: "Emergency Medical Services, or",
-    crisisP3: "the Psychological Support Line, right now.",
   },
 
   // ──"Request a session"modal ─────────────────────────────────────────

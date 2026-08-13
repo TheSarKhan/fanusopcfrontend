@@ -4633,8 +4633,6 @@ export interface SessionRequest {
   preferredTime: string | null;
   notes: string | null;
   budget: string | null;
-  priority: boolean;
-  crisisDetected: boolean;
   /** 15 dəqiqəlik pulsuz tanışlıq müraciəti (V141). */
   intro?: boolean;
   status: "NEW" | "IN_REVIEW" | "SCHEDULED" | "CANCELLED" | "CONVERTED";

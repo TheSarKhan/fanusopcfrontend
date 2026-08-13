@@ -18,10 +18,6 @@ import type { MessageKey } from "@/lib/i18n/messages";
  * tərcihi, qeyd) randevunun qeyd sahəsində operatora ötürülür.
  */
 
-/** Backend böhran açar-sözü aşkarlayanda qeydin əvvəlinə bu nişanı qoyur
- *  (AppointmentService.CRISIS_NOTE_MARKER). */
-const CRISIS_NOTE_MARKER = "[TƏCİLİ]";
-
 /** Dəyər operator qeydinə yazılır və backend-ə gedir — tərcümə OLUNMUR;
  *  yalnız görünən etiket lokallaşdırılır. */
 const BUDGET_OPTIONS: { value: string; key: MessageKey }[] = [
@@ -54,7 +50,6 @@ export default function FanusAssignWizard({
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [crisisDetected, setCrisisDetected] = useState(false);
   /** Hesabdan gələn və dəyişdirilə bilməyən sahələr. */
   const [locked, setLocked] = useState({ name: false, phone: false, email: false });
 
@@ -75,7 +70,7 @@ export default function FanusAssignWizard({
   // Açılanda sıfırla + profildən ad/telefon/e-poçt gətir (yenidən yazmasın).
   useEffect(() => {
     if (!open) return;
-    setStep(0); setForm(INITIAL); setError(""); setSuccess(false); setCrisisDetected(false);
+    setStep(0); setForm(INITIAL); setError(""); setSuccess(false);
     setLocked({ name: false, phone: false, email: false });
     let cancelled = false;
     meApi.get().then(me => {
@@ -160,13 +155,12 @@ export default function FanusAssignWizard({
         `E-poçt: ${form.email.trim()}`,
       ].filter(Boolean).join("\n");
 
-      const created = await patientApi.book({
+      await patientApi.book({
         note,
         requestedPsychologistId: null,
         requestedStartAt,
         sessionKind: "STANDARD",
       });
-      setCrisisDetected(!!created?.note?.startsWith(CRISIS_NOTE_MARKER));
       setSuccess(true);
     } catch (err: unknown) {
       setError(
@@ -269,21 +263,6 @@ export default function FanusAssignWizard({
             <p style={{ margin: "0 0 20px", fontSize: 12.5, color: "#6B7280", lineHeight: 1.5 }}>
               {t("quickReq.emailNote")}
             </p>
-
-            {crisisDetected && (
-              <div style={{
-                background: "#FEF3C7", border: "1px solid #F59E0B",
-                borderRadius: 10, padding: "14px 16px", marginBottom: 20, textAlign: "left",
-              }}>
-                <strong style={{ display: "block", fontSize: 14, color: "#92400E", marginBottom: 6 }}>
-                  {t("quickReq.crisisTitle")}
-                </strong>
-                <p style={{ margin: 0, fontSize: 13, color: "#78350F", lineHeight: 1.5 }}>
-                  {t("quickReq.crisisP1")} <strong>103</strong> {t("quickReq.crisisP2")}{" "}
-                  <strong>*1123</strong> {t("quickReq.crisisP3")}
-                </p>
-              </div>
-            )}
 
             <button
               type="button"

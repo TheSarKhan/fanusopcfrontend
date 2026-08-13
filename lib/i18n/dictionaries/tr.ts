@@ -1499,10 +1499,6 @@ export const tr: typeof az = {
     step3: "Psikolog ve seans saati onaylanıyor — seansınız planlanıyor.",
     emailNote: "Sürecin ilerleyişi ve psikolog ataması hakkında e-postanıza bildirim gönderilecek.",
     contactRule: "Not: uzmanla iletişim yalnızca Fanus ekibi aracılığıyla kurulur — kişisel numara paylaşımı yapılmaz. Böylece süreç denetim altında kalır ve size gereken destek eksiksiz verilir.",
-    crisisTitle: "Acil desteğe ihtiyacınız varsa",
-    crisisP1: "Başvurunuz öncelikli olarak alındı. Kendinize zarar verme düşünceleriniz varsa beklemeyin — hemen",
-    crisisP2: "Acil Tıbbi Yardım hattını ya da",
-    crisisP3: "Psikolojik Destek hattını arayın.",
   },
 
   // ──"Seans başvurusu"penceresi ───────────────────────────────────────

@@ -1264,20 +1264,12 @@ function ModalShell({ title, sub, badge, onClose, footer, maxWidth = 480, childr
  */
 function RequestNote({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
-  const CRISIS = "[TƏCİLİ]";
   const rows: { k: string; v: string }[] = [];
   const free: string[] = [];
-  let crisis = false;
 
   for (const raw of text.split("\n")) {
     const line = raw.trim();
     if (!line) continue;
-    if (line.startsWith(CRISIS)) {
-      crisis = true;
-      const rest = line.slice(CRISIS.length).trim();
-      if (rest) free.push(rest);
-      continue;
-    }
     // «Etiket: dəyər» — etiket qısa olmalıdır ki, adi cümlədəki iki nöqtə
     // (məs. "Qeyd: bu belə oldu: sonra...") sətri parçalamasın.
     const m = /^([^:]{2,24}):\s*(.+)$/.exec(line);
@@ -1290,11 +1282,6 @@ function RequestNote({ text }: { text: string }) {
       <div style={{ display: "flex", gap: 9, alignItems: "flex-start", marginBottom: rows.length ? 10 : 0 }}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--oxford-60)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none", marginTop: 2 }} aria-hidden><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
         <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-          {crisis && (
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: "#DC2626" }}>
-              Böhran açar-sözü aşkarlandı — prioritet müraciət
-            </span>
-          )}
           {free.length > 0
             ? free.map((line, i) => (
                 <span key={i} style={{ fontSize: 12.5, color: "var(--oxford-80)", lineHeight: 1.5, overflowWrap: "anywhere" }}>{line}</span>
@@ -1330,11 +1317,6 @@ function RequestNote({ text }: { text: string }) {
       {open && (
         <ModalShell title="Müraciət məlumatı" maxWidth={520} onClose={() => setOpen(false)}
           footer={<button onClick={() => setOpen(false)} className="fx-btn fx-btn--primary" style={{ width: "100%" }}>Bağla</button>}>
-          {crisis && (
-            <div className="fx-banner fx-banner--warn" style={{ marginBottom: 14 }}>
-              <span style={{ fontWeight: 700, color: "#DC2626" }}>Böhran açar-sözü aşkarlandı — prioritet müraciət</span>
-            </div>
-          )}
           {free.map((line, i) => (
             <p key={i} style={{ margin: "0 0 12px", fontSize: 13.5, color: "var(--oxford)", lineHeight: 1.6, overflowWrap: "anywhere" }}>{line}</p>
           ))}

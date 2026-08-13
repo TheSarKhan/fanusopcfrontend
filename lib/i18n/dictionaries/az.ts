@@ -1527,10 +1527,6 @@ export const az = {
     step3: "Psixoloq və seans vaxtı təsdiqlənir — seansınız planlanır.",
     emailNote: "Prosesin gedişatı və psixoloq təyinatı barədə e-poçtunuza bildiriş göndəriləcək.",
     contactRule: "Qeyd: mütəxəssislə əlaqə yalnız Fanus əməkdaşları vasitəsilə qurulur — şəxsi nömrə mübadiləsi edilmir. Bu, prosesin nəzarətdə qalması və sizə lazım olan dəstəyin tam verilməsi üçündür.",
-    crisisTitle: "Təcili dəstəyə ehtiyacınız varsa",
-    crisisP1: "Müraciətiniz prioritet olaraq qəbul edildi. Özünüzə zərər vermə düşüncələriniz varsa, gözləməyin — dərhal",
-    crisisP2: "Təcili Tibbi Yardım xəttinə və ya",
-    crisisP3: "Psixoloji Dəstək xəttinə zəng edin.",
   },
 
   // ──"Seans üçün müraciət"modalı ──────────────────────────────────────

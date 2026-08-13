@@ -381,7 +381,6 @@ export default function SessionRequestDetailPage({ params }: { params: Promise<{
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
               <h1 className="fx-h1" style={{ fontSize: 21 }}>{req.name}</h1>
               <span className={`fx-pill ${badge.className}`}>{badge.label}</span>
-              {req.priority && <span className="fx-pill fx-pill--pending">Prioritet</span>}
               {req.intro && <span className="fx-pill fx-pill--info">Pulsuz tanışlıq (15 dəq)</span>}
             </div>
             <p className="fx-subtitle" style={{ margin: 0, fontSize: 13, maxWidth: 480 }}>{statusHint}</p>

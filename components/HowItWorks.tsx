@@ -7,9 +7,9 @@ import SessionRequestModal from "@/components/SessionRequestModal";
 export default function HowItWorks() {
   const { t } = useT();
   const STEPS = [
-    { n: 1, title: t("how.step1Title"), text: t("how.step1Text"), img: "/images/how/step1.jpg" },
-    { n: 2, title: t("how.step2Title"), text: t("how.step2Text"), img: "/images/how/step2.jpg" },
-    { n: 3, title: t("how.step3Title"), text: t("how.step3Text"), img: "/images/how/step3.jpg" },
+    { n: 1, title: t("how.step1Title"), text: t("how.step1Text"), img: "/images/how/step1-v2.jpg" },
+    { n: 2, title: t("how.step2Title"), text: t("how.step2Text"), img: "/images/how/step2-v2.jpg" },
+    { n: 3, title: t("how.step3Title"), text: t("how.step3Text"), img: "/images/how/step3-v2.jpg" },
   ];
   const [active, setActive] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);

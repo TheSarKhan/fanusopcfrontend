@@ -39,6 +39,20 @@ export function FlagEN({ width = 20, height = 14 }: FlagProps = {}) {
   );
 }
 
+export function FlagUS({ width = 20, height = 14 }: FlagProps = {}) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
+      <rect width="30" height="20" fill="#B22234" />
+      <g fill="#fff">
+        <rect y="1.54" width="30" height="1.54" /><rect y="4.62" width="30" height="1.54" />
+        <rect y="7.69" width="30" height="1.54" /><rect y="10.77" width="30" height="1.54" />
+        <rect y="13.85" width="30" height="1.54" /><rect y="16.92" width="30" height="1.54" />
+      </g>
+      <rect width="12" height="10.77" fill="#3C3B6E" />
+    </svg>
+  );
+}
+
 export function FlagTR({ width = 20, height = 14 }: FlagProps = {}) {
   return (
     <svg width={width} height={height} viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>

@@ -23,6 +23,22 @@ export function parseLocale(value: string | undefined | null): Locale | null {
   return null;
 }
 
+/**
+ * Kuki yoxdursa (ilk ziyarət) — Cloudflare-in `cf-ipcountry` header-inə görə
+ * dil təxmin edilir. Əvvəllər brauzerin Accept-Language-inə baxılmırdı (OS dili
+ * ilə real auditoriya üst-üstə düşmürdü); ölkə əsaslı təxmin daha etibarlıdır və
+ * istifadəçi əl ilə dil seçən kimi kuki bunu həmişəlik üstələyir.
+ */
+export function mapCountryToLocale(countryCode: string | undefined | null): Locale {
+  switch ((countryCode ?? "").toUpperCase()) {
+    case "AZ": return "az";
+    case "RU": return "ru";
+    case "TR": return "tr";
+    case "US": case "GB": return "en";
+    default: return DEFAULT_LOCALE;
+  }
+}
+
 /** AZ is the source of truth — keys defined there are guaranteed to exist. */
 export type Messages = typeof az;
 export type MessageKey = NestedKeyOf<Messages>;

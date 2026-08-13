@@ -5,12 +5,14 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 import type { Locale } from "@/lib/i18n/messages";
 import { meApi } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
-import { FlagAZ, FlagRU, FlagEN, FlagTR } from "@/components/FlagIcons";
+import { FlagAZ, FlagRU, FlagUS, FlagTR } from "@/components/FlagIcons";
 
+// EN seçimi ABŞ bayrağı ilə göstərilir (İngiltərə yox) — platformanın "en"
+// tərəfdaşlığı ABŞ nömrəsi/auditoriyası ilə bağlıdır (bax footer2.crisis).
 const FLAGS: Record<Locale, () => React.ReactElement> = {
   az: FlagAZ,
   ru: FlagRU,
-  en: FlagEN,
+  en: FlagUS,
   tr: FlagTR,
 };
 const LABELS: Record<Locale, string> = { az: "AZ", ru: "RU", en: "EN", tr: "TR" };

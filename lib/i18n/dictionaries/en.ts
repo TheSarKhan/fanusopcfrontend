@@ -583,7 +583,7 @@ export const en: typeof az = {
     privacy: "Privacy",
     terms: "Terms of use",
     ethics: "Ethics code",
-    crisis: "Fanus is not an emergency service. If you are at risk of harming yourself or someone else, or in immediate danger, call 112 or 103 (Emergency Medical Services) and go to the nearest emergency department.",
+    crisis: "Fanus is not an emergency service. If you are at risk of harming yourself or someone else, or in immediate danger, call 911 and go to the nearest emergency department.",
   },
 
   psyDetail: {

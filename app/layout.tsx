@@ -6,7 +6,7 @@ import SiteChrome from "@/components/SiteChrome";
 import { BookingProvider } from "@/context/BookingContext";
 import { MoodProvider } from "@/context/MoodContext";
 import { LocaleProvider } from "@/lib/i18n/LocaleProvider";
-import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, parseLocale } from "@/lib/i18n/messages";
+import { LOCALE_COOKIE_NAME, parseLocale, mapCountryToLocale } from "@/lib/i18n/messages";
 import { ToastHost } from "@/components/Toast";
 import { ConfirmHost } from "@/components/ConfirmDialog";
 import GlobalLoadingOverlay from "@/components/GlobalLoadingOverlay";
@@ -50,11 +50,14 @@ export default async function RootLayout({
   // render edir, seçilmiş dil isə yalnız hidratasiyadan sonra tətbiq olunurdu —
   // ona görə bəzi bölmələr (FAQ siyahısı kimi) az dilində qalırdı.
   const cookieLocale = parseLocale((await cookies()).get(LOCALE_COOKIE_NAME)?.value);
+  // Kuki yoxdursa (ilk ziyarət) — Cloudflare-in ölkə header-inə görə dil təxmin
+  // edilir. İstifadəçi əl ilə dəyişən kimi kuki yazılır və bunu həmişəlik üstələyir.
+  const initialLocale = cookieLocale ?? mapCountryToLocale(headersList.get("cf-ipcountry"));
 
   return (
-    <html lang={cookieLocale ?? DEFAULT_LOCALE} className={poppins.variable} suppressHydrationWarning>
+    <html lang={initialLocale} className={poppins.variable} suppressHydrationWarning>
       <body className="min-h-screen flex flex-col" suppressHydrationWarning>
-        <LocaleProvider initialLocale={cookieLocale ?? undefined}>
+        <LocaleProvider initialLocale={initialLocale}>
           {isPanel ? (
             children
           ) : (

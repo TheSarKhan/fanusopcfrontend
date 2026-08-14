@@ -323,7 +323,7 @@ function ShieldIcon({ size = 16 }: { size?: number }) { return <svg width={size}
  *  bax app/(public)/register/page.tsx). Tanınmayan dil üçün qlobus ikonuna düşür —
  *  emoji bayraq işlətmirik (platforma qaydası: heç bir emoji, platformalar arası
  *  fərqli/qırıq görünə bilər). */
-function FlagIcon({ lang }: { lang: string }) {
+export function FlagIcon({ lang }: { lang: string }) {
   const l = lang.toLowerCase();
   if (l.startsWith("az")) return <FlagAZ />;
   if (l.includes("rus")) return <FlagRU />;

@@ -390,7 +390,7 @@ export interface Psychologist {
   verified?: boolean;
   /** Bir neçə təhsil qeydi (V145) — university/degree/graduationYear-ı əvəz edir.
    *  diplomaUrl yalnız admin kontekstində dolur, public cavabda həmişə boşdur. */
-  educations?: { id?: number; institution: string; degree?: string; graduationYear?: string; diplomaUrl?: string }[];
+  educations?: { id?: number; institution: string; degree?: string; major?: string; graduationYear?: string; diplomaUrl?: string }[];
   /** Psixoloqun özü əlavə etdiyi sosial media/əlaqə linkləri (V147) — publikdə görünür. */
   contactLinks?: { id?: number; platform: PsyContactPlatform; url: string }[];
   /** Landing page seçimi (V148) — admin "Saytda görünüş" tabından təyin edir. */
@@ -403,6 +403,7 @@ export interface PsyEducationItem {
   id?: number;
   institution: string;
   degree?: string;
+  major?: string;
   graduationYear?: string;
   diplomaUrl?: string;
 }
@@ -1090,7 +1091,7 @@ export interface PsychologistRegistrationData {
   topics: string[];
   sessionTypes: string[];
   // Multi rows (will be JSON-stringified)
-  educations: { institution: string; degree?: string; graduationYear?: string }[];
+  educations: { institution: string; degree?: string; major?: string; graduationYear?: string }[];
   certificates: { title: string; issuer?: string; year?: string; type: "CERTIFICATE" | "SEMINAR" }[];
   // Bio
   bio: string;

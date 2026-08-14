@@ -321,7 +321,7 @@ const YEARS = Array.from({ length: 60 }, (_, i) => String(new Date().getFullYear
  *  məntiqi ziddiyyətini (məs. doğum ili = bitirmə ili) qabaqcadan əngəlləyir. */
 const MIN_GRADUATION_AGE = 18;
 
-type EducationRow = { institution: string; degree: string; graduationYear: string; diplomaFile: File | null };
+type EducationRow = { institution: string; degree: string; major: string; graduationYear: string; diplomaFile: File | null };
 type CertificateRow = { title: string; issuer: string; year: string; type: "CERTIFICATE" | "SEMINAR" };
 
 function PsychologistForm({ onBack }: { onBack: () => void }) {
@@ -344,7 +344,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
   const [photoForCrop, setPhotoForCrop] = useState<File | null>(null);
 
   const [educations, setEducations] = useState<EducationRow[]>([
-    { institution: "", degree: "", graduationYear: "", diplomaFile: null }
+    { institution: "", degree: "", major: "", graduationYear: "", diplomaFile: null }
   ]);
   const [diplomaFile, setDiplomaFile] = useState<File | null>(null);
 
@@ -378,7 +378,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
     setPhotoFile(file); setPhotoPreview(preview); setPhotoForCrop(null);
   };
 
-  const addEducation = () => setEducations(prev => [...prev, { institution: "", degree: "", graduationYear: "", diplomaFile: null }]);
+  const addEducation = () => setEducations(prev => [...prev, { institution: "", degree: "", major: "", graduationYear: "", diplomaFile: null }]);
   const removeEducation = (i: number) => setEducations(prev => prev.filter((_, idx) => idx !== i));
   const updateEducation = (i: number, k: keyof Omit<EducationRow, "diplomaFile">, v: string) =>
     setEducations(prev => prev.map((row, idx) => idx === i ? { ...row, [k]: v } : row));
@@ -412,6 +412,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
       if (invalid) return t("regPage.errGradYear", { year: invalid.graduationYear });
     }
     if (valid.some(e => !e.diplomaFile)) return t("regPage.errEduDiploma");
+    if (valid.some(e => !e.major.trim())) return t("regPage.errEduMajor");
     return null;
   };
   const validateStep2 = () => {
@@ -482,7 +483,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
         sessionTypes: professional.sessionTypes,
         educations: educations
           .filter(ed => ed.institution.trim())
-          .map(ed => ({ institution: ed.institution.trim(), degree: ed.degree.trim() || undefined, graduationYear: ed.graduationYear || undefined })),
+          .map(ed => ({ institution: ed.institution.trim(), degree: ed.degree.trim() || undefined, major: ed.major.trim() || undefined, graduationYear: ed.graduationYear || undefined })),
         // eyni filter data.educations ilə eyni sırada qalsın — backend indeksə görə uyğunlaşdırır.
         certificates: certificates
           .filter(c => c.title.trim())
@@ -635,6 +636,11 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
                     <option value="">{t("regPage.yearPh")}</option>
                     {graduationYearOptions.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
+                </Field>
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <Field label={t("regPage.eduMajor")} hint={t("regPage.eduMajorHint")} required>
+                  <input className="auth-input" value={ed.major} onChange={(e) => updateEducation(i, "major", e.target.value)} placeholder={t("regPage.eduMajorPh")} required />
                 </Field>
               </div>
               <div style={{ marginTop: 10 }}>

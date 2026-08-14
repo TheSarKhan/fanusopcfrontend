@@ -1615,7 +1615,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 /** Təsdiqlənmiş psixoloqun tam təhsil siyahısı (V145) — diplom faylı varsa baxış linki daxil.
  *  `EducationList` (aşağıda) hələ TƏSDİQ GÖZLƏYƏN müraciətin JSON snapshot-unu göstərir. */
 function ProfileEducationList({ educations, fallback }: {
-  educations?: { id?: number; institution: string; degree?: string; graduationYear?: string; diplomaUrl?: string }[];
+  educations?: { id?: number; institution: string; degree?: string; major?: string; graduationYear?: string; diplomaUrl?: string }[];
   fallback?: { institution: string; degree: string; graduationYear: string } | null;
 }) {
   const rows = educations && educations.length > 0 ? educations : (fallback?.institution ? [{ id: 0, ...fallback }] : []);
@@ -1626,7 +1626,7 @@ function ProfileEducationList({ educations, fallback }: {
         <div key={r.id || i} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, minWidth: 0 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{r.institution}</div>
-            <div className="fx-subtitle">{[r.degree, r.graduationYear].filter(Boolean).join(", ") || "—"}</div>
+            <div className="fx-subtitle">{[r.degree, "major" in r ? r.major : undefined, r.graduationYear].filter(Boolean).join(", ") || "—"}</div>
           </div>
           {"diplomaUrl" in r && r.diplomaUrl && (
             <a href={r.diplomaUrl} target="_blank" rel="noopener noreferrer" className="fx-subtitle" style={{ flexShrink: 0, color: "var(--accent, #1051B7)" }}>
@@ -1643,7 +1643,7 @@ function EducationList({ json, fallback }: {
   json?: string;
   fallback?: { institution: string; degree: string; graduationYear: string } | null;
 }) {
-  let rows: { institution: string; degree?: string; graduationYear?: string; diplomaUrl?: string }[] = [];
+  let rows: { institution: string; degree?: string; major?: string; graduationYear?: string; diplomaUrl?: string }[] = [];
   if (json) { try { rows = JSON.parse(json); } catch { /* ignore */ } }
   if (rows.length === 0 && fallback?.institution) rows = [fallback];
   if (rows.length === 0) return <div className="fx-subtitle">Təhsil qeyd edilməyib.</div>;
@@ -1653,7 +1653,7 @@ function EducationList({ json, fallback }: {
         <div key={i} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, minWidth: 0 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 600, overflowWrap: "anywhere" }}>{r.institution}</div>
-            <div className="fx-subtitle">{[r.degree, r.graduationYear].filter(Boolean).join(", ") || "—"}</div>
+            <div className="fx-subtitle">{[r.degree, r.major, r.graduationYear].filter(Boolean).join(", ") || "—"}</div>
           </div>
           {r.diplomaUrl && (
             <a href={r.diplomaUrl} target="_blank" rel="noopener noreferrer" className="fx-subtitle" style={{ flexShrink: 0, color: "var(--accent, #1051B7)" }}>

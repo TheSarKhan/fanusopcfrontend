@@ -443,14 +443,14 @@ function EducationsCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Partia
   const [rows, setRows] = useState<PsyEducationItem[]>(() =>
     me.educations && me.educations.length > 0
       ? me.educations.map(e => ({ ...e }))
-      : [{ institution: "", degree: "", graduationYear: "" }]
+      : [{ institution: "", degree: "", major: "", graduationYear: "" }]
   );
   const [saving, setSaving] = useState(false);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
 
-  const update = (i: number, k: "institution" | "degree" | "graduationYear", v: string) =>
+  const update = (i: number, k: "institution" | "degree" | "major" | "graduationYear", v: string) =>
     setRows(prev => prev.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
-  const addRow = () => setRows(prev => [...prev, { institution: "", degree: "", graduationYear: "" }]);
+  const addRow = () => setRows(prev => [...prev, { institution: "", degree: "", major: "", graduationYear: "" }]);
   const removeRow = (i: number) => setRows(prev => prev.filter((_, idx) => idx !== i));
 
   const uploadDiploma = async (i: number, file: File) => {
@@ -517,6 +517,12 @@ function EducationsCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Partia
                     onChange={e => update(i, "graduationYear", e.target.value)}
                     placeholder={t("prof.eduYearPh")} />
                 </div>
+              </div>
+              <div>
+                <label style={labelStyle}>{t("prof.eduMajorLabel")}</label>
+                <input style={inputStyle} value={r.major ?? ""}
+                  onChange={e => update(i, "major", e.target.value)}
+                  placeholder={t("prof.eduMajorPh")} />
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
                 <label style={{ ...btnGhost, cursor: "pointer" }}>

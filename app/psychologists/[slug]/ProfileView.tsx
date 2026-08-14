@@ -13,6 +13,7 @@ import {
   type BlogPost, type Psychologist, type PublicReview, type ReviewSummary,
 } from "@/lib/api";
 import BookingCta from "./BookingCta";
+import { FlagIcon } from "@/components/PsychologistCard";
 import ViewTracker from "@/components/ViewTracker";
 import ProfileShareButtons from "@/components/ProfileShareButtons";
 import { displayCategory } from "@/lib/blog";
@@ -325,7 +326,11 @@ export default function ProfileView({
                           <DegreeIcon degree={e.degree} size={17} />
                         </span>
                         <div>
-                          {e.degree && <div style={{ fontSize: 14, fontWeight: 700 }}>{e.degree}</div>}
+                          {(e.degree || e.major) && (
+                            <div style={{ fontSize: 14, fontWeight: 700 }}>
+                              {[e.degree, e.major].filter(Boolean).join(", ")}
+                            </div>
+                          )}
                           {e.institution && <div style={{ fontSize: 13, color: "var(--oxford-60)", fontWeight: 600 }}>{e.institution}</div>}
                           {e.graduationYear && <div style={{ fontSize: 12, color: "#9DB0CC", fontWeight: 600, marginTop: 1 }}>{e.graduationYear}</div>}
                         </div>
@@ -340,7 +345,17 @@ export default function ProfileView({
             {(psychologist.languages || psychologist.sessionTypes) && (
               <Block icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></svg>} title={t("psyProfile.langAndSession")}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {psychologist.languages && <TagGroup label={t("psyProfile.languages")} items={psychologist.languages.split(",").map((s) => s.trim()).filter(Boolean)} />}
+                  {psychologist.languages && (
+                    <TagGroup
+                      label={t("psyProfile.languages")}
+                      items={psychologist.languages.split(",").map((s) => s.trim()).filter(Boolean)}
+                      icon={(lang) => (
+                        <span style={{ display: "inline-flex", flexShrink: 0, width: 16, height: 11, borderRadius: 2, overflow: "hidden", boxShadow: "inset 0 0 0 1px rgba(10,26,51,.1)" }}>
+                          <FlagIcon lang={lang} />
+                        </span>
+                      )}
+                    />
+                  )}
                   {psychologist.sessionTypes && <TagGroup label={t("psyProfile.sessionType")} items={psychologist.sessionTypes.split(",").map((s) => s.trim()).filter(Boolean)} />}
                   <div>
                     <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 8 }}>{t("psyProfile.duration")}</div>
@@ -427,15 +442,19 @@ function Block({ icon, title, right, children }: { icon: React.ReactNode; title:
   );
 }
 
-/** Etiket + pill-lərə bölünmüş dəyərlər sırası (məs. Dillər: AZ, RU, EN — hər biri ayrıca pill). */
-function TagGroup({ label, items }: { label: string; items: string[] }) {
+/** Etiket + pill-lərə bölünmüş dəyərlər sırası (məs. Dillər: AZ, RU, EN — hər biri ayrıca pill).
+ *  `icon` verilibsə (məs. dil bayrağı), hər pill-in başında göstərilir. */
+function TagGroup({ label, items, icon }: { label: string; items: string[]; icon?: (item: string) => React.ReactNode }) {
   if (items.length === 0) return null;
   return (
     <div>
       <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 8 }}>{label}</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
         {items.map((item) => (
-          <span key={item} style={{ background: "#fff", color: "var(--brand-700)", border: "1px solid #D6E2F7", fontSize: 12.5, fontWeight: 600, padding: "5px 12px", borderRadius: 8 }}>{item}</span>
+          <span key={item} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", color: "var(--brand-700)", border: "1px solid #D6E2F7", fontSize: 12.5, fontWeight: 600, padding: "5px 12px", borderRadius: 8 }}>
+            {icon?.(item)}
+            {item}
+          </span>
         ))}
       </div>
     </div>

@@ -135,12 +135,17 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
       <div className="pc-divider" />
 
       <div className="pc-meta-row">
-        {hasRating && (
-          <span className="pc-meta-item pc-meta-item--rating">
-            <StarIcon />{p.rating}
-            {p.ratingCount != null && p.ratingCount > 0 && <span className="pc-meta-sub"> ({p.ratingCount})</span>}
-          </span>
-        )}
+        <span className="pc-meta-item pc-meta-item--rating">
+          <StarIcon />
+          {hasRating ? (
+            <>
+              {p.rating}
+              {p.ratingCount != null && p.ratingCount > 0 && <span className="pc-meta-sub"> ({p.ratingCount})</span>}
+            </>
+          ) : (
+            <span className="pc-meta-sub">{t("psyList.noRating")}</span>
+          )}
+        </span>
         <span className="pc-meta-item"><ClockIcon />{p.exp} {t("psyList.yearsExp")}</span>
         <span className="pc-meta-item"><HourIcon />{t("psyList.minutes", { n: p.sessionMinutes })}</span>
       </div>
@@ -283,7 +288,7 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
           box-shadow: inset 0 0 0 1px rgba(10,26,51,.1);
         }
 
-        .pc-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .pc-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; }
         .pc-btn {
           display: inline-flex; align-items: center; justify-content: center;
           height: 40px; padding: 0 10px; border-radius: 10px;

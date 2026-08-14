@@ -460,6 +460,7 @@ export const az = {
     lead: "Hər biri sertifikatlı, təcrübəli və Fanus etika kodeksinə bağlı mütəxəssislərdir.",
     seeAll: "Hamısına bax",
     yearsExp: "il təcrübə",
+    noRating: "Reytinq yoxdur",
     profile: "Profil",
     bookCta: "Randevu al",
     sessionsCount: "{count} seans",

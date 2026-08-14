@@ -452,6 +452,7 @@ export const en: typeof az = {
     lead: "Each is certified, experienced, and follows the Fanus code of ethics.",
     seeAll: "See all",
     yearsExp: "yr experience",
+    noRating: "No rating yet",
     profile: "Profile",
     bookCta: "Book",
     sessionsCount: "{count} sessions",

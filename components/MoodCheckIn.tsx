@@ -220,21 +220,29 @@ export default function MoodCheckIn({ compact = false, trigger = false }: { comp
   };
 
   const chips = (
-    <div className="fanus-mood__chips">
-      {MOODS.map((m) => (
-        <button
-          key={m.id}
-          className={`fanus-mood-chip ${selected?.id === m.id ? "is-on" : ""}`}
-          onClick={() => onPick(m)}
-          style={{ ["--mood-color" as string]: m.color }}
-        >
-          <span className="fanus-mood-chip__icon" style={{ color: m.color }}>
-            <MoodIcon id={m.id} size={compact ? 24 : 32} />
-          </span>
-          <span className="fanus-mood-chip__label">{m.label}</span>
-          <span className="fanus-mood-chip__ring" aria-hidden />
-        </button>
-      ))}
+    <div className="fanus-mood__chips-wrap">
+      <div className="fanus-mood__chips">
+        {MOODS.map((m) => (
+          <button
+            key={m.id}
+            className={`fanus-mood-chip ${selected?.id === m.id ? "is-on" : ""}`}
+            onClick={() => onPick(m)}
+            style={{ ["--mood-color" as string]: m.color }}
+          >
+            <span className="fanus-mood-chip__icon" style={{ color: m.color }}>
+              <MoodIcon id={m.id} size={compact ? 24 : 32} />
+            </span>
+            <span className="fanus-mood-chip__label">{m.label}</span>
+            <span className="fanus-mood-chip__ring" aria-hidden />
+          </button>
+        ))}
+      </div>
+      {/* Mobil compact görünüşdə sağ kənarda — sətrin sürüşdürülə bildiyini göstərir. */}
+      <span className="fanus-mood__swipe-hint" aria-hidden="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+      </span>
     </div>
   );
 

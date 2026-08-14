@@ -39,7 +39,7 @@ const PANEL: Record<"patient" | "psychologist", { titleKey: MessageKey; subKey: 
   psychologist: {
     titleKey: "regPage.panelPsyTitle",
     subKey: "regPage.panelPsySub",
-    trustKeys: ["regPage.panelPsyTrust1", "regPage.panelPsyTrust2", "regPage.panelPsyTrust3"],
+    trustKeys: ["regPage.panelPsyTrust1", "regPage.panelPsyTrust2", "regPage.panelPsyTrust3", "regPage.panelPsyTrust4"],
   },
 };
 

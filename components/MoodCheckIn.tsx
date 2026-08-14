@@ -99,6 +99,7 @@ const MOOD_COMPACT_CSS = `
     margin: 0 0 4px;
   }
   .fanus-mood--compact .fanus-mood__head p { font-size: 12px; line-height: 1.4; margin: 0; }
+  .fanus-mood--compact .fanus-mood__chips-wrap { position: relative; min-width: 0; }
   .fanus-mood--compact .fanus-mood__chips {
     display: flex; flex-wrap: nowrap; gap: 10px;
     overflow-x: auto; margin: 0; max-width: none;
@@ -111,9 +112,26 @@ const MOOD_COMPACT_CSS = `
   .fanus-mood--compact .fanus-mood-chip__icon { width: 36px; height: 36px; border-radius: 10px; }
   .fanus-mood--compact .fanus-mood-chip__label { font-size: 11px; text-align: center; line-height: 1.2; }
 
+  /* Sürüşdürmə işarəsi — sətir kəsildiyini göstərir, daha çox əhval sağda olduğunu bildirir. */
+  .fanus-mood__swipe-hint { display: none; }
   @media (max-width: 640px) {
     .fanus-mood--compact { flex-direction: column; align-items: stretch; gap: 12px; }
     .fanus-mood--compact .fanus-mood__head { max-width: 100%; }
+    .fanus-mood--compact .fanus-mood__swipe-hint {
+      display: flex; align-items: center; justify-content: center;
+      position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
+      width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(255,255,255,.22); border: 1px solid rgba(255,255,255,.35);
+      backdrop-filter: blur(4px); color: #fff; pointer-events: none;
+      animation: fanusSwipeHint 1.4s ease-in-out infinite;
+    }
+  }
+  @keyframes fanusSwipeHint {
+    0%, 100% { transform: translateY(-50%) translateX(0); opacity: .85; }
+    50%      { transform: translateY(-50%) translateX(4px); opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fanus-mood__swipe-hint { animation: none; }
   }
 `;
 

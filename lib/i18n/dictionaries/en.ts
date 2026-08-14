@@ -445,6 +445,8 @@ export const en: typeof az = {
   },
 
   psyList: {
+    verifiedNoteTitle: "What does the Fanus badge mean?",
+    verifiedNoteBody: "A specialist with this badge has had their education and certificates checked and confirmed by Fanus.",
     eyebrow: "Our team",
     title: "Our therapists",
     lead: "Each is certified, experienced, and follows the Fanus code of ethics.",
@@ -1239,6 +1241,7 @@ export const en: typeof az = {
     panelPsyTrust1: "No time spent looking for patients",
     panelPsyTrust2: "You set your own schedule",
     panelPsyTrust3: "We handle bookings and payments",
+    panelPsyTrust4: "Not just visibility — a clinic you can carry with you",
     emailSentTitle: "Email sent!",
     emailSentBody: "A verification link has been sent to {email}.",
     appliedTitle: "Your application has been received!",

@@ -22,6 +22,10 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [svcOpen, setSvcOpen] = useState(false);
   const svcRef = useRef<HTMLDivElement>(null);
+  // Mobil menyudakı "Xidmətlərimiz" düyməsi svcRef-in (masaüstü dropdown) içində
+  // deyil — ona görə "kənara klik" effekti onu da "kənar" sayıb dərhal bağlayırdı,
+  // sonra düymənin öz onClick-i yenidən açırdı: nəticədə heç vaxt bağlanmırdı.
+  const svcMobileRef = useRef<HTMLDivElement>(null);
   // undefined = sessiya hələ yoxlanılmayıb (server render + hidrasiyaya qədər),
   // null = giriş edilməyib, string = panel ünvanı. Üç vəziyyət lazımdır: SiteChrome
   // artıq serverdə render olunduğu üçün, iki vəziyyətlə giriş etmiş istifadəçi bir an
@@ -43,7 +47,10 @@ export default function Navbar() {
   useEffect(() => {
     if (!svcOpen) return;
     const onClick = (e: MouseEvent) => {
-      if (svcRef.current && !svcRef.current.contains(e.target as Node)) setSvcOpen(false);
+      const target = e.target as Node;
+      const insideDesktop = svcRef.current && svcRef.current.contains(target);
+      const insideMobile = svcMobileRef.current && svcMobileRef.current.contains(target);
+      if (!insideDesktop && !insideMobile) setSvcOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -189,33 +196,35 @@ export default function Navbar() {
 
       {open && (
         <div className="fanus-nav__mobile">
-          <button
-            type="button"
-            className="fanus-nav__link fanus-nav__dropdown-trigger fanus-nav__dropdown-trigger--mobile"
-            aria-expanded={svcOpen}
-            onClick={() => setSvcOpen((o) => !o)}
-          >
-            <span>{t("nav.services")}</span>
-            <svg
-              className={`fanus-nav__chevron ${svcOpen ? "is-open" : ""}`}
-              width="12" height="12" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+          <div ref={svcMobileRef}>
+            <button
+              type="button"
+              className="fanus-nav__link fanus-nav__dropdown-trigger fanus-nav__dropdown-trigger--mobile"
+              aria-expanded={svcOpen}
+              onClick={() => setSvcOpen((o) => !o)}
             >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
-          </button>
-          {svcOpen && (
-            <div className="fanus-nav__dropdown-menu fanus-nav__dropdown-menu--mobile">
-              <Link href="/xidmetler" className="fanus-nav__dropdown-item fanus-nav__dropdown-item--all" onClick={() => { setSvcOpen(false); setOpen(false); }}>
-                {t("nav.servicesAll")}
-              </Link>
-              {SERVICE_KEYS.map((key) => (
-                <Link key={key} href={`/xidmetler#${key}`} className="fanus-nav__dropdown-item" onClick={() => { setSvcOpen(false); setOpen(false); }}>
-                  {t(`svcPrograms.${key}Title` as MessageKey)}
+              <span>{t("nav.services")}</span>
+              <svg
+                className={`fanus-nav__chevron ${svcOpen ? "is-open" : ""}`}
+                width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+            {svcOpen && (
+              <div className="fanus-nav__dropdown-menu fanus-nav__dropdown-menu--mobile">
+                <Link href="/xidmetler" className="fanus-nav__dropdown-item fanus-nav__dropdown-item--all" onClick={() => { setSvcOpen(false); setOpen(false); }}>
+                  {t("nav.servicesAll")}
                 </Link>
-              ))}
-            </div>
-          )}
+                {SERVICE_KEYS.map((key) => (
+                  <Link key={key} href={`/xidmetler#${key}`} className="fanus-nav__dropdown-item" onClick={() => { setSvcOpen(false); setOpen(false); }}>
+                    {t(`svcPrograms.${key}Title` as MessageKey)}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
           {navLinks.map((l) => (
             <Link key={l.href} href={l.href} className="fanus-nav__link" onClick={() => setOpen(false)}>
               {l.label}

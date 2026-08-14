@@ -63,7 +63,12 @@ export default function WhyFanus() {
           overflow: hidden;
         }
         @media (max-width: 1000px) { .fanus-why__grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 560px)  { .fanus-why__grid { grid-template-columns: 1fr; } .fanus-why-card__text { max-width: none; } }
+        @media (max-width: 560px)  {
+          .fanus-why__grid { grid-template-columns: 1fr; gap: 4px; }
+          .fanus-why-card__text { max-width: none; }
+          .fanus-why-card { padding: 14px 20px; }
+          .fanus-why-card__icon { margin-bottom: 6px; }
+        }
       `}</style>
     </section>
   );

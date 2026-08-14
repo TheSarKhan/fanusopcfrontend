@@ -446,6 +446,8 @@ export const tr: typeof az = {
   },
 
   psyList: {
+    verifiedNoteTitle: "Fanus rozeti ne anlama gelir?",
+    verifiedNoteBody: "Bu rozete sahip uzmanın eğitim ve sertifika bilgileri Fanus tarafından kontrol edilip onaylanmıştır.",
     eyebrow: "Ekibimiz",
     title: "Psikologlarımız",
     lead: "Her biri sertifikalı, deneyimli ve Fanus etik kurallarına bağlı uzmanlardır.",
@@ -1262,6 +1264,7 @@ export const tr: typeof az = {
     panelPsyTrust1: "Hasta aramakla vakit kaybetmezsiniz",
     panelPsyTrust2: "Çalışma programınızı kendiniz belirlersiniz",
     panelPsyTrust3: "Randevu ve ödemeler bizde",
+    panelPsyTrust4: "Sadece erişilebilirlik değil — yanınızda taşıyabileceğiniz bir klinik",
     emailSentTitle: "E-posta gönderildi!",
     emailSentBody: "{email} adresine doğrulama bağlantısı gönderildi.",
     appliedTitle: "Başvurunuz alındı!",

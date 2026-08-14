@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Deco from "@/components/Deco";
 import Breadcrumb from "@/components/Breadcrumb";
 import SessionRequestModal from "@/components/SessionRequestModal";
-import PsychologistCard, { toPsyCardItem, type PsyCardItem } from "@/components/PsychologistCard";
+import PsychologistCard, { toPsyCardItem, ShieldIcon, type PsyCardItem } from "@/components/PsychologistCard";
 import HorizontalCardRail from "@/components/HorizontalCardRail";
 import type { Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
@@ -25,6 +25,7 @@ export default function PsychologistsPage({ psychologists }: { psychologists?: P
     <div className="fanus-root">
       <Breadcrumb items={[{ label: t("nav.psychologists") }]} />
       <PsycHero onApply={() => setModalOpen(true)} />
+      <VerifiedNote />
       <PsycList items={items} />
       <SessionRequestModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
@@ -68,6 +69,39 @@ function PsycHero({ onApply }: { onApply: () => void }) {
         @media (max-width: 640px) { .pp-hero { padding: 20px 0; } }
       `}</style>
     </section>
+  );
+}
+
+/** Kartlarda görünən "Fanus təsdiqli" nişanının nə demək olduğunu izah edir —
+ *  siyahının yuxarısında, ilk dəfə görən pasiyent nişanın mənasını bilsin. */
+function VerifiedNote() {
+  const { t } = useT();
+  return (
+    <div className="fanus-container">
+      <div className="pp-verified-note">
+        <span className="pp-verified-note__icon"><ShieldIcon size={20} /></span>
+        <div>
+          <strong>{t("psyList.verifiedNoteTitle")}</strong>
+          <p>{t("psyList.verifiedNoteBody")}</p>
+        </div>
+      </div>
+
+      <style>{`
+        .pp-verified-note {
+          display: flex; align-items: flex-start; gap: 14px;
+          max-width: 720px; margin: 0 auto 8px;
+          padding: 16px 18px; border-radius: 14px;
+          background: var(--fanus-primary-50); border: 1px solid var(--fanus-primary-100);
+        }
+        .pp-verified-note__icon {
+          flex-shrink: 0; width: 38px; height: 38px; border-radius: 10px;
+          display: inline-flex; align-items: center; justify-content: center;
+          background: #fff; color: var(--fanus-primary);
+        }
+        .pp-verified-note strong { display: block; font-size: 14.5px; color: var(--fanus-ink); margin-bottom: 3px; }
+        .pp-verified-note p { margin: 0; font-size: 13.5px; color: var(--fanus-ink-3); line-height: 1.5; }
+      `}</style>
+    </div>
   );
 }
 

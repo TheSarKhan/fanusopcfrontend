@@ -339,10 +339,16 @@ export default function ProfileView({
             {/* Dillər və seans */}
             {(psychologist.languages || psychologist.sessionTypes) && (
               <Block icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></svg>} title={t("psyProfile.langAndSession")}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-                  {psychologist.languages && <InfoStat label={t("psyProfile.languages")} value={psychologist.languages} />}
-                  {psychologist.sessionTypes && <InfoStat label={t("psyProfile.sessionType")} value={psychologist.sessionTypes} />}
-                  <InfoStat label={t("psyProfile.duration")} value={t("psyProfile.minutes", { n: sessionMinutes })} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {psychologist.languages && <TagGroup label={t("psyProfile.languages")} items={psychologist.languages.split(",").map((s) => s.trim()).filter(Boolean)} />}
+                  {psychologist.sessionTypes && <TagGroup label={t("psyProfile.sessionType")} items={psychologist.sessionTypes.split(",").map((s) => s.trim()).filter(Boolean)} />}
+                  <div>
+                    <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 8 }}>{t("psyProfile.duration")}</div>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--brand-50)", color: "var(--brand-700)", border: "1px solid var(--brand-100)", fontSize: 13.5, fontWeight: 700, padding: "7px 14px", borderRadius: 999 }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></svg>
+                      {t("psyProfile.minutes", { n: sessionMinutes })}
+                    </span>
+                  </div>
                 </div>
               </Block>
             )}
@@ -421,11 +427,17 @@ function Block({ icon, title, right, children }: { icon: React.ReactNode; title:
   );
 }
 
-function InfoStat({ label, value }: { label: string; value: string }) {
+/** Etiket + pill-lərə bölünmüş dəyərlər sırası (məs. Dillər: AZ, RU, EN — hər biri ayrıca pill). */
+function TagGroup({ label, items }: { label: string; items: string[] }) {
+  if (items.length === 0) return null;
   return (
-    <div style={{ background: "#F8FAFD", border: "1px solid #EDF1F8", borderRadius: 11, padding: 13 }}>
-      <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 14, fontWeight: 700 }}>{value}</div>
+    <div>
+      <div style={{ fontSize: 12, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 8 }}>{label}</div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+        {items.map((item) => (
+          <span key={item} style={{ background: "#fff", color: "var(--brand-700)", border: "1px solid #D6E2F7", fontSize: 12.5, fontWeight: 600, padding: "5px 12px", borderRadius: 8 }}>{item}</span>
+        ))}
+      </div>
     </div>
   );
 }

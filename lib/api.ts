@@ -229,11 +229,14 @@ export function isScheduleMismatch(e: unknown): boolean {
 async function authedRequest<T>(
   method: string,
   path: string,
-  body?: unknown
+  body?: unknown,
+  opts?: { silent?: boolean }
 ): Promise<T> {
   // Yalnız dəyişdirici əməliyyatlarda (GET olmayan) qlobal yükləmə popupı açılır;
-  // səhifə oxumaları (GET) və arxa-plan pollinq popup açmır.
-  const _track = method.toUpperCase() !== "GET";
+  // səhifə oxumaları (GET) və arxa-plan pollinq popup açmır. `silent: true` —
+  // avtomatik (debounced) qaralama saxlanması kimi arxa-plan yazıları üçün əlavə
+  // çıxış: istifadəçi hər 2 saniyədə yanıb-sönən popup görməsin (bax doSave/runSave).
+  const _track = method.toUpperCase() !== "GET" && !opts?.silent;
   if (_track) beginTask();
   try {
   const res = await fetch(`${BASE}${path}`, {
@@ -1799,10 +1802,10 @@ export const adminApi = {
   bulkBlogAction: (ids: number[], action: "DELETE" | "PUBLISH" | "UNPUBLISH" | "FEATURE" | "UNFEATURE") =>
     authedRequest<void>("POST", "/admin/blog-posts/bulk", { ids, action }).then(() => revalidateBlogCache()),
   getBlogPostById: (id: number) => authedRequest<BlogPost>("GET", `/admin/blog-posts/${id}`),
-  createBlogPost: (data: Omit<BlogPost, "id">) =>
-    authedRequest<BlogPost>("POST", "/admin/blog-posts", data).then(p => { revalidateBlogCache(p.slug); return p; }),
-  updateBlogPost: (id: number, data: Omit<BlogPost, "id">) =>
-    authedRequest<BlogPost>("PUT", `/admin/blog-posts/${id}`, data).then(p => { revalidateBlogCache(p.slug); return p; }),
+  createBlogPost: (data: Omit<BlogPost, "id">, opts?: { silent?: boolean }) =>
+    authedRequest<BlogPost>("POST", "/admin/blog-posts", data, opts).then(p => { revalidateBlogCache(p.slug); return p; }),
+  updateBlogPost: (id: number, data: Omit<BlogPost, "id">, opts?: { silent?: boolean }) =>
+    authedRequest<BlogPost>("PUT", `/admin/blog-posts/${id}`, data, opts).then(p => { revalidateBlogCache(p.slug); return p; }),
   deleteBlogPost: (id: number, slug?: string) =>
     authedRequest<void>("DELETE", `/admin/blog-posts/${id}`).then(() => revalidateBlogCache(slug)),
   addAttachment: async (articleId: number, file: File, displayOrder = 0): Promise<ArticleAttachment> => {
@@ -2106,8 +2109,8 @@ export const adminApi = {
   updatePsychTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("PUT", `/admin/psych-tests/${id}`, data),
   deletePsychTest: (id: number) => authedRequest<void>("DELETE", `/admin/psych-tests/${id}`),
   // Wizard: create empty draft → autosave (lenient) → publish (strict)
-  createPsychTestDraft: () => authedRequest<PsyTest>("POST", "/admin/psych-tests/draft"),
-  savePsychTestDraft: (id: number, data: PsyDraftReq) => authedRequest<PsyTest>("PUT", `/admin/psych-tests/${id}/draft`, data),
+  createPsychTestDraft: (opts?: { silent?: boolean }) => authedRequest<PsyTest>("POST", "/admin/psych-tests/draft", undefined, opts),
+  savePsychTestDraft: (id: number, data: PsyDraftReq, opts?: { silent?: boolean }) => authedRequest<PsyTest>("PUT", `/admin/psych-tests/${id}/draft`, data, opts),
   publishPsychTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("POST", `/admin/psych-tests/${id}/publish`, data),
   // Psychologist test-share moderation
   pendingTestShares: () => authedRequest<PsyTestSummary[]>("GET", "/admin/psych-tests/pending-shares"),
@@ -3424,10 +3427,10 @@ export const psychologistApi = {
   listArticlesPaged: (opts: { page?: number; size?: number } = {}) =>
     authedRequest<Paged<BlogPost>>("GET", `/psychologist/articles/paged${pagedQuery(opts)}`),
   getArticleById: (id: number) => authedRequest<BlogPost>("GET", `/psychologist/articles/${id}`),
-  createArticle: (data: Omit<BlogPost, "id">) =>
-    authedRequest<BlogPost>("POST", "/psychologist/articles", data).then(p => { revalidateBlogCache(p.slug); return p; }),
-  updateArticle: (id: number, data: Omit<BlogPost, "id">) =>
-    authedRequest<BlogPost>("PUT", `/psychologist/articles/${id}`, data).then(p => { revalidateBlogCache(p.slug); return p; }),
+  createArticle: (data: Omit<BlogPost, "id">, opts?: { silent?: boolean }) =>
+    authedRequest<BlogPost>("POST", "/psychologist/articles", data, opts).then(p => { revalidateBlogCache(p.slug); return p; }),
+  updateArticle: (id: number, data: Omit<BlogPost, "id">, opts?: { silent?: boolean }) =>
+    authedRequest<BlogPost>("PUT", `/psychologist/articles/${id}`, data, opts).then(p => { revalidateBlogCache(p.slug); return p; }),
   /** Flip status only — bypasses the shadow-draft auto-save path so
    *  unpublishing actually unpublishes. */
   setArticleStatus: (id: number, status: "PUBLISHED" | "DRAFT") =>
@@ -3492,8 +3495,8 @@ export const psychologistApi = {
   updateMyTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("PUT", `/psychologist/psych-tests/manage/${id}`, data),
   deleteMyTest: (id: number) => authedRequest<void>("DELETE", `/psychologist/psych-tests/manage/${id}`),
   // Wizard: create empty draft → autosave (lenient) → publish (strict)
-  createMyTestDraft: () => authedRequest<PsyTest>("POST", "/psychologist/psych-tests/manage/draft"),
-  saveMyTestDraft: (id: number, data: PsyDraftReq) => authedRequest<PsyTest>("PUT", `/psychologist/psych-tests/manage/${id}/draft`, data),
+  createMyTestDraft: (opts?: { silent?: boolean }) => authedRequest<PsyTest>("POST", "/psychologist/psych-tests/manage/draft", undefined, opts),
+  saveMyTestDraft: (id: number, data: PsyDraftReq, opts?: { silent?: boolean }) => authedRequest<PsyTest>("PUT", `/psychologist/psych-tests/manage/${id}/draft`, data, opts),
   publishMyTest: (id: number, data: PsyTestReq) => authedRequest<PsyTest>("POST", `/psychologist/psych-tests/manage/${id}/publish`, data),
   requestTestShare: (id: number) => authedRequest<PsyTestSummary>("POST", `/psychologist/psych-tests/manage/${id}/request-share`),
   assignTest: (data: { testId: number; patientId: number; note?: string }) =>

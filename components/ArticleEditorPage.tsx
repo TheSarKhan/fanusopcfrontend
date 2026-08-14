@@ -8,8 +8,8 @@ import TopicPicker from "@/components/TopicPicker";
 import { COVER_PRESETS, coverPresetPath, type CoverPreset } from "@/components/coverPresets";
 
 export interface ArticleEditorApi {
-  createBlogPost: (data: Omit<BlogPost, "id">) => Promise<BlogPost>;
-  updateBlogPost: (id: number, data: Omit<BlogPost, "id">) => Promise<BlogPost>;
+  createBlogPost: (data: Omit<BlogPost, "id">, opts?: { silent?: boolean }) => Promise<BlogPost>;
+  updateBlogPost: (id: number, data: Omit<BlogPost, "id">, opts?: { silent?: boolean }) => Promise<BlogPost>;
   getBlogCategories: () => Promise<BlogCategory[]>;
   uploadFile: (file: File) => Promise<string>;
 }
@@ -184,7 +184,7 @@ export default function ArticleEditorPage({
     try {
       const payload = { ...buildPayload(data), status: "DRAFT" };
       if (id) {
-        await api.updateBlogPost(id, payload);
+        await api.updateBlogPost(id, payload, { silent: true });
         setForm(f => ({ ...f, status: "DRAFT" }));
         setSaveStatus("saved");
         return id;
@@ -195,7 +195,7 @@ export default function ArticleEditorPage({
           setSaveStatus("idle");
           return null;
         }
-        const created = await api.createBlogPost(payload);
+        const created = await api.createBlogPost(payload, { silent: true });
         setArticleId(created.id);
         articleIdRef.current = created.id;
         setSaveStatus("saved");

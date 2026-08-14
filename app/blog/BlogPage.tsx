@@ -263,8 +263,6 @@ function ArtList({
                 <div className="ap-card__body">
                   <div className="ap-card__date">
                     <span>{a.date}</span>
-                    <span className="ap-card__sep" />
-                    <span className="ap-card__read"><ClockIcon /> {a.read}</span>
                     {a.views != null && a.views > 0 && (
                       <>
                         <span className="ap-card__sep" />
@@ -398,16 +396,6 @@ function ArtList({
         }
       `}</style>
     </section>
-  );
-}
-
-function ClockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-         strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" />
-      <polyline points="12 7 12 12 15 14" />
-    </svg>
   );
 }
 

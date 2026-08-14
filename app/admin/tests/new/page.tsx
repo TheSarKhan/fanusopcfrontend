@@ -19,8 +19,9 @@ export default function AdminNewTestPage() {
         showPublished
         doneHref="/admin/tests"
         api={{
-          createDraft: adminApi.createPsychTestDraft,
-          saveDraft: adminApi.savePsychTestDraft,
+          // Avtomatik qaralama saxlanması — popup açmasın (bax lib/loadingOverlay.ts).
+          createDraft: () => adminApi.createPsychTestDraft({ silent: true }),
+          saveDraft: (id, data) => adminApi.savePsychTestDraft(id, data, { silent: true }),
           publish: adminApi.publishPsychTest,
           uploadFile: adminApi.uploadFile,
         }}

@@ -44,8 +44,9 @@ export default function PsyEditTestPage() {
             initial={test}
             doneHref="/psycholog/tests"
             api={{
-              createDraft: psychologistApi.createMyTestDraft,
-              saveDraft: psychologistApi.saveMyTestDraft,
+              // Avtomatik qaralama saxlanması — popup açmasın (bax lib/loadingOverlay.ts).
+              createDraft: () => psychologistApi.createMyTestDraft({ silent: true }),
+              saveDraft: (id, data) => psychologistApi.saveMyTestDraft(id, data, { silent: true }),
               publish: psychologistApi.publishMyTest,
               uploadFile: psychologistApi.uploadFile,
             }}

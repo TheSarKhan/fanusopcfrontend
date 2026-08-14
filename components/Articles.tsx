@@ -52,8 +52,6 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
               <div className="fanus-art-card__body">
                 <div className="fanus-art-card__date">
                   {a.date}
-                  <span className="fanus-art-card__sep" />
-                  {a.read}
                   {a.views > 0 && (
                     <>
                       <span className="fanus-art-card__sep" />

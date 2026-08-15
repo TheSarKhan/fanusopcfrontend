@@ -398,6 +398,9 @@ export interface Psychologist {
   contactLinks?: { id?: number; platform: PsyContactPlatform; url: string }[];
   /** İctimai profildə göstərilən ünvan (V152) — plan/showAddress icazə verirsə dolu gəlir. */
   address?: string;
+  /** `/me` cavabında (özü kontekstində) dolur — ünvan/telefonun ictimai profildə göstərilib-göstərilməyəcəyi. */
+  showAddress?: boolean;
+  showPhone?: boolean;
   /** Landing page seçimi (V148) — admin "Saytda görünüş" tabından təyin edir. */
   featured?: boolean;
   featuredOrder?: number | null;

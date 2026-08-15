@@ -80,6 +80,7 @@ export default function PsychologPublicProfilePage() {
             <StatsSourceCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
             <EducationsCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
             <ContactLinksCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
+            <ContactVisibilityCard me={me} onSaved={p => setMe(prev => prev ? { ...prev, ...p } : prev)} />
           </div>
           <div style={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", gap: 20, position: "sticky", top: 86 }}>
             <PublicPreviewCard me={me} minutes={minutes} />
@@ -96,6 +97,7 @@ function PublicProfileCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Par
   const { t } = useT();
   const [title, setTitle] = useState(me.title ?? "");
   const [bio, setBio] = useState(me.bio ?? "");
+  const [address, setAddress] = useState(me.address ?? "");
   const [languages, setLanguages] = useState<string[]>(() => parseCsv(me.languages ?? ""));
   const [sessionTypes, setSessionTypes] = useState<string[]>(() => parseCsv(me.sessionTypes ?? ""));
   const [topics, setTopics] = useState<string[]>(me.topics ?? []);
@@ -105,6 +107,7 @@ function PublicProfileCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Par
   const dirty =
     title.trim() !== (me.title ?? "") ||
     bio.trim() !== (me.bio ?? "") ||
+    address.trim() !== (me.address ?? "") ||
     JSON.stringify(languages) !== JSON.stringify(parseCsv(me.languages ?? "")) ||
     JSON.stringify(sessionTypes) !== JSON.stringify(parseCsv(me.sessionTypes ?? "")) ||
     JSON.stringify(topics) !== JSON.stringify(me.topics ?? []);
@@ -148,6 +151,7 @@ function PublicProfileCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Par
       const updated = await psychologistApi.updateFullProfile({
         title: title.trim(),
         bio: bio.trim(),
+        address: address.trim(),
         languages: languages.join(", "),
         sessionTypes: sessionTypes.join(", "),
         topics,
@@ -156,6 +160,7 @@ function PublicProfileCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Par
       onSaved({
         title: updated.title,
         bio: updated.bio,
+        address: updated.address,
         languages: updated.languages,
         sessionTypes: updated.sessionTypes,
         topics: updated.topics,
@@ -189,6 +194,11 @@ function PublicProfileCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Par
             rows={5}
             style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6, fontFamily: "inherit" }}
           />
+        </label>
+
+        <label style={{ display: "block" }}>
+          <span style={labelStyle}>{t("prof.pubAddress")}</span>
+          <input style={inputStyle} value={address} onChange={e => setAddress(e.target.value)} placeholder={t("prof.pubAddressPh")} />
         </label>
 
         <div>
@@ -623,6 +633,61 @@ function ContactLinksCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Part
         <button type="button" onClick={save} disabled={saving} style={{ ...btnDark, marginLeft: "auto" }}>
           {saving ? t("prof.clSaving") : t("prof.clSave")}
         </button>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Ünvan/telefonun ictimai profildə görünüşü (V152) — seçim dərhal saxlanır ── */
+
+function ContactVisibilityCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Partial<Psychologist>) => void }) {
+  const { t } = useT();
+  const [showAddress, setShowAddress] = useState(me.showAddress ?? true);
+  const [showPhone, setShowPhone] = useState(me.showPhone ?? false);
+  const [savingKey, setSavingKey] = useState<"showAddress" | "showPhone" | null>(null);
+
+  const toggle = async (key: "showAddress" | "showPhone", value: boolean) => {
+    const setLocal = key === "showAddress" ? setShowAddress : setShowPhone;
+    const prev = !value;
+    setLocal(value);
+    setSavingKey(key);
+    try {
+      const updated = await psychologistApi.updateFullProfile(
+        key === "showAddress" ? { showAddress: value } : { showPhone: value }
+      );
+      onSaved({ showAddress: updated.showAddress, showPhone: updated.showPhone });
+      toast(t("prof.cvSavedToast"));
+    } catch (e) {
+      setLocal(prev);
+      toast((e as Error).message, "error");
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  return (
+    <section style={cardStyle}>
+      <h2 style={sectionH2}>{t("prof.cvTitle")}</h2>
+      <p style={sectionSub}>{t("prof.cvSub")}</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: PC.ink, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={showAddress}
+            disabled={savingKey === "showAddress"}
+            onChange={e => toggle("showAddress", e.target.checked)}
+          />
+          {t("prof.cvShowAddress")}
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: PC.ink, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={showPhone}
+            disabled={savingKey === "showPhone"}
+            onChange={e => toggle("showPhone", e.target.checked)}
+          />
+          {t("prof.cvShowPhone")}
+        </label>
       </div>
     </section>
   );

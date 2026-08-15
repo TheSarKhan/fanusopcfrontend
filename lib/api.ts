@@ -396,6 +396,8 @@ export interface Psychologist {
   educations?: { id?: number; institution: string; degree?: string; major?: string; graduationYear?: string; diplomaUrl?: string }[];
   /** Psixoloqun özü əlavə etdiyi sosial media/əlaqə linkləri (V147) — publikdə görünür. */
   contactLinks?: { id?: number; platform: PsyContactPlatform; url: string }[];
+  /** İctimai profildə göstərilən ünvan (V152) — plan/showAddress icazə verirsə dolu gəlir. */
+  address?: string;
   /** Landing page seçimi (V148) — admin "Saytda görünüş" tabından təyin edir. */
   featured?: boolean;
   featuredOrder?: number | null;
@@ -432,6 +434,7 @@ export interface PsyFullProfile {
   specializations: string[]; topics: string[];
   educations: PsyEducationItem[]; certificates: PsyCertificateItem[];
   contactLinks: PsyContactLinkItem[];
+  address?: string; showAddress?: boolean; showPhone?: boolean;
   accentColor?: string; bgColor?: string;
   statsSource?: string; fanusSessionCount?: number; priorExperienceSessions?: number;
 }
@@ -441,6 +444,7 @@ export interface PsySelfProfileUpdate {
   specializations?: string[]; topics?: string[];
   educations?: PsyEducationItem[]; certificates?: PsyCertificateItem[];
   contactLinks?: PsyContactLinkItem[];
+  address?: string; showAddress?: boolean; showPhone?: boolean;
 }
 
 // Modul A — public/pasiyent kartda göstərilən paket xülasəsi. Qiymət sahələri

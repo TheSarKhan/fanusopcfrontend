@@ -110,6 +110,23 @@ function ContactPlatformIcon({ platform, size = 16 }: { platform: string; size?:
   }
 }
 
+function PhoneIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 5c0-.6.4-1 1-1h3l2 5-2 1.5a11 11 0 0 0 5.5 5.5L15 14l5 2v3c0 .6-.4 1-1 1A15 15 0 0 1 4 5z" />
+    </svg>
+  );
+}
+
+function AddressPinIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
+      <circle cx="12" cy="9.5" r="2.3" />
+    </svg>
+  );
+}
+
 const layoutCss = `
   .ppx-grid { display: grid; grid-template-columns: minmax(0,1fr) 350px; grid-template-areas: "hero book" "body book"; gap: 22px; align-items: start; }
   .ppx-hero { grid-area: hero; }
@@ -209,9 +226,23 @@ export default function ProfileView({
                 <div style={{ fontSize: 15, color: "var(--oxford-60)", fontWeight: 600, marginBottom: 16 }}>{psychologist.title}</div>
                 <div style={{ marginBottom: 18, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
                   <ProfileShareButtons url={appUrl(`/psychologists/${psychologist.slug}`)} name={psychologist.name} />
-                  {psychologist.contactLinks && psychologist.contactLinks.length > 0 && (
+                  {((psychologist.contactLinks && psychologist.contactLinks.length > 0) || psychologist.phone || psychologist.address) && (
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {psychologist.contactLinks.map((c) => (
+                      {psychologist.phone && (
+                        <a href={`tel:${psychologist.phone}`}
+                          title={t("psyProfile.socialPhone")}
+                          style={{ width: 32, height: 32, borderRadius: "50%", background: "#fff", border: "1px solid #D6E2F7", color: "var(--brand)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                          <PhoneIcon size={15} />
+                        </a>
+                      )}
+                      {psychologist.address && (
+                        <span
+                          title={psychologist.address}
+                          style={{ width: 32, height: 32, borderRadius: "50%", background: "#fff", border: "1px solid #D6E2F7", color: "var(--brand)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                          <AddressPinIcon size={15} />
+                        </span>
+                      )}
+                      {psychologist.contactLinks?.map((c) => (
                         <a key={c.id ?? c.url} href={c.url} target="_blank" rel="noopener noreferrer"
                           title={t(`psyProfile.social${c.platform.charAt(0)}${c.platform.slice(1).toLowerCase()}` as MessageKey)}
                           style={{ width: 32, height: 32, borderRadius: "50%", background: "#fff", border: "1px solid #D6E2F7", color: "var(--brand)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>

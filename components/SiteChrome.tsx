@@ -31,6 +31,9 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
   }
 
   const isHome = pathname === "/";
+  // Psixoloqun öz profil səhifəsində artıq öz "Randevu al" CTA-sı (BookingCta,
+  // mobil sticky bar daxil) var — qlobal yumru düymə üst-üstə düşüb ikiləşdirirdi.
+  const isPsyProfile = /^\/psychologists\/[^/]+$/.test(pathname);
 
   return (
     <>
@@ -48,7 +51,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
       <BookingModal />
       <BackToTop />
       <WhatsAppButton />
-      <RandevuButton />
+      {!isPsyProfile && <RandevuButton />}
 
       <style>{`
         .fanus-nav-spacer--home { height: 0; }

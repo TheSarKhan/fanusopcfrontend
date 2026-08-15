@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Psychologist } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { toast } from "@/components/Toast";
 
 /** Kart daralarkən ixtisas taqları/dillər bu saydan çoxdursa "+N" ilə kəsilir —
  *  klikləndikdə hamısı açılır (taqlar/dillər itmir, sadəcə defolt görünüş
@@ -96,9 +97,15 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
                 psixoloq üçün heç nə yazılmır — «təsdiqlənməyib» etiketi mütəxəssisin
                 nüfuzuna zərbə vurardı. */}
             {p.verified && (
-              <span className="pc-verified" title={t("pub.verifiedPsy")} aria-label={t("pub.verifiedPsy")}>
+              <button
+                type="button"
+                className="pc-verified"
+                title={t("pub.verifiedPsy")}
+                aria-label={t("pub.verifiedPsy")}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toast(t("psyList.verifiedNoteBody"), "info"); }}
+              >
                 <ShieldIcon />
-              </span>
+              </button>
             )}
           </div>
           <p className="pc-title">{p.title}</p>
@@ -233,7 +240,10 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
           color: var(--fanus-ink); transition: color .2s ease;
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
-        .pc-verified { display: inline-flex; flex-shrink: 0; color: var(--fanus-primary); }
+        .pc-verified {
+          display: inline-flex; flex-shrink: 0; color: var(--fanus-primary);
+          background: none; border: none; padding: 0; margin: 0; cursor: pointer;
+        }
         .pc-title {
           font-size: 13px; color: var(--fanus-ink-3); margin: 3px 0 0;
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

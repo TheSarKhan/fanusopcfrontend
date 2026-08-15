@@ -1276,7 +1276,7 @@ export const az = {
     psyTitle: "Psixoloq qeydiyyatı",
     psySub: "Profilinizi yaradın — komandamız yoxladıqdan sonra aktivləşəcək",
     panelPatientTitle: "İlk addımı bu gün atın",
-    panelPatientSub: "Qeydiyyatdan sonra operatorumuz sizinlə əlaqə saxlayır və ehtiyacınıza uyğun psixoloqu təklif edir.",
+    panelPatientSub: "Fanus, sertifikatı təsdiqlənmiş mütəxəssislərdən psixoloji dəstək almağınıza yardım edir.",
     panelPatientTrust1: "15 dəqiqəlik ilk seans ödənişsizdir",
     panelPatientTrust2: "Məlumatlarınız üçüncü tərəflə paylaşılmır",
     panelPatientTrust3: "Uyğun psixoloqu sizin əvəzinizə biz seçirik",

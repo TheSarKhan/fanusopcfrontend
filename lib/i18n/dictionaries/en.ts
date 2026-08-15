@@ -2606,6 +2606,7 @@ export const en: typeof az = {
     clSub: "Add links to your Facebook, Instagram and other accounts — they'll show on your profile.",
     clRowLabel: "Link #{n}",
     clDelete: "Delete",
+    clVisible: "Show",
     clPlatformLabel: "Platform",
     clUrlLabel: "Link",
     clUrlPh: "https://...",

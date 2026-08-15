@@ -2657,6 +2657,7 @@ export const az = {
     clSub: "Facebook, Instagram və digər platformalardakı hesablarınızın linkini əlavə edin — profilinizdə görünəcək.",
     clRowLabel: "Link #{n}",
     clDelete: "Sil",
+    clVisible: "Göstər",
     clPlatformLabel: "Platforma",
     clUrlLabel: "Link",
     clUrlPh: "https://...",

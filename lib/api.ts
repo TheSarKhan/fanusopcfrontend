@@ -394,8 +394,9 @@ export interface Psychologist {
   /** Bir neçə təhsil qeydi (V145) — university/degree/graduationYear-ı əvəz edir.
    *  diplomaUrl yalnız admin kontekstində dolur, public cavabda həmişə boşdur. */
   educations?: { id?: number; institution: string; degree?: string; major?: string; graduationYear?: string; diplomaUrl?: string }[];
-  /** Psixoloqun özü əlavə etdiyi sosial media/əlaqə linkləri (V147) — publikdə görünür. */
-  contactLinks?: { id?: number; platform: PsyContactPlatform; url: string }[];
+  /** Psixoloqun özü əlavə etdiyi sosial media/əlaqə linkləri (V147) — publikdə görünür.
+   *  `visible` yalnız özü kontekstində (`/me`) dolur — publik cavabda hər zaman görünən linklərdir. */
+  contactLinks?: { id?: number; platform: PsyContactPlatform; url: string; visible?: boolean }[];
   /** İctimai profildə göstərilən ünvan (V152) — plan/showAddress icazə verirsə dolu gəlir. */
   address?: string;
   /** `/me` cavabında (özü kontekstində) dolur — ünvan/telefonun ictimai profildə göstərilib-göstərilməyəcəyi. */
@@ -428,6 +429,8 @@ export interface PsyContactLinkItem {
   id?: number;
   platform: PsyContactPlatform;
   url: string;
+  /** Silmədən publik profildə gizlədilə bilsin (V153). Default true. */
+  visible?: boolean;
 }
 export interface PsyFullProfile {
   id: number; userId?: number | null;

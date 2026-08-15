@@ -2609,6 +2609,7 @@ export const ru: typeof az = {
     clSub: "Добавьте ссылки на ваш Facebook, Instagram и другие аккаунты — они будут показаны в профиле.",
     clRowLabel: "Ссылка #{n}",
     clDelete: "Удалить",
+    clVisible: "Показывать",
     clPlatformLabel: "Платформа",
     clUrlLabel: "Ссылка",
     clUrlPh: "https://...",

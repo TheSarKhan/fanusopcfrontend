@@ -569,23 +569,27 @@ function ContactLinksCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Part
   const platformLabel = (p: PsyContactPlatform) => t(`prof.clPlatform${p.charAt(0)}${p.slice(1).toLowerCase()}` as MessageKey);
   const [rows, setRows] = useState<PsyContactLinkItem[]>(() =>
     me.contactLinks && me.contactLinks.length > 0
-      ? me.contactLinks.map(c => ({ ...c }))
-      : [{ platform: "FACEBOOK", url: "" }]
+      ? me.contactLinks.map(c => ({ ...c, visible: c.visible ?? true }))
+      : [{ platform: "FACEBOOK", url: "", visible: true }]
   );
   const [saving, setSaving] = useState(false);
 
   const update = (i: number, k: "platform" | "url", v: string) =>
     setRows(prev => prev.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
-  const addRow = () => setRows(prev => [...prev, { platform: "FACEBOOK", url: "" }]);
+  const toggleVisible = (i: number) =>
+    setRows(prev => prev.map((r, idx) => idx === i ? { ...r, visible: !(r.visible ?? true) } : r));
+  const addRow = () => setRows(prev => [...prev, { platform: "FACEBOOK", url: "", visible: true }]);
   const removeRow = (i: number) => setRows(prev => prev.filter((_, idx) => idx !== i));
 
   const save = async () => {
-    const clean = rows.filter(r => r.url.trim());
+    const clean = rows.filter(r => r.url.trim()).map(r => ({ ...r, visible: r.visible ?? true }));
     setSaving(true);
     try {
       const updated = await psychologistApi.updateFullProfile({ contactLinks: clean });
       onSaved({ contactLinks: updated.contactLinks });
-      setRows(updated.contactLinks.length > 0 ? updated.contactLinks.map(c => ({ ...c })) : [{ platform: "FACEBOOK", url: "" }]);
+      setRows(updated.contactLinks.length > 0
+        ? updated.contactLinks.map(c => ({ ...c, visible: c.visible ?? true }))
+        : [{ platform: "FACEBOOK", url: "", visible: true }]);
       toast(t("prof.clSavedToast"));
     } catch (e) {
       toast((e as Error).message, "error");
@@ -603,12 +607,18 @@ function ContactLinksCard({ me, onSaved }: { me: Psychologist; onSaved: (p: Part
           <div key={i} style={{ border: `1px solid ${PC.border2}`, borderRadius: 10, padding: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <strong style={{ fontSize: 12.5, color: PC.ink }}>{t("prof.clRowLabel", { n: i + 1 })}</strong>
-              {rows.length > 1 && (
-                <button type="button" onClick={() => removeRow(i)}
-                  style={{ fontSize: 12, color: "#B91C1C", background: "none", border: "none", cursor: "pointer" }}>
-                  {t("prof.clDelete")}
-                </button>
-              )}
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: PC.soft, cursor: "pointer" }}>
+                  <input type="checkbox" checked={r.visible ?? true} onChange={() => toggleVisible(i)} />
+                  {t("prof.clVisible")}
+                </label>
+                {rows.length > 1 && (
+                  <button type="button" onClick={() => removeRow(i)}
+                    style={{ fontSize: 12, color: "#B91C1C", background: "none", border: "none", cursor: "pointer" }}>
+                    {t("prof.clDelete")}
+                  </button>
+                )}
+              </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 8 }}>
               <div>

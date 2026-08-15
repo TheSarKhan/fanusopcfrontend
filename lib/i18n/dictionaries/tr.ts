@@ -2629,6 +2629,7 @@ export const tr: typeof az = {
     clSub: "Facebook, Instagram ve diğer hesaplarınızın linklerini ekleyin — profilinizde görünecek.",
     clRowLabel: "Bağlantı #{n}",
     clDelete: "Sil",
+    clVisible: "Göster",
     clPlatformLabel: "Platform",
     clUrlLabel: "Bağlantı",
     clUrlPh: "https://...",

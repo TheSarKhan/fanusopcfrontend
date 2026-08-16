@@ -1,85 +1,96 @@
-/* Inline SVG bayraqlar — emoji bayraq bəzi platformalarda (Windows) düzgün
- * göstərilmir, ona görə hər yerdə bu inline SVG dəsti işlədilir
- * (LanguageSwitcher, psixoloq profilində "Dillər" pilləri və s.). */
+/* Real bayraq şəkilləri — public/flags/ qovluğundakı SVG fayllar.
+ * Emoji bayraq bəzi platformalarda (Windows) düzgün göstərilmir; inline SVG
+ * ikonları isə detallı bayraqlarda (məs. İran) zəif görünür. Ona görə hər yerdə
+ * eyni real bayraq şəkilləri işlədilir (LanguageSwitcher, psixoloq kartı, profil). */
+
+import type { CSSProperties } from "react";
 
 type FlagProps = { width?: number; height?: number };
 
-export function FlagAZ({ width = 20, height = 14 }: FlagProps = {}) {
+const flagStyle = (width: number, height: number): CSSProperties => ({
+  width,
+  height,
+  borderRadius: 2,
+  display: "block",
+  flexShrink: 0,
+  objectFit: "cover",
+});
+
+export function FlagImage({ code, width = 20, height = 14 }: { code: string; width?: number; height?: number }) {
   return (
-    <svg width={width} height={height} viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
-      <rect width="30" height="20" fill="#0092BC" />
-      <rect y="6.67" width="30" height="6.66" fill="#EF3340" />
-      <rect y="13.33" width="30" height="6.67" fill="#00B050" />
-      <circle cx="14" cy="10" r="3.4" fill="white" />
-      <circle cx="15.1" cy="10" r="2.7" fill="#EF3340" />
-      <polygon points="19,10 18.55,10.38 18.73,10.91 18.22,10.64 17.82,11 17.91,10.45 17.45,10.12 18,10.06 18.2,9.55 18.46,10.04" fill="white" />
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/flags/${code}.svg`}
+      alt=""
+      width={width}
+      height={height}
+      style={flagStyle(width, height)}
+      aria-hidden
+    />
   );
+}
+
+/** Dil adını ISO bayraq koduna çevirir (LANGUAGE_OPTIONS + custom dillər). */
+export function langToFlagCode(lang: string): string | null {
+  const l = lang.toLowerCase();
+  if (l.startsWith("az")) return "az";
+  if (l.includes("rus")) return "ru";
+  if (l.includes("ngilis") || l.includes("english")) return "gb";
+  if (l.includes("türk") || l.includes("turk")) return "tr";
+  if (l.includes("alman") || l.includes("german")) return "de";
+  if (l.includes("frans") || l.includes("french")) return "fr";
+  if (l.includes("fars") || l.includes("persian") || l.includes("farsi") || l.includes("farsca")) return "ir";
+  return null;
+}
+
+/** Dil adını qısa 2-hərfli koda çevirir (kartda pill yer tutmasın deyə). */
+export function langCode(lang: string): string {
+  const l = lang.toLowerCase();
+  if (l.startsWith("az")) return "AZ";
+  if (l.includes("rus")) return "RU";
+  if (l.includes("ngilis") || l.includes("english")) return "EN";
+  if (l.includes("türk") || l.includes("turk")) return "TR";
+  if (l.includes("alman") || l.includes("german")) return "DE";
+  if (l.includes("frans") || l.includes("french")) return "FR";
+  if (l.includes("fars") || l.includes("persian") || l.includes("farsi") || l.includes("farsca")) return "FA";
+  return lang.trim().slice(0, 2).toUpperCase();
+}
+
+/** Psixoloq kartı və profil səhifəsində dil adına görə bayraq. */
+export function FlagIcon({ lang, width = 18, height = 12 }: { lang: string; width?: number; height?: number }) {
+  const code = langToFlagCode(lang);
+  if (!code) return null;
+  return <FlagImage code={code} width={width} height={height} />;
+}
+
+export function FlagAZ({ width = 20, height = 14 }: FlagProps = {}) {
+  return <FlagImage code="az" width={width} height={height} />;
 }
 
 export function FlagRU({ width = 20, height = 14 }: FlagProps = {}) {
-  return (
-    <svg width={width} height={height} viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
-      <rect width="30" height="20" fill="#fff" />
-      <rect y="6.67" width="30" height="6.66" fill="#0039A6" />
-      <rect y="13.33" width="30" height="6.67" fill="#D52B1E" />
-    </svg>
-  );
+  return <FlagImage code="ru" width={width} height={height} />;
 }
 
 export function FlagEN({ width = 20, height = 14 }: FlagProps = {}) {
-  return (
-    <svg width={width} height={height} viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
-      <rect width="60" height="40" fill="#012169" />
-      <path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" strokeWidth="12" />
-      <path d="M0,0 L60,40 M60,0 L0,40" stroke="#C8102E" strokeWidth="7" />
-      <path d="M30,0 V40 M0,20 H60" stroke="#fff" strokeWidth="16" />
-      <path d="M30,0 V40 M0,20 H60" stroke="#C8102E" strokeWidth="10" />
-    </svg>
-  );
+  return <FlagImage code="gb" width={width} height={height} />;
 }
 
 export function FlagUS({ width = 20, height = 14 }: FlagProps = {}) {
-  return (
-    <svg width={width} height={height} viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
-      <rect width="30" height="20" fill="#B22234" />
-      <g fill="#fff">
-        <rect y="1.54" width="30" height="1.54" /><rect y="4.62" width="30" height="1.54" />
-        <rect y="7.69" width="30" height="1.54" /><rect y="10.77" width="30" height="1.54" />
-        <rect y="13.85" width="30" height="1.54" /><rect y="16.92" width="30" height="1.54" />
-      </g>
-      <rect width="12" height="10.77" fill="#3C3B6E" />
-    </svg>
-  );
+  return <FlagImage code="us" width={width} height={height} />;
 }
 
 export function FlagTR({ width = 20, height = 14 }: FlagProps = {}) {
-  return (
-    <svg width={width} height={height} viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
-      <rect width="30" height="20" fill="#E30A17" />
-      <circle cx="11.5" cy="10" r="4.2" fill="#fff" />
-      <circle cx="13" cy="10" r="3.35" fill="#E30A17" />
-      <polygon points="19.6,10 16.85,10.93 18.55,8.6 18.55,11.4 16.85,9.07" fill="#fff" />
-    </svg>
-  );
+  return <FlagImage code="tr" width={width} height={height} />;
 }
 
 export function FlagDE({ width = 20, height = 14 }: FlagProps = {}) {
-  return (
-    <svg width={width} height={height} viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
-      <rect width="30" height="6.67" fill="#000" />
-      <rect y="6.67" width="30" height="6.66" fill="#DD0000" />
-      <rect y="13.33" width="30" height="6.67" fill="#FFCE00" />
-    </svg>
-  );
+  return <FlagImage code="de" width={width} height={height} />;
 }
 
 export function FlagFR({ width = 20, height = 14 }: FlagProps = {}) {
-  return (
-    <svg width={width} height={height} viewBox="0 0 30 20" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, display: "block", flexShrink: 0 }}>
-      <rect width="10" height="20" fill="#0055A4" />
-      <rect x="10" width="10" height="20" fill="#fff" />
-      <rect x="20" width="10" height="20" fill="#EF4135" />
-    </svg>
-  );
+  return <FlagImage code="fr" width={width} height={height} />;
+}
+
+export function FlagIR({ width = 20, height = 14 }: FlagProps = {}) {
+  return <FlagImage code="ir" width={width} height={height} />;
 }

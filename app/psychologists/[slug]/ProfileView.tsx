@@ -87,6 +87,7 @@ function getLanguageLabel(code: string) {
   if (c === "TR" || c.includes("TÜRK") || c.includes("TURKISH")) return "Türk dili";
   if (c === "DE" || c.includes("ALMAN") || c.includes("GERMAN")) return "Alman dili";
   if (c === "FR" || c.includes("FRANSIZ") || c.includes("FRENCH")) return "Fransız dili";
+  if (c === "FA" || c.includes("FARS") || c.includes("PERSIAN") || c.includes("FARSCA")) return "Farsca";
   return code;
 }
 

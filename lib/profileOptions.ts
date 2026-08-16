@@ -4,7 +4,7 @@
  *  görünməsin (və əksinə). */
 
 export const LANGUAGE_OPTIONS = [
-  "Azərbaycan dili", "Rus dili", "İngilis dili", "Türk dili", "Alman dili", "Fransız dili",
+  "Azərbaycan dili", "Rus dili", "İngilis dili", "Türk dili", "Alman dili", "Fransız dili", "Farsca",
 ];
 
 export const SESSION_TYPE_OPTIONS = [

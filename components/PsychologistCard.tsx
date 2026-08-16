@@ -15,6 +15,9 @@ import { useState } from "react";
 import type { Psychologist } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
+import { FlagIcon, langCode } from "@/components/FlagIcons";
+
+export { FlagIcon } from "@/components/FlagIcons";
 
 /** Kart daralarkən ixtisas taqları/dillər bu saydan çoxdursa "+N" ilə kəsilir —
  *  klikləndikdə hamısı açılır (taqlar/dillər itmir, sadəcə defolt görünüş
@@ -334,95 +337,7 @@ function StarIcon() {
   );
 }
 function ClockIcon() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>; }
-function GlobeIcon() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18" /></svg>; }
 function HourIcon() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 22h14M5 2h14M17 22v-4.18a2 2 0 00-.59-1.41L13 13l3.41-3.41A2 2 0 0017 8.18V4M7 22v-4.18a2 2 0 01.59-1.41L11 13 7.59 9.59A2 2 0 017 8.18V4" /></svg>; }
 /** Universal "verified" simvolu — dairə + tik (Twitter/Instagram üslubu), qalxan
  *  formasından daha aydındır: hər kəs bunu dərhal "doğrulanıb" kimi tanıyır. */
 export function VerifiedBadgeIcon({ size = 16 }: { size?: number }) { return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.3" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.5 2.5L16 9.5" /></svg>; }
-
-/** Qeydiyyat formasındakı sabit dil siyahısına uyğun bayraqlar (LANGUAGE_OPTIONS,
- *  bax app/(public)/register/page.tsx). Tanınmayan dil üçün qlobus ikonuna düşür —
- *  emoji bayraq işlətmirik (platforma qaydası: heç bir emoji, platformalar arası
- *  fərqli/qırıq görünə bilər). */
-export function FlagIcon({ lang }: { lang: string }) {
-  const l = lang.toLowerCase();
-  if (l.startsWith("az")) return <FlagAZ />;
-  if (l.includes("rus")) return <FlagRU />;
-  if (l.includes("ngilis") || l.includes("english")) return <FlagGB />;
-  if (l.includes("türk") || l.includes("turk")) return <FlagTR />;
-  if (l.includes("alman") || l.includes("german")) return <FlagDE />;
-  if (l.includes("frans") || l.includes("french")) return <FlagFR />;
-  return <GlobeIcon />;
-}
-
-/** Dil adını qısa 2-hərfli koda çevirir (kartda pill yer tutmasın deyə) —
- *  eyni açar sözlər `FlagIcon`-la üst-üstə düşür. Naməlum dil ilk iki hərflə. */
-function langCode(lang: string): string {
-  const l = lang.toLowerCase();
-  if (l.startsWith("az")) return "AZ";
-  if (l.includes("rus")) return "RU";
-  if (l.includes("ngilis") || l.includes("english")) return "EN";
-  if (l.includes("türk") || l.includes("turk")) return "TR";
-  if (l.includes("alman") || l.includes("german")) return "DE";
-  if (l.includes("frans") || l.includes("french")) return "FR";
-  if (l.includes("fars") || l.includes("persian") || l.includes("farsi")) return "FA";
-  return lang.trim().slice(0, 2).toUpperCase();
-}
-const flagSvgProps = { width: "100%", height: "100%", viewBox: "0 0 20 14", preserveAspectRatio: "none" as const };
-function FlagAZ() {
-  return (
-    <svg {...flagSvgProps}>
-      <rect width="20" height="4.67" fill="#00B9E4" />
-      <rect y="4.67" width="20" height="4.67" fill="#EF3340" />
-      <rect y="9.33" width="20" height="4.67" fill="#509E2F" />
-    </svg>
-  );
-}
-function FlagRU() {
-  return (
-    <svg {...flagSvgProps}>
-      <rect width="20" height="4.67" fill="#fff" />
-      <rect y="4.67" width="20" height="4.67" fill="#0039A6" />
-      <rect y="9.33" width="20" height="4.67" fill="#D52B1E" />
-    </svg>
-  );
-}
-function FlagDE() {
-  return (
-    <svg {...flagSvgProps}>
-      <rect width="20" height="14" fill="#FFCE00" />
-      <rect width="20" height="9.33" fill="#DD0000" />
-      <rect width="20" height="4.67" fill="#000" />
-    </svg>
-  );
-}
-function FlagFR() {
-  return (
-    <svg {...flagSvgProps}>
-      <rect width="20" height="14" fill="#fff" />
-      <rect width="6.67" height="14" fill="#0055A4" />
-      <rect x="13.33" width="6.67" height="14" fill="#EF4135" />
-    </svg>
-  );
-}
-function FlagTR() {
-  return (
-    <svg {...flagSvgProps}>
-      <rect width="20" height="14" fill="#E30A17" />
-      <circle cx="8" cy="7" r="3.6" fill="#fff" />
-      <circle cx="9.3" cy="7" r="2.9" fill="#E30A17" />
-      <circle cx="12.2" cy="7" r="0.9" fill="#fff" />
-    </svg>
-  );
-}
-function FlagGB() {
-  return (
-    <svg {...flagSvgProps}>
-      <rect width="20" height="14" fill="#00247D" />
-      <path d="M0,0 L20,14 M20,0 L0,14" stroke="#fff" strokeWidth="2.8" />
-      <path d="M0,0 L20,14 M20,0 L0,14" stroke="#CF142B" strokeWidth="1.2" />
-      <path d="M10,0 V14 M0,7 H20" stroke="#fff" strokeWidth="4.6" />
-      <path d="M10,0 V14 M0,7 H20" stroke="#CF142B" strokeWidth="2.6" />
-    </svg>
-  );
-}

@@ -8,7 +8,7 @@ import {
 } from "@/components/ProfileShell";
 import ProfileShareButtons from "@/components/ProfileShareButtons";
 import { TOPIC_CODES, TOPIC_AZ_LABELS, topicKey } from "@/components/TopicPicker";
-import { FlagAZ, FlagRU, FlagEN, FlagTR, FlagDE, FlagFR } from "@/components/FlagIcons";
+import { FlagAZ, FlagRU, FlagEN, FlagTR, FlagDE, FlagFR, FlagIR } from "@/components/FlagIcons";
 import { LANGUAGE_OPTIONS, SESSION_TYPE_OPTIONS } from "@/lib/profileOptions";
 import { psychologistApi, type Psychologist, type PsyEducationItem, type PsyContactLinkItem, type PsyContactPlatform } from "@/lib/api";
 import { appUrl } from "@/lib/appUrl";
@@ -40,6 +40,7 @@ const LANGUAGE_FLAGS: Record<string, () => ReactElement> = {
   "Türk dili": FlagTR,
   "Alman dili": FlagDE,
   "Fransız dili": FlagFR,
+  "Farsca": FlagIR,
 };
 
 export default function PsychologPublicProfilePage() {

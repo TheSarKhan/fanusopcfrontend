@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Deco from "@/components/Deco";
 import Breadcrumb from "@/components/Breadcrumb";
 import SessionRequestModal from "@/components/SessionRequestModal";
-import PsychologistCard, { toPsyCardItem, ShieldIcon, type PsyCardItem } from "@/components/PsychologistCard";
+import PsychologistCard, { toPsyCardItem, VerifiedBadgeIcon, type PsyCardItem } from "@/components/PsychologistCard";
 import HorizontalCardRail from "@/components/HorizontalCardRail";
 import type { Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
@@ -79,7 +79,7 @@ function VerifiedNote() {
   return (
     <div className="fanus-container">
       <div className="pp-verified-note">
-        <span className="pp-verified-note__icon"><ShieldIcon size={20} /></span>
+        <span className="pp-verified-note__icon"><VerifiedBadgeIcon size={20} /></span>
         <div>
           <strong>{t("psyList.verifiedNoteTitle")}</strong>
           <p>{t("psyList.verifiedNoteBody")}</p>

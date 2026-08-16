@@ -458,7 +458,7 @@ export const az = {
   },
 
   psyList: {
-    verifiedNoteTitle: "Fanus təsdiqi nə deməkdir?",
+    verifiedNoteTitle: "Doğrulanmış işarəsi nə deməkdir?",
     verifiedNoteBody: "Bu nişanı gördüyünüz mütəxəssisin təhsil və sertifikat sənədləri Fanus tərəfindən yoxlanılıb və doğrulanıb.",
     eyebrow: "Komandamız",
     title: "Psixoloqlarımız",

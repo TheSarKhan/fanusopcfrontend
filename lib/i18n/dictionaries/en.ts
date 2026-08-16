@@ -450,7 +450,7 @@ export const en: typeof az = {
   },
 
   psyList: {
-    verifiedNoteTitle: "What does the Fanus badge mean?",
+    verifiedNoteTitle: "What does the verified badge mean?",
     verifiedNoteBody: "A specialist with this badge has had their education and certificates checked and confirmed by Fanus.",
     eyebrow: "Our team",
     title: "Our therapists",

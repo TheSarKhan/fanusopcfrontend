@@ -451,7 +451,7 @@ export const tr: typeof az = {
   },
 
   psyList: {
-    verifiedNoteTitle: "Fanus rozeti ne anlama gelir?",
+    verifiedNoteTitle: "Doğrulanmış rozeti ne anlama gelir?",
     verifiedNoteBody: "Bu rozete sahip uzmanın eğitim ve sertifika bilgileri Fanus tarafından kontrol edilip onaylanmıştır.",
     eyebrow: "Ekibimiz",
     title: "Psikologlarımız",

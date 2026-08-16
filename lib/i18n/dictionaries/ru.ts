@@ -453,7 +453,7 @@ export const ru: typeof az = {
   },
 
   psyList: {
-    verifiedNoteTitle: "Что означает значок Fanus?",
+    verifiedNoteTitle: "Что означает значок «Подтверждён»?",
     verifiedNoteBody: "У специалиста с этим значком образование и сертификаты проверены и подтверждены Fanus.",
     eyebrow: "Наша команда",
     title: "Наши психологи",

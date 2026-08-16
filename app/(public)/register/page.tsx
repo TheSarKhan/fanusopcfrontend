@@ -320,6 +320,14 @@ const YEARS = Array.from({ length: 60 }, (_, i) => String(new Date().getFullYear
 /** Bir təhsili bitirmək üçün minimal ağlabatan yaş — doğum ili ilə bitirmə ilinin
  *  məntiqi ziddiyyətini (məs. doğum ili = bitirmə ili) qabaqcadan əngəlləyir. */
 const MIN_GRADUATION_AGE = 18;
+/** Doğum tarixi üçün ən son (ən yeni) etibarlı gün — bu gündən MIN_GRADUATION_AGE
+ *  il əvvəl. Gələcək tarix və ya 18 yaşdan kiçik doğum tarixi qəbul edilmir. */
+function computeMaxBirthDate(): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - MIN_GRADUATION_AGE);
+  return d.toISOString().slice(0, 10);
+}
+const MAX_BIRTH_DATE = computeMaxBirthDate();
 
 type EducationRow = { institution: string; degree: string; major: string; graduationYear: string; diplomaFile: File | null };
 type CertificateRow = { title: string; issuer: string; year: string; type: "CERTIFICATE" | "SEMINAR" };
@@ -399,6 +407,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
       return t("auth.passwordWeak");
     if (personal.password !== personal.confirmPassword) return t("regPage.passwordsMismatch");
     if (!personal.birthDate) return t("regPage.errBirthRequired");
+    if (personal.birthDate > MAX_BIRTH_DATE) return t("regPage.errBirthFuture");
     if (!personal.gender) return t("regPage.errGenderRequired");
     if (!personal.finId || personal.finId.length !== 7) return t("regPage.errFin");
     if (!photoFile) return t("regPage.errPhoto");
@@ -566,7 +575,7 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <Field label={t("auth.phone")} required><input type="tel" className="auth-input" value={personal.phone} onChange={setP("phone")} placeholder="+994 50 000 00 00" required style={{ minWidth: 0, width: "100%" }} /></Field>
-            <Field label={t("regPage.birthDate")} required><DatePicker value={personal.birthDate} onChange={v => setPersonal(p => ({ ...p, birthDate: v }))} theme="light" yearNav style={{ minWidth: 0, width: "100%" }} ariaLabel={t("regPage.birthDate")} /></Field>
+            <Field label={t("regPage.birthDate")} required><DatePicker value={personal.birthDate} onChange={v => setPersonal(p => ({ ...p, birthDate: v }))} max={MAX_BIRTH_DATE} theme="light" yearNav style={{ minWidth: 0, width: "100%" }} ariaLabel={t("regPage.birthDate")} /></Field>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

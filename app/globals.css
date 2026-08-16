@@ -2564,13 +2564,16 @@
   .wiz-header { position: static; box-shadow: none; }
 }
 
-/* Wizard footer nav: full-width bar pinned to the bottom, arrows at the edges. */
+/* Wizard footer nav: full-width bar pinned to the bottom, arrows at the edges.
+ * padding-right reserves space for the fixed WhatsApp bubble (54px + 20px
+ * offset, side="right" on every psycholog page) — without it the trailing
+ * "İrəli" button sits directly under the bubble (z-index 8000 wins). */
 .wiz-footer {
   position: sticky; bottom: 0; z-index: 5;
   display: flex; align-items: center; justify-content: space-between;
   gap: 8px; flex-wrap: wrap;
   margin-top: 4px;
-  padding: 12px 4px;
+  padding: 12px 84px 12px 4px;
   background: var(--surface, #fff);
   border-top: 1px solid var(--line, #DDE6F0);
   box-shadow: 0 -6px 16px rgba(10, 26, 51, 0.05);

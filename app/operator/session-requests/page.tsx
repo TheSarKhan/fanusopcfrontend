@@ -74,6 +74,13 @@ export default function SessionRequestsPage() {
   const [reloadNonce, setReloadNonce] = useState(0);
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
+  // Tab badge-ləri — yalnız aktiv tabın deyil, HAMISININ sayı, "Baxılır"a
+  // keçəndə (və götürəndə) dərhal düzgün görünsün deyə.
+  const [tabCounts, setTabCounts] = useState<{ pool: number; mine: number; converted: number; cancelled: number } | null>(null);
+  const loadCounts = useCallback(() => {
+    operatorApi.sessionRequestCounts().then(setTabCounts).catch(() => {});
+  }, []);
+  useEffect(() => { loadCounts(); }, [loadCounts]);
 
   const fetchPage = useCallback((pageNum: number) => {
     if (tab === "POOL") return operatorApi.sessionRequestsPoolPaged({ page: pageNum, size });
@@ -119,16 +126,19 @@ export default function SessionRequestsPage() {
         setItems(prev => prev.filter(x => x.id !== id));
         setTotalElements(t => Math.max(0, t - 1));
         uiToast("Müraciət götürüldü", "success");
+        loadCounts();
       })
       .catch(e => uiToast((e as Error).message, "error"))
       .finally(() => setBusyId(null));
   };
 
-  const tabItems: TabItem<Tab>[] = (Object.keys(TAB_META) as Tab[]).map(t => ({
-    key: t,
-    label: TAB_META[t].label,
-    count: t === tab && !loading && totalElements > 0 ? totalElements : undefined,
-  }));
+  const TAB_COUNT_KEY: Record<Tab, keyof NonNullable<typeof tabCounts>> = {
+    POOL: "pool", MINE: "mine", CONVERTED: "converted", CANCELLED: "cancelled",
+  };
+  const tabItems: TabItem<Tab>[] = (Object.keys(TAB_META) as Tab[]).map(t => {
+    const count = tabCounts?.[TAB_COUNT_KEY[t]] ?? 0;
+    return { key: t, label: TAB_META[t].label, count: count > 0 ? count : undefined };
+  });
 
   const columns: Column<SessionRequest>[] = useMemo(() => [
     {

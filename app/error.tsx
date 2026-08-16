@@ -8,7 +8,7 @@ import { useEffect } from "react";
  * müvəqqəti cavab vermədikdə) Next.js-in çılpaq "Internal Server Error" səhifəsini
  * göstərirdi. İndi eyni hal baş versə, istifadəçi bunun əvəzinə anlaşılan mesaj görür.
  */
-export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function Error({ error, unstable_retry }: { error: Error & { digest?: string }; unstable_retry: () => void }) {
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -28,7 +28,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         </p>
 
         <div className="nf-actions" style={{ justifyContent: "center" }}>
-          <button type="button" onClick={() => reset()} className="nf-btn nf-btn-primary" style={{ border: "none", cursor: "pointer" }}>
+          <button type="button" onClick={() => unstable_retry()} className="nf-btn nf-btn-primary" style={{ border: "none", cursor: "pointer" }}>
             Yenidən cəhd et
           </button>
           <Link href="/" className="nf-btn nf-btn-ghost">

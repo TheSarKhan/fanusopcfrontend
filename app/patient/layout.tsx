@@ -80,6 +80,22 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
   }, []);
 
+  // "Psixoloji testlər" sidebar sayğacı — hələ tamamlanmamış (yeni təyin
+  // edilmiş) testlər, homeworkCount ilə eyni məntiq.
+  const [testCount, setTestCount] = useState(0);
+  useEffect(() => {
+    const load = () => {
+      patientApi.myTestAssignments()
+        .then(list => setTestCount(list.filter(a => a.status !== "COMPLETED").length))
+        .catch(() => {});
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
+  }, []);
+
   // Bütün modullar, kateqoriya üzrə qruplaşdırılıb (bax PanelNavItem.group —
   // eyni qrupa aid sətirlər ARDICIL olmalıdır, əks halda başlıq təkrarlanır).
   // Kilidlilər (./modules.ts) sidebar-dan çıxarılır.
@@ -93,7 +109,7 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     { key: "favorites",     href: "/patient/favorites",     label: t("nav.favorites"),     icon: "heart",    group: groupFindPsy },
     { key: "packages",      href: "/patient/packages",      label: t("pkg.myPackages"),    icon: "package",  group: groupFindPsy },
     { key: "homework",      href: "/patient/homework",      label: t("nav.homework"),      icon: "check",    group: groupProgram, badge: homeworkCount },
-    { key: "tests",         href: "/patient/tests",         label: t("nav.tests"),         icon: "clipboard", group: groupProgram },
+    { key: "tests",         href: "/patient/tests",         label: t("nav.tests"),         icon: "clipboard", group: groupProgram, badge: testCount },
     { key: "profile",       href: "/patient/profile",       label: t("nav.profile"),       icon: "user" },
   ];
 

@@ -315,6 +315,14 @@ export default function DatePicker({
     },
     [minP, maxP]
   );
+  // Təqvimdən klikləmə isDayDisabled-lə hüduddan kənarı bloklayır, amma əl
+  // yazısı (onInputChange/onInputBlur) bu hüdudu yoxlamırdı — istifadəçi
+  // sərbəst mətnlə min/max-dan kənar tarix (məs. gələcək doğum tarixi) yaza
+  // bilirdi. Eyni qayda burada da tətbiq olunur.
+  const isOutOfBounds = useCallback(
+    (p: Parts) => isDayDisabled(p.y, p.mo, p.d),
+    [isDayDisabled]
+  );
 
   const pickDay = (d: number) => {
     if (isDayDisabled(view.y, view.mo, d)) return;
@@ -359,6 +367,7 @@ export default function DatePicker({
     const parsed = parseDisplay(raw, withTime);
     if (parsed) {
       const p = parseValue(parsed)!;
+      if (isOutOfBounds(p)) return; // hüduddan kənar — dəyər commit olunmur
       setView({ y: p.y, mo: p.mo });
       onChange(parsed);
     }
@@ -366,8 +375,9 @@ export default function DatePicker({
   const onInputBlur = () => {
     setFocused(false);
     const parsed = parseDisplay(text, withTime);
-    if (parsed) { onChange(parsed); setText(formatDisplay(parsed, withTime)); }
-    else setText(formatDisplay(value, withTime)); // etibarsız → geri qaytar
+    const p = parsed ? parseValue(parsed) : null;
+    if (parsed && p && !isOutOfBounds(p)) { onChange(parsed); setText(formatDisplay(parsed, withTime)); }
+    else setText(formatDisplay(value, withTime)); // etibarsız / hüduddan kənar → geri qaytar
   };
 
   /* — Ölçü — */

@@ -2615,6 +2615,9 @@ export interface PaymentItem {
   /** Pasiyentin hesabı silinib/deaktivdir — ad snapshot-dan gəldiyi üçün siyahıda
    *  hələ görünür, ona görə adın yanında "(silinmiş)" göstərilməlidir. */
   patientAccountDeleted?: boolean;
+  /** PAID/PARTIALLY_REFUNDED ödəniş, amma bağlı seans LƏĞV edilib — geri
+   *  ödəniş operator qərarı gözləyir (backend PaymentService.toDto). */
+  refundNeeded?: boolean;
 }
 
 /** Admin ödəniş reyestrinin süzgəcləri. Hamısı opsionaldır. */
@@ -4571,6 +4574,9 @@ export const operatorApi = {
     authedRequest<SessionRequest[]>("GET", `/operator/session-requests${status ? `?status=${status}` : ""}`),
   sessionRequestCountNew: () =>
     authedRequest<{ count?: number }>("GET", "/operator/session-requests/count-new").then(r => r?.count ?? 0),
+  sessionRequestCounts: () =>
+    authedRequest<{ pool: number; mine: number; converted: number; cancelled: number }>(
+      "GET", "/operator/session-requests/counts"),
   getSessionRequest: (id: number) =>
     authedRequest<SessionRequest>("GET", `/operator/session-requests/${id}`),
   scheduleSessionRequest: (id: number, data: {

@@ -180,7 +180,10 @@ function buildAlert(a: AppointmentDetail, hasPsyProposal = false): { tone: "red"
     return { tone: "amber", text };
   }
   if (a.status === "CANCEL_REQUESTED") {
-    let text = "Pasient ləğv tələb edib";
+    // Kod PSY_ prefiksi ilə gəlirsə tələb psixoloqdandır — əvvəllər mətn həmişə
+    // "Pasient ləğv tələb edib" idi, psixoloqun tələbi də səhvən pasiyentə aid edilirdi.
+    const byPsychologist = a.cancelRequestReasonCode?.startsWith("PSY_");
+    let text = byPsychologist ? "Psixoloq ləğv tələb edib" : "Pasient ləğv tələb edib";
     if (a.cancelRequestReasonCode) text += `, ${reasonLabel(a.cancelRequestReasonCode)}`;
     if (a.cancelRequestReasonText) text += ` — «${a.cancelRequestReasonText}»`;
     return { tone: "amber", text };

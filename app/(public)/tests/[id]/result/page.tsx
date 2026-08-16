@@ -10,6 +10,7 @@ import Breadcrumb from "@/components/Breadcrumb";
 import { useSearchParams } from "next/navigation";
 import { patientApi, tryGetMe, getTestRecommendations, type PublicTestResult, type RecommendedPsychologist } from "@/lib/api";
 import { savePendingClaim, clearPendingClaim } from "@/lib/pendingTestClaim";
+import { buildPanelUrl } from "@/lib/auth";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 export default function PublicTestResultPage({ params }: { params: Promise<{ id: string }> }) {
@@ -21,10 +22,11 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
   const crisis = search.get("crisis") === "1";
   const { t } = useT();
 
-  const [state, setState] = useState<"checking" | "locked" | "ready" | "error">("checking");
+  const [state, setState] = useState<"checking" | "locked" | "wrong-role" | "ready" | "error">("checking");
   const [result, setResult] = useState<PublicTestResult | null>(null);
   const [message, setMessage] = useState("");
   const [matches, setMatches] = useState<RecommendedPsychologist[]>([]);
+  const [myRole, setMyRole] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) { setState("error"); setMessage(t("testsPage.linkMissing")); return; }
@@ -34,7 +36,8 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
     (async () => {
       const me = await tryGetMe();
       if (!alive) return;
-      if (!me || me.role !== "PATIENT") { setState("locked"); return; }
+      if (!me) { setState("locked"); return; }
+      if (me.role !== "PATIENT") { setMyRole(me.role); setState("wrong-role"); return; }
       try {
         const r = await patientApi.claimPublicTestResult(token);
         if (!alive) return;
@@ -141,6 +144,28 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
     );
   }
 
+  if (state === "wrong-role") {
+    return wrap(
+      <div>
+        {crisisBlock}
+        <div style={{ textAlign: "center" }}>
+          <div style={{ width: 54, height: 54, borderRadius: "50%", background: "#F1F6FE", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <h1 style={{ fontSize: 21, fontWeight: 800, color: "var(--oxford)", margin: "0 0 10px" }}>{t("testsPage.wrongRoleTitle")}</h1>
+          <p style={{ fontSize: 14.5, color: "var(--oxford-60)", lineHeight: 1.6, margin: "0 0 22px" }}>
+            {t("testsPage.wrongRoleBody")}
+          </p>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+            <a href={buildPanelUrl(myRole ?? "PATIENT")} className="fanus-btn fanus-btn-primary">{t("testsPage.myAccount")}</a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (state === "error" || !result) {
     return wrap(
       <div style={{ textAlign: "center" }}>
@@ -185,7 +210,10 @@ export default function PublicTestResultPage({ params }: { params: Promise<{ id:
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <Link href={`/psychologists`} className="fanus-btn fanus-btn-primary">{t("testsPage.choosePsy")}</Link>
-        <Link href="/patient" className="fanus-btn fanus-btn-ghost">{t("testsPage.myAccount")}</Link>
+        {/* Panel alt-domenindədir (patient.<host>) — sadə Link "/patient" public
+            host-da qalıb pasiyent layout-unu public SiteChrome-un İÇİNƏ nested
+            render etdirirdi (2x naviqasiya + 2x WhatsApp düyməsi). */}
+        <a href={buildPanelUrl("PATIENT")} className="fanus-btn fanus-btn-ghost">{t("testsPage.myAccount")}</a>
         <Link href={`/tests/${id}`} className="fanus-btn fanus-btn-ghost">{t("testsPage.retake")}</Link>
       </div>
     </div>

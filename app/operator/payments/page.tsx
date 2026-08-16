@@ -678,6 +678,9 @@ function PayRow({ p, selected, onToggle, onOpen, onPay, onCancel, onRefund }: {
       </div>
       <span className={`fx-pill ${PILL_CLASS[st] ?? "fx-pill--pending"}`} style={{ whiteSpace: "nowrap" }}>{PILL_LABEL[st] ?? PILL_LABEL.PENDING}</span>
       {originLabel(p) && <span className="fx-pill fx-pill--neutral" style={{ whiteSpace: "nowrap" }}>{originLabel(p)}</span>}
+      {p.refundNeeded && (
+        <span className="fx-pill fx-pill--cancelled" style={{ whiteSpace: "nowrap" }}>Seans ləğv edilib — İadə tələb oluna bilər</span>
+      )}
       <div className="fx-spacer" />
       <div className="fx-row__amount" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, minWidth: 130 }}>
         <span className="fx-num">{fmtNum(p.amount)} <small>AZN</small></span>

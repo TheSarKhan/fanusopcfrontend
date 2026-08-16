@@ -39,10 +39,13 @@ export default function CancelModal({ appointment, role, mode = "cancel", onClos
   const isLate = hours !== null && hours >= 0 && hours < LATE_WINDOW_HOURS;
   const isPast = hours !== null && hours < 0;
 
-  const isPatientRequest = role === "PATIENT" && mode === "cancel";
+  // Həm pasiyent, həm psixoloq ləğvi indi eyni operator-təsdiqi qapısından
+  // keçir (CANCEL_REQUESTED) — birbaşa ləğv olunmur, ona görə hər ikisi üçün
+  // "tələb" mətn/UX-i tətbiq olunur (əvvəllər yalnız pasiyent üçün idi).
+  const isPendingRequest = mode === "cancel";
   const headerLabel = mode === "reject"
     ? "Müraciəti rədd et"
-    : isPatientRequest
+    : isPendingRequest
       ? "Ləğv tələbi göndər"
       : "Randevunu ləğv et";
 
@@ -82,7 +85,7 @@ export default function CancelModal({ appointment, role, mode = "cancel", onClos
         </div>
 
         <div className="cm-body">
-          {isPatientRequest && !isPast && (
+          {isPendingRequest && !isPast && (
             <div className="cm-warn" style={{ background: "var(--brand-50)", borderColor: "var(--brand-200)", color: "var(--brand-700)" }}>
               ℹ Bu, ləğv <strong>tələbi</strong>dir. Operator yoxlayıb sizə bildiriş göndərəcək.
             </div>
@@ -136,7 +139,7 @@ export default function CancelModal({ appointment, role, mode = "cancel", onClos
             className="cm-btn cm-btn--danger">
             {saving ? "Göndərilir…"
               : mode === "reject" ? "Rədd et"
-              : isPatientRequest ? "Tələb göndər"
+              : isPendingRequest ? "Tələb göndər"
               : "Ləğv et"}
           </button>
         </div>

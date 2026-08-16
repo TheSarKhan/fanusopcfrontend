@@ -51,8 +51,20 @@ function RiskBanner({ level }: { level: PatientRiskLevel | null }) {
   );
 }
 
+/** "Son baxış" möhürü — localStorage-da saxlanılır ki, badge yalnız bu tarixdən
+ *  SONRA yaranmış elementləri sayır. Sadəcə "tamamlanmayıb" sayğacı əvvəllər
+ *  bildirişi açsan/bölməyə girsən belə silinmirdi (tamamlanana qədər qalırdı) —
+ *  bu, "yeni/görülməmiş" semantikasına uyğun deyildi. */
+function readLastSeen(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function markSeenNow(key: string) {
+  try { localStorage.setItem(key, new Date().toISOString()); } catch { /* ignore */ }
+}
+
 function PatientShell({ children }: { children: React.ReactNode }) {
   const { t } = useT();
+  const pathname = usePathname();
   const u = getStoredUser();
   const first = u?.firstName ?? "";
   const last = u?.lastName ?? "";
@@ -64,13 +76,18 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     patientApi.crisisStatus().then(s => setRisk(s.riskLevel)).catch(() => {});
   }, []);
 
-  // "Tapşırıqlar" sidebar sayğacı — hələ tamamlanmamış tapşırıqlar (əvvəl
-  // pasiyent panelində heç bir badge yox idi, yeni tapşırıq bildirilmirdi).
+  // "Tapşırıqlar" sidebar sayğacı — "Son baxış"dan bəri yaranmış, hələ
+  // tamamlanmamış tapşırıqlar. Bölməyə daxil olmaq "son baxış"ı indiyə çəkir
+  // və badge dərhal sıfırlanır (əvvəllər yalnız tamamlanana qədər qalırdı —
+  // bölməyə girmək/bildirişi açmaq onu silmirdi).
+  const HOMEWORK_SEEN_KEY = "patient_homework_seen_at";
   const [homeworkCount, setHomeworkCount] = useState(0);
   useEffect(() => {
     const load = () => {
+      const seenAt = readLastSeen(HOMEWORK_SEEN_KEY);
       patientApi.homework()
-        .then(list => setHomeworkCount(list.filter(h => h.status !== "COMPLETED").length))
+        .then(list => setHomeworkCount(list.filter(h =>
+          h.status !== "COMPLETED" && (!seenAt || h.createdAt > seenAt)).length))
         .catch(() => {});
     };
     load();
@@ -79,14 +96,19 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("focus", onFocus);
     return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
   }, []);
+  useEffect(() => {
+    if (pathname === "/patient/homework") { markSeenNow(HOMEWORK_SEEN_KEY); setHomeworkCount(0); }
+  }, [pathname]);
 
-  // "Psixoloji testlər" sidebar sayğacı — hələ tamamlanmamış (yeni təyin
-  // edilmiş) testlər, homeworkCount ilə eyni məntiq.
+  // "Psixoloji testlər" sidebar sayğacı — homeworkCount ilə eyni "son baxış" məntiqi.
+  const TESTS_SEEN_KEY = "patient_tests_seen_at";
   const [testCount, setTestCount] = useState(0);
   useEffect(() => {
     const load = () => {
+      const seenAt = readLastSeen(TESTS_SEEN_KEY);
       patientApi.myTestAssignments()
-        .then(list => setTestCount(list.filter(a => a.status !== "COMPLETED").length))
+        .then(list => setTestCount(list.filter(a =>
+          a.status !== "COMPLETED" && (!seenAt || a.assignedAt > seenAt)).length))
         .catch(() => {});
     };
     load();
@@ -95,6 +117,9 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("focus", onFocus);
     return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
   }, []);
+  useEffect(() => {
+    if (pathname === "/patient/tests") { markSeenNow(TESTS_SEEN_KEY); setTestCount(0); }
+  }, [pathname]);
 
   // Bütün modullar, kateqoriya üzrə qruplaşdırılıb (bax PanelNavItem.group —
   // eyni qrupa aid sətirlər ARDICIL olmalıdır, əks halda başlıq təkrarlanır).

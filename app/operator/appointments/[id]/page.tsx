@@ -452,7 +452,12 @@ export default function OperatorAppointmentDetailPage({ params }: { params: Prom
     if (a.status === "CANCELLED") return { tone: "muted", title: "Bu müraciət ləğv edilib." };
     if (a.status === "COMPLETED") return { tone: "done", title: "Seans tamamlanıb." };
     if (canResolve) return { tone: "warn", title: "Mübahisə açılıb — nəticəni qeyd edin.", btnLabel: "Mübahisəni həll et", action: "dispute" };
-    if (isCancelReq) return { tone: "warn", title: "Pasiyent ləğv tələb edib — təsdiqləyin və ya rədd edin.", btnLabel: "Ləğv tələbinə bax", action: "cancelreq" };
+    if (isCancelReq) {
+      // PSY_ prefiksli kod = psixoloqun tələbi — əvvəllər mətn həmişə "Pasiyent
+      // ləğv tələb edib" idi, psixoloqun tələbi də səhvən pasiyentə aid edilirdi.
+      const byPsychologist = a.cancelRequestReasonCode?.startsWith("PSY_");
+      return { tone: "warn", title: (byPsychologist ? "Psixoloq" : "Pasiyent") + " ləğv tələb edib — təsdiqləyin və ya rədd edin.", btnLabel: "Ləğv tələbinə bax", action: "cancelreq" };
+    }
     if (canAssign && full.pendingRescheduleProposal?.initiator === "PSYCHOLOGIST" && full.pendingRescheduleProposal.options?.[0]?.startAt)
       return { tone: "action", title: "Bu psixoloq yeni vaxt təklif edib — təsdiqləyin.", sub: `Təklif olunan vaxt: ${fmtDateTime(full.pendingRescheduleProposal.options[0].startAt)}`, btnLabel: approving ? "…" : "Təsdiqlə və tətbiq et", action: "approve" };
     if (canAssign && (a.rescheduleRequestedAt || full.pendingRescheduleProposal))
@@ -1210,7 +1215,7 @@ const OTHER_ACTION_META: Record<OtherActionKey, {
   title: string; sub: string; badge: { label: string; pillClass: string };
 }> = {
   dispute:   { label: "Mübahisəni həll et", btnClass: "fx-btn--warn-ghost",   title: "Mübahisəni həll et", sub: "Seans baş tutdumu? Nəticəni qeyd edin.", badge: { label: "Mübahisəli", pillClass: "fx-pill--pending" } },
-  cancelreq: { label: "Ləğv tələbi",        btnClass: "fx-btn--warn-ghost",   title: "Ləğv tələbi",        sub: "Pasiyentin ləğv tələbini emal edin.",    badge: { label: "Gözlənilir", pillClass: "fx-pill--pending" } },
+  cancelreq: { label: "Ləğv tələbi",        btnClass: "fx-btn--warn-ghost",   title: "Ləğv tələbi",        sub: "Ləğv tələbini emal edin.",    badge: { label: "Gözlənilir", pillClass: "fx-pill--pending" } },
   noshow:    { label: "Gəlmədi",            btnClass: "fx-btn--ghost",        title: "Gəlmədi işarələ",    sub: "Seansa kim gəlmədi?",                    badge: { label: "Gəlmədi",    pillClass: "fx-pill--cancelled" } },
   cancel:    { label: "Seansı ləğv et",     btnClass: "fx-btn--danger-ghost", title: "Seansı ləğv et",     sub: "Bu seansı bağlayın.",                    badge: { label: "Ləğv",       pillClass: "fx-pill--refunded" } },
 };
@@ -2282,6 +2287,9 @@ function CancelRequestBlock({ appointment, guardAction, onDone }: {
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const byPsychologist = appointment.cancelRequestReasonCode?.startsWith("PSY_");
+  const requesterLabel = byPsychologist ? "Psixoloq" : "Pasiyent";
+
   const run = (approved: boolean) => async () => {
     setSaving(true);
     try {
@@ -2295,8 +2303,21 @@ function CancelRequestBlock({ appointment, guardAction, onDone }: {
 
   return (
     <>
+      {/* Əvvəllər bu blokda tələbin SƏBƏBİ heç göstərilmirdi — operator yalnız
+          "Ləğvi təsdiqlə/rədd et" seçirdi, niyə ləğv istəndiyini görmədən. */}
+      {(appointment.cancelRequestReasonCode || appointment.cancelRequestReasonText) && (
+        <div className="fx-field" style={{ marginBottom: 14, background: "var(--surface-2, #F8FAFD)", borderRadius: 10, padding: "10px 12px" }}>
+          <span className="fx-label">{requesterLabel} bildirdi</span>
+          <div style={{ fontSize: 13.5, color: "var(--oxford-80)" }}>
+            {appointment.cancelRequestReasonCode && reasonLabel(appointment.cancelRequestReasonCode)}
+            {appointment.cancelRequestReasonText && (
+              <>{appointment.cancelRequestReasonCode ? " — " : ""}«{appointment.cancelRequestReasonText}»</>
+            )}
+          </div>
+        </div>
+      )}
       <label className="fx-field" style={{ marginBottom: 14 }}>
-        <span className="fx-label">Pasiyentə qeyd</span>
+        <span className="fx-label">{byPsychologist ? "Psixoloqa" : "Pasiyentə"} qeyd</span>
         <textarea className="fx-textarea" rows={3} value={note} onChange={e => setNote(e.target.value)}
           placeholder="Təsdiqdə məcburi deyil, rəddə tövsiyə olunur" />
       </label>

@@ -212,6 +212,30 @@ export default function PsychologistAppointmentsPage() {
   const noteFor = (id?: number | null) =>
     id ? notesByPatient[id] : undefined;
 
+  // Hər appointment-in bu pasiyentlə xronoloji sırada neçənci seans olduğu —
+  // əvvəllər hər kartda eyni (client.completedSessions + 1) dəyəri göstərilirdi,
+  // ona görə bir pasiyentin BÜTÜN kartları "1-ci seans" görünürdü. Ləğv/rədd
+  // olunmuş seanslar sıraya daxil edilmir (faktiki baş tutan/planlaşan seanslar sayılır).
+  const sessionOrdinalByAppointmentId = useMemo(() => {
+    const byPatient = new Map<number, AppointmentDetail[]>();
+    for (const a of items) {
+      if (!a.patientId) continue;
+      if (a.status === "CANCELLED" || a.status === "REJECTED") continue;
+      const arr = byPatient.get(a.patientId) ?? [];
+      arr.push(a);
+      byPatient.set(a.patientId, arr);
+    }
+    const map = new Map<number, number>();
+    for (const arr of byPatient.values()) {
+      const sorted = [...arr].sort((x, y) =>
+        new Date(x.startAt ?? x.createdAt).getTime() - new Date(y.startAt ?? y.createdAt).getTime());
+      sorted.forEach((a, idx) => map.set(a.id, idx + 1));
+    }
+    return map;
+  }, [items]);
+  const sessionOrdinalFor = (id?: number | null) =>
+    id != null ? sessionOrdinalByAppointmentId.get(id) ?? null : null;
+
   const handlers: Handlers = {
     onAction: action,
     onDispute: setDisputeFor,
@@ -247,7 +271,7 @@ export default function PsychologistAppointmentsPage() {
         </div>
       ) : (
         <>
-          <NextHero appt={next} now={now} client={next ? clientFor(next.patientId) : null} busyId={busyId} h={handlers} />
+          <NextHero appt={next} now={now} sessionNumber={next ? sessionOrdinalFor(next.id) : null} busyId={busyId} h={handlers} />
 
           {/* Seanslar / Paketlər / Yönləndirmələr tab seçimi */}
           <div role="tablist" className="gor-tabs" style={{ display: "inline-flex", maxWidth: "100%", overflowX: "auto", gap: 4, background: "#fff", border: "1px solid var(--oxford-10)", borderRadius: 12, padding: 5 }}>
@@ -296,7 +320,7 @@ export default function PsychologistAppointmentsPage() {
                     <SessionCard
                       key={a.id}
                       a={a}
-                      client={clientFor(a.patientId)}
+                      sessionNumber={sessionOrdinalFor(a.id)}
                       isNext={next?.id === a.id}
                       now={now}
                       busyId={busyId}
@@ -333,6 +357,7 @@ export default function PsychologistAppointmentsPage() {
             <SessionDetailModal
               a={detailFor}
               client={clientFor(detailFor.patientId)}
+              sessionNumber={sessionOrdinalFor(detailFor.id)}
               note={noteFor(detailFor.patientId)}
               now={now}
               busyId={busyId}
@@ -417,9 +442,9 @@ function shortDayLabel(d: Date, now: Date, t: Translate) {
   return `${pad2(d.getDate())} ${t(`months.m${d.getMonth() + 1}` as MessageKey)}`;
 }
 
-function NextHero({ appt, now, client, busyId, h }: {
-  appt: AppointmentDetail | null; now: Date; client: ClientSummary | null;
-  busyId: number | null; h: Handlers;
+function NextHero({ appt, now, sessionNumber, busyId, h }: {
+  appt: AppointmentDetail | null; now: Date;
+  sessionNumber: number | null; busyId: number | null; h: Handlers;
 }) {
   const { t } = useT();
   if (!appt || !appt.startAt) {
@@ -437,7 +462,6 @@ function NextHero({ appt, now, client, busyId, h }: {
   const end = appt.endAt ? new Date(appt.endAt) : null;
   const cd = timeUntil(start, now, t);
   const av = avatarColor(appt.patientId ?? appt.patientName);
-  const sessionNumber = client ? client.completedSessions + 1 : null;
   const minutes = end ? Math.round((end.getTime() - start.getTime()) / 60_000) : null;
   const busy = busyId === appt.id;
   const needsConfirm = appt.status === "ASSIGNED";
@@ -565,10 +589,10 @@ function buildMenu(a: AppointmentDetail, h: Handlers, now: Date, t: Translate): 
    Kart çərçivəsi yalnız diqqət tələb edən vəziyyətlərdə rənglənir. */
 
 function SessionCard({
-  a, client, isNext, now, busyId, onOpen, h,
+  a, sessionNumber, isNext, now, busyId, onOpen, h,
 }: {
   a: AppointmentDetail;
-  client: ClientSummary | null;
+  sessionNumber: number | null;
   isNext: boolean;
   now: Date;
   busyId: number | null;
@@ -582,7 +606,6 @@ function SessionCard({
   const isToday = start ? isSameDay(start, now) : false;
   const av = avatarColor(a.patientId ?? a.patientName);
   const busy = busyId === a.id;
-  const sessionNumber = client ? client.completedSessions + 1 : null;
   const menu = buildMenu(a, h, now, t);
   const cancelRequested = a.status === "CANCEL_REQUESTED";
   const disputed = a.status === "DISPUTED";
@@ -658,10 +681,11 @@ function SessionCard({
 /* ─── Seans detal pəncərəsi — "Aç" düyməsi ilə açılır ─────────────────────── */
 
 function SessionDetailModal({
-  a, client, note, now, busyId, h, onClose,
+  a, client, sessionNumber, note, now, busyId, h, onClose,
 }: {
   a: AppointmentDetail;
   client: ClientSummary | null;
+  sessionNumber: number | null;
   note: ClientNote | null | undefined;
   now: Date;
   busyId: number | null;
@@ -672,7 +696,6 @@ function SessionDetailModal({
   const start = a.startAt ? new Date(a.startAt) : null;
   const tu = start ? timeUntil(start, now, t) : null;
   const busy = busyId === a.id;
-  const sessionNumber = client ? client.completedSessions + 1 : null;
   const av = avatarColor(a.patientId ?? a.patientName);
   // Menyu elementləri detalda açıq düymələr kimi göstərilir.
   const menu = buildMenu(a, h, now, t).map(it => ({

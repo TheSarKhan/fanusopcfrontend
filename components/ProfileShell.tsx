@@ -327,6 +327,8 @@ export interface ProfileShellProps {
   sideExtras?: React.ReactNode;
   /** Yan sütunda Sürətli keçidlərdən SONRA göstərilən kartlar (məs. təqvim, önizləmə). */
   sideBottom?: React.ReactNode;
+  /** Kimlik kartında ad/e-poçt sətirinin yanında göstərilən rol-spesifik əlavə (məs. ictimai profil). */
+  identityExtra?: React.ReactNode;
   /** Sürətli keçidlər — verilməsə yalnız bildiriş parametrləri keçidi göstərilir. */
   quickLinks?: ProfileQuickLink[];
   /** Hesab durumu kartına rol-spesifik əlavə sətirlər (məs. Hesab tipi). */
@@ -334,7 +336,7 @@ export interface ProfileShellProps {
 }
 
 export default function ProfileShell({
-  title, subtitle, extras, sideExtras, sideBottom, quickLinks, statusRows,
+  title, subtitle, extras, sideExtras, sideBottom, quickLinks, statusRows, identityExtra,
 }: ProfileShellProps) {
   const { t } = useT();
   const [me, setMe] = useState<MeProfile | null>(null);
@@ -437,7 +439,7 @@ export default function ProfileShell({
 
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 20 }}>
         <div style={{ flex: "1 1 620px", minWidth: 0, display: "flex", flexDirection: "column", gap: 20 }}>
-          <IdentityCard me={me} onChanged={setMe} setConfirm={setConfirmSpec} />
+          <IdentityCard me={me} onChanged={setMe} setConfirm={setConfirmSpec} identityExtra={identityExtra} />
           <BasicInfoCard me={me} onUpdated={setMe} />
           {me.role === "PATIENT" && <EmergencyContactCard />}
           {extras}
@@ -520,11 +522,12 @@ function initialsOf(me: MeProfile) {
 }
 
 function IdentityCard({
-  me, onChanged, setConfirm,
+  me, onChanged, setConfirm, identityExtra,
 }: {
   me: MeProfile;
   onChanged: (m: MeProfile) => void;
   setConfirm: (c: ConfirmSpec | null) => void;
+  identityExtra?: React.ReactNode;
 }) {
   const { t } = useT();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -624,7 +627,10 @@ function IdentityCard({
         </div>
 
         <div style={{ flex: "1 1 300px", minWidth: 0 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", margin: 0, color: PC.ink }}>{fullName}</h2>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", margin: 0, color: PC.ink }}>{fullName}</h2>
+            {identityExtra}
+          </div>
           <div style={{ fontSize: 13, color: PC.soft, marginTop: 4 }}>{me.email}</div>
           <div style={{
             display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",

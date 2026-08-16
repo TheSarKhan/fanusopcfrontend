@@ -10,8 +10,11 @@ import ProfileShell, {
 } from "@/components/ProfileShell";
 import GoogleCalendarCard from "@/components/GoogleCalendarCard";
 import PsyPlanCard from "@/components/PsyPlanCard";
+import ProfileShareButtons from "@/components/ProfileShareButtons";
 import { psychologistApi, type Psychologist, type PackageDto, type PackageReq } from "@/lib/api";
+import { appUrl } from "@/lib/appUrl";
 import { formatAzn } from "@/lib/money";
+import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
 
@@ -28,14 +31,6 @@ function ClockIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
       <circle cx="8" cy="8" r="5.6" />
       <path d="M8 5.2V8l2 1.6" strokeLinecap="round" />
-    </svg>
-  );
-}
-function PersonIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
-      <circle cx="8" cy="5.8" r="2.4" />
-      <path d="M3.4 13.2c.5-2.3 2.4-3.5 4.6-3.5s4.1 1.2 4.6 3.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -71,7 +66,7 @@ function LockIcon() {
 
 function GlobeIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
       <circle cx="12" cy="12" r="9" />
       <path d="M3 12h18M12 3c2.4 2.5 3.7 5.7 3.7 9s-1.3 6.5-3.7 9c-2.4-2.5-3.7-5.7-3.7-9S9.6 5.5 12 3z" />
     </svg>
@@ -93,13 +88,11 @@ export default function PsychologProfilePage() {
     <ProfileShell
       title={t("prof.psyTitle")}
       subtitle={t("prof.psySub")}
+      identityExtra={me ? <PublicProfileActions me={me} /> : undefined}
       extras={
         me ? (
           <>
-            {/* Plan ən üstdə: sidebar-dakı nişandan bura gəlinir, cavab dərhal
-                görünməlidir — «bu nişan nədir, nə vaxta qədərdir». */}
             <PsyPlanCard />
-            <PublicProfileCta />
             <PricingCard editable={editable} minutes={minutes} />
           </>
         ) : undefined
@@ -111,12 +104,6 @@ export default function PsychologProfilePage() {
         }] : undefined
       }
       quickLinks={[
-        ...(me?.slug ? [{
-          href: `/psychologists/${me.slug}`,
-          label: t("prof.qlPublicProfile"),
-          icon: <PersonIcon />,
-          external: true,
-        }] : []),
         { href: "/psycholog/availability", label: t("prof.qlAvailability"), icon: <ClockIcon /> },
         { href: "/psycholog/calendar", label: t("prof.qlCalendar"), icon: <CalendarIcon /> },
         { href: "/psycholog/notifications", label: t("prof.qlNotifications"), icon: <BellIcon /> },
@@ -128,31 +115,33 @@ export default function PsychologProfilePage() {
   );
 }
 
-/* ─── Saytda görünən profilə keçid — ayrı səhifədə redaktə olunur ────────
-   Bio, ixtisas, təhsil, əlaqə linkləri kimi "ictimai profil" məzmunu bura
-   qarışdırılmır — hesab/təhlükəsizlik sahələrindən aydın ayrılır. */
+/* ─── İctimai profil — adın yanında redaktə + paylaş/QR ─────────────────── */
 
-function PublicProfileCta() {
+function PublicProfileActions({ me }: { me: Psychologist }) {
   const { t } = useT();
+  const slug = me.slug ?? withSlugs([{ id: me.id, name: me.name }])[0].slug;
   return (
-    <Link href="/psycholog/profile/public" style={{ textDecoration: "none" }}>
-      <section style={{
-        ...cardStyle, display: "flex", alignItems: "center", gap: 16, cursor: "pointer",
-      }}>
-        <span style={{
-          width: 44, height: 44, borderRadius: 12, background: PC.panel,
-          border: `1px solid ${PC.border}`, color: PC.ink, display: "inline-flex",
-          alignItems: "center", justifyContent: "center", flex: "none",
-        }}>
-          <GlobeIcon />
-        </span>
-        <div style={{ flex: "1 1 auto", minWidth: 0 }}>
-          <h2 style={sectionH2}>{t("prof.publicCtaTitle")}</h2>
-          <p style={sectionSub}>{t("prof.publicCtaSub")}</p>
-        </div>
-        <span style={{ color: PC.faint, flex: "none" }}><IconChevron size={16} /></span>
-      </section>
-    </Link>
+    <div style={{
+      display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8,
+      flex: "0 1 auto", maxWidth: "100%",
+    }}>
+      <Link
+        href="/psycholog/profile/public"
+        style={{
+          ...btnGhost,
+          textDecoration: "none",
+          fontSize: 12.5,
+          padding: "7px 12px",
+          gap: 7,
+          whiteSpace: "nowrap",
+        }}
+      >
+        <GlobeIcon />
+        {t("prof.publicCtaTitle")}
+        <IconChevron size={13} />
+      </Link>
+      <ProfileShareButtons url={appUrl(`/psychologists/${slug}`)} name={me.name} />
+    </div>
   );
 }
 

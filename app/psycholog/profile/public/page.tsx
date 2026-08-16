@@ -12,6 +12,7 @@ import { FlagAZ, FlagRU, FlagEN, FlagTR, FlagDE, FlagFR, FlagIR } from "@/compon
 import { LANGUAGE_OPTIONS, SESSION_TYPE_OPTIONS } from "@/lib/profileOptions";
 import { psychologistApi, type Psychologist, type PsyEducationItem, type PsyContactLinkItem, type PsyContactPlatform } from "@/lib/api";
 import { appUrl } from "@/lib/appUrl";
+import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { toast } from "@/components/Toast";
@@ -708,6 +709,7 @@ function ContactVisibilityCard({ me, onSaved }: { me: Psychologist; onSaved: (p:
 
 function PublicPreviewCard({ me, minutes }: { me: Psychologist; minutes: number }) {
   const { t } = useT();
+  const slug = me.slug ?? withSlugs([{ id: me.id, name: me.name }])[0].slug;
   return (
     <section style={sideCardStyle}>
       <h2 style={sectionH2}>{t("prof.pvTitle")}</h2>
@@ -733,11 +735,9 @@ function PublicPreviewCard({ me, minutes }: { me: Psychologist; minutes: number 
           <div style={{ fontSize: 12, color: PC.soft, marginTop: 2 }}>{me.title}</div>
         </div>
       </div>
-      {me.slug && (
-        <div style={{ marginTop: 14 }}>
-          <ProfileShareButtons url={appUrl(`/psychologists/${me.slug}`)} name={me.name} />
-        </div>
-      )}
+      <div style={{ marginTop: 14 }}>
+        <ProfileShareButtons url={appUrl(`/psychologists/${slug}`)} name={me.name} />
+      </div>
       <div style={{ ...rowSplit, alignItems: "flex-start", marginTop: 14 }}>
         <span style={{ ...rowKey, flex: "0 0 auto" }}>{t("prof.pvSpecs")}</span>
         <span style={{ ...rowVal, textAlign: "right" }}>

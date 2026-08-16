@@ -1071,6 +1071,7 @@ export const en: typeof az = {
     attachments: "Additional materials",
     openAttachment: "Open",
     allArticles: "All articles",
+    viewProfile: "View profile",
     shareLabel: "Share this article",
     shareCopy: "Copy link",
     shareCopied: "Copied!",

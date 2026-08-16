@@ -62,6 +62,7 @@ export default function ArticleView({ post, related }: { post: BlogPost; related
   const updated = isUpdatedLater(post.publishedDate, post.updatedAt)
     ? formatDateLong(t, post.updatedAt)
     : null;
+  const categoryLabel = displayCategory(post.category);
 
   return (
     <>
@@ -77,33 +78,43 @@ export default function ArticleView({ post, related }: { post: BlogPost; related
               <Breadcrumb bare items={[{ label: t("pub.crumbBlog"), href: "/blog" }, { label: post.title }]} />
             </div>
             <div className="art-meta">
-              {displayCategory(post.category) ? (
+              {categoryLabel ? (
                 <span className="art-cat" style={{ background: post.categoryBg, color: post.categoryColor }}>
-                  {displayCategory(post.category)}
+                  {categoryLabel}
                 </span>
               ) : null}
-              <span className="art-meta__dot" aria-hidden />
-              <span className="art-meta__read">{t("article.readMinutes", { n: post.readTimeMinutes })}</span>
               {/* Baxış sayı (V125 content_views) — ziyarətçi bu səhifəni açanda ViewTracker
                   onu artırır; burada göstərilən rəqəm cari ziyarətdən əvvəlki saydır. */}
               {post.viewCount != null && post.viewCount > 0 && (
                 <>
-                  <span className="art-meta__dot" aria-hidden />
+                  {categoryLabel && <span className="art-meta__dot" aria-hidden />}
                   <span className="art-meta__read">{t("pub.viewsCount", { n: post.viewCount })}</span>
                 </>
               )}
             </div>
             <h1 className="art-title">{post.title}</h1>
             {post.excerpt && <p className="art-lead">{post.excerpt}</p>}
-            <div className="art-author">
-              <div className="art-author__avatar">
-                {(post.authorName ?? "F").charAt(0).toUpperCase()}
+            <div className="art-head-row">
+              <div className="art-author">
+                {post.authorPhotoUrl ? (
+                  <img className="art-author__avatar art-author__avatar--photo" src={post.authorPhotoUrl} alt={post.authorName ?? ""} />
+                ) : (
+                  <div className="art-author__avatar">
+                    {(post.authorName ?? "F").charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <div className="art-author__name">{post.authorName ?? t("article.editorial")}</div>
+                  <div className="art-author__role">{formatDateLong(t, post.publishedDate)}</div>
+                  {updated && <div className="art-author__role">{t("article.updatedAt", { date: updated })}</div>}
+                </div>
+                {post.authorRole === "PSYCHOLOGIST" && post.authorId && (
+                  <Link href={`/psychologists/${post.authorId}`} className="art-author__profile-btn">
+                    {t("article.viewProfile")}
+                  </Link>
+                )}
               </div>
-              <div>
-                <div className="art-author__name">{post.authorName ?? t("article.editorial")}</div>
-                <div className="art-author__role">{formatDateLong(t, post.publishedDate)}</div>
-                {updated && <div className="art-author__role">{t("article.updatedAt", { date: updated })}</div>}
-              </div>
+              <ShareBar className="art-copy-link" />
             </div>
           </div>
         </header>
@@ -116,7 +127,7 @@ export default function ArticleView({ post, related }: { post: BlogPost; related
           </div>
         )}
 
-        {/* Gövdə — məqalə + yan panel */}
+        {/* Gövdə — məqalə mətni, tam en */}
         <div className="fanus-container art-layout">
           <article className="art-main">
             {post.content ? (
@@ -154,22 +165,21 @@ export default function ArticleView({ post, related }: { post: BlogPost; related
               <Link href="/blog">← {t("article.allArticles")}</Link>
             </div>
           </article>
-
-          <aside className="art-side">
-            <div className="art-card">
-              <div className="art-card__label">{t("article.shareLabel")}</div>
-              <ShareBar title={post.title} />
-            </div>
-            <div className="art-card art-cta">
-              <div className="art-cta__title">{t("article.ctaTitle")}</div>
-              <div className="art-cta__text">{t("article.ctaText")}</div>
-              <Link href="/psychologists" className="fanus-btn fanus-btn-light">{t("article.ctaBtn")}</Link>
-            </div>
-          </aside>
         </div>
 
         {/* Əlaqəli məqalələr */}
         <RelatedPosts posts={related} />
+
+        {/* Peşəkar dəstə banneri — səhifənin ən sonunda */}
+        <section className="art-cta-band">
+          <div className="fanus-container art-cta-band__inner">
+            <div className="art-cta-band__text">
+              <div className="art-cta-band__title">{t("article.ctaTitle")}</div>
+              <div className="art-cta-band__desc">{t("article.ctaText")}</div>
+            </div>
+            <Link href="/psychologists" className="fanus-btn fanus-btn-light">{t("article.ctaBtn")}</Link>
+          </div>
+        </section>
 
       </main>
     </>

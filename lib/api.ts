@@ -555,6 +555,7 @@ export interface BlogPost {
   status: string; // DRAFT | PUBLISHED
   authorId?: number;
   authorName?: string;
+  authorPhotoUrl?: string;
   createdAt?: string;
   updatedAt?: string;
   tags?: string[];

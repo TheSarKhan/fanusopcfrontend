@@ -1094,6 +1094,7 @@ export const tr: typeof az = {
     attachments: "Ek materyaller",
     openAttachment: "Aç",
     allArticles: "Tüm makaleler",
+    viewProfile: "Profili görüntüle",
     shareLabel: "Bu makaleyi paylaş",
     shareCopy: "Bağlantıyı kopyala",
     shareCopied: "Kopyalandı!",

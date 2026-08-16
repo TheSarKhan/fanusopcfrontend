@@ -9740,21 +9740,31 @@
   font-family: var(--font-poppins), system-ui, sans-serif;
   font-size: clamp(30px, 4vw, 52px); font-weight: 800;
   letter-spacing: -0.03em; line-height: 1.12; color: var(--fanus-ink);
-  max-width: 940px; margin: 0 0 20px; text-wrap: balance;
+  margin: 0 0 20px; text-wrap: balance;
 }
 .art-lead {
   font-size: clamp(17px, 1.6vw, 20px); color: var(--fanus-ink-2);
-  line-height: 1.6; max-width: 760px; margin: 0 0 28px;
+  line-height: 1.6; max-width: 900px; margin: 0 0 28px;
 }
-.art-author { display: flex; align-items: center; gap: 12px; }
+.art-head-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.art-author { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .art-author__avatar {
   width: 46px; height: 46px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; font-weight: 700; color: #fff; flex-shrink: 0;
   background: var(--fanus-primary);
 }
+.art-author__avatar--photo { object-fit: cover; }
 .art-author__name { font-size: 15px; font-weight: 600; color: var(--fanus-ink); line-height: 1.2; }
 .art-author__role { font-size: 13px; color: var(--fanus-ink-3); margin-top: 2px; }
+.art-author__profile-btn {
+  display: inline-flex; align-items: center; white-space: nowrap;
+  padding: 8px 16px; border-radius: 10px; border: 1px solid var(--fanus-line);
+  font-size: 13px; font-weight: 600; color: var(--fanus-primary);
+  text-decoration: none; transition: all .2s;
+}
+.art-author__profile-btn:hover { background: var(--fanus-primary-50); border-color: var(--fanus-primary-300); }
+.art-copy-link { flex-shrink: 0; }
 
 /* Cover şəkli — tam konteyner eni */
 .art-cover { margin-top: 36px; }
@@ -9764,16 +9774,12 @@
   box-shadow: var(--fanus-shadow-md);
 }
 
-/* Gövdə — iki sütun (məqalə + sticky yan panel) */
-.art-layout {
-  display: grid; grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 56px; align-items: start;
-  padding: 48px 0 80px;
-}
+/* Gövdə — tək sütun, tam en (yan panel silinib) */
+.art-layout { padding: 48px 0 80px; }
 .art-main { min-width: 0; }
-.art-main .article-content { max-width: 780px; font-size: 17px; line-height: 1.85; color: var(--fanus-ink-2); }
+.art-main .article-content { max-width: 860px; font-size: 17px; line-height: 1.85; color: var(--fanus-ink-2); }
 
-/* Share bar (yan paneldə) */
+/* Share bar (başlıq zolağında, sticky deyil) */
 .bl-share-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .bl-share-label { font-size: 12px; font-weight: 600; color: var(--fanus-ink-3); margin-right: 2px; }
 .bl-share-btn {
@@ -9786,14 +9792,16 @@
 }
 .bl-share-btn:hover { color: var(--fanus-primary); border-color: var(--fanus-primary-300); background: var(--fanus-primary-50); }
 
-/* Yan panel kartları */
-.art-side { position: sticky; top: 124px; display: flex; flex-direction: column; gap: 18px; }
-.art-card { background: #fff; border: 1px solid var(--fanus-line); border-radius: 18px; padding: 22px; box-shadow: var(--fanus-shadow-sm); }
-.art-card__label { font-size: 11.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--fanus-ink-3); margin: 0 0 14px; }
-.art-cta { background: linear-gradient(160deg, var(--fanus-primary) 0%, var(--fanus-primary-700) 100%); border: none; }
-.art-cta__title { font-family: var(--font-poppins), system-ui, sans-serif; font-size: 18px; font-weight: 700; line-height: 1.25; color: #fff; margin: 0 0 8px; }
-.art-cta__text { font-size: 13.5px; line-height: 1.55; color: rgba(255,255,255,.85); margin: 0 0 18px; }
-.art-cta .fanus-btn { width: 100%; justify-content: center; }
+/* Peşəkar dəstə banneri — məqalənin ən sonunda */
+.art-cta-band { margin: 8px 0 64px; }
+.art-cta-band__inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  background: linear-gradient(160deg, var(--fanus-primary) 0%, var(--fanus-primary-700) 100%);
+  border-radius: 24px; padding: 40px 48px; box-shadow: var(--fanus-shadow-md);
+}
+.art-cta-band__title { font-family: var(--font-poppins), system-ui, sans-serif; font-size: 24px; font-weight: 700; line-height: 1.25; color: #fff; margin: 0 0 8px; }
+.art-cta-band__desc { font-size: 15px; line-height: 1.55; color: rgba(255,255,255,.85); margin: 0; }
+.art-cta-band .fanus-btn { flex-shrink: 0; }
 
 /* Əlavə materiallar */
 .art-attach { margin-top: 44px; padding: 24px; background: var(--fanus-primary-50); border-radius: 18px; border: 1px solid var(--fanus-line); }
@@ -9819,13 +9827,14 @@
 .art-back a:hover { gap: 12px; }
 
 @media (max-width: 980px) {
-  .art-layout { grid-template-columns: 1fr; gap: 34px; padding: 36px 0 64px; }
-  .art-side { position: static; }
+  .art-layout { padding: 36px 0 64px; }
 }
 @media (max-width: 600px) {
   .art-detail__head { padding: 26px 0 30px; }
   .art-cover { margin-top: 22px; }
   .art-cover__img { border-radius: 18px; }
+  .art-cta-band__inner { padding: 28px 24px; }
+  .art-cta-band__title { font-size: 20px; }
 }
 
 /* Related posts */

@@ -1108,6 +1108,7 @@ export const az = {
     attachments: "Əlavə materiallar",
     openAttachment: "Aç",
     allArticles: "Bütün məqalələr",
+    viewProfile: "Profilə bax",
     shareLabel: "Bu məqaləni paylaş",
     shareCopy: "Keçidi kopyala",
     shareCopied: "Kopyalandı!",

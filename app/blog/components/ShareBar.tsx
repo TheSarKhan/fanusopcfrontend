@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
-export default function ShareBar({ title }: { title: string }) {
+export default function ShareBar({ className }: { className?: string }) {
   const { t } = useT();
   const [copied, setCopied] = useState(false);
 
@@ -14,26 +14,10 @@ export default function ShareBar({ title }: { title: string }) {
     });
   };
 
-  const share = (platform: "twitter" | "linkedin") => {
-    const url = encodeURIComponent(window.location.href);
-    const text = encodeURIComponent(title);
-    const link =
-      platform === "twitter"
-        ? `https://twitter.com/intent/tweet?text=${text}&url=${url}`
-        : `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
-    window.open(link, "_blank", "width=600,height=450");
-  };
-
   return (
-    <div className="bl-share-bar">
+    <div className={className ? `bl-share-bar ${className}` : "bl-share-bar"}>
       <button className="bl-share-btn" onClick={copy}>
         {copied ? t("article.shareCopied") : t("article.shareCopy")}
-      </button>
-      <button className="bl-share-btn" onClick={() => share("twitter")}>
-        Twitter
-      </button>
-      <button className="bl-share-btn" onClick={() => share("linkedin")}>
-        LinkedIn
       </button>
     </div>
   );

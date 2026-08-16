@@ -1074,6 +1074,7 @@ export const ru: typeof az = {
     attachments: "Дополнительные материалы",
     openAttachment: "Открыть",
     allArticles: "Все статьи",
+    viewProfile: "Смотреть профиль",
     shareLabel: "Поделиться статьёй",
     shareCopy: "Скопировать ссылку",
     shareCopied: "Скопировано!",

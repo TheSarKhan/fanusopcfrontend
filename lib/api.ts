@@ -529,9 +529,6 @@ export interface ArticleAttachment {
 
 export interface BlogPost {
   id: number;
-  category: string;
-  categoryColor: string;
-  categoryBg: string;
   title: string;
   excerpt: string;
   content?: string;
@@ -856,9 +853,6 @@ export interface RecommendedArticle {
   id: number;
   slug: string;
   title: string;
-  category: string;
-  categoryColor?: string;
-  categoryBg?: string;
   readTimeMinutes: number;
   topics: string[];
   matchScore: number;
@@ -1239,8 +1233,7 @@ export interface StatBlock { value: number; secondary: number | null; deltaPerce
 export interface DailyFlow { date: string; confirmed: number; pending: number; cancelled: number; }
 export interface ActivityEntry { type: string; tone: string; title: string; meta: string; at: string | null; }
 /** `views` real sayğacdan gəlir (V125); `deltaPct` həmişə null — müqayisə bazası saxlanmır. */
-export interface TopArticle { rank: number; title: string; author: string; category: string; views: number; deltaPct: number | null; }
-export interface TopicSlice { label: string; percent: number; color: string; }
+export interface TopArticle { rank: number; title: string; author: string; views: number; deltaPct: number | null; }
 export interface DashboardMetrics {
   totalUsers: StatBlock;
   activePsychologists: StatBlock;
@@ -1250,7 +1243,6 @@ export interface DashboardMetrics {
   appointmentFlow: DailyFlow[];
   recentActivity: ActivityEntry[];
   topArticles: TopArticle[];
-  topicDistribution: TopicSlice[];
   systemStatus: Record<string, string>;
 }
 

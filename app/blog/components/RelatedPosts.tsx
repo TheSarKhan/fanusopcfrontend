@@ -13,10 +13,8 @@ const GRADIENTS = [
   "linear-gradient(135deg,#1a4d5c,#1abc9c)",
 ];
 
-function catGradient(cat: string) {
-  let h = 0;
-  for (let i = 0; i < cat.length; i++) h = (h * 31 + cat.charCodeAt(i)) & 0xffff;
-  return GRADIENTS[h % GRADIENTS.length];
+function idGradient(id: number) {
+  return GRADIENTS[id % GRADIENTS.length];
 }
 
 export default function RelatedPosts({ posts }: { posts: BlogPost[] }) {
@@ -31,14 +29,11 @@ export default function RelatedPosts({ posts }: { posts: BlogPost[] }) {
             <a key={post.id} href={`/blog/${post.slug}`} className="bl-card bl-card-link">
               <div className="bl-card-visual">
                 {post.coverImageUrl ? (
-                   
+
                   <img src={post.coverImageUrl} alt={post.title} className="bl-card-img" />
                 ) : (
-                  <div className="bl-card-gradient-bg" style={{ background: catGradient(post.category) }}>
-                    <span className="bl-card-gradient-label">{post.category}</span>
-                  </div>
+                  <div className="bl-card-gradient-bg" style={{ background: idGradient(post.id) }} />
                 )}
-                <span className="bl-card-cat-badge">{post.category}</span>
               </div>
               <div className="bl-card-body">
                 <h3 className="bl-card-title">{post.title}</h3>

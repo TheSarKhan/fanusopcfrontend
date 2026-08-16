@@ -13,7 +13,6 @@ import ShareBar from "@/app/blog/components/ShareBar";
 import RelatedPosts from "@/app/blog/components/RelatedPosts";
 import Breadcrumb from "@/components/Breadcrumb";
 import ViewTracker from "@/components/ViewTracker";
-import { displayCategory } from "@/lib/blog";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { formatDateLong } from "@/lib/i18n/dateNames";
 
@@ -62,7 +61,6 @@ export default function ArticleView({ post, related }: { post: BlogPost; related
   const updated = isUpdatedLater(post.publishedDate, post.updatedAt)
     ? formatDateLong(t, post.updatedAt)
     : null;
-  const categoryLabel = displayCategory(post.category);
 
   return (
     <>
@@ -77,22 +75,18 @@ export default function ArticleView({ post, related }: { post: BlogPost; related
             <div className="art-crumb-wrap">
               <Breadcrumb bare items={[{ label: t("pub.crumbBlog"), href: "/blog" }, { label: post.title }]} />
             </div>
+            <h1 className="art-title">{post.title}</h1>
+            {/* Paylaşma tarixi + baxış sayı (V125 content_views) — başlığın altında,
+                redaktor önizləməsi ilə eyni yerdə. */}
             <div className="art-meta">
-              {categoryLabel ? (
-                <span className="art-cat" style={{ background: post.categoryBg, color: post.categoryColor }}>
-                  {categoryLabel}
-                </span>
-              ) : null}
-              {/* Baxış sayı (V125 content_views) — ziyarətçi bu səhifəni açanda ViewTracker
-                  onu artırır; burada göstərilən rəqəm cari ziyarətdən əvvəlki saydır. */}
+              <span className="art-meta__read">{formatDateLong(t, post.publishedDate)}</span>
               {post.viewCount != null && post.viewCount > 0 && (
                 <>
-                  {categoryLabel && <span className="art-meta__dot" aria-hidden />}
+                  <span className="art-meta__dot" aria-hidden />
                   <span className="art-meta__read">{t("pub.viewsCount", { n: post.viewCount })}</span>
                 </>
               )}
             </div>
-            <h1 className="art-title">{post.title}</h1>
             {post.excerpt && <p className="art-lead">{post.excerpt}</p>}
             <div className="art-head-row">
               <div className="art-author">
@@ -105,7 +99,6 @@ export default function ArticleView({ post, related }: { post: BlogPost; related
                 )}
                 <div>
                   <div className="art-author__name">{post.authorName ?? t("article.editorial")}</div>
-                  <div className="art-author__role">{formatDateLong(t, post.publishedDate)}</div>
                   {updated && <div className="art-author__role">{t("article.updatedAt", { date: updated })}</div>}
                 </div>
                 {post.authorRole === "PSYCHOLOGIST" && post.authorId && (

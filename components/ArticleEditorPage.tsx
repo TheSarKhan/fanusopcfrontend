@@ -77,9 +77,6 @@ interface FormState {
   content: string;
   excerpt: string;
   coverImageUrl: string;
-  category: string;
-  categoryColor: string;
-  categoryBg: string;
   slug: string;
   publishedDate: string;
   tags: string[];
@@ -112,9 +109,6 @@ function buildPayload(data: FormState): Omit<BlogPost, "id"> {
     content: data.content,
     excerpt: data.excerpt,
     coverImageUrl: data.coverImageUrl || undefined,
-    category: data.category.trim(),
-    categoryColor: data.categoryColor,
-    categoryBg: data.categoryBg,
     slug: data.slug.trim() || `draft-${Date.now()}`,
     publishedDate: data.publishedDate,
     tags: data.tags,
@@ -139,9 +133,6 @@ export default function ArticleEditorPage({
     content: (hasDraft ? article?.draftContent : article?.content) ?? article?.content ?? "",
     excerpt: (hasDraft ? article?.draftExcerpt : article?.excerpt) ?? article?.excerpt ?? "",
     coverImageUrl: (hasDraft ? article?.draftCoverImageUrl : article?.coverImageUrl) ?? article?.coverImageUrl ?? "",
-    category: article?.category ?? "",
-    categoryColor: article?.categoryColor ?? "#002147",
-    categoryBg: article?.categoryBg ?? "#E0EBF7",
     slug: article?.slug ?? "",
     publishedDate: article?.publishedDate ?? new Date().toISOString().split("T")[0],
     tags: article?.tags ?? [],
@@ -580,17 +571,17 @@ export default function ArticleEditorPage({
                     style={{ width: "100%", maxHeight: 360, objectFit: "cover", display: "block" }} />
                 )}
                 <div style={{ padding: "32px 32px 40px" }}>
-                  {form.category && (
-                    <span style={{ fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 20, background: form.categoryBg, color: form.categoryColor, display: "inline-block", marginBottom: 16 }}>
-                      {form.category}
-                    </span>
-                  )}
                   <h1 style={{ fontSize: "2rem", fontWeight: 800, color: "#0F1C2E", lineHeight: 1.25, margin: "0 0 8px" }}>
                     {form.title || "Başlıqsız məqalə"}
                   </h1>
                   <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, fontSize: 13, color: "#8AAABF", margin: "0 0 28px" }}>
                     <span>{formatDate(form.publishedDate)}</span>
-                    <span>{estimateReadTime(form.content)} dəq oxu</span>
+                    {!!article?.viewCount && (
+                      <>
+                        <span aria-hidden style={{ width: 3, height: 3, borderRadius: "50%", background: "#8AAABF", opacity: .6 }} />
+                        <span>{article.viewCount} baxış</span>
+                      </>
+                    )}
                   </div>
                   <div
                     className="article-content"

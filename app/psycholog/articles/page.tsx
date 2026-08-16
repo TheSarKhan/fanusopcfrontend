@@ -65,7 +65,6 @@ export default function PsychologArticlesPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("ALL");
-  const [categoryFilter, setCategoryFilter] = useState<string | "ALL">("ALL");
   const [sort, setSort] = useState<SortMode>("newest");
   const [view, setView] = useState<ViewMode>("grid");
   const [togglingId, setTogglingId] = useState<number | null>(null);
@@ -127,22 +126,16 @@ export default function PsychologArticlesPage() {
     draft: items.filter(p => p.status === "DRAFT").length,
   }), [items]);
 
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    items.forEach(p => { if (p.category) set.add(p.category); });
-    return Array.from(set).sort();
-  }, [items]);
-
   // Treat the most recently published article (with a cover image preferred)
   // as the hero. Only when no filter/search is active so we don't strand it.
   const hero = useMemo<BlogPost | null>(() => {
-    if (search.trim() || tab !== "ALL" || categoryFilter !== "ALL") return null;
+    if (search.trim() || tab !== "ALL") return null;
     const candidates = items
       .filter(p => p.status === "PUBLISHED")
       .sort((a, b) => new Date(b.publishedDate || b.createdAt || 0).getTime()
                     - new Date(a.publishedDate || a.createdAt || 0).getTime());
     return candidates.find(c => !!c.coverImageUrl) ?? candidates[0] ?? null;
-  }, [items, search, tab, categoryFilter]);
+  }, [items, search, tab]);
 
   const filtered = useMemo(() => {
     let list = [...items];
@@ -151,12 +144,10 @@ export default function PsychologArticlesPage() {
       const q = search.toLowerCase();
       list = list.filter(p =>
         p.title?.toLowerCase().includes(q) ||
-        p.excerpt?.toLowerCase().includes(q) ||
-        p.category?.toLowerCase().includes(q)
+        p.excerpt?.toLowerCase().includes(q)
       );
     }
     if (tab !== "ALL") list = list.filter(p => p.status === tab);
-    if (categoryFilter !== "ALL") list = list.filter(p => p.category === categoryFilter);
 
     list.sort((a, b) => {
       if (sort === "title") return (a.title || "").localeCompare(b.title || "");
@@ -165,7 +156,7 @@ export default function PsychologArticlesPage() {
       return sort === "newest" ? bT - aT : aT - bT;
     });
     return list;
-  }, [items, hero, search, tab, categoryFilter, sort]);
+  }, [items, hero, search, tab, sort]);
 
   const toggleStatus = async (p: BlogPost) => {
     setTogglingId(p.id);
@@ -237,14 +228,6 @@ export default function PsychologArticlesPage() {
           <kbd style={kbdStyle}>/</kbd>
         </div>
 
-        {categories.length > 0 && (
-          <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
-            style={selectStyle}>
-            <option value="ALL">{t("psyArticles.allCategories")}</option>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        )}
-
         <select value={sort} onChange={e => setSort(e.target.value as SortMode)}
           style={selectStyle}>
           <option value="newest">{t("psyArticles.sortNewest")}</option>
@@ -283,8 +266,8 @@ export default function PsychologArticlesPage() {
         // article on the page — no need for the empty state alongside it.
         <EmptyState
           t={t}
-          filtered={search.trim() !== "" || tab !== "ALL" || categoryFilter !== "ALL"}
-          onClear={() => { setSearch(""); setTab("ALL"); setCategoryFilter("ALL"); }}
+          filtered={search.trim() !== "" || tab !== "ALL"}
+          onClear={() => { setSearch(""); setTab("ALL"); }}
         />
       ) : filtered.length === 0 ? null : view === "grid" ? (
         <div style={{
@@ -378,7 +361,6 @@ function HeroArticle({ p, t, onEdit, onView, onToggle, onDelete, isToggling }: {
             marginBottom: 10,
           }}>
             <IconSparkle /> {t("psyArticles.latestBadge")}
-            {p.category && <span style={{ opacity: 0.8 }}>{p.category}</span>}
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, lineHeight: 1.25, color: "#fff" }}>
             {p.title || t("psyArticles.untitled")}
@@ -474,18 +456,18 @@ function GridCard({ p, t, onToggle, isToggling, onDelete, menuOpen, onMenuToggle
           don't need to overflow. */}
       <div style={{
         position: "relative", height: 130,
-        background: p.coverImageUrl ? "transparent" : (p.categoryBg || "var(--brand-50)"),
+        background: p.coverImageUrl ? "transparent" : "var(--brand-50)",
         display: "flex", alignItems: "center", justifyContent: "center",
         overflow: "hidden",
         borderRadius: "14px 14px 0 0",
       }}>
         {p.coverImageUrl ? (
-           
+
           <img src={p.coverImageUrl} alt={p.title}
             style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           <span style={{
-            fontSize: 40, fontWeight: 800, color: p.categoryColor || "var(--brand-700)",
+            fontSize: 40, fontWeight: 800, color: "var(--brand-700)",
             fontFamily: "var(--serif, serif)", opacity: 0.5,
           }}>{p.title?.[0]?.toUpperCase() || "A"}</span>
         )}
@@ -537,13 +519,6 @@ function GridCard({ p, t, onToggle, isToggling, onDelete, menuOpen, onMenuToggle
           padding: "12px 14px 14px", textDecoration: "none", color: "inherit",
           display: "flex", flexDirection: "column", gap: 6, flex: 1,
         }}>
-        {p.category && (
-          <span style={{
-            fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999,
-            background: p.categoryBg || "var(--brand-50)", color: p.categoryColor || "var(--brand-700)",
-            alignSelf: "flex-start", textTransform: "uppercase", letterSpacing: 0.3,
-          }}>{p.category}</span>
-        )}
         <h3 style={{
           fontSize: 14.5, fontWeight: 700, color: "var(--oxford)",
           margin: 0, lineHeight: 1.3, display: "-webkit-box",
@@ -604,8 +579,8 @@ function ListRow({ p, t, divider, onToggle, isToggling, onDelete }: {
           <div style={{
             width: 52, height: 52, borderRadius: 10,
             display: "flex", alignItems: "center", justifyContent: "center",
-            background: p.categoryBg || "var(--brand-50)",
-            color: p.categoryColor || "var(--brand-700)",
+            background: "var(--brand-50)",
+            color: "var(--brand-700)",
             fontSize: 22, fontWeight: 800, fontFamily: "var(--serif, serif)",
           }}>{p.title?.[0]?.toUpperCase() || "A"}</div>
         )}
@@ -617,12 +592,6 @@ function ListRow({ p, t, divider, onToggle, isToggling, onDelete }: {
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 380 }}>
             {p.title || t("psyArticles.untitled")}
           </span>
-          {p.category && (
-            <span style={{
-              fontSize: 10.5, fontWeight: 700, padding: "1px 8px", borderRadius: 999,
-              background: p.categoryBg || "var(--brand-50)", color: p.categoryColor || "var(--brand-700)",
-            }}>{p.category}</span>
-          )}
           {p.hasPendingDraft && (
             <span style={{
               fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 999,

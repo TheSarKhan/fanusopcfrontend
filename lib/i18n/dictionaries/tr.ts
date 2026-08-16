@@ -464,6 +464,7 @@ export const tr: typeof az = {
     sessionsCount: "{count} seans",
     minutes: "{n} dk seans",
     showAllTags: "Tüm {n} uzmanlık alanını göster",
+    allTagsTitle: "{name} — tüm uzmanlık alanları",
     showAllLangs: "Tüm {n} dili göster",
     showFewerTags: "Daha az göster",
     matchCtaTitle: "Birkaç kısa soruyu yanıtlayın",

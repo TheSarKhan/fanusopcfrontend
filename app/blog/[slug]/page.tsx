@@ -20,9 +20,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   if (!post) notFound();
 
   const allPosts = await getBlogPosts().catch(() => []);
-  const related = allPosts
-    .filter(p => p.slug !== slug && p.category === post.category && p.active)
-    .slice(0, 3);
+  const others = allPosts.filter(p => p.slug !== slug && p.active);
+  // Kateqoriya sahəsi silindiyi üçün əlaqəli məqalələr indi ortaq əhval
+  // teqlərinə (topics) görə seçilir; heç biri üst-üstə düşməzsə ən yeni
+  // digər məqalələr göstərilir ki, bölmə heç vaxt boş qalmasın.
+  const sharedTopics = new Set(post.topics ?? []);
+  const byTopic = sharedTopics.size > 0
+    ? others.filter(p => (p.topics ?? []).some(t => sharedTopics.has(t)))
+    : [];
+  const related = (byTopic.length > 0 ? byTopic : others).slice(0, 3);
 
   return <ArticleView post={post} related={related} />;
 }

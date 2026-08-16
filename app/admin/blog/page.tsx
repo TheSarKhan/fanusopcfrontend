@@ -11,7 +11,6 @@ import { useRouter } from "next/navigation";
 import { adminApi, type BlogPost, type BlogSummary, type Paged, type SortDir } from "@/lib/api";
 import { getMainSiteUrl } from "@/lib/auth";
 import { azFormatDateTime } from "@/lib/datetime";
-import { displayCategory } from "@/lib/blog";
 import PanelIcon from "@/components/PanelIcon";
 import { toast } from "@/components/Toast";
 import {
@@ -130,7 +129,6 @@ export default function AdminBlogPage() {
               <span>{p.title}</span>
               {p.hasPendingDraft && <Status tone="wait">Gözləyən dəyişiklik</Status>}
             </div>
-            {displayCategory(p.category) && <div className="fx-subtitle">{displayCategory(p.category)}</div>}
           </div>
         </div>
       ),

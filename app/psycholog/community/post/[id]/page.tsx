@@ -110,12 +110,6 @@ export default function CommunityArticleReaderPage() {
             )}
 
             <div className="pread-body">
-              {post.category && (
-                <span className="pcom-feedcard__cat"
-                  style={{ background: post.categoryBg || "var(--brand-50)", color: post.categoryColor || "var(--brand-700)" }}>
-                  {post.category}
-                </span>
-              )}
               <h1 className="pread-title">{post.title}</h1>
 
               {/* author + meta */}

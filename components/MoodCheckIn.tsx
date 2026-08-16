@@ -434,7 +434,6 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
                 </div>
               ) : articles.map((a) => (
                 <Link key={a.id} className="fanus-mm-article" href={`/blog/${a.slug}`}>
-                  <span className="fanus-mm-article__tag">{a.category}</span>
                   <span className="fanus-mm-article__title">{a.title}</span>
                   <span className="fanus-mm-article__meta">{t("articles.minutes", { n: a.readTimeMinutes })} →</span>
                 </Link>
@@ -538,10 +537,6 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
           border-radius: 14px; transition: background .2s;
         }
         .fanus-mm-article:hover { background: var(--fanus-primary-100); }
-        .fanus-mm-article__tag {
-          font-size: 11px; font-weight: 700; color: var(--fanus-primary);
-          text-transform: uppercase; letter-spacing: .06em;
-        }
         .fanus-mm-article__title { font-size: 14px; font-weight: 600; color: var(--fanus-ink); line-height: 1.35; }
         .fanus-mm-article__meta { margin-top: auto; font-size: 12px; color: var(--fanus-ink-3); }
         .fanus-mm-psyc { display: flex; flex-direction: column; gap: 8px; }

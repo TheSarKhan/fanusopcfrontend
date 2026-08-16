@@ -471,6 +471,7 @@ export const az = {
     sessionsCount: "{count} seans",
     minutes: "{n} dəq seans",
     showAllTags: "Bütün {n} ixtisası göstər",
+    allTagsTitle: "{name} — bütün ixtisaslar",
     showAllLangs: "Bütün {n} dili göstər",
     showFewerTags: "Daha az göstər",
     matchCtaTitle: "Bir neçə qısa sual cavablandırın",

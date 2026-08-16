@@ -463,6 +463,7 @@ export const en: typeof az = {
     sessionsCount: "{count} sessions",
     minutes: "{n} min session",
     showAllTags: "Show all {n} specialties",
+    allTagsTitle: "{name} — all specialties",
     showAllLangs: "Show all {n} languages",
     showFewerTags: "Show fewer",
     matchCtaTitle: "Answer a few quick questions",

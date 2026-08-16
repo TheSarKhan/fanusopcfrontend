@@ -22,7 +22,6 @@ import { toast } from "@/components/Toast";
 import ViewTracker from "@/components/ViewTracker";
 import ProfileShareButtons from "@/components/ProfileShareButtons";
 import { topicKey } from "@/components/TopicPicker";
-import { displayCategory } from "@/lib/blog";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { formatDateLong, formatRelative } from "@/lib/i18n/dateNames";
 import { appUrl } from "@/lib/appUrl";
@@ -1134,11 +1133,6 @@ export default function ProfileView({
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={post.coverImageUrl} alt={post.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         )}
-                        {displayCategory(post.category) ? (
-                          <span style={{ position: "absolute", top: 10, left: 10, background: "rgba(255,255,255,0.94)", color: "var(--brand-700, #082F6D)", fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999 }}>
-                            {displayCategory(post.category)}
-                          </span>
-                        ) : null}
                       </div>
                       <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
                         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0A1A33", lineHeight: 1.35 }}>

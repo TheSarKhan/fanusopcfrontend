@@ -6,12 +6,15 @@
  * iki yerdə fərqli kartlar görünməsin.
  *
  * Dizayn: DESIGN-PROMPT-psixoloq-karti.md ilə yaradılan eskizlərdən "Variant D"
- * (sıx, məlumat yönümlü siyahı) əsasında. Taqlar (ixtisas) sabit sayda kəsilmir —
- * hamısı göstərilir, tək sətirdə üfüqi sürüşən (scroll) zolaqla.
+ * (sıx, məlumat yönümlü siyahı) əsasında. İxtisas taqları sabit sayda deyil —
+ * kartın öz eninə görə tək sətirdə neçə taq sığırsa o qədəri göstərilir (bax
+ * useSingleRowFit), qalanları "+N" nişanına yığılır və klikləndikdə popup-da
+ * tam siyahı açılır. Sətrə sığmayıb kəsilmək əvəzinə kart hündürlüyü sabit qalır.
  */
 
 import Link from "next/link";
-import { useState } from "react";
+import { createPortal } from "react-dom";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { Psychologist } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
@@ -19,12 +22,54 @@ import { FlagIcon, langCode } from "@/components/FlagIcons";
 
 export { FlagIcon } from "@/components/FlagIcons";
 
-/** Kart daralarkən ixtisas taqları/dillər bu saydan çoxdursa "+N" ilə kəsilir —
- *  klikləndikdə hamısı açılır (taqlar/dillər itmir, sadəcə defolt görünüş
- *  yığcamdır, istəyən "+N"-ə klikləyib hamısını görür, "Daha az göstər"ə
- *  klikləyib geri yığır). */
-const TAG_CAP = 4;
 const LANG_CAP = 3;
+
+/** "+N" nişanı üçün ehtiyat en (px) — sığım hesablananda son taqdan sonra
+ *  yer qalmasa "+N" özü kəsilib qırağa çıxa bilər, ona görə əvvəlcədən ayrılır. */
+const MORE_BADGE_RESERVE = 46;
+const TAG_GAP = 8;
+
+/**
+ * Verilmiş mətn siyahısının neçəsi konteynerin bir sətrinə sığdığını real DOM
+ * ölçüsü ilə hesablayır (font/padding fərqli ekranlarda kəsilmə nöqtəsi də
+ * dəyişdiyi üçün sabit ədədlə deyil, ölçmə ilə). Görünməz "ölçmə sırası" eyni
+ * `.pc-tag` stilində göstərilir ki, hər elementin təbii eni dəqiq bilinsin.
+ */
+function useSingleRowFit(items: string[]) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(items.length);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const measure = measureRef.current;
+    if (!container || !measure) return;
+
+    const recalc = () => {
+      const available = container.offsetWidth;
+      const nodes = Array.from(measure.children) as HTMLElement[];
+      let used = 0;
+      let fit = 0;
+      for (let i = 0; i < nodes.length; i++) {
+        const w = nodes[i].offsetWidth;
+        const gap = fit > 0 ? TAG_GAP : 0;
+        const hasMoreAfter = i < nodes.length - 1;
+        const reserve = hasMoreAfter ? MORE_BADGE_RESERVE + TAG_GAP : 0;
+        if (used + gap + w + reserve > available) break;
+        used += gap + w;
+        fit++;
+      }
+      setVisibleCount(items.length > 0 ? Math.max(fit, 1) : 0);
+    };
+
+    recalc();
+    const ro = new ResizeObserver(recalc);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [items]);
+
+  return { containerRef, measureRef, visibleCount };
+}
 
 export interface PsyCardItem {
   id: number;
@@ -75,9 +120,9 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
   const ratingNum = parseFloat(p.rating);
   const hasRating = isFinite(ratingNum) && ratingNum > 0;
   const langs = p.lang.split(",").map((l) => l.trim()).filter(Boolean);
-  const [tagsExpanded, setTagsExpanded] = useState(false);
-  const visibleSpecs = tagsExpanded ? p.specs : p.specs.slice(0, TAG_CAP);
-  const hiddenTagCount = p.specs.length - TAG_CAP;
+  const { containerRef: tagsRef, measureRef: tagsMeasureRef, visibleCount: visibleTagCount } = useSingleRowFit(p.specs);
+  const hiddenTagCount = p.specs.length - visibleTagCount;
+  const [tagsPopupOpen, setTagsPopupOpen] = useState(false);
   const [langsExpanded, setLangsExpanded] = useState(false);
   const visibleLangs = langsExpanded ? langs : langs.slice(0, LANG_CAP);
   const hiddenLangCount = langs.length - LANG_CAP;
@@ -117,30 +162,46 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
       </Link>
 
       {p.specs.length > 0 && (
-        <div className="pc-tags">
-          {visibleSpecs.map((s, i) => (
-            <span key={i} className="pc-tag">{s}</span>
-          ))}
-          {!tagsExpanded && hiddenTagCount > 0 && (
-            <button
-              type="button"
-              className="pc-tag pc-tag--more"
-              onClick={() => setTagsExpanded(true)}
-              aria-label={t("psyList.showAllTags", { n: p.specs.length })}
-            >
-              +{hiddenTagCount}
-            </button>
+        <>
+          <div className="pc-tags" ref={tagsRef}>
+            {p.specs.slice(0, visibleTagCount).map((s, i) => (
+              <span key={i} className="pc-tag">{s}</span>
+            ))}
+            {hiddenTagCount > 0 && (
+              <button
+                type="button"
+                className="pc-tag pc-tag--more"
+                onClick={(e) => { e.preventDefault(); setTagsPopupOpen(true); }}
+                aria-label={t("psyList.showAllTags", { n: p.specs.length })}
+              >
+                +{hiddenTagCount}
+              </button>
+            )}
+          </div>
+          {/* Görünməz ölçmə sırası — kartın öz eninə görə neçə taqın bir sətrə
+              sığdığını bilmək üçün, heç bir vizual/skroll izi qoymadan. */}
+          <div style={{ position: "relative", width: 0, height: 0, overflow: "hidden" }} aria-hidden>
+            <div ref={tagsMeasureRef} style={{ position: "absolute", display: "flex", gap: TAG_GAP, whiteSpace: "nowrap" }}>
+              {p.specs.map((s, i) => <span key={i} className="pc-tag">{s}</span>)}
+            </div>
+          </div>
+          {tagsPopupOpen && createPortal(
+            <div className="pc-tags-backdrop" onClick={() => setTagsPopupOpen(false)}>
+              <div className="pc-tags-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="pc-tags-modal__head">
+                  <span>{t("psyList.allTagsTitle", { name: p.name })}</span>
+                  <button type="button" className="pc-tags-modal__close" onClick={() => setTagsPopupOpen(false)} aria-label={t("common.close")}>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                  </button>
+                </div>
+                <div className="pc-tags-modal__body">
+                  {p.specs.map((s, i) => <span key={i} className="pc-tag">{s}</span>)}
+                </div>
+              </div>
+            </div>,
+            document.body
           )}
-          {tagsExpanded && p.specs.length > TAG_CAP && (
-            <button
-              type="button"
-              className="pc-tag pc-tag--less"
-              onClick={() => setTagsExpanded(false)}
-            >
-              {t("psyList.showFewerTags")}
-            </button>
-          )}
-        </div>
+        </>
       )}
 
       <div className="pc-divider" />
@@ -256,7 +317,7 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
 
-        .pc-tags { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+        .pc-tags { display: flex; flex-wrap: nowrap; gap: 8px; width: 100%; min-width: 0; overflow: hidden; }
         .pc-tag {
           flex-shrink: 0; white-space: nowrap;
           font-size: 12.5px; font-weight: 600; letter-spacing: .01em;
@@ -264,13 +325,35 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
           background: var(--fanus-primary-50);
           color: var(--fanus-primary);
         }
-        .pc-tag--more, .pc-tag--less {
+        .pc-tag--more {
           border: none; cursor: pointer; font-family: inherit;
           background: var(--fanus-bg); color: var(--fanus-ink-3);
           transition: background .15s, color .15s;
         }
-        .pc-tag--more:hover, .pc-tag--less:hover { background: var(--fanus-primary-50); color: var(--fanus-primary); }
-        .pc-tag--less { padding-left: 14px; padding-right: 14px; line-height: 1; }
+        .pc-tag--more:hover { background: var(--fanus-primary-50); color: var(--fanus-primary); }
+
+        .pc-tags-backdrop {
+          position: fixed; inset: 0; z-index: 200;
+          background: rgba(15,28,46,.5); backdrop-filter: blur(4px);
+          display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
+        .pc-tags-modal {
+          background: #fff; border-radius: 18px; width: min(420px, 100%);
+          max-height: 80vh; overflow: auto;
+          box-shadow: 0 24px 60px rgba(10,26,51,.28);
+        }
+        .pc-tags-modal__head {
+          display: flex; align-items: center; justify-content: space-between; gap: 12px;
+          padding: 18px 20px; border-bottom: 1px solid var(--fanus-line);
+          font-size: 14px; font-weight: 700; color: var(--fanus-ink);
+        }
+        .pc-tags-modal__close {
+          flex-shrink: 0; width: 30px; height: 30px; border-radius: 999px;
+          border: none; background: var(--fanus-bg); color: var(--fanus-ink-2);
+          display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .pc-tags-modal__close:hover { background: var(--fanus-primary-100); color: var(--fanus-primary); }
+        .pc-tags-modal__body { display: flex; flex-wrap: wrap; gap: 8px; padding: 18px 20px; }
 
         .pc-divider { height: 1px; background: var(--fanus-line); }
 

@@ -4,7 +4,6 @@ import Link from "next/link";
 import type { BlogPost } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDate } from "@/lib/datetime";
-import { displayCategory } from "@/lib/blog";
 
 const COLORS = ["#5089E0", "#1051B7", "#0B3F90", "#2A6BD0"];
 
@@ -13,20 +12,18 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
   const data = (posts && posts.length > 0)
     ? posts.slice(0, 4).map((p, i) => ({
         slug: p.slug,
-        tag: displayCategory(p.category),
         title: p.title,
         date: azFormatDate(p.publishedDate),
         read: t("articles.minutes", { n: p.readTimeMinutes }),
         views: p.viewCount ?? 0,
-        bg: p.categoryBg || COLORS[i % COLORS.length],
-        fg: p.categoryColor || "#fff",
+        bg: COLORS[i % COLORS.length],
         coverUrl: p.coverImageUrl,
       }))
     : [
-        { slug: "narahatliq", tag: "Narahatlıq",   title: "Səhər yuxudan narahat oyananda nə etməli", date: "12 May 2025", read: "6 dəq", views: 0, bg: COLORS[0], fg: "#fff", coverUrl: undefined as string | undefined },
-        { slug: "munasibetler", tag: "Münasibətlər", title: "Sərhəd qoymaq eqoist olmaq deyil",        date: "8 May 2025",  read: "8 dəq", views: 0, bg: COLORS[1], fg: "#fff", coverUrl: undefined },
-        { slug: "ozune-qayim", tag: "Özünəqayım",   title: "Tükənmişlik (burnout) — gizli əlamətlər",   date: "3 May 2025",  read: "7 dəq", views: 0, bg: COLORS[2], fg: "#fff", coverUrl: undefined },
-        { slug: "yuxu", tag: "Yuxu",           title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", date: "28 Apr 2025", read: "5 dəq", views: 0, bg: COLORS[3], fg: "#fff", coverUrl: undefined },
+        { slug: "narahatliq", title: "Səhər yuxudan narahat oyananda nə etməli", date: "12 May 2025", read: "6 dəq", views: 0, bg: COLORS[0], coverUrl: undefined as string | undefined },
+        { slug: "munasibetler", title: "Sərhəd qoymaq eqoist olmaq deyil",        date: "8 May 2025",  read: "8 dəq", views: 0, bg: COLORS[1], coverUrl: undefined },
+        { slug: "ozune-qayim", title: "Tükənmişlik (burnout) — gizli əlamətlər",   date: "3 May 2025",  read: "7 dəq", views: 0, bg: COLORS[2], coverUrl: undefined },
+        { slug: "yuxu", title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", date: "28 Apr 2025", read: "5 dəq", views: 0, bg: COLORS[3], coverUrl: undefined },
       ];
 
   return (
@@ -47,7 +44,6 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
                 ) : (
                   <CoverArt color={a.bg} variant={i % 4} />
                 )}
-                {a.tag ? <span className="fanus-art-card__tag" style={{ background: a.bg, color: a.fg }}>{a.tag}</span> : null}
               </div>
               <div className="fanus-art-card__body">
                 <div className="fanus-art-card__date">
@@ -97,14 +93,6 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
           box-shadow: 0 22px 46px rgba(16,81,183,.12);
         }
         .fanus-art-card__cover { position: relative; aspect-ratio: 16/9; overflow: hidden; }
-        .fanus-art-card__tag {
-          position: absolute; top: 12px; left: 12px;
-          padding: 5px 11px; border-radius: 999px;
-          font-size: 11px; font-weight: 700; color: white;
-          text-transform: uppercase; letter-spacing: .06em;
-          backdrop-filter: blur(6px);
-          box-shadow: 0 4px 12px rgba(0,0,0,.15);
-        }
         .fanus-art-card__body {
           padding: 18px 18px 20px;
           display: flex; flex-direction: column; gap: 12px;

@@ -8,7 +8,6 @@ import type { BlogPost } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { azFormatDate } from "@/lib/datetime";
-import { displayCategory } from "@/lib/blog";
 
 type Cat = "all" | "anxiety" | "relations" | "selfcare" | "sleep" | "youth" | "mindful";
 type Illu = "sun" | "people" | "flame" | "moon" | "waves" | "compass";
@@ -28,8 +27,8 @@ const ILLU_BY_CAT: Record<Cat, Illu> = {
   sleep: "moon", youth: "compass", mindful: "waves",
 };
 
-function deriveCat(category: string, title: string): Cat {
-  const s = (category + " " + title).toLowerCase();
+function deriveCat(title: string): Cat {
+  const s = title.toLowerCase();
   if (s.match(/narahat|panik|stress|anksi/))    return "anxiety";
   if (s.match(/münasib|sərhəd|ailə|cüt/))       return "relations";
   if (s.match(/özünə|burnout|tükən|dincə/))     return "selfcare";
@@ -41,7 +40,6 @@ function deriveCat(category: string, title: string): Cat {
 
 interface Item {
   slug: string;
-  tag: string;
   cat: Cat;
   title: string;
   excerpt: string;
@@ -57,15 +55,15 @@ interface Item {
 }
 
 const FALLBACK: Item[] = [
-  { slug: "narahat-oyananda",  tag: "Narahatlıq",   cat: "anxiety",    title: "Səhər yuxudan narahat oyananda nə etməli", excerpt: "Bədəniniz hələ yatağa qalxmadan beyniniz qorxular siyahısı tutursa — bu məqalə sizin üçündür.", date: "12 May 2026", read: "6 dəq", readMinutes: 6, publishedAt: Date.parse("2026-05-12"), author: "Aysel Məmmədova", illu: "sun" },
-  { slug: "serhed-qoymaq",     tag: "Münasibətlər", cat: "relations",  title: "Sərhəd qoymaq eqoist olmaq deyil",         excerpt: "Sağlam sərhədlər münasibətləri zəiflətmir — onları daha güclü və davamlı edir.",                          date: "8 May 2026",  read: "8 dəq", readMinutes: 8, publishedAt: Date.parse("2026-05-08"), author: "Lalə Hüseynova",   illu: "people" },
-  { slug: "tukenmislik",       tag: "Özünəqayğı",   cat: "selfcare",   title: "Tükənmişlik — gizli əlamətlər",            excerpt: "Bezginlik və burnout fərqlidir. Ondan əvvəl bədənin verdiyi siqnalları öyrənmək.",                          date: "3 May 2026",  read: "7 dəq", readMinutes: 7, publishedAt: Date.parse("2026-05-03"), author: "Elnur Səfərov",    illu: "flame" },
-  { slug: "yuxusuzluq",        tag: "Yuxu",         cat: "sleep",      title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", excerpt: "“Yatmalıyam” fikri özü yuxusuzluğun yanacağına çevrilir. Bu dövrəni necə qırmaq olar.",                       date: "28 Apr 2026", read: "5 dəq", readMinutes: 5, publishedAt: Date.parse("2026-04-28"), author: "Rəşad Quliyev",    illu: "moon" },
-  { slug: "5deq-nefes",        tag: "Mindfulness",  cat: "mindful",    title: "5 dəqiqəlik nəfəs — günü yenidən başlat",  excerpt: "Stresli anlarda sinir sistemini sakitləşdirmək üçün sadə, sübuta əsaslanan texnika.",                        date: "22 Apr 2026", read: "4 dəq", readMinutes: 4, publishedAt: Date.parse("2026-04-22"), author: "Səbinə Əliyeva",   illu: "waves" },
-  { slug: "yeniyetme-qabiq",   tag: "Yeniyetmə",    cat: "youth",      title: "Yeniyetmə öz qabığına çəkiləndə",          excerpt: "Susqunluq həmişə problem deyil. Lakin nə vaxt diqqət etmək lazımdır?",                                       date: "18 Apr 2026", read: "6 dəq", readMinutes: 6, publishedAt: Date.parse("2026-04-18"), author: "Nigar Kazımova",   illu: "compass" },
-  { slug: "panik-atak",        tag: "Narahatlıq",   cat: "anxiety",    title: "Panik atak: bədənin yalan həyəcanı",       excerpt: "Panik atak təhlükəli deyil — amma bunu beyninə inandırmaq başqa məsələdir.",                                  date: "14 Apr 2026", read: "6 dəq", readMinutes: 6, publishedAt: Date.parse("2026-04-14"), author: "Aysel Məmmədova", illu: "waves" },
-  { slug: "esitmek",           tag: "Münasibətlər", cat: "relations",  title: "Münaqişədə eşitmək — danışmaqdan əvvəl",   excerpt: "Aktiv dinləmə bir bacarıqdır. Sevdiklərinizlə sınamaq üçün 4 sadə addım.",                                    date: "9 Apr 2026",  read: "7 dəq", readMinutes: 7, publishedAt: Date.parse("2026-04-09"), author: "Lalə Hüseynova",   illu: "people" },
-  { slug: "dincelmek",         tag: "Özünəqayğı",   cat: "selfcare",   title: "Niyə dincəlmək də öyrənilməlidir",         excerpt: "Hər kəs istirahətin necə görünməsini bilmir. İnsan üçün dincəlmənin 7 növü.",                                  date: "5 Apr 2026",  read: "5 dəq", readMinutes: 5, publishedAt: Date.parse("2026-04-05"), author: "Elnur Səfərov",    illu: "compass" },
+  { slug: "narahat-oyananda",  cat: "anxiety",    title: "Səhər yuxudan narahat oyananda nə etməli", excerpt: "Bədəniniz hələ yatağa qalxmadan beyniniz qorxular siyahısı tutursa — bu məqalə sizin üçündür.", date: "12 May 2026", read: "6 dəq", readMinutes: 6, publishedAt: Date.parse("2026-05-12"), author: "Aysel Məmmədova", illu: "sun" },
+  { slug: "serhed-qoymaq",     cat: "relations",  title: "Sərhəd qoymaq eqoist olmaq deyil",         excerpt: "Sağlam sərhədlər münasibətləri zəiflətmir — onları daha güclü və davamlı edir.",                          date: "8 May 2026",  read: "8 dəq", readMinutes: 8, publishedAt: Date.parse("2026-05-08"), author: "Lalə Hüseynova",   illu: "people" },
+  { slug: "tukenmislik",       cat: "selfcare",   title: "Tükənmişlik — gizli əlamətlər",            excerpt: "Bezginlik və burnout fərqlidir. Ondan əvvəl bədənin verdiyi siqnalları öyrənmək.",                          date: "3 May 2026",  read: "7 dəq", readMinutes: 7, publishedAt: Date.parse("2026-05-03"), author: "Elnur Səfərov",    illu: "flame" },
+  { slug: "yuxusuzluq",        cat: "sleep",      title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", excerpt: "“Yatmalıyam” fikri özü yuxusuzluğun yanacağına çevrilir. Bu dövrəni necə qırmaq olar.",                       date: "28 Apr 2026", read: "5 dəq", readMinutes: 5, publishedAt: Date.parse("2026-04-28"), author: "Rəşad Quliyev",    illu: "moon" },
+  { slug: "5deq-nefes",        cat: "mindful",    title: "5 dəqiqəlik nəfəs — günü yenidən başlat",  excerpt: "Stresli anlarda sinir sistemini sakitləşdirmək üçün sadə, sübuta əsaslanan texnika.",                        date: "22 Apr 2026", read: "4 dəq", readMinutes: 4, publishedAt: Date.parse("2026-04-22"), author: "Səbinə Əliyeva",   illu: "waves" },
+  { slug: "yeniyetme-qabiq",   cat: "youth",      title: "Yeniyetmə öz qabığına çəkiləndə",          excerpt: "Susqunluq həmişə problem deyil. Lakin nə vaxt diqqət etmək lazımdır?",                                       date: "18 Apr 2026", read: "6 dəq", readMinutes: 6, publishedAt: Date.parse("2026-04-18"), author: "Nigar Kazımova",   illu: "compass" },
+  { slug: "panik-atak",        cat: "anxiety",    title: "Panik atak: bədənin yalan həyəcanı",       excerpt: "Panik atak təhlükəli deyil — amma bunu beyninə inandırmaq başqa məsələdir.",                                  date: "14 Apr 2026", read: "6 dəq", readMinutes: 6, publishedAt: Date.parse("2026-04-14"), author: "Aysel Məmmədova", illu: "waves" },
+  { slug: "esitmek",           cat: "relations",  title: "Münaqişədə eşitmək — danışmaqdan əvvəl",   excerpt: "Aktiv dinləmə bir bacarıqdır. Sevdiklərinizlə sınamaq üçün 4 sadə addım.",                                    date: "9 Apr 2026",  read: "7 dəq", readMinutes: 7, publishedAt: Date.parse("2026-04-09"), author: "Lalə Hüseynova",   illu: "people" },
+  { slug: "dincelmek",         cat: "selfcare",   title: "Niyə dincəlmək də öyrənilməlidir",         excerpt: "Hər kəs istirahətin necə görünməsini bilmir. İnsan üçün dincəlmənin 7 növü.",                                  date: "5 Apr 2026",  read: "5 dəq", readMinutes: 5, publishedAt: Date.parse("2026-04-05"), author: "Elnur Səfərov",    illu: "compass" },
 ];
 
 type SortBy = "new" | "quick";
@@ -75,11 +73,9 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
   const items: Item[] = useMemo(() => {
     if (!posts || posts.length === 0) return FALLBACK;
     return posts.map((p) => {
-      const cat = deriveCat(p.category, p.title);
-      const displayTag = displayCategory(p.category);
+      const cat = deriveCat(p.title);
       return {
         slug: p.slug,
-        tag: displayTag,
         cat,
         title: p.title,
         excerpt: p.excerpt,
@@ -258,7 +254,6 @@ function ArtList({
                   ) : (
                     <ArtCover type={a.illu} color="#1051B7" />
                   )}
-                  {a.tag ? <span className="ap-card__tag">{a.tag}</span> : null}
                 </div>
                 <div className="ap-card__body">
                   <div className="ap-card__date">
@@ -329,14 +324,6 @@ function ArtList({
         .ap-card:hover .ap-card__cover svg { transform: scale(1.05); }
         .ap-card__cover-img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .5s ease; }
         .ap-card:hover .ap-card__cover-img { transform: scale(1.05); }
-        .ap-card__tag {
-          position: absolute; top: 12px; left: 12px;
-          padding: 5px 11px; border-radius: 999px;
-          font-size: 11px; font-weight: 700; color: var(--fanus-primary);
-          background: rgba(255,255,255,.92);
-          text-transform: uppercase; letter-spacing: .06em;
-          backdrop-filter: blur(6px);
-        }
         .ap-card__body { padding: 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
         .ap-card__date {
           display: inline-flex; align-items: center; gap: 8px;

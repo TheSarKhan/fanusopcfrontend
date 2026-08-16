@@ -466,6 +466,7 @@ export const ru: typeof az = {
     sessionsCount: "{count} сессий",
     minutes: "{n} мин сессии",
     showAllTags: "Показать все специализации ({n})",
+    allTagsTitle: "{name} — все специализации",
     showAllLangs: "Показать все языки ({n})",
     showFewerTags: "Показать меньше",
     matchCtaTitle: "Ответьте на несколько коротких вопросов",

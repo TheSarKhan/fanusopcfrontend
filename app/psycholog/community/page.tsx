@@ -278,19 +278,14 @@ function FeedCard({ p }: { p: BlogPost }) {
   const excerpt = p.excerpt || stripHtml(p.content).slice(0, 160);
   return (
     <Link href={`/psycholog/community/post/${p.id}`} className="pcom-feedcard pcom-feedcard--link">
-      <div className="pcom-feedcard__cover" style={{ background: p.coverImageUrl ? "transparent" : (p.categoryBg || "var(--brand-50)") }}>
+      <div className="pcom-feedcard__cover" style={{ background: p.coverImageUrl ? "transparent" : "var(--brand-50)" }}>
         {p.coverImageUrl ? (
           <img src={p.coverImageUrl} alt={p.title} />
         ) : (
-          <span style={{ color: p.categoryColor || "var(--brand-700)" }}>{p.title?.[0]?.toUpperCase() || "A"}</span>
+          <span style={{ color: "var(--brand-700)" }}>{p.title?.[0]?.toUpperCase() || "A"}</span>
         )}
       </div>
       <div className="pcom-feedcard__body">
-        {p.category && (
-          <span className="pcom-feedcard__cat" style={{ background: p.categoryBg || "var(--brand-50)", color: p.categoryColor || "var(--brand-700)" }}>
-            {p.category}
-          </span>
-        )}
         <h3>{p.title || t("psyCommunity.untitled")}</h3>
         {excerpt && <p>{excerpt}</p>}
         <div className="pcom-feedcard__foot">

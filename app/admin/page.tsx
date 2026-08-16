@@ -29,7 +29,7 @@ import {
 import { azFormatDateTime } from "@/lib/datetime";
 import PanelIcon from "@/components/PanelIcon";
 import {
-  AppointmentFlowChart, WorkloadChart, TopicPieChart, TrendChart, FunnelChart,
+  AppointmentFlowChart, WorkloadChart, TrendChart, FunnelChart,
 } from "@/components/DashboardCharts";
 import {
   PageHead, Card, CardPad, Stats, Stat, Status, Button, SectionTitle, DataTable,
@@ -156,7 +156,6 @@ export default function AdminDashboardPage() {
     { key: "rank", header: "#", numeric: true, cell: a => num(a.rank) },
     { key: "title", header: "Başlıq", cell: a => a.title },
     { key: "author", header: "Müəllif", hideOnMobile: true, cell: a => a.author },
-    { key: "category", header: "Kateqoriya", hideOnMobile: true, cell: a => a.category || "—" },
     { key: "views", header: "Baxış", numeric: true, cell: a => <strong>{num(a.views)}</strong> },
   ];
 
@@ -395,7 +394,7 @@ export default function AdminDashboardPage() {
       </Card>
 
       {/* ── Məzmun ── */}
-      <Section cols="repeat(auto-fit, minmax(420px, 1fr))">
+      <Section cols="1fr">
         <Card fill>
           <CardPad>
             <SectionTitle>Ən çox oxunan məqalələr</SectionTitle>
@@ -414,14 +413,6 @@ export default function AdminDashboardPage() {
                 }}
               />
             </Block>
-          </CardPad>
-        </Card>
-        <Card fill>
-          <CardPad>
-            <SectionTitle>Məzmun mövzuları</SectionTitle>
-            {metrics && metrics.topicDistribution.length > 0
-              ? <TopicPieChart data={metrics.topicDistribution} />
-              : <Empty loading={loading} text="Kateqoriyalı məqalə yoxdur." />}
           </CardPad>
         </Card>
       </Section>

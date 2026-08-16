@@ -8,10 +8,10 @@
 
 import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, LineChart, Line,
-  PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from "recharts";
 import type {
-  DailyFlow, TopicSlice, PsychologistWorkload, TrendPoint, FunnelStep,
+  DailyFlow, PsychologistWorkload, TrendPoint, FunnelStep,
 } from "@/lib/api";
 import { azFormatDate } from "@/lib/datetime";
 
@@ -100,24 +100,6 @@ export function FunnelChart({ data }: { data: FunnelStep[] }) {
           {data.map((s, i) => <Cell key={i} fill={s.color} />)}
         </Bar>
       </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-/** Məzmun mövzularının bölgüsü — bloq kateqoriyalarından (real sayğac). */
-export function TopicPieChart({ data }: { data: TopicSlice[] }) {
-  if (data.length === 0) return null;
-  return (
-    <ResponsiveContainer width="100%" height={240}>
-      <PieChart>
-        <Pie data={data} dataKey="percent" nameKey="label" cx="50%" cy="50%"
-          innerRadius={52} outerRadius={86} paddingAngle={2}>
-          {data.map((s, i) => <Cell key={i} fill={s.color} />)}
-        </Pie>
-        {/* Tip yazılmır — yuxarıdakı qeydə bax. */}
-        <Tooltip formatter={(value) => `${value ?? 0}%`} />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
-      </PieChart>
     </ResponsiveContainer>
   );
 }

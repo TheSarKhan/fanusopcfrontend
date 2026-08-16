@@ -145,11 +145,6 @@ export default function CommunityProfilePage() {
                 {posts.map(p => (
                   <Link key={p.id} href={`/psycholog/community/post/${p.id}`} className="pcom-art-row">
                     <div className="pcom-art-row__main">
-                      {p.category && (
-                        <span className="pcom-feedcard__cat" style={{ background: p.categoryBg || "var(--brand-50)", color: p.categoryColor || "var(--brand-700)" }}>
-                          {p.category}
-                        </span>
-                      )}
                       <div className="pcom-art-row__title">{p.title || t("psyCommunity.untitled")}</div>
                       <p className="pcom-art-row__ex">{p.excerpt || stripHtml(p.content).slice(0, 140)}</p>
                     </div>

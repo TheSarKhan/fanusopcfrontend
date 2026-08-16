@@ -1098,9 +1098,6 @@ export const tr: typeof az = {
     shareLabel: "Bu makaleyi paylaş",
     shareCopy: "Bağlantıyı kopyala",
     shareCopied: "Kopyalandı!",
-    ctaTitle: "Profesyonel desteğe mi ihtiyacınız var?",
-    ctaText: "Fanus psikologlarıyla çevrimiçi seans için başvurun.",
-    ctaBtn: "Psikolog seç",
     relatedTitle: "İlgili makaleler",
   },
 

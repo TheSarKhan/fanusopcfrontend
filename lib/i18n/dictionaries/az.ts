@@ -1112,9 +1112,6 @@ export const az = {
     shareLabel: "Bu məqaləni paylaş",
     shareCopy: "Keçidi kopyala",
     shareCopied: "Kopyalandı!",
-    ctaTitle: "Peşəkar dəstəyə ehtiyacınız var?",
-    ctaText: "Fanus psixoloqları ilə onlayn seans üçün müraciət edin.",
-    ctaBtn: "Psixoloq seç",
     relatedTitle: "Əlaqəli məqalələr",
   },
 

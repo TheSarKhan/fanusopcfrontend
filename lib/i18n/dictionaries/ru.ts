@@ -1078,9 +1078,6 @@ export const ru: typeof az = {
     shareLabel: "Поделиться статьёй",
     shareCopy: "Скопировать ссылку",
     shareCopied: "Скопировано!",
-    ctaTitle: "Нужна профессиональная поддержка?",
-    ctaText: "Оставьте заявку на онлайн-сеанс с психологом Fanus.",
-    ctaBtn: "Выбрать психолога",
     relatedTitle: "Похожие статьи",
   },
 

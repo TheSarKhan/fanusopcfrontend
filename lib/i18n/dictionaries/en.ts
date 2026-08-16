@@ -1075,9 +1075,6 @@ export const en: typeof az = {
     shareLabel: "Share this article",
     shareCopy: "Copy link",
     shareCopied: "Copied!",
-    ctaTitle: "Need professional support?",
-    ctaText: "Request an online session with a Fanus psychologist.",
-    ctaBtn: "Choose a psychologist",
     relatedTitle: "Related articles",
   },
 

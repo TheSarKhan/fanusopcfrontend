@@ -69,18 +69,27 @@ export default function TopicPicker({
   onChange,
   label,
   hint,
+  max,
 }: {
   value: string[];
   onChange: (next: string[]) => void;
   label?: string;
   hint?: string;
+  /** Verilibsə, ən çoxu bu qədər mövzu seçilə bilər — limitə çatanda seçilməmiş çiplər deaktiv olur. */
+  max?: number;
 }) {
   const { t } = useT();
   const selected = new Set(value);
+  const atMax = !!max && selected.size >= max;
 
   const toggle = (code: string) => {
     const next = new Set(selected);
-    if (next.has(code)) next.delete(code); else next.add(code);
+    if (next.has(code)) {
+      next.delete(code);
+    } else {
+      if (atMax) return;
+      next.add(code);
+    }
     // Sıra sabit qalsın deyə TOPIC_CODES sırası ilə qaytarılır.
     onChange(TOPIC_CODES.filter(c => next.has(c)));
   };
@@ -92,6 +101,7 @@ export default function TopicPicker({
       <div className="tp__grid">
         {TOPIC_CODES.map(code => {
           const on = selected.has(code);
+          const disabled = !on && atMax;
           return (
             <button
               key={code}
@@ -99,6 +109,7 @@ export default function TopicPicker({
               className={`tp__chip${on ? " is-on" : ""}`}
               onClick={() => toggle(code)}
               aria-pressed={on}
+              disabled={disabled}
             >
               {t(`topic.${topicKey(code)}` as MessageKey)}
             </button>
@@ -118,6 +129,8 @@ export default function TopicPicker({
         }
         .tp__chip:hover { border-color: #C0D2E6; }
         .tp__chip.is-on { border-color: #002147; background: #E0EBF7; color: #002147; }
+        .tp__chip:disabled { cursor: not-allowed; opacity: .45; }
+        .tp__chip:disabled:hover { border-color: #E4EDF6; }
       `}</style>
     </div>
   );

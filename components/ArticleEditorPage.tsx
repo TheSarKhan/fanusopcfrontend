@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, type CSSProperties } from "react";
-import { adminApi, type BlogPost, type BlogCategory } from "@/lib/api";
+import { adminApi, type BlogPost } from "@/lib/api";
 import { getMainSiteUrl } from "@/lib/auth";
 import ArticleEditor from "@/components/ArticleEditor";
 import TopicPicker from "@/components/TopicPicker";
@@ -10,7 +10,6 @@ import { COVER_PRESETS, coverPresetPath, type CoverPreset } from "@/components/c
 export interface ArticleEditorApi {
   createBlogPost: (data: Omit<BlogPost, "id">, opts?: { silent?: boolean }) => Promise<BlogPost>;
   updateBlogPost: (id: number, data: Omit<BlogPost, "id">, opts?: { silent?: boolean }) => Promise<BlogPost>;
-  getBlogCategories: () => Promise<BlogCategory[]>;
   uploadFile: (file: File) => Promise<string>;
 }
 
@@ -158,7 +157,6 @@ export default function ArticleEditorPage({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
-  const [categories, setCategories] = useState<BlogCategory[]>([]);
   const [tagDraft, setTagDraft] = useState("");
   // Mərhələ sihirbazı: 0 Başlıq · 1 Məqalə · 2 Etiketlər · 3 Önizləmə
   const [step, setStep] = useState(0);
@@ -254,6 +252,7 @@ export default function ArticleEditorPage({
   // yalnız növbəti mərhələyə keçidi bloklayır, popup ilə xəbərdarlıq göstərir).
   const stepError = (s: number): string | null => {
     if (s === 0 && !form.title.trim()) return "Zəhmət olmasa əvvəlcə məqalə başlığını yazın.";
+    if (s === 0 && !form.coverImageUrl) return "Zəhmət olmasa qapaq şəkli əlavə edin.";
     if (s === 1 && !form.content.replace(/<[^>]+>/g, "").trim()) return "Məqalə mətni boşdur — davam etmək üçün nəsə yazın.";
     return null;
   };
@@ -272,10 +271,6 @@ export default function ArticleEditorPage({
   };
 
   useEffect(() => {
-    api.getBlogCategories().then(setCategories).catch(() => {});
-  }, [api]);
-
-  useEffect(() => {
     isMounted.current = true;
     return () => {
       if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
@@ -289,6 +284,7 @@ export default function ArticleEditorPage({
     // Validate explicitly so the backend doesn't reject us with a generic 400.
     const t = formRef.current.title.trim();
     if (!t) { setPopup("Yayımlamadan əvvəl başlıq əlavə edin."); setStep(0); return; }
+    if (!formRef.current.coverImageUrl) { setPopup("Yayımlamadan əvvəl qapaq şəkli əlavə edin."); setStep(0); return; }
     if (!formRef.current.content.replace(/<[^>]+>/g, "").trim()) {
       setPopup("Məqalə mətni boşdur — yayımlamaq üçün əvvəlcə məzmun yazın.");
       setStep(1);
@@ -472,7 +468,7 @@ export default function ArticleEditorPage({
 
               {/* Hazır vektor qapaqlar — brendə uyğun, psixologiya temalı dizaynlar */}
               <div style={{ marginBottom: 28 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 10px" }}>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "#1A2535", margin: "0 0 10px" }}>
                   Hazır qapaqlar
                 </p>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
@@ -503,80 +499,18 @@ export default function ArticleEditorPage({
                 </div>
               </div>
 
-              <textarea
-                value={form.title}
-                onChange={e => setField("title", e.target.value)}
-                placeholder="Başlıq əlavə edin"
-                rows={1}
-                style={{ width: "100%", border: "none", outline: "none", resize: "none", fontSize: "2rem", fontWeight: 800, color: "#0F1C2E", lineHeight: 1.3, background: "transparent", marginBottom: 20, fontFamily: "inherit", overflow: "hidden" }}
-                onInput={e => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }}
-              />
-
-              {/* Qısa təsvir — kartda başlığın altında görünən mətn. Sahə formda
-                  saxlanılırdı, amma heç bir input yox idi: bir dəfə yazılan mətni
-                  (və ya avtomatik doldurulanı) sonradan düzəltmək mümkün deyildi. */}
               <div style={{ marginBottom: 24 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
-                  Qısa təsvir
+                <p style={{ fontSize: 14, fontWeight: 700, color: "#1A2535", margin: "0 0 8px" }}>
+                  Başlıq <span style={{ color: "#B91C1C" }}>*</span>
                 </p>
                 <textarea
-                  value={form.excerpt}
-                  onChange={e => setField("excerpt", e.target.value)}
-                  placeholder="Məqalənin qısa təsviri — siyahıda başlığın altında görünür"
-                  rows={2}
-                  maxLength={300}
-                  style={{ width: "100%", border: "1px solid #E4EDF6", borderRadius: 10, outline: "none", resize: "vertical", padding: "10px 12px", fontSize: 14, lineHeight: 1.5, color: "#2B3C5A", background: "#fff", fontFamily: "inherit" }}
+                  value={form.title}
+                  onChange={e => setField("title", e.target.value)}
+                  placeholder="Başlıq əlavə edin"
+                  rows={1}
+                  style={{ width: "100%", border: "1px solid #E4EDF6", borderRadius: 10, outline: "none", resize: "none", padding: "10px 12px", fontSize: 14, lineHeight: 1.5, color: "#2B3C5A", background: "#fff", fontFamily: "inherit", overflow: "hidden" }}
+                  onInput={e => { const el = e.currentTarget; el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; }}
                 />
-                <div style={{ fontSize: 11, color: "#8AAABF", marginTop: 5 }}>
-                  {form.excerpt.length}/300
-                </div>
-              </div>
-
-              {/* Kateqoriya — hər zaman görünür. Öncədən təyin olunmuş kateqoriyalar
-                  yoxdursa belə müəllif sərbəst mətnlə kateqoriya yaza bilər (əvvəllər bu
-                  bölmə categories boş olanda tamamilə gizlənirdi və kateqoriya boş qalırdı). */}
-              <div style={{ marginBottom: 24 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px" }}>
-                  Kateqoriya
-                </p>
-                <input
-                  type="text"
-                  value={form.category}
-                  onChange={e => setField("category", e.target.value)}
-                  placeholder="Məs. Narahatlıq, Münasibətlər, Özünəqayğı"
-                  maxLength={60}
-                  style={{ width: "100%", border: "1px solid #E4EDF6", borderRadius: 10, outline: "none", padding: "10px 12px", fontSize: 14, lineHeight: 1.5, color: "#2B3C5A", background: "#fff", fontFamily: "inherit" }}
-                />
-                {categories.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
-                    {categories.map(cat => {
-                      const selected = form.category === cat.name;
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => {
-                            if (selected) {
-                              setField("category", "");
-                              setField("categoryColor", "#002147");
-                              setField("categoryBg", "#E0EBF7");
-                            } else {
-                              setField("category", cat.name);
-                              setField("categoryColor", cat.color);
-                              setField("categoryBg", cat.bg);
-                            }
-                          }}
-                          style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s", border: selected ? `2px solid ${cat.color}` : "2px solid #E4EDF6", background: selected ? cat.bg : "#fff", color: selected ? cat.color : "#52718F" }}
-                        >
-                          {cat.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                <div style={{ fontSize: 11, color: "#8AAABF", marginTop: 6 }}>
-                  Boş buraxsanız məqalədə kateqoriya nişanı göstərilməyəcək.
-                </div>
               </div>
 
               {/* Mövzu teqləri (V133) — ana səhifədəki əhval tövsiyəsinin mənbəyi.
@@ -587,7 +521,8 @@ export default function ArticleEditorPage({
                   value={form.topics}
                   onChange={v => setField("topics", v)}
                   label="Əhval tövsiyəsi üçün mövzular"
-                  hint="Ana səhifədəki «Bu gün özünüzü necə hiss edirsiniz?» bölməsi bu teqlərə baxır. Teq seçilməsə, məqalə orada göstərilməyəcək."
+                  hint="Ana səhifədəki «Bu gün özünüzü necə hiss edirsiniz?» bölməsi bu teqlərə baxır. Teq seçilməsə, məqalə orada göstərilməyəcək. Ən çoxu 3 mövzu seçə bilərsiniz."
+                  max={3}
                 />
               </div>
             </>
@@ -605,7 +540,7 @@ export default function ArticleEditorPage({
           {/* ── STEP 2 · Etiketlər ─────────────────────────────────────────── */}
           {step === 2 && (
             <div>
-              <p style={{ fontSize: 11, fontWeight: 700, color: "#8AAABF", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 6px" }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#1A2535", margin: "0 0 6px" }}>
                 Etiketlər
               </p>
               <p style={{ fontSize: 13, color: "#8AAABF", margin: "0 0 14px" }}>

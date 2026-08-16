@@ -8,7 +8,6 @@ import ArticleEditorPage, { type ArticleEditorApi } from "@/components/ArticleEd
 const editorApi: ArticleEditorApi = {
   createBlogPost: adminApi.createBlogPost,
   updateBlogPost: adminApi.updateBlogPost,
-  getBlogCategories: adminApi.getBlogCategories,
   uploadFile: adminApi.uploadFile,
 };
 

@@ -527,15 +527,6 @@ export interface ArticleAttachment {
   displayOrder: number;
 }
 
-export interface BlogCategory {
-  id: number;
-  name: string;
-  color: string;
-  bg: string;
-  active: boolean;
-  sortOrder: number;
-}
-
 export interface BlogPost {
   id: number;
   category: string;
@@ -1790,12 +1781,6 @@ export const adminApi = {
   createAnnouncement: (data: Omit<Announcement, "id">) => authedRequest<Announcement>("POST", "/admin/announcements", data),
   updateAnnouncement: (id: number, data: Omit<Announcement, "id">) => authedRequest<Announcement>("PUT", `/admin/announcements/${id}`, data),
   deleteAnnouncement: (id: number) => authedRequest<void>("DELETE", `/admin/announcements/${id}`),
-
-  // Blog categories
-  getBlogCategories: () => authedRequest<BlogCategory[]>("GET", "/admin/blog-categories"),
-  createBlogCategory: (data: Omit<BlogCategory, "id">) => authedRequest<BlogCategory>("POST", "/admin/blog-categories", data),
-  updateBlogCategory: (id: number, data: Omit<BlogCategory, "id">) => authedRequest<BlogCategory>("PUT", `/admin/blog-categories/${id}`, data),
-  deleteBlogCategory: (id: number) => authedRequest<void>("DELETE", `/admin/blog-categories/${id}`),
 
   // Blog
   getBlogPosts: () => authedRequest<BlogPost[]>("GET", "/admin/blog-posts"),
@@ -3461,7 +3446,6 @@ export const psychologistApi = {
     authedRequest<void>("DELETE", `/psychologist/articles/${articleId}/attachments/${attachmentId}`),
 
   // Article editor helpers (mirror admin shape so ArticleEditorPage can be reused)
-  getBlogCategories: () => authedRequest<BlogCategory[]>("GET", "/blog-categories"),
   uploadFile: async (file: File): Promise<string> => {
     const form = new FormData();
     form.append("file", file);

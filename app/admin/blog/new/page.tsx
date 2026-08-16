@@ -6,7 +6,6 @@ import { adminApi } from "@/lib/api";
 const editorApi: ArticleEditorApi = {
   createBlogPost: adminApi.createBlogPost,
   updateBlogPost: adminApi.updateBlogPost,
-  getBlogCategories: adminApi.getBlogCategories,
   uploadFile: adminApi.uploadFile,
 };
 

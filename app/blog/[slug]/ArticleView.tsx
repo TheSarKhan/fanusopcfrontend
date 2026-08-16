@@ -170,17 +170,6 @@ export default function ArticleView({ post, related }: { post: BlogPost; related
         {/* Əlaqəli məqalələr */}
         <RelatedPosts posts={related} />
 
-        {/* Peşəkar dəstə banneri — səhifənin ən sonunda */}
-        <section className="art-cta-band">
-          <div className="fanus-container art-cta-band__inner">
-            <div className="art-cta-band__text">
-              <div className="art-cta-band__title">{t("article.ctaTitle")}</div>
-              <div className="art-cta-band__desc">{t("article.ctaText")}</div>
-            </div>
-            <Link href="/psychologists" className="fanus-btn fanus-btn-light">{t("article.ctaBtn")}</Link>
-          </div>
-        </section>
-
       </main>
     </>
   );

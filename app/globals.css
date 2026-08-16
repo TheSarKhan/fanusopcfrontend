@@ -9792,17 +9792,6 @@
 }
 .bl-share-btn:hover { color: var(--fanus-primary); border-color: var(--fanus-primary-300); background: var(--fanus-primary-50); }
 
-/* Peşəkar dəstə banneri — məqalənin ən sonunda */
-.art-cta-band { margin: 8px 0 64px; }
-.art-cta-band__inner {
-  display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
-  background: linear-gradient(160deg, var(--fanus-primary) 0%, var(--fanus-primary-700) 100%);
-  border-radius: 24px; padding: 40px 48px; box-shadow: var(--fanus-shadow-md);
-}
-.art-cta-band__title { font-family: var(--font-poppins), system-ui, sans-serif; font-size: 24px; font-weight: 700; line-height: 1.25; color: #fff; margin: 0 0 8px; }
-.art-cta-band__desc { font-size: 15px; line-height: 1.55; color: rgba(255,255,255,.85); margin: 0; }
-.art-cta-band .fanus-btn { flex-shrink: 0; }
-
 /* Əlavə materiallar */
 .art-attach { margin-top: 44px; padding: 24px; background: var(--fanus-primary-50); border-radius: 18px; border: 1px solid var(--fanus-line); }
 .art-attach h3 { font-size: 14px; font-weight: 700; color: var(--fanus-ink); margin: 0 0 14px; }
@@ -9833,8 +9822,6 @@
   .art-detail__head { padding: 26px 0 30px; }
   .art-cover { margin-top: 22px; }
   .art-cover__img { border-radius: 18px; }
-  .art-cta-band__inner { padding: 28px 24px; }
-  .art-cta-band__title { font-size: 20px; }
 }
 
 /* Related posts */

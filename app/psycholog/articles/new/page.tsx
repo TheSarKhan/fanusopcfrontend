@@ -7,7 +7,6 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 const editorApi: ArticleEditorApi = {
   createBlogPost: psychologistApi.createArticle,
   updateBlogPost: psychologistApi.updateArticle,
-  getBlogCategories: psychologistApi.getBlogCategories,
   uploadFile: psychologistApi.uploadFile,
 };
 

@@ -14,7 +14,7 @@
 
 import Link from "next/link";
 import { createPortal } from "react-dom";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Psychologist } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
@@ -120,8 +120,11 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
   const ratingNum = parseFloat(p.rating);
   const hasRating = isFinite(ratingNum) && ratingNum > 0;
   const langs = p.lang.split(",").map((l) => l.trim()).filter(Boolean);
-  const { containerRef: tagsRef, measureRef: tagsMeasureRef, visibleCount: visibleTagCount } = useSingleRowFit(p.specs);
-  const hiddenTagCount = p.specs.length - visibleTagCount;
+  // Qısa taqlar əvvəl göstərilir ki, sətrə daha çoxu sığsın — uzun taqlar
+  // (sığmayanda) "+N" arxasına, popup-a düşür.
+  const sortedSpecs = useMemo(() => [...p.specs].sort((a, b) => a.length - b.length), [p.specs]);
+  const { containerRef: tagsRef, measureRef: tagsMeasureRef, visibleCount: visibleTagCount } = useSingleRowFit(sortedSpecs);
+  const hiddenTagCount = sortedSpecs.length - visibleTagCount;
   const [tagsPopupOpen, setTagsPopupOpen] = useState(false);
   const [langsExpanded, setLangsExpanded] = useState(false);
   const visibleLangs = langsExpanded ? langs : langs.slice(0, LANG_CAP);
@@ -152,8 +155,7 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
                 aria-label={t("pub.verifiedPsy")}
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); toast(t("psyList.verifiedNoteBody"), "info"); }}
               >
-                <VerifiedBadgeIcon size={12} />
-                {t("psyProfile.verified")}
+                <VerifiedBadgeIcon size={13} />
               </button>
             )}
           </div>
@@ -164,8 +166,8 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
       {p.specs.length > 0 && (
         <>
           <div className="pc-tags" ref={tagsRef}>
-            {p.specs.slice(0, visibleTagCount).map((s, i) => (
-              <span key={i} className="pc-tag">{s}</span>
+            {sortedSpecs.slice(0, visibleTagCount).map((s, i) => (
+              <span key={i} className="pc-tag" title={s}>{s}</span>
             ))}
             {hiddenTagCount > 0 && (
               <button
@@ -182,7 +184,7 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
               sığdığını bilmək üçün, heç bir vizual/skroll izi qoymadan. */}
           <div style={{ position: "relative", width: 0, height: 0, overflow: "hidden" }} aria-hidden>
             <div ref={tagsMeasureRef} style={{ position: "absolute", display: "flex", gap: TAG_GAP, whiteSpace: "nowrap" }}>
-              {p.specs.map((s, i) => <span key={i} className="pc-tag">{s}</span>)}
+              {sortedSpecs.map((s, i) => <span key={i} className="pc-tag">{s}</span>)}
             </div>
           </div>
           {tagsPopupOpen && createPortal(
@@ -306,10 +308,10 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         .pc-verified {
-          display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+          display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+          width: 20px; height: 20px; border-radius: 999px;
           background: var(--fanus-primary); color: #fff;
-          border: none; border-radius: 999px; padding: 3px 9px 3px 7px; margin: 0;
-          font-size: 10.5px; font-weight: 700; letter-spacing: .02em; white-space: nowrap;
+          border: none; padding: 0; margin: 0;
           cursor: pointer; font-family: inherit;
         }
         .pc-title {
@@ -325,6 +327,10 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
           background: var(--fanus-primary-50);
           color: var(--fanus-primary);
         }
+        /* Ən uzun taq belə "+N" nişanını kənara sıxışdırıb kəsdirməsin deyə —
+           sətirdəki taqlar özləri də lazım gələndə "…" ilə kəsilir (popup-dakı
+           tam siyahıda bu limit yoxdur). */
+        .pc-tags .pc-tag { max-width: calc(100% - 54px); overflow: hidden; text-overflow: ellipsis; }
         .pc-tag--more {
           border: none; cursor: pointer; font-family: inherit;
           background: var(--fanus-bg); color: var(--fanus-ink-3);

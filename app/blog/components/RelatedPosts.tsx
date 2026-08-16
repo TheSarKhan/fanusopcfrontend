@@ -45,8 +45,10 @@ export default function RelatedPosts({ posts }: { posts: BlogPost[] }) {
                   <div>
                     <div className="bl-author-name">{post.authorName ?? t("article.editorial")}</div>
                     <div className="bl-author-date" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      <span>{t("pub.readMinutes", { n: post.readTimeMinutes })}</span>
                       <span>{formatDateShort(t, post.publishedDate)}</span>
+                      {post.viewCount != null && post.viewCount > 0 && (
+                        <span>{t("pub.viewsCount", { n: post.viewCount })}</span>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -80,15 +80,20 @@ function PatientShell({ children }: { children: React.ReactNode }) {
     return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
   }, []);
 
-  // Bütün modullar. Kilidlilər (./modules.ts) sidebar-dan çıxarılır.
+  // Bütün modullar, kateqoriya üzrə qruplaşdırılıb (bax PanelNavItem.group —
+  // eyni qrupa aid sətirlər ARDICIL olmalıdır, əks halda başlıq təkrarlanır).
+  // Kilidlilər (./modules.ts) sidebar-dan çıxarılır.
+  const groupOverview = t("nav.groupOverview");
+  const groupFindPsy = t("nav.groupFindPsychologist");
+  const groupProgram = t("nav.groupMyProgram");
   const allNav: ModuleNavItem[] = [
-    { key: "dashboard",     href: "/patient",               label: t("nav.dashboard"),     icon: "home" },
-    { key: "psychologists", href: "/patient/psychologists", label: t("nav.psychologists"), icon: "users" },
-    { key: "appointments",  href: "/patient/appointments",  label: t("nav.appointments"),  icon: "calendar" },
-    { key: "packages",      href: "/patient/packages",      label: t("pkg.myPackages"),    icon: "package" },
-    { key: "homework",      href: "/patient/homework",      label: t("nav.homework"),      icon: "check", badge: homeworkCount },
-    { key: "favorites",     href: "/patient/favorites",     label: t("nav.favorites"),     icon: "heart" },
-    { key: "tests",         href: "/patient/tests",         label: t("nav.tests"),         icon: "clipboard" },
+    { key: "dashboard",     href: "/patient",               label: t("nav.dashboard"),     icon: "home",     group: groupOverview },
+    { key: "appointments",  href: "/patient/appointments",  label: t("nav.appointments"),  icon: "calendar", group: groupOverview },
+    { key: "psychologists", href: "/patient/psychologists", label: t("nav.psychologists"), icon: "users",    group: groupFindPsy },
+    { key: "favorites",     href: "/patient/favorites",     label: t("nav.favorites"),     icon: "heart",    group: groupFindPsy },
+    { key: "packages",      href: "/patient/packages",      label: t("pkg.myPackages"),    icon: "package",  group: groupFindPsy },
+    { key: "homework",      href: "/patient/homework",      label: t("nav.homework"),      icon: "check",    group: groupProgram, badge: homeworkCount },
+    { key: "tests",         href: "/patient/tests",         label: t("nav.tests"),         icon: "clipboard", group: groupProgram },
     { key: "profile",       href: "/patient/profile",       label: t("nav.profile"),       icon: "user" },
   ];
 

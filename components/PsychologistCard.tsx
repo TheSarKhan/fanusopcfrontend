@@ -104,7 +104,8 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
                 aria-label={t("pub.verifiedPsy")}
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); toast(t("psyList.verifiedNoteBody"), "info"); }}
               >
-                <ShieldIcon />
+                <ShieldIcon size={12} />
+                {t("psyProfile.verified")}
               </button>
             )}
           </div>
@@ -160,9 +161,9 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
       {langs.length > 0 && (
         <div className="pc-langs">
           {visibleLangs.map((l, i) => (
-            <span key={i} className="pc-lang-pill">
+            <span key={i} className="pc-lang-pill" title={l}>
               <span className="pc-flag"><FlagIcon lang={l} /></span>
-              {l}
+              {langCode(l)}
             </span>
           ))}
           {!langsExpanded && hiddenLangCount > 0 && (
@@ -241,8 +242,11 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         .pc-verified {
-          display: inline-flex; flex-shrink: 0; color: var(--fanus-primary);
-          background: none; border: none; padding: 0; margin: 0; cursor: pointer;
+          display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+          background: var(--fanus-primary); color: #fff;
+          border: none; border-radius: 999px; padding: 3px 9px 3px 7px; margin: 0;
+          font-size: 10.5px; font-weight: 700; letter-spacing: .02em; white-space: nowrap;
+          cursor: pointer; font-family: inherit;
         }
         .pc-title {
           font-size: 13px; color: var(--fanus-ink-3); margin: 3px 0 0;
@@ -347,6 +351,20 @@ export function FlagIcon({ lang }: { lang: string }) {
   if (l.includes("alman") || l.includes("german")) return <FlagDE />;
   if (l.includes("frans") || l.includes("french")) return <FlagFR />;
   return <GlobeIcon />;
+}
+
+/** Dil adını qısa 2-hərfli koda çevirir (kartda pill yer tutmasın deyə) —
+ *  eyni açar sözlər `FlagIcon`-la üst-üstə düşür. Naməlum dil ilk iki hərflə. */
+function langCode(lang: string): string {
+  const l = lang.toLowerCase();
+  if (l.startsWith("az")) return "AZ";
+  if (l.includes("rus")) return "RU";
+  if (l.includes("ngilis") || l.includes("english")) return "EN";
+  if (l.includes("türk") || l.includes("turk")) return "TR";
+  if (l.includes("alman") || l.includes("german")) return "DE";
+  if (l.includes("frans") || l.includes("french")) return "FR";
+  if (l.includes("fars") || l.includes("persian") || l.includes("farsi")) return "FA";
+  return lang.trim().slice(0, 2).toUpperCase();
 }
 const flagSvgProps = { width: "100%", height: "100%", viewBox: "0 0 20 14", preserveAspectRatio: "none" as const };
 function FlagAZ() {

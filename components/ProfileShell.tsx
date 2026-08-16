@@ -14,8 +14,12 @@ type Translate = (key: MessageKey, vars?: Record<string, string | number>) => st
 
 const ROLES = ["PATIENT", "PSYCHOLOGIST", "OPERATOR", "ADMIN"];
 
-/** Backend rol kodunu görünən ada çevirir; naməlum kod olduğu kimi qalır. */
+/** Backend rol kodunu görünən ada çevirir; naməlum kod olduğu kimi qalır.
+ *  PSYCHOLOGIST öz panelində "Mütəxəssis" kimi göstərilir (bax prof.roleLabelPsychologist)
+ *  — digər yerlərdə (məs. HomeworkDetailModal-da aktor etiketi) `roleLabel.PSYCHOLOGIST`
+ *  ("Psixoloq") toxunulmadan qalır, bu dəyişiklik yalnız bura aiddir. */
 function roleLabel(t: Translate, role: string) {
+  if (role === "PSYCHOLOGIST") return t("prof.roleLabelPsychologist");
   return ROLES.includes(role) ? t(`roleLabel.${role}` as MessageKey) : role;
 }
 

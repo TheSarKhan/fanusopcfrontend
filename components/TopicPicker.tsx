@@ -11,9 +11,12 @@ import type { MessageKey } from "@/lib/i18n/messages";
  * tövsiyə olunmur — bu qəsdəndir: uyğunsuz nəticə göstərməkdənsə heç nə göstərmirik.
  */
 export const TOPIC_CODES = [
-  "ANXIETY", "DEPRESSION", "BURNOUT", "TRAUMA", "GRIEF",
-  "RELATIONSHIPS", "FAMILY", "PARENTING", "YOUTH", "LONELINESS",
-  "ANGER", "ADDICTION", "SELF_ESTEEM", "SLEEP", "SELF_GROWTH",
+  "ANXIETY", "DEPRESSION", "TRAUMA", "OCD", "PERSONALITY_DISORDERS",
+  "PSYCHOTIC_DISORDERS", "EATING_DISORDERS", "ADDICTION", "ADHD", "BURNOUT",
+  "ANGER", "GRIEF", "RELATIONSHIPS", "COUPLE_MARRIAGE", "FAMILY",
+  "INFIDELITY_TRUST", "SEPARATION_DIVORCE", "PARENTING", "CHILD_ISSUES", "YOUTH",
+  "SELF_ESTEEM", "LONELINESS", "SEXUAL_ISSUES", "SLEEP", "PSYCHOSOMATIC",
+  "WORK_CAREER", "LIFE_ADAPTATION", "SELF_GROWTH", "IDENTITY_EXISTENTIAL", "CRISIS_SELF_HARM",
 ] as const;
 
 /**
@@ -25,20 +28,35 @@ export const TOPIC_CODES = [
  */
 export const TOPIC_AZ_LABELS: Record<string, string> = {
   ANXIETY: "Narahatlıq və panika",
-  DEPRESSION: "Depressiya",
-  BURNOUT: "Tükənmişlik",
-  TRAUMA: "Travma",
+  DEPRESSION: "Depressiya və əhval pozuntuları",
+  TRAUMA: "Travma və PTSP",
+  OCD: "OKP və obsesiv düşüncələr",
+  PERSONALITY_DISORDERS: "Şəxsiyyət pozuntuları",
+  PSYCHOTIC_DISORDERS: "Psixotik pozuntular",
+  EATING_DISORDERS: "Qidalanma pozuntuları",
+  ADDICTION: "Asılılıqlar",
+  ADHD: "DEHB və neyroinkişaf pozuntuları",
+  BURNOUT: "Stress və tükənmişlik",
+  ANGER: "Qəzəb və emosiyaların idarəsi",
   GRIEF: "İtki və yas",
   RELATIONSHIPS: "Münasibətlər",
-  FAMILY: "Ailə",
+  COUPLE_MARRIAGE: "Cütlük və evlilik problemləri",
+  FAMILY: "Ailə problemləri",
+  INFIDELITY_TRUST: "Xəyanət və güvən problemləri",
+  SEPARATION_DIVORCE: "Ayrılıq və boşanma",
   PARENTING: "Valideynlik",
-  YOUTH: "Yeniyetmə və uşaq",
-  LONELINESS: "Tənhalıq",
-  ANGER: "Qəzəb və impuls",
-  ADDICTION: "Asılılıq",
-  SELF_ESTEEM: "Özünəinam",
-  SLEEP: "Yuxu",
-  SELF_GROWTH: "Özünüinkişaf",
+  CHILD_ISSUES: "Uşaq problemləri",
+  YOUTH: "Yeniyetmə problemləri",
+  SELF_ESTEEM: "Özünəinam və özünədəyər",
+  LONELINESS: "Tənhalıq və sosial çətinliklər",
+  SEXUAL_ISSUES: "Seksual problemlər",
+  SLEEP: "Yuxu problemləri",
+  PSYCHOSOMATIC: "Psixosomatik və sağlamlıq narahatlığı",
+  WORK_CAREER: "İş və karyera problemləri",
+  LIFE_ADAPTATION: "Həyat dəyişiklikləri və adaptasiya",
+  SELF_GROWTH: "Şəxsi inkişaf və özünü tanıma",
+  IDENTITY_EXISTENTIAL: "Kimlik və ekzistensial problemlər",
+  CRISIS_SELF_HARM: "Böhran və özünə zərər riski",
 };
 
 /** SELF_ESTEEM → selfEsteem */

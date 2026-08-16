@@ -137,20 +137,25 @@ function PsychologShell({ children }: { children: React.ReactNode }) {
   /** Nav filtri: yüklənibsə plan modulları, yoxsa statik fallback. */
   const isEnabled = (key: PsychologModuleKey) => (modules ? modules.has(key) : PSYCHOLOG_MODULES[key]);
 
-  // Bütün modullar. Kilidlilər (plan / statik) sidebar-dan çıxarılır.
+  // Bütün modullar, kateqoriya üzrə qruplaşdırılıb (bax PanelNavItem.group —
+  // eyni qrupa aid sətirlər ARDICIL olmalıdır, əks halda başlıq təkrarlanır).
+  // Kilidlilər (plan / statik) sidebar-dan çıxarılmır, qıfılla göstərilir.
+  const groupOverview = t("nav.groupOverview");
+  const groupPatients = t("nav.groupPatients");
+  const groupContent = t("nav.groupContent");
   const allNav: ModuleNavItem[] = [
-    { key: "dashboard",    href: "/psycholog",              label: t("nav.dashboard"),    icon: "home" },
-    { key: "calendar",     href: "/psycholog/calendar",     label: t("nav.calendar"),     icon: "calendar" },
-    { key: "appointments", href: "/psycholog/appointments", label: t("nav.appointments"), icon: "video" },
-    { key: "packages",     href: "/psycholog/packages",     label: t("nav.packages"),     icon: "package" },
-    { key: "clients",      href: "/psycholog/clients",      label: t("nav.clients"),      icon: "users" },
-    { key: "homework",     href: "/psycholog/homework",     label: t("nav.homework"),     icon: "check" },
-    { key: "tests",        href: "/psycholog/tests",        label: t("nav.tests"),        icon: "clipboard" },
-    { key: "articles",     href: "/psycholog/articles",     label: t("nav.articles"),     icon: "book" },
-    { key: "community",    href: "/psycholog/community",    label: t("nav.community"),    icon: "chat" },
-    { key: "resources",    href: "/psycholog/resources",    label: t("nav.resources"),    icon: "content" },
-    { key: "availability", href: "/psycholog/availability", label: t("nav.workHours"),    icon: "clock" },
-    { key: "reviews",      href: "/psycholog/reviews",      label: t("nav.reviews"),      icon: "star" },
+    { key: "dashboard",    href: "/psycholog",              label: t("nav.dashboard"),    icon: "home",      group: groupOverview },
+    { key: "calendar",     href: "/psycholog/calendar",     label: t("nav.calendar"),     icon: "calendar",  group: groupOverview },
+    { key: "appointments", href: "/psycholog/appointments", label: t("nav.appointments"), icon: "video",     group: groupOverview },
+    { key: "availability", href: "/psycholog/availability", label: t("nav.workHours"),    icon: "clock",     group: groupOverview },
+    { key: "clients",      href: "/psycholog/clients",      label: t("nav.clients"),      icon: "users",     group: groupPatients },
+    { key: "packages",     href: "/psycholog/packages",     label: t("nav.packages"),     icon: "package",   group: groupPatients },
+    { key: "homework",     href: "/psycholog/homework",     label: t("nav.homework"),     icon: "check",     group: groupPatients },
+    { key: "tests",        href: "/psycholog/tests",        label: t("nav.tests"),        icon: "clipboard", group: groupPatients },
+    { key: "reviews",      href: "/psycholog/reviews",      label: t("nav.reviews"),      icon: "star",      group: groupPatients },
+    { key: "articles",     href: "/psycholog/articles",     label: t("nav.articles"),     icon: "book",      group: groupContent },
+    { key: "community",    href: "/psycholog/community",    label: t("nav.community"),    icon: "chat",      group: groupContent },
+    { key: "resources",    href: "/psycholog/resources",    label: t("nav.resources"),    icon: "content",   group: groupContent },
   ];
 
   // Kilidli modullar GİZLƏDİLMİR — qıfılla görünür ki, psixoloq nəyin mövcud

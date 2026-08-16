@@ -2348,6 +2348,19 @@
   padding: 14px 12px; flex: 1;
   overflow-y: auto;
 }
+/* Sidebar kateqoriya başlığı (bax PanelNavItem.group). */
+.ps-nav__group {
+  padding: 14px 14px 4px;
+  font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--oxford-40, #8592A3);
+}
+.ps-nav__group:first-child { padding-top: 2px; }
+/* Yığılmış (collapsed) rail-də mətn oxunmur — başlıq incə bölücü xəttə çevrilir. */
+.ps-side.is-collapsed .ps-nav__group {
+  height: 1px; padding: 0; margin: 10px 10px 8px;
+  background: var(--oxford-10); font-size: 0; color: transparent; overflow: hidden;
+}
+.ps-side.is-collapsed .ps-nav__group:first-child { margin-top: 2px; }
 .ps-nav {
   display: flex; align-items: center; gap: 12px;
   padding: 10px 14px; border-radius: 10px;

@@ -24,6 +24,10 @@ export interface PanelNavItem {
   /** Plan modulu bağlıdır — sətir qıfılla göstərilir və klik naviqasiya etmir,
    *  `onLockedClick` çağırılır (məs. "planınızı dəyişin" modalı). */
   locked?: boolean;
+  /** Sidebar-da kateqoriya başlığı. Eyni `group` dəyərinə malik ardıcıl sətirlər
+   *  bir başlığın altında göstərilir — dəyər əvvəlki sətirdən fərqlənəndə yeni
+   *  başlıq çıxır. Boş buraxılsa başlıqsız (əvvəlki davranış) göstərilir. */
+  group?: string;
 }
 
 interface UserInfo {
@@ -181,7 +185,15 @@ export default function PanelShell({
         </div>
 
         <nav className="ps-side__nav">
-          {navItems.map((item) => {
+          {navItems.flatMap((item, idx) => {
+            const nodes: React.ReactNode[] = [];
+            const prevGroup = idx > 0 ? navItems[idx - 1].group : undefined;
+            if (item.group && item.group !== prevGroup) {
+              nodes.push(
+                <div key={`group-${idx}`} className="ps-nav__group">{item.group}</div>
+              );
+            }
+
             const active =
               pathname === item.href ||
               (item.href !== homeHref && pathname.startsWith(item.href + "/")) ||
@@ -189,7 +201,7 @@ export default function PanelShell({
               (item.match?.some((p) => pathname === p || pathname.startsWith(p + "/")) ?? false);
             // Plana daxil olmayan modul: naviqasiya yoxdur — qıfıl + izah modalı.
             if (item.locked) {
-              return (
+              nodes.push(
                 <button
                   key={item.href}
                   type="button"
@@ -205,8 +217,9 @@ export default function PanelShell({
                   </span>
                 </button>
               );
+              return nodes;
             }
-            return (
+            nodes.push(
               <Link
                 key={item.href}
                 href={item.href}
@@ -226,6 +239,7 @@ export default function PanelShell({
                 )}
               </Link>
             );
+            return nodes;
           })}
         </nav>
 

@@ -468,6 +468,7 @@ export const ru: typeof az = {
     showAllTags: "Показать все специализации ({n})",
     allTagsTitle: "{name} — все специализации",
     showAllLangs: "Показать все языки ({n})",
+    allLangsTitle: "{name} — все языки",
     showFewerTags: "Показать меньше",
     matchCtaTitle: "Ответьте на несколько коротких вопросов",
     matchCtaSub: "Подберём 3 наиболее подходящих психологов. Первая консультация бесплатна.",

@@ -466,6 +466,7 @@ export const tr: typeof az = {
     showAllTags: "Tüm {n} uzmanlık alanını göster",
     allTagsTitle: "{name} — tüm uzmanlık alanları",
     showAllLangs: "Tüm {n} dili göster",
+    allLangsTitle: "{name} — tüm diller",
     showFewerTags: "Daha az göster",
     matchCtaTitle: "Birkaç kısa soruyu yanıtlayın",
     matchCtaSub: "Size en uygun 3 psikoloğu önerelim. İlk tanışma görüşmesi ücretsizdir.",

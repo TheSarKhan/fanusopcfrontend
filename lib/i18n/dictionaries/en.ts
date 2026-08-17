@@ -465,6 +465,7 @@ export const en: typeof az = {
     showAllTags: "Show all {n} specialties",
     allTagsTitle: "{name} — all specialties",
     showAllLangs: "Show all {n} languages",
+    allLangsTitle: "{name} — all languages",
     showFewerTags: "Show fewer",
     matchCtaTitle: "Answer a few quick questions",
     matchCtaSub: "We'll suggest 3 best-matched therapists. The first intro call is free.",

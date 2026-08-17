@@ -126,8 +126,8 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
   const { containerRef: tagsRef, measureRef: tagsMeasureRef, visibleCount: visibleTagCount } = useSingleRowFit(sortedSpecs);
   const hiddenTagCount = sortedSpecs.length - visibleTagCount;
   const [tagsPopupOpen, setTagsPopupOpen] = useState(false);
-  const [langsExpanded, setLangsExpanded] = useState(false);
-  const visibleLangs = langsExpanded ? langs : langs.slice(0, LANG_CAP);
+  const [langsPopupOpen, setLangsPopupOpen] = useState(false);
+  const visibleLangs = langs.slice(0, LANG_CAP);
   const hiddenLangCount = langs.length - LANG_CAP;
 
   return (
@@ -225,33 +225,47 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
       </div>
 
       {langs.length > 0 && (
-        <div className="pc-langs">
-          {visibleLangs.map((l, i) => (
-            <span key={i} className="pc-lang-pill" title={l}>
-              <span className="pc-flag"><FlagIcon lang={l} /></span>
-              {langCode(l)}
-            </span>
-          ))}
-          {!langsExpanded && hiddenLangCount > 0 && (
-            <button
-              type="button"
-              className="pc-lang-pill pc-lang-pill--more"
-              onClick={() => setLangsExpanded(true)}
-              aria-label={t("psyList.showAllLangs", { n: langs.length })}
-            >
-              +{hiddenLangCount}
-            </button>
+        <>
+          <div className="pc-langs">
+            {visibleLangs.map((l, i) => (
+              <span key={i} className="pc-lang-pill" title={l}>
+                <span className="pc-flag"><FlagIcon lang={l} /></span>
+                {langCode(l)}
+              </span>
+            ))}
+            {hiddenLangCount > 0 && (
+              <button
+                type="button"
+                className="pc-lang-pill pc-lang-pill--more"
+                onClick={(e) => { e.preventDefault(); setLangsPopupOpen(true); }}
+                aria-label={t("psyList.showAllLangs", { n: langs.length })}
+              >
+                +{hiddenLangCount}
+              </button>
+            )}
+          </div>
+          {langsPopupOpen && createPortal(
+            <div className="pc-tags-backdrop" onClick={() => setLangsPopupOpen(false)}>
+              <div className="pc-tags-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="pc-tags-modal__head">
+                  <span>{t("psyList.allLangsTitle", { name: p.name })}</span>
+                  <button type="button" className="pc-tags-modal__close" onClick={() => setLangsPopupOpen(false)} aria-label={t("common.close")}>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                  </button>
+                </div>
+                <div className="pc-tags-modal__body">
+                  {langs.map((l, i) => (
+                    <span key={i} className="pc-lang-pill" title={l}>
+                      <span className="pc-flag"><FlagIcon lang={l} /></span>
+                      {langCode(l)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>,
+            document.body
           )}
-          {langsExpanded && langs.length > LANG_CAP && (
-            <button
-              type="button"
-              className="pc-lang-pill pc-lang-pill--more"
-              onClick={() => setLangsExpanded(false)}
-            >
-              {t("psyList.showFewerTags")}
-            </button>
-          )}
-        </div>
+        </>
       )}
 
       <div className="pc-actions">

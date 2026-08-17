@@ -473,6 +473,7 @@ export const az = {
     showAllTags: "Bütün {n} ixtisası göstər",
     allTagsTitle: "{name} — bütün ixtisaslar",
     showAllLangs: "Bütün {n} dili göstər",
+    allLangsTitle: "{name} — bütün dillər",
     showFewerTags: "Daha az göstər",
     matchCtaTitle: "Bir neçə qısa sual cavablandırın",
     matchCtaSub: "Sizə ən uyğun 3 psixoloqu təklif edək. İlk tanışlıq görüşü ödənişsizdir.",

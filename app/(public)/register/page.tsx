@@ -513,18 +513,26 @@ function PsychologistForm({ onBack }: { onBack: () => void }) {
     } finally { setLoading(false); }
   };
 
+  // Qeydiyyat bitəndə psixoloq email-ini təsdiqləməyi qaçıra bilməsin deyə
+  // inline panel yox, çıxışı bloklayan MODAL göstərilir (yalnız "Ana səhifə"
+  // düyməsi ilə bağlanır) — spam qovluğu xatırlatması da burada verilir.
   if (success) return (
-    <div style={{ textAlign: "center", padding: "20px 0" }}>
-      <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--sage-soft)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-        <svg width="28" height="28" fill="none" stroke="var(--sage)" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M20 6L9 17l-5-5" />
-        </svg>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(15,28,46,0.5)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div style={{ background: "#fff", borderRadius: 16, width: "min(440px, 100%)", padding: "32px 28px", boxShadow: "0 18px 50px rgba(10,26,51,0.28)", textAlign: "center" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--sage-soft)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+          <svg width="28" height="28" fill="none" stroke="var(--sage)" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+        </div>
+        <h2 style={{ fontFamily: "var(--serif)", fontSize: 22, color: "var(--oxford)", marginBottom: 10 }}>{t("regPage.appliedTitle")}</h2>
+        <p style={{ fontSize: 14, color: "var(--oxford-60)", marginBottom: 14, lineHeight: 1.5 }}>
+          {t("regPage.appliedBody", { email: personal.email })}
+        </p>
+        <p style={{ fontSize: 12.5, color: "#92400E", background: "#FEF3C7", border: "1px solid #FDE68A", borderRadius: 10, padding: "9px 12px", marginBottom: 24, lineHeight: 1.5 }}>
+          {t("regPage.appliedSpamHint")}
+        </p>
+        <Link href="/" className="btn btn-primary" style={{ borderRadius: 10, display: "block", textAlign: "center", height: 50, lineHeight: "50px" }}>{t("regPage.backHome")}</Link>
       </div>
-      <h2 style={{ fontFamily: "var(--serif)", fontSize: 24, color: "var(--oxford)", marginBottom: 10 }}>{t("regPage.appliedTitle")}</h2>
-      <p style={{ fontSize: 14, color: "var(--oxford-60)", marginBottom: 28 }}>
-        {t("regPage.appliedBody", { email: personal.email })}
-      </p>
-      <Link href="/" className="btn btn-primary" style={{ borderRadius: 10, display: "block", textAlign: "center", height: 50, lineHeight: "50px" }}>{t("regPage.backHome")}</Link>
     </div>
   );
 

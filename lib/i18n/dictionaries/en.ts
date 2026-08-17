@@ -1269,6 +1269,7 @@ export const en: typeof az = {
     emailSentBody: "A verification link has been sent to {email}.",
     appliedTitle: "Your application has been received!",
     appliedBody: "We sent a confirmation link to {email} — please click it first. Once confirmed, our team will review your details and notify you.",
+    appliedSpamHint: "Don't see it in your inbox? Please also check your Spam / Junk folder.",
     backHome: "Back to home page",
     phoneOptional: "Phone (optional)",
     confirmPassword: "Confirm password",

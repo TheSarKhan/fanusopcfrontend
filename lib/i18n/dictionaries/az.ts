@@ -1312,6 +1312,7 @@ export const az = {
     emailSentBody: "{email} ünvanına təsdiq linki göndərildi.",
     appliedTitle: "Müraciətiniz qəbul edildi!",
     appliedBody: "{email} ünvanına təsdiq linki göndərdik — əvvəlcə həmin linkə klikləyin. Təsdiqdən sonra komandamız məlumatlarınızı yoxlayıb sizə bildiriş göndərəcək.",
+    appliedSpamHint: "Məktubu Gələnlər qutusunda görmürsünüzsə, Spam (Yararsız poçt) qovluğunu da yoxlayın.",
     backHome: "Ana səhifəyə qayıt",
     phoneOptional: "Telefon (opsional)",
     confirmPassword: "Şifrəni təsdiqlə",

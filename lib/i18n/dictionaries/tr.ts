@@ -1292,6 +1292,7 @@ export const tr: typeof az = {
     emailSentBody: "{email} adresine doğrulama bağlantısı gönderildi.",
     appliedTitle: "Başvurunuz alındı!",
     appliedBody: "{email} adresine bir onay bağlantısı gönderdik — önce ona tıklayın. Onaydan sonra ekibimiz bilgilerinizi inceleyip size bildirim gönderecek.",
+    appliedSpamHint: "Gelen kutunuzda görmüyorsanız Spam (Gereksiz) klasörünü de kontrol edin.",
     backHome: "Ana sayfaya dön",
     phoneOptional: "Telefon (isteğe bağlı)",
     confirmPassword: "Şifreyi doğrula",

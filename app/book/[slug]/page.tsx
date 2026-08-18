@@ -160,6 +160,17 @@ export default function BookPsychologistPage() {
     }
   }, []);
 
+  // Pasiyent panelində daim görünən WhatsApp düyməsi (bottom:20px, fixed) mobil
+  // ekranda bu səhifənin öz "müraciət göndər" sticky alt panelinin (bkx-bottombar)
+  // üstünə düşürdü — z-index-i daha yüksək olduğu üçün düyməni örtürdü. Yalnız bu
+  // səhifədə olduğu müddətdə WhatsApp düyməsini yuxarı itələyirik (bax
+  // components/WhatsAppButton.tsx-dəki .has-bkx-bottombar qaydası), digər
+  // səhifələrdə toxunulmur.
+  useEffect(() => {
+    document.body.classList.add("has-bkx-bottombar");
+    return () => document.body.classList.remove("has-bkx-bottombar");
+  }, []);
+
   useEffect(() => {
     // psychologist yüklənməmişsə ümumi (psixoloqdan asılı olmayan) haqq yoxlanır;
     // yükləndikdən sonra bu psixoloqla artıq tanışlıq götürülüb-götürülmədiyi də nəzərə alınır.

@@ -686,19 +686,16 @@ export default function ProfileView({
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 5,
-                      background: "linear-gradient(135deg, #1051B7, #0B3F90)",
-                      color: "#FFFFFF",
-                      fontSize: 12,
+                      background: "none",
+                      color: "#1051B7",
+                      fontSize: 13,
                       fontWeight: 700,
-                      letterSpacing: ".03em",
-                      padding: "4px 11px",
-                      borderRadius: 999,
+                      padding: 0,
                       border: "none",
                       cursor: "pointer",
-                      boxShadow: "0 2px 8px rgba(16,81,183,.25)",
                     }}
                   >
-                    <VerifiedBadgeIcon size={13} />
+                    <VerifiedBadgeIcon size={19} />
                     {t("psyProfile.verified")}
                   </button>
                 )}

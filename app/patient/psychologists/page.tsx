@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getPsychologists, patientApi, type Psychologist, type MyReview } from "@/lib/api";
 import { toast } from "@/components/Toast";
+import { VerifiedBadgeIcon } from "@/components/PsychologistCard";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import PageHeader from "@/components/PageHeader";
@@ -312,27 +313,23 @@ function PsyCard({
         </svg>
       </button>
 
-      {/* Kimlik — dairəvi şəkil, təsdiq nişanı şəklin üstündə (ad yanında ayrıca
-          etiket deyil), sonra ad və ixtisas. */}
+      {/* Kimlik — dairəvi şəkil, təsdiq nişanı adın yanında, sonra ixtisas. */}
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18, paddingRight: 56 }}>
-        <span style={{ position: "relative", flex: "none" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 76, height: 76, borderRadius: "50%", background: p.accentColor || "var(--brand-700)", color: "#fff", fontSize: 22, fontWeight: 700, overflow: "hidden", boxShadow: "0 0 0 4px #fff, 0 0 0 5px #EDF1F8" }}>
-            {p.photoUrl ? (
+        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 76, height: 76, borderRadius: "50%", background: p.accentColor || "var(--brand-700)", color: "#fff", fontSize: 22, fontWeight: 700, overflow: "hidden", boxShadow: "0 0 0 4px #fff, 0 0 0 5px #EDF1F8", flex: "none" }}>
+          {p.photoUrl ? (
 
-              <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : initialsOf(p.name)}
-          </span>
-          {verified && (
-            <span
-              title={t("patPsyList.verified")}
-              aria-label={t("patPsyList.verified")}
-              style={{ position: "absolute", right: -1, bottom: -1, width: 24, height: 24, borderRadius: "50%", background: "#10B981", border: "3px solid #fff", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-            </span>
-          )}
+            <img src={p.photoUrl} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : initialsOf(p.name)}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 21, fontWeight: 800, color: "var(--oxford)", lineHeight: 1.2, letterSpacing: "-.01em", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <div style={{ fontSize: 21, fontWeight: 800, color: "var(--oxford)", lineHeight: 1.2, letterSpacing: "-.01em", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+            {verified && (
+              <span title={t("patPsyList.verified")} aria-label={t("patPsyList.verified")} style={{ display: "inline-flex", flexShrink: 0, color: "var(--brand)" }}>
+                <VerifiedBadgeIcon size={18} />
+              </span>
+            )}
+          </div>
           <div style={{ fontSize: 14.5, color: "var(--oxford-60)", fontWeight: 600, marginTop: 4 }}>{p.title}</div>
         </div>
       </div>

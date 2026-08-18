@@ -155,7 +155,7 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
                 aria-label={t("pub.verifiedPsy")}
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); toast(t("psyList.verifiedNoteBody"), "info"); }}
               >
-                <VerifiedBadgeIcon size={13} />
+                <VerifiedBadgeIcon size={17} />
               </button>
             )}
           </div>
@@ -334,8 +334,8 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
         }
         .pc-verified {
           display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-          width: 20px; height: 20px; border-radius: 999px;
-          background: var(--fanus-primary); color: #fff;
+          width: 18px; height: 18px;
+          background: none; color: var(--fanus-primary);
           border: none; padding: 0; margin: 0;
           cursor: pointer; font-family: inherit;
         }
@@ -452,6 +452,14 @@ function StarIcon() {
 }
 function ClockIcon() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" /></svg>; }
 function HourIcon() { return <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 22h14M5 2h14M17 22v-4.18a2 2 0 00-.59-1.41L13 13l3.41-3.41A2 2 0 0017 8.18V4M7 22v-4.18a2 2 0 01.59-1.41L11 13 7.59 9.59A2 2 0 017 8.18V4" /></svg>; }
-/** Universal "verified" simvolu — dairə + tik (Twitter/Instagram üslubu), qalxan
- *  formasından daha aydındır: hər kəs bunu dərhal "doğrulanıb" kimi tanıyır. */
-export function VerifiedBadgeIcon({ size = 16 }: { size?: number }) { return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.3" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.5 2.5L16 9.5" /></svg>; }
+/** Fanus tərəfindən doğrulanmış nişan — 12-guşəli möhür + ağ tik (Twitter/Instagram/
+ *  Facebook üslubu). Tik SVG-də DEŞİK kimi kəsilir (evenodd) — arxa fon ağ/açıq
+ *  olmalıdır ki, tik ağ görünsün (özü rəngli fon daşımır). Rəng `currentColor`-dan
+ *  gəlir — çağıran element `color`-u marka mavisinə (var(--fanus-primary)) qoyur. */
+export function VerifiedBadgeIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path fillRule="evenodd" clipRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.306 4.491 4.491 0 011.307 3.498 4.49 4.49 0 011.549 3.397 4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307 4.49 4.49 0 01-3.397 1.549 4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 10-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" />
+    </svg>
+  );
+}

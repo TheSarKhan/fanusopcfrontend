@@ -22,8 +22,6 @@ import { FlagIcon, langCode } from "@/components/FlagIcons";
 
 export { FlagIcon } from "@/components/FlagIcons";
 
-const LANG_CAP = 3;
-
 /** "+N" nişanı üçün ehtiyat en (px) — sığım hesablananda son taqdan sonra
  *  yer qalmasa "+N" özü kəsilib qırağa çıxa bilər, ona görə əvvəlcədən ayrılır. */
 const MORE_BADGE_RESERVE = 46;
@@ -127,8 +125,10 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
   const hiddenTagCount = sortedSpecs.length - visibleTagCount;
   const [tagsPopupOpen, setTagsPopupOpen] = useState(false);
   const [langsPopupOpen, setLangsPopupOpen] = useState(false);
-  const visibleLangs = langs.slice(0, LANG_CAP);
-  const hiddenLangCount = langs.length - LANG_CAP;
+  // Dil pilləri də ixtisas taqları kimi konteynerin öz eninə görə ölçülür —
+  // sabit ədədlə kəsilmir, sətrə sığan qədəri göstərilir, qalanı "+N" popup-a düşür.
+  const { containerRef: langsRef, measureRef: langsMeasureRef, visibleCount: visibleLangCount } = useSingleRowFit(langs);
+  const hiddenLangCount = langs.length - visibleLangCount;
 
   return (
     <article className="pc-card">
@@ -226,8 +226,8 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
 
       {langs.length > 0 && (
         <>
-          <div className="pc-langs">
-            {visibleLangs.map((l, i) => (
+          <div className="pc-langs" ref={langsRef}>
+            {langs.slice(0, visibleLangCount).map((l, i) => (
               <span key={i} className="pc-lang-pill" title={l}>
                 <span className="pc-flag"><FlagIcon lang={l} /></span>
                 {langCode(l)}
@@ -243,6 +243,17 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
                 +{hiddenLangCount}
               </button>
             )}
+          </div>
+          {/* Görünməz ölçmə sırası — dil pillərinin təbii enini bilmək üçün. */}
+          <div style={{ position: "relative", width: 0, height: 0, overflow: "hidden" }} aria-hidden>
+            <div ref={langsMeasureRef} style={{ position: "absolute", display: "flex", gap: TAG_GAP, whiteSpace: "nowrap" }}>
+              {langs.map((l, i) => (
+                <span key={i} className="pc-lang-pill">
+                  <span className="pc-flag"><FlagIcon lang={l} /></span>
+                  {langCode(l)}
+                </span>
+              ))}
+            </div>
           </div>
           {langsPopupOpen && createPortal(
             <div className="pc-tags-backdrop" onClick={() => setLangsPopupOpen(false)}>
@@ -387,9 +398,9 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
         .pc-meta-item--rating svg { color: #C97D2E; }
         .pc-meta-sub { color: var(--fanus-ink-3); font-weight: 500; }
 
-        .pc-langs { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+        .pc-langs { display: flex; flex-wrap: nowrap; gap: 8px; width: 100%; min-width: 0; overflow: hidden; }
         .pc-lang-pill {
-          white-space: nowrap;
+          flex-shrink: 0; white-space: nowrap;
           display: inline-flex; align-items: center; gap: 6px;
           font-size: 12.5px; font-weight: 500; color: var(--fanus-ink-2);
           padding: 5px 12px 5px 7px; border-radius: 999px;

@@ -4,7 +4,6 @@ import Link from "next/link";
 import type { Psychologist } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import PsychologistCard, { toPsyCardItem, type PsyCardItem } from "@/components/PsychologistCard";
-import HorizontalCardRail from "@/components/HorizontalCardRail";
 
 export default function Psychologists({ psychologists }: { psychologists?: Psychologist[] }) {
   const { t } = useT();
@@ -19,9 +18,9 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
           <p className="fanus-psyc__lead">{t("psyList.lead")}</p>
         </div>
 
-        <HorizontalCardRail className="fanus-psyc__grid">
+        <div className="fanus-psyc__grid">
           {data.map((p) => <PsychologistCard key={p.id} p={p} />)}
-        </HorizontalCardRail>
+        </div>
 
         <div className="fanus-psyc__foot">
           <Link href="/psychologists" className="fanus-btn fanus-btn-ghost">
@@ -41,13 +40,7 @@ export default function Psychologists({ psychologists }: { psychologists?: Psych
           margin: 0;
         }
         .fanus-psyc__lead { margin: 12px auto 0; max-width: 540px; font-size: 17px; color: var(--fanus-ink-3); }
-        .fanus-psyc__grid { display: flex; gap: 22px; overflow-x: auto; padding: 2px 2px 18px; scroll-snap-type: x proximity; }
-        .fanus-psyc__grid > .pc-card { flex: 0 0 min(300px, calc(100vw - 48px)); min-width: 0; scroll-snap-align: start; }
-        .card-rail { scrollbar-width: thin; scrollbar-color: var(--fanus-primary-200) transparent; cursor: grab; touch-action: pan-x; user-select: none; }
-        .card-rail--dragging { cursor: grabbing; scroll-snap-type: none; }
-        .card-rail--dragging a { pointer-events: none; }
-        .card-rail::-webkit-scrollbar { height: 7px; }
-        .card-rail::-webkit-scrollbar-thumb { background: var(--fanus-primary-200); border-radius: 999px; }
+        .fanus-psyc__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 22px; }
         .fanus-psyc__foot { display: flex; justify-content: center; margin-top: 40px; }
       `}</style>
     </section>

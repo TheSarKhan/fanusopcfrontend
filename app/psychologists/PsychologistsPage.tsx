@@ -5,7 +5,6 @@ import Deco from "@/components/Deco";
 import Breadcrumb from "@/components/Breadcrumb";
 import SessionRequestModal from "@/components/SessionRequestModal";
 import PsychologistCard, { toPsyCardItem, VerifiedBadgeIcon, type PsyCardItem } from "@/components/PsychologistCard";
-import HorizontalCardRail from "@/components/HorizontalCardRail";
 import type { Psychologist } from "@/lib/api";
 import { withSlugs } from "@/lib/slug";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -118,9 +117,9 @@ function PsycList({ items }: { items: PsyCardItem[] }) {
         </div>
 
         {items.length > 0 ? (
-          <HorizontalCardRail className="pp-grid">
+          <div className="pp-grid">
             {items.map((p) => <PsychologistCard key={p.id} p={p} />)}
-          </HorizontalCardRail>
+          </div>
         ) : (
           <p className="pp-list__empty">{t("pub.noPsychologists")}</p>
         )}
@@ -134,13 +133,7 @@ function PsycList({ items }: { items: PsyCardItem[] }) {
         .pp-list__count strong { color: var(--fanus-ink); font-weight: 700; }
         .pp-list__empty { padding: 40px 0; text-align: center; color: var(--fanus-ink-3); font-size: 15px; }
 
-        .pp-grid { display: flex; gap: 22px; overflow-x: auto; padding: 2px 2px 18px; scroll-snap-type: x proximity; }
-        .pp-grid > .pc-card { flex: 0 0 min(300px, calc(100vw - 48px)); min-width: 0; scroll-snap-align: start; }
-        .card-rail { scrollbar-width: thin; scrollbar-color: var(--fanus-primary-200) transparent; cursor: grab; touch-action: pan-x; user-select: none; }
-        .card-rail--dragging { cursor: grabbing; scroll-snap-type: none; }
-        .card-rail--dragging a { pointer-events: none; }
-        .card-rail::-webkit-scrollbar { height: 7px; }
-        .card-rail::-webkit-scrollbar-thumb { background: var(--fanus-primary-200); border-radius: 999px; }
+        .pp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 22px; }
       `}</style>
     </section>
   );

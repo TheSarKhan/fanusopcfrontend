@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   getPsychologistAvailability,
@@ -131,6 +131,12 @@ export default function BookPsychologistPage() {
   // Eligible olduqda göstərilən "istəyirsiniz?" bannerinin cavablanıb-cavablanmadığı —
   // TypeCard-lar bu cavabı istənilən vaxt dəyişdirmək üçün mexanizm kimi qalır.
   const [introPromptAnswered, setIntroPromptAnswered] = useState(false);
+  // Banner (Bəli/Xeyr düymələri) asinxron introEligibility yükləndikdən sonra
+  // görünür — mobil ekranda skrol mövqeyi əvvəldən qalır, düymələr sticky alt
+  // panelin kənarında sıxılmış/kəsilmiş kimi görünürdü (istifadəçi bunu bug
+  // sanır). Banner görünən kimi onu sticky paneldən yuxarıda, rahat görünəcək
+  // şəkildə görünüş sahəsinə skrol edirik.
+  const introBannerRef = useRef<HTMLDivElement>(null);
   // sessionKind toggle olunanda grid yenidən yüklənir — page-level `loading`-dən ayrı.
   const [slotsLoading, setSlotsLoading] = useState(false);
 
@@ -170,6 +176,14 @@ export default function BookPsychologistPage() {
     document.body.classList.add("has-bkx-bottombar");
     return () => document.body.classList.remove("has-bkx-bottombar");
   }, []);
+
+  // Bax introBannerRef qeydinə: banner görünəndə skrol mövqeyini elə tənzimləyirik
+  // ki, "Bəli/Xeyr" düymələri sticky alt panelin kənarına sıxılmasın.
+  useEffect(() => {
+    if (introEligibility?.eligible && !introPromptAnswered) {
+      introBannerRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  }, [introEligibility?.eligible, introPromptAnswered]);
 
   useEffect(() => {
     // psychologist yüklənməmişsə ümumi (psixoloqdan asılı olmayan) haqq yoxlanır;
@@ -605,6 +619,9 @@ export default function BookPsychologistPage() {
     @media (max-width: 980px) {
       .bkx-bottombar { display: flex; }
       .bkx-app { padding-bottom: 104px !important; }
+      /* Bax introBannerRef qeydinə — scrollIntoView({block:"end"}) bu boşluğu
+         sticky paneldən sonra buraxır, Bəli/Xeyr düymələri kənarına sıxılmır. */
+      .bkx-intro-banner { scroll-margin-bottom: 96px; }
     }
 
     /* ── Animations ─────────────────────────────────────────────────────── */
@@ -905,7 +922,7 @@ export default function BookPsychologistPage() {
                   <SectionHead n={1} title={t("pkg.chooseType")} />
 
                   {introEligibility?.eligible && !introPromptAnswered && (
-                    <div style={{ background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 12, padding: 16, marginBottom: 14 }}>
+                    <div ref={introBannerRef} className="bkx-intro-banner" style={{ background: "var(--brand-50)", border: "1px solid var(--brand-100)", borderRadius: 12, padding: 16, marginBottom: 14 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--brand-700)", marginBottom: 4 }}>
                         Sizin 1 dəfəlik pulsuz 15 dəqiqəlik tanışlıq görüşü keçirmək şansınız var
                         {introEligibility.usedCount >= 1 ? ` (${azOrdinal(introEligibility.usedCount + 1)} pulsuz seans)` : ""}.

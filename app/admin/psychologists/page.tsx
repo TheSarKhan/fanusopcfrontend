@@ -1029,7 +1029,7 @@ function DisplayTab() {
   );
 }
 
-/** Bölmə 1 — landing page üçün ≤6 psixoloq seçimi + sırası. Hər klik dərhal saxlanır (Saxla düyməsi yoxdur). */
+/** Bölmə 1 — landing page üçün psixoloq seçimi + sırası (limitsiz). Hər klik dərhal saxlanır (Saxla düyməsi yoxdur). */
 function FeaturedPickerCard() {
   const [selected, setSelected] = useState<AdminPsychologistRow[] | null>(null);
   const [all, setAll] = useState<AdminPsychologistRow[] | null>(null);
@@ -1059,7 +1059,7 @@ function FeaturedPickerCard() {
   };
 
   const add = (p: AdminPsychologistRow) => {
-    if (!selected || selected.length >= 6 || selected.some((x) => x.id === p.id)) return;
+    if (!selected || selected.some((x) => x.id === p.id)) return;
     withPending(p.id, () => persist([...selected.map((x) => x.id), p.id]));
   };
 
@@ -1086,7 +1086,7 @@ function FeaturedPickerCard() {
   return (
     <Card>
       <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--hairline)" }}>
-        <div style={{ fontWeight: 700 }}>Ön səhifə — 6 psixoloq</div>
+        <div style={{ fontWeight: 700 }}>Ön səhifə psixoloqları</div>
         <div className="fx-subtitle">Landing page-də görünəcək psixoloqlar və sırası. Seçilməyəndə bu bölmə boş qalır. Hər dəyişiklik dərhal saxlanır.</div>
       </div>
       <CardPad>
@@ -1103,7 +1103,7 @@ function FeaturedPickerCard() {
             />
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "14px 0 6px" }}>
-              <span className="fx-label" style={{ marginBottom: 0 }}>Seçilmiş ({selected.length}/6)</span>
+              <span className="fx-label" style={{ marginBottom: 0 }}>Seçilmiş ({selected.length})</span>
             </div>
 
             <div style={{ border: "1px solid var(--hairline)", borderRadius: 10, overflow: "hidden", maxHeight: 420, overflowY: "auto" }}>
@@ -1146,7 +1146,7 @@ function FeaturedPickerCard() {
                   </div>
                   <IconButton
                     aria-label="Əlavə et"
-                    disabled={selected.length >= 6 || pendingIds.has(r.id)}
+                    disabled={pendingIds.has(r.id)}
                     onClick={() => add(r)}
                   >
                     <PanelIcon name="plus" size={15} />

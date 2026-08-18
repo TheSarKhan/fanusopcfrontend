@@ -8,7 +8,16 @@ name: Deploy frontend (fanusopc.com + khansoft.az staging)
 #
 # 07.08.2026: əvvəl STAGING prod bitəndən SONRA başlayırdı — hər ikisi tam
 # `npm run build` apardığı üçün (~5 dəq/ədəd) cəmi deploy vaxtı 5 dəq-dən
-# 10-11 dəq-ə qalxdı. Paralelə keçirilib, indi ~5-6 dəq-dir.
+# 10-11 dəq-ə qalxdı. Paralelə keçirilib, ~5-6 dəq-ə düşdü.
+#
+# 18.08.2026: npm ci indi package-lock.json dəyişməyəndə ötürülür, webpack
+# keşi (.next/cache) atomik swap-dan sonra da köçürülür (deploy.sh, serverdə) —
+# build ~60-95s-ə düşdü. Bundan sonra qalan ən böyük itki: CI job STAGING
+# bitənə qədər gözləyirdi, halbuki STAGING uğursuz olsa belə PROD-u BLOKLAMIR
+# (aşağıda). Ona görə STAGING artıq serverdə ARXA PLANDA (nohup+disown) buraxılır,
+# CI job onu GÖZLƏMİR — job PROD bitən kimi bitir. STAGING öz loguna yazır
+# (serverdə /var/www/fanusopcfrontend-staging/last-deploy.log), problem olsa
+# ora baxılmalıdır.
 #
 # PROD uğursuz olsa job "uğursuz"dur. STAGING uğursuz olsa yalnız xəbərdarlıq —
 # prod bunun girovu deyil.
@@ -39,51 +48,36 @@ jobs:
         run: |
           set -uo pipefail
           # GitHub Actions `run:` addımlarını defolt `bash -e {0}` ilə işə salır —
-          # yuxarıdakı `set -uo pipefail` bunu SÖNDÜRMÜR (yalnız əlavə edir).
-          # `wait` çağırışları qəsdən sıfırdan fərqli qaytara bilər (exit kodunu
-          # özümüz yoxlayırıq) — miras `-e` aktiv qalsa, ilk uğursuz `wait`-də
-          # skript SƏSSİZCƏ ölür, heç bir log çap olunmur (08.08.2026-da baş verdi:
-          # "Process completed with exit code 1", heç bir izah yox). Ona görə
-          # açıq şəkildə söndürülür.
+          # yuxarıdakı `set -uo pipefail` bunu SÖNDÜRMÜR (yalnız əlavə edir). PROD
+          # SSH çağırışının exit kodunu özümüz yoxlayırıq (aşağıda) — miras `-e`
+          # aktiv qalsa, uğursuz olanda skript SƏSSİZCƏ ölür, heç bir log çap
+          # olunmur (08.08.2026-da baş verdi: "Process completed with exit code 1",
+          # heç bir izah yox). Ona görə açıq şəkildə söndürülür.
           set +e
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          echo ">> PROD + STAGING paralel deploy edilir..."
-
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$USER@$HOST" \
-            'bash /var/www/fanusopcfrontend/deploy.sh' \
-            > /tmp/prod-deploy.log 2>&1 &
-          PROD_PID=$!
-
+          echo ">> STAGING serverdə arxa planda başladılır (CI onu gözləmir)..."
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$USER@$HOST" \
             'if [ -d /var/www/fanusopcfrontend-staging ]; then
-               SERVICE=fanus-frontend-staging PORT=3002 HOSTHDR=khansoft.az \
-                 bash /var/www/fanusopcfrontend-staging/deploy.sh
+               cd /var/www/fanusopcfrontend-staging
+               nohup env SERVICE=fanus-frontend-staging PORT=3002 HOSTHDR=khansoft.az \
+                 bash deploy.sh > last-deploy.log 2>&1 < /dev/null &
+               disown
+               echo "STAGING başladıldı (log: last-deploy.log)"
              else
                echo "ℹ️ staging qovluğu yoxdur — ötürülür"
-             fi' \
-            > /tmp/staging-deploy.log 2>&1 &
-          STAGING_PID=$!
+             fi'
 
-          wait "$PROD_PID";    PROD_EXIT=$?
-          wait "$STAGING_PID"; STAGING_EXIT=$?
-
-          echo "════ PROD log ════"
-          cat /tmp/prod-deploy.log
-          echo "════ STAGING log ════"
-          cat /tmp/staging-deploy.log
+          echo ">> PROD deploy edilir (CI bunu gözləyir)..."
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$USER@$HOST" \
+            'bash /var/www/fanusopcfrontend/deploy.sh'
+          PROD_EXIT=$?
 
           if [ "$PROD_EXIT" -ne 0 ]; then
             echo "❌ PROD deploy uğursuz oldu (exit $PROD_EXIT)"
             exit 1
           fi
           echo "✅ PROD deploy uğurlu"
-
-          if [ "$STAGING_EXIT" -ne 0 ]; then
-            echo "⚠️ STAGING deploy uğursuz oldu (exit $STAGING_EXIT) — prod bundan asılı deyil"
-          else
-            echo "✅ STAGING deploy uğurlu"
-          fi

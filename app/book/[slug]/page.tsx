@@ -624,6 +624,21 @@ export default function BookPsychologistPage() {
       .bkx-intro-banner { scroll-margin-bottom: 96px; }
     }
 
+    /* Telefon eninə xüsusi yığcamlaşdırma — sticky "müraciət göndər" panelinə
+       çatana qədər az skrol lazım olsun deyə üst hissələr (breadcrumb, başlıq,
+       psixoloq kartı, addım göstəricisi) sıxlaşdırılır. */
+    @media (max-width: 600px) {
+      .bkx-app { padding: 16px 14px 104px !important; }
+      .bkx-breadcrumb { margin-bottom: 8px !important; font-size: 12px !important; }
+      .bkx-title { font-size: 20px !important; margin: 0 0 12px !important; }
+      .bkx-summary-card { padding: 12px !important; gap: 10px !important; }
+      .bkx-summary-avatar { width: 42px !important; height: 42px !important; font-size: 14px !important; border-radius: 12px !important; }
+      .bkx-stepper { padding: 10px 12px !important; }
+      .bkx-stepper-dot { width: 24px !important; height: 24px !important; font-size: 11px !important; }
+      .bkx-stepper-label { font-size: 10px !important; }
+      .bkx-step { padding: 14px !important; }
+    }
+
     /* ── Animations ─────────────────────────────────────────────────────── */
     @keyframes bkx-fade-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes bkx-fade { from { opacity: 0; } to { opacity: 1; } }
@@ -861,12 +876,12 @@ export default function BookPsychologistPage() {
       <div className="bkx-app" style={{ width: "100%", padding: "30px 32px 56px", maxWidth: "min(1360px, 94vw)", margin: "0 auto" }}>
 
         {/* breadcrumb + title */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 14 }}>
+        <div className="bkx-breadcrumb" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 14 }}>
           <button type="button" onClick={() => router.back()} style={{ background: "none", border: "none", color: "var(--oxford-60)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: 0, fontSize: 13 }}>Psixoloqlar</button>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C9D6EC" strokeWidth="2" strokeLinecap="round"><path d="M9 6l6 6-6 6" /></svg>
           <span style={{ color: "var(--oxford)" }}>Randevu al</span>
         </div>
-        <h1 style={{ margin: "0 0 22px", fontSize: 27, fontWeight: 800, letterSpacing: "-.02em" }}>{t("book.subtitle")}</h1>
+        <h1 className="bkx-title" style={{ margin: "0 0 22px", fontSize: 27, fontWeight: 800, letterSpacing: "-.02em" }}>{t("book.subtitle")}</h1>
 
         {loading ? (
           <div style={{ background: "#fff", borderRadius: 14, padding: 40, textAlign: "center", color: "var(--oxford-60)", border: "1px solid #EDF1F8" }}>{t("common.loading")}</div>
@@ -878,8 +893,8 @@ export default function BookPsychologistPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
 
               {/* A) PSYCHOLOGIST SUMMARY */}
-              <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 20, display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
-                <span style={{ width: 58, height: 58, borderRadius: 16, background: psychologist.accentColor || "var(--brand-700)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 19, fontWeight: 700, flex: "none", overflow: "hidden" }}>
+              <div className="bkx-summary-card" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: 20, display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+                <span className="bkx-summary-avatar" style={{ width: 58, height: 58, borderRadius: 16, background: psychologist.accentColor || "var(--brand-700)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 19, fontWeight: 700, flex: "none", overflow: "hidden" }}>
                   {psychologist.photoUrl
                     ? <Image src={psychologist.photoUrl} alt={psychologist.name} width={58} height={58} unoptimized style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     : initials(psychologist.name)}
@@ -1329,7 +1344,7 @@ function SectionHead({ n, title }: { n: number; title: string }) {
 function Stepper({ current }: { current: 1 | 2 | 3 | 4 }) {
   const steps = ["Növ", "Vaxt", "Səbəb", "Təsdiq"];
   return (
-    <div style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "18px 20px" }}>
+    <div className="bkx-stepper" style={{ background: "#fff", borderRadius: 14, boxShadow: "0 2px 12px rgba(0,0,0,.06)", border: "1px solid #EDF1F8", padding: "18px 20px" }}>
       <div style={{ display: "flex", alignItems: "flex-start" }}>
         {steps.map((label, i) => {
           const n = i + 1;
@@ -1338,7 +1353,7 @@ function Stepper({ current }: { current: 1 | 2 | 3 | 4 }) {
           return (
             <div key={label} style={{ display: "flex", alignItems: "flex-start", flex: i < steps.length - 1 ? 1 : "none" }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flex: "none" }}>
-                <span style={{
+                <span className="bkx-stepper-dot" style={{
                   width: 30, height: 30, borderRadius: "50%",
                   background: done || active ? "var(--brand)" : "#EEF2F9",
                   color: done || active ? "#fff" : "var(--oxford-60)",
@@ -1352,7 +1367,7 @@ function Stepper({ current }: { current: 1 | 2 | 3 | 4 }) {
                     ? <svg key="check" className="bkx-pop" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
                     : n}
                 </span>
-                <span style={{ fontSize: 11.5, fontWeight: 700, color: active ? "var(--brand-700)" : "var(--oxford-60)", whiteSpace: "nowrap", transition: "color .25s ease" }}>{label}</span>
+                <span className="bkx-stepper-label" style={{ fontSize: 11.5, fontWeight: 700, color: active ? "var(--brand-700)" : "var(--oxford-60)", whiteSpace: "nowrap", transition: "color .25s ease" }}>{label}</span>
               </div>
               {i < steps.length - 1 && (
                 <span style={{ flex: 1, height: 2, background: done ? "var(--brand)" : "#EEF2F9", margin: "14px 8px 0", transition: "background .35s ease" }} />

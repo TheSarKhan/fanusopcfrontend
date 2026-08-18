@@ -618,17 +618,17 @@ export default function BookPsychologistPage() {
     .bkx-days::-webkit-scrollbar-thumb { background: #D6E2F7; border-radius: 99px }
     @media (max-width: 980px) {
       .bkx-bottombar { display: flex; }
-      .bkx-app { padding-bottom: 104px !important; }
-      /* Bax introBannerRef qeydinə — scrollIntoView({block:"end"}) bu boşluğu
-         sticky paneldən sonra buraxır, Bəli/Xeyr düymələri kənarına sıxılmır. */
-      .bkx-intro-banner { scroll-margin-bottom: 96px; }
+      /* Sticky panel yalnız SON addımda (bkx-app--barred) render olunur —
+         yalnız o zaman aşağıda yer ehtiyat edilir. Digər addımlarda heç bir
+         sticky panel yoxdur, ona görə boş yer də ehtiyat edilmir. */
+      .bkx-app--barred { padding-bottom: 104px !important; }
     }
 
-    /* Telefon eninə xüsusi yığcamlaşdırma — sticky "müraciət göndər" panelinə
-       çatana qədər az skrol lazım olsun deyə üst hissələr (breadcrumb, başlıq,
+    /* Telefon eninə xüsusi yığcamlaşdırma — üst hissələr (breadcrumb, başlıq,
        psixoloq kartı, addım göstəricisi) sıxlaşdırılır. */
     @media (max-width: 600px) {
-      .bkx-app { padding: 16px 14px 104px !important; }
+      .bkx-app { padding: 16px 14px !important; }
+      .bkx-app--barred { padding-bottom: 104px !important; }
       .bkx-breadcrumb { margin-bottom: 8px !important; font-size: 12px !important; }
       .bkx-title { font-size: 20px !important; margin: 0 0 12px !important; }
       .bkx-summary-card { padding: 12px !important; gap: 10px !important; }
@@ -873,7 +873,7 @@ export default function BookPsychologistPage() {
   return (
     <main style={{ background: "#F0F4FA", minHeight: "100vh", width: "100%", fontFamily: "'Inter', system-ui, sans-serif", color: "var(--oxford)" }}>
       <style>{layoutCss}</style>
-      <div className="bkx-app" style={{ width: "100%", padding: "30px 32px 56px", maxWidth: "min(1360px, 94vw)", margin: "0 auto" }}>
+      <div className={`bkx-app${!extendCtx && wizardStep === 4 ? " bkx-app--barred" : ""}`} style={{ width: "100%", padding: "30px 32px 56px", maxWidth: "min(1360px, 94vw)", margin: "0 auto" }}>
 
         {/* breadcrumb + title */}
         <div className="bkx-breadcrumb" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "var(--oxford-60)", marginBottom: 14 }}>
@@ -1312,17 +1312,22 @@ export default function BookPsychologistPage() {
               )}
             </div>
 
-            {/* MOBILE STICKY BOTTOM BAR */}
-            <div className="bkx-bottombar" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "#fff", borderTop: "1px solid #E1E9F5", boxShadow: "0 -4px 20px rgba(8,47,109,.10)", padding: "12px 18px", alignItems: "center", gap: 14 }}>
-              <div style={{ flex: "none", maxWidth: 140 }}>
-                <div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600 }}>Növ</div>
-                <div style={{ fontSize: 14.5, fontWeight: 800, color: "var(--brand-700)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{typeSummary}</div>
+            {/* MOBILE STICKY BOTTOM BAR — yalnız SON addımda (Təsdiq) görünür.
+                Əvvəlki addımlarda (1-3) heç bir sticky panel yoxdur, ona görə
+                orada göstərilən heç bir məzmunla (məs. "Bəli/Xeyr" düymələri)
+                üst-üstə düşmür/üstünü örtmür. */}
+            {!extendCtx && wizardStep === 4 && (
+              <div className="bkx-bottombar" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "#fff", borderTop: "1px solid #E1E9F5", boxShadow: "0 -4px 20px rgba(8,47,109,.10)", padding: "12px 18px", alignItems: "center", gap: 14 }}>
+                <div style={{ flex: "none", maxWidth: 140 }}>
+                  <div style={{ fontSize: 11, color: "var(--oxford-60)", fontWeight: 600 }}>Növ</div>
+                  <div style={{ fontSize: 14.5, fontWeight: 800, color: "var(--brand-700)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{typeSummary}</div>
+                </div>
+                <button type="submit" disabled={submitDisabled} className="bkx-btn-primary"
+                  style={{ flex: 1, background: submitDisabled ? "#A9BEE2" : "var(--brand)", color: "#fff", border: "none", borderRadius: 11, padding: 14, fontSize: 15, fontWeight: 700, fontFamily: "inherit", cursor: submitDisabled ? "not-allowed" : "pointer", transition: "background .2s ease" }}>
+                  {submitLabel}
+                </button>
               </div>
-              <button type="submit" disabled={submitDisabled} className="bkx-btn-primary"
-                style={{ flex: 1, background: submitDisabled ? "#A9BEE2" : "var(--brand)", color: "#fff", border: "none", borderRadius: 11, padding: 14, fontSize: 15, fontWeight: 700, fontFamily: "inherit", cursor: submitDisabled ? "not-allowed" : "pointer", transition: "background .2s ease" }}>
-                {submitLabel}
-              </button>
-            </div>
+            )}
           </form>
         )}
       </div>

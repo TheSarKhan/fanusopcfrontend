@@ -36,12 +36,6 @@ export default function WhatsAppButton({ side = "left" }: { side?: "left" | "rig
           transform: translateY(-2px);
           box-shadow: 0 10px 26px rgba(37, 211, 102, .5);
         }
-        /* Randevu qeydiyyatı (app/book/[slug]/page.tsx) mobil ekranda öz sticky
-           "müraciət göndər" panelini bottom:0-da göstərir — WhatsApp düyməsi
-           (z-index daha yüksək) onun üstünə düşməsin deyə yuxarı itələnir. */
-        @media (max-width: 980px) {
-          body.has-bkx-bottombar .fanus-whatsapp { bottom: 100px; }
-        }
       `}</style>
     </a>
   );

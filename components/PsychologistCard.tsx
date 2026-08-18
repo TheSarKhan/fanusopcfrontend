@@ -197,7 +197,7 @@ export default function PsychologistCard({ p }: { p: PsyCardItem }) {
                   </button>
                 </div>
                 <div className="pc-tags-modal__body">
-                  {p.specs.map((s, i) => <span key={i} className="pc-tag">{s}</span>)}
+                  {sortedSpecs.map((s, i) => <span key={i} className="pc-tag">{s}</span>)}
                 </div>
               </div>
             </div>,

@@ -49,21 +49,6 @@ export default function Footer() {
           </Link>
           <p className="fanus-ftr__tag">{t("footer2.tag")}</p>
 
-          <div className="fanus-ftr__contact">
-            <a href="tel:+994993585888" className="fanus-ftr__contact-row">
-              <PhoneIcon /> +994 99 358 58 88
-            </a>
-            <a href="mailto:fanus.opc@gmail.com" className="fanus-ftr__contact-row">
-              <MailIcon /> fanus.opc@gmail.com
-            </a>
-            <a href="https://wa.me/994993585888" target="_blank" rel="noopener noreferrer" className="fanus-ftr__contact-row">
-              <WhatsAppIcon /> +994 99 358 58 88
-            </a>
-            <div className="fanus-ftr__contact-row">
-              <PinIcon /> {t("pub.location")}
-            </div>
-          </div>
-
           <div className="fanus-ftr__socials">
             {SOCIALS.map(({ label, Icon, href }) => (
               <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="fanus-ftr__social" aria-label={label}><Icon /></a>
@@ -84,9 +69,24 @@ export default function Footer() {
 
       </div>
 
-      {/* Böhran xəbərdarlığı — Fanus təcili yardım xidməti deyil (112 / 103). */}
-      <div className="fanus-ftr__crisis" role="note">
-        <div className="fanus-container fanus-ftr__crisis-inner">
+      <div className="fanus-container fanus-ftr__info">
+        <div className="fanus-ftr__contact">
+          <a href="tel:+994993585888" className="fanus-ftr__contact-row">
+            <PhoneIcon /> +994 99 358 58 88
+          </a>
+          <a href="mailto:fanus.opc@gmail.com" className="fanus-ftr__contact-row">
+            <MailIcon /> fanus.opc@gmail.com
+          </a>
+          <a href="https://wa.me/994993585888" target="_blank" rel="noopener noreferrer" className="fanus-ftr__contact-row">
+            <WhatsAppIcon /> +994 99 358 58 88
+          </a>
+          <div className="fanus-ftr__contact-row">
+            <PinIcon /> {t("pub.location")}
+          </div>
+        </div>
+
+        {/* Böhran xəbərdarlığı — Fanus təcili yardım xidməti deyil (112 / 103). */}
+        <div className="fanus-ftr__crisis" role="note">
           <span className="fanus-ftr__crisis-icon" aria-hidden="true"><AlertIcon /></span>
           <p>{t("footer2.crisis")}</p>
         </div>
@@ -160,7 +160,6 @@ export default function Footer() {
           font-weight: 500; font-size: 16px;
           margin: 16px 0 24px; max-width: 240px;
         }
-        .fanus-ftr__contact { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
         .fanus-ftr__contact-row { display: inline-flex; align-items: center; gap: 10px; color: var(--fanus-ink-2); font-size: 14px; }
         .fanus-ftr__contact-row:hover { color: var(--fanus-primary); }
         .fanus-ftr__socials { display: flex; gap: 8px; }
@@ -184,20 +183,22 @@ export default function Footer() {
         .fanus-ftr__col a:hover { color: var(--fanus-primary); }
         .fanus-ftr__lang { display: inline-flex; align-items: center; gap: 6px; color: var(--fanus-ink-3); font-size: 12px; margin-top: 16px; }
 
-        .fanus-ftr__crisis {
-          background: #FFF7EC;
-          border-top: 1px solid #F3E3C8;
+        .fanus-ftr__info {
+          display: flex; flex-direction: column;
+          gap: 14px;
+          padding: 20px 28px; margin-top: -24px;
+          border-top: 1px solid var(--fanus-line);
         }
-        .fanus-ftr__crisis-inner {
+        .fanus-ftr__contact { display: flex; flex-direction: row; flex-wrap: wrap; gap: 20px; }
+        .fanus-ftr__crisis {
           display: flex; align-items: flex-start; gap: 10px;
-          padding: 14px 28px;
         }
         .fanus-ftr__crisis-icon {
           color: #B45309; flex-shrink: 0; display: inline-flex; margin-top: 2px;
         }
         .fanus-ftr__crisis p {
           margin: 0; font-size: 13px; line-height: 1.55;
-          color: #7C5A1E;
+          color: var(--fanus-ink-3);
         }
 
         .fanus-ftr__bottom {

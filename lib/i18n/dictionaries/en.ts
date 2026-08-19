@@ -526,6 +526,8 @@ export const en: typeof az = {
     eyebrow: "Pause for a moment",
     title: "How are you feeling today?",
     sub: "Pick what you feel — we'll suggest matching articles, motivational words and therapists.",
+    scrollPrev: "Previous moods",
+    scrollNext: "Next moods",
     moodAnxious: "Anxious",
     moodSad: "Sad",
     moodTired: "Tired",

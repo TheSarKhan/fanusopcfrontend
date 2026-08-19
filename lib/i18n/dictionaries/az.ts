@@ -534,6 +534,8 @@ export const az = {
     eyebrow: "Bir an dayanın",
     title: "Bu gün özünüzü necə hiss edirsiniz?",
     sub: "Əhvalınızı seçin, sizə uyğun məqalə və psixoloq təklif edək.",
+    scrollPrev: "Əvvəlki əhvallar",
+    scrollNext: "Növbəti əhvallar",
     moodAnxious: "Narahat",
     moodSad: "Kədərli",
     moodTired: "Yorğun",

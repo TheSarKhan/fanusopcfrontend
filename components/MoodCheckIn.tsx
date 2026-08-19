@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Deco from "@/components/Deco";
 import { getMoodRecommendations, trackFunnelEvent, type MoodRecommendation } from "@/lib/api";
@@ -33,6 +33,14 @@ export function MoodIcon({ id, size = 30 }: { id: MoodId; size?: number }) {
     case "mixed": return <svg {...p}><circle cx="12" cy="16" r="7" fill="currentColor" opacity=".18"/><circle cx="20" cy="16" r="7" fill="currentColor" opacity=".18"/><circle cx="12" cy="16" r="7"/><circle cx="20" cy="16" r="7"/></svg>;
     case "lonely": return <svg {...p}><path d="M5 26 Q16 14 27 26" opacity=".4"/><circle cx="16" cy="14" r="3.2" fill="currentColor" opacity=".18"/><circle cx="16" cy="14" r="3.2"/><path d="M11 26 Q16 19 21 26"/></svg>;
   }
+}
+
+function ChevronIcon({ dir }: { dir: "left" | "right" }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d={dir === "left" ? "M15 6l-6 6 6 6" : "M9 6l6 6-6 6"} />
+    </svg>
+  );
 }
 
 /** Generic (non-mood-specific) smiley used on the collapsed hero trigger chip. */
@@ -99,9 +107,9 @@ const MOOD_COMPACT_CSS = `
     margin: 0 0 4px;
   }
   .fanus-mood--compact .fanus-mood__head p { font-size: 12px; line-height: 1.4; margin: 0; }
-  .fanus-mood--compact .fanus-mood__chips-wrap { position: relative; min-width: 0; }
+  .fanus-mood--compact .fanus-mood__chips-wrap { position: relative; min-width: 0; display: flex; align-items: center; gap: 8px; }
   .fanus-mood--compact .fanus-mood__chips {
-    display: flex; flex-wrap: nowrap; gap: 10px;
+    display: flex; flex-wrap: nowrap; gap: 10px; flex: 1;
     overflow-x: auto; margin: 0; max-width: none;
     scrollbar-width: none;
   }
@@ -111,6 +119,19 @@ const MOOD_COMPACT_CSS = `
   }
   .fanus-mood--compact .fanus-mood-chip__icon { width: 36px; height: 36px; border-radius: 10px; }
   .fanus-mood--compact .fanus-mood-chip__label { font-size: 11px; text-align: center; line-height: 1.2; }
+
+  /* Masaüstü: sətir kəsiləndə sağda/solda boş qalan sahədə oxlarla sürüşdürmə. */
+  .fanus-mood__nav {
+    display: none;
+    align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3);
+    color: #fff; cursor: pointer; transition: opacity .2s, background .2s;
+  }
+  .fanus-mood__nav:hover { background: rgba(255,255,255,.28); }
+  @media (min-width: 641px) {
+    .fanus-mood--compact .fanus-mood__nav { display: inline-flex; }
+  }
 
   /* Sürüşdürmə işarəsi — sətir kəsildiyini göstərir, daha çox əhval sağda olduğunu bildirir. */
   .fanus-mood__swipe-hint { display: none; }
@@ -202,6 +223,35 @@ export default function MoodCheckIn({ compact = false, trigger = false }: { comp
   const [open, setOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  // Compact (Hero) sətri masaüstündə tam sığmır — oxlarla sürüşdürmə vəziyyəti.
+  const chipsScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
+
+  const updateScrollState = () => {
+    const el = chipsScrollRef.current;
+    if (!el) return;
+    setCanScrollPrev(el.scrollLeft > 4);
+    setCanScrollNext(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  };
+
+  useEffect(() => {
+    if (!compact) return;
+    updateScrollState();
+    const el = chipsScrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", updateScrollState);
+    window.addEventListener("resize", updateScrollState);
+    return () => {
+      el.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, [compact]);
+
+  const scrollChips = (dir: 1 | -1) => {
+    chipsScrollRef.current?.scrollBy({ left: dir * 180, behavior: "smooth" });
+  };
+
   const MOODS: Mood[] = [
     { id: "happy",   label: t("mood.moodHappy"),   color: MOOD_COLORS.happy },
     { id: "anxious", label: t("mood.moodAnxious"), color: MOOD_COLORS.anxious },
@@ -221,7 +271,18 @@ export default function MoodCheckIn({ compact = false, trigger = false }: { comp
 
   const chips = (
     <div className="fanus-mood__chips-wrap">
-      <div className="fanus-mood__chips">
+      {compact && (
+        <button
+          type="button"
+          className="fanus-mood__nav"
+          onClick={() => scrollChips(-1)}
+          aria-label={t("mood.scrollPrev")}
+          style={{ opacity: canScrollPrev ? 1 : 0, pointerEvents: canScrollPrev ? "auto" : "none" }}
+        >
+          <ChevronIcon dir="left" />
+        </button>
+      )}
+      <div className="fanus-mood__chips" ref={compact ? chipsScrollRef : undefined}>
         {MOODS.map((m) => (
           <button
             key={m.id}
@@ -237,6 +298,17 @@ export default function MoodCheckIn({ compact = false, trigger = false }: { comp
           </button>
         ))}
       </div>
+      {compact && (
+        <button
+          type="button"
+          className="fanus-mood__nav"
+          onClick={() => scrollChips(1)}
+          aria-label={t("mood.scrollNext")}
+          style={{ opacity: canScrollNext ? 1 : 0, pointerEvents: canScrollNext ? "auto" : "none" }}
+        >
+          <ChevronIcon dir="right" />
+        </button>
+      )}
       {/* Mobil compact görünüşdə sağ kənarda — sətrin sürüşdürülə bildiyini göstərir. */}
       <span className="fanus-mood__swipe-hint" aria-hidden="true">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">

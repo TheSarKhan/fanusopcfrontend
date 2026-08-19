@@ -527,6 +527,8 @@ export const tr: typeof az = {
     eyebrow: "Bir an durun",
     title: "Bugün kendinizi nasıl hissediyorsunuz?",
     sub: "Ruh halinizi seçin, size uygun makale ve psikolog önerelim.",
+    scrollPrev: "Önceki ruh halleri",
+    scrollNext: "Sonraki ruh halleri",
     moodAnxious: "Kaygılı",
     moodSad: "Üzgün",
     moodTired: "Yorgun",

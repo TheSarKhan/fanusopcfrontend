@@ -453,6 +453,8 @@ export const ru: typeof az = {
   },
 
   psyList: {
+    scrollPrev: "Предыдущие психологи",
+    scrollNext: "Следующие психологи",
     verifiedNoteTitle: "Что означает значок «Подтверждён»?",
     verifiedNoteBody: "У специалиста с этим значком образование и сертификаты проверены и подтверждены Fanus.",
     eyebrow: "Наша команда",

@@ -458,6 +458,8 @@ export const az = {
   },
 
   psyList: {
+    scrollPrev: "Əvvəlki psixoloqlar",
+    scrollNext: "Növbəti psixoloqlar",
     verifiedNoteTitle: "Doğrulanmış işarəsi nə deməkdir?",
     verifiedNoteBody: "Bu nişanı gördüyünüz mütəxəssisin təhsil və sertifikat sənədləri Fanus tərəfindən yoxlanılıb və doğrulanıb.",
     eyebrow: "Komandamız",

@@ -451,6 +451,8 @@ export const tr: typeof az = {
   },
 
   psyList: {
+    scrollPrev: "Önceki psikologlar",
+    scrollNext: "Sonraki psikologlar",
     verifiedNoteTitle: "Doğrulanmış rozeti ne anlama gelir?",
     verifiedNoteBody: "Bu rozete sahip uzmanın eğitim ve sertifika bilgileri Fanus tarafından kontrol edilip onaylanmıştır.",
     eyebrow: "Ekibimiz",

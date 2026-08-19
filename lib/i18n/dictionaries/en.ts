@@ -455,7 +455,7 @@ export const en: typeof az = {
     eyebrow: "Our team",
     title: "Our therapists",
     lead: "Each is certified, experienced, and follows the Fanus code of ethics.",
-    seeAll: "See all",
+    seeAll: "See more",
     yearsExp: "yr experience",
     noRating: "New on the platform",
     profile: "Profile",

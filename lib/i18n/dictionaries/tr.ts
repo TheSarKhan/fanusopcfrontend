@@ -456,7 +456,7 @@ export const tr: typeof az = {
     eyebrow: "Ekibimiz",
     title: "Psikologlarımız",
     lead: "Her biri sertifikalı, deneyimli ve Fanus etik kurallarına bağlı uzmanlardır.",
-    seeAll: "Tümüne bak",
+    seeAll: "Daha fazla",
     yearsExp: "yıl deneyim",
     noRating: "Platformada yeni",
     profile: "Profil",

@@ -4,6 +4,7 @@ import { useState, useEffect, ReactNode } from "react";
 import { getMainSiteUrl, getStoredUser, storeUser } from "@/lib/auth";
 import { tryGetMe, tryRefresh, clearSession } from "@/lib/api";
 import FanusLoader from "@/components/FanusLoader";
+import { useT } from "@/lib/i18n/LocaleProvider";
 
 /** Proactively refresh the access cookie every 20 minutes. The default access
  *  token lifetime is 1 hour (legacy) or 7 days (current default); refreshing
@@ -39,6 +40,7 @@ export default function PanelAuthGuard({
   requiredRole: string | string[];
   children: ReactNode;
 }) {
+  const { t } = useT();
   const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
   const [ready, setReady] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -127,7 +129,7 @@ export default function PanelAuthGuard({
   if (!ready) {
     return (
       <div suppressHydrationWarning style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F4FA" }}>
-        <FanusLoader size={72} label="Yüklənir…" fullscreen />
+        <FanusLoader size={72} label={t("common.loading")} fullscreen />
       </div>
     );
   }

@@ -463,7 +463,7 @@ export const az = {
     eyebrow: "Komandamız",
     title: "Psixoloqlarımız",
     lead: "Hər biri sertifikatlı, təcrübəli və Fanus etika kodeksinə bağlı mütəxəssislərdir.",
-    seeAll: "Hamısına bax",
+    seeAll: "Daha çox",
     yearsExp: "il təcrübə",
     noRating: "Platformada yeni",
     profile: "Profil",

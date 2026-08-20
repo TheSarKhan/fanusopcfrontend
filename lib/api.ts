@@ -544,6 +544,8 @@ export interface BlogPost {
   authorId?: number;
   authorName?: string;
   authorPhotoUrl?: string;
+  /** Müəllif psixoloqdursa peşəkar vəzifəsi (məs. "Klinik psixoloq"), admin yazılarında yoxdur. */
+  authorTitle?: string;
   createdAt?: string;
   updatedAt?: string;
   tags?: string[];

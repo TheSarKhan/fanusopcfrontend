@@ -48,6 +48,11 @@ interface Item {
   readMinutes: number;
   publishedAt: number;
   author: string;
+  authorPhotoUrl?: string;
+  /** ADMIN | PSYCHOLOGIST — yalnız API-dən gələn məqalələrdə olur. */
+  authorRole?: string;
+  /** Psixoloqun peşəkar vəzifəsi (məs. "Klinik psixoloq") — yalnız API-dən gələn məqalələrdə olur. */
+  authorTitle?: string;
   illu: Illu;
   coverUrl?: string;
   /** Baxış sayı (V125) — yalnız API-dən gələn məqalələrdə olur. */
@@ -84,6 +89,9 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
         readMinutes: p.readTimeMinutes,
         publishedAt: new Date(p.publishedDate).getTime(),
         author: p.authorName ?? t("blogPage.editorial"),
+        authorPhotoUrl: p.authorPhotoUrl,
+        authorRole: p.authorRole,
+        authorTitle: p.authorTitle,
         illu: ILLU_BY_CAT[cat],
         coverUrl: p.coverImageUrl,
         views: p.viewCount ?? 0,
@@ -257,21 +265,24 @@ function ArtList({
                 </div>
                 <div className="ap-card__body">
                   <div className="ap-card__date">
-                    <span>{a.date}</span>
+                    <span className="ap-card__meta-item"><CalendarIcon />{a.date}</span>
                     {a.views != null && a.views > 0 && (
-                      <>
-                        <span className="ap-card__sep" />
-                        <span className="ap-card__read">{t("pub.viewsCount", { n: a.views })}</span>
-                      </>
+                      <span className="ap-card__meta-item"><EyeIcon />{t("pub.viewsCount", { n: a.views })}</span>
                     )}
                   </div>
                   <h3 className="ap-card__title">{a.title}</h3>
                   <p className="ap-card__excerpt">{a.excerpt}</p>
                   <div className="ap-card__author">
-                    <span className="ap-card__avatar">{a.author.split(" ").map((n) => n[0]).join("")}</span>
+                    {a.authorPhotoUrl ? (
+                      <img className="ap-card__avatar ap-card__avatar--photo" src={a.authorPhotoUrl} alt={a.author} />
+                    ) : (
+                      <span className="ap-card__avatar">{a.author.split(" ").map((n) => n[0]).join("")}</span>
+                    )}
                     <div>
                       <div className="ap-card__author-name">{a.author}</div>
-                      <div className="ap-card__author-role">{t("pub.authorRole")}</div>
+                      <div className="ap-card__author-role">
+                        {a.authorTitle || (a.authorRole === "PSYCHOLOGIST" ? t("pub.authorRole") : t("pub.editorial"))}
+                      </div>
                     </div>
                     <span className="ap-card__cta">{t("blogPage.readCta")} <Arrow /></span>
                   </div>
@@ -326,15 +337,11 @@ function ArtList({
         .ap-card:hover .ap-card__cover-img { transform: scale(1.05); }
         .ap-card__body { padding: 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
         .ap-card__date {
-          display: inline-flex; align-items: center; gap: 8px;
+          display: inline-flex; align-items: center; gap: 14px;
           font-size: 12px; color: var(--fanus-ink-3); font-weight: 500;
         }
-        .ap-card__sep { width: 3px; height: 3px; border-radius: 50%; background: var(--fanus-ink-3); }
-        .ap-card__read {
-          display: inline-flex; align-items: center; gap: 4px;
-          color: var(--fanus-primary); font-weight: 600;
-        }
-        .ap-card__read svg { width: 11px; height: 11px; }
+        .ap-card__meta-item { display: inline-flex; align-items: center; gap: 5px; }
+        .ap-card__meta-item svg { width: 13px; height: 13px; flex-shrink: 0; color: var(--fanus-ink-3); }
         .ap-card__title { font-size: 17px; line-height: 1.3; font-weight: 700; color: var(--fanus-ink); margin: 0; }
         .ap-card__excerpt {
           font-size: 13.5px; color: var(--fanus-ink-3); line-height: 1.5; margin: 0; flex: 1;
@@ -346,6 +353,7 @@ function ArtList({
           margin-top: auto;
         }
         .ap-card__avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--fanus-primary); color: white; font-weight: 700; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .ap-card__avatar--photo { object-fit: cover; }
         .ap-card__author-name { font-size: 12.5px; font-weight: 600; color: var(--fanus-ink); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .ap-card__author-role { font-size: 11px; color: var(--fanus-ink-3); margin-top: 1px; }
         .ap-card__cta {
@@ -459,4 +467,6 @@ function ArtCover({ type, color }: { type: Illu; color: string }) {
 }
 
 function Arrow() { return <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.4" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>; }
+function CalendarIcon() { return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden><rect x="2.4" y="3.4" width="11.2" height="10.2" rx="1.6" /><path d="M2.4 6.6h11.2M5.6 2.4v2M10.4 2.4v2" strokeLinecap="round" /></svg>; }
+function EyeIcon() { return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden><path d="M1.2 8S3.4 3.4 8 3.4 14.8 8 14.8 8 12.6 12.6 8 12.6 1.2 8 1.2 8Z" strokeLinejoin="round" /><circle cx="8" cy="8" r="2.2" /></svg>; }
 function SparkleIcon() { return <svg width="16" height="16" fill="none" stroke="var(--fanus-primary)" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v6M12 15v6M3 12h6M15 12h6M5.5 5.5l4 4M14.5 14.5l4 4M18.5 5.5l-4 4M9.5 14.5l-4 4" /></svg>; }

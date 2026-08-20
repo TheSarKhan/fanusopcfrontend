@@ -66,7 +66,7 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
                   <div>
                     <div className="fanus-art-card__author-name">{a.author}</div>
                     <div className="fanus-art-card__author-role">
-                      {a.authorTitle || (a.authorRole === "PSYCHOLOGIST" ? t("pub.authorRole") : t("pub.editorial"))}
+                      {a.authorTitle || (a.authorRole === "PSYCHOLOGIST" ? t("pub.authorRole") : t("blogPage.editorial"))}
                     </div>
                   </div>
                 </div>

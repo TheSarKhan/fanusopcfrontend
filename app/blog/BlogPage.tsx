@@ -281,7 +281,7 @@ function ArtList({
                     <div>
                       <div className="ap-card__author-name">{a.author}</div>
                       <div className="ap-card__author-role">
-                        {a.authorTitle || (a.authorRole === "PSYCHOLOGIST" ? t("pub.authorRole") : t("pub.editorial"))}
+                        {a.authorTitle || (a.authorRole === "PSYCHOLOGIST" ? t("pub.authorRole") : t("blogPage.editorial"))}
                       </div>
                     </div>
                     <span className="ap-card__cta">{t("blogPage.readCta")} <Arrow /></span>

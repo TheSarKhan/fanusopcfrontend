@@ -462,7 +462,7 @@ export const ru: typeof az = {
     lead: "Каждый — сертифицированный опытный специалист, придерживающийся этического кодекса Fanus.",
     seeAll: "Смотреть больше",
     yearsExp: "лет опыта",
-    noRating: "Новый на платформе",
+    noRating: "Новый",
     profile: "Профиль",
     bookCta: "Записаться",
     sessionsCount: "{count} сессий",

@@ -460,7 +460,7 @@ export const tr: typeof az = {
     lead: "Her biri sertifikalı, deneyimli ve Fanus etik kurallarına bağlı uzmanlardır.",
     seeAll: "Daha fazla",
     yearsExp: "yıl deneyim",
-    noRating: "Platformada yeni",
+    noRating: "Yeni",
     profile: "Profil",
     bookCta: "Randevu al",
     sessionsCount: "{count} seans",

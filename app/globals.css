@@ -9678,8 +9678,12 @@
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 700; color: white; flex-shrink: 0;
 }
+.bl-author-avatar--photo { object-fit: cover; }
 .bl-author-name { font-size: 12.5px; font-weight: 600; color: var(--oxford); }
+.bl-author-role { font-size: 10.5px; color: var(--oxford-60); margin-top: 1px; }
 .bl-author-date { font-size: 11px; color: var(--oxford-60); margin-top: 1px; }
+.bl-meta-item { display: inline-flex; align-items: center; gap: 5px; }
+.bl-meta-item svg { width: 12px; height: 12px; flex-shrink: 0; color: var(--oxford-60); }
 
 /* Empty state */
 .bl-empty {

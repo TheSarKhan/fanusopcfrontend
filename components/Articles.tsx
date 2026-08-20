@@ -18,12 +18,16 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
         views: p.viewCount ?? 0,
         bg: COLORS[i % COLORS.length],
         coverUrl: p.coverImageUrl,
+        author: p.authorName ?? t("blogPage.editorial"),
+        authorPhotoUrl: p.authorPhotoUrl,
+        authorRole: p.authorRole,
+        authorTitle: p.authorTitle,
       }))
     : [
-        { slug: "narahatliq", title: "Səhər yuxudan narahat oyananda nə etməli", date: "12 May 2025", read: "6 dəq", views: 0, bg: COLORS[0], coverUrl: undefined as string | undefined },
-        { slug: "munasibetler", title: "Sərhəd qoymaq eqoist olmaq deyil",        date: "8 May 2025",  read: "8 dəq", views: 0, bg: COLORS[1], coverUrl: undefined },
-        { slug: "ozune-qayim", title: "Tükənmişlik (burnout) — gizli əlamətlər",   date: "3 May 2025",  read: "7 dəq", views: 0, bg: COLORS[2], coverUrl: undefined },
-        { slug: "yuxu", title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", date: "28 Apr 2025", read: "5 dəq", views: 0, bg: COLORS[3], coverUrl: undefined },
+        { slug: "narahatliq", title: "Səhər yuxudan narahat oyananda nə etməli", date: "12 May 2025", read: "6 dəq", views: 0, bg: COLORS[0], coverUrl: undefined as string | undefined, author: "Aysel Məmmədova", authorPhotoUrl: undefined as string | undefined, authorRole: "PSYCHOLOGIST", authorTitle: undefined as string | undefined },
+        { slug: "munasibetler", title: "Sərhəd qoymaq eqoist olmaq deyil",        date: "8 May 2025",  read: "8 dəq", views: 0, bg: COLORS[1], coverUrl: undefined, author: "Lalə Hüseynova", authorPhotoUrl: undefined, authorRole: "PSYCHOLOGIST", authorTitle: undefined },
+        { slug: "ozune-qayim", title: "Tükənmişlik (burnout) — gizli əlamətlər",   date: "3 May 2025",  read: "7 dəq", views: 0, bg: COLORS[2], coverUrl: undefined, author: "Elnur Səfərov", authorPhotoUrl: undefined, authorRole: "PSYCHOLOGIST", authorTitle: undefined },
+        { slug: "yuxu", title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", date: "28 Apr 2025", read: "5 dəq", views: 0, bg: COLORS[3], coverUrl: undefined, author: "Rəşad Quliyev", authorPhotoUrl: undefined, authorRole: "PSYCHOLOGIST", authorTitle: undefined },
       ];
 
   return (
@@ -47,15 +51,25 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
               </div>
               <div className="fanus-art-card__body">
                 <div className="fanus-art-card__date">
-                  {a.date}
+                  <span className="fanus-art-card__meta-item"><CalendarIcon />{a.date}</span>
                   {a.views > 0 && (
-                    <>
-                      <span className="fanus-art-card__sep" />
-                      {t("pub.viewsCount", { n: a.views })}
-                    </>
+                    <span className="fanus-art-card__meta-item"><EyeIcon />{t("pub.viewsCount", { n: a.views })}</span>
                   )}
                 </div>
                 <h3 className="fanus-art-card__title">{a.title}</h3>
+                <div className="fanus-art-card__author">
+                  {a.authorPhotoUrl ? (
+                    <img className="fanus-art-card__avatar fanus-art-card__avatar--photo" src={a.authorPhotoUrl} alt={a.author} />
+                  ) : (
+                    <span className="fanus-art-card__avatar">{a.author.split(" ").map((n) => n[0]).join("")}</span>
+                  )}
+                  <div>
+                    <div className="fanus-art-card__author-name">{a.author}</div>
+                    <div className="fanus-art-card__author-role">
+                      {a.authorTitle || (a.authorRole === "PSYCHOLOGIST" ? t("pub.authorRole") : t("pub.editorial"))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </Link>
           ))}
@@ -99,13 +113,11 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
           flex: 1;
         }
         .fanus-art-card__date {
-          display: inline-flex; align-items: center; gap: 6px;
+          display: inline-flex; align-items: center; gap: 12px;
           font-size: 12px; color: var(--fanus-ink-3); font-weight: 500;
         }
-        .fanus-art-card__sep {
-          width: 3px; height: 3px; border-radius: 50%; background: var(--fanus-ink-3);
-          margin: 0 4px;
-        }
+        .fanus-art-card__meta-item { display: inline-flex; align-items: center; gap: 5px; }
+        .fanus-art-card__meta-item svg { width: 12px; height: 12px; flex-shrink: 0; color: var(--fanus-ink-3); }
         .fanus-art-card__title {
           font-size: 16px; line-height: 1.3; font-weight: 700;
           color: var(--fanus-ink); margin: 0; flex: 1;
@@ -114,12 +126,28 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
+        .fanus-art-card__author {
+          display: flex; align-items: center; gap: 9px;
+          padding-top: 12px; border-top: 1px dashed var(--fanus-line);
+          margin-top: auto;
+        }
+        .fanus-art-card__avatar {
+          width: 28px; height: 28px; border-radius: 50%;
+          background: var(--fanus-primary); color: white; font-weight: 700; font-size: 10px;
+          display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .fanus-art-card__avatar--photo { object-fit: cover; }
+        .fanus-art-card__author-name { font-size: 12px; font-weight: 600; color: var(--fanus-ink); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .fanus-art-card__author-role { font-size: 10.5px; color: var(--fanus-ink-3); margin-top: 1px; }
         @media (max-width: 1100px) { .fanus-art__grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 560px) { .fanus-art__grid { grid-template-columns: 1fr; } }
       `}</style>
     </section>
   );
 }
+
+function CalendarIcon() { return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden><rect x="2.4" y="3.4" width="11.2" height="10.2" rx="1.6" /><path d="M2.4 6.6h11.2M5.6 2.4v2M10.4 2.4v2" strokeLinecap="round" /></svg>; }
+function EyeIcon() { return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden><path d="M1.2 8S3.4 3.4 8 3.4 14.8 8 14.8 8 12.6 12.6 8 12.6 1.2 8 1.2 8Z" strokeLinejoin="round" /><circle cx="8" cy="8" r="2.2" /></svg>; }
 
 function CoverArt({ color, variant }: { color: string; variant: number }) {
   if (variant === 0) {

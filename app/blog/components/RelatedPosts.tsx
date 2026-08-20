@@ -17,6 +17,9 @@ function idGradient(id: number) {
   return GRADIENTS[id % GRADIENTS.length];
 }
 
+function CalendarIcon() { return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden><rect x="2.4" y="3.4" width="11.2" height="10.2" rx="1.6" /><path d="M2.4 6.6h11.2M5.6 2.4v2M10.4 2.4v2" strokeLinecap="round" /></svg>; }
+function EyeIcon() { return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden><path d="M1.2 8S3.4 3.4 8 3.4 14.8 8 14.8 8 12.6 12.6 8 12.6 1.2 8 1.2 8Z" strokeLinejoin="round" /><circle cx="8" cy="8" r="2.2" /></svg>; }
+
 export default function RelatedPosts({ posts }: { posts: BlogPost[] }) {
   const { t } = useT();
   if (!posts.length) return null;
@@ -39,15 +42,20 @@ export default function RelatedPosts({ posts }: { posts: BlogPost[] }) {
                 <h3 className="bl-card-title">{post.title}</h3>
                 {post.excerpt && <p className="bl-card-excerpt">{post.excerpt}</p>}
                 <div className="bl-card-author">
-                  <div className="bl-author-avatar" style={{ background: "var(--brand)" }}>
-                    {(post.authorName ?? "F").charAt(0).toUpperCase()}
-                  </div>
+                  {post.authorPhotoUrl ? (
+                    <img className="bl-author-avatar bl-author-avatar--photo" src={post.authorPhotoUrl} alt={post.authorName ?? ""} />
+                  ) : (
+                    <div className="bl-author-avatar" style={{ background: "var(--brand)" }}>
+                      {(post.authorName ?? "F").charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <div className="bl-author-name">{post.authorName ?? t("article.editorial")}</div>
-                    <div className="bl-author-date" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      <span>{formatDateShort(t, post.publishedDate)}</span>
+                    {post.authorTitle && <div className="bl-author-role">{post.authorTitle}</div>}
+                    <div className="bl-author-date" style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                      <span className="bl-meta-item"><CalendarIcon />{formatDateShort(t, post.publishedDate)}</span>
                       {post.viewCount != null && post.viewCount > 0 && (
-                        <span>{t("pub.viewsCount", { n: post.viewCount })}</span>
+                        <span className="bl-meta-item"><EyeIcon />{t("pub.viewsCount", { n: post.viewCount })}</span>
                       )}
                     </div>
                   </div>

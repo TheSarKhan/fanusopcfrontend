@@ -59,16 +59,22 @@ export function EmptyBlock({
   title,
   body,
   actions,
+  illustration,
+  deco,
   boxed = false,
 }: {
   title: ReactNode;
   body?: ReactNode;
   actions?: ReactNode;
+  illustration?: ReactNode;
+  deco?: ReactNode;
   /** Dashed sərhədli kart içində göstər. */
   boxed?: boolean;
 }) {
+  const visual = illustration ?? deco;
   const inner = (
     <div className="fx-empty">
+      {visual ? <div className="fx-empty__visual">{visual}</div> : null}
       <div className="fx-empty__title">{title}</div>
       {body ? <p className="fx-empty__body">{body}</p> : null}
       {actions ? <div className="fx-empty__actions">{actions}</div> : null}

@@ -24,6 +24,7 @@ import {
   type StatusTone,
   type TabItem,
 } from "@/components/ui";
+import { SectionBotanicalDeco, EmptyStateBotanical } from "@/components/PsyIllustrations";
 
 const ACTIVE_DAYS = 30;
 const DORMANT_DAYS = 90;
@@ -273,6 +274,7 @@ export default function PsychologClientsPage() {
   return (
     <div>
       <PageHead
+        deco={<SectionBotanicalDeco type="clients" width={56} height={46} />}
         title={t("staff.psyClientsTitle")}
         sub={t("staff.psyClientsSub")}
         actions={

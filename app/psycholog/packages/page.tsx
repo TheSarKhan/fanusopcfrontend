@@ -17,6 +17,7 @@ import { DataTable, PaymentStatus, SectionTitle, Status, Tabs, type Column } fro
 import { azFormatDate } from "@/lib/datetime";
 import { formatAzn } from "@/lib/money";
 import PageHeader from "@/components/PageHeader";
+import { SectionBotanicalDeco } from "@/components/PsyIllustrations";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "@/components/Toast";
 import { useT } from "@/lib/i18n/LocaleProvider";
@@ -216,6 +217,7 @@ export default function PsychologPackagesPage() {
 
       {/* Header */}
       <PageHeader
+        deco={<SectionBotanicalDeco type="packages" width={56} height={46} />}
         title={t("psyPkgMgmt.pageTitle")}
         subtitle={t("psyPkgMgmt.pageSubtitle")}
         actions={(

@@ -1,10 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { psychologistApi, type PsychologistReceivedReview, type ReviewDeletionRequestItem } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { toast } from "@/components/Toast";
 import PageHeader from "@/components/PageHeader";
+import { SectionBotanicalDeco } from "@/components/PsyIllustrations";
 
 const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
   PENDING:  { color: "#92400E", bg: "#FEF3C7" },
@@ -126,6 +127,7 @@ export default function PsychologReviewsPage() {
   return (
     <div>
       <PageHeader
+        deco={<SectionBotanicalDeco type="reviews" width={56} height={46} />}
         title={t("staff.psyReviewsTitle")}
         subtitle={t("staff.psyReviewsSub")}
       />

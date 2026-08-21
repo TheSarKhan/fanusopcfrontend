@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { psychologistApi, type Paged, type PsychResource, type PsychResourceReq } from "@/lib/api";
 import PsychResourceTabs from "@/components/PsychResourceTabs";
 import PageHeader from "@/components/PageHeader";
+import { SectionBotanicalDeco } from "@/components/PsyIllustrations";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 type TFn = ReturnType<typeof useT>["t"];
@@ -180,6 +181,7 @@ export default function PsychologResourcesPage() {
 
       {/* Header */}
       <PageHeader
+        deco={<SectionBotanicalDeco type="resources" width={56} height={46} />}
         title={t("psyResources.title")}
         subtitle={t("psyResources.subtitle")}
         actions={

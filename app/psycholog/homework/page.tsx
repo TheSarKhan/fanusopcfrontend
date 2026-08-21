@@ -13,6 +13,7 @@ import { useT } from "@/lib/i18n/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { azFormatDate } from "@/lib/datetime";
 import PageHeader from "@/components/PageHeader";
+import { SectionBotanicalDeco } from "@/components/PsyIllustrations";
 
 const PRIORITY_COLOR: Record<HomeworkPriority, string> = {
   LOW: "#10B981", MEDIUM: "#F59E0B", HIGH: "#DC2626",
@@ -230,6 +231,7 @@ export default function PsychologHomeworkPage() {
   return (
     <div>
       <PageHeader
+        deco={<SectionBotanicalDeco type="homework" width={56} height={46} />}
         title={t("staff.psyHomeworkTitle")}
         subtitle={t("psyHwMgmt.subtitle")}
         actions={

@@ -12,6 +12,7 @@ import {
 import { toast } from "@/components/Toast";
 import EmptyState from "@/components/EmptyState";
 import PageHeader from "@/components/PageHeader";
+import { SectionBotanicalDeco } from "@/components/PsyIllustrations";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
@@ -105,6 +106,7 @@ export default function PsychologCommunityPage() {
   return (
     <div className="pcom-page">
       <PageHeader
+        deco={<SectionBotanicalDeco type="community" width={56} height={46} />}
         title={t("psyCommunity.title")}
         subtitle={t("psyCommunity.subtitle")}
       />

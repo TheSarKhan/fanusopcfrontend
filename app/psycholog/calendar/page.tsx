@@ -8,6 +8,7 @@ import { azFormatDateTime } from "@/lib/datetime";
 import { statusMeta } from "@/lib/appointmentStatus";
 import { toast } from "@/components/Toast";
 import PageHeader from "@/components/PageHeader";
+import { SectionBotanicalDeco } from "@/components/PsyIllustrations";
 
 // Mon..Sun day-name labels are sourced via t("psyCalendarMgmt.dayShort*"/"dayFull*")
 // in the components below — see dayShortLabels / dayFullLabels.
@@ -480,6 +481,7 @@ export default function PsychologCalendarPage() {
   return (
     <div>
       <PageHeader
+        deco={<SectionBotanicalDeco type="calendar" width={56} height={46} />}
         title={t("staff.psyCalendarTitle")}
         subtitle={t("psyCalendarMgmt.subtitle")}
         actions={

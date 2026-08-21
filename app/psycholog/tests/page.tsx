@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PsychResourceTabs from "@/components/PsychResourceTabs";
 import PageHeader from "@/components/PageHeader";
+import { SectionBotanicalDeco } from "@/components/PsyIllustrations";
 import AssignTestModal from "@/components/AssignTestModal";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
@@ -251,6 +252,7 @@ export default function PsychologTestsPage() {
       </div>
 
       <PageHeader
+        deco={<SectionBotanicalDeco type="tests" width={56} height={46} />}
         title={t("psyTests.pageTitle")}
         subtitle={t("psyTests.pageSubtitle")}
         actions={

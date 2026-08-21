@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { psychologistApi, type BlogPost } from "@/lib/api";
 import { getMainSiteUrl } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
+import { SectionBotanicalDeco } from "@/components/PsyIllustrations";
 import { useT } from "@/lib/i18n/LocaleProvider";
 
 type TFn = ReturnType<typeof useT>["t"];
@@ -185,6 +186,7 @@ export default function PsychologArticlesPage() {
 
       {/* Header */}
       <PageHeader
+        deco={<SectionBotanicalDeco type="articles" width={56} height={46} />}
         title={t("psyArticles.title")}
         subtitle={t("psyArticles.subtitle")}
         actions={

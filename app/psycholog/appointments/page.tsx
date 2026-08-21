@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "@/components/Toast";
 import PageHeader from "@/components/PageHeader";
+import { SectionBotanicalDeco } from "@/components/PsyIllustrations";
 import { useSearchParams } from "next/navigation";
 import {
   psychologistApi,
@@ -249,6 +250,7 @@ export default function PsychologistAppointmentsPage() {
     <div className="psy-appt-page">
       <style>{PSY_APPT_STYLE}</style>
       <PageHeader
+        deco={<SectionBotanicalDeco type="appointments" width={56} height={46} />}
         title={t("staff.psyApptTitle")}
         subtitle={t("staff.psyApptSub")}
         actions={

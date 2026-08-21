@@ -754,3 +754,283 @@
   .fx-toast { right: 12px; left: 12px; bottom: 12px; }
   .fx-bulkbar { left: 12px; right: 12px; transform: none; }
 }
+
+/* ============================================================
+   PSIXOLOQ PANELİ — SOFT BOTANİK & ESTETİK DİZAYN SİSTEMİ
+   ============================================================ */
+
+.fx-head--with-deco {
+  align-items: center;
+}
+.fx-head__deco {
+  display: flex;
+  align-items: center;
+  justifyContent: center;
+  flex-shrink: 0;
+}
+.fx-empty__visual {
+  display: flex;
+  align-items: center;
+  justifyContent: center;
+  margin-bottom: 8px;
+}
+
+/* Stat kartları */
+.psy-stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+}
+.fx-stat--with-icon {
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.fx-stat--with-icon:hover {
+  border-color: var(--brand-200);
+}
+.psy-stat-val {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--oxford);
+  letter-spacing: -0.015em;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.psy-stat-sub {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--oxford-60);
+}
+.psy-stat-trend {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+.psy-stat-trend--up {
+  color: #10B981;
+}
+.psy-stat-meta-text {
+  font-size: 12px;
+  color: var(--oxford-60);
+}
+
+/* Bu günün cədvəli sətirləri */
+.psy-schedule-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(0, 33, 71, 0.05);
+}
+.psy-schedule-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.psy-schedule-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-width: 68px;
+}
+.psy-schedule-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.psy-schedule-time-pill {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--oxford-80);
+  background: var(--surface-muted, #F8FAFC);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 33, 71, 0.06);
+}
+.psy-schedule-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.psy-schedule-info {
+  flex: 1;
+  min-width: 0;
+}
+.psy-schedule-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--oxford);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.psy-schedule-meta {
+  font-size: 11.5px;
+  color: var(--oxford-60);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.psy-schedule-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.psy-btn-session {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #F1F5F9;
+  color: var(--oxford-80);
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+.psy-btn-session:hover {
+  background: var(--brand-50);
+  color: var(--brand);
+  text-decoration: none;
+}
+.psy-tag-confirmed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #ECFDF5;
+  color: #047857;
+  border: 1px solid rgba(4, 120, 87, 0.15);
+}
+.psy-btn-more {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--oxford-40);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+.psy-btn-more:hover {
+  background: var(--surface-muted);
+  color: var(--oxford);
+}
+
+/* Növbəti görüş qəhrəman bloku */
+.psy-next-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #DBEAFE;
+  color: #1E40AF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 14px rgba(30, 64, 175, 0.12);
+}
+.psy-next-time {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--oxford);
+  letter-spacing: -0.01em;
+}
+.psy-next-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--oxford);
+  margin-top: 4px;
+}
+.psy-next-meta {
+  font-size: 12.5px;
+  color: var(--oxford-60);
+  margin-top: 2px;
+}
+.psy-next-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  width: 100%;
+  max-width: 260px;
+}
+.psy-btn-primary-hero {
+  flex: 1;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  text-decoration: none;
+}
+.psy-btn-ghost-hero {
+  flex: 1;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  text-decoration: none;
+}
+
+/* Qiymət və paketlər sətirləri */
+.psy-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(0, 33, 71, 0.05);
+}
+.psy-price-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.psy-price-row__lead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.psy-price-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #EBF3FE;
+  color: #1051B7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.psy-price-icon-box--pkg {
+  background: #EAF5EE;
+  color: #2E6B54;
+}
+.psy-price-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--oxford);
+}
+.psy-price-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--oxford);
+}
+

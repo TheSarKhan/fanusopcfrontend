@@ -18,6 +18,7 @@ export function Stat({
   unit,
   label,
   meta,
+  icon,
   size = "md",
   className,
   ...rest
@@ -28,16 +29,33 @@ export function Stat({
   label: ReactNode;
   /** Bir cümləlik kontekst: "Dünənlə müqayisədə 12% çox". */
   meta?: ReactNode;
+  icon?: ReactNode;
   size?: "sm" | "md";
 }) {
   return (
-    <div className={["fx-stat", className].filter(Boolean).join(" ")} {...rest}>
-      <div className={["fx-stat__value", size === "sm" ? "fx-stat__value--sm" : ""].filter(Boolean).join(" ")}>
-        {value}
-        {unit ? <span className="fx-stat__unit"> {unit}</span> : null}
-      </div>
-      <div className="fx-stat__label">{label}</div>
-      {meta ? <div className="fx-stat__meta">{meta}</div> : null}
+    <div className={["fx-stat", icon ? "fx-stat--with-icon" : "", className].filter(Boolean).join(" ")} {...rest}>
+      {icon ? (
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+          <div className="fx-stat__icon-wrap" style={{ flexShrink: 0 }}>{icon}</div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="fx-stat__label" style={{ marginTop: 0 }}>{label}</div>
+            <div className={["fx-stat__value", size === "sm" ? "fx-stat__value--sm" : ""].filter(Boolean).join(" ")} style={{ marginTop: 2 }}>
+              {value}
+              {unit ? <span className="fx-stat__unit"> {unit}</span> : null}
+            </div>
+            {meta ? <div className="fx-stat__meta" style={{ marginTop: 2 }}>{meta}</div> : null}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className={["fx-stat__value", size === "sm" ? "fx-stat__value--sm" : ""].filter(Boolean).join(" ")}>
+            {value}
+            {unit ? <span className="fx-stat__unit"> {unit}</span> : null}
+          </div>
+          <div className="fx-stat__label">{label}</div>
+          {meta ? <div className="fx-stat__meta">{meta}</div> : null}
+        </>
+      )}
     </div>
   );
 }

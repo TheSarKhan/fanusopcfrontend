@@ -12,6 +12,7 @@ import { formatDateShort } from "@/lib/i18n/dateNames";
 import { azFormatDateTime } from "@/lib/datetime";
 import { toast } from "@/components/Toast";
 import PageHeader from "@/components/PageHeader";
+import { SectionBotanicalDeco } from "@/components/PsyIllustrations";
 
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
@@ -197,6 +198,7 @@ export default function PsychologistAvailabilityPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Header */}
       <PageHeader
+        deco={<SectionBotanicalDeco type="availability" width={56} height={46} />}
         title={t("staff.psyAvailTitle")}
         subtitle={t("psyAvailMgmt.pageSubtitle")}
       />

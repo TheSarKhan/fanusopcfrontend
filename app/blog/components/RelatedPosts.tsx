@@ -3,6 +3,7 @@
 import type { BlogPost } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { formatDateShort } from "@/lib/i18n/dateNames";
+import { VerifiedBadgeIcon } from "@/components/PsychologistCard";
 
 const GRADIENTS = [
   "var(--brand)",
@@ -50,7 +51,12 @@ export default function RelatedPosts({ posts }: { posts: BlogPost[] }) {
                     </div>
                   )}
                   <div>
-                    <div className="bl-author-name">{post.authorName ?? t("article.editorial")}</div>
+                    <div className="bl-author-name" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <span>{post.authorName ?? t("article.editorial")}</span>
+                      {(post.authorVerified ?? (post.authorRole === "PSYCHOLOGIST")) && (
+                        <VerifiedBadgeIcon size={13} />
+                      )}
+                    </div>
                     {post.authorTitle && <div className="bl-author-role">{post.authorTitle}</div>}
                     <div className="bl-author-date" style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
                       <span className="bl-meta-item"><CalendarIcon />{formatDateShort(t, post.publishedDate)}</span>

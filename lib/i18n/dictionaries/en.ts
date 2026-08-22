@@ -552,6 +552,7 @@ export const en: typeof az = {
     later: "Later",
     findMatch: "Find me a therapist →",
     sessionShort: "Book",
+    profileShort: "Profile",
     noPsychologists: "No specialist has been matched to this mood yet.",
     noPsychologistsHint: "We would rather show nothing than pair you with the wrong therapist. Browse everyone, or get in touch.",
     noArticles: "No articles on this topic yet.",

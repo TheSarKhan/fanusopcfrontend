@@ -1279,8 +1279,9 @@ export default function ProfileView({
       {/* ===== MOBILE STICKY BOTTOM BAR ===== */}
       <div className="ppx-bottombar">
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#0A1A33", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {psychologist.name}
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#0A1A33", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <span>{psychologist.name}</span>
+            {psychologist.verified && <VerifiedBadgeIcon size={14} />}
           </div>
           <div style={{ fontSize: 11.5, color: "#6B7C96", fontWeight: 500 }}>
             {sessionMinutes} dəqiqə · Onlayn

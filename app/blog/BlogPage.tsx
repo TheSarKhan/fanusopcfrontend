@@ -8,6 +8,7 @@ import type { BlogPost } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { azFormatDate } from "@/lib/datetime";
+import { VerifiedBadgeIcon } from "@/components/PsychologistCard";
 
 type Cat = "all" | "anxiety" | "relations" | "selfcare" | "sleep" | "youth" | "mindful";
 type Illu = "sun" | "people" | "flame" | "moon" | "waves" | "compass";
@@ -53,6 +54,7 @@ interface Item {
   authorRole?: string;
   /** Psixoloqun peşəkar vəzifəsi (məs. "Klinik psixoloq") — yalnız API-dən gələn məqalələrdə olur. */
   authorTitle?: string;
+  authorVerified?: boolean;
   illu: Illu;
   coverUrl?: string;
   /** Baxış sayı (V125) — yalnız API-dən gələn məqalələrdə olur. */
@@ -60,15 +62,15 @@ interface Item {
 }
 
 const FALLBACK: Item[] = [
-  { slug: "narahat-oyananda",  cat: "anxiety",    title: "Səhər yuxudan narahat oyananda nə etməli", excerpt: "Bədəniniz hələ yatağa qalxmadan beyniniz qorxular siyahısı tutursa — bu məqalə sizin üçündür.", date: "12 May 2026", read: "6 dəq", readMinutes: 6, publishedAt: Date.parse("2026-05-12"), author: "Aysel Məmmədova", illu: "sun" },
-  { slug: "serhed-qoymaq",     cat: "relations",  title: "Sərhəd qoymaq eqoist olmaq deyil",         excerpt: "Sağlam sərhədlər münasibətləri zəiflətmir — onları daha güclü və davamlı edir.",                          date: "8 May 2026",  read: "8 dəq", readMinutes: 8, publishedAt: Date.parse("2026-05-08"), author: "Lalə Hüseynova",   illu: "people" },
-  { slug: "tukenmislik",       cat: "selfcare",   title: "Tükənmişlik — gizli əlamətlər",            excerpt: "Bezginlik və burnout fərqlidir. Ondan əvvəl bədənin verdiyi siqnalları öyrənmək.",                          date: "3 May 2026",  read: "7 dəq", readMinutes: 7, publishedAt: Date.parse("2026-05-03"), author: "Elnur Səfərov",    illu: "flame" },
-  { slug: "yuxusuzluq",        cat: "sleep",      title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", excerpt: "“Yatmalıyam” fikri özü yuxusuzluğun yanacağına çevrilir. Bu dövrəni necə qırmaq olar.",                       date: "28 Apr 2026", read: "5 dəq", readMinutes: 5, publishedAt: Date.parse("2026-04-28"), author: "Rəşad Quliyev",    illu: "moon" },
-  { slug: "5deq-nefes",        cat: "mindful",    title: "5 dəqiqəlik nəfəs — günü yenidən başlat",  excerpt: "Stresli anlarda sinir sistemini sakitləşdirmək üçün sadə, sübuta əsaslanan texnika.",                        date: "22 Apr 2026", read: "4 dəq", readMinutes: 4, publishedAt: Date.parse("2026-04-22"), author: "Səbinə Əliyeva",   illu: "waves" },
-  { slug: "yeniyetme-qabiq",   cat: "youth",      title: "Yeniyetmə öz qabığına çəkiləndə",          excerpt: "Susqunluq həmişə problem deyil. Lakin nə vaxt diqqət etmək lazımdır?",                                       date: "18 Apr 2026", read: "6 dəq", readMinutes: 6, publishedAt: Date.parse("2026-04-18"), author: "Nigar Kazımova",   illu: "compass" },
-  { slug: "panik-atak",        cat: "anxiety",    title: "Panik atak: bədənin yalan həyəcanı",       excerpt: "Panik atak təhlükəli deyil — amma bunu beyninə inandırmaq başqa məsələdir.",                                  date: "14 Apr 2026", read: "6 dəq", readMinutes: 6, publishedAt: Date.parse("2026-04-14"), author: "Aysel Məmmədova", illu: "waves" },
-  { slug: "esitmek",           cat: "relations",  title: "Münaqişədə eşitmək — danışmaqdan əvvəl",   excerpt: "Aktiv dinləmə bir bacarıqdır. Sevdiklərinizlə sınamaq üçün 4 sadə addım.",                                    date: "9 Apr 2026",  read: "7 dəq", readMinutes: 7, publishedAt: Date.parse("2026-04-09"), author: "Lalə Hüseynova",   illu: "people" },
-  { slug: "dincelmek",         cat: "selfcare",   title: "Niyə dincəlmək də öyrənilməlidir",         excerpt: "Hər kəs istirahətin necə görünməsini bilmir. İnsan üçün dincəlmənin 7 növü.",                                  date: "5 Apr 2026",  read: "5 dəq", readMinutes: 5, publishedAt: Date.parse("2026-04-05"), author: "Elnur Səfərov",    illu: "compass" },
+  { slug: "narahat-oyananda",  cat: "anxiety",    title: "Səhər yuxudan narahat oyananda nə etməli", excerpt: "Bədəniniz hələ yatağa qalxmadan beyniniz qorxular siyahısı tutursa — bu məqalə sizin üçündür.", date: "12 May 2026", read: "6 dəq", readMinutes: 6, publishedAt: Date.parse("2026-05-12"), author: "Aysel Məmmədova", authorRole: "PSYCHOLOGIST", authorVerified: true, illu: "sun" },
+  { slug: "serhed-qoymaq",     cat: "relations",  title: "Sərhəd qoymaq eqoist olmaq deyil",         excerpt: "Sağlam sərhədlər münasibətləri zəiflətmir — onları daha güclü və davamlı edir.",                          date: "8 May 2026",  read: "8 dəq", readMinutes: 8, publishedAt: Date.parse("2026-05-08"), author: "Lalə Hüseynova",   authorRole: "PSYCHOLOGIST", authorVerified: true, illu: "people" },
+  { slug: "tukenmislik",       cat: "selfcare",   title: "Tükənmişlik — gizli əlamətlər",            excerpt: "Bezginlik və burnout fərqlidir. Ondan əvvəl bədənin verdiyi siqnalları öyrənmək.",                          date: "3 May 2026",  read: "7 dəq", readMinutes: 7, publishedAt: Date.parse("2026-05-03"), author: "Elnur Səfərov",    authorRole: "PSYCHOLOGIST", authorVerified: true, illu: "flame" },
+  { slug: "yuxusuzluq",        cat: "sleep",      title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", excerpt: "“Yatmalıyam” fikri özü yuxusuzluğun yanacağına çevrilir. Bu dövrəni necə qırmaq olar.",                       date: "28 Apr 2026", read: "5 dəq", readMinutes: 5, publishedAt: Date.parse("2026-04-28"), author: "Rəşad Quliyev",    authorRole: "PSYCHOLOGIST", authorVerified: true, illu: "moon" },
+  { slug: "5deq-nefes",        cat: "mindful",    title: "5 dəqiqəlik nəfəs — günü yenidən başlat",  excerpt: "Stresli anlarda sinir sistemini sakitləşdirmək üçün sadə, sübuta əsaslanan texnika.",                        date: "22 Apr 2026", read: "4 dəq", readMinutes: 4, publishedAt: Date.parse("2026-04-22"), author: "Səbinə Əliyeva",   authorRole: "PSYCHOLOGIST", authorVerified: true, illu: "waves" },
+  { slug: "yeniyetme-qabiq",   cat: "youth",      title: "Yeniyetmə öz qabığına çəkiləndə",          excerpt: "Susqunluq həmişə problem deyil. Lakin nə vaxt diqqət etmək lazımdır?",                                       date: "18 Apr 2026", read: "6 dəq", readMinutes: 6, publishedAt: Date.parse("2026-04-18"), author: "Nigar Kazımova",   authorRole: "PSYCHOLOGIST", authorVerified: true, illu: "compass" },
+  { slug: "panik-atak",        cat: "anxiety",    title: "Panik atak: bədənin yalan həyəcanı",       excerpt: "Panik atak təhlükəli deyil — amma bunu beyninə inandırmaq başqa məsələdir.",                                  date: "14 Apr 2026", read: "6 dəq", readMinutes: 6, publishedAt: Date.parse("2026-04-14"), author: "Aysel Məmmədova", authorRole: "PSYCHOLOGIST", authorVerified: true, illu: "waves" },
+  { slug: "esitmek",           cat: "relations",  title: "Münaqişədə eşitmək — danışmaqdan əvvəl",   excerpt: "Aktiv dinləmə bir bacarıqdır. Sevdiklərinizlə sınamaq üçün 4 sadə addım.",                                    date: "9 Apr 2026",  read: "7 dəq", readMinutes: 7, publishedAt: Date.parse("2026-04-09"), author: "Lalə Hüseynova",   authorRole: "PSYCHOLOGIST", authorVerified: true, illu: "people" },
+  { slug: "dincelmek",         cat: "selfcare",   title: "Niyə dincəlmək də öyrənilməlidir",         excerpt: "Hər kəs istirahətin necə görünməsini bilmir. İnsan üçün dincəlmənin 7 növü.",                                  date: "5 Apr 2026",  read: "5 dəq", readMinutes: 5, publishedAt: Date.parse("2026-04-05"), author: "Elnur Səfərov",    authorRole: "PSYCHOLOGIST", authorVerified: true, illu: "compass" },
 ];
 
 type SortBy = "new" | "quick";
@@ -92,6 +94,7 @@ export default function BlogPage({ posts }: { posts?: BlogPost[] }) {
         authorPhotoUrl: p.authorPhotoUrl,
         authorRole: p.authorRole,
         authorTitle: p.authorTitle,
+        authorVerified: p.authorVerified ?? (p.authorRole === "PSYCHOLOGIST"),
         illu: ILLU_BY_CAT[cat],
         coverUrl: p.coverImageUrl,
         views: p.viewCount ?? 0,
@@ -279,7 +282,10 @@ function ArtList({
                       <span className="ap-card__avatar">{a.author.split(" ").map((n) => n[0]).join("")}</span>
                     )}
                     <div>
-                      <div className="ap-card__author-name">{a.author}</div>
+                      <div className="ap-card__author-name">
+                        <span>{a.author}</span>
+                        {a.authorVerified && <VerifiedBadgeIcon size={13} />}
+                      </div>
                       <div className="ap-card__author-role">
                         {a.authorTitle || (a.authorRole === "PSYCHOLOGIST" ? t("pub.authorRole") : t("blogPage.editorial"))}
                       </div>
@@ -354,7 +360,7 @@ function ArtList({
         }
         .ap-card__avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--fanus-primary); color: white; font-weight: 700; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .ap-card__avatar--photo { object-fit: cover; }
-        .ap-card__author-name { font-size: 12.5px; font-weight: 600; color: var(--fanus-ink); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ap-card__author-name { font-size: 12.5px; font-weight: 600; color: var(--fanus-ink); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-flex; align-items: center; gap: 4px; }
         .ap-card__author-role { font-size: 11px; color: var(--fanus-ink-3); margin-top: 1px; }
         .ap-card__cta {
           margin-left: auto; display: inline-flex; align-items: center; gap: 4px;

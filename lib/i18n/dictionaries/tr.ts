@@ -553,6 +553,7 @@ export const tr: typeof az = {
     later: "Sonra",
     findMatch: "Bana uygun psikoloğu bul →",
     sessionShort: "Seans",
+    profileShort: "Profil",
     noPsychologists: "Bu ruh hâli için henüz uygun uzman işaretlenmedi.",
     noPsychologistsHint: "Sizi rastgele bir psikologla eşleştirmek istemiyoruz. Tüm listeye bakabilir ya da bize yazabilirsiniz.",
     noArticles: "Bu konuda henüz yazı yok.",

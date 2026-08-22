@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { BlogPost } from "@/lib/api";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { azFormatDate } from "@/lib/datetime";
+import { VerifiedBadgeIcon } from "@/components/PsychologistCard";
 
 const COLORS = ["#5089E0", "#1051B7", "#0B3F90", "#2A6BD0"];
 
@@ -22,12 +23,13 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
         authorPhotoUrl: p.authorPhotoUrl,
         authorRole: p.authorRole,
         authorTitle: p.authorTitle,
+        authorVerified: p.authorVerified ?? (p.authorRole === "PSYCHOLOGIST"),
       }))
     : [
-        { slug: "narahatliq", title: "Səhər yuxudan narahat oyananda nə etməli", date: "12 May 2025", read: "6 dəq", views: 0, bg: COLORS[0], coverUrl: undefined as string | undefined, author: "Aysel Məmmədova", authorPhotoUrl: undefined as string | undefined, authorRole: "PSYCHOLOGIST", authorTitle: undefined as string | undefined },
-        { slug: "munasibetler", title: "Sərhəd qoymaq eqoist olmaq deyil",        date: "8 May 2025",  read: "8 dəq", views: 0, bg: COLORS[1], coverUrl: undefined, author: "Lalə Hüseynova", authorPhotoUrl: undefined, authorRole: "PSYCHOLOGIST", authorTitle: undefined },
-        { slug: "ozune-qayim", title: "Tükənmişlik (burnout) — gizli əlamətlər",   date: "3 May 2025",  read: "7 dəq", views: 0, bg: COLORS[2], coverUrl: undefined, author: "Elnur Səfərov", authorPhotoUrl: undefined, authorRole: "PSYCHOLOGIST", authorTitle: undefined },
-        { slug: "yuxu", title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", date: "28 Apr 2025", read: "5 dəq", views: 0, bg: COLORS[3], coverUrl: undefined, author: "Rəşad Quliyev", authorPhotoUrl: undefined, authorRole: "PSYCHOLOGIST", authorTitle: undefined },
+        { slug: "narahatliq", title: "Səhər yuxudan narahat oyananda nə etməli", date: "12 May 2025", read: "6 dəq", views: 0, bg: COLORS[0], coverUrl: undefined as string | undefined, author: "Aysel Məmmədova", authorPhotoUrl: undefined as string | undefined, authorRole: "PSYCHOLOGIST", authorTitle: undefined as string | undefined, authorVerified: true },
+        { slug: "munasibetler", title: "Sərhəd qoymaq eqoist olmaq deyil",        date: "8 May 2025",  read: "8 dəq", views: 0, bg: COLORS[1], coverUrl: undefined, author: "Lalə Hüseynova", authorPhotoUrl: undefined, authorRole: "PSYCHOLOGIST", authorTitle: undefined, authorVerified: true },
+        { slug: "ozune-qayim", title: "Tükənmişlik (burnout) — gizli əlamətlər",   date: "3 May 2025",  read: "7 dəq", views: 0, bg: COLORS[2], coverUrl: undefined, author: "Elnur Səfərov", authorPhotoUrl: undefined, authorRole: "PSYCHOLOGIST", authorTitle: undefined, authorVerified: true },
+        { slug: "yuxu", title: "Yuxusuzluğun düşüncə tələsi və çıxış yolu", date: "28 Apr 2025", read: "5 dəq", views: 0, bg: COLORS[3], coverUrl: undefined, author: "Rəşad Quliyev", authorPhotoUrl: undefined, authorRole: "PSYCHOLOGIST", authorTitle: undefined, authorVerified: true },
       ];
 
   return (
@@ -64,7 +66,10 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
                     <span className="fanus-art-card__avatar">{a.author.split(" ").map((n) => n[0]).join("")}</span>
                   )}
                   <div>
-                    <div className="fanus-art-card__author-name">{a.author}</div>
+                    <div className="fanus-art-card__author-name">
+                      <span>{a.author}</span>
+                      {a.authorVerified && <VerifiedBadgeIcon size={13} />}
+                    </div>
                     <div className="fanus-art-card__author-role">
                       {a.authorTitle || (a.authorRole === "PSYCHOLOGIST" ? t("pub.authorRole") : t("blogPage.editorial"))}
                     </div>
@@ -137,7 +142,7 @@ export default function Articles({ posts }: { posts?: BlogPost[] }) {
           display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
         .fanus-art-card__avatar--photo { object-fit: cover; }
-        .fanus-art-card__author-name { font-size: 12px; font-weight: 600; color: var(--fanus-ink); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .fanus-art-card__author-name { font-size: 12px; font-weight: 600; color: var(--fanus-ink); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-flex; align-items: center; gap: 4px; }
         .fanus-art-card__author-role { font-size: 10.5px; color: var(--fanus-ink-3); margin-top: 1px; }
         @media (max-width: 1100px) { .fanus-art__grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 560px) { .fanus-art__grid { grid-template-columns: 1fr; } }

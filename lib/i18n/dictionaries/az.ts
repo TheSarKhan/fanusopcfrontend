@@ -560,6 +560,7 @@ export const az = {
     later: "Sonra",
     findMatch: "Mənə uyğun psixoloq tap →",
     sessionShort: "Seans",
+    profileShort: "Profil",
     noPsychologists: "Bu əhval üçün hələ uyğun mütəxəssis qeyd olunmayıb.",
     noPsychologistsHint: "Sizi təsadüfi psixoloqla qarşılaşdırmaq istəmirik. Bütün siyahıya baxa və ya bizə yaza bilərsiniz.",
     noArticles: "Bu mövzuda hələ məqalə yoxdur.",

@@ -558,6 +558,7 @@ export interface BlogPost {
   hasPendingDraft?: boolean;
   // Admin siyahısı zənginləşdirmə: müəllif rolu (ADMIN/PSYCHOLOGIST) və cəmi baxış sayı
   authorRole?: string;
+  authorVerified?: boolean;
   viewCount?: number;
 }
 
@@ -848,6 +849,7 @@ export interface RecommendedPsychologist {
   rating: string;
   ratingCount: number;
   topics: string[];
+  verified?: boolean;
   matchScore: number;
 }
 

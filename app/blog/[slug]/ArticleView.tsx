@@ -15,6 +15,7 @@ import Breadcrumb from "@/components/Breadcrumb";
 import ViewTracker from "@/components/ViewTracker";
 import { useT } from "@/lib/i18n/LocaleProvider";
 import { formatDateLong } from "@/lib/i18n/dateNames";
+import { VerifiedBadgeIcon } from "@/components/PsychologistCard";
 
 /** ISO sətrindən yalnız gün hissəsi (YYYY-MM-DD) — müqayisə saat qurşağından asılı olmasın. */
 function isoDay(s?: string | null): string | null {
@@ -98,7 +99,12 @@ export default function ArticleView({ post, related }: { post: BlogPost; related
                   </div>
                 )}
                 <div>
-                  <div className="art-author__name">{post.authorName ?? t("article.editorial")}</div>
+                  <div className="art-author__name" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    <span>{post.authorName ?? t("article.editorial")}</span>
+                    {(post.authorVerified ?? (post.authorRole === "PSYCHOLOGIST")) && (
+                      <VerifiedBadgeIcon size={16} />
+                    )}
+                  </div>
                   {updated && <div className="art-author__role">{t("article.updatedAt", { date: updated })}</div>}
                 </div>
                 {post.authorRole === "PSYCHOLOGIST" && post.authorId && (

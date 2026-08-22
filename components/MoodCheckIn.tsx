@@ -8,6 +8,7 @@ import { getMoodRecommendations, trackFunnelEvent, type MoodRecommendation } fro
 import { type MoodId } from "@/lib/moodMap";
 import type { MessageKey } from "@/lib/i18n/messages";
 import { useT } from "@/lib/i18n/LocaleProvider";
+import { VerifiedBadgeIcon } from "@/components/PsychologistCard";
 
 export type Mood = { id: MoodId; label: string; color: string };
 
@@ -533,7 +534,10 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
                       : p.name.split(" ").filter(Boolean).map((n) => n[0]).slice(0, 2).join("")}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="fanus-mm-psyc-card__name">{p.name}</div>
+                    <div className="fanus-mm-psyc-card__name" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <span>{p.name}</span>
+                      {p.verified && <VerifiedBadgeIcon size={14} />}
+                    </div>
                     <div className="fanus-mm-psyc-card__spec" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
                       <span>{(p.specializations ?? []).slice(0, 2).join(", ") || p.title}</span>
                       {p.experience ? <span>{p.experience} {t("psyList.yearsExp")}</span> : null}
@@ -547,11 +551,11 @@ export function MoodModal({ mood, onClose }: { mood: Mood; onClose: () => void }
                     )}
                   </div>
                   <Link
-                    href={`/book/${p.id}`}
+                    href={`/psychologists/${p.id}`}
                     className="fanus-btn fanus-btn-light fanus-btn-sm"
                     onClick={() => trackFunnelEvent("MOOD_BOOKING_CLICK", mood.id)}
                   >
-                    {t("mood.sessionShort")}
+                    {t("mood.profileShort")}
                   </Link>
                 </div>
               ))}

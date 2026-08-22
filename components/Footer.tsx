@@ -77,9 +77,6 @@ export default function Footer() {
           <a href="mailto:fanus.opc@gmail.com" className="fanus-ftr__contact-row">
             <MailIcon /> fanus.opc@gmail.com
           </a>
-          <a href="https://wa.me/994993585888" target="_blank" rel="noopener noreferrer" className="fanus-ftr__contact-row">
-            <WhatsAppIcon /> +994 99 358 58 88
-          </a>
           <div className="fanus-ftr__contact-row">
             <PinIcon /> {t("pub.location")}
           </div>
@@ -241,4 +238,5 @@ function InstagramIcon() { return <svg width="16" height="16" fill="none" stroke
 
 const SOCIALS = [
   { label: "Instagram", Icon: InstagramIcon, href: "https://www.instagram.com/fanus_opc?igsh=anQ5eXpkZGo2amdt" },
+  { label: "WhatsApp", Icon: WhatsAppIcon, href: "https://wa.me/994993585888" },
 ];

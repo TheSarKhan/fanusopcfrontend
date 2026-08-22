@@ -14,7 +14,7 @@ import { SectionBotanicalDeco } from "@/components/PsyIllustrations";
 // in the components below — see dayShortLabels / dayFullLabels.
 
 // Google Calendar inteqrasiyası — header-dəki "Sinxronlaşdır" düyməsi + status banner.
-const SHOW_GOOGLE_INTEGRATION = true;
+const SHOW_GOOGLE_INTEGRATION = false;
 
 const HOUR_PX = 72;                  // 1 dəqiqə = 1.2px — 11:20–12:25 kimi seanslar dəqiq proporsiyada görünür
 const PX_PER_MIN = HOUR_PX / 60;
